@@ -3,6 +3,7 @@
 <head>
     <title>{{ title }}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -31,6 +32,7 @@
         #parent-dir div, #child-dirs div { padding: 5px; cursor: pointer; }
         #parent-dir div:hover, #child-dirs div:hover { background-color: #f0f0f0; }
         #deselect-btn { margin-top: 5px; padding: 5px 10px; }
+        #plot-canvas { width: 100%; height: 280px; }
     </style>
 </head>
 <body>
@@ -42,7 +44,7 @@
             <input type="text" id="directory" value="{{ directory }}" readonly>
             <button onclick="browseDirectory()">Browse Path</button>
             <div id="dir-suggestions">
-                <div id="parent-dir"/>
+                <div id="parent-dir">
                     <h3>Go back</h3>
                 </div>
                 <div id="child-dirs">
@@ -84,17 +86,19 @@
         
         <div class="section">
             <h2>Data Display</h2>
-            <div id="data-display"></div>
+            <canvas id="plot-canvas"></canvas>
         </div>
     </div>
 
     <script>
-        function browseDirectory() {
-            // Fetch parent and child directories
+        // Initialize directory suggestions on page load
+        $(document).ready(function() {
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
                 let parentHtml = parentResponse.parent ? 
-                    `<h3>Go back</h3><div onclick="updateDirectory('${parentResponse.parent}')">${parentResponse.parent}</div>` : 
+                    `<h3>Go back</h3>${parentResponse.parent.split('/').pop() ? 
+                        `<div onclick="updateDirectory('${parentResponse.parent}')">${parentResponse.parent.split('/').pop()}</div>` : 
+                        '<div>No parent directory</div>'}` : 
                     '<h3>Go back</h3><div>No parent directory</div>';
                 $("#parent-dir").html(parentHtml);
 
@@ -102,16 +106,39 @@
                     console.log("Child directories:", childResponse.children);
                     let childHtml = childResponse.children.length > 0 ? 
                         `<h3>Go forward</h3>${childResponse.children.map(dir => 
-                            `<div onclick="updateDirectory('${dir}')">${dir}</div>`
+                            `<div onclick="updateDirectory('${dir}')">${dir.split('/').pop()}</div>`
                         ).join('')}` : 
                         '<h3>Go forward</h3><div>No child directories</div>';
                     $("#child-dirs").html(childHtml);
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Error fetching child directories:", textStatus, errorThrown);
+                    $("#error-message").text("Error fetching child directories").show();
+                });
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Error fetching parent directory:", textStatus, errorThrown);
+                $("#error-message").text("Error fetching parent directory").show();
+            });
+        });
 
-                    // Prompt with current directory as default
-                    let path = prompt("Enter directory path (or select from suggestions below):", $("#directory").val());
-                    if (path) {
-                        updateDirectory(path);
-                    }
+        function browseDirectory() {
+            // Refresh directory suggestions
+            $.get('/get_parents', function(parentResponse) {
+                console.log("Parent directory:", parentResponse.parent);
+                let parentHtml = parentResponse.parent ? 
+                    `<h3>Go back</h3>${parentResponse.parent.split('/').pop() ? 
+                        `<div onclick="updateDirectory('${parentResponse.parent}')">${parentResponse.parent.split('/').pop()}</div>` : 
+                        '<div>No parent directory</div>'}` : 
+                    '<h3>Go back</h3><div>No parent directory</div>';
+                $("#parent-dir").html(parentHtml);
+
+                $.get('/get_children', function(childResponse) {
+                    console.log("Child directories:", childResponse.children);
+                    let childHtml = childResponse.children.length > 0 ? 
+                        `<h3>Go forward</h3>${childResponse.children.map(dir => 
+                            `<div onclick="updateDirectory('${dir}')">${dir.split('/').pop()}</div>`
+                        ).join('')}` : 
+                        '<h3>Go forward</h3><div>No child directories</div>';
+                    $("#child-dirs").html(childHtml);
                 }).fail(function(jqXHR, textStatus, errorThrown) {
                     console.log("Error fetching child directories:", textStatus, errorThrown);
                     $("#error-message").text("Error fetching child directories").show();
@@ -162,70 +189,120 @@
             $(button).closest("tr").addClass("selected");
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
-            $.get('/get_data', {
-                file: $("#directory").val() + '/' + filename,
-                range: range,
-                unit: unit
-            }, function(response) {
-                console.log("Data response:", response);
-                let html = '<table><tr>';
-                if (response.data.length > 0) {
-                    Object.keys(response.data[0]).forEach(key => {
-                        html += '<th>' + key + '</th>';
-                    });
-                    html += '</tr>';
-                    response.data.forEach(row => {
-                        html += '<tr>';
-                        Object.values(row).forEach(value => {
-                            html += '<td>' + value + '</td>';
-                        });
-                        html += '</tr>';
-                    });
-                    html += '</table>';
-                } else {
-                    html = response.error || 'No data available';
-                }
-                $("#data-display").html(html);
-            });
+            fetchData(range, unit, filename);
             currentFile = filename;
         }
 
         function deselectFile() {
             console.log("Deselecting file");
             $("#file-table tr").removeClass("selected");
-            $("#data-display").html('');
+            if (window.myChart) {
+                window.myChart.destroy();
+            }
+            $("#plot-canvas").hide();
             currentFile = null;
+        }
+
+        function fetchData(range, unit, filename) {
+            $.get('/get_data', {
+                file: $("#directory").val() + '/' + filename,
+                range: range,
+                unit: unit
+            }, function(response) {
+                console.log("Data response:", response);
+                if (response.data && response.data.length > 0) {
+                    updatePlot(response.data, range, unit, response.unit);
+                } else {
+                    $("#data-display").html(response.error || 'No data available');
+                }
+            });
+        }
+
+        function updatePlot(data, range, timeUnit, unit) {
+            if (window.myChart) {
+                window.myChart.destroy();
+            }
+            $("#plot-canvas").show();
+
+            // Convert timestamps to the selected time unit
+            const baseMultiplier = getTimeUnitMultiplier('seconds'); // Assume Timestamp is in seconds
+            const targetMultiplier = getTimeUnitMultiplier(timeUnit);
+            const conversionFactor = targetMultiplier / baseMultiplier;
+
+            // Filter data for the latest 'range' in the selected time unit
+            const mostRecentTime = Math.max(...data.map(row => row['Timestamp'] * conversionFactor));
+            const filteredData = data.filter(row => {
+                const timestamp = row['Timestamp'] * conversionFactor;
+                return timestamp >= mostRecentTime - (range * conversionFactor);
+            });
+
+            const timestamps = filteredData.map(row => Number(row['Timestamp'] * conversionFactor).toFixed(2));
+            const values = filteredData.map(row => row['Value']);
+
+            // Use the Measurement value from the first row as the label
+            const measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] ? 
+                filteredData[0]['Measurement'] : 'Measurement';
+
+            const ctx = document.getElementById('plot-canvas').getContext('2d');
+            window.myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [{
+                        label: `${measurementLabel} ${unit !== "NONE" ? `(${unit})` : ""}`,
+                        data: values,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: {
+                    animation: false, // Disable animation to remove the rising effect
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: `Time (${timeUnit})`
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: unit !== "NONE" ? unit : ''
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function getTimeUnitMultiplier(unit) {
+            const multipliers = {
+                'seconds': 1,
+                'minutes': 1/60,
+                'hours': 1/3600,
+                'milli-sec': 1000
+            };
+            return multipliers[unit] || 1;
         }
 
         let currentFile = null;
         setInterval(function() {
             if (currentFile) {
-                $.get('/get_data', {
-                    file: $("#directory").val() + '/' + currentFile,
-                    range: $("#range-value").val(),
-                    unit: $("#time-unit").val()
-                }, function(response) {
-                    let html = '<table><tr>';
-                    if (response.data.length > 0) {
-                        Object.keys(response.data[0]).forEach(key => {
-                            html += '<th>' + key + '</th>';
-                        });
-                        html += '</tr>';
-                        response.data.forEach(row => {
-                            html += '<tr>';
-                            Object.values(row).forEach(value => {
-                                html += '<td>' + value + '</td>';
-                            });
-                            html += '</tr>';
-                        });
-                        html += '</table>';
-                    } else {
-                        html = response.error || 'No data available';
-                    }
-                    $("#data-display").html(html);
-                });
+                let range = $("#range-value").val();
+                let unit = $("#time-unit").val();
+                fetchData(range, unit, currentFile);
             }
         }, 5000);
+
+        // Add event listeners to update plot when range or unit changes
+        $("#range-value, #time-unit").on('change', function() {
+            if (currentFile) {
+                let range = $("#range-value").val();
+                let unit = $("#time-unit").val();
+                fetchData(range, unit, currentFile);
+            }
+        });
     </script>
 </body>
 </html>

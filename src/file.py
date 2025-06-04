@@ -1,11 +1,15 @@
 import os
-from file_path import get_directory
+import glob
 
 def get_file_list(directory):
     try:
-        files = [f for f in os.listdir(directory) if f.lower().endswith('.csv')]
-        print(f"Files found in {directory}: {files}")  # Debug print
-        return files
+        print(f"Scanning directory: {directory}")
+        files = glob.glob(os.path.join(directory, "*.csv"))
+        file_names = [os.path.basename(f) for f in files if not os.path.basename(f).startswith('.')]
+        # Sort files alphabetically, case-insensitive
+        file_names.sort(key=str.lower, reverse=True)
+        print(f"Files found in {directory}: {file_names}")
+        return file_names
     except Exception as e:
-        print(f"Error listing files in {directory}: {e}")  # Debug print
+        print(f"Error listing files in {directory}: {e}")
         return []

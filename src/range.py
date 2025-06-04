@@ -1,7 +1,7 @@
 def get_range_input():
-    time_units = ['s', 'ms', 'ps', 'ns', 'µs']
+    time_units = ['seconds', 'milli-sec', 'minutes', 'hours']
     return {
         'title': 'Display range',
-        'value': 100,  # Default value
+        'value': 1000,  # Default value
         'units': time_units
     }

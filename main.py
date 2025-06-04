@@ -15,7 +15,7 @@ def index():
     range_input = get_range_input()
     file_list = get_file_list(directory)
     return render_template('index.html', 
-                         title="Microbiomin measurement",
+                         title="Microalbumin Rapid Colorimeter",
                          directory=directory,
                          range_input=range_input,
                          file_list=file_list)
@@ -45,8 +45,10 @@ def get_data():
     selected_file = request.args.get('file')
     range_value = request.args.get('range')
     time_unit = request.args.get('unit')
+    print(f"Range value is: {range_value}")
     data = get_dynamic_data(selected_file, range_value, time_unit)
+    print(f"Data read is {data}")
     return jsonify(data)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
