@@ -26,11 +26,24 @@ source venv/bin/activate
 echo "Installing dependencies..."
 pip install flask pandas
 
-# Start the Flask app
-echo "Starting Flask app on port 5000..."
-python main.py || {
-    echo "Port 5000 failed. Trying port 5001..."
-    python main.py --port 5001
+# Function to find an available port
+find_available_port() {
+    for port in 5000 5001 5002; do
+        if ! lsof -i :$port &> /dev/null; then
+            echo $port
+            return
+        fi
+    done
+    echo "No available ports found (5000-5002). Please free up a port."
+    exit 1
+}
+
+# Start the Flask app with an available port
+PORT=$(find_available_port)
+echo "Starting Flask app on port $PORT..."
+python main.py $PORT || {
+    echo "Failed to start on port $PORT. Please check main.py for port support or free up ports."
+    exit 1
 }
 
 # Deactivate the virtual environment
