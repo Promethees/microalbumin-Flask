@@ -32,7 +32,10 @@
         #parent-dir div, #child-dirs div { padding: 5px; cursor: pointer; }
         #parent-dir div:hover, #child-dirs div:hover { background-color: #f0f0f0; }
         #deselect-btn { margin-top: 5px; padding: 5px 10px; }
-        #plot-canvas { width: 100%; height: 280px; }
+        #plot-canvas, #blanked-canvas, #non-blanked-canvas { width: 100%; height: 280px; }
+        #chart-container { display: flex; gap: 20px; flex-direction: column;}
+        /*#chart-container canvas { flex: 1; }*/
+        #mode-toggle { margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -44,11 +47,11 @@
             <input type="text" id="directory" value="{{ directory }}" readonly>
             <button onclick="browseDirectory()">Browse Path</button>
             <div id="dir-suggestions">
+                <h3>Go back</h3>
                 <div id="parent-dir">
-                    <h3>Go back</h3>
                 </div>
-                <div id="child-dirs">
-                    <h3>Go forward</h3>
+                <h3>Go forward</h3>
+                <div id="child-dirs">  
                 </div>
             </div>
             <div id="error-message"></div>
@@ -86,29 +89,41 @@
         
         <div class="section">
             <h2>Data Display</h2>
-            <canvas id="plot-canvas"></canvas>
+            <div id="mode-toggle">
+                <label>
+                    <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
+                </label>
+            </div>
+            <div id="chart-container">
+                <canvas id="plot-canvas"></canvas>
+                <canvas id="blanked-canvas" style="display: none;"></canvas>
+                <canvas id="non-blanked-canvas" style="display: none;"></canvas>
+            </div>
         </div>
     </div>
 
     <script>
+        let blankedChart = null;
+        let nonBlankedChart = null;
+
         // Initialize directory suggestions on page load
         $(document).ready(function() {
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
                 let parentHtml = parentResponse.parent ? 
-                    `<h3>Go back</h3>${parentResponse.parent.split('/').pop() ? 
+                    `${parentResponse.parent.split('/').pop() ? 
                         `<div onclick="updateDirectory('${parentResponse.parent}')">${parentResponse.parent.split('/').pop()}</div>` : 
                         '<div>No parent directory</div>'}` : 
-                    '<h3>Go back</h3><div>No parent directory</div>';
+                    '<div>No parent directory</div>';
                 $("#parent-dir").html(parentHtml);
 
                 $.get('/get_children', function(childResponse) {
                     console.log("Child directories:", childResponse.children);
                     let childHtml = childResponse.children.length > 0 ? 
-                        `<h3>Go forward</h3>${childResponse.children.map(dir => 
+                        `${childResponse.children.map(dir => 
                             `<div onclick="updateDirectory('${dir}')">${dir.split('/').pop()}</div>`
                         ).join('')}` : 
-                        '<h3>Go forward</h3><div>No child directories</div>';
+                        '<div>No child directories</div>';
                     $("#child-dirs").html(childHtml);
                 }).fail(function(jqXHR, textStatus, errorThrown) {
                     console.log("Error fetching child directories:", textStatus, errorThrown);
@@ -121,23 +136,22 @@
         });
 
         function browseDirectory() {
-            // Refresh directory suggestions
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
                 let parentHtml = parentResponse.parent ? 
-                    `<h3>Go back</h3>${parentResponse.parent.split('/').pop() ? 
+                    `${parentResponse.parent.split('/').pop() ? 
                         `<div onclick="updateDirectory('${parentResponse.parent}')">${parentResponse.parent.split('/').pop()}</div>` : 
                         '<div>No parent directory</div>'}` : 
-                    '<h3>Go back</h3><div>No parent directory</div>';
+                    '<div>No parent directory</div>';
                 $("#parent-dir").html(parentHtml);
 
                 $.get('/get_children', function(childResponse) {
                     console.log("Child directories:", childResponse.children);
                     let childHtml = childResponse.children.length > 0 ? 
-                        `<h3>Go forward</h3>${childResponse.children.map(dir => 
+                        `${childResponse.children.map(dir => 
                             `<div onclick="updateDirectory('${dir}')">${dir.split('/').pop()}</div>`
                         ).join('')}` : 
-                        '<h3>Go forward</h3><div>No child directories</div>';
+                        '<div>No child directories</div>';
                     $("#child-dirs").html(childHtml);
                 }).fail(function(jqXHR, textStatus, errorThrown) {
                     console.log("Error fetching child directories:", textStatus, errorThrown);
@@ -157,7 +171,6 @@
                     $("#directory").val(response.path);
                     $("#error-message").hide();
                     updateFileTable(response.files);
-                    // Automatically deselect file when switching directories
                     deselectFile();
                 } else {
                     $("#error-message").text(response.message).show();
@@ -196,10 +209,8 @@
         function deselectFile() {
             console.log("Deselecting file");
             $("#file-table tr").removeClass("selected");
-            if (window.myChart) {
-                window.myChart.destroy();
-            }
-            $("#plot-canvas").hide();
+            destroyCharts();
+            $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             currentFile = null;
         }
 
@@ -211,53 +222,53 @@
             }, function(response) {
                 console.log("Data response:", response);
                 if (response.data && response.data.length > 0) {
-                    updatePlot(response.data, range, unit, response.unit);
+                    const isSplitMode = $("#split-mode").is(":checked");
+                    updatePlot(response.data, range, unit, response.unit || "NONE", isSplitMode);
                 } else {
                     $("#data-display").html(response.error || 'No data available');
                 }
             });
         }
 
-        function updatePlot(data, range, timeUnit, unit) {
+        function destroyCharts() {
             if (window.myChart) {
                 window.myChart.destroy();
+                window.myChart = null;
             }
-            $("#plot-canvas").show();
+            if (blankedChart) {
+                blankedChart.destroy();
+                blankedChart = null;
+            }
+            if (nonBlankedChart) {
+                nonBlankedChart.destroy();
+                nonBlankedChart = null;
+            }
+        }
 
-            // Convert timestamps to the selected time unit
-            const baseMultiplier = getTimeUnitMultiplier('seconds'); // Assume Timestamp is in seconds
-            const targetMultiplier = getTimeUnitMultiplier(timeUnit);
-            const conversionFactor = targetMultiplier / baseMultiplier;
+        function toggleMode() {
+            if (currentFile) {
+                let range = $("#range-value").val();
+                let unit = $("#time-unit").val();
+                fetchData(range, unit, currentFile);
+            }
+        }
 
-            // Filter data for the latest 'range' in the selected time unit
-            const mostRecentTime = Math.max(...data.map(row => row['Timestamp'] * conversionFactor));
-            const filteredData = data.filter(row => {
-                const timestamp = row['Timestamp'] * conversionFactor;
-                return timestamp >= mostRecentTime - (range * conversionFactor);
-            });
-
-            const timestamps = filteredData.map(row => Number(row['Timestamp'] * conversionFactor).toFixed(2));
-            const values = filteredData.map(row => row['Value']);
-
-            // Use the Measurement value from the first row as the label
-            const measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] ? 
-                filteredData[0]['Measurement'] : 'Measurement';
-
-            const ctx = document.getElementById('plot-canvas').getContext('2d');
-            window.myChart = new Chart(ctx, {
+        function createChart(canvasId, timestamps, values, label, unit, timeUnit) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            return new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: timestamps,
                     datasets: [{
-                        label: `${measurementLabel} ${unit !== "NONE" ? `(${unit})` : ""}`,
+                        label: label,
                         data: values,
-                        borderColor: 'rgb(75, 192, 192)',
+                        borderColor: canvasId === 'blanked-canvas' ? 'rgb(255, 99, 132)' : 'rgb(75, 192, 192)',
                         tension: 0.1,
                         fill: false
                     }]
                 },
                 options: {
-                    animation: false, // Disable animation to remove the rising effect
+                    animation: false,
                     scales: {
                         x: {
                             title: {
@@ -274,6 +285,68 @@
                     }
                 }
             });
+        }
+
+        function updatePlot(data, range, timeUnit, unit, isSplitMode) {
+            destroyCharts();
+            $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
+
+            // Convert timestamps to the selected time unit
+            const baseMultiplier = getTimeUnitMultiplier('seconds');
+            const targetMultiplier = getTimeUnitMultiplier(timeUnit);
+            const conversionFactor = targetMultiplier / baseMultiplier;
+
+            // Filter data for the latest 'range' in the selected time unit
+            const mostRecentTime = Math.max(...data.map(row => row['Timestamp'] * conversionFactor));
+            const filteredData = data.filter(row => {
+                const timestamp = row['Timestamp'] * conversionFactor;
+                return timestamp >= mostRecentTime - (range * conversionFactor);
+            });
+
+            const timestamps = filteredData.map(row => Number((row['Timestamp'] * conversionFactor).toFixed(2)));
+            const measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] ? 
+                filteredData[0]['Measurement'] : 'Measurement';
+
+            if (isSplitMode) {
+                // Split mode: Separate Blanked and Non-Blanked data
+                const blankedData = filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
+                const nonBlankedData = filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
+
+                const blankedTimestamps = blankedData.map(row => Number((row['Timestamp'] * conversionFactor).toFixed(2)));
+                const blankedValues = blankedData.map(row => row['Value']);
+                const nonBlankedTimestamps = nonBlankedData.map(row => Number((row['Timestamp'] * conversionFactor).toFixed(2)));
+                const nonBlankedValues = nonBlankedData.map(row => row['Value']);
+
+                $("#blanked-canvas, #non-blanked-canvas").show();
+                blankedChart = createChart(
+                    'blanked-canvas',
+                    blankedTimestamps,
+                    blankedValues,
+                    `${measurementLabel} (Blanked) ${unit !== "NONE" ? `(${unit})` : ""}`,
+                    unit,
+                    timeUnit
+                );
+                nonBlankedChart = createChart(
+                    'non-blanked-canvas',
+                    nonBlankedTimestamps,
+                    nonBlankedValues,
+                    `${measurementLabel} (Non-Blanked) ${unit !== "NONE" ? `(${unit})` : ""}`,
+                    unit,
+                    timeUnit
+                );
+            } else {
+                // All data mode
+                const values = filteredData.map(row => row['Value']);
+                $("#plot-canvas").show();
+                window.myChart = createChart(
+                    'plot-canvas',
+                    timestamps,
+                    values,
+                    `${measurementLabel} ${unit !== "NONE" ? `(${unit})` : ""}`,
+                    unit,
+                    timeUnit
+                );
+            }
         }
 
         function getTimeUnitMultiplier(unit) {
@@ -295,7 +368,7 @@
             }
         }, 5000);
 
-        // Add event listeners to update plot when range or unit changes
+        // Add event listeners to update plot when range, unit, or mode changes
         $("#range-value, #time-unit").on('change', function() {
             if (currentFile) {
                 let range = $("#range-value").val();
