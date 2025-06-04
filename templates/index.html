@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 50vw;
+            width: 100%;
+        }
+        .section { margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #data-display { max-height: 300px; overflow-y: auto; }
+        #error-message { color: red; display: none; }
+        #file-table-container { max-height: 120px; overflow-y: auto; }
+        #file-table { width: 100%; }
+        #file-table tr.selected { background-color: #e0f7fa; }
+        #file-table button { cursor: pointer; }
+        #directory { width: 70%; }
+        #dir-suggestions { margin-top: 5px; }
+        #parent-dir, #child-dirs { margin-top: 5px; max-height: 100px; overflow-y: auto; }
+        #parent-dir h3, #child-dirs h3 { margin: 0; font-size: 1em; font-weight: bold; }
+        #parent-dir div, #child-dirs div { padding: 5px; cursor: pointer; }
+        #parent-dir div:hover, #child-dirs div:hover { background-color: #f0f0f0; }
+        #deselect-btn { margin-top: 5px; padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        
+        <div class="section">
+            <h2>Directory</h2>
+            <input type="text" id="directory" value="{{ directory }}" readonly>
+            <button onclick="browseDirectory()">Browse Path</button>
+            <div id="dir-suggestions">
+                <div id="parent-dir"/>
+                    <h3>Go back</h3>
+                </div>
+                <div id="child-dirs">
+                    <h3>Go forward</h3>
+                </div>
+            </div>
+            <div id="error-message"></div>
+        </div>
+        
+        <div class="section">
+            <h2>{{ range_input.title }}</h2>
+            <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
+            <select id="time-unit">
+                {% for unit in range_input.units %}
+                <option value="{{ unit }}">{{ unit }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="section">
+            <h2>File Selection</h2>
+            <div id="file-table-container">
+                <table id="file-table">
+                    <tr><th>File Name</th><th>Action</th></tr>
+                    {% if file_list %}
+                        {% for file in file_list %}
+                        <tr>
+                            <td>{{ file }}</td>
+                            <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="2">No CSV files found in the directory.</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+            <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
+        </div>
+        
+        <div class="section">
+            <h2>Data Display</h2>
+            <div id="data-display"></div>
+        </div>
+    </div>
+
+    <script>
+        function browseDirectory() {
+            // Fetch parent and child directories
+            $.get('/get_parents', function(parentResponse) {
+                console.log("Parent directory:", parentResponse.parent);
+                let parentHtml = parentResponse.parent ? 
+                    `<h3>Go back</h3><div onclick="updateDirectory('${parentResponse.parent}')">${parentResponse.parent}</div>` : 
+                    '<h3>Go back</h3><div>No parent directory</div>';
+                $("#parent-dir").html(parentHtml);
+
+                $.get('/get_children', function(childResponse) {
+                    console.log("Child directories:", childResponse.children);
+                    let childHtml = childResponse.children.length > 0 ? 
+                        `<h3>Go forward</h3>${childResponse.children.map(dir => 
+                            `<div onclick="updateDirectory('${dir}')">${dir}</div>`
+                        ).join('')}` : 
+                        '<h3>Go forward</h3><div>No child directories</div>';
+                    $("#child-dirs").html(childHtml);
+
+                    // Prompt with current directory as default
+                    let path = prompt("Enter directory path (or select from suggestions below):", $("#directory").val());
+                    if (path) {
+                        updateDirectory(path);
+                    }
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("Error fetching child directories:", textStatus, errorThrown);
+                    $("#error-message").text("Error fetching child directories").show();
+                });
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("Error fetching parent directory:", textStatus, errorThrown);
+                $("#error-message").text("Error fetching parent directory").show();
+            });
+        }
+
+        function updateDirectory(path) {
+            console.log("Sending path to server:", path);
+            $.post('/browse', {path: path}, function(response) {
+                console.log("Server response:", response);
+                if (response.status === 'success') {
+                    $("#directory").val(response.path);
+                    $("#error-message").hide();
+                    updateFileTable(response.files);
+                    // Automatically deselect file when switching directories
+                    deselectFile();
+                } else {
+                    $("#error-message").text(response.message).show();
+                }
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error:", textStatus, errorThrown);
+                $("#error-message").text("Error updating directory").show();
+            });
+        }
+
+        function updateFileTable(files) {
+            console.log("Updating file table with:", files);
+            let html = '<tr><th>File Name</th><th>Action</th></tr>';
+            if (files && files.length > 0) {
+                files.forEach(file => {
+                    html += `<tr><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
+                });
+            } else {
+                html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
+            }
+            $("#file-table").html(html);
+            currentFile = null;
+            $("#file-table tr").removeClass("selected");
+        }
+
+        function selectFile(filename, button) {
+            console.log("Selected file:", filename);
+            $("#file-table tr").removeClass("selected");
+            $(button).closest("tr").addClass("selected");
+            let range = $("#range-value").val();
+            let unit = $("#time-unit").val();
+            $.get('/get_data', {
+                file: $("#directory").val() + '/' + filename,
+                range: range,
+                unit: unit
+            }, function(response) {
+                console.log("Data response:", response);
+                let html = '<table><tr>';
+                if (response.data.length > 0) {
+                    Object.keys(response.data[0]).forEach(key => {
+                        html += '<th>' + key + '</th>';
+                    });
+                    html += '</tr>';
+                    response.data.forEach(row => {
+                        html += '<tr>';
+                        Object.values(row).forEach(value => {
+                            html += '<td>' + value + '</td>';
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</table>';
+                } else {
+                    html = response.error || 'No data available';
+                }
+                $("#data-display").html(html);
+            });
+            currentFile = filename;
+        }
+
+        function deselectFile() {
+            console.log("Deselecting file");
+            $("#file-table tr").removeClass("selected");
+            $("#data-display").html('');
+            currentFile = null;
+        }
+
+        let currentFile = null;
+        setInterval(function() {
+            if (currentFile) {
+                $.get('/get_data', {
+                    file: $("#directory").val() + '/' + currentFile,
+                    range: $("#range-value").val(),
+                    unit: $("#time-unit").val()
+                }, function(response) {
+                    let html = '<table><tr>';
+                    if (response.data.length > 0) {
+                        Object.keys(response.data[0]).forEach(key => {
+                            html += '<th>' + key + '</th>';
+                        });
+                        html += '</tr>';
+                        response.data.forEach(row => {
+                            html += '<tr>';
+                            Object.values(row).forEach(value => {
+                                html += '<td>' + value + '</td>';
+                            });
+                            html += '</tr>';
+                        });
+                        html += '</table>';
+                    } else {
+                        html = response.error || 'No data available';
+                    }
+                    $("#data-display").html(html);
+                });
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
