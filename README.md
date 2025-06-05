@@ -29,7 +29,7 @@ This script will create a virtual environment, install dependencies, and start t
 `./setup_and_run.sh` 
 
 4. If you prefer transparency:
-Install `flask` and `pandas` by `pip3 install -r requirements.txt`. Then run `sudo python3 main.py` (or "Run as Administrator" in Windows) to allow the Web app to access local folders. 
+Install `flask` and `pandas` by `pip3 install -r requirements_local.txt`. Then run `sudo python3 main.py` (or "Run as Administrator" in Windows) to allow the Web app to access local folders. 
 
 5. Access the App
 
@@ -63,7 +63,7 @@ Troubleshooting
 
 Port in Use:
 If both ports 5000 and 5001 fail, check for processes using those ports:lsof -i :5000
-lsof -i :5001
+`lsof -i :5001`
 
 Kill the processes if needed (e.g., kill -9 <PID>).
 
