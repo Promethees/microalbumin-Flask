@@ -52,8 +52,8 @@ def get_data():
 
 if __name__ == '__main__':
     # For deployment
-    port = int(os.getenv("PORT", 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    # port = int(os.getenv("PORT", 5000))
+    # app.run(debug=False, host='0.0.0.0', port=port)
 
     # For running locally
-    # app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)

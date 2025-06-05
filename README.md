@@ -1,5 +1,5 @@
 Microalbumin Flask App
-Overview
+Overviewd
 This Flask application, named "Microalbumin," enables users to browse directories, select CSV files, and visualize data in a line chart. It supports dynamic filtering based on time range and unit, with features like directory navigation, file selection, and real-time plot updates. The code is organized with a src directory for Python modules and a templates directory for the HTML frontend.
 Features
 
@@ -21,19 +21,22 @@ Setup and Usage
 1. Clone or Download the Project
 Ensure you have all project files in a directory (e.g., microalbumin-Flask).
 2. Make the Shell Script Executable (Unix-like Systems)
-chmod +x setup_and_run.sh
+`chmod +x setup_and_run.sh`
 
 3. Run the Setup and Start Script
 To run local, navigate to `main.py` and set `debug=True`, remove `host=0.0.0.0`, set `port` as a freely designated port (e.g 5000)
 This script will create a virtual environment, install dependencies, and start the Flask app.
-./setup_and_run.sh
+`./setup_and_run.sh` 
 
-4. Access the App
+4. If you prefer transparency:
+Install `flask` and `pandas` by `pip3 install -r requirements.txt`. Then run `sudo python3 main.py` (or "Run as Administrator" in Windows) to allow the Web app to access local folders. 
+
+5. Access the App
 
 Open your browser and navigate to http://127.0.0.1:5000/.
 If port 5000 is in use, the script will attempt to use port 5001 (http://127.0.0.1:5001/).
 
-5. Example CSV File
+6. Example CSV File
 Create a CSV file in ~/Desktop/test_folder/ with the following format:
 Measurement,Timestamp,Value,Unit
 Temperature,100.12345,0.1,mg/L
@@ -42,6 +45,7 @@ Temperature,120.45678,0.5,mg/L
 
 The app will read this file and plot the data.
 Directory Structure
+```
 microalbumin-Flask/
 ├── src/
 │   ├── file_path.py    # Manages directory navigation
@@ -53,6 +57,7 @@ microalbumin-Flask/
 ├── main.py             # Flask app entry point
 ├── README.md           # Project documentation
 └── setup_and_run.sh    # Script to setup and start the app
+```
 
 Troubleshooting
 
