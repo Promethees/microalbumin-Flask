@@ -24,6 +24,7 @@ Ensure you have all project files in a directory (e.g., microalbumin-Flask).
 chmod +x setup_and_run.sh
 
 3. Run the Setup and Start Script
+To run local, navigate to `main.py` and set `debug=True`, remove `host=0.0.0.0`, set `port` as a freely designated port (e.g 5000)
 This script will create a virtual environment, install dependencies, and start the Flask app.
 ./setup_and_run.sh
 
