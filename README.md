@@ -29,7 +29,7 @@ This script will create a virtual environment, install dependencies, and start t
 `./setup_and_run.sh` 
 
 4. If you prefer transparency:
-Install `flask` and `pandas` by `pip3 install -r requirements_local.txt`. Then run `sudo python3 main.py` (or "Run as Administrator" in Windows) to allow the Web app to access local folders. 
+Install `flask` and `pandas` by `pip3 install -r requirements_local.txt`. Then run `sudo python3 main.py --port <default: 5000>` (or "Run as Administrator" in Windows) to allow the Web app to access local folders. Open the Application in browser at address `http://127.0.0.1:<port>`
 
 5. Access the App
 
