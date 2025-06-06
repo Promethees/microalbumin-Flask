@@ -20,7 +20,7 @@ def index():
     range_input = get_range_input()
     file_list = get_file_list(directory)
     return render_template('index.html', 
-                         title="Microalbumin Rapid Colorimeter",
+                         title="Easy Sensor Kit",
                          directory=directory,
                          range_input=range_input,
                          file_list=file_list)
