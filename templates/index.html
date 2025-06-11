@@ -367,9 +367,9 @@
                                       yMin: parseFloat(adjustedIntercept),
                                       yMax: parseFloat(adjustedSaturationValue),
                                       label: {
-                                        enabled: true,
+                                        display: true,
                                         content: 'Linear',
-                                        position: 'end'
+                                        position: 'middle'
                                       }
                                     },
                                 ...(analysis.saturationValue !== "--" && {saturationLine: {
@@ -381,9 +381,9 @@
                                       yMin: parseFloat(adjustedSaturationValue),
                                       yMax: parseFloat(adjustedSaturationValue),
                                       label: {
-                                        enabled: true,
-                                        content: 'Linear',
-                                        position: 'end'
+                                        display: true,
+                                        content: 'Sat',
+                                        position: 'middle'
                                       }
                                     }
                                 })
@@ -489,8 +489,7 @@
             const multipliers = {
                 'seconds': 1,
                 'minutes': 60,
-                'hours': 3600,
-                'milli-sec': 0.001
+                'hours': 3600
             };
             return multipliers[unit] || 1;
         }
