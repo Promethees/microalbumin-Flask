@@ -372,7 +372,7 @@
                                         position: 'end'
                                       }
                                     },
-                                saturationLine: {
+                                ...(analysis.saturationValue !== "--" && {saturationLine: {
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 0, 0.5)',
                                       borderWidth: 3,
@@ -386,6 +386,7 @@
                                         position: 'end'
                                       }
                                     }
+                                })
                             }
                         }
                     }
