@@ -310,17 +310,15 @@
                 console.error("Invalid chart data or context:", { canvasId, timestamps, values });
                 return null;
             }
+            let chartScaleConstant = 60;
             let adjustedSlope = parseFloat(analysis.slope)/conversionFactor;
             let adjustedIntercept = parseFloat(analysis.intercept);
-            let adjustedTimeToSaturation = parseFloat(analysis.timeToSaturation) * conversionFactor;
+            let adjustedTimeToSaturation = parseFloat(analysis.timeToSaturation) / chartScaleConstant;
+            let adjustedTimeToSaturationDisplay = parseFloat(analysis.timeToSaturation) * conversionFactor;
             let adjustedSaturationValue = parseFloat(analysis.saturationValue);
             adjustedTimeToSaturation = adjustedTimeToSaturation.toFixed(2) !== "0.00" ? adjustedTimeToSaturation.toFixed(2) : "--";
             adjustedSaturationValue = adjustedSaturationValue.toFixed(2) !== "0.00" ? adjustedSaturationValue.toFixed(2) : "--";
-            let lastValue = timestamps[timestamps.length-1];
-            console.log("Last value is", lastValue);
-            console.log("adjusted saturation value is ", adjustedSaturationValue);
-            console.log("adjusted intercept is ", adjustedIntercept);
-            console.log("adjusted time to saturation is ", adjustedTimeToSaturation);
+            adjustedTimeToSaturationDisplay = adjustedTimeToSaturationDisplay.toFixed(2) !== "0.00" ? adjustedTimeToSaturationDisplay.toFixed(2) : "--";
 
             let chart = new Chart(ctx, {
                 type: 'line',
@@ -379,7 +377,7 @@
                                       borderColor: 'rgba(255, 0, 0, 0.5)',
                                       borderWidth: 3,
                                       xMin: parseFloat(adjustedTimeToSaturation),
-                                      xMax: lastValue,
+                                      xMax: Math.max(...timestamps)*100,
                                       yMin: parseFloat(adjustedSaturationValue),
                                       yMax: parseFloat(adjustedSaturationValue),
                                       label: {
@@ -397,7 +395,7 @@
                 slope: adjustedSlope.toFixed(4),
                 intercept: adjustedIntercept.toFixed(2),
                 saturationValue: analysis.saturationValue,
-                timeToSaturation: adjustedTimeToSaturation
+                timeToSaturation: adjustedTimeToSaturationDisplay
             }; // Store adjusted analysis for display
             return chart;
         }
