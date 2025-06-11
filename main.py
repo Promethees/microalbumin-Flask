@@ -50,9 +50,9 @@ def get_data():
     selected_file = request.args.get('file')
     range_value = request.args.get('range')
     time_unit = request.args.get('unit')
-    print(f"Range value is: {range_value}")
+    # print(f"Range value is: {range_value}")
     data = get_dynamic_data(selected_file, range_value, time_unit)
-    print(f"Data read is {data}")
+    # print(f"Data read is {data}")
     return jsonify(data)
 
 def is_port_open(host, port):

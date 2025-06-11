@@ -4,6 +4,7 @@
     <title>{{ title }}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -33,9 +34,9 @@
         #parent-dir div:hover, #child-dirs div:hover { background-color: #f0f0f0; }
         #deselect-btn { margin-top: 5px; padding: 5px 10px; }
         #plot-canvas, #blanked-canvas, #non-blanked-canvas { width: 100%; height: 280px; }
-        #chart-container { display: flex; gap: 20px; flex-direction: column;}
-        /*#chart-container canvas { flex: 1; }*/
+        #chart-container { display: flex; flex-direction: column; gap: 20px; }
         #mode-toggle { margin-bottom: 10px; }
+        #analysis-info { margin-top: 10px; font-size: 0.9em; color: #333; }
     </style>
 </head>
 <body>
@@ -48,11 +49,9 @@
             <button onclick="browseDirectory()">Browse Path</button>
             <div id="dir-suggestions">
                 <h3>Go back</h3>
-                <div id="parent-dir">
-                </div>
+                <div id="parent-dir"></div>
                 <h3>Go forward</h3>
-                <div id="child-dirs">  
-                </div>
+                <div id="child-dirs"></div>
             </div>
             <div id="error-message"></div>
         </div>
@@ -99,14 +98,15 @@
                 <canvas id="blanked-canvas" style="display: none;"></canvas>
                 <canvas id="non-blanked-canvas" style="display: none;"></canvas>
             </div>
+            <div id="analysis-info"></div>
         </div>
     </div>
 
     <script>
         let blankedChart = null;
         let nonBlankedChart = null;
+        let myChart = null;
 
-        // Initialize directory suggestions on page load
         $(document).ready(function() {
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
@@ -212,6 +212,7 @@
             destroyCharts();
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             currentFile = null;
+            $("#analysis-info").text("");
         }
 
         function fetchData(range, unit, filename) {
@@ -231,9 +232,9 @@
         }
 
         function destroyCharts() {
-            if (window.myChart) {
-                window.myChart.destroy();
-                window.myChart = null;
+            if (myChart) {
+                myChart.destroy();
+                myChart = null;
             }
             if (blankedChart) {
                 blankedChart.destroy();
@@ -253,9 +254,75 @@
             }
         }
 
-        function createChart(canvasId, timestamps, values, label, unit, timeUnit) {
+        function calculateSlopeAndSaturation(allTimestamps, allValues) {
+            if (allTimestamps.length < 2 || allValues.length < 2) return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--" };
+
+            // Calculate local slopes (dy converted to hours)
+            let localSlopes = [];
+            for (let i = 0; i < allTimestamps.length - 1; i++) {
+                let dx = allTimestamps[i + 1] - allTimestamps[i]; // in seconds
+                let dy = 3600 * (allValues[i + 1] - allValues[i]); // convert to hours
+                localSlopes.push(dy / dx); // slope in units/hour
+            }
+
+            // Find saturation point (80% of samples below threshold)
+            let saturationIdx = -1;
+            let threshold = 0.2; // Threshold in units/hour
+            let numSaturationSamples = Math.max(Math.floor(allTimestamps.length * 0.1), 5);
+            for (let i = 0; i <= localSlopes.length - numSaturationSamples; i++) {
+                let slopesBelowThreshold = 0;
+                for (let j = 0; j < numSaturationSamples; j++) {
+                    if (Math.abs(localSlopes[i + j]) <= threshold) {
+                        slopesBelowThreshold++;
+                    }
+                }
+                if (slopesBelowThreshold / numSaturationSamples >= 0.6) {
+                    saturationIdx = i + numSaturationSamples; // Start of the saturation window
+                    break;
+                }
+            }
+
+            // Linear regression on data before saturation
+            let x = allTimestamps.slice(0, saturationIdx !== -1 ? saturationIdx : allTimestamps.length);
+            let y = allValues.slice(0, saturationIdx !== -1 ? saturationIdx : allValues.length);
+
+            let n = x.length;
+            let sumX = x.reduce((a, b) => a + b, 0);
+            let sumY = y.reduce((a, b) => a + b, 0);
+            let sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+            let sumXX = x.reduce((a, b) => a + b * b, 0);
+
+            let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX) || 0; // in units/second
+            let intercept = (sumY - slope * sumX) / n;
+            // console.log("Intercepted at:", intercept);
+
+
+            let saturationValue = saturationIdx !== -1 ? allValues[saturationIdx].toFixed(2) : "--";
+            let timeToSaturation = saturationIdx !== -1 ? (allTimestamps[saturationIdx] - allTimestamps[0]) : "--"; // Convert to hours
+            // timeToSaturation = timeToSaturation.toFixed(2) !== "0.00" ? timeToSaturation.toFixed(2) : "--";
+
+            return { slope: slope, intercept: intercept.toFixed(2), saturationValue, timeToSaturation };
+        }
+
+        function createChart(canvasId, timestamps, values, label, unit, timeUnit, range, conversionFactor, analysis) {
             const ctx = document.getElementById(canvasId).getContext('2d');
-            return new Chart(ctx, {
+            if (!ctx || timestamps.length === 0 || values.length === 0) {
+                console.error("Invalid chart data or context:", { canvasId, timestamps, values });
+                return null;
+            }
+            let adjustedSlope = parseFloat(analysis.slope)/conversionFactor;
+            let adjustedIntercept = parseFloat(analysis.intercept);
+            let adjustedTimeToSaturation = parseFloat(analysis.timeToSaturation) * conversionFactor;
+            let adjustedSaturationValue = parseFloat(analysis.saturationValue);
+            adjustedTimeToSaturation = adjustedTimeToSaturation.toFixed(2) !== "0.00" ? adjustedTimeToSaturation.toFixed(2) : "--";
+            adjustedSaturationValue = adjustedSaturationValue.toFixed(2) !== "0.00" ? adjustedSaturationValue.toFixed(2) : "--";
+            let lastValue = timestamps[timestamps.length-1];
+            console.log("Last value is", lastValue);
+            console.log("adjusted saturation value is ", adjustedSaturationValue);
+            console.log("adjusted intercept is ", adjustedIntercept);
+            console.log("adjusted time to saturation is ", adjustedTimeToSaturation);
+
+            let chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: timestamps,
@@ -271,44 +338,99 @@
                     animation: false,
                     scales: {
                         x: {
-                            title: {
-                                display: true,
-                                text: `Time (${timeUnit})`
-                            }
+                            title: { display: true, text: `Time (${timeUnit})` }
                         },
                         y: {
-                            title: {
-                                display: true,
-                                text: unit !== "NONE" ? unit : ''
+                            title: { display: true, text: unit !== "NONE" ? unit : '' },
+                            suggestedMin: 0
+                        }
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                slopeLabel: {
+                                    type: 'label',
+                                    xValue: 0,
+                                    yValue: 0,
+                                    content: [`Linear Slope: ${adjustedSlope.toFixed(5)} ${unit !== "NONE" ? unit : ''}/${timeUnit}`],
+                                    position: 'start',
+                                    // backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                    color: 'black',
+                                    font: {
+                                        size: 12
+                                    }
+                                },
+                                regressionLine: {
+                                      type: 'line',
+                                      borderColor: 'rgba(0, 0, 255, 0.5)',
+                                      borderWidth: 3,
+                                      xMin: 0,
+                                      xMax: parseFloat(adjustedTimeToSaturation),
+                                      yMin: parseFloat(adjustedIntercept),
+                                      yMax: parseFloat(adjustedSaturationValue),
+                                      label: {
+                                        enabled: true,
+                                        content: 'Linear',
+                                        position: 'end'
+                                      }
+                                    },
+                                saturationLine: {
+                                      type: 'line',
+                                      borderColor: 'rgba(255, 0, 0, 0.5)',
+                                      borderWidth: 3,
+                                      xMin: parseFloat(adjustedTimeToSaturation),
+                                      xMax: lastValue,
+                                      yMin: parseFloat(adjustedSaturationValue),
+                                      yMax: parseFloat(adjustedSaturationValue),
+                                      label: {
+                                        enabled: true,
+                                        content: 'Linear',
+                                        position: 'end'
+                                      }
+                                    }
                             }
                         }
                     }
                 }
             });
+            chart.data.datasets[0].analysis = {
+                slope: adjustedSlope.toFixed(4),
+                intercept: adjustedIntercept.toFixed(2),
+                saturationValue: analysis.saturationValue,
+                timeToSaturation: adjustedTimeToSaturation
+            }; // Store adjusted analysis for display
+            return chart;
         }
 
         function updatePlot(data, range, timeUnit, unit, isSplitMode) {
             destroyCharts();
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
+            $("#analysis-info").text("");
 
-            // Convert timestamps to the selected time unit
-            const baseMultiplier = getTimeUnitMultiplier('seconds');
-            const targetMultiplier = getTimeUnitMultiplier(timeUnit);
-            const conversionFactor = targetMultiplier / baseMultiplier;
+            const baseMultiplier = getTimeUnitMultiplier('seconds'); // Data is in seconds
+            const targetMultiplier = getTimeUnitMultiplier(timeUnit); // Multiplier for target unit
+            const conversionFactor = baseMultiplier / targetMultiplier; // Convert from seconds to target unit
 
-            // Filter data for the latest 'range' in the selected time unit
-            const mostRecentTime = Math.max(...data.map(row => row['Timestamp'] * conversionFactor));
-            const filteredData = data.filter(row => {
-                const timestamp = row['Timestamp'] * conversionFactor;
-                return timestamp >= mostRecentTime - (range * conversionFactor);
-            });
+            // Calculate slope and saturation using full dataset before filtering
+            const allTimestamps = data.map(row => row['Timestamp']); // Unfiltered timestamps in seconds
+            const allValues = data.map(row => row['Value']); // Unfiltered values
+            const analysis = calculateSlopeAndSaturation(allTimestamps, allValues);
+            // Convert range from the current timeUnit to seconds for filtering
+            const rangeInSeconds = range * getTimeUnitMultiplier(timeUnit); // range is in timeUnit, convert to seconds
+            const mostRecentTime = Math.max(...allTimestamps);
+            const timeThreshold = mostRecentTime - rangeInSeconds;
 
+            const filteredData = data.filter(row => row['Timestamp'] >= timeThreshold);
+            if (filteredData.length === 0) {
+                console.warn("No data after filtering with threshold:", timeThreshold);
+                return;
+            }
             const timestamps = filteredData.map(row => Number((row['Timestamp'] * conversionFactor).toFixed(2)));
+            const values = filteredData.map(row => row['Value']);
             const measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] ? 
                 filteredData[0]['Measurement'] : 'Measurement';
 
             if (isSplitMode) {
-                // Split mode: Separate Blanked and Non-Blanked data
                 const blankedData = filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
                 const nonBlankedData = filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
 
@@ -324,7 +446,10 @@
                     blankedValues,
                     `${measurementLabel} (Blanked) ${unit !== "NONE" ? `(${unit})` : ""}`,
                     unit,
-                    timeUnit
+                    timeUnit,
+                    range,
+                    conversionFactor,
+                    analysis
                 );
                 nonBlankedChart = createChart(
                     'non-blanked-canvas',
@@ -332,19 +457,31 @@
                     nonBlankedValues,
                     `${measurementLabel} (Non-Blanked) ${unit !== "NONE" ? `(${unit})` : ""}`,
                     unit,
-                    timeUnit
+                    timeUnit,
+                    range,
+                    conversionFactor,
+                    analysis
+                );
+                $("#analysis-info").html(
+                    `Blanked: Slope = ${blankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${blankedChart?.data.datasets[0].analysis.saturationValue}, Time to Saturation = ${blankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit}<br>` +
+                    `Non-Blanked: Slope = ${nonBlankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${nonBlankedChart?.data.datasets[0].analysis.saturationValue}, Time to Saturation = ${nonBlankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit}`
                 );
             } else {
-                // All data mode
-                const values = filteredData.map(row => row['Value']);
                 $("#plot-canvas").show();
-                window.myChart = createChart(
+                myChart = createChart(
                     'plot-canvas',
                     timestamps,
                     values,
                     `${measurementLabel} ${unit !== "NONE" ? `(${unit})` : ""}`,
                     unit,
-                    timeUnit
+                    timeUnit,
+                    range,
+                    conversionFactor,
+                    analysis
+                );
+                const analysisDisplay = myChart?.data.datasets[0].analysis;
+                $("#analysis-info").html(
+                    `Slope = ${analysisDisplay.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${analysisDisplay.saturationValue}, Time to Saturation = ${analysisDisplay.timeToSaturation} ${timeUnit}`
                 );
             }
         }
@@ -352,9 +489,9 @@
         function getTimeUnitMultiplier(unit) {
             const multipliers = {
                 'seconds': 1,
-                'minutes': 1/60,
-                'hours': 1/3600,
-                'milli-sec': 1000
+                'minutes': 60,
+                'hours': 3600,
+                'milli-sec': 0.001
             };
             return multipliers[unit] || 1;
         }
@@ -368,7 +505,6 @@
             }
         }, 5000);
 
-        // Add event listeners to update plot when range, unit, or mode changes
         $("#range-value, #time-unit").on('change', function() {
             if (currentFile) {
                 let range = $("#range-value").val();
