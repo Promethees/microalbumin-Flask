@@ -93,12 +93,12 @@
                     <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
                 </label>
             </div>
+            <div id="analysis-info"></div>
             <div id="chart-container">
                 <canvas id="plot-canvas"></canvas>
                 <canvas id="blanked-canvas" style="display: none;"></canvas>
                 <canvas id="non-blanked-canvas" style="display: none;"></canvas>
             </div>
-            <div id="analysis-info"></div>
         </div>
     </div>
 
@@ -267,7 +267,7 @@
 
             // Find saturation point (80% of samples below threshold)
             let saturationIdx = -1;
-            let threshold = 0.2; // Threshold in units/hour
+            let threshold = 0.25; // Threshold in units/hour
             let numSaturationSamples = Math.max(Math.floor(allTimestamps.length * 0.1), 5);
             for (let i = 0; i <= localSlopes.length - numSaturationSamples; i++) {
                 let slopesBelowThreshold = 0;
@@ -277,7 +277,7 @@
                     }
                 }
                 if (slopesBelowThreshold / numSaturationSamples >= 0.6) {
-                    saturationIdx = i + numSaturationSamples; // Start of the saturation window
+                    saturationIdx = i + numSaturationSamples*0.6; // Start of the saturation window
                     break;
                 }
             }
@@ -374,7 +374,7 @@
                                     },
                                 ...(analysis.saturationValue !== "--" && {saturationLine: {
                                       type: 'line',
-                                      borderColor: 'rgba(255, 0, 0, 0.5)',
+                                      borderColor: 'rgba(255, 0, 255, 0.5)',
                                       borderWidth: 3,
                                       xMin: parseFloat(adjustedTimeToSaturation),
                                       xMax: Math.max(...timestamps)*100,
