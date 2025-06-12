@@ -392,12 +392,15 @@
             // Determine linear period (slopes >= 0.8 * Vmax)
             let linearStartIdx = -1;
             let linearEndIdx = -1;
-            for (let i = 0; i < localSlopes.length; i++) {
-                if (localSlopes[i] >= 0.8 * Vmax) {
-                    if (linearStartIdx === -1) linearStartIdx = i;
-                    linearEndIdx = i;
+            if (Vmax !== 0) {
+                for (let i = 0; i < localSlopes.length; i++) {
+                    if (localSlopes[i] >= 0.8 * Vmax) {
+                        if (linearStartIdx === -1) linearStartIdx = i;
+                        linearEndIdx = i;
+                    }
                 }
             }
+            
 
             // Calculate linear period parameters
             let linearSlope = 0;
@@ -448,6 +451,7 @@
                 sortedValues = [...allValues].sort((a, b) => a - b);
                 saturationValue = sortedValues[allValues.length/2];
                 timeToSaturation = allTimestamps[0];
+                timeStartSaturation = allTimestamps[0];
             }
 
             return {
