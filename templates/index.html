@@ -442,7 +442,8 @@
                 // console.log("End is ", allValues[0]);
                 // Saturation point (end of linear period)
                 saturationValue = end < allValues.length ? allValues[end].toFixed(2) : "--";
-                timeToSaturation = end < allTimestamps.length ? (allTimestamps[end] - allTimestamps[start]).toFixed(2) : "--";
+                timeToSaturation = end < allTimestamps.length ? (allTimestamps[end - 1] - allTimestamps[start]).toFixed(2) : "--";
+                timeStartSaturation = end < allTimestamps.length ? (allTimestamps[end - 1]).toFixed(2) : "--";
             } else {
                 sortedValues = [...allValues].sort((a, b) => a - b);
                 saturationValue = sortedValues[allValues.length/2];
@@ -463,7 +464,8 @@
                 startVMax: allTimestamps[startVMax],
                 endVMax: allTimestamps[endVMax],
                 yVMaxstart: yVMaxstart,
-                yVMaxend: yVMaxend
+                yVMaxend: yVMaxend,
+                timeStartSaturation: timeStartSaturation
             };
         }
 
@@ -525,10 +527,6 @@
                                       type: 'line',
                                       borderColor: 'rgba(0, 0, 255, 0.5)',
                                       borderWidth: 3,
-                                      // xMin: 0,
-                                      // xMax: parseFloat(adjustedTimeToSaturation),
-                                      // yMin: parseFloat(adjustedIntercept),
-                                      // yMax: parseFloat(adjustedSaturationValue),
                                       xMin: parseFloat(analysis.linearXMin/chartScaleConstant),
                                       xMax: parseFloat(analysis.linearXMax/chartScaleConstant),
                                       yMin: parseFloat(analysis.linearYMin),
@@ -544,7 +542,7 @@
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 255, 0.5)',
                                       borderWidth: 3,
-                                      xMin: parseFloat(analysis.timeToSaturation/chartScaleConstant),
+                                      xMin: parseFloat(analysis.timeStartSaturation/chartScaleConstant),
                                       xMax: Math.max(...timestamps)*100,
                                       yMin: parseFloat(analysis.saturationValue),
                                       yMax: parseFloat(analysis.saturationValue),
