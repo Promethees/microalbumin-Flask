@@ -37,6 +37,7 @@
         #chart-container { display: flex; flex-direction: column; gap: 20px; }
         #mode-toggle { margin-bottom: 10px; }
         #analysis-info { margin-top: 10px; font-size: 0.9em; color: #333; }
+        #wd-size-error {color: red; display: none; }
     </style>
 </head>
 <body>
@@ -64,6 +65,13 @@
                 <option value="{{ unit }}">{{ unit }}</option>
                 {% endfor %}
             </select>
+        </div>
+
+        <div class="section">
+            <h2>Window size</h2>
+            <h3>Select window size for Vmax regression</h3>
+            <input type="number" id="window-size" value="4" min="3">
+            <div id="wd-size-error"></div>
         </div>
         
         <div class="section">
@@ -202,7 +210,19 @@
             $(button).closest("tr").addClass("selected");
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
-            fetchData(range, unit, filename);
+            let window_size = $("#window-size").val();
+            if (window_size < 3) {
+                $("#wd-size-error").text("Window size must be greater than 3.").show();
+                return;
+            } else {
+                if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
+                    $("#wd-size-error").text("Window size must be must be Integer.").show();
+                    return;
+                } else {
+                    $("#wd-size-error").hide();
+                }
+            }
+            fetchData(range, unit, window_size, filename);
             currentFile = filename;
         }
 
@@ -215,18 +235,26 @@
             $("#analysis-info").text("");
         }
 
-        function fetchData(range, unit, filename) {
+        function fetchData(range, unit, window_size, filename) {
             $.get('/get_data', {
                 file: $("#directory").val() + '/' + filename,
                 range: range,
-                unit: unit
+                unit: unit,
+                window_size: window_size
             }, function(response) {
                 console.log("Data response:", response);
                 if (response.data && response.data.length > 0) {
-                    const isSplitMode = $("#split-mode").is(":checked");
-                    updatePlot(response.data, range, unit, response.unit || "NONE", isSplitMode);
+                    if (window_size > response.data.length/2) {
+                        $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide()
+                        $("#analysis-info").html(`<span style="color: red;">Window Size is greater than half of data size. The file has only ${response.data.length} data points</span>`);
+                    }
+                    else {
+                        const isSplitMode = $("#split-mode").is(":checked");
+                        updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode);
+                    }
                 } else {
-                    $("#data-display").html(response.error || 'No data available');
+                    $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide()
+                    $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
                 }
             });
         }
@@ -254,7 +282,7 @@
             }
         }
 
-        function calculateSlopeAndSaturation(allTimestamps, allValues) {
+        function calculateSlopeAndSaturationOld(allTimestamps, allValues, window_size) {
             if (allTimestamps.length < 2 || allValues.length < 2) return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--" };
 
             // Calculate local slopes (dy converted to hours)
@@ -304,20 +332,152 @@
             return { slope: slope, intercept: intercept.toFixed(2), saturationValue, timeToSaturation };
         }
 
+        function calculateSlopeAndSaturation(allTimestamps, allValues, window_size) {
+            if (allTimestamps.length < 2 || allValues.length < 2 || window_size < 2 || window_size > allTimestamps.length) {
+                return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", Vmax: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 };
+            }
+
+            // Function to calculate R-squared for linear regression
+            function calculateRSquared(x, y, slope, intercept) {
+                let n = x.length;
+                let sumY = y.reduce((a, b) => a + b, 0);
+                let meanY = sumY / n;
+                let ssTot = y.reduce((a, b) => a + Math.pow(b - meanY, 2), 0);
+                let ssRes = x.reduce((a, b, i) => a + Math.pow(y[i] - (slope * b + intercept), 2), 0);
+                return ssTot === 0 ? 1 : 1 - ssRes / ssTot;
+            }
+
+            // Calculate local slopes and R-squared for each window
+            let localSlopes = [];
+            let intercepts = [];
+            let rSquaredValues = [];
+            for (let i = 0; i <= allTimestamps.length - window_size; i++) {
+                let x = allTimestamps.slice(i, i + window_size);
+                let y = allValues.slice(i, i + window_size);
+
+                let n = x.length;
+                let sumX = x.reduce((a, b) => a + b, 0);
+                let sumY = y.reduce((a, b) => a + b, 0);
+                let sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+                let sumXX = x.reduce((a, b) => a + b * b, 0);
+
+                let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX) || 0; // in units/second
+                let intercept = (sumY - slope * sumX) / n;
+
+                let rSquared = calculateRSquared(x, y, slope, intercept);
+                localSlopes.push(slope);
+                intercepts.push(intercept);
+                rSquaredValues.push(rSquared);
+            }
+
+            // Find Vmax (maximum slope with R-squared >= 0.95)
+            let Vmax = 0;
+            let threshold = 0.2 // Vmax must be larger than threshold per hour
+            let startVMax = -1;
+            let endVMax = -1;
+            let yVMaxstart = 0;
+            let yVMaxend = 0;
+            for (let i = 0; i < localSlopes.length; i++) {
+                adjustedLocal = 3600*localSlopes[i];
+                console.log("local Slop is ", adjustedLocal);
+                if (rSquaredValues[i] >= 0.95 && localSlopes[i] > Vmax && adjustedLocal > threshold) {
+                    Vmax = localSlopes[i];
+                    startVMax = i;
+                    endVMax = i + window_size - 1
+                    yVMaxstart = intercepts[i];
+                    yVMaxend = yVMaxstart + Vmax*(allTimestamps[endVMax] - allTimestamps[startVMax]);
+                }
+            }
+
+            // Determine linear period (slopes >= 0.8 * Vmax)
+            let linearStartIdx = -1;
+            let linearEndIdx = -1;
+            for (let i = 0; i < localSlopes.length; i++) {
+                if (localSlopes[i] >= 0.8 * Vmax) {
+                    if (linearStartIdx === -1) linearStartIdx = i;
+                    linearEndIdx = i;
+                }
+            }
+
+            // Calculate linear period parameters
+            let linearSlope = 0;
+            let linearIntercept = 0;
+            let linearXMin = 0;
+            let linearXMax = 0;
+            let linearYMin = 0;
+            let linearYMax = 0;
+            let saturationValue = "--";
+            let timeToSaturation = "--";
+
+            if (linearStartIdx !== -1 && linearEndIdx !== -1) {
+                // Adjust indices to include full window at the end
+                let start = linearStartIdx;
+                let end = linearEndIdx + window_size;
+
+                if (end > allTimestamps.length) {
+                    end = allTimestamps.length;
+                }
+
+                let x = allTimestamps.slice(start, end);
+                let y = allValues.slice(start, end);
+
+                // Linear regression for the entire linear period
+                let n = x.length;
+                let sumX = x.reduce((a, b) => a + b, 0);
+                let sumY = y.reduce((a, b) => a + b, 0);
+                let sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+                let sumXX = x.reduce((a, b) => a + b * b, 0);
+
+                linearSlope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX) || 0; // In units/second
+                linearIntercept = (sumY - linearSlope * sumX) / n;
+
+                linearXMin = allTimestamps[start]; //in seconds
+                linearXMax = allTimestamps[end - 1];
+                linearYMin = linearIntercept; // in units (absorbance)
+                linearYMax = linearYMin + linearSlope*(linearXMax - linearXMin);
+
+
+                // console.log("all values are ", allValues);
+                // console.log("All value length: ", allValues.length);
+                // console.log("End is ", allValues[0]);
+                // Saturation point (end of linear period)
+                saturationValue = end < allValues.length ? allValues[end].toFixed(2) : "--";
+                timeToSaturation = end < allTimestamps.length ? (allTimestamps[end] - allTimestamps[start]).toFixed(2) : "--";
+            } else {
+                sortedValues = [...allValues].sort((a, b) => a - b);
+                saturationValue = sortedValues[allValues.length/2];
+                timeToSaturation = allTimestamps[0];
+            }
+
+            return {
+                slope: linearSlope, // Overall slope for compatibility
+                intercept: linearIntercept.toFixed(2),
+                saturationValue,
+                timeToSaturation,
+                Vmax: Vmax.toFixed(6),
+                linearSlope: linearSlope.toFixed(6),
+                linearYMin: linearYMin.toFixed(2),
+                linearYMax: linearYMax.toFixed(2),
+                linearXMin: linearXMin.toFixed(2),
+                linearXMax: linearXMax.toFixed(2),
+                startVMax: allTimestamps[startVMax],
+                endVMax: allTimestamps[endVMax],
+                yVMaxstart: yVMaxstart,
+                yVMaxend: yVMaxend
+            };
+        }
+
         function createChart(canvasId, timestamps, values, label, unit, timeUnit, range, conversionFactor, analysis) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             if (!ctx || timestamps.length === 0 || values.length === 0) {
                 console.error("Invalid chart data or context:", { canvasId, timestamps, values });
                 return null;
             }
+            console.log(analysis);
             let chartScaleConstant = 60;
             let adjustedSlope = parseFloat(analysis.slope)/conversionFactor;
-            let adjustedIntercept = parseFloat(analysis.intercept);
-            let adjustedTimeToSaturation = parseFloat(analysis.timeToSaturation) / chartScaleConstant;
+            let adjustedVmax = parseFloat(analysis.Vmax)/conversionFactor;
             let adjustedTimeToSaturationDisplay = parseFloat(analysis.timeToSaturation) * conversionFactor;
-            let adjustedSaturationValue = parseFloat(analysis.saturationValue);
-            adjustedTimeToSaturation = adjustedTimeToSaturation.toFixed(2) !== "0.00" ? adjustedTimeToSaturation.toFixed(2) : "--";
-            adjustedSaturationValue = adjustedSaturationValue.toFixed(2) !== "0.00" ? adjustedSaturationValue.toFixed(2) : "--";
             adjustedTimeToSaturationDisplay = adjustedTimeToSaturationDisplay.toFixed(2) !== "0.00" ? adjustedTimeToSaturationDisplay.toFixed(2) : "--";
 
             let chart = new Chart(ctx, {
@@ -346,44 +506,52 @@
                     plugins: {
                         annotation: {
                             annotations: {
-                                slopeLabel: {
-                                    type: 'label',
-                                    xValue: 0,
-                                    yValue: 0,
-                                    content: [`Linear Slope: ${adjustedSlope.toFixed(5)} ${unit !== "NONE" ? unit : ''}/${timeUnit}`],
-                                    position: 'start',
-                                    // backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                                    color: 'black',
-                                    font: {
-                                        size: 12
+                                ...(analysis.startVMax !== -1 && {VMaxLine: {
+                                      type: 'line',
+                                      borderColor: 'rgba(255, 0, 0, 0.5)',
+                                      borderWidth: 3,
+                                      xMin: parseFloat(analysis.startVMax/chartScaleConstant),
+                                      xMax: parseFloat(analysis.endVMax/chartScaleConstant),
+                                      yMin: parseFloat(analysis.yVMaxstart),
+                                      yMax: parseFloat(analysis.yVMaxend),
+                                      label: {
+                                        display: true,
+                                        content: 'VMax',
+                                        position: 'before'
+                                      }
                                     }
-                                },
-                                regressionLine: {
+                                }),
+                                ...(analysis.start !== -1 && {regressionLine: {
                                       type: 'line',
                                       borderColor: 'rgba(0, 0, 255, 0.5)',
                                       borderWidth: 3,
-                                      xMin: 0,
-                                      xMax: parseFloat(adjustedTimeToSaturation),
-                                      yMin: parseFloat(adjustedIntercept),
-                                      yMax: parseFloat(adjustedSaturationValue),
+                                      // xMin: 0,
+                                      // xMax: parseFloat(adjustedTimeToSaturation),
+                                      // yMin: parseFloat(adjustedIntercept),
+                                      // yMax: parseFloat(adjustedSaturationValue),
+                                      xMin: parseFloat(analysis.linearXMin/chartScaleConstant),
+                                      xMax: parseFloat(analysis.linearXMax/chartScaleConstant),
+                                      yMin: parseFloat(analysis.linearYMin),
+                                      yMax: parseFloat(analysis.linearYMax),
                                       label: {
                                         display: true,
                                         content: 'Linear',
                                         position: 'middle'
                                       }
-                                    },
+                                    }
+                                }),
                                 ...(analysis.saturationValue !== "--" && {saturationLine: {
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 255, 0.5)',
                                       borderWidth: 3,
-                                      xMin: parseFloat(adjustedTimeToSaturation),
+                                      xMin: parseFloat(analysis.timeToSaturation/chartScaleConstant),
                                       xMax: Math.max(...timestamps)*100,
-                                      yMin: parseFloat(adjustedSaturationValue),
-                                      yMax: parseFloat(adjustedSaturationValue),
+                                      yMin: parseFloat(analysis.saturationValue),
+                                      yMax: parseFloat(analysis.saturationValue),
                                       label: {
                                         display: true,
                                         content: 'Sat',
-                                        position: 'middle'
+                                        position: 'end'
                                       }
                                     }
                                 })
@@ -394,14 +562,17 @@
             });
             chart.data.datasets[0].analysis = {
                 slope: adjustedSlope.toFixed(4),
-                intercept: adjustedIntercept.toFixed(2),
+                // intercept: adjustedIntercept.toFixed(2),
                 saturationValue: analysis.saturationValue,
-                timeToSaturation: adjustedTimeToSaturationDisplay
+                timeToSaturation: adjustedTimeToSaturationDisplay,
+                Vmax: adjustedVmax.toFixed(4),
+                VmaxStart: analysis.startVMax*conversionFactor,
+                VmaxEnd: analysis.VmaxEnd*conversionFactor
             }; // Store adjusted analysis for display
             return chart;
         }
 
-        function updatePlot(data, range, timeUnit, unit, isSplitMode) {
+        function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode) {
             destroyCharts();
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             $("#analysis-info").text("");
@@ -413,7 +584,7 @@
             // Calculate slope and saturation using full dataset before filtering
             const allTimestamps = data.map(row => row['Timestamp']); // Unfiltered timestamps in seconds
             const allValues = data.map(row => row['Value']); // Unfiltered values
-            const analysis = calculateSlopeAndSaturation(allTimestamps, allValues);
+            const analysis = calculateSlopeAndSaturation(allTimestamps, allValues, window_size);
             // Convert range from the current timeUnit to seconds for filtering
             const rangeInSeconds = range * getTimeUnitMultiplier(timeUnit); // range is in timeUnit, convert to seconds
             const mostRecentTime = Math.max(...allTimestamps);
@@ -462,8 +633,10 @@
                     analysis
                 );
                 $("#analysis-info").html(
-                    `Blanked: Slope = ${blankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${blankedChart?.data.datasets[0].analysis.saturationValue}, Time to Saturation = ${blankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit}<br>` +
-                    `Non-Blanked: Slope = ${nonBlankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${nonBlankedChart?.data.datasets[0].analysis.saturationValue}, Time to Saturation = ${nonBlankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit}`
+                    `<span style="color: rgb(255, 99, 132);">
+                    Blanked: Slope = ${blankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${blankedChart?.data.datasets[0].analysis.saturationValue}, Time to Saturation = ${blankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit}<br> </span>` +
+                    `<span style="color: rgb(75, 192, 192);">
+                    Non-Blanked: Slope = ${nonBlankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${nonBlankedChart?.data.datasets[0].analysis.saturationValue}, Time to Saturation = ${nonBlankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit} </span>`
                 );
             } else {
                 $("#plot-canvas").show();
@@ -480,7 +653,12 @@
                 );
                 const analysisDisplay = myChart?.data.datasets[0].analysis;
                 $("#analysis-info").html(
-                    `Slope = ${analysisDisplay.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, Saturation = ${analysisDisplay.saturationValue}, Time to Saturation = ${analysisDisplay.timeToSaturation} ${timeUnit}`
+                    `Slope = ${analysisDisplay.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, 
+                    Vmax = ${analysisDisplay.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
+                    VmaxStart = ${analysisDisplay.VmaxStart} ${timeUnit},
+                    VmaxEnd = ${analysisDisplay.VmaxEnd} ${timeUnit},
+                    Saturation = ${analysisDisplay.saturationValue}, 
+                    Time to Saturation = ${analysisDisplay.timeToSaturation} ${timeUnit}`
                 );
             }
         }
@@ -499,15 +677,28 @@
             if (currentFile) {
                 let range = $("#range-value").val();
                 let unit = $("#time-unit").val();
-                fetchData(range, unit, currentFile);
+                let window_size = $("#window-size").val();
+                fetchData(range, unit, window_size, currentFile);
             }
-        }, 5000);
+        }, 500);
 
-        $("#range-value, #time-unit").on('change', function() {
+        $("#range-value, #time-unit", "#window-size").on('change', function() {
             if (currentFile) {
                 let range = $("#range-value").val();
                 let unit = $("#time-unit").val();
-                fetchData(range, unit, currentFile);
+                let window_size = $("#window-size").val();
+                if (window_size < 3) {
+                    $("#wd-size-error").text("Window size must be greater than 3. Set to default 4").show();
+                    return;
+                } else {
+                    if (!Number.isInteger(window_size) || window_size === '' || isNaN(window_size)) {
+                        $("#wd-size-error").text("Window size must be must be Integer. Set to default 4").show();
+                        return;
+                    } else {
+                        $("#wd-size-error").hide();   
+                    }
+                }
+                fetchData(range, unit, window_size, filename);
             }
         });
     </script>
