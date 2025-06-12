@@ -282,56 +282,6 @@
             }
         }
 
-        function calculateSlopeAndSaturationOld(allTimestamps, allValues, window_size) {
-            if (allTimestamps.length < 2 || allValues.length < 2) return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--" };
-
-            // Calculate local slopes (dy converted to hours)
-            let localSlopes = [];
-            for (let i = 0; i < allTimestamps.length - 1; i++) {
-                let dx = allTimestamps[i + 1] - allTimestamps[i]; // in seconds
-                let dy = 3600 * (allValues[i + 1] - allValues[i]); // convert to hours
-                localSlopes.push(dy / dx); // slope in units/hour
-            }
-
-            // Find saturation point (80% of samples below threshold)
-            let saturationIdx = -1;
-            let threshold = 0.25; // Threshold in units/hour
-            let numSaturationSamples = Math.max(Math.floor(allTimestamps.length * 0.1), 5);
-            for (let i = 0; i <= localSlopes.length - numSaturationSamples; i++) {
-                let slopesBelowThreshold = 0;
-                for (let j = 0; j < numSaturationSamples; j++) {
-                    if (Math.abs(localSlopes[i + j]) <= threshold) {
-                        slopesBelowThreshold++;
-                    }
-                }
-                if (slopesBelowThreshold / numSaturationSamples >= 0.6) {
-                    saturationIdx = i + numSaturationSamples*0.6; // Start of the saturation window
-                    break;
-                }
-            }
-
-            // Linear regression on data before saturation
-            let x = allTimestamps.slice(0, saturationIdx !== -1 ? saturationIdx : allTimestamps.length);
-            let y = allValues.slice(0, saturationIdx !== -1 ? saturationIdx : allValues.length);
-
-            let n = x.length;
-            let sumX = x.reduce((a, b) => a + b, 0);
-            let sumY = y.reduce((a, b) => a + b, 0);
-            let sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
-            let sumXX = x.reduce((a, b) => a + b * b, 0);
-
-            let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX) || 0; // in units/second
-            let intercept = (sumY - slope * sumX) / n;
-            // console.log("Intercepted at:", intercept);
-
-
-            let saturationValue = saturationIdx !== -1 ? allValues[saturationIdx].toFixed(2) : "--";
-            let timeToSaturation = saturationIdx !== -1 ? (allTimestamps[saturationIdx] - allTimestamps[0]) : "--"; // Convert to hours
-            // timeToSaturation = timeToSaturation.toFixed(2) !== "0.00" ? timeToSaturation.toFixed(2) : "--";
-
-            return { slope: slope, intercept: intercept.toFixed(2), saturationValue, timeToSaturation };
-        }
-
         function calculateSlopeAndSaturation(allTimestamps, allValues, window_size) {
             if (allTimestamps.length < 2 || allValues.length < 2 || window_size < 2 || window_size > allTimestamps.length) {
                 return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", Vmax: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 };
@@ -384,8 +334,8 @@
                     Vmax = localSlopes[i];
                     startVMax = Number(i);
                     endVMax = startVMax + Number(window_size) - 1;
-                    yVMaxstart = intercepts[i];
-                    yVMaxend = yVMaxstart + Vmax*(allTimestamps[endVMax] - allTimestamps[startVMax]);
+                    yVMaxstart = Vmax*allTimestamps[startVMax] + intercepts[i];
+                    yVMaxend = Vmax*allTimestamps[endVMax] + intercepts[i];
                 }
             }
             
@@ -441,7 +391,14 @@
                 linearYMax = linearYMin + linearSlope*(linearXMax - linearXMin);
 
                 // Saturation point (end of linear period)
-                saturationValue = end < allValues.length ? allValues[end - 1].toFixed(2) : "--";
+                // saturationValue = end < allValues.length ? linearYMax.toFixed(2) : "--";
+                if (end >= allValues.length) {
+                    saturationValue = "--";
+                } else {
+                    let theRest = allValues.slice(end, allValues.length);
+                    sortedValuesForRest = [...theRest].sort((a, b) => a - b);
+                    saturationValue = sortedValuesForRest[Math.floor(theRest.length/2)].toFixed(2);
+                }
                 timeToSaturation = end < allTimestamps.length ? (allTimestamps[end - 1] - allTimestamps[start]).toFixed(2) : "--";
                 timeStartSaturation = end < allTimestamps.length ? (allTimestamps[end - 1]).toFixed(2) : "--";
             } else {
@@ -460,7 +417,7 @@
                 linearYMin: linearYMin.toFixed(2),
                 linearYMax: linearYMax.toFixed(2),
                 linearXMin: linearStartIdx !== -1 ? linearXMin.toFixed(2) : null,
-                linearXMax: linearXMax.toFixed(2),
+                linearXMax: linearEndIdx !== -1 ? linearXMax.toFixed(2) : null,
                 startVMax: startVMax !== -1 ? allTimestamps[startVMax].toFixed(2) : null,
                 endVMax: endVMax !== -1 ? allTimestamps[endVMax].toFixed(2) : null,
                 yVMaxstart: yVMaxstart,
@@ -478,14 +435,13 @@
             console.log(analysis);
             let chartScaleConstant = 60;
             let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope)/conversionFactor).toFixed(4) : "--";
+            let adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin)*conversionFactor).toFixed(2) : "--";
+            let adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax)*conversionFactor).toFixed(2) : "--";
             let adjustedVmax = parseFloat(analysis.Vmax)/conversionFactor;
-            let adjustedVmaxStart = parseFloat(analysis.startVMax)*conversionFactor;
-            let adjustedVmaxEnd = parseFloat(analysis.endVMax)*conversionFactor;
+            let adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax)*conversionFactor).toFixed(2) : "--";
+            let adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax)*conversionFactor).toFixed(2) : "--";
             let adjustedTimeToSaturationDisplay = parseFloat(analysis.timeToSaturation) * conversionFactor;
             adjustedVmax = (3600*adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
-            adjustedVmaxStart = (adjustedVmaxStart !== null) ? adjustedVmaxStart.toFixed(2) : "--";
-            console.log(adjustedVmaxStart);
-            adjustedVmaxEnd = adjustedVmaxEnd.toFixed(2) !== "0.00" ? adjustedVmaxEnd.toFixed(2) : "--";
             adjustedTimeToSaturationDisplay = adjustedTimeToSaturationDisplay.toFixed(2) !== "0.00" ? adjustedTimeToSaturationDisplay.toFixed(2) : "--";
 
             let chart = new Chart(ctx, {
@@ -526,7 +482,7 @@
                                       label: {
                                         display: true,
                                         content: 'VMax',
-                                        position: 'before'
+                                        position: 'start'
                                       }
                                     }
                                 }),
@@ -567,7 +523,8 @@
             });
             chart.data.datasets[0].analysis = {
                 slope: adjustedSlope,
-                // intercept: adjustedIntercept.toFixed(2),
+                linearStart: adjustedLinearStart,
+                linearEnd: adjustedLinearEnd,
                 saturationValue: analysis.saturationValue,
                 timeToSaturation: adjustedTimeToSaturationDisplay,
                 Vmax: adjustedVmax,
@@ -659,7 +616,9 @@
                 const analysisDisplay = myChart?.data.datasets[0].analysis;
                 $("#analysis-info").html(
                     `Slope = ${analysisDisplay.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit},  
-                    Vmax = ${analysisDisplay.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, <br/>
+                    Linear start = ${analysisDisplay.linearStart} ${timeUnit},
+                    Linear end = ${analysisDisplay.linearEnd} ${timeUnit}, <br/>
+                    Vmax = ${analysisDisplay.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
                     VmaxStart = ${analysisDisplay.VmaxStart} ${timeUnit}, 
                     VmaxEnd = ${analysisDisplay.VmaxEnd} ${timeUnit}, <br/>
                     Saturation = ${analysisDisplay.saturationValue}, 
