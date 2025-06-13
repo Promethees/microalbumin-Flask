@@ -70,13 +70,13 @@ microalbumin-Flask/
 ## Troubleshooting
 
 * Port in Use:
-	-If both ports 5000 and 5001 fail, check for processes using those ports:lsof -i :5000 `lsof -i :5001`
+	-If both ports 5000 and 5001 fail, check for processes using those ports: `lsof -i :5001`
 
-* Kill the processes if needed (e.g., kill -9 <PID>).
+* Kill the processes if needed (e.g., `kill -9 <PID>`).
 
 
 * Dependencies Not Installed:
-	- Ensure pip is installed and working:python3 -m ensurepip --upgrade
+	- Ensure pip is installed and working: `python3 -m ensurepip --upgrade`
 
 
 	- Manually install dependencies:pip install flask pandas
