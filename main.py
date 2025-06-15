@@ -6,6 +6,11 @@ import argparse
 import threading
 import time
 import socket
+import signal 
+import platform
+import subprocess
+import atexit
+
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
@@ -13,6 +18,19 @@ from measure import get_dynamic_data
 from file import get_file_list
 
 app = Flask(__name__)
+process = None
+log_file = "script_logs.txt"
+
+def cleanup():
+    global process
+    if process and process.poll() is None:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+atexit.register(cleanup)
 
 @app.route('/')
 def index():
@@ -44,6 +62,43 @@ def get_children():
     current_dir = get_directory()
     child_dirs = get_child_directories(current_dir)
     return jsonify({'children': child_dirs})
+
+@app.route('/run_script', methods=['POST'])
+def run_script():
+    os_name = platform.system()
+    global process
+    base_dir = request.json.get('base_dir', '')
+    base_name = request.json.get('base_name', '')
+    if os_name == "Darwin":
+        cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+    else:
+        cmd = ['python', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+    with open(log_file, 'a') as f:
+        process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True)
+    return jsonify({'status': 'success'})
+
+@app.route('/terminate_script', methods=['POST'])
+def terminate_script():
+    global process
+    if process is None or process.poll() is not None:
+        return jsonify({'status': 'failure', 'message': 'No process running'})
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+        process = None
+        return jsonify({'status': 'success'})
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process = None
+        return jsonify({'status': 'success'})
+
+@app.route('/get_logs', methods=['GET'])
+def get_logs():
+    if os.path.exists(log_file):
+        with open(log_file, 'r') as f:
+            logs = f.read()
+        return jsonify({'status': 'success', 'logs': logs})
+    return jsonify({'status': 'success', 'logs': 'No logs available'})
 
 @app.route('/get_data', methods=['GET'])
 def get_data():

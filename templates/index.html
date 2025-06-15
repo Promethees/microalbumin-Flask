@@ -38,6 +38,8 @@
         #mode-toggle { margin-bottom: 10px; }
         #analysis-info { margin-top: 10px; font-size: 0.9em; color: #333; }
         #wd-size-error {color: red; display: none; }
+        #log-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
+        .script-controls { margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -55,6 +57,22 @@
                 <div id="child-dirs"></div>
             </div>
             <div id="error-message"></div>
+        </div>
+
+        <div class="section script-controls">
+            <h2>Log HID Data</h2>
+            <div>
+                <label for="base-dir">Base Directory (--base-dir): </label>
+                <input type="text" id="base-dir" placeholder="Leave empty for default">
+            </div>
+            <div>
+                <label for="base-name">Base Name (--base-name): </label>
+                <input type="text" id="base-name" placeholder="Enter a name">
+            </div>
+            <button id="run-script-btn" onclick="runScript()">Run Script</button>
+            <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
+            <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
+            <div id="log-display"></div>
         </div>
         
         <div class="section">
@@ -117,6 +135,7 @@
         let blankedChart = null;
         let nonBlankedChart = null;
         let myChart = null;
+        let scriptRunning = false;
 
         $(document).ready(function() {
             $.get('/get_parents', function(parentResponse) {
@@ -144,6 +163,20 @@
                 console.log("Error fetching parent directory:", textStatus, errorThrown);
                 $("#error-message").text("Error fetching parent directory").show();
             });
+            // Poll logs every 2 seconds if script is running as new data is being updated
+            setInterval(function() {
+                if (scriptRunning) {
+                    fetchLogs();
+                }
+            }, 2000);
+
+            // Periodically update file table every 5 seconds
+            setInterval(function() {
+                const currentDir = $("#directory").val();
+                if (currentDir) {
+                    updateDirectory(currentDir);
+                }
+            }, 5000);
         });
 
         function browseDirectory() {
@@ -205,6 +238,87 @@
             $("#file-table").html(html);
             currentFile = null;
             $("#file-table tr").removeClass("selected");
+        }
+
+        function runScript() {
+            const baseDir = $("#base-dir").val() || "";
+            const baseName = $("#base-name").val() || "";
+            $.ajax({
+                url: '/run_script',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ base_dir: baseDir, base_name: baseName }),
+                success: function(response) {
+                    console.log("Run script response:", response);
+                    if (response.status === 'success') {
+                        scriptRunning = true;
+                        $("#run-script-btn").prop('disabled', true);
+                        $("#terminate-script-btn").prop('disabled', false);
+                        $("#log-display").text("Script started...\n");
+                    } else {
+                        $("#log-display").text(`Error: ${response.message}\n`);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error:", textStatus, errorThrown);
+                    $("#log-display").text(`Error: Failed to start script\n`);
+                }
+            });
+        }
+
+        function terminateScript() {
+            $.ajax({
+                url: '/terminate_script',
+                type: 'POST',
+                contentType: 'application/json',
+                success: function(response) {
+                    console.log("Terminate script response:", response);
+                    // if (response.status === 'success') {
+                    //     scriptRunning = false;
+                    //     $("#run-script-btn").prop('disabled', false);
+                    //     $("#terminate-script-btn").prop('disabled', true);
+                    //     $("#log-display").append("Script terminated.\n");
+                    // } else {
+                    //     $("#log-display").append(`Error: ${response.message}\n`);
+                    //     // Attempt to re-enable run button if termination failed
+                    //     if (response.message.includes('No process running')) {
+                    //         scriptRunning = false;
+                    //         $("#run-script-btn").prop('disabled', false);
+                    //         $("#terminate-script-btn").prop('disabled', true);
+                    //     }
+                    // }
+                    if (response.status) {
+                        scriptRunning = false;
+                        $("#run-script-btn").prop('disabled', false);
+                        $("#terminate-script-btn").prop('disabled', true);
+                        $("#log-display").append("Script terminated.\n");
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error:", textStatus, errorThrown);
+                    $("#log-display").append(`Error: Failed to terminate script\n`);
+                    // Fallback to re-enable run button on error
+                    scriptRunning = false;
+                    $("#run-script-btn").prop('disabled', false);
+                    $("#terminate-script-btn").prop('disabled', true);
+                }
+            });
+        }
+
+        function fetchLogs() {
+            $.get('/get_logs', function(response) {
+                console.log("Logs response:", response);
+                if (response.status === 'success') {
+                    $("#log-display").text(response.logs);
+                }
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error:", textStatus, errorThrown);
+                $("#log-display").append(`Error: Failed to fetch logs\n`);
+            });
+        }
+
+        function clearLogs() {
+            $("#log-display").text("");
         }
 
         function selectFile(filename, button) {
