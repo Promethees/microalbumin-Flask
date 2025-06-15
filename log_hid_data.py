@@ -39,7 +39,7 @@ class HIDDataCollector:
         self.running = True
         self.buffer = ""
         self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
-        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,2},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+\n$"
+        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,2},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+\.\d{1,2})\n$"
         self.session_started = False
 
     def find_pybadge(self):
@@ -90,7 +90,7 @@ class HIDDataCollector:
         self.output_file = self.get_next_filename()
         os.makedirs(self.base_dir, exist_ok=True)
         with open(self.output_file, "w") as f:
-            f.write("Timestamp,Measurement,Value,Unit,Type,Blanked\n")
+            f.write("Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration\n")
         print(f"New session started. Header written to {self.output_file}")
 
     def process_data(self, data):

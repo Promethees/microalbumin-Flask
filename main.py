@@ -67,14 +67,19 @@ def get_children():
 def run_script():
     os_name = platform.system()
     global process
-    base_dir = request.json.get('base_dir', '')
-    base_name = request.json.get('base_name', '')
+    if process and process.poll() is None:
+        return jsonify({'status': 'failure', 'message': 'A script is already running'})
+    if not request.is_json:
+        return jsonify({'status': 'failure', 'message': 'Request must be JSON'}), 400
+    data = request.get_json()
+    base_dir = data.get('base_dir', '')
+    base_name = data.get('base_name', '')
     if os_name == "Darwin":
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     else:
         cmd = ['python', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     with open(log_file, 'a') as f:
-        process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True)
+        process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
     return jsonify({'status': 'success'})
 
 @app.route('/terminate_script', methods=['POST'])
@@ -82,13 +87,14 @@ def terminate_script():
     global process
     if process is None or process.poll() is not None:
         return jsonify({'status': 'failure', 'message': 'No process running'})
-    process.terminate()
+    # Use pgid to terminate the entire process group
+    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
     try:
         process.wait(timeout=5)
         process = None
         return jsonify({'status': 'success'})
     except subprocess.TimeoutExpired:
-        process.kill()
+        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
         process = None
         return jsonify({'status': 'success'})
 

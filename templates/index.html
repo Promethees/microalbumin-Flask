@@ -254,6 +254,8 @@
                         scriptRunning = true;
                         $("#run-script-btn").prop('disabled', true);
                         $("#terminate-script-btn").prop('disabled', false);
+                        $("#base-dir").prop('disabled', true);
+                        $("#base-name").prop('disabled', true);
                         $("#log-display").text("Script started...\n");
                     } else {
                         $("#log-display").text(`Error: ${response.message}\n`);
@@ -273,25 +275,23 @@
                 contentType: 'application/json',
                 success: function(response) {
                     console.log("Terminate script response:", response);
-                    // if (response.status === 'success') {
-                    //     scriptRunning = false;
-                    //     $("#run-script-btn").prop('disabled', false);
-                    //     $("#terminate-script-btn").prop('disabled', true);
-                    //     $("#log-display").append("Script terminated.\n");
-                    // } else {
-                    //     $("#log-display").append(`Error: ${response.message}\n`);
-                    //     // Attempt to re-enable run button if termination failed
-                    //     if (response.message.includes('No process running')) {
-                    //         scriptRunning = false;
-                    //         $("#run-script-btn").prop('disabled', false);
-                    //         $("#terminate-script-btn").prop('disabled', true);
-                    //     }
-                    // }
-                    if (response.status) {
+                    if (response.status === 'success') {
                         scriptRunning = false;
                         $("#run-script-btn").prop('disabled', false);
+                        $("#base-dir").prop('disabled', false);
+                        $("#base-name").prop('disabled', false);
                         $("#terminate-script-btn").prop('disabled', true);
                         $("#log-display").append("Script terminated.\n");
+                    } else {
+                        $("#log-display").append(`Error: ${response.message}\n`);
+                        // Attempt to re-enable run button if termination failed
+                        if (response.message.includes('No process running')) {
+                            scriptRunning = false;
+                            $("#run-script-btn").prop('disabled', false);
+                            $("#base-dir").prop('disabled', false);
+                            $("#base-name").prop('disabled', false);
+                            $("#terminate-script-btn").prop('disabled', true);
+                        }
                     }
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
