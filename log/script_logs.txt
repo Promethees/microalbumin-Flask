@@ -1,0 +1,27 @@
+[2025-06-15 17:07:12] Searching for PyBadge HID device...
+[2025-06-15 17:07:12] Found PyBadge: PyBadge (VID: 0x239a, PID: 0x8034)
+[2025-06-15 17:07:12] Reading HID reports. Press Ctrl+C to stop.
+[2025-06-15 17:07:18] New session started. Header written to /Users/tqmthong/Desktop/Documents/BioInfo/colorimeter/microalbumin-Flask/_0.csv
+[2025-06-15 17:07:20] Received: Timestamp: 0.2s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:20] Received: Timestamp: 1.05s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:21] Received: Timestamp: 1.87s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:22] Received: Timestamp: 2.69s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:23] Received: Timestamp: 3.54s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:24] Received: Timestamp: 4.36s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:24] Received: Timestamp: 5.18s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:25] Received: Timestamp: 6.01s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:26] Received: Timestamp: 6.83s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:27] Received: Timestamp: 7.65s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:28] Received: Timestamp: 8.48s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:29] Received: Timestamp: 9.30s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:29] Received: Timestamp: 10.13s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:30] Received: Timestamp: 10.96s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:31] Received: Timestamp: 1.80s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:32] Received: Timestamp: 12.64s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:33] Received: Timestamp: 13.48s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:33] Received: Timestamp: 14.32s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:34] Received: Timestamp: 15.16s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:35] Received: Timestamp: 16.0s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:36] Received: Timestamp: 16.84s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:37] Received: Timestamp: 17.69s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
+[2025-06-15 17:07:38] Received: Timestamp: 18.53s, Measurement: ABSORBANCE, Value: 0.0 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE

@@ -19,7 +19,17 @@ from file import get_file_list
 
 app = Flask(__name__)
 process = None
-log_file = "script_logs.txt"
+log_file = "log/script_logs.txt"
+
+@app.route('/clear_logs', methods=['POST'])
+def clear_logs():
+    global log_file
+    try:
+        with open(log_file, 'w') as f:
+            f.write("")  # Clear the file
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 500
 
 def cleanup():
     global process

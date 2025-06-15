@@ -41,6 +41,17 @@ class HIDDataCollector:
         self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
         self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,2},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+\.\d{1,2})\n$"
         self.session_started = False
+        # Initialize log file in /log directory
+        self.log_dir = os.path.join(os.getcwd(), "log")
+        os.makedirs(self.log_dir, exist_ok=True)
+        self.log_file_path = os.path.join(self.log_dir, "script_logs.txt")
+        self.log_file = open(self.log_file_path, 'a')
+
+    def log(self, message):
+        """Write a message to the log file with a timestamp."""
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(self.log_file_path, 'a') as f:
+            f.write(f"[{timestamp}] {message}\n")
 
     def find_pybadge(self):
         """Find the PyBadge HID device by VID and PID."""
@@ -78,7 +89,7 @@ class HIDDataCollector:
             self.buffer += ' '
         else:
             self.buffer += key
-        # print(f"Current buffer is {self.buffer}")
+        # self.log(f"Current buffer is {self.buffer}")  # Optional, uncomment if needed
 
     def is_header(self, line):
         return bool(re.match(self.header_pattern, line))
@@ -91,16 +102,16 @@ class HIDDataCollector:
         os.makedirs(self.base_dir, exist_ok=True)
         with open(self.output_file, "w") as f:
             f.write("Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration\n")
-        print(f"New session started. Header written to {self.output_file}")
+        self.log(f"New session started. Header written to {self.output_file}")
 
     def process_data(self, data):
         try:
             timestamp, measurement_name, value, units, type_tag, blanked, concen = data.strip().split(',')
-            print(f"Received: Timestamp: {timestamp}s, Measurement: {measurement_name}, Value: {value} {units}, Type: {type_tag}, Blanked: {blanked}, Concentration: {concen}")
+            self.log(f"Received: Timestamp: {timestamp}s, Measurement: {measurement_name}, Value: {value} {units}, Type: {type_tag}, Blanked: {blanked}, Concentration: {concen}")
             with open(self.output_file, "a") as f:
                 f.write(data)
         except ValueError as e:
-            print(f"Error parsing data: {e}")
+            self.log(f"Error parsing data: {e}")
 
     def get_next_filename(self):
         pattern = os.path.join(self.base_dir, f"{self.base_name}_*[0-9].csv")
@@ -115,17 +126,17 @@ class HIDDataCollector:
         return os.path.join(self.base_dir, f"{self.base_name}_{next_number}{self.extension}")
 
     def start(self):
-        print("Searching for PyBadge HID device...")
+        self.log("Searching for PyBadge HID device...")
         device_info = self.find_pybadge()
         if not device_info:
-            print("PyBadge not found. Ensure it is connected and configured as an HID keyboard.")
+            self.log("PyBadge not found. Ensure it is connected and configured as an HID keyboard.")
             return
 
-        print(f"Found PyBadge: {device_info['product_string']} (VID: {hex(device_info['vendor_id'])}, PID: {hex(device_info['product_id'])})")
+        self.log(f"Found PyBadge: {device_info['product_string']} (VID: {hex(device_info['vendor_id'])}, PID: {hex(device_info['product_id'])})")
 
         device = hid.Device(PYBADGE_VID, PYBADGE_PID)
         try:
-            print("Reading HID reports. Press Ctrl+C to stop.")
+            self.log("Reading HID reports. Press Ctrl+C to stop.")
             last_report = None
 
             while self.running:
@@ -140,12 +151,13 @@ class HIDDataCollector:
                 time.sleep(0.001)
 
         except KeyboardInterrupt:
-            print("Stopped by user.")
+            self.log("Stopped by user.")
         except Exception as e:
-            print(f"Error: {e}")
+            self.log(f"Error: {e}")
         finally:
             device.close()
-            print("HID device closed.")
+            self.log("HID device closed.")
+            self.log_file.close()
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="HID Data Collector for PyBadge")
