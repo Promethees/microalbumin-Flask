@@ -37,10 +37,13 @@
         #chart-container { display: flex; flex-direction: column; gap: 20px; }
         #mode-toggle { margin-bottom: 10px; }
         #analysis-info { margin-top: 10px; font-size: 0.9em; color: #333; }
+        #wd-size-error {color: red; display: none; }
         #log-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
         .script-controls { margin-top: 10px; }
         #window-size-section { display: block; }
         #window-size-section.hidden { display: none; }
+        #select-quantity-section { display: block; }
+        #select-quantity-section.hidden { display: none; }
         #data-display-section { display: block; }
         #data-display-section.hidden { display: none; }
     </style>
@@ -103,6 +106,16 @@
             <input type="number" id="window-size" value="4" min="3">
             <div id="wd-size-error"></div>
         </div>
+
+        <div class="section" id="select-quantity-section">
+            <h2>{{ quantity_input.title }}</h2>
+            Select the quantity to perform Logarit Regression
+            <select id="regressed-quantity">
+                {% for quantity in quantity_input.quantities %}
+                <option value="{{ quantity }}">{{ quantity }}</option>
+                {% endfor %}
+            </select>
+        </div>
         
         <div class="section">
             <h2>File Selection</h2>
@@ -152,6 +165,19 @@
         let myChart = null;
         let scriptRunning = false;
         let currentMeasurementMode = "kinetics";
+        $("#select-quantity-section").addClass("hidden")
+
+        const input = document.getElementById("window-size");
+
+        input.addEventListener("keydown", function (e) {
+            // Allow: ArrowUp, ArrowDown, Tab, etc.
+            if (
+              ["ArrowUp", "ArrowDown", "Tab"].includes(e.key)
+            ) return;
+
+            // Prevent all other key presses
+            e.preventDefault();
+          });
 
         $(document).ready(function() {
             $.get('/get_parents', function(parentResponse) {
@@ -199,11 +225,13 @@
             $("#measurement-method").on("change", function() {
                 const method = $(this).val();
                 currentMeasurementMode = method;
-                console.log("Method being used is ", method);
                 if (method === "logarit") {
                     $("#window-size-section").addClass("hidden");
+                    $("#select-quantity-section").removeClass("hidden");
+
                 } else {
                     $("#window-size-section").removeClass("hidden");
+                    $("#select-quantity-section").addClass("hidden");
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -267,7 +295,6 @@
         }
 
         function updateFileTable(files, deselect) {
-            console.log("Updating file table with:", files);
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
             let filteredFiles = files.filter(csvText => {
                 const firstLine = csvText.trim().split("\n")[0];
@@ -278,7 +305,6 @@
                     return headers.includes("Timestamp");
             });
 
-            console.log("Filtered files are", filteredFiles);
             if (filteredFiles && filteredFiles.length > 0) {
                 filteredFiles.forEach(file => {
                     html += `<tr><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
@@ -308,12 +334,19 @@
             $(button).closest("tr").addClass("selected");
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
-            // if (currentMeasurementMode === "kinetics") {
-            //     let window_size = $("#window-size").val();
-            // } else {
-            //     let window_size = null;
-            // }
-            fetchData(range, unit, filename);
+            let window_size = $("#window-size").val();
+            if (window_size < 3) {
+                $("#wd-size-error").text("Window size must be greater than 3.").show();
+                return;
+            } else {
+                if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
+                    $("#wd-size-error").text("Window size must be must be Integer.").show();
+                    return;
+                } else {
+                    $("#wd-size-error").hide();
+                }
+            }
+            fetchData(range, unit, window_size, filename);
             currentFile = filename;
             updateFileDisplay(currentFile);
         }
@@ -335,7 +368,7 @@
                 unit: unit,
                 window_size: window_size
             }, function(response) {
-                console.log("Data response:", response);
+                // console.log("Data response:", response);
                 if (response.data && response.data.length > 0) {
                     if (window_size > response.data.length/2) {
                         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide()
@@ -437,7 +470,7 @@
             let yVMaxend = 0;
             for (let i = 0; i < localSlopes.length; i++) {
                 adjustedLocal = 3600*localSlopes[i];
-                console.log("local Slop is ", adjustedLocal);
+                // console.log("local Slop is ", adjustedLocal);
                 if (rSquaredValues[i] >= 0.95 && localSlopes[i] > Vmax && adjustedLocal > threshold) {
                     Vmax = localSlopes[i];
                     startVMax = Number(i);
@@ -515,7 +548,6 @@
                 timeToSaturation = allTimestamps[0];
                 timeStartSaturation = allTimestamps[0];
             }
-            console.log("time to saturation ", timeToSaturation);
             return {
                 slope: linearSlope, // Overall slope for compatibility
                 intercept: linearIntercept.toFixed(2),
@@ -540,7 +572,7 @@
                 console.error("Invalid chart data or context:", { canvasId, timestamps, values });
                 return null;
             }
-            console.log(analysis);
+            // console.log(analysis);
             let chartScaleConstant = 60;
             let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope)/conversionFactor).toFixed(4) : "--";
             let adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin)*conversionFactor).toFixed(2) : "--";
@@ -551,7 +583,6 @@
             let adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
 
             let adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
-            console.log("Adjuated Sat Value", adjustedSaturationValue);
             adjustedVmax = (3600*adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
 
             let chart = new Chart(ctx, {
@@ -783,30 +814,11 @@
                 let range = $("#range-value").val();
                 let unit = $("#time-unit").val();
                 let window_size = $("#window-size").val();
-                $("#data-display-section").removeClass("hidden");
                 fetchData(range, unit, window_size, currentFile);
+                $("#data-display-section").removeClass("hidden");
             } else $("#data-display-section").addClass("hidden");
         }, 500);
 
-        $("#range-value, #time-unit", "#window-size", "#full-display").on('change', function() {
-            if (currentFile) {
-                let range = $("#range-value").val();
-                let unit = $("#time-unit").val();
-                let window_size = $("#window-size").val();
-                if (window_size < 3) {
-                    $("#wd-size-error").text("Window size must be greater than 3. Set to default 4").show();
-                    return;
-                } else {
-                    if (!Number.isInteger(window_size) || window_size === '' || isNaN(window_size)) {
-                        $("#wd-size-error").text("Window size must be must be Integer. Set to default 4").show();
-                        return;
-                    } else {
-                        $("#wd-size-error").hide();   
-                    }
-                }
-                fetchData(range, unit, window_size, filename);
-            }
-        });
     </script>
 </body>
 </html>

@@ -16,6 +16,7 @@ from file_path import get_directory, browse_directory, get_parent_directory, get
 from range import get_range_input
 from method import get_method_input
 from measure import get_dynamic_data
+from quantity import get_quantity_input
 from file import get_file_list
 
 app = Flask(__name__)
@@ -48,12 +49,14 @@ def index():
     directory = get_directory()
     range_input = get_range_input()
     method_input = get_method_input()
+    quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
     return render_template('index.html', 
                          title="Easy Sensor Kit",
                          directory=directory,
                          range_input=range_input,
                          method_input=method_input,
+                         quantity_input=quantity_input,
                          file_list=file_list)
 
 @app.route('/browse', methods=['POST'])
