@@ -174,12 +174,12 @@
             }, 2000);
 
             // Periodically update file table every 5 seconds
-            // setInterval(function() {
-            //     const currentDir = $("#directory").val();
-            //     if (currentDir) {
-            //         updateDirectory(currentDir, false);
-            //     }
-            // }, 5000);
+            setInterval(function() {
+                const currentDir = $("#directory").val();
+                if (currentDir) {
+                    updateDirectory(currentDir, false);
+                }
+            }, 5000);
         });
 
         function browseDirectory() {
@@ -229,7 +229,7 @@
             });
         }
 
-        function updateFileTable(files) {
+        function updateFileTable(files, deselectFile) {
             console.log("Updating file table with:", files);
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
             if (files && files.length > 0) {
