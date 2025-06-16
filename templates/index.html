@@ -39,6 +39,8 @@
         #analysis-info { margin-top: 10px; font-size: 0.9em; color: #333; }
         #log-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
         .script-controls { margin-top: 10px; }
+        #window-size-section { display: block; }
+        #window-size-section.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -85,6 +87,15 @@
         </div>
 
         <div class="section">
+            <h2>{{ method_input.title }}</h2>
+            <select id="measurement-method">
+                {% for method in method_input.methods %}
+                <option value="{{ method }}">{{ method }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="section" id="window-size-section">
             <h2>Window size</h2>
             Select window size for Vmax regression
             <input type="number" id="window-size" value="4" min="3">
@@ -180,6 +191,23 @@
                     updateDirectory(currentDir, false);
                 }
             }, 5000);
+
+            // Initialize measurement method listener
+            $("#measurement-method").on("change", function() {
+                const method = $(this).val();
+                currentMeasurementMode = method;
+                console.log("Method being used is ", method);
+                if (method === "logarit") {
+                    $("#window-size-section").addClass("hidden");
+                } else {
+                    $("#window-size-section").removeClass("hidden");
+                }
+                if (currentFile) {
+                    let range = $("#range-value").val();
+                    let unit = $("#time-unit").val();
+                    fetchData(range, unit, currentFile);
+                }
+            });
         });
 
         function browseDirectory() {
