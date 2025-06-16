@@ -13,6 +13,10 @@ This document provides instruction on deploying a web interface that helps visua
 
 ![](/images/displayrange.png)
 
+* **Log HID** Get data being sent from the **PyBadge** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`
+
+![](/images/logHID.png)
+
 * **Window size** Specifies the number of data in a group to determine local slopes. Minimum is 3, maximum is half of data size in the browsing csv file.
 
 ![](/images/window.png)
@@ -26,32 +30,6 @@ This document provides instruction on deploying a web interface that helps visua
 	- **Split by Blanked** Seperate data points into 2 plots, *Blanked* and *Non-Blanked*, which is set by value of column ['Blanked'] in the browsed csv. [](/images/blank.png)
 	- **Full Display** Enable, Disable graphics of ***Vmax***, ***Linear***, ***Sat*** lines. When it is checked and a csv file is being browsed, all data of that file will be shown and **Display Range** value should be disabled.
 
-## Requirements
-
-* Python 3.x: Ensure Python 3 is installed on your system.
-* pip: Python package manager to install dependencies.
-* Operating System: Tested on Unix-like systems (Linux, macOS). Windows users may need to adjust the shell script (setup_and_run.sh) for cmd or PowerShell compatibility.
-
-## Setup and Usage
-1. Clone or Download the Project
-* Ensure you have all project files in a directory (e.g., microalbumin-Flask).
-2. Make the Shell Script Executable (Unix-like Systems)
-* `chmod +x setup_and_run.sh`
-
-3. Run the Setup and Start Script
-* This script will create a virtual environment, install dependencies, and start the Flask app.
-* `./setup_and_run.sh` 
-
-4. If you prefer transparency:
-* Install `flask` and `pandas` by `pip3 install -r requirements_local.txt`. Then run `sudo python3 main.py --port <default: 5000>` (or "Run as Administrator" in Windows) to allow the Web app to access local folders. Open the Application in browser at address `http://127.0.0.1:<port>`
-
-5. Access the App
-
-* Open your browser and navigate to http://127.0.0.1:5000/.
-* If port 5000 is in use, the script will attempt to use port 5001 (http://127.0.0.1:5001/).
-
-6. Example CSV Files provided in subfolder `/data`
-
 ## Directory Structure
 ```
 microalbumin-Flask/
@@ -63,37 +41,28 @@ microalbumin-Flask/
 ├── templates/
 │   └── index.html      # Frontend template with Chart.js integration
 ├── main.py             # Flask app entry point
+├── log_hid_data.py     # Python script to log data read from the colorimeter from HID
 ├── README.md           # Project documentation
-└── setup_and_run.sh    # Script to setup and start the app
+├── start.sh    		# Script to start the app in MacOS
+├── start.bat           # Script to start the app in Windows
+└── requirements.txt    # Depedencies needed to download
 ```
 
-## Troubleshooting
 
-* Port in Use:
-	-If both ports 5000 and 5001 fail, check for processes using those ports: `lsof -i :5001`
+## Setup and Usage
 
-* Kill the processes if needed (e.g., `kill -9 <PID>`).
+1. Install [Python 3.7.2](https://www.python.org/downloads/release/python-372/)
 
-
-* Dependencies Not Installed:
-	- Ensure pip is installed and working: `python3 -m ensurepip --upgrade`
-
-
-	- Manually install dependencies:pip install flask pandas
-
-* Windows Users:
-	- Modify setup_and_run.sh for Windows (e.g., use venv\Scripts\activate instead of source venv/bin/activate).
-	- Alternatively, manually run:python -m venv venv
-```
-venv\Scripts\activate
-pip install flask pandas
-python main.py
-```
+2. Executing the scripts:
+* In Mac:
+	- Open the Directory in Terminal: Right-click > Services > New Terminal at Folder ![](/images/Terminal.png)
+	- Make the `start.sh` executable: `chmod +x start.sh` then run it `./start.sh`
+* In Windows:
+	- Right click on `start.bat`, Select `Run as Administrator` ![](/images/RunBat.png)
 
 ## Notes
 
 * The app assumes Timestamp in CSV files is in seconds. Adjust baseMultiplier in index.html if your data uses a different unit.
-* Hidden files and directories (starting with .) are automatically excluded.
 
 ## License
 * This project is for educational purposes and does not include a specific license. Feel free to use and modify it as needed.
