@@ -113,6 +113,9 @@
         
         <div class="section">
             <h2>Data Display</h2>
+            <!-- Display selected file name -->
+            <div id="selected-file-display">No file selected</div>
+            <br/>
             <div id="mode-toggle">
                 <label>
                     <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
@@ -240,7 +243,16 @@
             if (deselectFile) {
                 currentFile = null;
                 $("#file-table tr").removeClass("selected");
+                updateFileDisplay(currentFile);
             }
+        }
+
+        function updateFileDisplay(curFile) {
+            const displayElement = document.getElementById('selected-file-display');
+            if (curFile)
+                $("#selected-file-display").html(`Selected File: ${curFile}`);
+            else
+                $("#selected-file-display").html(`No file selected`);
         }
 
         function selectFile(filename, button) {
@@ -251,6 +263,7 @@
             let unit = $("#time-unit").val();
             fetchData(range, unit, filename);
             currentFile = filename;
+            updateFileDisplay(currentFile);
         }
 
         function deselectFile() {
@@ -260,6 +273,7 @@
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             currentFile = null;
             $("#analysis-info").text("");
+            updateFileDisplay(currentFile);
         }
 
         function fetchData(range, unit, window_size, filename) {
