@@ -84,9 +84,18 @@
             </select>
         </div>
 
+<!--         <div class="section">
+            <h2>{{ method_input.title }}</h2>
+            <select id="method">
+                {% for method in method_input.methods %}
+                <option value="{{ method }}">{{ method }}</option>
+                {% endfor %}
+            </select>
+        </div> -->
+
         <div class="section">
             <h2>Window size</h2>
-            <h3>Select window size for Vmax regression</h3>
+            Select window size for Vmax regression
             <input type="number" id="window-size" value="4" min="3">
             <div id="wd-size-error"></div>
         </div>
@@ -112,21 +121,22 @@
         </div>
         
         <div class="section">
-            <h2>Data Display</h2>
-            <div id="mode-toggle">
-                <label>
-                    <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
-                </label>
-                <label>
-                    <input type="checkbox" id="full-display" onchange="toggleMode()">Full display: See all data and special lines
-                </label>
+            <!-- Display selected file name -->
+            <!-- <body id="selected-file-display">No file selected</body>
+            <br/> -->
+            <label>
+                <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
+            </label>
+            <label>
+                <input type="checkbox" id="full-display" onchange="toggleMode()">Full display: See all data and special lines
+            </label>
             </div>
             <div id="analysis-info"></div>
             <div id="chart-container">
                 <canvas id="plot-canvas"></canvas>
                 <canvas id="blanked-canvas" style="display: none;"></canvas>
                 <canvas id="non-blanked-canvas" style="display: none;"></canvas>
-            </div>     
+            </div>
         </div>
     </div>
 
@@ -171,12 +181,12 @@
             }, 2000);
 
             // Periodically update file table every 5 seconds
-            // setInterval(function() {
-            //     const currentDir = $("#directory").val();
-            //     if (currentDir) {
-            //         updateDirectory(currentDir, false);
-            //     }
-            // }, 5000);
+            setInterval(function() {
+                const currentDir = $("#directory").val();
+                if (currentDir) {
+                    updateDirectory(currentDir, false);
+                }
+            }, 5000);
         });
 
         function browseDirectory() {
@@ -214,8 +224,8 @@
                 if (response.status === 'success') {
                     $("#directory").val(response.path);
                     $("#error-message").hide();
-                    updateFileTable(response.files);
-                    if (deselectFile)
+                    updateFileTable(response.files, deselectFile);
+                    if (deselectFile)   
                         deselectFile();
                 } else {
                     $("#error-message").text(response.message).show();
@@ -226,7 +236,7 @@
             });
         }
 
-        function updateFileTable(files) {
+        function updateFileTable(files, deselectFile) {
             console.log("Updating file table with:", files);
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
             if (files && files.length > 0) {
@@ -240,7 +250,13 @@
             if (deselectFile) {
                 currentFile = null;
                 $("#file-table tr").removeClass("selected");
+                // updateFileDisplay();
             }
+        }
+
+        function updateFileDisplay() {
+            const displayElement = document.getElementById('#selected-file-display');
+            displayElement.textContent = currentFile ? `Selected File: ${currentFile}` : 'No file selected';
         }
 
         function selectFile(filename, button) {
@@ -251,6 +267,7 @@
             let unit = $("#time-unit").val();
             fetchData(range, unit, filename);
             currentFile = filename;
+            // updateFileDisplay();
         }
 
         function deselectFile() {
@@ -260,6 +277,7 @@
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             currentFile = null;
             $("#analysis-info").text("");
+            // updateFileDisplay();
         }
 
         function fetchData(range, unit, window_size, filename) {
@@ -453,7 +471,7 @@
             return {
                 slope: linearSlope, // Overall slope for compatibility
                 intercept: linearIntercept.toFixed(2),
-                saturationValue,
+                saturationValue: saturationValue.toFixed(2),
                 timeToSaturation,
                 Vmax: Vmax.toFixed(6),
                 linearYMin: linearYMin.toFixed(2),
@@ -483,9 +501,6 @@
             let adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax)*conversionFactor).toFixed(2) : "--";
             let adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax)*conversionFactor).toFixed(2) : "--";
             let adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
-
-            let adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
-            console.log("Adjuated Sat Value", adjustedSaturationValue);
             adjustedVmax = (3600*adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
 
             let chart = new Chart(ctx, {
@@ -569,7 +584,7 @@
                 slope: adjustedSlope,
                 linearStart: adjustedLinearStart,
                 linearEnd: adjustedLinearEnd,
-                saturationValue: adjustedSaturationValue,
+                saturationValue: analysis.saturationValue,
                 timeToSaturation: adjustedTimeToSaturationDisplay,
                 Vmax: adjustedVmax,
                 VmaxStart: adjustedVmaxStart,
