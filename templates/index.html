@@ -151,6 +151,7 @@
         let nonBlankedChart = null;
         let myChart = null;
         let scriptRunning = false;
+        let currentMeasurementMode = "kinetics";
 
         $(document).ready(function() {
             $.get('/get_parents', function(parentResponse) {
@@ -209,6 +210,7 @@
                     let unit = $("#time-unit").val();
                     fetchData(range, unit, currentFile);
                 }
+                updateDirectory($("#directory").val(), true); // Refresh file table based on new mode
             });
 
             if (currentFile) {
@@ -244,16 +246,17 @@
             });
         }
 
-        function updateDirectory(path, deselectFile) {
+        function updateDirectory(path, deselect) {
             console.log("Sending path to server:", path);
             $.post('/browse', {path: path}, function(response) {
                 console.log("Server response:", response);
                 if (response.status === 'success') {
                     $("#directory").val(response.path);
                     $("#error-message").hide();
-                    updateFileTable(response.files);
-                    if (deselectFile)
+                    updateFileTable(response.files, deselect);
+                    if (deselect) {
                         deselectFile();
+                    }
                 } else {
                     $("#error-message").text(response.message).show();
                 }
@@ -263,18 +266,28 @@
             });
         }
 
-        function updateFileTable(files, deselectFile) {
+        function updateFileTable(files, deselect) {
             console.log("Updating file table with:", files);
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
-            if (files && files.length > 0) {
-                files.forEach(file => {
+            let filteredFiles = files.filter(csvText => {
+                const firstLine = csvText.trim().split("\n")[0];
+                const headers = firstLine.split(",").map(h => h.trim());
+                if (currentMeasurementMode === "kinetics") 
+                    return !headers.includes("Timestamp");
+                else
+                    return headers.includes("Timestamp");
+            });
+
+            console.log("Filtered files are", filteredFiles);
+            if (filteredFiles && filteredFiles.length > 0) {
+                filteredFiles.forEach(file => {
                     html += `<tr><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
                 });
             } else {
                 html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
             }
             $("#file-table").html(html);
-            if (deselectFile) {
+            if (deselect) {
                 currentFile = null;
                 $("#file-table tr").removeClass("selected");
                 updateFileDisplay(currentFile);
@@ -295,6 +308,11 @@
             $(button).closest("tr").addClass("selected");
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
+            // if (currentMeasurementMode === "kinetics") {
+            //     let window_size = $("#window-size").val();
+            // } else {
+            //     let window_size = null;
+            // }
             fetchData(range, unit, filename);
             currentFile = filename;
             updateFileDisplay(currentFile);
