@@ -169,6 +169,10 @@
         let myChart = null;
         let scriptRunning = false;
         let currentMeasurementMode = "kinetics";
+
+        const platform = navigator.platform.toLowerCase();
+        const delimiter = platform.includes("window") ? "\\" : "/";
+
         $("#select-quantity-section").addClass("hidden")
 
         const input = document.getElementById("window-size");
@@ -187,8 +191,8 @@
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
                 let parentHtml = parentResponse.parent ? 
-                    `${parentResponse.parent.split('/').pop() ? 
-                        `<div onclick="updateDirectory('${parentResponse.parent}', 'true')">${parentResponse.parent.split('/').pop()}</div>` : 
+                    `${parentResponse.parent.split(delimiter).pop() ? 
+                        `<div onclick="updateDirectory('${parentResponse.parent}', 'true')">${parentResponse.parent.split(delimiter).pop()}</div>` : 
                         '<div>No parent directory</div>'}` : 
                     '<div>No parent directory</div>';
                 $("#parent-dir").html(parentHtml);
@@ -197,7 +201,7 @@
                     console.log("Child directories:", childResponse.children);
                     let childHtml = childResponse.children.length > 0 ? 
                         `${childResponse.children.map(dir => 
-                            `<div onclick="updateDirectory('${dir}', 'true')">${dir.split('/').pop()}</div>`
+                            `<div onclick="updateDirectory('${dir}', 'true')">${dir.split(delimiter).pop()}</div>`
                         ).join('')}` : 
                         '<div>No child directories</div>';
                     $("#child-dirs").html(childHtml);
@@ -254,8 +258,8 @@
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
                 let parentHtml = parentResponse.parent ? 
-                    `${parentResponse.parent.split('/').pop() ? 
-                        `<div onclick="updateDirectory('${parentResponse.parent}', 'true')">${parentResponse.parent.split('/').pop()}</div>` : 
+                    `${parentResponse.parent.split(delimiter).pop() ? 
+                        `<div onclick="updateDirectory('${parentResponse.parent}', 'true')">${parentResponse.parent.split(delimiter).pop()}</div>` : 
                         '<div>No parent directory</div>'}` : 
                     '<div>No parent directory</div>';
                 $("#parent-dir").html(parentHtml);
@@ -264,7 +268,7 @@
                     console.log("Child directories:", childResponse.children);
                     let childHtml = childResponse.children.length > 0 ? 
                         `${childResponse.children.map(dir => 
-                            `<div onclick="updateDirectory('${dir}', 'true')">${dir.split('/').pop()}</div>`
+                            `<div onclick="updateDirectory('${dir}', 'true')">${dir.split(delimiter).pop()}</div>`
                         ).join('')}` : 
                         '<div>No child directories</div>';
                     $("#child-dirs").html(childHtml);
@@ -367,7 +371,7 @@
 
         function fetchData(range, unit, window_size, filename) {
             $.get('/get_data', {
-                file: $("#directory").val() + '/' + filename,
+                file: $("#directory").val() + delimiter + filename,
                 range: range,
                 unit: unit,
                 window_size: window_size

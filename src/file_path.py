@@ -1,6 +1,11 @@
 import os
+import platform
 
-current_directory = os.path.expanduser("~/Desktop/")
+os_name = platform.system().lower()
+if "window" in os_name:
+    current_directory = os.path.expanduser("~\\Desktop\\")
+else:
+    current_directory = os.path.expanduser("~/Desktop/")
 
 def get_directory():
     global current_directory

@@ -81,7 +81,7 @@ def get_children():
 
 @app.route('/run_script', methods=['POST'])
 def run_script():
-    os_name = platform.system()
+    os_name = platform.system().lower()
     global process
     if process and process.poll() is None:
         return jsonify({'status': 'failure', 'message': 'A script is already running'})
@@ -90,10 +90,10 @@ def run_script():
     data = request.get_json()
     base_dir = data.get('base_dir', '')
     base_name = data.get('base_name', '')
-    if os_name == "Darwin":
-        cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
-    else:
+    if "window" in os_name:
         cmd = ['python', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+    else:
+        cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     with open(log_file, 'a') as f:
         process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
     return jsonify({'status': 'success'})
