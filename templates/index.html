@@ -103,7 +103,7 @@
         <div class="section" id="window-size-section">
             <h2>Window size</h2>
             Select window size for Vmax regression
-            <input type="number" id="window-size" value="4" min="3">
+            <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
             <div id="wd-size-error"></div>
         </div>
 
@@ -141,6 +141,10 @@
             <h2>Data Display</h2>
             <!-- Display selected file name -->
             <div id="selected-file-display">No file selected</div>
+            <div id="absorbance-reader">
+                The read absorbance from the csv is 
+                <input type="number" id="abs-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
+            </div>
             <br/>
             <div id="mode-toggle">
                 <label>
@@ -392,6 +396,11 @@
                             }
                         })
                         updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
+
+                        const absValueInput = document.getElementById('abs-value-read');
+                        const absValueFromFile = response.data.map(row => row['Absorbance'])[0];
+                        console.log("Abs Value from file is", absValueFromFile);
+                        absValueInput.value = absValueFromFile;
                     }
                 } else {
                     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide()
@@ -806,6 +815,107 @@
                 'hours': 3600
             };
             return multipliers[unit] || 1;
+        }
+
+        function runScript() {
+            const baseDir = $("#base-dir").val() || "";
+            const baseName = $("#base-name").val() || "";
+            $("#base-dir").prop('disabled', true);
+            $("#base-name").prop('disabled', true);
+            $.ajax({
+                url: '/run_script',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ base_dir: baseDir, base_name: baseName }),
+                success: function(response) {
+                    console.log("Run script response:", response);
+                    if (response.status === 'success') {
+                        scriptRunning = true;
+                        $("#run-script-btn").prop('disabled', true);
+                        $("#terminate-script-btn").prop('disabled', false);
+                        $("#log-display").text("Script started...\n");
+                    } else {
+                        $("#log-display").text(`Error: ${response.message}\n`);
+                        $("#base-dir").prop('disabled', false);
+                        $("#base-name").prop('disabled', false);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error:", textStatus, errorThrown);
+                    $("#log-display").text(`Error: Failed to start script\n`);
+                    $("#base-dir").prop('disabled', false);
+                    $("#base-name").prop('disabled', false);
+                }
+            });
+        }
+
+        function terminateScript() {
+            $.ajax({
+                url: '/terminate_script',
+                type: 'POST',
+                contentType: 'application/json',
+                success: function(response) {
+                    console.log("Terminate script response:", response);
+                    if (response.status === 'success') {
+                        scriptRunning = false;
+                        $("#run-script-btn").prop('disabled', false);
+                        $("#terminate-script-btn").prop('disabled', true);
+                        $("#base-dir").prop('disabled', false);
+                        $("#base-name").prop('disabled', false);
+                        $("#log-display").append("Script terminated.\n");
+                    } else {
+                        $("#log-display").append(`Error: ${response.message}\n`);
+                        if (response.message.includes('No process running')) {
+                            scriptRunning = false;
+                            $("#run-script-btn").prop('disabled', false);
+                            $("#terminate-script-btn").prop('disabled', true);
+                            $("#base-dir").prop('disabled', false);
+                            $("#base-name").prop('disabled', false);
+                        }
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error:", textStatus, errorThrown);
+                    $("#log-display").append(`Error: Failed to terminate script\n`);
+                    scriptRunning = false;
+                    $("#run-script-btn").prop('disabled', false);
+                    $("#terminate-script-btn").prop('disabled', true);
+                    $("#base-dir").prop('disabled', false);
+                    $("#base-name").prop('disabled', false);
+                }
+            });
+        }
+
+        function fetchLogs() {
+            $.get('/get_logs', function(response) {
+                console.log("Logs response:", response);
+                if (response.status === 'success') {
+                    $("#log-display").text(response.logs);
+                }
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error:", textStatus, errorThrown);
+                $("#log-display").append(`Error: Failed to fetch logs\n`);
+            });
+        }
+
+        function clearLogs() {
+            $.ajax({
+                url: '/clear_logs',
+                type: 'POST',
+                contentType: 'application/json',
+                success: function(response) {
+                    console.log("Clear logs response:", response);
+                    if (response.status === 'success') {
+                        $("#log-display").text("");
+                    } else {
+                        $("#log-display").append(`Error: Failed to clear logs - ${response.message}\n`);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error:", textStatus, errorThrown);
+                    $("#log-display").append(`Error: Failed to clear logs - ${textStatus}\n`);
+                }
+            });
         }
 
         let currentFile = null;
