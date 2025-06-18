@@ -1,0 +1,5 @@
+[2025-06-18 14:37:47] Searching for PyBadge HID device...
+[2025-06-18 14:37:47] Found PyBadge: PyBadge (VID: 0x239a, PID: 0x8034)
+[2025-06-18 14:37:47] Reading HID reports. Press Ctrl+C to stop.
+[2025-06-18 14:37:52] New session started. Header written to /Users/tqmthong/Desktop/Documents/BioInfo/colorimeter/microalbumin-Flask/data/hello_0.csv
+[2025-06-18 14:37:54] Received: Timestamp: 0.21s, Measurement: ABSORBANCE, Value: 0.02 NONE, Type: NONE, Blanked: FALSE, Concentration: NONE
