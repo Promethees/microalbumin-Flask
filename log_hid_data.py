@@ -136,6 +136,7 @@ class HIDDataCollector:
 
         try:
             device = hid.device(PYBADGE_VID, PYBADGE_PID)
+            device.open(PYBADGE_VID, PYBADGE_PID)
         except AttributeError:
             device = hid.Device(PYBADGE_VID, PYBADGE_PID)
 
