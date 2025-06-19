@@ -10,6 +10,7 @@ import signal
 import platform
 import subprocess
 import atexit
+import csv
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
