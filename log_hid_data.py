@@ -134,11 +134,7 @@ class HIDDataCollector:
 
         self.log(f"Found PyBadge: {device_info['product_string']} (VID: {hex(device_info['vendor_id'])}, PID: {hex(device_info['product_id'])})")
 
-        try:
-            device = hid.device(PYBADGE_VID, PYBADGE_PID)
-            device.open(PYBADGE_VID, PYBADGE_PID)
-        except AttributeError:
-            device = hid.Device(PYBADGE_VID, PYBADGE_PID)
+        device = hid.Device(PYBADGE_VID, PYBADGE_PID)
 
         # device.open(PYBADGE_VID, PYBADGE_PID)
         try:
@@ -146,10 +142,7 @@ class HIDDataCollector:
             last_report = None
 
             while self.running:
-                try:
-                    report = device.read(REPORT_LENGTH, timeout_ms=5000)
-                except:
-                    report = device.read(REPORT_LENGTH, timeout=5000)
+                report = device.read(REPORT_LENGTH, timeout=5000)
                 if report:
                     timestamp = time.time()
                     keys = self.decode_report(report)
