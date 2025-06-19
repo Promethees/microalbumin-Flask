@@ -23,6 +23,8 @@ from file import get_file_list
 app = Flask(__name__)
 process = None
 log_file = "log/script_logs.txt"
+abs_col = 0
+blankT_col = 6
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
@@ -89,8 +91,8 @@ def run_script():
     if not request.is_json:
         return jsonify({'status': 'failure', 'message': 'Request must be JSON'}), 400
     data = request.get_json()
-    base_dir = data.get('base_dir', '')
-    base_name = data.get('base_name', '')
+    base_dir = data.get('base_dir', 'data')
+    base_name = data.get('base_name', 'colorimeter_data')
     if "window" in os_name:
         cmd = ['python', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     else:
@@ -122,6 +124,68 @@ def get_logs():
             logs = f.read()
         return jsonify({'status': 'success', 'logs': logs})
     return jsonify({'status': 'success', 'logs': 'No logs available'})
+
+@app.route('/export_data', methods=['POST'])
+def export_data():
+    default_path = os.path.join(os.getcwd(), "export_data")
+    data = request.get_json()
+    print(f"data is {data}")
+    file_name = data.get('save_file', 'result')
+    export_path = data.get('save_dir' != "", default_path)
+    vmax = data.get('vmax', 'NONE')
+    slope = data.get('slope', '0.0000')
+    sat = data.get('sat', 'NONE')
+    absorbance = data.get('abs')
+    blankT = data.get('blanked')
+    time_unit = data.get('timeUnit')
+    time_to_sat = data.get('timeSat')
+    newFile = data.get('newFile')
+    try:
+        
+        # Check if the provided path is an environment variable
+        export_path = os.getenv(export_path, export_path)
+
+        # Ensure the directory path is absolute and normalized
+        export_path = os.path.abspath(os.path.expanduser(export_path))
+        print(f"export path is {export_path}")
+        # Ensure directory exists
+        os.makedirs(export_path, exist_ok=True)
+        
+        full_path = os.path.join(export_path, file_name + ".csv")
+
+        # Check if file exists and has headers
+        file_exists = os.path.isfile(full_path)
+        message = None
+        status = None
+        if not newFile:
+            time.sleep(1)
+        with open(full_path, "a", newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists and newFile:
+                writer.writerow(['Absorbance', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'TimeUnit', 'BlankType'])  # Write header if new file
+            # writer.writerow([vmax, slope, sat])  # Append data
+            if check_row_exist(full_path, absorbance, blankT):
+                message = f"Error: This {absorbance} nM/l absorbance value with this blank Type \"{blankT}\" already exist in {full_path}"
+                status = "error"
+            else: 
+                writer.writerow([absorbance,vmax,slope,sat,time_to_sat,time_unit,blankT])
+                message = f"Data exported at {full_path}"
+                status = "success" 
+            f.close()
+
+        return jsonify({"status": status, "message": message})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+def check_row_exist(full_path, absorbance, blankT):
+    with open(full_path, mode='r', newline='') as f:
+        reader = csv.reader(f)
+
+        for row in reader:
+            if row[abs_col] == absorbance and row[blankT_col] == blankT:
+                return True
+
+    return False
 
 @app.route('/get_data', methods=['GET'])
 def get_data():
