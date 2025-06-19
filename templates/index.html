@@ -46,6 +46,8 @@
         #select-quantity-section.hidden { display: none; }
         #data-display-section { display: block; }
         #data-display-section.hidden { display: none; }
+        #absorbance-reader-section { display: block; }
+        #absorbance-reader-section.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -69,11 +71,11 @@
             <h2>Log HID Data</h2>
             <div>
                 <label for="base-dir">Base Directory (--base-dir): </label>
-                <input type="text" id="base-dir" placeholder="Leave empty for default">
+                <input type="text" id="base-dir" placeholder="Enter directory to save recorded data from the Colorimeter. Leave empty to save to default directory" style="width: 50em">
             </div>
             <div>
                 <label for="base-name">Base Name (--base-name): </label>
-                <input type="text" id="base-name" placeholder="Enter a name">
+                <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
             </div>
             <button id="run-script-btn" onclick="runScript()">Run Script</button>
             <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
@@ -141,10 +143,24 @@
             <h2>Data Display</h2>
             <!-- Display selected file name -->
             <div id="selected-file-display">No file selected</div>
-            <div id="absorbance-reader">
+            <div id="absorbance-reader-section">
                 The read absorbance from the csv is 
                 <input type="number" id="abs-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
             </div>
+            <div id="export-analysis">
+            <div>
+                <h3>Export analysis</h3>
+                <label for="save-dir">Saving Directory: 
+                </label>
+                <input type="text" id="save-dir" placeholder="Enter directory path to save analysis data. Leave empty to save to default directory" style="width: 50em">
+            </div>
+            <div>
+                <label for="save-file">File Name: </label>
+                <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
+            </div>
+            <button id="export-btn" onclick="exportData()">Export Data</button>
+            </div>
+
             <br/>
             <div id="mode-toggle">
                 <label>
@@ -400,14 +416,24 @@
                             }
                         })
                         updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
-
-                        const absValueInput = document.getElementById('abs-value-read');
-                        const absValueFromFile = response.data.map(row => row['Absorbance'])[0];
-                        console.log("Abs Value from file is", absValueFromFile);
-                        absValueInput.value = absValueFromFile;
+                        if (currentMeasurementMode === "kinetics") {
+                            $("absorbance-reader-section").removeClass("hidden");
+                            const absValueInput = document.getElementById('abs-value-read');
+                            const absValueFromFile = response.data.map(row => row['Absorbance'])[0];
+                            
+                            if (absValueFromFile !== "NONE") {
+                                console.log("Abs Value from file is", absValueFromFile);
+                                absValueInput.value = absValueFromFile;
+                                absValueInput.disabled = true;
+                            } else {
+                                absValueInput.disabled = false;
+                                absValueInput.value = "";
+                            }
+                        } else 
+                            $("absorbance-reader-section").addClass("hidden");
                     }
                 } else {
-                    $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide()
+                    $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
                     $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
                 }
             });
@@ -819,6 +845,70 @@
                 'hours': 3600
             };
             return multipliers[unit] || 1;
+        }
+
+        function exportData() {
+            const saveDir = $("#save-dir").val() || "";
+            const saveFile = $("#save-file").val() || "results";
+            const absorbance = $("#abs-value-read").val() || "NONE";
+            const timeUnit = $("#time-unit").val();
+            // const fullPath = saveDir + delimiter + saveFile;
+
+            let analysisData = null;
+            let newFile = true;
+            if (blankedChart) {
+                analysisData = blankedChart.data.datasets[0].analysis;
+                sendExportData(analysisData, "BLANKED");
+                newFile = false;
+
+            }
+
+            if (nonBlankedChart) {
+                analysisData = nonBlankedChart.data.datasets[0].analysis;
+                sendExportData(analysisData, "NON-BLANKED", newFile);
+            }
+
+            if (myChart) {
+                analysisData = myChart.data.datasets[0].analysis;
+                sendExportData(analysisData, "MIXED");
+            }
+
+        function sendExportData(analysisData, blankedType, newFile=true) {
+                if (analysisData) {
+                    const data = {
+                        save_dir: saveDir,
+                        save_file: saveFile,
+                        vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
+                        slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
+                        sat: analysisData.saturationValue !== "--" ? analysisData : "NONE",
+                        timeSat : analysisData.timeToSaturation !== "--" ? analysisData : "NONE",
+                        abs: absorbance,
+                        blanked: blankedType,
+                        timeUnit: timeUnit,
+                        newFile: newFile
+                    };
+                    $.ajax({
+                        url: '/export_data',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(data),
+                        success: function(response) {
+                            console.log("Export response:", response);
+                            if (response.status === 'success') {
+                                alert(`Success: ${response.message}!`);
+                            } else {
+                                alert(`Error: ${response.message}`);
+                            }
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            console.log("AJAX error:", textStatus, errorThrown);
+                            alert("Error exporting data");
+                        }
+                    });
+                } else {
+                    alert("No analysis data available to export.");
+                }
+            }
         }
 
         function runScript() {
