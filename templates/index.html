@@ -384,7 +384,7 @@
                 $("#error-message").text("Error updating directory").show();
             });
             $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
-                console.log("")
+                console.log("response files are ", response.files);
             })
         }
 
@@ -422,6 +422,23 @@
             const filteredFiles = files.filter((_, idx) => checks[idx]);
 
             return filteredFiles;
+        }
+
+        function updateJSONTable(files, deselect) {
+            let html = '<tr><th>Calibrated JSON</th><th>Action</th></tr>';
+            if (files && files.length > 0) {
+                files.forEach(file => {
+                   const isSelected = file === currentFile ? ' class="selected"' : ''; 
+                   html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
+                })
+            } else {
+                html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
+            }
+            $("#json-table").html(html);
+            if (deselect) {
+                currentJSON = null;
+                $("#json-table tr").removeClass("selected");
+            }
         }
 
         function updateFileTable(files, deselect) {

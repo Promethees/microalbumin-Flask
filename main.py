@@ -219,8 +219,9 @@ def get_csv_headers():
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
 @app.route('/get_json_cal', methods=['GET'])
-def get_json_cal(mode = "kinetics"):
-    json_path = os.path.join(os.getcwd(), mode)
+def get_json_cal():
+    mode = request.args.get('mode')
+    json_path = os.path.join(os.getcwd() + delimiter + "json", mode)
     if os.path.exists(json_path):
         json_files = get_file_list(json_path, "*.json")
 
