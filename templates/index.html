@@ -48,6 +48,14 @@
         #data-display-section.hidden { display: none; }
         #absorbance-reader-section { display: block; }
         #absorbance-reader-section.hidden { display: none; }
+        #point-json-exp-section {display: block;}
+        #point-json-exp-section.hidden { display: none; }
+        #cal-json-sel-section { display: block; }
+        #cal-json-sel-section.hidden { display: none; }
+        #kinetics-lines { display: block; }
+        #kinetics-lines.hidden { display: none; }
+        #cal-json-exp-section {display: block;}
+        #cal-json-exp-section.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -103,20 +111,44 @@
         </div>
 
         <div class="section" id="window-size-section">
-            <h2>Window size</h2>
             Select window size for Vmax regression
             <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
             <div id="wd-size-error"></div>
         </div>
 
         <div class="section" id="select-quantity-section">
-            <h2>{{ quantity_input.title }}</h2>
-            Select the quantity to perform Calibration
+            Select quantity to derive concentration from
             <select id="regressed-quantity">
                 {% for quantity in quantity_input.quantities %}
                 <option value="{{ quantity }}">{{ quantity }}</option>
                 {% endfor %}
             </select>
+        </div>
+
+        <div class="section" id="cal-json-exp-section"> 
+            <h3>Select type of Calibration you'd like to do</h3>
+            <select id="cal-mode-select">
+                <option value="kinetics">kinetics</option>
+                <option value="point">point</option>
+            </select>
+        </div>
+
+        <div class="section" id="cal-json-sel-section">
+            <div id="file-table-container">
+                <table id="json-table">
+                    <tr><th>Calibrated JSON</th><th>Action</th></tr>
+                    {% if cal_json_list %}
+                        {% for file in cal_json_list %}
+                        <tr>
+                            <td>{{ file }}</td>
+                            <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="2">No Calibrated JSON is available.</td></tr>
+                    {% endif %}
+                </table> 
+            </div>
         </div>
         
         <div class="section">
@@ -143,6 +175,10 @@
             <h2>Data Display</h2>
             <!-- Display selected file name -->
             <div id="selected-file-display">No file selected</div>
+            <div class="section" id="point-json-exp-section">
+                Select calibration point at <input type="number" id="cal-point"> <span id="cal-time-unit" style="font-weight: bold;">second</span>
+
+            </div>
             <div id="absorbance-reader-section">
                 Concentration from the csv is 
                 <input type="number" id="abs-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
@@ -167,7 +203,9 @@
                     <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
                 </label>
                 <label>
-                    <input type="checkbox" id="full-display" onchange="toggleMode()">Full display: See all data and special lines
+                    <input type="checkbox" id="full-display" onchange="toggleMode()">Full display: See all data and special lines</p>
+                </label>
+                <label>
                 </label>
             </div>
             <div id="analysis-info"></div>
@@ -189,7 +227,8 @@
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
 
-        // $("#select-quantity-section").addClass("hidden")
+        $("#point-json-exp-section").addClass("hidden");
+        $("#cal-json-exp-section").addClass("hidden");
 
         const input = document.getElementById("window-size");
 
@@ -245,21 +284,39 @@
                 }
             }, 5000);
 
+            $("#time-unit").on("change", function(){
+                const currTimeUnit = $(this).val().slice(0, -1);
+                $("#cal-time-unit").text(currTimeUnit);
+            })
             // Initialize measurement method listener
             $("#measurement-mode").on("change", function() {
                 const mode = $(this).val();
                 currentMeasurementMode = mode;
                 console.log("curr mode", currentMeasurementMode);
-                if (mode ==="calibrate") {
-                    $("#window-size-section").addClass("hidden");
-                    $("#select-quantity-section").removeClass("hidden");
-
-                } else if (mode === "kinetics") {
+                if (mode === "kinetics") {
                     $("#window-size-section").removeClass("hidden");
                     $("#select-quantity-section").removeClass("hidden");
+                    $("#point-json-exp-section").addClass("hidden");
+                    $("#cal-json-sel-section").removeClass("hidden");
+                    $("#kinetics-lines").removeClass("hidden");
+                    $("#cal-json-exp-section").addClass("hidden");
+                    $("#range-value").val("1000").prop("disabled", false);
+                } else if (mode === "point"){
+                    $("#window-size-section").addClass("hidden");
+                    $("#select-quantity-section").addClass("hidden"); 
+                    $("#point-json-exp-section").removeClass("hidden");
+                    $("#cal-json-sel-section").removeClass("hidden");
+                    $("#kinetics-lines").addClass("hidden");
+                    $("#cal-json-exp-section").addClass("hidden");
+                    $("#range-value").val("1000").prop("disabled", false);
                 } else {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
+                    $("#point-json-exp-section").addClass("hidden");
+                    $("#cal-json-sel-section").addClass("hidden");
+                    $("#kinetics-lines").addClass("hidden");
+                    $("#cal-json-exp-section").removeClass("hidden");
+                    $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -330,12 +387,13 @@
                     try {
                         const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                         const data = await response.json();
-                        const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Absorbance"];
-                        const cal_headers = ["Absorbance","Vmax","Slope","Saturation","Time To Sat","TimeUnit","BlankType"];
+                        const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
+                        const cal_headers_1 = ["Concentration","Vmax","Slope","Saturation","Time To Sat", "Unit", "TimeUnit","BlankType"];
+                        const cal_headers_2 = ["Concentration", "Measurement", "Unit", "TimePoint", "TimeUnit", "BlankType"];
                         if (data.headers) {
                             const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
                             console.log("Is header ", isMeasHeader);
-                            const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers);
+                            const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
                             if (currentMeasurementMode === "kinetics" || currentMeasurementMode === "point") {
                                 console.log("current data header is", data.headers);
                                 return isMeasHeader;
@@ -455,8 +513,8 @@
                         updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
                         if (currentMeasurementMode === "kinetics") {
                             $("absorbance-reader-section").removeClass("hidden");
-                            const absValueInput = document.getElementById('abs-value-read');
-                            const absValueFromFile = response.data.map(row => row['Absorbance'])[0];
+                            const absValueInput = document.getElementById('con-value-read');
+                            const absValueFromFile = response.data.map(row => row['Concentration'])[0];
                             
                             if (absValueFromFile !== "NONE") {
                                 console.log("Abs Value from file is", absValueFromFile);
@@ -887,7 +945,7 @@
         function exportData() {
             const saveDir = $("#save-dir").val() || "";
             const saveFile = $("#save-file").val() || "results";
-            const absorbance = $("#abs-value-read").val() || "NONE";
+            const concentration = $("#con-value-read").val() || "NONE";
             const timeUnit = $("#time-unit").val();
             // const fullPath = saveDir + delimiter + saveFile;
 
@@ -919,7 +977,7 @@
                         slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
                         sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
                         timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
-                        abs: absorbance,
+                        con: concentration,
                         blanked: blankedType,
                         timeUnit: timeUnit,
                         newFile: newFile

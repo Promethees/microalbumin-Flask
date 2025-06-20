@@ -127,7 +127,7 @@ def get_logs():
     return jsonify({'status': 'success', 'logs': 'No logs available'})
 
 @app.route('/export_data', methods=['POST'])
-def export_data():
+def export_data(mode="kinetics"):
     default_path = os.path.join(os.getcwd(), "export_data")
     data = request.get_json()
     print(f"data is {data}")
@@ -136,10 +136,12 @@ def export_data():
     vmax = data.get('vmax', 'NONE')
     slope = data.get('slope', '0.0000')
     sat = data.get('sat', 'NONE')
-    absorbance = data.get('abs')
+    concentration = data.get('con')
+    time_to_sat = data.get('timeSat')
+
     blankT = data.get('blanked')
     time_unit = data.get('timeUnit')
-    time_to_sat = data.get('timeSat')
+    
     newFile = data.get('newFile')
     try:
         
@@ -163,13 +165,16 @@ def export_data():
         with open(full_path, "a", newline='') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
-                writer.writerow(['Absorbance', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'TimeUnit', 'BlankType'])  # Write header if new file
+                writer.writerow(['Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'TimeUnit', 'BlankType'])  # Write header if new file
+                writer.writerow(['Concentration', 'Value', 'Unit', 'Time', 'TimeUnit', 'BlankType'])
             # writer.writerow([vmax, slope, sat])  # Append data
-            if check_row_exist(full_path, absorbance, blankT):
-                message = f"Error: This {absorbance} nM/l absorbance value with this blank Type \"{blankT}\" already exist in {full_path}"
+            if check_row_exist(full_path, concentration, blankT):
+                message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
                 status = "error"
             else: 
-                writer.writerow([absorbance,vmax,slope,sat,time_to_sat,time_unit,blankT])
+                writer.writerow([concentration,vmax,slope,sat,time_to_sat,time_unit,blankT])
+
+                writer.writerow([concentrationn,value,unit.time,timeunit,blankT])
                 message = f"Data exported at {full_path}"
                 status = "success" 
             f.close()
@@ -202,6 +207,9 @@ def get_csv_headers():
         df = pd.read_csv(read_file, nrows=0)
         return jsonify({'headers': df.columns.tolist()}) 
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
+
+@app.route('/get_json_cal', methods=['GET'])
+def 
 
 def is_port_open(host, port):
     """Check if the specified port is open."""
