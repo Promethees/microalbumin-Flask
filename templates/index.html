@@ -383,6 +383,9 @@
                 console.log("AJAX error:", textStatus, errorThrown);
                 $("#error-message").text("Error updating directory").show();
             });
+            $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
+                console.log("")
+            })
         }
 
         async function filterFiles(files) {
@@ -429,7 +432,8 @@
                 // console.log("Filtered files:", filteredFiles);
                 if (filteredFiles && filteredFiles.length > 0) {
                     filteredFiles.forEach(file => {
-                        html += `<tr><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
+                        const isSelected = file === currentFile ? ' class="selected"' : '';
+                        html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
                     });
                 } else {
                     html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
