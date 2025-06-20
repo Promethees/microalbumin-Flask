@@ -1,10 +1,10 @@
 import os
 import glob
 
-def get_file_list(directory):
+def get_file_list(directory, fileType="*.csv"):
     try:
         print(f"Scanning directory: {directory}")
-        files = glob.glob(os.path.join(directory, "*.csv"))
+        files = glob.glob(os.path.join(directory, fileType))
         file_names = [os.path.basename(f) for f in files if not os.path.basename(f).startswith('.')]
         # Sort files alphabetically, case-insensitive
         file_names.sort(key=str.lower, reverse=True)

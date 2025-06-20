@@ -46,8 +46,8 @@
         #select-quantity-section.hidden { display: none; }
         #data-display-section { display: block; }
         #data-display-section.hidden { display: none; }
-        #absorbance-reader-section { display: block; }
-        #absorbance-reader-section.hidden { display: none; }
+        #concentration-reader-section { display: block; }
+        #concentration-reader-section.hidden { display: none; }
         #point-json-exp-section {display: block;}
         #point-json-exp-section.hidden { display: none; }
         #cal-json-sel-section { display: block; }
@@ -149,6 +149,7 @@
                     {% endif %}
                 </table> 
             </div>
+            <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
         </div>
         
         <div class="section">
@@ -179,9 +180,9 @@
                 Select calibration point at <input type="number" id="cal-point"> <span id="cal-time-unit" style="font-weight: bold;">second</span>
 
             </div>
-            <div id="absorbance-reader-section">
+            <div id="concentration-reader-section">
                 Concentration from the csv is 
-                <input type="number" id="abs-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
+                <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
             </div>
             <div id="export-analysis">
             <div>
@@ -223,6 +224,7 @@
         let myChart = null;
         let scriptRunning = false;
         let currentMeasurementMode = "kinetics";
+        let currentFile = null;
 
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
@@ -389,13 +391,12 @@
                         const data = await response.json();
                         const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
                         const cal_headers_1 = ["Concentration","Vmax","Slope","Saturation","Time To Sat", "Unit", "TimeUnit","BlankType"];
-                        const cal_headers_2 = ["Concentration", "Measurement", "Unit", "TimePoint", "TimeUnit", "BlankType"];
+                        const cal_headers_2 = ["Concentration", "Value", "Unit", "TimePoint", "TimeUnit", "BlankType"];
                         if (data.headers) {
                             const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
-                            console.log("Is header ", isMeasHeader);
                             const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
                             if (currentMeasurementMode === "kinetics" || currentMeasurementMode === "point") {
-                                console.log("current data header is", data.headers);
+                                // console.log("current data header is", data.headers);
                                 return isMeasHeader;
                             } else if (currentMeasurementMode === "calibrate") {
                                 return isCalHeader;
@@ -417,9 +418,8 @@
         }
 
         function updateFileTable(files, deselect) {
+
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
-            // console.log("files are ", files);
-            // const filteredFiles = filterFiles(files);
 
             filterFiles(files).then((filteredFiles) => {
                 // console.log("Filtered files:", filteredFiles);
@@ -447,47 +447,62 @@
                 $("#selected-file-display").html(`No file selected`);
         }
 
-        function selectFile(filename, button) {
-            console.log("Selected file:", filename);
-            $("#file-table tr").removeClass("selected");
+        function selectFile(fileName, button, tableSelector = "#file-table") {
+            console.log("Selected file:", fileName);
+            console.log("Table selector is ", tableSelector);
+            
+            // Clear previous selection and highlight the current row
+            $(`${tableSelector} tr`).removeClass("selected");
             $(button).closest("tr").addClass("selected");
+
+            if (tableSelector === "#file-table") {
+                processDataDisplay(fileName);
+            }             
+        }
+
+        function processDataDisplay(fileName, calculateFromJSON=false) {
+            // Get user inputs
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
             let window_size = $("#window-size").val();
+
+            // Validate window size
             if (window_size < 3) {
                 $("#wd-size-error").text("Window size must be greater than 3.").show();
                 return;
-            } else {
-                if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
-                    $("#wd-size-error").text("Window size must be must be Integer.").show();
-                    return;
-                } else {
-                    $("#wd-size-error").hide();
-                }
             }
-            fetchData(range, unit, window_size, filename);
-            currentFile = filename;
+
+            if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
+                $("#wd-size-error").text("Window size must be an integer.").show();
+                return;
+            }
+
+            // Clear error message if input is valid
+            $("#wd-size-error").hide();
+
+            // Proceed with fetching and displaying data
+            fetchData(range, unit, window_size, fileName, calculateFromJSON);
+            currentFile = fileName;
             updateFileDisplay(currentFile);
         }
 
-        function deselectFile() {
+
+        function deselectFile(tableSelector="#file-table") {
             console.log("Deselecting file");
-            $("#file-table tr").removeClass("selected");
-            destroyCharts();
-            $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-            currentFile = null;
-            $("#analysis-info").text("");
-            updateFileDisplay(currentFile);
+            $(`${file-table} tr`).removeClass("selected");
+            if (tableSelector === "#file-table") {
+                destroyCharts();
+                $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
+                currentFile = null;
+                $("#analysis-info").text("");
+                updateFileDisplay(currentFile);
+            } 
         }
 
-        function fetchData(range, unit, window_size, filename) {
+        function fetchData(range, unit, window_size, filename, calculateFromJSON=false) {
             $.get('/get_data', {
                 file: $("#directory").val() + delimiter + filename
-                // range: range,
-                // unit: unit,
-                // window_size: window_size
             }, function(response) {
-                // console.log("Data response:", response);
                 if (response.data && response.data.length > 0) {
                     if (window_size > response.data.length/2) {
                         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide()
@@ -512,20 +527,20 @@
                         })
                         updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
                         if (currentMeasurementMode === "kinetics") {
-                            $("absorbance-reader-section").removeClass("hidden");
-                            const absValueInput = document.getElementById('con-value-read');
-                            const absValueFromFile = response.data.map(row => row['Concentration'])[0];
+                            $("concentration-reader-section").removeClass("hidden");
+                            const conValueInput = document.getElementById('con-value-read');
+                            const conValueFromFile = response.data.map(row => row['Concentration'])[0];
                             
-                            if (absValueFromFile !== "NONE") {
-                                console.log("Abs Value from file is", absValueFromFile);
-                                absValueInput.value = absValueFromFile;
-                                absValueInput.disabled = true;
+                            if (conValueFromFile !== "NONE") {
+                                console.log("Abs Value from file is", conValueFromFile);
+                                conValueInput.value = absValueFromFile;
+                                conValueInput.disabled = true;
                             } else {
-                                absValueInput.disabled = false;
-                                absValueInput.value = "";
+                                conValueInput.disabled = false;
+                                conValueInput.value = "";
                             }
                         } else 
-                            $("absorbance-reader-section").addClass("hidden");
+                            $("concentration-reader-section").addClass("hidden");
                     }
                 } else {
                     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
@@ -1107,7 +1122,7 @@
             });
         }
 
-        let currentFile = null;
+        // let currentFile = null;
         setInterval(function() {
             if (currentFile) {
                 let range = $("#range-value").val();

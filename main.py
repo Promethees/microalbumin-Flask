@@ -27,6 +27,12 @@ log_file = "log/script_logs.txt"
 abs_col = 0
 blankT_col = 6
 
+os_name = platform.system().lower()
+if "window" in os_name:
+    delimiter = "\\"
+else:
+    delimiter = "/"
+
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
     global log_file
@@ -55,13 +61,17 @@ def index():
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
+    cal_json_list = get_file_list(os.path.join(os.getcwd() + delimiter + "json", "kinetics"), "*.json")
+    print("reading default cal_json_list from ", os.path.join(os.getcwd(), "kinetics"))
+    print(cal_json_list)
     return render_template('index.html', 
                          title="Easy Sensor Kit",
                          directory=directory,
                          range_input=range_input,
                          mode_input=mode_input,
                          quantity_input=quantity_input,
-                         file_list=file_list)
+                         file_list=file_list,
+                         cal_json_list=cal_json_list)
 
 @app.route('/browse', methods=['POST'])
 def browse():
@@ -209,7 +219,13 @@ def get_csv_headers():
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
 @app.route('/get_json_cal', methods=['GET'])
-def 
+def get_json_cal(mode = "kinetics"):
+    json_path = os.path.join(os.getcwd(), mode)
+    if os.path.exists(json_path):
+        json_files = get_file_list(json_path, "*.json")
+
+        return jsonify({'status': 'success', 'files': json_files})
+    return jsonify({'status': 'error', 'message': "Invalid directory"})
 
 def is_port_open(host, port):
     """Check if the specified port is open."""
