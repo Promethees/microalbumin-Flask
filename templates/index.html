@@ -26,6 +26,9 @@
         #file-table { width: 100%; }
         #file-table tr.selected { background-color: #e0f7fa; }
         #file-table button { cursor: pointer; }
+        #json-table { width: 100%; }
+        #json-table tr.selected { background-color: #e0f7fa; }
+        #json-table button { cursor: pointer; }
         #directory { width: 70%; }
         #dir-suggestions { margin-top: 5px; }
         #parent-dir, #child-dirs { margin-top: 5px; max-height: 100px; overflow-y: auto; }
@@ -141,7 +144,7 @@
                         {% for file in cal_json_list %}
                         <tr>
                             <td>{{ file }}</td>
-                            <td><button onclick="selectFile('{{ file }}', this '#json-table')">Select</button></td>
+                            <td><button onclick="selectFile('{{ file }}', this, '#json-table')">Select</button></td>
                         </tr>
                         {% endfor %}
                     {% else %}
@@ -149,7 +152,7 @@
                     {% endif %}
                 </table> 
             </div>
-            <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
+            <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
         </div>
         
         <div class="section">
@@ -225,6 +228,7 @@
         let scriptRunning = false;
         let currentMeasurementMode = "kinetics";
         let currentFile = null;
+        let currentJSON = null;
 
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
@@ -457,10 +461,15 @@
 
             if (tableSelector === "#file-table") {
                 processDataDisplay(fileName);
-            }             
+            } else if (tableSelector === "#json-table") {
+                currentJSON = fileName;
+                console.log("Select json file", currentJSON);
+                if (currentFile) 
+                    processDataDisplay(currentFile, currentJSON);
+            }    
         }
 
-        function processDataDisplay(fileName, calculateFromJSON=false) {
+        function processDataDisplay(fileName, jsonFile=null) {
             // Get user inputs
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
@@ -481,7 +490,7 @@
             $("#wd-size-error").hide();
 
             // Proceed with fetching and displaying data
-            fetchData(range, unit, window_size, fileName, calculateFromJSON);
+            fetchData(range, unit, window_size, fileName, jsonFile);
             currentFile = fileName;
             updateFileDisplay(currentFile);
         }
@@ -489,17 +498,21 @@
 
         function deselectFile(tableSelector="#file-table") {
             console.log("Deselecting file");
-            $(`${file-table} tr`).removeClass("selected");
+            $(`${tableSelector} tr`).removeClass("selected");
             if (tableSelector === "#file-table") {
                 destroyCharts();
                 $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
                 currentFile = null;
                 $("#analysis-info").text("");
                 updateFileDisplay(currentFile);
-            } 
+            } else if (tableSelector === "#json-table") {
+                currentJSON = null;
+                processDataDisplay(currentFile, currentJSON);
+            }
         }
 
-        function fetchData(range, unit, window_size, filename, calculateFromJSON=false) {
+        function fetchData(range, unit, window_size, filename, jsonFile) {
+            console.log("JSON file is ", jsonFile);
             $.get('/get_data', {
                 file: $("#directory").val() + delimiter + filename
             }, function(response) {
@@ -532,7 +545,6 @@
                             const conValueFromFile = response.data.map(row => row['Concentration'])[0];
                             
                             if (conValueFromFile !== "NONE") {
-                                console.log("Abs Value from file is", conValueFromFile);
                                 conValueInput.value = conValueFromFile;
                                 conValueInput.disabled = true;
                             } else {
@@ -1128,7 +1140,7 @@
                 let range = $("#range-value").val();
                 let unit = $("#time-unit").val();
                 let window_size = $("#window-size").val();
-                fetchData(range, unit, window_size, currentFile);
+                fetchData(range, unit, window_size, currentFile, currentJSON);
                 $("#data-display-section").removeClass("hidden");
             } else $("#data-display-section").addClass("hidden");
         }, 500);
