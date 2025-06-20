@@ -94,10 +94,10 @@
         </div>
 
         <div class="section">
-            <h2>{{ method_input.title }}</h2>
-            <select id="measurement-method">
-                {% for method in method_input.methods %}
-                <option value="{{ method }}">{{ method }}</option>
+            <h2>{{ mode_input.title }}</h2>
+            <select id="measurement-mode">
+                {% for mode in mode_input.modes %}
+                <option value="{{ mode }}">{{ mode }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -111,7 +111,7 @@
 
         <div class="section" id="select-quantity-section">
             <h2>{{ quantity_input.title }}</h2>
-            Select the quantity to perform Logarit Regression
+            Select the quantity to perform Calibration
             <select id="regressed-quantity">
                 {% for quantity in quantity_input.quantities %}
                 <option value="{{ quantity }}">{{ quantity }}</option>
@@ -144,7 +144,7 @@
             <!-- Display selected file name -->
             <div id="selected-file-display">No file selected</div>
             <div id="absorbance-reader-section">
-                The read absorbance from the csv is 
+                Concentration from the csv is 
                 <input type="number" id="abs-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
             </div>
             <div id="export-analysis">
@@ -189,7 +189,7 @@
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
 
-        $("#select-quantity-section").addClass("hidden")
+        // $("#select-quantity-section").addClass("hidden")
 
         const input = document.getElementById("window-size");
 
@@ -246,16 +246,20 @@
             }, 5000);
 
             // Initialize measurement method listener
-            $("#measurement-method").on("change", function() {
-                const method = $(this).val();
-                currentMeasurementMode = method;
-                if (method === "logarit") {
+            $("#measurement-mode").on("change", function() {
+                const mode = $(this).val();
+                currentMeasurementMode = mode;
+                console.log("curr mode", currentMeasurementMode);
+                if (mode ==="calibrate") {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").removeClass("hidden");
 
-                } else {
+                } else if (mode === "kinetics") {
                     $("#window-size-section").removeClass("hidden");
-                    $("#select-quantity-section").addClass("hidden");
+                    $("#select-quantity-section").removeClass("hidden");
+                } else {
+                    $("#window-size-section").addClass("hidden");
+                    $("#select-quantity-section").addClass("hidden"); 
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -318,30 +322,63 @@
             });
         }
 
+        async function filterFiles(files) {
+            const checks = await Promise.all(
+                files.map(async (fileName) => {
+                    const filePath = $("#directory").val() + delimiter + fileName;
+
+                    try {
+                        const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
+                        const data = await response.json();
+                        const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Absorbance"];
+                        const cal_headers = ["Absorbance","Vmax","Slope","Saturation","Time To Sat","TimeUnit","BlankType"];
+                        if (data.headers) {
+                            const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
+                            console.log("Is header ", isMeasHeader);
+                            const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers);
+                            if (currentMeasurementMode === "kinetics" || currentMeasurementMode === "point") {
+                                console.log("current data header is", data.headers);
+                                return isMeasHeader;
+                            } else if (currentMeasurementMode === "calibrate") {
+                                return isCalHeader;
+                            }
+                            // return currentMeasurementMode === "kinetics" ? hasTimestamp : !hasTimestamp;
+                        }
+                        return false; // on error or no headers
+                    } catch (error) {
+                        console.error("Failed to fetch headers for", fileName, error);
+                        return false;
+                    }
+                })
+            );
+
+            // Now filter files based on the results
+            const filteredFiles = files.filter((_, idx) => checks[idx]);
+
+            return filteredFiles;
+        }
+
         function updateFileTable(files, deselect) {
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
-            let filteredFiles = files.filter(csvText => {
-                const firstLine = csvText.trim().split("\n")[0];
-                const headers = firstLine.split(",").map(h => h.trim());
-                if (currentMeasurementMode === "kinetics") 
-                    return !headers.includes("Timestamp");
-                else
-                    return headers.includes("Timestamp");
-            });
+            // console.log("files are ", files);
+            // const filteredFiles = filterFiles(files);
 
-            if (filteredFiles && filteredFiles.length > 0) {
-                filteredFiles.forEach(file => {
-                    html += `<tr><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
-                });
-            } else {
-                html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
-            }
-            $("#file-table").html(html);
-            if (deselect) {
-                currentFile = null;
-                $("#file-table tr").removeClass("selected");
-                updateFileDisplay(currentFile);
-            }
+            filterFiles(files).then((filteredFiles) => {
+                // console.log("Filtered files:", filteredFiles);
+                if (filteredFiles && filteredFiles.length > 0) {
+                    filteredFiles.forEach(file => {
+                        html += `<tr><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
+                    });
+                } else {
+                    html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
+                }
+                $("#file-table").html(html);
+                if (deselect) {
+                    currentFile = null;
+                    $("#file-table tr").removeClass("selected");
+                    updateFileDisplay(currentFile);
+                }
+            });  
         }
 
         function updateFileDisplay(curFile) {
@@ -387,10 +424,10 @@
 
         function fetchData(range, unit, window_size, filename) {
             $.get('/get_data', {
-                file: $("#directory").val() + delimiter + filename,
-                range: range,
-                unit: unit,
-                window_size: window_size
+                file: $("#directory").val() + delimiter + filename
+                // range: range,
+                // unit: unit,
+                // window_size: window_size
             }, function(response) {
                 // console.log("Data response:", response);
                 if (response.data && response.data.length > 0) {
@@ -880,8 +917,8 @@
                         save_file: saveFile,
                         vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
                         slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
-                        sat: analysisData.saturationValue !== "--" ? analysisData : "NONE",
-                        timeSat : analysisData.timeToSaturation !== "--" ? analysisData : "NONE",
+                        sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
+                        timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
                         abs: absorbance,
                         blanked: blankedType,
                         timeUnit: timeUnit,

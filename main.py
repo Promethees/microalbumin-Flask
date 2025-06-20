@@ -11,11 +11,12 @@ import platform
 import subprocess
 import atexit
 import csv
+import pandas as pd
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
-from method import get_method_input
+from mode import get_mode_input
 from measure import get_dynamic_data
 from quantity import get_quantity_input
 from file import get_file_list
@@ -51,14 +52,14 @@ atexit.register(cleanup)
 def index():
     directory = get_directory()
     range_input = get_range_input()
-    method_input = get_method_input()
+    mode_input = get_mode_input()
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
     return render_template('index.html', 
                          title="Easy Sensor Kit",
                          directory=directory,
                          range_input=range_input,
-                         method_input=method_input,
+                         mode_input=mode_input,
                          quantity_input=quantity_input,
                          file_list=file_list)
 
@@ -190,12 +191,17 @@ def check_row_exist(full_path, absorbance, blankT):
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
-    range_value = request.args.get('range')
-    time_unit = request.args.get('unit')
-    # print(f"Range value is: {range_value}")
-    data = get_dynamic_data(selected_file, range_value, time_unit)
-    # print(f"Data read is {data}")
+    data = get_dynamic_data(selected_file)
     return jsonify(data)
+
+@app.route('/get_headers', methods=['GET'])
+def get_csv_headers():
+    print("Hello Hello")
+    read_file = request.args.get('file')
+    if os.path.exists(read_file):
+        df = pd.read_csv(read_file, nrows=0)
+        return jsonify({'headers': df.columns.tolist()}) 
+    return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
 def is_port_open(host, port):
     """Check if the specified port is open."""
