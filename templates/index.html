@@ -141,7 +141,7 @@
                         {% for file in cal_json_list %}
                         <tr>
                             <td>{{ file }}</td>
-                            <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
+                            <td><button onclick="selectFile('{{ file }}', this '#json-table')">Select</button></td>
                         </tr>
                         {% endfor %}
                     {% else %}
@@ -533,7 +533,7 @@
                             
                             if (conValueFromFile !== "NONE") {
                                 console.log("Abs Value from file is", conValueFromFile);
-                                conValueInput.value = absValueFromFile;
+                                conValueInput.value = conValueFromFile;
                                 conValueInput.disabled = true;
                             } else {
                                 conValueInput.disabled = false;
