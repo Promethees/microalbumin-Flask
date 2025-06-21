@@ -12,6 +12,7 @@ import subprocess
 import atexit
 import csv
 import pandas as pd
+import json
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -32,6 +33,8 @@ if "window" in os_name:
     delimiter = "\\"
 else:
     delimiter = "/"
+
+json_root_path = os.path.join(os.getcwd(), "json")
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
@@ -61,7 +64,7 @@ def index():
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
-    cal_json_list = get_file_list(os.path.join(os.getcwd() + delimiter + "json", "kinetics"), "*.json")
+    cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
     print("reading default cal_json_list from ", os.path.join(os.getcwd(), "kinetics"))
     print(cal_json_list)
     return render_template('index.html', 
@@ -221,12 +224,25 @@ def get_csv_headers():
 @app.route('/get_json_cal', methods=['GET'])
 def get_json_cal():
     mode = request.args.get('mode')
-    json_path = os.path.join(os.getcwd() + delimiter + "json", mode)
+    json_path = os.path.join(json_root_path, mode)
     if os.path.exists(json_path):
         json_files = get_file_list(json_path, "*.json")
 
         return jsonify({'status': 'success', 'files': json_files})
     return jsonify({'status': 'error', 'message': "Invalid directory"})
+
+@app.route('/get_json_content', methods=['GET'])
+def get_json_content():
+    selected_json = request.args.get('json_name')
+    mode = request.args.get('mode')
+    json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
+    print("print the json path ", json_path)
+    if os.path.exists(json_path):
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        print("print the json data", data)
+        return jsonify({'status': 'success', 'json': data, 'path': json_path})
+    return jsonify({'status': 'error', 'message': 'Error in reading the json file'})
 
 def is_port_open(host, port):
     """Check if the specified port is open."""

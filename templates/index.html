@@ -59,6 +59,8 @@
         #kinetics-lines.hidden { display: none; }
         #cal-json-exp-section {display: block;}
         #cal-json-exp-section.hidden { display: none; }
+        #json-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
+        #json-display.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -122,8 +124,8 @@
         <div class="section" id="select-quantity-section">
             Select quantity to derive concentration from
             <select id="regressed-quantity">
-                {% for quantity in quantity_input.quantities %}
-                <option value="{{ quantity }}">{{ quantity }}</option>
+                {% for quantity in quantity_input.quantities %}s
+                    <option value="{{ quantity|lower|replace(' ', '_') }}">{{ quantity }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -153,6 +155,7 @@
                 </table> 
             </div>
             <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
+            <div id="json-display"></div>
         </div>
         
         <div class="section">
@@ -233,6 +236,11 @@
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
 
+        let json_msg = 'When fit_type: \n';
+        json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
+        json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
+        json_msg += '  + logarit: concentration = quantity_json[0]*loge(quantity_json[1]*quantity_value)\n';
+
         $("#point-json-exp-section").addClass("hidden");
         $("#cal-json-exp-section").addClass("hidden");
 
@@ -288,7 +296,7 @@
                 if (currentDir) {
                     updateDirectory(currentDir, false);
                 }
-            }, 5000);
+            }, 500);
 
             $("#time-unit").on("change", function(){
                 const currTimeUnit = $(this).val().slice(0, -1);
@@ -299,6 +307,12 @@
                 const mode = $(this).val();
                 currentMeasurementMode = mode;
                 console.log("curr mode", currentMeasurementMode);
+                const currentDir = $("#directory").val();
+                if (currentDir) {
+                    updateDirectory(currentDir, true);
+                }
+                currentJSON = null;
+                $("#json-display").text("");
                 if (mode === "kinetics") {
                     $("#window-size-section").removeClass("hidden");
                     $("#select-quantity-section").removeClass("hidden");
@@ -307,6 +321,7 @@
                     $("#kinetics-lines").removeClass("hidden");
                     $("#cal-json-exp-section").addClass("hidden");
                     $("#range-value").val("1000").prop("disabled", false);
+                    $("$json-display").removeClass("hidden");
                 } else if (mode === "point"){
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -315,6 +330,7 @@
                     $("#kinetics-lines").addClass("hidden");
                     $("#cal-json-exp-section").addClass("hidden");
                     $("#range-value").val("1000").prop("disabled", false);
+                    $("$json-display").removeClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -323,6 +339,7 @@
                     $("#kinetics-lines").addClass("hidden");
                     $("#cal-json-exp-section").removeClass("hidden");
                     $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
+                    $("$json-display").addClass("hidden");
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -386,7 +403,6 @@
                 $("#error-message").text("Error updating directory").show();
             });
             $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
-                console.log("JSON files are ", response.files);
                 console.log("Selected JSON is ", currentJSON);
                 updateJSONTable(response.files);
             })
@@ -439,10 +455,6 @@
                 html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
             }
             $("#json-table").html(html);
-            // if (deselect) {
-            //     currentJSON = null;
-            //     $("#json-table tr").removeClass("selected");
-            // }
         }
 
         function updateFileTable(files, deselect) {
@@ -450,7 +462,6 @@
             let html = '<tr><th>File Name</th><th>Action</th></tr>';
 
             filterFiles(files).then((filteredFiles) => {
-                // console.log("Filtered files:", filteredFiles);
                 if (filteredFiles && filteredFiles.length > 0) {
                     filteredFiles.forEach(file => {
                         const isSelected = file === currentFile ? ' class="selected"' : '';
@@ -476,6 +487,16 @@
                 $("#selected-file-display").html(`No file selected`);
         }
 
+        function fetchJSON(jsonFile, callback) {
+            $.get('/get_json_content', {
+                json_name: jsonFile,
+                mode: currentMeasurementMode
+            }, function(response) {
+                console.log("Retrieved json data is", response.json);
+                callback(response.json, response.path);
+            })
+        }
+
         function selectFile(fileName, button, tableSelector = "#file-table") {
             console.log("Selected file:", fileName);
             console.log("Table selector is ", tableSelector);
@@ -489,9 +510,21 @@
                 processDataDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
                 currentJSON = fileName;
-                console.log("Select json file", currentJSON);
-                if (currentFile) 
-                    processDataDisplay(currentFile, currentJSON);
+
+                fetchJSON(currentJSON, function(JSON_content, JSON_path) {
+                    console.log("Fetched JSON is ", JSON_content);
+                    // console.log("Select json file", currentJSON);
+                    $("#json-display").text(`Current mode is \"${currentMeasurementMode}\".\nJSON file read from ${JSON_path}\n`);
+                    if (currentMeasurementMode === "kinetics") {
+                        $("#json-display").append("Quantity value is either Vmax, Slope, Saturation, Time to Saturation, which ever is set by user.\n");
+                    } else if (currentMeasurementMode === "point") {
+                         $("#json-display").append("Quantity value is the Absorbance value read from selected data file whose recorded time is the closest to the time set in this JSON.\n")
+                    }
+                    $("#json-display").append(`${json_msg}`);
+                    $("#json-display").append(JSON.stringify(JSON_content, null, 4));
+                    if (currentFile) 
+                        processDataDisplay(currentFile, currentJSON);
+                });
             }    
         }
 
@@ -517,7 +550,7 @@
 
             // Proceed with fetching and displaying data
             fetchData(range, unit, window_size, fileName, jsonFile);
-            updateFileDisplay(currentFile);
+            updateFileDisplay(fileName);
         }
 
 
@@ -532,9 +565,11 @@
                 updateFileDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
                 currentJSON = null;
+                $("#json-display").text("");
                 processDataDisplay(currentFile, currentJSON);
             }
         }
+
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
             console.log("JSON file is ", jsonFile);
@@ -608,6 +643,31 @@
                 fetchData(range, unit, currentFile);
             }
         }
+
+        function computeFit(value, fit_type, coef) {
+            switch (fit_type.toLowerCase()) {
+                case "linear":
+                    // Expect coef = [a, b]
+                    if (coef.length < 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
+                    return coef[0] * value + coef[1];
+
+                case "polynomial":
+                    // Expect coef = [a, b, c]
+                    if (coef.length < 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
+                    return coef[0] * Math.pow(value, 2) + coef[1] * value + coef[2];
+
+                case "logarit":
+                case "logarithmic":
+                    // Expect coef = [a, b]
+                    if (coef.length < 2) throw new Error("Logarithmic fit requires 2 coefficients: [a, b]");
+                    if (coef[1] * value <= 0) throw new Error("Invalid input for logarithm: b * value must be > 0");
+                    return coef[0] * Math.log(coef[1] * value);
+
+                default:
+                    throw new Error("Unknown fit type: " + fit_type);
+            }
+        }
+
 
         function calculateSlopeAndSaturation(allTimestamps, allValues, window_size) {
             if (allTimestamps.length < 2 || allValues.length < 2 || window_size < 2 || window_size > allTimestamps.length) {
