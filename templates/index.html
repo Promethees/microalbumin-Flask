@@ -372,7 +372,9 @@
                 if (response.status === 'success') {
                     $("#directory").val(response.path);
                     $("#error-message").hide();
+                    // console.log("Response files in update directory is: ". response.files);
                     updateFileTable(response.files, deselect);
+                    console.log("Selected display file is ", currentFile);
                     if (deselect) {
                         deselectFile();
                     }
@@ -384,7 +386,8 @@
                 $("#error-message").text("Error updating directory").show();
             });
             $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
-                console.log("response files are ", response.files);
+                console.log("JSON files are ", response.files);
+                console.log("Selected JSON is ", currentJSON);
                 updateJSONTable(response.files);
             })
         }
@@ -429,8 +432,8 @@
             let html = '<tr><th>Calibrated JSON</th><th>Action</th></tr>';
             if (files && files.length > 0) {
                 files.forEach(file => {
-                   const isSelected = file === currentFile ? ' class="selected"' : ''; 
-                   html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
+                   const isSelected = file === currentJSON ? ' class="selected"' : ''; 
+                   html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">Select</button></td></tr>`;
                 })
             } else {
                 html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
@@ -482,7 +485,8 @@
             $(button).closest("tr").addClass("selected");
 
             if (tableSelector === "#file-table") {
-                processDataDisplay(fileName);
+                currentFile = fileName;
+                processDataDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
                 currentJSON = fileName;
                 console.log("Select json file", currentJSON);
@@ -513,7 +517,6 @@
 
             // Proceed with fetching and displaying data
             fetchData(range, unit, window_size, fileName, jsonFile);
-            currentFile = fileName;
             updateFileDisplay(currentFile);
         }
 
