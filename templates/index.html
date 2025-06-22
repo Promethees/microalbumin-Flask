@@ -1030,9 +1030,11 @@
                 filteredData[0]['Measurement'] : 'Measurement';
 
             if (isSplitMode) {
-                $("#derived-concentration-section").addClass("hidden");
-                $("#blank-derived-concentration-section").removeClass("hidden");
-                $("#non-blank-derived-concentration-section").removeClass("hidden");
+                if (currentJSON) {
+                    $("#derived-concentration-section").addClass("hidden");
+                    $("#blank-derived-concentration-section").removeClass("hidden");
+                    $("#non-blank-derived-concentration-section").removeClass("hidden");
+                }
 
                 const blankedData = filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
                 const nonBlankedData = filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
@@ -1102,9 +1104,11 @@
                     time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation
                 }
             } else {
-                $("#derived-concentration-section").removeClass("hidden");
-                $("#blank-derived-concentration-section").addClass("hidden");
-                $("#non-blank-derived-concentration-section").addClass("hidden");
+                if (currentJSON) {
+                    $("#derived-concentration-section").removeClass("hidden");
+                    $("#blank-derived-concentration-section").addClass("hidden");
+                    $("#non-blank-derived-concentration-section").addClass("hidden");
+                }
                 const analysis = calculateSlopeAndSaturation(allTimestamps, allValues, window_size);
                 $("#plot-canvas").show();
                 myChart = createChart(
