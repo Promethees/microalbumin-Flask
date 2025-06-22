@@ -61,6 +61,12 @@
         #cal-json-exp-section.hidden { display: none; }
         #json-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
         #json-display.hidden { display: none; }
+        #derived-concentration-section { display: block; }
+        #derived-concentration-section.hidden { display: none; }
+        #blank-derived-concentration-section { display: block; }
+        #blank-derived-concentration-section.hidden { display: none; }
+        #non-blank-derived-concentration-section { display: block; }
+        #non-blank-derived-concentration-section.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -187,8 +193,16 @@
 
             </div>
             <div id="concentration-reader-section">
-                Concentration from the csv is 
-                <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
+                Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
+            </div>
+            <div id="derived-concentration-section">
+                Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> nM/l
+            </div>
+            <div id="blank-derived-concentration-section">
+                Blanked Concentration derived from the csv is <span style="font-weight: bold;" id="blank-der-con-value"></span> nM/l
+            </div>
+            <div id="non-blank-derived-concentration-section">
+                Non blanked concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> nM/l
             </div>
             <div id="export-analysis">
             <div>
@@ -232,6 +246,7 @@
         let currentMeasurementMode = "kinetics";
         let currentFile = null;
         let currentJSON = null;
+        let currentJSONcontent = null;
 
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
@@ -243,6 +258,9 @@
 
         $("#point-json-exp-section").addClass("hidden");
         $("#cal-json-exp-section").addClass("hidden");
+        $("#derived-concentration-section").addClass("hidden");
+        $("#blank-derived-concentration-section").addClass("hidden");
+        $("#non-blank-derived-concentration-section").addClass("hidden");
 
         const input = document.getElementById("window-size");
 
@@ -312,6 +330,7 @@
                     updateDirectory(currentDir, true);
                 }
                 currentJSON = null;
+                currentJSONcontent = null;
                 $("#json-display").text("");
                 if (mode === "kinetics") {
                     $("#window-size-section").removeClass("hidden");
@@ -509,6 +528,16 @@
                 currentFile = fileName;
                 processDataDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
+                if (!$("#split-mode").is(":checked")) {
+                    $("#derived-concentration-section").removeClass("hidden");
+                    $("#blank-derived-concentration-section").addClass("hidden");
+                    $("#non-blank-derived-concentration-section").addClass("hidden");
+                } else {
+                    $("#derived-concentration-section").addClass("hidden");
+                    $("#blank-derived-concentration-section").removeClass("hidden");
+                    $("#non-blank-derived-concentration-section").removeClass("hidden");
+                }
+
                 currentJSON = fileName;
 
                 fetchJSON(currentJSON, function(JSON_content, JSON_path) {
@@ -518,17 +547,18 @@
                     if (currentMeasurementMode === "kinetics") {
                         $("#json-display").append("Quantity value is either Vmax, Slope, Saturation, Time to Saturation, which ever is set by user.\n");
                     } else if (currentMeasurementMode === "point") {
-                         $("#json-display").append("Quantity value is the Absorbance value read from selected data file whose recorded time is the closest to the time set in this JSON.\n")
+                         $("#json-display").append("Quantity value is the Absorbance value read from selected data file whose recorded time is the closest to the time set in this JSON.\n");
                     }
                     $("#json-display").append(`${json_msg}`);
                     $("#json-display").append(JSON.stringify(JSON_content, null, 4));
+                    currentJSONcontent = JSON_content;
                     if (currentFile) 
-                        processDataDisplay(currentFile, currentJSON);
+                        processDataDisplay(currentFile, currentJSONcontent);
                 });
             }    
         }
 
-        function processDataDisplay(fileName, jsonFile=null) {
+        function processDataDisplay(fileName, jsonFileContent=null) {
             // Get user inputs
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
@@ -549,7 +579,7 @@
             $("#wd-size-error").hide();
 
             // Proceed with fetching and displaying data
-            fetchData(range, unit, window_size, fileName, jsonFile);
+            fetchData(range, unit, window_size, fileName, jsonFileContent);
             updateFileDisplay(fileName);
         }
 
@@ -565,8 +595,12 @@
                 updateFileDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
                 currentJSON = null;
+                currentJSONcontent = null;
                 $("#json-display").text("");
-                processDataDisplay(currentFile, currentJSON);
+                processDataDisplay(currentFile, currentJSONcontent);
+                $("#derived-concentration-section").addClass("hidden");
+                $("#blank-derived-concentration-section").addClass("hidden");
+                $("#non-blank-derived-concentration-section").addClass("hidden");
             }
         }
 
@@ -598,9 +632,11 @@
                                 displayRangeInput.value = 1000;
                             }
                         })
-                        updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
-                        if (currentMeasurementMode === "kinetics") {
+                        const analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
+                        console.log("analysis is ", analysis);
+                        if (currentMeasurementMode !== "calibrate") {
                             $("concentration-reader-section").removeClass("hidden");
+                            
                             const conValueInput = document.getElementById('con-value-read');
                             const conValueFromFile = response.data.map(row => row['Concentration'])[0];
                             
@@ -611,8 +647,42 @@
                                 conValueInput.disabled = false;
                                 conValueInput.value = "";
                             }
-                        } else 
+                            if (currentMeasurementMode === "kinetics") {
+                                $("derived-concentration-section").removeClass("hidden");
+                                $("blank-derived-concentration-section").removeClass("hidden");
+                                $("non-blank-derived-concentration-section").removeClass("hidden");
+
+                                
+                                const conQuantityInput = document.getElementById('regressed-quantity').value;
+                                const coef = jsonFile[conQuantityInput]["fit_coef"];
+                                const setDerivedConcentration = document.getElementById('der-con-value');
+                                let value = null;
+                                switch(conQuantityInput) {
+                                    case "vmax":
+                                        value = analysis.vmax;
+                                        break;
+                                    case "slope":
+                                        value = analysis.slope;
+                                        break;
+                                    case "sat":
+                                        value = analysis.sat;
+                                        break;
+                                    case "time_to_sat":
+                                        value = analysis.time_to_sat;
+                                        break;
+                                }
+                                // console.log("value is ", value);
+                                // console.log("jsonFile fit type is ", jsonFile["fit_type"]);
+                                // console.log("Coef is ", coef);
+                                calculated_con = computeFit(value, jsonFile["fit_type"], coef);
+                                console.log("Derive concentration calculated ", calculated_con);
+                                // setDerivedConcentration.value = `${calculated_con}`;
+                                $("#der-con-value").html(`${calculated_con}`);
+                            }
+                        } else {
                             $("concentration-reader-section").addClass("hidden");
+                            $("derived-concentration-section").removeClass("hidden");
+                        }
                     }
                 } else {
                     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
@@ -960,6 +1030,10 @@
                 filteredData[0]['Measurement'] : 'Measurement';
 
             if (isSplitMode) {
+                $("#derived-concentration-section").addClass("hidden");
+                $("#blank-derived-concentration-section").removeClass("hidden");
+                $("#non-blank-derived-concentration-section").removeClass("hidden");
+
                 const blankedData = filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
                 const nonBlankedData = filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
 
@@ -1016,7 +1090,21 @@
                     Saturation = ${nonBlankedChart?.data.datasets[0].analysis.saturationValue}, 
                     Time to Saturation = ${nonBlankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit} </span>`
                 );
+                return {
+                    split: true,
+                    vmax_blanked: analysis_blanked.Vmax,
+                    slope_blanked: analysis_blanked.slope,
+                    sat_blanked: analysis_blanked.saturationValue,
+                    time_to_sat_blanked: analysis_blanked.timeToSaturation,
+                    vmax_non_blanked: analysis_nonblanked.Vmax,
+                    slope_non_blanked: analysis_nonblanked.slope,
+                    sat_non_blanked: analysis_nonblanked.saturationValue,
+                    time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation
+                }
             } else {
+                $("#derived-concentration-section").removeClass("hidden");
+                $("#blank-derived-concentration-section").addClass("hidden");
+                $("#non-blank-derived-concentration-section").addClass("hidden");
                 const analysis = calculateSlopeAndSaturation(allTimestamps, allValues, window_size);
                 $("#plot-canvas").show();
                 myChart = createChart(
@@ -1042,6 +1130,13 @@
                     Saturation = ${analysisDisplay.saturationValue}, 
                     Time to Saturation = ${analysisDisplay.timeToSaturation} ${timeUnit}`
                 );
+                return {
+                    split: false,
+                    vmax: analysis.Vmax,
+                    slope: analysis.slope,
+                    sat: analysis.saturationValue,
+                    time_to_sat: analysis.timeToSaturation
+                }
             }
         }
 
@@ -1225,7 +1320,7 @@
                 let range = $("#range-value").val();
                 let unit = $("#time-unit").val();
                 let window_size = $("#window-size").val();
-                fetchData(range, unit, window_size, currentFile, currentJSON);
+                fetchData(range, unit, window_size, currentFile, currentJSONcontent);
                 $("#data-display-section").removeClass("hidden");
             } else $("#data-display-section").addClass("hidden");
         }, 500);

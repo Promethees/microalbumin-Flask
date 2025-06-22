@@ -179,7 +179,7 @@ def export_data(mode="kinetics"):
             writer = csv.writer(f)
             if not file_exists and newFile:
                 writer.writerow(['Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'TimeUnit', 'BlankType'])  # Write header if new file
-                writer.writerow(['Concentration', 'Value', 'Unit', 'Time', 'TimeUnit', 'BlankType'])
+                # writer.writerow(['Concentration', 'Value', 'Unit', 'Time', 'TimeUnit', 'BlankType'])
             # writer.writerow([vmax, slope, sat])  # Append data
             if check_row_exist(full_path, concentration, blankT):
                 message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
@@ -187,7 +187,7 @@ def export_data(mode="kinetics"):
             else: 
                 writer.writerow([concentration,vmax,slope,sat,time_to_sat,time_unit,blankT])
 
-                writer.writerow([concentrationn,value,unit.time,timeunit,blankT])
+                # writer.writerow([concentration,value,unit.time,timeunit,blankT])
                 message = f"Data exported at {full_path}"
                 status = "success" 
             f.close()
@@ -214,7 +214,6 @@ def get_data():
 
 @app.route('/get_headers', methods=['GET'])
 def get_csv_headers():
-    print("Hello Hello")
     read_file = request.args.get('file')
     if os.path.exists(read_file):
         df = pd.read_csv(read_file, nrows=0)
