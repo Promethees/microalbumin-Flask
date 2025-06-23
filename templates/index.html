@@ -249,6 +249,9 @@
         let refCalPoint = null;
         let analysis = null;
         let json_msg = 'When fit_type: \n';
+        let globalEstimatedValue = null;
+        let currExpTimePoint = null
+
         json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
         json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
         json_msg += '  + logarit: concentration = quantity_json[0]*loge(quantity_json[1]*quantity_value)\n';
@@ -772,6 +775,10 @@
                                     calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
                                     derived_con_text.innerHTML = `${calculated_con}`;                                    
                                 }
+                                currExpTimePoint = $("#exp-json-time-value").val()
+                                if (currExpTimePoint) {
+                                    globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60);
+                                }
 
                             } 
                         } else {
@@ -1214,7 +1221,8 @@
                     slope_non_blanked: analysis_nonblanked.slope,
                     sat_non_blanked: analysis_nonblanked.saturationValue,
                     time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation,
-                    meas: data[0]["Measurement"]
+                    meas: data[0]["Measurement"],
+                    meas_unit: data[0]["Unit"]
                 }
             } else {
                 const mixAnalysis = calculateSlopeAndSaturation(allTimestamps, allValues, window_size);
@@ -1250,7 +1258,8 @@
                     slope: mixAnalysis.slope,
                     sat: mixAnalysis.saturationValue,
                     time_to_sat: mixAnalysis.timeToSaturation,
-                    meas: data[0]["Measurement"]
+                    meas: data[0]["Measurement"],
+                    meas_unit: data[0]["Unit"]
                 }
             }
         }
@@ -1271,37 +1280,61 @@
                 const concentration = $("#con-value-read").val() || "NONE";
                 const timeUnit = $("#time-unit").val();
                 // const fullPath = saveDir + delimiter + saveFile;
-
+                // const timePoint = $("#exp-json-time-value").val(); 
                 let analysisData = null;
                 let newFile = true;
                 if ($("#split-mode").is(":checked")) {
-                    analysisData = {
-                        Vmax: analysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
-                        slope: analysis.slope_blanked * getTimeUnitMultiplier('minutes'),
-                        saturationValue: analysis.sat_blanked * getTimeUnitMultiplier('minutes'),
-                        timeToSaturation: analysis.time_to_sat_blanked * getTimeUnitMultiplier('minutes'),
-                        measurement: analysis.meas
-                    }
-                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "BLANKED");
-                    newFile = false;
+                    if (currentMeasurementMode === "kinetics") {
+                            analysisData = {
+                                Vmax: analysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
+                                slope: analysis.slope_blanked * getTimeUnitMultiplier('minutes'),
+                                saturationValue: analysis.sat_blanked * getTimeUnitMultiplier('minutes'),
+                                timeToSaturation: analysis.time_to_sat_blanked * getTimeUnitMultiplier('minutes'),
+                                measurement: analysis.meas,
+                                measUnit: analysis.meas_unit
+                            }
+                            sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "BLANKED");
+                            newFile = false;
 
-                    analysisData = {
-                        Vmax: analysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
-                        slope: analysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
-                        saturationValue: analysis.sat_non_blanked * getTimeUnitMultiplier('minutes'),
-                        timeToSaturation: analysis.time_to_sat_non_blanked * getTimeUnitMultiplier('minutes'),
-                        measurement: analysis.meas
+                            analysisData = {
+                                Vmax: analysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
+                                slope: analysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
+                                saturationValue: analysis.sat_non_blanked * getTimeUnitMultiplier('minutes'),
+                                timeToSaturation: analysis.time_to_sat_non_blanked * getTimeUnitMultiplier('minutes'),
+                                measurement: analysis.meas,
+                                measUnit: analysis.meas_unit
+                            }
+                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "NON-BLANKED", newFile);
+                    } else {
+                        analysisData = {
+                            estValue: globalEstimatedValue,
+                            timePoint: currExpTimePoint,
+                            measurement: analysis.meas,
+                            measUnit: analysis.meas_unit
+                        } 
+                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "BLANKED");
+                        newFile = false;
+                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "NON-BLANKED", newFile);
                     }
-                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "NON-BLANKED", newFile);
                 }
 
                 else {
-                    analysisData = {
-                        Vmax: analysis.vmax * getTimeUnitMultiplier('minutes'),
-                        slope: analysis.slope * getTimeUnitMultiplier('minutes'),
-                        saturationValue: analysis.sat * getTimeUnitMultiplier('minutes'),
-                        timeToSaturation: analysis.time_to_sat * getTimeUnitMultiplier('minutes'),
-                        measurement: analysis.meas
+                    if (currentMeasurementMode === "kinetics") {
+                        analysisData = {
+                            Vmax: analysis.vmax * getTimeUnitMultiplier('minutes'),
+                            slope: analysis.slope * getTimeUnitMultiplier('minutes'),
+                            saturationValue: analysis.sat * getTimeUnitMultiplier('minutes'),
+                            timeToSaturation: analysis.time_to_sat * getTimeUnitMultiplier('minutes'),
+                            measurement: analysis.meas,
+                            measUnit: analysis.meas_unit
+                        }
+                    } else {
+                        analysisData = {
+                            estValue: globalEstimatedValue,
+                            timePoint: currExpTimePoint,
+                            measurement: analysis.meas,
+                            measUnit: analysis.meas_unit
+                        } 
                     }
                     sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "MIXED");
                 }
@@ -1314,18 +1347,19 @@
                     const data = {
                         save_dir: saveDir,
                         save_file: saveFile,
-                        meas: analysisData.Meas,
                         vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
                         slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
                         sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
                         timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
                         con: concentration,
-                        measUnit: analysisData.MeasUnit !== "" ? analysisData.MeasUnit : "NONE",
+                        measUnit: analysisData.measUnit, 
                         blanked: blankedType,
                         timeUnit: timeUnit,
                         newFile: newFile,
                         measMode: currentMeasurementMode,
-                        meas: analysisData.measurement
+                        meas: analysisData.measurement,
+                        estValue: analysisData.estValue,
+                        timePoint: analysisData.timePoint
                     };
                     $.ajax({
                         url: '/export_data',

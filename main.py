@@ -159,6 +159,10 @@ def export_data(mode="kinetics"):
     
     newFile = data.get('newFile')
     meas_mode = data.get('measMode')
+
+    value = data.get('estValue')
+    time_point = data.get('timePoint')
+    print("Measurmenet mode is ", meas_mode)
     try:
         
         # Check if the provided path is an environment variable
@@ -181,16 +185,19 @@ def export_data(mode="kinetics"):
         with open(full_path, "a", newline='') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
-                writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'MeasUnit','TimeUnit', 'BlankType', 'MeasMode'])  # Write header if new file
-                # writer.writerow(['Concentration', 'Value', 'Unit', 'Time', 'TimeUnit', 'BlankType'])
+                if (meas_mode == "kinetics"):
+                    writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'MeasUnit','TimeUnit', 'BlankType', 'MeasMode'])  # Write header if new file
+                else:
+                    writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             # writer.writerow([vmax, slope, sat])  # Append data
             if check_row_exist(full_path, concentration, blankT):
                 message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
                 status = "error"
             else: 
-                writer.writerow([measurement,concentration,vmax,slope,sat,time_to_sat,meas_unit,time_unit,blankT,meas_mode])
-
-                # writer.writerow([concentration,value,unit.time,timeunit,blankT])
+                if (meas_mode == "kinetics"):
+                    writer.writerow([measurement,concentration,vmax,slope,sat,time_to_sat,meas_unit,time_unit,blankT,meas_mode])
+                else:
+                    writer.writerow([measurement,concentration,value,meas_unit,time_point,time_unit,blankT,meas_mode])
                 message = f"Data exported at {full_path}"
                 status = "success" 
             f.close()
