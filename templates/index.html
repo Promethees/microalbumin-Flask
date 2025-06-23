@@ -67,6 +67,8 @@
         #blank-derived-concentration-section.hidden { display: none; }
         #non-blank-derived-concentration-section { display: block; }
         #non-blank-derived-concentration-section.hidden { display: none; }
+        #export-analysis { display: block; }
+        #export-analysis.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -126,14 +128,6 @@
             </select>
         </div>
 
-        <div class="section" id="cal-json-exp-section"> 
-            <h3>Select type of Calibration you'd like to do</h3>
-            <select id="cal-mode-select">
-                <option value="kinetics">kinetics</option>
-                <option value="point">point</option>
-            </select>
-        </div>
-
         <div class="section" id="cal-json-sel-section">
             <div id="file-table-container">
                 <table id="json-table">
@@ -179,7 +173,7 @@
             <!-- Display selected file name -->
             <div id="selected-file-display">No file selected</div>
             <div class="section" id="point-json-exp-section">
-                Select calibration point at <input type="number" id="cal-point"> <span id="cal-time-unit" style="font-weight: bold;">second</span>
+                Reference point is at <span type="number" id="cal-point"></span> <span id="cal-time-unit" style="font-weight: bold;">second</span>
 
             </div>
             <div id="concentration-reader-section">
@@ -189,10 +183,10 @@
                 Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> nM/l
             </div>
             <div id="blank-derived-concentration-section">
-                Blanked Concentration derived from the csv is <span style="font-weight: bold;" id="blank-der-con-value"></span> nM/l
+                <span style="font-weight: bold;"> Blanked </span>concentration derived from the csv is <span style="font-weight: bold;" id="blank-der-con-value"></span> nM/l
             </div>
             <div id="non-blank-derived-concentration-section">
-                Non blanked concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> nM/l
+                <span style="font-weight: bold;"> Non blanked</span> concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> nM/l
             </div>
             <div class="section">
                 <h3>{{ range_input.title }}</h3>
@@ -232,7 +226,14 @@
                 </div>
                 <button id="export-btn" onclick="exportData()">Export Data</button>
                 <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
-            </div>    
+            </div>  
+            <div class="section" id="cal-json-exp-section"> 
+            <h3>Select type of Calibration you'd like to do</h3>
+            <select id="cal-mode-select">
+                <option value="kinetics">kinetics</option>
+                <option value="point">point</option>
+            </select>
+        </div>  
         </div>
     </div>
 
@@ -338,7 +339,8 @@
                     $("#kinetics-lines").removeClass("hidden");
                     $("#cal-json-exp-section").addClass("hidden");
                     $("#range-value").val("1000").prop("disabled", false);
-                    $("$json-display").removeClass("hidden");
+                    $("#json-display").removeClass("hidden");
+                    $("#export-analysis").removeClass("hidden");
                 } else if (mode === "point"){
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -347,7 +349,8 @@
                     $("#kinetics-lines").addClass("hidden");
                     $("#cal-json-exp-section").addClass("hidden");
                     $("#range-value").val("1000").prop("disabled", false);
-                    $("$json-display").removeClass("hidden");
+                    $("#json-display").removeClass("hidden");
+                    $("#export-analysis").removeClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -356,7 +359,8 @@
                     $("#kinetics-lines").addClass("hidden");
                     $("#cal-json-exp-section").removeClass("hidden");
                     $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
-                    $("$json-display").addClass("hidden");
+                    $("#json-display").addClass("hidden");
+                    $("#export-analysis").addClass("hidden");
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -602,6 +606,30 @@
             }
         }
 
+        function settingDerivedCon(jsonFile) {
+            let derived_section = null;
+            let derived_con_text = null;
+            switch(jsonFile["for_blank_type"]) {
+                case "MIXED":
+                    derived_section = document.getElementById('derived-concentration-section');
+                    derived_con_text = document.getElementById('der-con-value');
+                    break;
+                case "BLANKED":
+                    derived_section = document.getElementById('blank-derived-concentration-section');
+                    derived_con_text = document.getElementById('blank-der-con-value');
+                    break;
+                case "NON-BLANKED":
+                    derived_section = document.getElementById('non-blank-derived-concentration-section');
+                    derived_con_text = document.getElementById('non-blank-der-con-value');
+                    break;
+
+            }
+            return {
+                derived_section: derived_section,
+                derived_con_text: derived_con_text
+            }
+        }
+
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
             console.log("JSON file is ", jsonFile);
@@ -614,6 +642,15 @@
                         $("#analysis-info").html(`<span style="color: red;">Window Size is greater than half of data size. The file has only ${response.data.length} data points</span>`);
                     }
                     else {
+                        let derivedConSettings = null;
+                        let derived_section = null;
+                        let derived_con_text = null;
+                        if (jsonFile) {
+                            derivedConSettings = settingDerivedCon(jsonFile);
+                            console.log("Derived con settings is ", derivedConSettings);
+                            derived_section = derivedConSettings.derived_section;
+                            derived_con_text = derivedConSettings.derived_con_text;
+                        }
                         const isSplitMode = $("#split-mode").is(":checked");
                         const isFullDisplay = $("#full-display").is(":checked");
                         const displayRangeInput = document.getElementById('range-value');
@@ -632,9 +669,7 @@
                         })
                         const analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
                         console.log("analysis is ", analysis);
-                        if (currentMeasurementMode !== "calibrate") {
-                            $("concentration-reader-section").removeClass("hidden");
-                            
+                        if (currentMeasurementMode !== "calibrate") {                            
                             const conValueInput = document.getElementById('con-value-read');
                             const conValueFromFile = response.data.map(row => row['Concentration'])[0];
                             
@@ -646,14 +681,9 @@
                                 conValueInput.value = "";
                             }
                             if (currentMeasurementMode === "kinetics") {
-                                $("derived-concentration-section").removeClass("hidden");
-                                $("blank-derived-concentration-section").removeClass("hidden");
-                                $("non-blank-derived-concentration-section").removeClass("hidden");
-
-                                
+                                derived_section.classList.remove("hidden");
                                 const conQuantityInput = document.getElementById('regressed-quantity').value;
                                 const coef = jsonFile[conQuantityInput]["fit_coef"];
-                                const setDerivedConcentration = document.getElementById('der-con-value');
                                 let value = null;
                                 switch(conQuantityInput) {
                                     case "vmax":
@@ -669,17 +699,17 @@
                                         value = analysis.time_to_sat;
                                         break;
                                 }
-                                // console.log("value is ", value);
-                                // console.log("jsonFile fit type is ", jsonFile["fit_type"]);
-                                // console.log("Coef is ", coef);
                                 calculated_con = computeFit(value, jsonFile["fit_type"], coef);
                                 console.log("Derive concentration calculated ", calculated_con);
-                                // setDerivedConcentration.value = `${calculated_con}`;
-                                $("#der-con-value").html(`${calculated_con}`);
-                            }
+                                derived_con_text.innerHTML = `${calculated_con}`;
+                            } else if (currentMeasurementMode === "point") {
+                                $("derived-concentration-section").removeClass("hidden");
+                                $("blank-derived-concentration-section").removeClass("hidden");
+                                $("non-blank-derived-concentration-section").removeClass("hidden");
+                            } 
                         } else {
                             $("concentration-reader-section").addClass("hidden");
-                            $("derived-concentration-section").removeClass("hidden");
+                            $("derived-concentration-section").addClass("hidden");
                         }
                     }
                 } else {
