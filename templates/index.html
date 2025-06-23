@@ -163,7 +163,7 @@
                 Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
             </div>
             <div class="section" id="point-json-exp-section">
-                Reference point is at <span type="number" id="cal-point"></span> <span id="cal-time-unit" style="font-weight: bold;">second</span>
+                Reference point is at <span type="number" id="cal-point"></span> <span id="cal-time-unit" style="font-weight: bold;">second</span><span id="add-json-section"></span>
             </div>
             <div class="section" id="window-size-section">
                 Select window size for Vmax regression
@@ -620,6 +620,46 @@
             }
         }
 
+        function getEstimatedValue(data, timepoint, maxTolerance = 60) {
+            if (!Array.isArray(data) || data.length === 0) return null;
+
+            // Sort data by timestamp
+            data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
+
+            let closest = null;
+
+            // Loop to find the two surrounding points
+            for (let i = 0; i < data.length - 1; i++) {
+                const t1 = data[i]["Timestamp"];
+                const t2 = data[i + 1]["Timestamp"];
+
+                // Exact match
+                if (t1 === timepoint) return data[i]["Value"];
+                if (t2 === timepoint) return data[i + 1]["Value"];
+
+                // Surrounding range for interpolation
+                if (t1 < timepoint && timepoint < t2) {
+                    // Check if timepoint is too far from both ends
+                    const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
+                    if (minDiff > maxTolerance) return null;
+
+                    const v1 = data[i]["Value"];
+                    const v2 = data[i + 1]["Value"];
+
+                    // Linear interpolation
+                    const ratio = (timepoint - t1) / (t2 - t1);
+                    return v1 + ratio * (v2 - v1);
+                }
+            }
+
+            // Check ends if out-of-bounds but within tolerance
+            const first = data[0], last = data[data.length - 1];
+            if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first["Value"];
+            if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last["Value"];
+
+            return null;
+        }
+
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
             console.log("JSON file is ", jsonFile);
@@ -714,9 +754,16 @@
                                     const conversionFactor = baseMultiplier / targetMultiplier; 
                                     refCalPoint = jsonTimePoint*conversionFactor;
                                     calPoint.text(refCalPoint);
-                                    const estMeasValue = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, refCalPoint, jsonFile["for_blank_type"]);
-                                    
-                                    console.log("The Response data is", response.data);
+                                    // updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, refCalPoint, jsonFile["for_blank_type"]);
+                                    const estValueRead = getEstimatedValue(response.data, jsonTimePoint*60).toFixed(4);
+                                    if (estValueRead) {
+                                        const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"]
+                                        $("#add-json-section").text(`. The estimated value read from recorded data is ${estValueRead}${unitPrinted}.`);
+                                    } else {
+                                        $("#add-json-section").text("");
+                                    }
+                                    calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
+                                    derived_con_text.innerHTML = `${calculated_con}`;                                    
                                 }
 
                             } 
