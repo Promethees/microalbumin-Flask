@@ -437,8 +437,8 @@
                         const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                         const data = await response.json();
                         const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
-                        const cal_headers_1 = ["Measurement","Concentration","Vmax","Slope","Saturation","Time To Sat", "MeasUnit", "TimeUnit","BlankType"];
-                        const cal_headers_2 = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType"];
+                        const cal_headers_1 = ["Measurement","Concentration","Vmax","Slope","Saturation","Time To Sat", "MeasUnit", "TimeUnit","BlankType, MeasMode"];
+                        const cal_headers_2 = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType, MeasMode"];
                         if (data.headers) {
                             const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
                             const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
@@ -1207,7 +1207,8 @@
                         measUnit: analysisData.MeasUnit !== "" ? analysisData.MeasUnit : "NONE",
                         blanked: blankedType,
                         timeUnit: timeUnit,
-                        newFile: newFile
+                        newFile: newFile,
+                        measMode: currentMeasurementMode
                     };
                     $.ajax({
                         url: '/export_data',
