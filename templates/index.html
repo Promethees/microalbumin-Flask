@@ -113,21 +113,6 @@
             </select>
         </div>
 
-        <div class="section" id="window-size-section">
-            Select window size for Vmax regression
-            <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
-            <div id="wd-size-error"></div>
-        </div>
-
-        <div class="section" id="select-quantity-section">
-            Select quantity to derive concentration from
-            <select id="regressed-quantity">
-                {% for quantity in quantity_input.quantities %}s
-                    <option value="{{ quantity|lower|replace(' ', '_') }}">{{ quantity }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
         <div class="section" id="cal-json-sel-section">
             <div id="file-table-container">
                 <table id="json-table">
@@ -172,12 +157,26 @@
             <h2>Data Display</h2>
             <!-- Display selected file name -->
             <div id="selected-file-display">No file selected</div>
+            <div id="concentration-reader-section">
+                Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
+            </div>
             <div class="section" id="point-json-exp-section">
                 Reference point is at <span type="number" id="cal-point"></span> <span id="cal-time-unit" style="font-weight: bold;">second</span>
 
             </div>
-            <div id="concentration-reader-section">
-                Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
+            <div class="section" id="window-size-section">
+                Select window size for Vmax regression
+                <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
+                <div id="wd-size-error"></div>
+            </div>
+
+            <div class="section" id="select-quantity-section">
+                Select quantity to derive concentration from
+                <select id="regressed-quantity">
+                    {% for quantity in quantity_input.quantities %}s
+                        <option value="{{ quantity|lower|replace(' ', '_') }}">{{ quantity }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div id="derived-concentration-section">
                 Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> nM/l
@@ -677,16 +676,16 @@
                                 let value = null;
                                 switch(conQuantityInput) {
                                     case "vmax":
-                                        value = analysis.vmax;
+                                        value = analysis.vmax * 60; //Need to convert to normalized unit of minute
                                         break;
                                     case "slope":
-                                        value = analysis.slope;
+                                        value = analysis.slope * 60; //Need to convert to normalized unit of minute
                                         break;
                                     case "sat":
                                         value = analysis.sat;
                                         break;
                                     case "time_to_sat":
-                                        value = analysis.time_to_sat;
+                                        value = analysis.time_to_sat / 60; //Need to convert to normalized unit of minute
                                         break;
                                 }
                                 calculated_con = computeFit(value, jsonFile["fit_type"], coef);
