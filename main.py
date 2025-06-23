@@ -188,7 +188,7 @@ def export_data(mode="kinetics"):
                 message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
                 status = "error"
             else: 
-                writer.writerow([measurement, concentration,vmax,slope,sat,time_to_sat,meas_unit,time_unit,blankT,meas_mode])
+                writer.writerow([measurement,concentration,vmax,slope,sat,time_to_sat,meas_unit,time_unit,blankT,meas_mode])
 
                 # writer.writerow([concentration,value,unit.time,timeunit,blankT])
                 message = f"Data exported at {full_path}"
