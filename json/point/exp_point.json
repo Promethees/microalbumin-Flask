@@ -2,6 +2,5 @@
 	"fit_type": "linear",
 	"time": 5,
 	"time-unit": "minutes",
-	"fit_coef": [3, 4],
-	"_comment": "Meaning: Concen = 3 * Abs + 4 at 5 minutes"
+	"fit_coef": [3, 4]
 }

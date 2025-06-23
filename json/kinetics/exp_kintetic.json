@@ -1,7 +1,6 @@
 {
 	"fit_type": "logarit",
 	"vmax": {
-		"_comment": "Concen = ln(3 * vmax) * 2",
 		"fit_coef": [3, 2]
 	},
 	"slope": {
