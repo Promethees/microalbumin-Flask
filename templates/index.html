@@ -530,16 +530,6 @@
                 currentFile = fileName;
                 processDataDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
-                if (!$("#split-mode").is(":checked")) {
-                    $("#derived-concentration-section").removeClass("hidden");
-                    $("#blank-derived-concentration-section").addClass("hidden");
-                    $("#non-blank-derived-concentration-section").addClass("hidden");
-                } else {
-                    $("#derived-concentration-section").addClass("hidden");
-                    $("#blank-derived-concentration-section").removeClass("hidden");
-                    $("#non-blank-derived-concentration-section").removeClass("hidden");
-                }
-
                 currentJSON = fileName;
 
                 fetchJSON(currentJSON, function(JSON_content, JSON_path) {
