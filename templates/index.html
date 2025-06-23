@@ -87,7 +87,6 @@
             </div>
             <div id="error-message"></div>
         </div>
-
         <div class="section script-controls">
             <h2>Log HID Data</h2>
             <div>
@@ -103,7 +102,6 @@
             <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
             <div id="log-display"></div>
         </div>
-
         <div class="section">
             <h2>{{ mode_input.title }}</h2>
             <select id="measurement-mode">
@@ -119,7 +117,6 @@
                 <option value="point">point</option>
             </select>
         </div>  
-
         <div class="section" id="cal-json-sel-section">
             <div id="file-table-container">
                 <table id="json-table">
@@ -139,7 +136,6 @@
             <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
             <div id="json-display"></div>
         </div>
-        
         <div class="section">
             <h2>File Selection</h2>
             <div id="file-table-container">
@@ -159,7 +155,6 @@
             </div>
             <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
         </div>
-
         <div class="section" id="data-display-section">
             <h2>Data Display</h2>
             <!-- Display selected file name -->
@@ -169,14 +164,12 @@
             </div>
             <div class="section" id="point-json-exp-section">
                 Reference point is at <span type="number" id="cal-point"></span> <span id="cal-time-unit" style="font-weight: bold;">second</span>
-
             </div>
             <div class="section" id="window-size-section">
                 Select window size for Vmax regression
                 <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
                 <div id="wd-size-error"></div>
             </div>
-
             <div class="section" id="select-quantity-section">
                 Select quantity to derive concentration from
                 <select id="regressed-quantity">
@@ -248,6 +241,7 @@
 
         const platform = navigator.platform.toLowerCase();
         const delimiter = platform.includes("window") ? "\\" : "/";
+        let refCalPoint = null;
 
         let json_msg = 'When fit_type: \n';
         json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
@@ -343,7 +337,7 @@
                 } else if (mode === "point"){
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
-                    $("#point-json-exp-section").removeClass("hidden");
+                    $("#point-json-exp-section").addClass("hidden");
                     $("#cal-json-sel-section").removeClass("hidden");
                     $("#kinetics-lines").addClass("hidden");
                     $("#cal-json-exp-section").addClass("hidden");
@@ -411,7 +405,6 @@
                     $("#error-message").hide();
                     // console.log("Response files in update directory is: ". response.files);
                     updateFileTable(response.files, deselect);
-                    console.log("Selected display file is ", currentFile);
                     if (deselect) {
                         deselectFile();
                     }
@@ -423,7 +416,6 @@
                 $("#error-message").text("Error updating directory").show();
             });
             $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
-                console.log("Selected JSON is ", currentJSON);
                 updateJSONTable(response.files);
             })
         }
@@ -539,7 +531,6 @@
                 processDataDisplay(currentFile);
             } else if (tableSelector === "#json-table") {
                 currentJSON = fileName;
-
                 fetchJSON(currentJSON, function(JSON_content, JSON_path) {
                     console.log("Fetched JSON is ", JSON_content);
                     // console.log("Select json file", currentJSON);
@@ -601,6 +592,7 @@
                 $("#derived-concentration-section").addClass("hidden");
                 $("#blank-derived-concentration-section").addClass("hidden");
                 $("#non-blank-derived-concentration-section").addClass("hidden");
+                $("#point-json-exp-section").addClass("hidden");
             }
         }
 
@@ -648,12 +640,13 @@
                             console.log("Derived con settings is ", derivedConSettings);
                             derived_section = derivedConSettings.derived_section;
                             derived_con_text = derivedConSettings.derived_con_text;
+                            derived_section.classList.remove("hidden");
                         }
                         const isSplitMode = $("#split-mode").is(":checked");
                         const isFullDisplay = $("#full-display").is(":checked");
                         const displayRangeInput = document.getElementById('range-value');
                         const fullDisplayCheckbox = document.getElementById('full-display');
-
+                        let analysis = null;
                         fullDisplayCheckbox.addEventListener('change', function() {
                             const originalValue = displayRangeInput.input;
                             if (this.checked) {
@@ -665,12 +658,18 @@
                                 displayRangeInput.value = 1000;
                             }
                         })
-                        const analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
-                        console.log("analysis is ", analysis);
+                        if (currentMeasurementMode === "point" && jsonFile) {
+                            analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, refCalPoint, jsonFile["for_blank_type"]);
+                        }
+                        else {
+                            analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
+                        }
+                        
                         if (currentMeasurementMode !== "calibrate") {                            
                             const conValueInput = document.getElementById('con-value-read');
                             const conValueFromFile = response.data.map(row => row['Concentration'])[0];
                             
+
                             if (conValueFromFile !== "NONE") {
                                 conValueInput.value = conValueFromFile;
                                 conValueInput.disabled = true;
@@ -679,31 +678,47 @@
                                 conValueInput.value = "";
                             }
                             if (currentMeasurementMode === "kinetics") {
-                                derived_section.classList.remove("hidden");
                                 const conQuantityInput = document.getElementById('regressed-quantity').value;
-                                const coef = jsonFile[conQuantityInput]["fit_coef"];
-                                let value = null;
-                                switch(conQuantityInput) {
-                                    case "vmax":
-                                        value = analysis.vmax * 60; //Need to convert to normalized unit of minute
-                                        break;
-                                    case "slope":
-                                        value = analysis.slope * 60; //Need to convert to normalized unit of minute
-                                        break;
-                                    case "sat":
-                                        value = analysis.sat;
-                                        break;
-                                    case "time_to_sat":
-                                        value = analysis.time_to_sat / 60; //Need to convert to normalized unit of minute
-                                        break;
+                                if (jsonFile) {
+                                    const coef = jsonFile[conQuantityInput]["fit_coef"];
+                                    let value = null;
+                                    switch(conQuantityInput) {
+                                        case "vmax":
+                                            value = analysis.vmax * 60; //Need to convert to normalized unit of minute
+                                            break;
+                                        case "slope":
+                                            value = analysis.slope * 60; //Need to convert to normalized unit of minute
+                                            break;
+                                        case "sat":
+                                            value = analysis.sat;
+                                            break;
+                                        case "time_to_sat":
+                                            value = analysis.time_to_sat / 60; //Need to convert to normalized unit of minute
+                                            break;
+                                    }
+                                    calculated_con = computeFit(value, jsonFile["fit_type"], coef);
+                                    console.log("Derive concentration calculated ", calculated_con);
+                                    derived_con_text.innerHTML = `${calculated_con}`;
                                 }
-                                calculated_con = computeFit(value, jsonFile["fit_type"], coef);
-                                console.log("Derive concentration calculated ", calculated_con);
-                                derived_con_text.innerHTML = `${calculated_con}`;
                             } else if (currentMeasurementMode === "point") {
-                                $("derived-concentration-section").removeClass("hidden");
-                                $("blank-derived-concentration-section").removeClass("hidden");
-                                $("non-blank-derived-concentration-section").removeClass("hidden");
+                                if (jsonFile) {
+                                    const timeUnitSet = $("#time-unit").val();
+                                    const calPoint = $("#cal-point");
+                                    $("#point-json-exp-section").removeClass("hidden");
+
+                                    const jsonTimePoint = jsonFile["time"];
+                                    const jsonTimeUnit = jsonFile["time-unit"];
+
+                                    const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit); // Data is in minutes
+                                    const targetMultiplier = getTimeUnitMultiplier(timeUnitSet); // Multiplier for target unit
+                                    const conversionFactor = baseMultiplier / targetMultiplier; 
+                                    refCalPoint = jsonTimePoint*conversionFactor;
+                                    calPoint.text(refCalPoint);
+                                    const estMeasValue = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, refCalPoint, jsonFile["for_blank_type"]);
+                                    
+                                    console.log("The Response data is", response.data);
+                                }
+
                             } 
                         } else {
                             $("#derived-concentration-section").addClass("hidden");
@@ -909,7 +924,7 @@
             };
         }
 
-        function createChart(canvasId, timestamps, values, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay) {
+        function createChart(canvasId, timestamps, values, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint=null, forThisBlankType=false) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             if (!ctx || timestamps.length === 0 || values.length === 0) {
                 console.error("Invalid chart data or context:", { canvasId, timestamps, values });
@@ -954,7 +969,22 @@
                     plugins: {
                         annotation: {
                             annotations: {
-                                ...(isFullDisplay && analysis.startVMax && {VMaxLine: {
+                                ...(isFullDisplay && currentMeasurementMode === "point" && forThisBlankType && {refCalLine: {
+                                      type: 'vertical',
+                                      borderColor: 'rgba(255, 0, 0, 0.5)',
+                                      borderWidth: 3,
+                                      xMin: parseFloat(refCalPoint - timestamps[0]/conversionFactor)/chartScaleConstant,
+                                      xMax: parseFloat(refCalPoint - timestamps[0]/conversionFactor)/chartScaleConstant,
+                                      yMin: 0,
+                                      yMax: Math.max(...values),
+                                      label: {
+                                        display: true,
+                                        content: 'RefCal',
+                                        position: 'start'
+                                      }
+                                    }
+                                }),
+                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.startVMax && {VMaxLine: {
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 0, 0.5)',
                                       borderWidth: 3,
@@ -969,7 +999,7 @@
                                       }
                                     }
                                 }),
-                                ...(isFullDisplay && analysis.linearXMin && {regressionLine: {
+                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.linearXMin && {regressionLine: {
                                       type: 'line',
                                       borderColor: 'rgba(0, 0, 255, 0.5)',
                                       borderWidth: 3,
@@ -984,7 +1014,7 @@
                                       }
                                     }
                                 }),
-                                ...(isFullDisplay && analysis.saturationValue !== "--" && {saturationLine: {
+                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && {saturationLine: {
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 255, 0.5)',
                                       borderWidth: 3,
@@ -1019,7 +1049,7 @@
             return chart;
         }
 
-        function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode, isFullDisplay) {
+        function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode, isFullDisplay, refCalPoint=null, forBlankType=null) {
             destroyCharts();
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             $("#analysis-info").text("");
@@ -1039,7 +1069,7 @@
 
             const allNonBlankedTimestamps = allNonBlankedData.map(row => row['Timestamp']);
             const allNonBlankedValues = allNonBlankedData.map(row => row['Value']);
-       
+            console.log("the for blank type is ", forBlankType);
             // Convert range from the current timeUnit to seconds for filtering
             if (isFullDisplay === true) {
                 range = Number.MAX_VALUE;
@@ -1082,7 +1112,9 @@
                     range,
                     conversionFactor,
                     analysis_blanked,
-                    isFullDisplay
+                    isFullDisplay, 
+                    refCalPoint,
+                    (forBlankType === "BLANKED")
                 );
                 nonBlankedChart = createChart(
                     'non-blanked-canvas',
@@ -1094,7 +1126,9 @@
                     range,
                     conversionFactor,
                     analysis_nonblanked,
-                    isFullDisplay
+                    isFullDisplay,
+                    refCalPoint,
+                    (forBlankType === "NON-BLANKED")
                 );
                 $("#analysis-info").html(
                     `<span style="color: rgb(255, 99, 132);">
@@ -1140,7 +1174,9 @@
                     range,
                     conversionFactor,
                     analysis, 
-                    isFullDisplay
+                    isFullDisplay,
+                    refCalPoint,
+                    (forBlankType === "MIXED")
                 );
                 const analysisDisplay = myChart?.data.datasets[0].analysis;
                 $("#analysis-info").html(
