@@ -1,6 +1,6 @@
 {
 	"fit_type": "logarit",
-	"for_type": "MIXED",
+	"for_blank_type": "BLANKED",
 	"vmax": {
 		"fit_coef": [3, 2]
 	},
