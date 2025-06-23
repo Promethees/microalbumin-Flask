@@ -101,16 +101,6 @@
             <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
             <div id="log-display"></div>
         </div>
-        
-        <div class="section">
-            <h2>{{ range_input.title }}</h2>
-            <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
-            <select id="time-unit">
-                {% for unit in range_input.units %}
-                <option value="{{ unit }}">{{ unit }}</option>
-                {% endfor %}
-            </select>
-        </div>
 
         <div class="section">
             <h2>{{ mode_input.title }}</h2>
@@ -183,7 +173,7 @@
             </div>
             <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
         </div>
-        
+
         <div class="section" id="data-display-section">
             <h2>Data Display</h2>
             <!-- Display selected file name -->
@@ -204,19 +194,14 @@
             <div id="non-blank-derived-concentration-section">
                 Non blanked concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> nM/l
             </div>
-            <div id="export-analysis">
-            <div>
-                <h3>Export analysis</h3>
-                <label for="save-dir">Saving Directory: 
-                </label>
-                <input type="text" id="save-dir" placeholder="Enter directory path to save analysis data. Leave empty to save to default directory" style="width: 50em">
-            </div>
-            <div>
-                <label for="save-file">File Name: </label>
-                <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
-            </div>
-            <button id="export-btn" onclick="exportData()">Export Data</button>
-            <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
+            <div class="section">
+                <h3>{{ range_input.title }}</h3>
+                <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
+                <select id="time-unit">
+                    {% for unit in range_input.units %}
+                    <option value="{{ unit }}">{{ unit }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div id="mode-toggle">
                 <label>
@@ -233,7 +218,21 @@
                 <canvas id="plot-canvas"></canvas>
                 <canvas id="blanked-canvas" style="display: none;"></canvas>
                 <canvas id="non-blanked-canvas" style="display: none;"></canvas>
-            </div>     
+            </div> 
+            <div id="export-analysis">
+                <div>
+                    <h3>Export analysis</h3>
+                    <label for="save-dir">Saving Directory: 
+                    </label>
+                    <input type="text" id="save-dir" placeholder="Enter directory path to save analysis data. Leave empty to save to default directory" style="width: 50em">
+                </div>
+                <div>
+                    <label for="save-file">File Name: </label>
+                    <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
+                </div>
+                <button id="export-btn" onclick="exportData()">Export Data</button>
+                <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
+            </div>    
         </div>
     </div>
 
@@ -1164,25 +1163,25 @@
                 let newFile = true;
                 if (blankedChart) {
                     analysisData = blankedChart.data.datasets[0].analysis;
-                    sendExportData(analysisData, "BLANKED");
+                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "BLANKED");
                     newFile = false;
 
                 }
 
                 if (nonBlankedChart) {
                     analysisData = nonBlankedChart.data.datasets[0].analysis;
-                    sendExportData(analysisData, "NON-BLANKED", newFile);
+                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "NON-BLANKED", newFile);
                 }
 
                 if (myChart) {
                     analysisData = myChart.data.datasets[0].analysis;
-                    sendExportData(analysisData, "MIXED");
+                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "MIXED");
                 }
             } else {
                 alert(`Please change your units in Display Range section from ${$("#time-unit").val()} to minutes!`);
             }
 
-        function sendExportData(analysisData, blankedType, newFile=true) {
+        function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, blankedType, newFile=true) {
                 if (analysisData) {
                     const data = {
                         save_dir: saveDir,
