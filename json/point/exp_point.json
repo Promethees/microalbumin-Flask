@@ -1,5 +1,6 @@
 {
 	"fit_type": "linear",
+	"for_type": "MIXED",
 	"time": 5,
 	"time-unit": "minutes",
 	"fit_coef": [3, 4]
