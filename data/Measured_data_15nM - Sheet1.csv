@@ -1,4 +1,4 @@
-Timestamp,Measurement,Value,Unit,Type,Blanked,Absorbance
+Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration
 0.00,ABSORBANCE,0.145,NONE,NONE,TRUE,15
 60.00,ABSORBANCE,0.145,NONE,NONE,TRUE,15
 120.00,ABSORBANCE,0.147,NONE,NONE,TRUE,15
