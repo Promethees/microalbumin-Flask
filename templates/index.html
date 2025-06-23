@@ -216,9 +216,8 @@
                 <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
             </div>
             <button id="export-btn" onclick="exportData()">Export Data</button>
+            <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
             </div>
-
-            <br/>
             <div id="mode-toggle">
                 <label>
                     <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
@@ -1154,29 +1153,33 @@
         }
 
         function exportData() {
-            const saveDir = $("#save-dir").val() || "";
-            const saveFile = $("#save-file").val() || "results";
-            const concentration = $("#con-value-read").val() || "NONE";
-            const timeUnit = $("#time-unit").val();
-            // const fullPath = saveDir + delimiter + saveFile;
+            if ($("#time-unit").val() === "minutes") {
+                const saveDir = $("#save-dir").val() || "";
+                const saveFile = $("#save-file").val() || "results";
+                const concentration = $("#con-value-read").val() || "NONE";
+                const timeUnit = $("#time-unit").val();
+                // const fullPath = saveDir + delimiter + saveFile;
 
-            let analysisData = null;
-            let newFile = true;
-            if (blankedChart) {
-                analysisData = blankedChart.data.datasets[0].analysis;
-                sendExportData(analysisData, "BLANKED");
-                newFile = false;
+                let analysisData = null;
+                let newFile = true;
+                if (blankedChart) {
+                    analysisData = blankedChart.data.datasets[0].analysis;
+                    sendExportData(analysisData, "BLANKED");
+                    newFile = false;
 
-            }
+                }
 
-            if (nonBlankedChart) {
-                analysisData = nonBlankedChart.data.datasets[0].analysis;
-                sendExportData(analysisData, "NON-BLANKED", newFile);
-            }
+                if (nonBlankedChart) {
+                    analysisData = nonBlankedChart.data.datasets[0].analysis;
+                    sendExportData(analysisData, "NON-BLANKED", newFile);
+                }
 
-            if (myChart) {
-                analysisData = myChart.data.datasets[0].analysis;
-                sendExportData(analysisData, "MIXED");
+                if (myChart) {
+                    analysisData = myChart.data.datasets[0].analysis;
+                    sendExportData(analysisData, "MIXED");
+                }
+            } else {
+                alert(`Please change your units in Display Range section from ${$("#time-unit").val()} to minutes!`);
             }
 
         function sendExportData(analysisData, blankedType, newFile=true) {
