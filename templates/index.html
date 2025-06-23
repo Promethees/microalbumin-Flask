@@ -437,15 +437,24 @@
                         const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                         const data = await response.json();
                         const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
-                        const cal_headers_1 = ["Measurement","Concentration","Vmax","Slope","Saturation","Time To Sat", "MeasUnit", "TimeUnit","BlankType, MeasMode"];
-                        const cal_headers_2 = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType, MeasMode"];
+                        const cal_headers_kinetics = ["Measurement","Concentration","Vmax","Slope","Saturation","Time To Sat", "MeasUnit", "TimeUnit","BlankType", "MeasMode"];
+                        const cal_headers_point = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType", "MeasMode"];
                         if (data.headers) {
                             const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
-                            const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
+                            // const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
                             if (currentMeasurementMode === "kinetics" || currentMeasurementMode === "point") {
                                 // console.log("current data header is", data.headers);
                                 return isMeasHeader;
                             } else if (currentMeasurementMode === "calibrate") {
+                                const cal_type = $("#cal-mode-select").val();
+                                console.log("the cal type is ", cal_type);
+                                let isCalHeader = false;
+                                if (cal_type === "kinetics") {
+                                    isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_kinetics);
+                                }
+                                else {
+                                    isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_point);
+                                }
                                 return isCalHeader;
                             }
                             // return currentMeasurementMode === "kinetics" ? hasTimestamp : !hasTimestamp;
