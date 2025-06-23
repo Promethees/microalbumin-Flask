@@ -112,6 +112,13 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="section" id="cal-json-exp-section"> 
+            <h3>Select type of Calibration you'd like to do</h3>
+            <select id="cal-mode-select">
+                <option value="kinetics">kinetics</option>
+                <option value="point">point</option>
+            </select>
+        </div>  
 
         <div class="section" id="cal-json-sel-section">
             <div id="file-table-container">
@@ -226,13 +233,6 @@
                 <button id="export-btn" onclick="exportData()">Export Data</button>
                 <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
             </div>  
-            <div class="section" id="cal-json-exp-section"> 
-            <h3>Select type of Calibration you'd like to do</h3>
-            <select id="cal-mode-select">
-                <option value="kinetics">kinetics</option>
-                <option value="point">point</option>
-            </select>
-        </div>  
         </div>
     </div>
 
@@ -437,8 +437,8 @@
                         const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                         const data = await response.json();
                         const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
-                        const cal_headers_1 = ["Concentration","Vmax","Slope","Saturation","Time To Sat", "Unit", "TimeUnit","BlankType"];
-                        const cal_headers_2 = ["Concentration", "Value", "Unit", "TimePoint", "TimeUnit", "BlankType"];
+                        const cal_headers_1 = ["Measurement","Concentration","Vmax","Slope","Saturation","Time To Sat", "MeasUnit", "TimeUnit","BlankType"];
+                        const cal_headers_2 = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType"];
                         if (data.headers) {
                             const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
                             const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
@@ -1003,7 +1003,9 @@
                 timeToSaturation: adjustedTimeToSaturationDisplay,
                 Vmax: adjustedVmax,
                 VmaxStart: adjustedVmaxStart,
-                VmaxEnd: adjustedVmaxEnd
+                VmaxEnd: adjustedVmaxEnd, 
+                MeasUnit: unit,
+                Meas: label
             }; // Store adjusted analysis for display
             return chart;
         }
@@ -1196,11 +1198,13 @@
                     const data = {
                         save_dir: saveDir,
                         save_file: saveFile,
+                        meas: analysisData.Meas,
                         vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
                         slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
                         sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
                         timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
                         con: concentration,
+                        measUnit: analysisData.MeasUnit !== "" ? analysisData.MeasUnit : "NONE",
                         blanked: blankedType,
                         timeUnit: timeUnit,
                         newFile: newFile

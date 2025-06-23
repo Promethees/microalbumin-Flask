@@ -1,5 +1,6 @@
 {
 	"fit_type": "linear",
+	"for_meas": "ABSORBANCE",
 	"for_blank_type": "MIXED",
 	"time": 5,
 	"time-unit": "minutes",

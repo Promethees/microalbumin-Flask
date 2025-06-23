@@ -1,6 +1,7 @@
 {
 	"fit_type": "logarit",
 	"for_blank_type": "BLANKED",
+	"for_meas": "ABSORBANCE",
 	"vmax": {
 		"fit_coef": [3, 2]
 	},

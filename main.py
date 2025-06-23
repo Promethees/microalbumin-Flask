@@ -146,11 +146,13 @@ def export_data(mode="kinetics"):
     print(f"data is {data}")
     file_name = data.get('save_file', 'result')
     export_path = data.get('save_dir' != "", default_path)
+    measurement = data.get('meas')
     vmax = data.get('vmax', 'NONE')
     slope = data.get('slope', '0.0000')
     sat = data.get('sat', 'NONE')
     concentration = data.get('con')
     time_to_sat = data.get('timeSat')
+    meas_unit = data.get('measUnit')
 
     blankT = data.get('blanked')
     time_unit = data.get('timeUnit')
@@ -178,14 +180,14 @@ def export_data(mode="kinetics"):
         with open(full_path, "a", newline='') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
-                writer.writerow(['Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'TimeUnit', 'BlankType'])  # Write header if new file
+                writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'MeasUnit','TimeUnit', 'BlankType'])  # Write header if new file
                 # writer.writerow(['Concentration', 'Value', 'Unit', 'Time', 'TimeUnit', 'BlankType'])
             # writer.writerow([vmax, slope, sat])  # Append data
             if check_row_exist(full_path, concentration, blankT):
                 message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
                 status = "error"
             else: 
-                writer.writerow([concentration,vmax,slope,sat,time_to_sat,time_unit,blankT])
+                writer.writerow([measurement.lower(), concentration,vmax,slope,sat,time_to_sat,meas_unit,time_unit,blankT.lower()])
 
                 # writer.writerow([concentration,value,unit.time,timeunit,blankT])
                 message = f"Data exported at {full_path}"
