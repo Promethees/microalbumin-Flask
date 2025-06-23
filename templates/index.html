@@ -698,8 +698,9 @@
                                 $("non-blank-derived-concentration-section").removeClass("hidden");
                             } 
                         } else {
-                            $("concentration-reader-section").addClass("hidden");
-                            $("derived-concentration-section").addClass("hidden");
+                            $("#derived-concentration-section").addClass("hidden");
+                            $("#blank-derived-concentration-section").addClass("hidden");
+                            $("#non-blank-derived-concentration-section").addClass("hidden");
                         }
                     }
                 } else {
@@ -1048,11 +1049,6 @@
                 filteredData[0]['Measurement'] : 'Measurement';
 
             if (isSplitMode) {
-                if (currentJSON) {
-                    $("#derived-concentration-section").addClass("hidden");
-                    $("#blank-derived-concentration-section").removeClass("hidden");
-                    $("#non-blank-derived-concentration-section").removeClass("hidden");
-                }
 
                 const blankedData = filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
                 const nonBlankedData = filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
@@ -1122,11 +1118,6 @@
                     time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation
                 }
             } else {
-                if (currentJSON) {
-                    $("#derived-concentration-section").removeClass("hidden");
-                    $("#blank-derived-concentration-section").addClass("hidden");
-                    $("#non-blank-derived-concentration-section").addClass("hidden");
-                }
                 const analysis = calculateSlopeAndSaturation(allTimestamps, allValues, window_size);
                 $("#plot-canvas").show();
                 myChart = createChart(
@@ -1349,6 +1340,11 @@
                 fetchData(range, unit, window_size, currentFile, currentJSONcontent);
                 $("#data-display-section").removeClass("hidden");
             } else $("#data-display-section").addClass("hidden");
+            if (!currentJSON) {
+                $("#derived-concentration-section").addClass("hidden");
+                $("#blank-derived-concentration-section").addClass("hidden");
+                $("#non-blank-derived-concentration-section").addClass("hidden");
+            }
         }, 500);
 
     </script>
