@@ -73,6 +73,8 @@
         #set-exp-point-section.hidden { display: none; }
         #select-exp-blank-type { display: block; }
         #select-exp-blank-type.hidden { display: none; }
+        #range-display { display: block; }
+        #range-display.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -191,7 +193,7 @@
             <div id="non-blank-derived-concentration-section">
                 <span style="font-weight: bold;"> Non blanked</span> concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> nM/l
             </div>
-            <div class="section">
+            <div class="section" id="range-display">
                 <h3>{{ range_input.title }}</h3>
                 <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
                 <select id="time-unit">
@@ -355,6 +357,8 @@
                     $("#export-analysis").removeClass("hidden");
                     $("#set-exp-point-section").addClass("hidden");
                     $("#select-exp-blank-type").removeClass("hidden");
+                    $("#range-display").removeClass("hidden");
+                    $("#concentration-reader-section").removeClass("hidden");
                 } else if (mode === "point"){
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -367,6 +371,8 @@
                     $("#export-analysis").removeClass("hidden");
                     $("#set-exp-point-section").removeClass("hidden");
                     $("#select-exp-blank-type").removeClass("hidden");
+                    $("#range-display").removeClass("hidden");
+                    $("#concentration-reader-section").removeClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -378,6 +384,8 @@
                     $("#json-display").addClass("hidden");
                     $("#export-analysis").addClass("hidden");
                     $("#select-exp-blank-type").addClass("hidden");
+                    $("#range-display").addClass("hidden");
+                    $("#concentration-reader-section").addClass("hidden");
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -385,6 +393,10 @@
                     fetchData(range, unit, currentFile);
                 }
                 updateDirectory($("#directory").val(), true); // Refresh file table based on new mode
+            });
+
+            $("#cal-json-exp-section").on("change", function() {
+                currentFile = null;
             });
 
             if (currentFile) {
