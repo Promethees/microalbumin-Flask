@@ -153,8 +153,8 @@ def export_data(mode="kinetics"):
     slope = data.get('slope', '0.0000')
     sat = data.get('sat', 'NONE')
     concentration = data.get('con')
-    time_to_sat = data.get('timeSat')
-    meas_unit = data.get('measUnit')
+    time_to_sat = data.get('timeSat', 'NONE')
+    meas_unit = data.get('measUnit', 'NONE')
 
     blankT = data.get('blanked')
     time_unit = data.get('timeUnit')
@@ -162,7 +162,7 @@ def export_data(mode="kinetics"):
     newFile = data.get('newFile')
     meas_mode = data.get('measMode')
 
-    value = data.get('estValue')
+    value = data.get('estValue', 'NONE')
     time_point = data.get('timePoint')
     print("Measurmenet mode is ", meas_mode)
     try:
