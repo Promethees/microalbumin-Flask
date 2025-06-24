@@ -217,7 +217,7 @@
                         Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute </span><span id="est-val-exp"></span>
                     </div>
                     <div id="select-exp-blank-type">
-                        Select blank Type to export:
+                        Select Blank type to export/regress:
                         <select id="exp-json-blank-type">
                             <option value="MIXED">MIXED</option>
                             <option value="BLANKED">BLANKED</option>
@@ -600,7 +600,7 @@
 
 
         function deselectFile(tableSelector="#file-table") {
-            console.log("Deselecting file");
+            // console.log("Deselecting file");
             $(`${tableSelector} tr`).removeClass("selected");
             if (tableSelector === "#file-table") {
                 destroyCharts();
@@ -649,53 +649,53 @@
             }
         }
 
-        function getEstimatedValue(data, timepoint, maxTolerance = 60, blankType = "MIXED") {
-            if (!Array.isArray(data) || data.length === 0) return null;
+        function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 60) {
+    if (!Array.isArray(data) || data.length === 0) return null;
 
-            // Sort data by timestamp
-            data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
+        // Sort data by timestamp
+        data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
 
-            // Filter data based on blankType
-            const filteredData = data.filter(item => {
-                if (blankType === "MIXED") return true;
-                if (blankType === "BLANKED") return item["Blank"] === true;
-                if (blankType === "NON-BLANKED") return item["Blank"] === false;
-                return true; // Default to MIXED behavior
-            });
+        // Filter data based on blankType
+        const filteredData = data.filter(item => {
+            if (blankType === "MIXED") return true;
+            if (blankType === "BLANKED") return item["Blanked"] === true; // Changed from "Blank" to "Blanked"
+            if (blankType === "NON-BLANKED") return item["Blanked"] === false; // Changed from "Blank" to "Blanked"
+            return true; // Default to MIXED behavior
+        });
+        // console.log("Current blank type is ", blankType);
+        // console.log("Filtered data are ", filteredData);
 
-            if (filteredData.length === 0) return null;
+        if (filteredData.length === 0) return null;
 
-            // Loop to find the two surrounding points
-            for (let i = 0; i < filteredData.length - 1; i++) {
-                const t1 = filteredData[i]["Timestamp"];
-                const t2 = filteredData[i + 1]["Timestamp"];
+        // Loop to find the two surrounding points
+        for (let i = 0; i < filteredData.length - 1; i++) {
+            const t1 = filteredData[i]["Timestamp"];
+            const t2 = filteredData[i + 1]["Timestamp"];
 
-                // Exact match
-                if (t1 === timepoint) return filteredData[i]["Value"];
-                if (t2 === timepoint) return filteredData[i + 1]["Value"];
+            // Exact match
+            if (t1 === timepoint) return filteredData[i]["Value"];
+            if (t2 === timepoint) return filteredData[i + 1]["Value"];
 
-                // Surrounding range for interpolation
-                if (t1 < timepoint && timepoint < t2) {
-                    // Check if timepoint is too far from both ends
-                    const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
-                    if (minDiff > maxTolerance) return null;
+            // Surrounding range for interpolation
+            if (t1 < timepoint && timepoint < t2) {
+                const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
+                if (minDiff > maxTolerance) return null;
 
-                    const v1 = filteredData[i]["Value"];
-                    const v2 = filteredData[i + 1]["Value"];
+                const v1 = filteredData[i]["Value"];
+                const v2 = filteredData[i + 1]["Value"];
 
-                    // Linear interpolation
-                    const ratio = (timepoint - t1) / (t2 - t1);
-                    return v1 + ratio * (v2 - v1);
-                }
+                const ratio = (timepoint - t1) / (t2 - t1);
+                return v1 + ratio * (v2 - v1);
             }
-
-            // Check ends if out-of-bounds but within tolerance
-            const first = filteredData[0], last = filteredData[filteredData.length - 1];
-            if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first["Value"];
-            if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last["Value"];
-
-            return null;
         }
+
+        // Check ends if out-of-bounds but within tolerance
+        const first = filteredData[0], last = filteredData[filteredData.length - 1];
+        if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first["Value"];
+        if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last["Value"];
+
+        return null;
+    }
 
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
@@ -761,7 +761,7 @@
                             }
                             if (currentMeasurementMode === "kinetics") {
                                 const conQuantityInput = document.getElementById('regressed-quantity').value;
-                                console.log("Analysis is", analysis);
+                                // console.log("Analysis is", analysis);
                                 if (jsonFile) {
                                     const coef = jsonFile[conQuantityInput]["fit_coef"];
                                     let value = null;
@@ -804,7 +804,7 @@
                                             break;
                                     }
                                     calculated_con = computeFit(value, jsonFile["fit_type"], coef);
-                                    console.log("Derive concentration calculated ", calculated_con);
+                                    // console.log("Derive concentration calculated ", calculated_con);
                                     derived_con_text.innerHTML = `${calculated_con}`;
                                 }
                             } else if (currentMeasurementMode === "point") {
@@ -836,7 +836,8 @@
                                 let currExpBlankType = $("#exp-json-blank-type").val();
                                 if (currExpTimePoint) {
                                     globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60, currExpBlankType); 
-                                    // globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60); 
+                                    // console.log("Curr Exp Blank Type is ", currExpBlankType);
+                                    // console.log("global estimated value for currExpBlankType is NON-BLANKED is ", globalEstimatedValue);
                                 }
 
                             } 
@@ -1342,60 +1343,57 @@
                 // const timePoint = $("#exp-json-time-value").val(); 
                 let analysisData = null;
                 let newFile = true;
-                if ($("#split-mode").is(":checked")) {
-                    if (currentMeasurementMode === "kinetics") {
-                            analysisData = {
-                                Vmax: analysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
-                                slope: analysis.slope_blanked * getTimeUnitMultiplier('minutes'),
-                                saturationValue: analysis.sat_blanked * getTimeUnitMultiplier('minutes'),
-                                timeToSaturation: analysis.time_to_sat_blanked * getTimeUnitMultiplier('minutes'),
-                                measurement: analysis.meas,
-                                measUnit: analysis.meas_unit
+                if (currentMeasurementMode === "kinetics") {
+                    switch ($("#exp-json-blank-type").val()) {
+                        case "MIXED":
+                            if (!$("#split-mode").is(":checked")) {
+                                analysisData = {
+                                    Vmax: analysis.vmax * getTimeUnitMultiplier('minutes'),
+                                    slope: analysis.slope * getTimeUnitMultiplier('minutes'),
+                                    saturationValue: analysis.sat,
+                                    timeToSaturation: analysis.time_to_sat / getTimeUnitMultiplier('minutes'),
+                                    measurement: analysis.meas,
+                                    measUnit: analysis.meas_unit
+                                };
                             }
-                            sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "BLANKED");
-                            newFile = false;
+                            break;
 
-                            analysisData = {
-                                Vmax: analysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
-                                slope: analysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
-                                saturationValue: analysis.sat_non_blanked * getTimeUnitMultiplier('minutes'),
-                                timeToSaturation: analysis.time_to_sat_non_blanked * getTimeUnitMultiplier('minutes'),
-                                measurement: analysis.meas,
-                                measUnit: analysis.meas_unit
+                        case "BLANKED":
+                            if ($("#split-mode").is(":checked")) {
+                                analysisData = {
+                                    Vmax: analysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
+                                    slope: analysis.slope_blanked * getTimeUnitMultiplier('minutes'),
+                                    saturationValue: analysis.sat_blanked,
+                                    timeToSaturation: analysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
+                                    measurement: analysis.meas,
+                                    measUnit: analysis.meas_unit
+                                };
                             }
-                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "NON-BLANKED", newFile);
-                    } else {
-                        analysisData = {
-                            estValue: globalEstimatedValue,
-                            timePoint: currExpTimePoint,
-                            measurement: analysis.meas,
-                            measUnit: analysis.meas_unit
-                        } 
-                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "BLANKED");
-                        newFile = false;
-                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "NON-BLANKED", newFile);
-                    }
-                }
+                            break;
 
-                else {
-                    if (currentMeasurementMode === "kinetics") {
-                        analysisData = {
-                            Vmax: analysis.vmax * getTimeUnitMultiplier('minutes'),
-                            slope: analysis.slope * getTimeUnitMultiplier('minutes'),
-                            saturationValue: analysis.sat * getTimeUnitMultiplier('minutes'),
-                            timeToSaturation: analysis.time_to_sat * getTimeUnitMultiplier('minutes'),
-                            measurement: analysis.meas,
-                            measUnit: analysis.meas_unit
-                        }
-                    } else {
-                        analysisData = {
-                            estValue: globalEstimatedValue,
-                            timePoint: currExpTimePoint,
-                            measurement: analysis.meas,
-                            measUnit: analysis.meas_unit
-                        } 
+                        case "NON-BLANKED": 
+                            if ($("#split-mode").is(":checked")) {
+                                analysisData = {
+                                    Vmax: analysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
+                                    slope: analysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
+                                    saturationValue: analysis.sat_non_blanked,
+                                    timeToSaturation: analysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
+                                    measurement: analysis.meas,
+                                    measUnit: analysis.meas_unit
+                                };
+                            }
+                            break;
                     }
-                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, "MIXED");
+                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+
+                } else if (currentMeasurementMode === "point") {
+                    analysisData = {
+                        estValue: globalEstimatedValue,
+                        timePoint: currExpTimePoint,
+                        measurement: analysis.meas,
+                        measUnit: analysis.meas_unit
+                    } 
+                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
                 }
             } else {
                 alert(`Please change your units in Display Range section from ${$("#time-unit").val()} to minutes!`);
@@ -1439,7 +1437,7 @@
                         }
                     });
                 } else {
-                    alert("No analysis data available to export.");
+                    alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
                 }
             }
         }
