@@ -208,12 +208,6 @@
                 <label>
                 </label>
             </div>
-            <div id="analysis-info"></div>
-            <div id="chart-container">
-                <canvas id="plot-canvas"></canvas>
-                <canvas id="blanked-canvas" style="display: none;"></canvas>
-                <canvas id="non-blanked-canvas" style="display: none;"></canvas>
-            </div> 
             <div id="export-analysis">
                 <div>
                     <h3>Export analysis</h3>
@@ -231,6 +225,12 @@
                 <button id="export-btn" onclick="exportData()">Export Data</button>
                 <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
             </div>  
+            <div id="analysis-info"></div>
+            <div id="chart-container">
+                <canvas id="plot-canvas"></canvas>
+                <canvas id="blanked-canvas" style="display: none;"></canvas>
+                <canvas id="non-blanked-canvas" style="display: none;"></canvas>
+            </div>   
         </div>
     </div>
 
@@ -309,7 +309,7 @@
                 }
             }, 2000);
 
-            // Periodically update file table every 5 seconds
+            // Periodically update file table every 0.5 seconds
             setInterval(function() {
                 const currentDir = $("#directory").val();
                 if (currentDir) {
@@ -612,18 +612,23 @@
             let derived_con_text = null;
             switch(jsonFile["for_blank_type"]) {
                 case "MIXED":
-                    derived_section = document.getElementById('derived-concentration-section');
-                    derived_con_text = document.getElementById('der-con-value');
-                    break;
+                    if (!$("#split-mode").is(":checked")) {
+                        derived_section = document.getElementById('derived-concentration-section');
+                        derived_con_text = document.getElementById('der-con-value');
+                        break;
+                    }
                 case "BLANKED":
-                    derived_section = document.getElementById('blank-derived-concentration-section');
-                    derived_con_text = document.getElementById('blank-der-con-value');
-                    break;
+                    if ($("#split-mode").is(":checked")) {
+                        derived_section = document.getElementById('blank-derived-concentration-section');
+                        derived_con_text = document.getElementById('blank-der-con-value');
+                        break;
+                    }
                 case "NON-BLANKED":
-                    derived_section = document.getElementById('non-blank-derived-concentration-section');
-                    derived_con_text = document.getElementById('non-blank-der-con-value');
-                    break;
-
+                    if ($("#split-mode").is(":checked")) {
+                        derived_section = document.getElementById('non-blank-derived-concentration-section');
+                        derived_con_text = document.getElementById('non-blank-der-con-value');
+                        break;
+                    }
             }
             return {
                 derived_section: derived_section,
@@ -691,7 +696,13 @@
                             console.log("Derived con settings is ", derivedConSettings);
                             derived_section = derivedConSettings.derived_section;
                             derived_con_text = derivedConSettings.derived_con_text;
-                            derived_section.classList.remove("hidden");
+                            if (derived_section) {
+                                derived_section.classList.remove("hidden");
+                            } else { //derived_section is null -> hide all
+                                $("#derived-concentration-section").addClass("hidden");
+                                $("#blank-derived-concentration-section").addClass("hidden");
+                                $("#non-blank-derived-concentration-section").addClass("hidden");
+                            }
                         }
                         const isSplitMode = $("#split-mode").is(":checked");
                         const isFullDisplay = $("#full-display").is(":checked");
@@ -777,7 +788,7 @@
                                 }
                                 currExpTimePoint = $("#exp-json-time-value").val()
                                 if (currExpTimePoint) {
-                                    globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60);
+                                    globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60); 
                                 }
 
                             } 
@@ -1486,7 +1497,7 @@
             });
         }
 
-        // let currentFile = null;
+        // Refresh data display according to range, unit, window size set
         setInterval(function() {
             if (currentFile) {
                 let range = $("#range-value").val();
