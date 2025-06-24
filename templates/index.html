@@ -1278,37 +1278,57 @@
             data.sort((a, b) => a[XColumn] - b[XColumn]);
             data = data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
 
-            const baseMultiplier = getTimeUnitMultiplier('seconds'); // Data is in seconds
-            const targetMultiplier = getTimeUnitMultiplier(timeUnit); // Multiplier for target unit
-            const conversionFactor = baseMultiplier / targetMultiplier; // Convert from seconds to target unit
+            const baseMultiplier = getTimeUnitMultiplier('seconds');
+            const targetMultiplier = getTimeUnitMultiplier(timeUnit);
+            const conversionFactor = baseMultiplier / targetMultiplier;
 
-            // Preparing data retreived
-            const allXColumn = data.map(row => row[XColumn]); // Unfiltered XColumn (Default is 'allTimestamp')
-            const allYColumn = data.map(row => row[YColumn]); // Unfiltered YColumn (Default is 'allValues')
-            const allBlankedData = data.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
-            const allNonBlankedData = data.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
+            // Determine if data has Blank or BlankType column
+            const hasBlankType = data.some(row => 'BlankType' in row);
+            const hasBlank = data.some(row => 'Blanked' in row);
+
+            // Prepare data based on column type
+            let allXColumn, allYColumn, allBlankedData, allNonBlankedData;
             
+            if (hasBlankType) {
+                allXColumn = data.filter(row => !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED")
+                                .map(row => row[XColumn]);
+                allYColumn = data.filter(row => !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED")
+                                .map(row => row[YColumn]);
+                allBlankedData = data.filter(row => row['BlankType'] === "BLANKED");
+                allNonBlankedData = data.filter(row => row['BlankType'] === "NON-BLANKED");
+            } else if (hasBlank) {
+                allXColumn = data.map(row => row[XColumn]);
+                allYColumn = data.map(row => row[YColumn]);
+                allBlankedData = data.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
+                allNonBlankedData = data.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
+            } else {
+                console.warn("No Blank or BlankType column found in data");
+                return;
+            }
+
             const allBlankedXColumn = allBlankedData.map(row => row[XColumn]);
             const allBlankedYColumn = allBlankedData.map(row => row[YColumn]);
-
             const allNonBlankedXColumn = allNonBlankedData.map(row => row[XColumn]);
             const allNonBlankedYColumn = allNonBlankedData.map(row => row[YColumn]);
-            // console.log("the for blank type is ", forBlankType);
+
             console.log("X Column is", XColumn);
             let filteredData = null;
             let XColumnVals = null;
             let YColumnVals = null;
-            // Convert range from the current timeUnit to seconds for filtering
-            // Range filtering only works if the mode is not Calibrate!
+
             if (currentMeasurementMode !== "calibrate") {
                 if (isFullDisplay === true) {
                     range = Number.MAX_VALUE;
                 }
-                const rangeInSeconds = range * getTimeUnitMultiplier(timeUnit); // range is in timeUnit, convert to seconds
+                const rangeInSeconds = range * getTimeUnitMultiplier(timeUnit);
                 const mostRecentTime = Math.max(...allXColumn);
                 const timeThreshold = mostRecentTime - rangeInSeconds;
-                console.log("X Column is", XColumn);
-                filteredData = data.filter(row => row[XColumn] >= timeThreshold);
+                
+                filteredData = hasBlankType 
+                    ? data.filter(row => row[XColumn] >= timeThreshold && 
+                                   (!forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED"))
+                    : data.filter(row => row[XColumn] >= timeThreshold);
+                    
                 if (filteredData.length === 0) {
                     console.warn("No data after filtering with threshold:", timeThreshold);
                     return;
@@ -1316,34 +1336,43 @@
                 XColumnVals = filteredData.map(row => Number((row[XColumn] * conversionFactor).toFixed(2)));
                 YColumnVals = filteredData.map(row => row[YColumn]);
             } else {
-                filteredData = data;
+                filteredData = hasBlankType 
+                    ? data.filter(row => !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED")
+                    : data;
                 XColumnVals = allXColumn;
                 YColumnVals = allYColumn;
             }
+
             let measurementLabel = null;
             if (currentMeasurementMode !== "calibrate") {
-                measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] ? 
-                filteredData[0]['Measurement'] : 'Measurement';
+                measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] 
+                    ? filteredData[0]['Measurement'] 
+                    : 'Measurement';
             } else {
-                measurementLabel = filteredData.length > 0 && 'Concentration' in filteredData[0] ?
-                `${YColumn} against ${XColumn}` : 'Correlation';
+                measurementLabel = filteredData.length > 0 && 'Concentration' in filteredData[0]
+                    ? `${YColumn} against ${XColumn}`
+                    : 'Correlation';
             }
 
             if (isSplitMode) {
-
-                const blankedData = filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
-                const nonBlankedData = filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
+                const blankedData = hasBlankType 
+                    ? filteredData.filter(row => row['BlankType'] === "BLANKED")
+                    : filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
+                const nonBlankedData = hasBlankType 
+                    ? filteredData.filter(row => row['BlankType'] === "NON-BLANKED")
+                    : filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
 
                 const blankedXColumn = blankedData.map(row => Number((row[XColumn] * conversionFactor).toFixed(2)));
                 const blankedYColumn = blankedData.map(row => row[YColumn]);
                 const nonBlankedXColumn = nonBlankedData.map(row => Number((row[XColumn] * conversionFactor).toFixed(2)));
                 const nonBlankedYColumn = nonBlankedData.map(row => row[YColumn]);
+
                 let analysis_blanked = null;
                 let analysis_nonblanked = null;
                 if (currentMeasurementMode !== "calibrate") {
                     analysis_blanked = calculateSlopeAndSaturation(allBlankedXColumn, allBlankedYColumn, window_size);
                     analysis_nonblanked = calculateSlopeAndSaturation(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
-                } 
+                }
 
                 $("#blanked-canvas, #non-blanked-canvas").show();
                 blankedChart = createChart(
@@ -1356,7 +1385,7 @@
                     range,
                     conversionFactor,
                     analysis_blanked,
-                    isFullDisplay, 
+                    isFullDisplay,
                     refCalPoint,
                     (forBlankType === "BLANKED")
                 );
@@ -1374,6 +1403,7 @@
                     refCalPoint,
                     (forBlankType === "NON-BLANKED")
                 );
+
                 if (currentMeasurementMode !== "calibrate") {
                     $("#analysis-info").html(
                         `<span style="color: rgb(255, 99, 132);">
@@ -1427,7 +1457,7 @@
                     timeUnit,
                     range,
                     conversionFactor,
-                    mixAnalysis, 
+                    mixAnalysis,
                     isFullDisplay,
                     refCalPoint,
                     (forBlankType === "MIXED")
