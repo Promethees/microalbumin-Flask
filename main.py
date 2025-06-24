@@ -25,8 +25,10 @@ from file import get_file_list
 app = Flask(__name__)
 process = None
 log_file = "log/script_logs.txt"
-abs_col = 0
-blankT_col = 6
+con_col = 1
+blankT_col_kin = 8
+blankT_col_pnt = 6
+time_point_col = 4
 
 os_name = platform.system().lower()
 if "window" in os_name:
@@ -190,8 +192,11 @@ def export_data(mode="kinetics"):
                 else:
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             # writer.writerow([vmax, slope, sat])  # Append data
-            if check_row_exist(full_path, concentration, blankT):
-                message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
+            if check_row_exist(full_path, concentration, blankT, time_point, meas_mode):
+                if (meas_mode == "kinetics"):
+                    message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
+                elif (meas_mode == "point"):
+                    message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" at this {time_point} already exist in {full_path}"
                 status = "error"
             else: 
                 if (meas_mode == "kinetics"):
@@ -206,14 +211,17 @@ def export_data(mode="kinetics"):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-def check_row_exist(full_path, absorbance, blankT):
+def check_row_exist(full_path, concentration, blankT, timePoint = None, measMode = "kinetics"):
     with open(full_path, mode='r', newline='') as f:
         reader = csv.reader(f)
 
         for row in reader:
-            if row[abs_col] == absorbance and row[blankT_col] == blankT:
-                return True
-
+            if (measMode == "kinetics"):
+                if row[con_col] == concentration and row[blankT_col_kin] == blankT:
+                    return True
+            elif (measMode == "point"):
+                if row[con_col] == concentration and row[blankT_col_pnt] == blankT and row[time_point_col] == timePoint:
+                    return True
     return False
 
 @app.route('/get_data', methods=['GET'])
