@@ -332,7 +332,7 @@
                 if (currentDir) {
                     updateDirectory(currentDir, false);
                 }
-            }, 2000);
+            }, 500);
 
             $("#time-unit").on("change", function(){
                 const currTimeUnit = $(this).val().slice(0, -1);
@@ -1161,7 +1161,7 @@
                         x: {
                             type: 'linear', // Ensure linear scale for numeric data
                             title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (nM/l)' },
-                            min: 0, // Set minimum value
+                            min: Math.min(...XColumn), // Set minimum value
                             max: Math.max(...XColumn), // Set max with a 10% buffer
                             ticks: {
                                 stepSize: 25, // Set a uniform step size (adjust based on your data range)
@@ -1728,7 +1728,7 @@
                 $("#blank-derived-concentration-section").addClass("hidden");
                 $("#non-blank-derived-concentration-section").addClass("hidden");
             }
-        }, 2000);
+        }, 500);
 
     </script>
 </body>
