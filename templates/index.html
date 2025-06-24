@@ -71,6 +71,8 @@
         #export-analysis.hidden { display: none; }
         #set-exp-point-section { display: block; }
         #set-exp-point-section.hidden { display: none; }
+        #select-exp-blank-type { display: block; }
+        #select-exp-blank-type.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -214,6 +216,14 @@
                     <div class="section" id="set-exp-point-section">
                         Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute </span><span id="est-val-exp"></span>
                     </div>
+                    <div id="select-exp-blank-type">
+                        Select blank Type to export:
+                        <select id="exp-json-blank-type">
+                            <option value="MIXED">MIXED</option>
+                            <option value="BLANKED">BLANKED</option>
+                            <option value="NON-BLANKED">NON-BLANKED</option>
+                        </select>
+                    </div>
                     <label for="save-dir">Saving Directory: 
                     </label>
                     <input type="text" id="save-dir" placeholder="Enter directory path to save analysis data. Leave empty to save to default directory" style="width: 50em">
@@ -344,6 +354,7 @@
                     $("#json-display").removeClass("hidden");
                     $("#export-analysis").removeClass("hidden");
                     $("#set-exp-point-section").addClass("hidden");
+                    $("#select-exp-blank-type").removeClass("hidden");
                 } else if (mode === "point"){
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -355,6 +366,7 @@
                     $("#json-display").removeClass("hidden");
                     $("#export-analysis").removeClass("hidden");
                     $("#set-exp-point-section").removeClass("hidden");
+                    $("#select-exp-blank-type").removeClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -365,6 +377,7 @@
                     $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
                     $("#json-display").addClass("hidden");
                     $("#export-analysis").addClass("hidden");
+                    $("#select-exp-blank-type").addClass("hidden");
                 }
                 if (currentFile) {
                     let range = $("#range-value").val();
@@ -636,22 +649,30 @@
             }
         }
 
-        function getEstimatedValue(data, timepoint, maxTolerance = 60) {
+        function getEstimatedValue(data, timepoint, maxTolerance = 60, blankType = "MIXED") {
             if (!Array.isArray(data) || data.length === 0) return null;
 
             // Sort data by timestamp
             data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
 
-            let closest = null;
+            // Filter data based on blankType
+            const filteredData = data.filter(item => {
+                if (blankType === "MIXED") return true;
+                if (blankType === "BLANKED") return item["Blank"] === true;
+                if (blankType === "NON-BLANKED") return item["Blank"] === false;
+                return true; // Default to MIXED behavior
+            });
+
+            if (filteredData.length === 0) return null;
 
             // Loop to find the two surrounding points
-            for (let i = 0; i < data.length - 1; i++) {
-                const t1 = data[i]["Timestamp"];
-                const t2 = data[i + 1]["Timestamp"];
+            for (let i = 0; i < filteredData.length - 1; i++) {
+                const t1 = filteredData[i]["Timestamp"];
+                const t2 = filteredData[i + 1]["Timestamp"];
 
                 // Exact match
-                if (t1 === timepoint) return data[i]["Value"];
-                if (t2 === timepoint) return data[i + 1]["Value"];
+                if (t1 === timepoint) return filteredData[i]["Value"];
+                if (t2 === timepoint) return filteredData[i + 1]["Value"];
 
                 // Surrounding range for interpolation
                 if (t1 < timepoint && timepoint < t2) {
@@ -659,8 +680,8 @@
                     const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
                     if (minDiff > maxTolerance) return null;
 
-                    const v1 = data[i]["Value"];
-                    const v2 = data[i + 1]["Value"];
+                    const v1 = filteredData[i]["Value"];
+                    const v2 = filteredData[i + 1]["Value"];
 
                     // Linear interpolation
                     const ratio = (timepoint - t1) / (t2 - t1);
@@ -669,7 +690,7 @@
             }
 
             // Check ends if out-of-bounds but within tolerance
-            const first = data[0], last = data[data.length - 1];
+            const first = filteredData[0], last = filteredData[filteredData.length - 1];
             if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first["Value"];
             if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last["Value"];
 
@@ -801,7 +822,7 @@
                                     refCalPoint = jsonTimePoint*conversionFactor;
                                     calPoint.text(refCalPoint);
                                     
-                                    const estValueRead = getEstimatedValue(response.data, jsonTimePoint*60).toFixed(4);
+                                    const estValueRead = getEstimatedValue(response.data, jsonTimePoint*60, jsonFile["for_blank_type"]).toFixed(4);
                                     if (estValueRead) {
                                         const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"]
                                         $("#add-json-section").text(`. The estimated value read from recorded data is ${estValueRead}${unitPrinted}.`);
@@ -811,9 +832,11 @@
                                     calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
                                     derived_con_text.innerHTML = `${calculated_con}`;                                    
                                 }
-                                currExpTimePoint = $("#exp-json-time-value").val()
+                                currExpTimePoint = $("#exp-json-time-value").val();
+                                let currExpBlankType = $("#exp-json-blank-type").val();
                                 if (currExpTimePoint) {
-                                    globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60); 
+                                    globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60, currExpBlankType); 
+                                    // globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint*60); 
                                 }
 
                             } 
