@@ -174,7 +174,7 @@ def export_data(mode="kinetics"):
         # Ensure directory exists
         os.makedirs(export_path, exist_ok=True)
         
-        full_path = os.path.join(export_path, file_name + ".csv")
+        full_path = os.path.join(export_path, file_name + "_" + meas_mode +".csv")
 
         # Check if file exists and has headers
         file_exists = os.path.isfile(full_path)
