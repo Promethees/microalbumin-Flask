@@ -182,10 +182,12 @@
             <div class="section" id="select-quantity-section">
                 Select quantity to derive concentration from
                 <select id="regressed-quantity">
-                    {% for quantity in quantity_input.quantities %}s
-                        <option value="{{ quantity|lower|replace(' ', '_') }}">{{ quantity }}</option>
+                    {% for quantity in quantity_input.quantities %}
+                        {% set transformed = quantity.lower().replace(' ', '_') %}
+                        <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
                     {% endfor %}
                 </select>
+
             </div>
             <div id="derived-concentration-section">
                 Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> nM/l
@@ -382,7 +384,9 @@
                     $("#full-display-section").removeClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
-                    $("#select-quantity-section").addClass("hidden"); 
+                    if ($("#cal-mode-select").val() === "kinetics") 
+                        $("#select-quantity-section").removeClass("hidden");
+                    else $("#select-quantity-section").addClass("hidden"); 
                     $("#point-json-exp-section").addClass("hidden");
                     $("#cal-json-sel-section").addClass("hidden");
                     $("#kinetics-lines").addClass("hidden");
@@ -478,7 +482,7 @@
                         const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                         const data = await response.json();
                         const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
-                        const cal_headers_kinetics = ["Measurement","Concentration","Vmax","Slope","Saturation","Time To Sat", "MeasUnit", "TimeUnit","BlankType", "MeasMode"];
+                        const cal_headers_kinetics = ["Measurement","Concentration","Vmax","Slope","Sat","Time To Sat", "MeasUnit", "TimeUnit","BlankType", "MeasMode"];
                         const cal_headers_point = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType", "MeasMode"];
                         if (data.headers) {
                             const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
@@ -777,8 +781,9 @@
                         } else {
                             if (currentMeasurementMode === "calibrate") {
                                 const cal_type = $("#cal-mode-select").val();
+                                const quantity_obj = document.getElementById('regressed-quantity');
                                 if (cal_type === "kinetics") {
-                                    updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Vmax");
+                                    updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
                                 } else if (cal_type === "point") {
                                     updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
                                 }
@@ -1138,9 +1143,6 @@
                 adjustedVmax = (3600*adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
             }
             const { XColumn, YColumn } = averageDuplicates(allXColumn, allYColumn);
-            console.log("Unique XColumns are", XColumn);
-            console.log("Respective Y columns ", YColumn);
-            console.log("Time Unit is", timeUnit);
             let chart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1158,7 +1160,7 @@
                     scales: {
                         x: {
                             type: 'linear', // Ensure linear scale for numeric data
-                            title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration' },
+                            title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (nM/l)' },
                             min: 0, // Set minimum value
                             max: Math.max(...XColumn), // Set max with a 10% buffer
                             ticks: {
@@ -1274,6 +1276,7 @@
             $("#analysis-info").text("");
 
             data.sort((a, b) => a[XColumn] - b[XColumn]);
+            data = data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
 
             const baseMultiplier = getTimeUnitMultiplier('seconds'); // Data is in seconds
             const targetMultiplier = getTimeUnitMultiplier(timeUnit); // Multiplier for target unit

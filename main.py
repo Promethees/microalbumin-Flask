@@ -188,7 +188,7 @@ def export_data(mode="kinetics"):
             writer = csv.writer(f)
             if not file_exists and newFile:
                 if (meas_mode == "kinetics"):
-                    writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Saturation', 'Time To Sat', 'MeasUnit','TimeUnit', 'BlankType', 'MeasMode'])  # Write header if new file
+                    writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Sat', 'Time To Sat', 'MeasUnit','TimeUnit', 'BlankType', 'MeasMode'])  # Write header if new file
                 else:
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             # writer.writerow([vmax, slope, sat])  # Append data
