@@ -628,20 +628,20 @@
                     if (!$("#split-mode").is(":checked")) {
                         derived_section = document.getElementById('derived-concentration-section');
                         derived_con_text = document.getElementById('der-con-value');
-                        break;
                     }
+                    break;
                 case "BLANKED":
                     if ($("#split-mode").is(":checked")) {
                         derived_section = document.getElementById('blank-derived-concentration-section');
                         derived_con_text = document.getElementById('blank-der-con-value');
-                        break;
                     }
+                    break;
                 case "NON-BLANKED":
                     if ($("#split-mode").is(":checked")) {
                         derived_section = document.getElementById('non-blank-derived-concentration-section');
                         derived_con_text = document.getElementById('non-blank-der-con-value');
-                        break;
                     }
+                    break;
             }
             return {
                 derived_section: derived_section,
@@ -1190,7 +1190,7 @@
 
             const allNonBlankedTimestamps = allNonBlankedData.map(row => row['Timestamp']);
             const allNonBlankedValues = allNonBlankedData.map(row => row['Value']);
-            console.log("the for blank type is ", forBlankType);
+            // console.log("the for blank type is ", forBlankType);
             // Convert range from the current timeUnit to seconds for filtering
             if (isFullDisplay === true) {
                 range = Number.MAX_VALUE;
