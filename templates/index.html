@@ -740,21 +740,46 @@
                             }
                             if (currentMeasurementMode === "kinetics") {
                                 const conQuantityInput = document.getElementById('regressed-quantity').value;
+                                console.log("Analysis is", analysis);
                                 if (jsonFile) {
                                     const coef = jsonFile[conQuantityInput]["fit_coef"];
                                     let value = null;
                                     switch(conQuantityInput) {
                                         case "vmax":
-                                            value = analysis.vmax * 60; //Need to convert to normalized unit of minute
+                                            if (jsonFile["for_blank_type"] === "MIXED") {
+                                                value = analysis.vmax * 60; //Need to convert to normalized unit of minute
+                                            } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                                value = analysis.vmax_blanked * 60;
+                                            } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                                value = analysis.vmax_non_blanked * 60;
+                                            }
                                             break;
                                         case "slope":
-                                            value = analysis.slope * 60; //Need to convert to normalized unit of minute
+                                            if (jsonFile["for_blank_type"] === "MIXED") {
+                                                value = analysis.slope * 60; //Need to convert to normalized unit of minute
+                                            } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                                value = analysis.slope_blanked * 60; 
+                                            } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                                value = analysis.slope_non_blanked * 60; 
+                                            }
                                             break;
                                         case "sat":
-                                            value = analysis.sat;
+                                            if (jsonFile["for_blank_type"] === "MIXED") {
+                                                value = analysis.sat;
+                                            } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                                value = analysis.sat_blanked;
+                                            } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                                value = analysis.sat_non_blanked;
+                                            }
                                             break;
                                         case "time_to_sat":
-                                            value = analysis.time_to_sat / 60; //Need to convert to normalized unit of minute
+                                            if (jsonFile["for_blank_type"] === "MIXED") {
+                                                value = analysis.time_to_sat / 60; //Need to convert to normalized unit of minute
+                                            } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                                value = analysis.time_to_sat_blanked / 60;
+                                            } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                                value = analysis.time_to_sat_non_blanked / 60;
+                                            }
                                             break;
                                     }
                                     calculated_con = computeFit(value, jsonFile["fit_type"], coef);
