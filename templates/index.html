@@ -172,7 +172,9 @@
                 Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> nM/l
             </div>
             <div class="section" id="point-json-exp-section">
-                Reference point is at <span type="number" id="cal-point"></span> <span id="cal-time-unit" style="font-weight: bold;">second</span><span id="add-json-section"></span>
+                Reference point is at <span type="number" id="cal-point"></span> 
+                <br/>
+                <span id="cal-time-unit" style="font-weight: bold;">second</span><span id="add-json-section"></span>
             </div>
             <div class="section" id="window-size-section">
                 Select window size for Vmax regression
@@ -221,7 +223,9 @@
                 <div>
                     <h3>Export analysis</h3>
                     <div class="section" id="set-exp-point-section">
-                        Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute </span><span id="est-val-exp"></span>
+                        Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
+                        <br/>
+                        <span id="est-val-exp"></span>
                     </div>
                     <div id="select-exp-blank-type">
                         Select Blank type to export/regress:
@@ -868,14 +872,14 @@
                                     const estValueRead = getEstimatedValue(response.data, jsonTimePoint * 60, jsonFile["for_blank_type"]).toFixed(4);
                                     if (estValueRead) {
                                         const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"];
-                                        $("#add-json-section").text(`. The estimated value read from recorded data is ${estValueRead}${unitPrinted}.`);
+                                        $("#add-json-section").text(`. The estimated ${analysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
                                     } else {
                                         $("#add-json-section").text("");
                                     }
                                     calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
                                     derived_con_text.innerHTML = `${calculated_con}`;
                                 }
-                                const currExpTimePoint = $("#exp-json-time-value").val();
+                                currExpTimePoint = $("#exp-json-time-value").val();
                                 let currExpBlankType = $("#exp-json-blank-type").val();
                                 if (currExpTimePoint) {
                                     globalEstimatedValue = getEstimatedValue(response.data, currExpTimePoint * 60, currExpBlankType);
@@ -1555,58 +1559,67 @@
                     sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
 
                 } else if (currentMeasurementMode === "point") {
-                    analysisData = {
-                        estValue: globalEstimatedValue,
-                        timePoint: currExpTimePoint,
-                        measurement: analysis.meas,
-                        measUnit: analysis.meas_unit
-                    } 
-                    sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+                    if (currExpTimePoint) { 
+                        analysisData = {
+                            estValue: globalEstimatedValue,
+                            timePoint: currExpTimePoint,
+                            measurement: analysis.meas,
+                            measUnit: analysis.meas_unit
+                        } 
+                        sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+                        if (analysis.meas_unit !== "NONE")
+                            $("#est-val-exp").text(`Estimated ${analysis.meas} value being exported is ${globalEstimatedValue}${analysis.meas_unit}`);
+                        else 
+                            $("#est-val-exp").text(`Estimated ${analysis.meas} value being exported is ${globalEstimatedValue}`);
+                    } else {
+                        alert("Please set the reference time point to export data");
+                    }
                 }
             } else {
                 alert(`Please change your units in Display Range section from ${$("#time-unit").val()} to minutes!`);
             }
+        }
 
         function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, blankedType, newFile=true) {
-                if (analysisData) {
-                    const data = {
-                        save_dir: saveDir,
-                        save_file: saveFile,
-                        vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
-                        slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
-                        sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
-                        timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
-                        con: concentration,
-                        measUnit: analysisData.measUnit, 
-                        blanked: blankedType,
-                        timeUnit: timeUnit,
-                        newFile: newFile,
-                        measMode: currentMeasurementMode,
-                        meas: analysisData.measurement,
-                        estValue: analysisData.estValue,
-                        timePoint: analysisData.timePoint
-                    };
-                    $.ajax({
-                        url: '/export_data',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify(data),
-                        success: function(response) {
-                            console.log("Export response:", response);
-                            if (response.status === 'success') {
-                                alert(`Success: ${response.message}!`);
-                            } else {
-                                alert(`Error: ${response.message}`);
-                            }
-                        },
-                        error: function(jqXHR, textStatus, errorThrown) {
-                            console.log("AJAX error:", textStatus, errorThrown);
-                            alert("Error exporting data");
+            console.log("analysis data to be exported is ", analysisData);
+            if (analysisData) {
+                const data = {
+                    save_dir: saveDir,
+                    save_file: saveFile,
+                    vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
+                    slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
+                    sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
+                    timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
+                    con: concentration,
+                    measUnit: analysisData.measUnit, 
+                    blanked: blankedType,
+                    timeUnit: timeUnit,
+                    newFile: newFile,
+                    measMode: currentMeasurementMode,
+                    meas: analysisData.measurement,
+                    estValue: analysisData.estValue ? analysisData.estValue : "NONE",
+                    timePoint: analysisData.timePoint
+                };
+                $.ajax({
+                    url: '/export_data',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function(response) {
+                        console.log("Export response:", response);
+                        if (response.status === 'success') {
+                            alert(`Success: ${response.message}!`);
+                        } else {
+                            alert(`Error: ${response.message}`);
                         }
-                    });
-                } else {
-                    alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
-                }
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.log("AJAX error:", textStatus, errorThrown);
+                        alert("Error exporting data");
+                    }
+                });
+            } else {
+                alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
             }
         }
 

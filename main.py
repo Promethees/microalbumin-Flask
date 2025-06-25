@@ -150,7 +150,7 @@ def export_data(mode="kinetics"):
     export_path = data.get('save_dir' != "", default_path)
     measurement = data.get('meas')
     vmax = data.get('vmax', 'NONE')
-    slope = data.get('slope', '0.0000')
+    slope = data.get('slope', 'NONE')
     sat = data.get('sat', 'NONE')
     concentration = data.get('con')
     time_to_sat = data.get('timeSat', 'NONE')
