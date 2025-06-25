@@ -6,7 +6,7 @@ function calculateRSquared(predicted, y) {
 }
 
 function calculateCoefAndRSquared(x, y, algo = "linear") {
-    if (x.length !== y.length || x.length < 2) return { slope: 0, rSquared: 0, coefficients: null, a: 0 };
+    if (x.length !== y.length || x.length < 2) return { slope: 0, rSquared: 0, coefficients: null };
 
     let slope = 0;
     let predicted = [];
@@ -23,10 +23,10 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             break;
 
         case "logarithmic":
-            if (x.some(xi => xi <= 0)) return { slope: 0, rSquared: 0, coefficients: null, a: 0 }; // invalid log(x)
+            if (x.some(xi => xi <= 0)) return { slope: 0, rSquared: 0, coefficients: null }; // invalid log(x)
             const logCoeffs = logarithmicRegression(x, y);
             coefficients = logCoeffs;
-            predicted = x.map(xi => a * Math.log(xi) + logCoeffs.b);
+            predicted = x.map(xi => logCoeffs[0] * Math.log(xi) + logCoeffs[1]);
             slope = logarithmicRegressionSlope(x, y);
             break;
 
@@ -34,13 +34,15 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
         default:
             const lin = linearRegression(x, y);
             coefficients = lin;
-            slope = lin.slope;
-            predicted = x.map(xi => lin.slope * xi + lin.intercept);
+            slope = lin[0];
+            predicted = x.map(xi => lin.slope * xi + lin[1]);
             break;
     }
     const rSquared = calculateRSquared(predicted, y);
 
-    return { slope, rSquared, coefficients };
+    return { slope: slope, 
+             rSquared: rSquared, 
+             coefficients: coefficients };
 }
 
 
@@ -56,12 +58,12 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     for (let i = 0; i <= XColumn.length - window_size; i++) {
         const x = XColumn.slice(i, i + window_size);
         const y = YColumn.slice(i, i + window_size);
-        const { slope, rSquared, coefficients } = calculateCoefAndRSquared(x, y, algo);
+        const calc = calculateCoefAndRSquared(x, y, algo);
 
         const intercept = y.reduce((a, b) => a + b, 0) / y.length - slope * (x.reduce((a, b) => a + b, 0) / x.length);
 
-        localSlopes.push(slope);
-        rSquaredValues.push(rSquared);
+        localSlopes.push(calc.slope);
+        rSquaredValues.push(calc.rSquared);
         intercepts.push(intercept);
     }
 
@@ -168,12 +170,12 @@ function linearRegression(x, y) {
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
-    return { slope, intercept };
+    return [ slope, intercept ];
 }
 
 // Linear regression slope
 function linearRegressionSlope(x, y) {
-    return linearRegression(x, y).slope;
+    return linearRegression(x, y)[0];
 }
 
 // Polynomial regression: Returns coefficients [c0, c1, c2, ...] for degree
@@ -223,7 +225,7 @@ function logarithmicRegression(x, y) {
     const a = (n * sumLnXY - sumLnX * sumY) / (n * sumLnX2 - sumLnX * sumLnX);
     const b = (sumY - a * sumLnX) / n;
 
-    return { a, b };
+    return [ a, b ];
 }
 
 // Logarithmic regression slope (approximated at midpoint)

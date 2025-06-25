@@ -176,225 +176,310 @@ function createChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, ra
     return chart;
 }
 
-function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode, isFullDisplay=false, refCalPoint=null, forBlankType=null,
-    XColumn = "Timestamp", YColumn = "Value", groupColumn="TimePoint", groupVal=null) {
+// Refactored version of updatePlot with modular helpers
+function updatePlot(
+    data, range, timeUnit, window_size, unit, isSplitMode,
+    isFullDisplay = false, refCalPoint = null, forBlankType = null,
+    XColumn = "Timestamp", YColumn = "Value"
+) {
     destroyCharts();
     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
     $("#analysis-info").text("");
-    data.sort((a, b) => a[XColumn] - b[XColumn]);
-    data = data.filter(row => 
-                      row[XColumn] !== "NONE" && 
-                      row[YColumn] !== "NONE" && 
-                      (!groupVal || parseFloat(row[groupColumn]) === parseFloat(groupVal))
-                    );
 
-    const baseMultiplier = getTimeUnitMultiplier('seconds');
-    const targetMultiplier = getTimeUnitMultiplier(timeUnit);
-    const conversionFactor = baseMultiplier / targetMultiplier;
+    // Clean and sort data
+    data = preprocessData(data, XColumn, YColumn);
 
-    // Determine if data has Blank or BlankType column
+    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     const hasBlankType = data.some(row => 'BlankType' in row);
     const hasBlank = data.some(row => 'Blanked' in row);
 
-    // Prepare data based on column type
-    let allXColumn, allYColumn, allBlankedData, allNonBlankedData;
-    
-    if (hasBlankType) {
-        allXColumn = data.filter(row => !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED")
-                        .map(row => row[XColumn]);
-        allYColumn = data.filter(row => !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED")
-                        .map(row => row[YColumn]);
-        allBlankedData = data.filter(row => row['BlankType'] === "BLANKED");
-        allNonBlankedData = data.filter(row => row['BlankType'] === "NON-BLANKED");
-    } else if (hasBlank) {
-        allXColumn = data.map(row => row[XColumn]);
-        allYColumn = data.map(row => row[YColumn]);
-        allBlankedData = data.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
-        allNonBlankedData = data.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
-    } else {
+    if (!hasBlankType && !hasBlank) {
         console.warn("No Blank or BlankType column found in data");
         return;
     }
 
-    const allBlankedXColumn = allBlankedData.map(row => row[XColumn]);
-    const allBlankedYColumn = allBlankedData.map(row => row[YColumn]);
-    const allNonBlankedXColumn = allNonBlankedData.map(row => row[XColumn]);
-    const allNonBlankedYColumn = allNonBlankedData.map(row => row[YColumn]);
+    const allGroups = getDataGroups(data, hasBlankType, forBlankType, XColumn, YColumn);
 
-    let filteredData = null;
-    let XColumnVals = null;
-    let YColumnVals = null;
+    const { allXColumn, allYColumn, allBlankedData, allNonBlankedData } = allGroups;
+    const allBlankedXColumn = extractColumn(allBlankedData, XColumn);
+    const allBlankedYColumn = extractColumn(allBlankedData, YColumn);
+    const allNonBlankedXColumn = extractColumn(allNonBlankedData, XColumn);
+    const allNonBlankedYColumn = extractColumn(allNonBlankedData, YColumn);
 
+    let filteredData, XColumnVals, YColumnVals;
     if (currentMeasurementMode !== "calibrate") {
-        if (isFullDisplay === true) {
-            range = Number.MAX_VALUE;
-        }
-        const rangeInSeconds = range * getTimeUnitMultiplier(timeUnit);
-        const mostRecentTime = Math.max(...allXColumn);
-        const timeThreshold = mostRecentTime - rangeInSeconds;
-        
-        filteredData = hasBlankType 
-            ? data.filter(row => row[XColumn] >= timeThreshold && 
-                           (!forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED"))
-            : data.filter(row => row[XColumn] >= timeThreshold);
-            
+        if (isFullDisplay) range = Number.MAX_VALUE;
+        const timeThreshold = Math.max(...allXColumn) - range * getTimeUnitMultiplier(timeUnit);
+
+        filteredData = filterByTime(data, timeThreshold, forBlankType, hasBlankType);
         if (filteredData.length === 0) {
             console.warn("No data after filtering with threshold:", timeThreshold);
             return;
         }
-        XColumnVals = filteredData.map(row => Number((row[XColumn] * conversionFactor).toFixed(2)));
-        YColumnVals = filteredData.map(row => row[YColumn]);
+
+        XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
+        YColumnVals = extractColumn(filteredData, YColumn);
     } else {
-        filteredData = hasBlankType 
-            ? data.filter(row => !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED")
-            : data;
-        XColumnVals = allXColumn;
-        YColumnVals = allYColumn;
+        filteredData = filterByBlankType(data, forBlankType, hasBlankType);
+        XColumnVals = extractColumn(filteredData, XColumn);
+        YColumnVals = extractColumn(filteredData, YColumn);
     }
 
-    let measurementLabel = null;
-    if (currentMeasurementMode !== "calibrate") {
-        measurementLabel = filteredData.length > 0 && 'Measurement' in filteredData[0] 
-            ? filteredData[0]['Measurement'] 
-            : 'Measurement';
-    } else {
-        measurementLabel = filteredData.length > 0 && 'Concentration' in filteredData[0]
-            ? `${YColumn} against ${XColumn}`
-            : 'Correlation';
-    }
+    const measurementLabel = determineMeasurementLabel(filteredData, XColumn, YColumn);
+
+    const calMode = $("#cal-mode-select").val();
+    const isCalKinetics = currentMeasurementMode === "calibrate" && calMode === "kinetics";
+    const isCalPoint = currentMeasurementMode === "calibrate" && calMode === "point";
+    const regressAlgo = $("#exp-json-regress-algo").val();
+    const selectElement = document.getElementById('regressed-quantity');
+    const calParams = Array.from(selectElement.options).map(option => { return option.dataset.original });
 
     if (isSplitMode) {
-        const blankedData = hasBlankType 
-            ? filteredData.filter(row => row['BlankType'] === "BLANKED")
-            : filteredData.filter(row => row['Blanked'] === true || row['Blanked'] === 1);
-        const nonBlankedData = hasBlankType 
-            ? filteredData.filter(row => row['BlankType'] === "NON-BLANKED")
-            : filteredData.filter(row => row['Blanked'] === false || row['Blanked'] === 0);
+        const blankedData = filterBlankedData(filteredData, hasBlankType, true);
+        const nonBlankedData = filterBlankedData(filteredData, hasBlankType, false);
 
-        const blankedXColumn = blankedData.map(row => Number((row[XColumn] * conversionFactor).toFixed(2)));
-        const blankedYColumn = blankedData.map(row => row[YColumn]);
-        const nonBlankedXColumn = nonBlankedData.map(row => Number((row[XColumn] * conversionFactor).toFixed(2)));
-        const nonBlankedYColumn = nonBlankedData.map(row => row[YColumn]);
+        const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
+        const blankedY = extractColumn(blankedData, YColumn);
+        const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
+        const nonBlankedY = extractColumn(nonBlankedData, YColumn);
 
         let analysis_blanked = null;
         let analysis_nonblanked = null;
-        if (currentMeasurementMode !== "calibrate") {
+
+        if (currentMeasurementMode !== "calibrate" || isCalPoint) {
             analysis_blanked = calculateKineticsQuantities(allBlankedXColumn, allBlankedYColumn, window_size);
             analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
+        } else { 
+            if (isCalKinetics) {
+                // const calParams = ["Vmax", "Slope", "Sat", "Time To Sat"];
+                analysis_blanked = calParams.map(col =>
+                    calculateCoefAndRSquared(allBlankedXColumn, extractColumn(allBlankedData, col), regressAlgo)
+                );
+                analysis_nonblanked = calParams.map(col =>
+                    calculateCoefAndRSquared(allNonBlankedXColumn, extractColumn(allNonBlankedData, col), regressAlgo)
+                );
+            } else {
+                analysis_blanked = calculateCoefAndRSquared(allBlankedXColumn, allBlankedYColumn, regressAlgo);
+                analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedXColumn, allNonBlankedYColumn, regressAlgo);
+            }
         }
 
         $("#blanked-canvas, #non-blanked-canvas").show();
-        blankedChart = createChart(
-            'blanked-canvas',
-            blankedXColumn,
-            blankedYColumn,
-            `${measurementLabel} (Blanked) ${unit !== "NONE" ? `(${unit})` : ""}`,
-            unit,
-            timeUnit,
-            range,
-            conversionFactor,
-            analysis_blanked,
-            isFullDisplay,
-            refCalPoint,
-            (forBlankType === "BLANKED")
-        );
-        nonBlankedChart = createChart(
-            'non-blanked-canvas',
-            nonBlankedXColumn,
-            nonBlankedYColumn,
-            `${measurementLabel} (Non-Blanked) ${unit !== "NONE" ? `(${unit})` : ""}`,
-            unit,
-            timeUnit,
-            range,
-            conversionFactor,
-            analysis_nonblanked,
-            isFullDisplay,
-            refCalPoint,
-            (forBlankType === "NON-BLANKED")
-        );
+        blankedChart = createChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
+            unit, timeUnit, range, conversionFactor, analysis_blanked, isFullDisplay, refCalPoint, forBlankType === "BLANKED");
+        nonBlankedChart = createChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
+            unit, timeUnit, range, conversionFactor, analysis_nonblanked, isFullDisplay, refCalPoint, forBlankType === "NON-BLANKED");
 
         if (currentMeasurementMode !== "calibrate") {
-            $("#analysis-info").html(
-                `<span style="color: rgb(255, 99, 132);">
-                Blanked: Slope = ${blankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, 
-                Linear start = ${blankedChart?.data.datasets[0].analysis.linearStart} ${timeUnit},
-                Linear end = ${blankedChart?.data.datasets[0].analysis.linearEnd} ${timeUnit}, <br/>
-                Vmax = ${blankedChart?.data.datasets[0].analysis.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
-                VmaxStart = ${blankedChart?.data.datasets[0].analysis.VmaxStart} ${timeUnit}, 
-                VmaxEnd = ${blankedChart?.data.datasets[0].analysis.VmaxEnd} ${timeUnit}, <br/>
-                Saturation = ${blankedChart?.data.datasets[0].analysis.saturationValue}, 
-                Time to Saturation = ${blankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit}<br> </span>` +
-                `<span style="color: rgb(75, 192, 192);">
-                Non-Blanked: Slope = ${nonBlankedChart?.data.datasets[0].analysis.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit}, 
-                Linear start = ${nonBlankedChart?.data.datasets[0].analysis.linearStart} ${timeUnit},
-                Linear end = ${nonBlankedChart?.data.datasets[0].analysis.linearEnd} ${timeUnit}, <br/>
-                Vmax = ${nonBlankedChart?.data.datasets[0].analysis.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
-                VmaxStart = ${nonBlankedChart?.data.datasets[0].analysis.VmaxStart} ${timeUnit}, 
-                VmaxEnd = ${nonBlankedChart?.data.datasets[0].analysis.VmaxEnd} ${timeUnit}, <br/>
-                Saturation = ${nonBlankedChart?.data.datasets[0].analysis.saturationValue}, 
-                Time to Saturation = ${nonBlankedChart?.data.datasets[0].analysis.timeToSaturation} ${timeUnit} </span>`
-            );
-            return {
-                split: true,
-                vmax_blanked: analysis_blanked.Vmax,
-                slope_blanked: analysis_blanked.slope,
-                sat_blanked: analysis_blanked.saturationValue,
-                time_to_sat_blanked: analysis_blanked.timeToSaturation,
-                vmax_non_blanked: analysis_nonblanked.Vmax,
-                slope_non_blanked: analysis_nonblanked.slope,
-                sat_non_blanked: analysis_nonblanked.saturationValue,
-                time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation,
-                meas: data[0]["Measurement"],
-                meas_unit: data[0]["Unit"]
-            }
+            updateSplitModeAnalysisInfo(blankedChart, nonBlankedChart, unit, timeUnit);
+            return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
         } else {
-            $("#analysis-info").addClass("hidden");
-            return null;
+            let blanked_string = "";
+            let non_blanked_string = "";
+            if (isCalKinetics) {
+                blanked_string = getCalKineticsString(calParams, analysis_blanked);
+                non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked);
+            } else if (isCalPoint) {
+                blanked_string = getCalPointString(analysis_blanked);
+                non_blanked_string = getCalPointString(analysis_nonblanked);
+            }
+            $("#analysis-info").html(`<span style="color: rgb(255, 99, 132);">
+                Blanked: ${blanked_string} </span> <br/>` +
+                `<span style="color: rgb(75, 192, 192);">
+                Non-Blanked: ${non_blanked_string} </span>`);
+            return ($("#exp-json-blank-type").val() === "BLANKED") ? analysis_blanked : analysis_nonblanked;
         }
     } else {
         let mixAnalysis = null;
         if (currentMeasurementMode !== "calibrate") {
             mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
-        }
-        $("#plot-canvas").show();
-        myChart = createChart(
-            'plot-canvas',
-            XColumnVals,
-            YColumnVals,
-            `${measurementLabel} ${unit !== "NONE" ? `(${unit})` : ""}`,
-            unit,
-            timeUnit,
-            range,
-            conversionFactor,
-            mixAnalysis,
-            isFullDisplay,
-            refCalPoint,
-            (forBlankType === "MIXED")
-        );
-        if (currentMeasurementMode !== "calibrate") {
-            const analysisDisplay = myChart?.data.datasets[0].analysis;
-            $("#analysis-info").html(
-                `Slope = ${analysisDisplay.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit},  
-                Linear start = ${analysisDisplay.linearStart} ${timeUnit},
-                Linear end = ${analysisDisplay.linearEnd} ${timeUnit}, <br/>
-                Vmax = ${analysisDisplay.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
-                VmaxStart = ${analysisDisplay.VmaxStart} ${timeUnit}, 
-                VmaxEnd = ${analysisDisplay.VmaxEnd} ${timeUnit}, <br/>
-                Saturation = ${analysisDisplay.saturationValue}, 
-                Time to Saturation = ${analysisDisplay.timeToSaturation} ${timeUnit}`
-            );
-            return {
-                split: false,
-                vmax: mixAnalysis.Vmax,
-                slope: mixAnalysis.slope,
-                sat: mixAnalysis.saturationValue,
-                time_to_sat: mixAnalysis.timeToSaturation,
-                meas: data[0]["Measurement"],
-                meas_unit: data[0]["Unit"]
-            }
         } else {
-            $("#analysis-info").addClass("hidden");
-            return null;
+            if (isCalKinetics) {
+                // const calParams = ["Vmax", "Slope", "Sat", "Time To Sat"];
+                mixAnalysis = calParams.map(col =>
+                    calculateCoefAndRSquared(allXColumn, extractColumn(filteredData, col), regressAlgo)
+                );
+                console.log(`Print mix analysis ${mixAnalysis} with respective ${regressAlgo}`);
+            } else if (isCalPoint) {
+                mixAnalysis = calculateCoefAndRSquared(allXColumn, allYColumn, regressAlgo);
+            }
+        }
+
+        $("#plot-canvas").show();
+        myChart = createChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
+            unit, timeUnit, range, conversionFactor, mixAnalysis, isFullDisplay, refCalPoint, forBlankType === "MIXED");
+
+        if (currentMeasurementMode !== "calibrate") {
+            updateSingleModeAnalysisInfo(myChart, unit, timeUnit);
+            return extractSingleResultSummary(data, mixAnalysis);
+        } else {
+            let htmlString = "";
+            if (isCalKinetics) {
+                htmlString = getCalKineticsString(calParams, mixAnalysis);
+            } else {
+                htmlString = getCalPointString(mixAnalysis);
+            }
+            $("#analysis-info").html(htmlString);
+            return mixAnalysis;
         }
     }
 }
+
+
+// Helper Functions
+function getCalKineticsString(calParams, analysis) {
+    let htmlString = "";
+    for (let i = 0; i < calParams.length; i++) {
+        let coefString = "";
+        if (analysis[i].coefficients) {
+            coefString += "[";
+            for (let j = 0; j < analysis[i].coefficients.length; j++) {
+                coefString += analysis[i].coefficients[j] ? Number(analysis[i].coefficients[j]).toFixed(5) : "--";
+                if (j < analysis[i].coefficients.length - 1) 
+                    coefString += ",";
+                else coefString += "], ";  
+            } 
+        }    
+        console.log("Print me analysis coefs ", analysis[i].coefficients);
+        console.log("Print me coef string ", coefString);
+        htmlString += `${calParams[i]}: Coef:` + coefString;
+        htmlString += "rSquared: ";
+        htmlString += analysis[i].rSquared ? analysis[i].rSquared : "--,";
+        htmlString += "<br/>";      
+    }
+    return htmlString;
+}
+
+function getCalPointString(analysis) {
+    let htmlString = "Coef:";
+    if (analysis.coefficients) {
+        htmlString += "[";
+        for (let j = 0; j < analysis.coefficients.length; j++) {
+            htmlString += analysis.coefficients[j] ? Number(analysis.coefficients[j]).toFixed(5) : "--";
+            if (j < analysis.coefficients - 1) 
+                htmlString += ",";
+        }
+        htmlString += "], ";
+    } 
+    htmlString += "rSquared: ";
+    htmlString += analysis.rSquared ? analysis.rSquared : "--";
+    htmlString += "<br/>";
+    return htmlString;
+}
+
+function preprocessData(data, XColumn, YColumn) {
+    return data
+        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
+        .sort((a, b) => a[XColumn] - b[XColumn]);
+}
+
+function extractColumn(data, colName) {
+    return data.map(row => row[colName]);
+}
+
+function extractAndConvert(data, colName, factor) {
+    return data.map(row => Number((row[colName] * factor).toFixed(2)));
+}
+
+function getDataGroups(data, hasBlankType, forBlankType, XColumn, YColumn) {
+    const selected = filterByBlankType(data, forBlankType, hasBlankType);
+    return {
+        allXColumn: extractColumn(selected, XColumn),
+        allYColumn: extractColumn(selected, YColumn),
+        allBlankedData: filterBlankedData(data, hasBlankType, true),
+        allNonBlankedData: filterBlankedData(data, hasBlankType, false)
+    };
+}
+
+function determineMeasurementLabel(data, XColumn, YColumn) {
+    if (currentMeasurementMode !== "calibrate") {
+        return data.length > 0 && 'Measurement' in data[0] ? data[0]['Measurement'] : 'Measurement';
+    } else {
+        return data.length > 0 && 'Concentration' in data[0] ? `${YColumn} against ${XColumn}` : 'Correlation';
+    }
+}
+
+function unitDisplay(unit) {
+    return unit !== "NONE" ? `(${unit})` : "";
+}
+
+function filterByBlankType(data, forBlankType, hasBlankType) {
+    if (!hasBlankType) return data;
+
+    return data.filter(row =>
+        !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED"
+    );
+}
+
+function filterBlankedData(data, hasBlankType, isBlanked) {
+    if (hasBlankType) {
+        return data.filter(row =>
+            isBlanked ? row['BlankType'] === "BLANKED" : row['BlankType'] === "NON-BLANKED"
+        );
+    } else {
+        return data.filter(row =>
+            isBlanked ? row['Blanked'] === true || row['Blanked'] === 1
+                      : row['Blanked'] === false || row['Blanked'] === 0
+        );
+    }
+}
+
+function updateSplitModeAnalysisInfo(blankedChart, nonBlankedChart, unit, timeUnit) {
+    const b = blankedChart?.data.datasets[0].analysis;
+    const n = nonBlankedChart?.data.datasets[0].analysis;
+    $("#analysis-info").html(
+        `<span style="color: rgb(255, 99, 132);">
+        Blanked: Slope = ${b?.slope} ${unit}/${timeUnit}, Linear start = ${b?.linearStart} ${timeUnit},
+        Linear end = ${b?.linearEnd} ${timeUnit}, <br/>Vmax = ${b?.Vmax}${unit}/${timeUnit},
+        VmaxStart = ${b?.VmaxStart} ${timeUnit}, VmaxEnd = ${b?.VmaxEnd} ${timeUnit}, <br/>Saturation = ${b?.saturationValue},
+        Time to Saturation = ${b?.timeToSaturation} ${timeUnit}<br></span>` +
+        `<span style="color: rgb(75, 192, 192);">
+        Non-Blanked: Slope = ${n?.slope} ${unit}/${timeUnit}, Linear start = ${n?.linearStart} ${timeUnit},
+        Linear end = ${n?.linearEnd} ${timeUnit}, <br/>Vmax = ${n?.Vmax}${unit}/${timeUnit},
+        VmaxStart = ${n?.VmaxStart} ${timeUnit}, VmaxEnd = ${n?.VmaxEnd} ${timeUnit}, <br/>Saturation = ${n?.saturationValue},
+        Time to Saturation = ${n?.timeToSaturation} ${timeUnit}</span>`
+    );
+}
+
+function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) {
+    return {
+        split: true,
+        vmax_blanked: analysis_blanked.Vmax,
+        slope_blanked: analysis_blanked.slope,
+        sat_blanked: analysis_blanked.saturationValue,
+        time_to_sat_blanked: analysis_blanked.timeToSaturation,
+        vmax_non_blanked: analysis_nonblanked.Vmax,
+        slope_non_blanked: analysis_nonblanked.slope,
+        sat_non_blanked: analysis_nonblanked.saturationValue,
+        time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation,
+        meas: data[0]["Measurement"],
+        meas_unit: data[0]["Unit"]
+    };
+}
+
+function updateSingleModeAnalysisInfo(myChart, unit, timeUnit) {
+    const ad = myChart?.data.datasets[0].analysis;
+    $("#analysis-info").html(
+        `Slope = ${ad.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit},  
+        Linear start = ${ad.linearStart} ${timeUnit},
+        Linear end = ${ad.linearEnd} ${timeUnit}, <br/>
+        Vmax = ${ad.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
+        VmaxStart = ${ad.VmaxStart} ${timeUnit}, 
+        VmaxEnd = ${ad.VmaxEnd} ${timeUnit}, <br/>
+        Saturation = ${ad.saturationValue}, 
+        Time to Saturation = ${ad.timeToSaturation} ${timeUnit}`
+    );
+}
+
+function extractSingleResultSummary(data, mixAnalysis) {
+    return {
+            split: false,
+            vmax: mixAnalysis.Vmax,
+            slope: mixAnalysis.slope,
+            sat: mixAnalysis.saturationValue,
+            time_to_sat: mixAnalysis.timeToSaturation,
+            meas: data[0]["Measurement"],
+            meas_unit: data[0]["Unit"]
+        } 
+}
+

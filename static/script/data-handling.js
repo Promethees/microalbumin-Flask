@@ -178,14 +178,16 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                 } else {
                     if (currentMeasurementMode === "calibrate") {
                         const cal_type = $("#cal-mode-select").val();
-                        const quantity_obj = document.getElementById('regressed-quantity');
+                        // const regress_algo = $("#exp-json-time-point").val();
                         if (cal_type === "kinetics") {
+                            const quantity_obj = document.getElementById('regressed-quantity');
                             exp_json_content = updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
                         } else if (cal_type === "point") {
                             const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
                             prevDropdownEntries = populateDropdown(uniqueTimePoints);
                             const timePoint = $("#regressed-time-point").val();
-                            exp_json_content = updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value", "TimePoint", timePoint);
+                            const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));
+                            exp_json_content = updatePlot(processingData, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
                         }
                     } else {
                         analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
