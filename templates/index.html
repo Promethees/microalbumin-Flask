@@ -1120,7 +1120,7 @@
                 return null;
             }
             // console.log(`With current mode is ${currentMeasurementMode}, analysis should be `, analysis);
-            let chartScaleConstant = 60;
+            let chartScaleConstant = 1;
             let adjustedSlope = null;
             let adjustedLinearStart = null;
             let adjustedLinearEnd = null;
@@ -1164,9 +1164,10 @@
                             min: Math.min(...XColumn), // Set minimum value
                             max: Math.max(...XColumn), // Set max with a 10% buffer
                             ticks: {
-                                stepSize: 25, // Set a uniform step size (adjust based on your data range)
+                                // stepSize: 25, // Set a uniform step size (adjust based on your data range)
+                                stepSize: Number((Math.max(...XColumn) - Math.min(...XColumn)) / (XColumn.length - 1)).toFixed(2),
                                 callback: function(value) {
-                                    return Number(value).toFixed(0); // Ensure integer ticks
+                                    return Number(value).toFixed(2);
                                 }
                             }
                         },
@@ -1176,7 +1177,8 @@
                             min: 0, // Start from 0
                             max: Math.max(...YColumn) * 1.1, // Set max with a 10% buffer
                             ticks: {
-                                stepSize: 0.001, // Set a uniform step size (adjust based on your data range)
+                                // stepSize: 0.001, // Set a uniform step size (adjust based on your data range)
+                                stepSize: Number((Math.max(...YColumn) - 0) / 10).toFixed(2),
                                 callback: function(value) {
                                     return Number(value).toFixed(3); // Format to 3 decimal places
                                 }
@@ -1190,8 +1192,8 @@
                                       type: 'vertical',
                                       borderColor: 'rgba(255, 0, 0, 0.5)',
                                       borderWidth: 3,
-                                      xMin: parseFloat(refCalPoint - XColumn[0]/conversionFactor)/chartScaleConstant,
-                                      xMax: parseFloat(refCalPoint - XColumn[0]/conversionFactor)/chartScaleConstant,
+                                      xMin: parseFloat(refCalPoint),
+                                      xMax: parseFloat(refCalPoint),
                                       yMin: 0,
                                       yMax: Math.max(...YColumn),
                                       label: {
@@ -1205,8 +1207,8 @@
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 0, 0.5)',
                                       borderWidth: 3,
-                                      xMin: parseFloat((analysis.startVMax - XColumn[0]/conversionFactor)/chartScaleConstant),
-                                      xMax: parseFloat((analysis.endVMax - XColumn[0]/conversionFactor)/chartScaleConstant),
+                                      xMin: parseFloat(analysis.startVMax*conversionFactor),
+                                      xMax: parseFloat(analysis.endVMax*conversionFactor),
                                       yMin: parseFloat(analysis.yVMaxstart),
                                       yMax: parseFloat(analysis.yVMaxend),
                                       label: {
@@ -1220,8 +1222,8 @@
                                       type: 'line',
                                       borderColor: 'rgba(0, 0, 255, 0.5)',
                                       borderWidth: 3,
-                                      xMin: parseFloat((analysis.linearXMin - XColumn[0]/conversionFactor)/chartScaleConstant),
-                                      xMax: parseFloat((analysis.linearXMax - XColumn[0]/conversionFactor)/chartScaleConstant),
+                                      xMin: parseFloat(analysis.linearXMin*conversionFactor),
+                                      xMax: parseFloat(analysis.linearXMax*conversionFactor),
                                       yMin: parseFloat(analysis.linearYMin),
                                       yMax: parseFloat(analysis.linearYMax),
                                       label: {
@@ -1235,7 +1237,7 @@
                                       type: 'line',
                                       borderColor: 'rgba(255, 0, 255, 0.5)',
                                       borderWidth: 3,
-                                      xMin: parseFloat((analysis.timeStartSaturation - XColumn[0]/conversionFactor)/chartScaleConstant),
+                                      xMin: parseFloat(analysis.timeStartSaturation*conversionFactor),
                                       xMax: Math.max(...XColumn)*100,
                                       yMin: parseFloat(analysis.saturationValue),
                                       yMax: parseFloat(analysis.saturationValue),
