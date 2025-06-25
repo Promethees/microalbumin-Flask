@@ -1,0 +1,76 @@
+body { 
+    font-family: Arial, sans-serif; 
+    margin: 20px; 
+    display: flex;
+    justify-content: center;
+}
+.container {
+    max-width: 50vw;
+    width: 100%;
+}
+.section { margin-bottom: 20px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background-color: #f2f2f2; }
+#data-display { max-height: 300px; overflow-y: auto; }
+#error-message { color: red; display: none; }
+#file-table-container { max-height: 120px; overflow-y: auto; }
+#file-table { width: 100%; }
+#file-table tr.selected { background-color: #e0f7fa; }
+#file-table button { cursor: pointer; }
+#json-table { width: 100%; }
+#json-table tr.selected { background-color: #e0f7fa; }
+#json-table button { cursor: pointer; }
+#directory { width: 70%; }
+#dir-suggestions { margin-top: 5px; }
+#parent-dir, #child-dirs { margin-top: 5px; max-height: 100px; overflow-y: auto; }
+#parent-dir h3, #child-dirs h3 { margin: 0; font-size: 1em; font-weight: bold; }
+#parent-dir div, #child-dirs div { padding: 5px; cursor: pointer; }
+#parent-dir div:hover, #child-dirs div:hover { background-color: #f0f0f0; }
+#deselect-btn { margin-top: 5px; padding: 5px 10px; }
+#plot-canvas, #blanked-canvas, #non-blanked-canvas { width: 100%; height: 280px; }
+#chart-container { display: flex; flex-direction: column; gap: 20px; }
+#mode-toggle { margin-bottom: 10px; }
+#analysis-info { margin-top: 10px; font-size: 0.9em; color: #333; }
+#analysis-info.hidden { display: none; }
+#wd-size-error {color: red; display: none; }
+#log-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
+.script-controls { margin-top: 10px; }
+#window-size-section { display: block; }
+#window-size-section.hidden { display: none; }
+#select-quantity-section { display: block; }
+#select-quantity-section.hidden { display: none; }
+#data-display-section { display: block; }
+#data-display-section.hidden { display: none; }
+#concentration-reader-section { display: block; }
+#concentration-reader-section.hidden { display: none; }
+#point-json-exp-section {display: block;}
+#point-json-exp-section.hidden { display: none; }
+#cal-json-sel-section { display: block; }
+#cal-json-sel-section.hidden { display: none; }
+#kinetics-lines { display: block; }
+#kinetics-lines.hidden { display: none; }
+#cal-json-exp-section {display: block;}
+#cal-json-exp-section.hidden { display: none; }
+#json-display { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; white-space: pre-wrap; }
+#json-display.hidden { display: none; }
+#derived-concentration-section { display: block; }
+#derived-concentration-section.hidden { display: none; }
+#blank-derived-concentration-section { display: block; }
+#blank-derived-concentration-section.hidden { display: none; }
+#non-blank-derived-concentration-section { display: block; }
+#non-blank-derived-concentration-section.hidden { display: none; }
+#export-analysis { display: block; }
+#export-analysis.hidden { display: none; }
+#set-exp-point-section { display: block; }
+#set-exp-point-section.hidden { display: none; }
+/*#select-exp-blank-type { display: block; }
+#select-exp-blank-type.hidden { display: none; }*/
+#range-display { display: block; }
+#range-display.hidden { display: none; }
+#full-display-section { display: block; }
+#full-display-section.hidden { display: none; }
+#select-time-point { display: block; }
+#select-time-point.hidden { display: none; }
+#select-regress-algo { display: block; }
+#select-regress-algo.hidden { display: none; }
