@@ -16,7 +16,6 @@ let globalEstimatedValue = null;
 let currExpTimePoint = null;
 let prevDropdownEntries = null;
 let exp_json_content = null;
-
 json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
 json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
 json_msg += '  + logarit: concentration = quantity_json[0]*loge(quantity_json[1]*quantity_value)\n';
@@ -158,6 +157,7 @@ $(document).ready(function() {
             $("#concentration-reader-section").addClass("hidden");
             $("#full-display-section").addClass("hidden");
             $("#select-regress-algo").removeClass("hidden");
+            $("#analysis-info").removeClass("hidden");
         }
         
         if (currentFile) {
@@ -193,6 +193,29 @@ $(document).ready(function() {
         $('#data-display-section').addClass("hidden");
     }
 });
+
+function updateDirectory(path, deselect) {
+    console.log("Sending path to server:", path);
+    $.post('/browse', {path: path}, function(response) {
+        if (response.status === 'success') {
+            $("#directory").val(response.path);
+            $("#error-message").hide();
+            // console.log("Response files in update directory is: ". response.files);
+            updateFileTable(response.files, deselect);
+            if (deselect) {
+                deselectFile();
+            }
+        } else {
+            $("#error-message").text(response.message).show();
+        }
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("AJAX error:", textStatus, errorThrown);
+        $("#error-message").text("Error updating directory").show();
+    });
+    $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
+        updateJSONTable(response.files);
+    })
+}
 
 // Refresh data display according to range, unit, window size set
 setInterval(function() {
