@@ -80,6 +80,8 @@
         #full-display-section.hidden { display: none; }
         #select-time-point { display: block; }
         #select-time-point.hidden { display: none; }
+        #select-regress-algo { display: block; }
+        #select-regress-algo.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -227,12 +229,20 @@
                 </label>
             </div>
             <div id="select-exp-blank-type">
-                        Select Blank type to export/regress:
-                        <select id="exp-json-blank-type">
-                            <option value="MIXED">MIXED</option>
-                            <option value="BLANKED">BLANKED</option>
-                            <option value="NON-BLANKED">NON-BLANKED</option>
-                        </select>
+                Select Blank type to export/regress:
+                <select id="exp-json-blank-type">
+                    <option value="MIXED">MIXED</option>
+                    <option value="BLANKED">BLANKED</option>
+                    <option value="NON-BLANKED">NON-BLANKED</option>
+                </select>
+            </div>
+            <div id="select-regress-algo"> 
+                Select Regress Algo to export:
+                <select id="exp-json-time-point">
+                    <option value="polynomial">polynomial</option>
+                    <option value="linear">linear</option>
+                    <option value="logarithmic">logarithmic</option>
+                </select>
             </div>
             <div id="export-analysis">
                 <div>
@@ -280,6 +290,7 @@
         let globalEstimatedValue = null;
         let currExpTimePoint = null;
         let prevDropdownEntries = null;
+        let exp_json_content = null;
 
         json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
         json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
@@ -291,6 +302,7 @@
         $("#blank-derived-concentration-section").addClass("hidden");
         $("#non-blank-derived-concentration-section").addClass("hidden");
         $("#set-exp-point-section").addClass("hidden");
+        $("#select-regress-algo").addClass("hidden");
 
         const input = document.getElementById("window-size");
 
@@ -355,7 +367,6 @@
             $("#measurement-mode").on("change", function() {
                 const mode = $(this).val();
                 currentMeasurementMode = mode;
-                console.log("curr mode", currentMeasurementMode);
                 const currentDir = $("#directory").val();
                 if (currentDir) {
                     updateDirectory(currentDir, true);
@@ -381,6 +392,7 @@
                     $("#analysis-info").removeClass("hidden");
                     $("#full-display-section").removeClass("hidden");
                     $("#select-time-point").addClass("hidden");
+                    $("#select-regress-algo").addClass("hidden");
                 } else if (mode === "point") {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
@@ -398,6 +410,7 @@
                     $("#analysis-info").removeClass("hidden");
                     $("#full-display-section").removeClass("hidden");
                     $("#select-time-point").addClass("hidden");
+                    $("#select-regress-algo").addClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
                     if ($("#cal-mode-select").val() === "kinetics") {
@@ -418,6 +431,7 @@
                     $("#range-display").addClass("hidden");
                     $("#concentration-reader-section").addClass("hidden");
                     $("#full-display-section").addClass("hidden");
+                    $("#select-regress-algo").removeClass("hidden");
                 }
                 
                 if (currentFile) {
@@ -485,7 +499,6 @@
         function updateDirectory(path, deselect) {
             console.log("Sending path to server:", path);
             $.post('/browse', {path: path}, function(response) {
-                console.log("Server response:", response);
                 if (response.status === 'success') {
                     $("#directory").val(response.path);
                     $("#error-message").hide();
@@ -599,15 +612,11 @@
                 json_name: jsonFile,
                 mode: currentMeasurementMode
             }, function(response) {
-                console.log("Retrieved json data is", response.json);
                 callback(response.json, response.path);
             })
         }
 
-        function selectFile(fileName, button, tableSelector = "#file-table") {
-            console.log("Selected file:", fileName);
-            console.log("Table selector is ", tableSelector);
-            
+        function selectFile(fileName, button, tableSelector = "#file-table") {        
             // Clear previous selection and highlight the current row
             $(`${tableSelector} tr`).removeClass("selected");
             $(button).closest("tr").addClass("selected");
@@ -618,8 +627,6 @@
             } else if (tableSelector === "#json-table") {
                 currentJSON = fileName;
                 fetchJSON(currentJSON, function(JSON_content, JSON_path) {
-                    console.log("Fetched JSON is ", JSON_content);
-                    // console.log("Select json file", currentJSON);
                     $("#json-display").text(`Current mode is \"${currentMeasurementMode}\".\nJSON file read from ${JSON_path}\n`);
                     if (currentMeasurementMode === "kinetics") {
                         $("#json-display").append("Quantity value is either Vmax, Slope, Saturation, Time to Saturation, which ever is set by user.\n");
@@ -662,7 +669,6 @@
 
 
         function deselectFile(tableSelector="#file-table") {
-            // console.log("Deselecting file");
             $(`${tableSelector} tr`).removeClass("selected");
             if (tableSelector === "#file-table") {
                 destroyCharts();
@@ -724,8 +730,6 @@
                 if (blankType === "NON-BLANKED") return item["Blanked"] === false; // Changed from "Blank" to "Blanked"
                 return true; // Default to MIXED behavior
             });
-            // console.log("Current blank type is ", blankType);
-            // console.log("Filtered data are ", filteredData);
 
             if (filteredData.length === 0) return null;
 
@@ -800,25 +804,20 @@
         }
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
-            // console.log("JSON file is ", jsonFile);
             const fullPath = $("#directory").val() + delimiter + filename;
-            console.log(`Sending request to ${fullPath}`);
             $.get('/get_data', {
                 file: $("#directory").val() + delimiter + filename
             }, function(response) {
-                console.log("Response is ", response);
                 if (response.data && response.data.length > 0) {
                     if (window_size > response.data.length / 2) {
                         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
                         $("#analysis-info").html(`<span style="color: red;">Window Size is greater than half of data size. The file has only ${response.data.length} data points</span>`);
                     } else {
-                        // console.log(`Current mode is ${currentMeasurementMode} and we're fetching Data of ${$("#cal-mode-select").val()}`);
                         let derivedConSettings = null;
                         let derived_section = null;
                         let derived_con_text = null;
                         if (jsonFile) {
                             derivedConSettings = settingDerivedCon(jsonFile);
-                            console.log("Derived con settings is ", derivedConSettings);
                             derived_section = derivedConSettings.derived_section;
                             derived_con_text = derivedConSettings.derived_con_text;
                             if (derived_section) {
@@ -855,13 +854,12 @@
                                 const cal_type = $("#cal-mode-select").val();
                                 const quantity_obj = document.getElementById('regressed-quantity');
                                 if (cal_type === "kinetics") {
-                                    updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
+                                    exp_json_content = updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
                                 } else if (cal_type === "point") {
                                     const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
-                                    console.log("Tell me the unique Time points ", uniqueTimePoints);
                                     prevDropdownEntries = populateDropdown(uniqueTimePoints);
                                     const timePoint = $("#regressed-time-point").val();
-                                    updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value", "TimePoint", timePoint);
+                                    exp_json_content = updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value", "TimePoint", timePoint);
                                 }
                             } else {
                                 analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
@@ -1070,7 +1068,6 @@
             let yVMaxend = 0;
             for (let i = 0; i < localSlopes.length; i++) {
                 adjustedLocal = 3600*localSlopes[i];
-                // console.log("local Slop is ", adjustedLocal);
                 if (rSquaredValues[i] >= 0.95 && localSlopes[i] > Vmax && adjustedLocal > threshold) {
                     Vmax = localSlopes[i];
                     startVMax = Number(i);
@@ -1364,8 +1361,6 @@
                     Meas: label
                 };
             }
-
-            console.log("The chart is", chart);
             return chart;
         }
 
@@ -1414,7 +1409,6 @@
             const allNonBlankedXColumn = allNonBlankedData.map(row => row[XColumn]);
             const allNonBlankedYColumn = allNonBlankedData.map(row => row[YColumn]);
 
-            console.log("X Column is", XColumn);
             let filteredData = null;
             let XColumnVals = null;
             let YColumnVals = null;
@@ -1678,7 +1672,6 @@
         }
 
         function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, blankedType, newFile=true) {
-            console.log("analysis data to be exported is ", analysisData);
             if (analysisData) {
                 const data = {
                     save_dir: saveDir,
@@ -1703,7 +1696,6 @@
                     contentType: 'application/json',
                     data: JSON.stringify(data),
                     success: function(response) {
-                        console.log("Export response:", response);
                         if (response.status === 'success') {
                             alert(`Success: ${response.message}!`);
                         } else {
@@ -1731,7 +1723,6 @@
                 contentType: 'application/json',
                 data: JSON.stringify({ base_dir: baseDir, base_name: baseName }),
                 success: function(response) {
-                    console.log("Run script response:", response);
                     if (response.status === 'success') {
                         scriptRunning = true;
                         $("#run-script-btn").prop('disabled', true);
@@ -1791,7 +1782,6 @@
 
         function fetchLogs() {
             $.get('/get_logs', function(response) {
-                console.log("Logs response:", response);
                 if (response.status === 'success') {
                     $("#log-display").text(response.logs);
                 }
@@ -1807,7 +1797,6 @@
                 type: 'POST',
                 contentType: 'application/json',
                 success: function(response) {
-                    console.log("Clear logs response:", response);
                     if (response.status === 'success') {
                         $("#log-display").text("");
                     } else {
