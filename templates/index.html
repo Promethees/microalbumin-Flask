@@ -1189,13 +1189,13 @@
             return { XColumn: uniqueX, YColumn: averagedY };
         }
 
-        function createChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint=null, forThisBlankType=false) {
+        function createChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
             const ctx = document.getElementById(canvasId).getContext('2d');
             if (!ctx || allXColumn.length === 0 || allYColumn.length === 0) {
-                console.error("Invalid chart data or context:", { canvasId, allYColumn, allYColumn });
+                console.error("Invalid chart data or context:", { canvasId, allXColumn, allYColumn });
                 return null;
             }
-            // console.log(`With current mode is ${currentMeasurementMode}, analysis should be `, analysis);
+
             let chartScaleConstant = 1;
             let adjustedSlope = null;
             let adjustedLinearStart = null;
@@ -1207,41 +1207,58 @@
             let adjustedSaturationValue = null;
 
             if (analysis) {
-                adjustedSlope = analysis.slope ? (parseFloat(analysis.slope)/conversionFactor).toFixed(4) : "--";
-                adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin)*conversionFactor).toFixed(2) : "--";
-                adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax)*conversionFactor).toFixed(2) : "--";
-                adjustedVmax = parseFloat(analysis.Vmax)/conversionFactor;
-                adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax)*conversionFactor).toFixed(2) : "--";
-                adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax)*conversionFactor).toFixed(2) : "--";
+                adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(4) : "--";
+                adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin) * conversionFactor).toFixed(2) : "--";
+                adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax) * conversionFactor).toFixed(2) : "--";
+                adjustedVmax = parseFloat(analysis.Vmax) / conversionFactor;
+                adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax) * conversionFactor).toFixed(2) : "--";
+                adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax) * conversionFactor).toFixed(2) : "--";
                 adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
-
                 adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
-                adjustedVmax = (3600*adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
+                adjustedVmax = (3600 * adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
             }
+
             const { XColumn, YColumn } = averageDuplicates(allXColumn, allYColumn);
+
+            // Handle single data point edge case
+            const isSinglePoint = XColumn.length === 1 && YColumn.length === 1;
+            const chartType = isSinglePoint ? 'scatter' : 'line'; // Use scatter for single point
+            const xMin = isSinglePoint ? XColumn[0] - 1 : Math.min(...XColumn); // Arbitrary range for single point
+            const xMax = isSinglePoint ? XColumn[0] + 1 : Math.max(...XColumn);
+            const yMin = 0;
+            const yMax = isSinglePoint ? YColumn[0] * 1.1 : Math.max(...YColumn) * 1.1;
+
+            // Calculate stepSize safely
+            const xStepSize = isSinglePoint
+                ? 0.5 // Arbitrary step size for single point
+                : Number((xMax - xMin) / (XColumn.length - 1)).toFixed(2) || 1; // Fallback to 1 if NaN
+            const yStepSize = isSinglePoint
+                ? Number(YColumn[0] / 10).toFixed(2) || 0.1 // Fallback for single point
+                : Number((yMax - yMin) / 10).toFixed(2) || 0.1; // Fallback to 0.1 if NaN
+
             let chart = new Chart(ctx, {
-                type: 'line',
+                type: chartType,
                 data: {
                     labels: XColumn,
                     datasets: [{
                         label: label,
                         data: YColumn,
                         borderColor: canvasId === 'blanked-canvas' ? 'rgb(255, 99, 132)' : 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                        fill: false
+                        tension: isSinglePoint ? 0 : 0.1, // No tension for scatter
+                        fill: false,
+                        pointRadius: isSinglePoint ? 5 : 3 // Larger point for scatter
                     }]
                 },
                 options: {
                     animation: false,
                     scales: {
                         x: {
-                            type: 'linear', // Ensure linear scale for numeric data
+                            type: 'linear',
                             title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (nM/l)' },
-                            min: Math.min(...XColumn), // Set minimum value
-                            max: Math.max(...XColumn), // Set max with a 10% buffer
+                            min: xMin,
+                            max: xMax,
                             ticks: {
-                                // stepSize: 25, // Set a uniform step size (adjust based on your data range)
-                                stepSize: Number((Math.max(...XColumn) - Math.min(...XColumn)) / (XColumn.length - 1)).toFixed(2),
+                                stepSize: xStepSize,
                                 callback: function(value) {
                                     return Number(value).toFixed(2);
                                 }
@@ -1250,13 +1267,12 @@
                         y: {
                             type: 'linear',
                             title: { display: true, text: unit !== "NONE" ? unit : '' },
-                            min: 0, // Start from 0
-                            max: Math.max(...YColumn) * 1.1, // Set max with a 10% buffer
+                            min: yMin,
+                            max: yMax,
                             ticks: {
-                                // stepSize: 0.001, // Set a uniform step size (adjust based on your data range)
-                                stepSize: Number((Math.max(...YColumn) - 0) / 10).toFixed(2),
+                                stepSize: yStepSize,
                                 callback: function(value) {
-                                    return Number(value).toFixed(3); // Format to 3 decimal places
+                                    return Number(value).toFixed(3);
                                 }
                             }
                         }
@@ -1264,64 +1280,68 @@
                     plugins: {
                         annotation: {
                             annotations: {
-                                ...(isFullDisplay && currentMeasurementMode === "point" && forThisBlankType && {refCalLine: {
-                                      type: 'vertical',
-                                      borderColor: 'rgba(255, 0, 0, 0.5)',
-                                      borderWidth: 3,
-                                      xMin: parseFloat(refCalPoint),
-                                      xMax: parseFloat(refCalPoint),
-                                      yMin: 0,
-                                      yMax: Math.max(...YColumn),
-                                      label: {
-                                        display: true,
-                                        content: 'RefCal',
-                                        position: 'start'
-                                      }
+                                ...(isFullDisplay && currentMeasurementMode === "point" && forThisBlankType && {
+                                    refCalLine: {
+                                        type: 'line', // Use horizontal line for single point
+                                        borderColor: 'rgba(255, 0, 0, 0.5)',
+                                        borderWidth: 3,
+                                        xMin: parseFloat(refCalPoint),
+                                        xMax: parseFloat(refCalPoint),
+                                        yMin: 0,
+                                        yMax: yMax,
+                                        label: {
+                                            display: true,
+                                            content: 'RefCal',
+                                            position: 'start'
+                                        }
                                     }
                                 }),
-                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.startVMax && {VMaxLine: {
-                                      type: 'line',
-                                      borderColor: 'rgba(255, 0, 0, 0.5)',
-                                      borderWidth: 3,
-                                      xMin: parseFloat(analysis.startVMax*conversionFactor),
-                                      xMax: parseFloat(analysis.endVMax*conversionFactor),
-                                      yMin: parseFloat(analysis.yVMaxstart),
-                                      yMax: parseFloat(analysis.yVMaxend),
-                                      label: {
-                                        display: true,
-                                        content: 'VMax',
-                                        position: 'start'
-                                      }
+                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.startVMax && !isSinglePoint && {
+                                    VMaxLine: {
+                                        type: 'line',
+                                        borderColor: 'rgba(255, 0, 0, 0.5)',
+                                        borderWidth: 3,
+                                        xMin: parseFloat(analysis.startVMax * conversionFactor),
+                                        xMax: parseFloat(analysis.endVMax * conversionFactor),
+                                        yMin: parseFloat(analysis.yVMaxstart),
+                                        yMax: parseFloat(analysis.yVMaxend),
+                                        label: {
+                                            display: true,
+                                            content: 'VMax',
+                                            position: 'start'
+                                        }
                                     }
                                 }),
-                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.linearXMin && {regressionLine: {
-                                      type: 'line',
-                                      borderColor: 'rgba(0, 0, 255, 0.5)',
-                                      borderWidth: 3,
-                                      xMin: parseFloat(analysis.linearXMin*conversionFactor),
-                                      xMax: parseFloat(analysis.linearXMax*conversionFactor),
-                                      yMin: parseFloat(analysis.linearYMin),
-                                      yMax: parseFloat(analysis.linearYMax),
-                                      label: {
-                                        display: true,
-                                        content: 'Linear',
-                                        position: 'middle'
-                                      }
+                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.linearXMin && !isSinglePoint && {
+                                    regressionLine: {
+                                        type: 'line',
+                                        borderColor: 'rgba(0, 0, 255, 0.5)',
+                                        borderWidth: 3,
+                                        xMin: parseFloat(analysis.linearXMin * conversionFactor),
+                                        xMax: parseFloat(analysis.linearXMax * conversionFactor),
+                                        yMin: parseFloat(analysis.linearYMin),
+                                        yMax: parseFloat(analysis.linearYMax),
+                                        label: {
+                                            display: true,
+                                            content: 'Linear',
+                                            position: 'middle'
+                                        }
                                     }
                                 }),
-                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && {saturationLine: {
-                                      type: 'line',
-                                      borderColor: 'rgba(255, 0, 255, 0.5)',
-                                      borderWidth: 3,
-                                      xMin: parseFloat(analysis.timeStartSaturation*conversionFactor),
-                                      xMax: Math.max(...XColumn)*100,
-                                      yMin: parseFloat(analysis.saturationValue),
-                                      yMax: parseFloat(analysis.saturationValue),
-                                      label: {
-                                        display: true,
-                                        content: 'Sat',
-                                        position: 'end'
-                                      }
+                                ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && !isSinglePoint && {
+                                    saturationLine: {
+                                        type: 'line',
+                                        borderColor: 'rgba(255, 0, 255, 0.5)',
+                                        borderWidth: 3,
+                                        xMin: parseFloat(analysis.timeStartSaturation * conversionFactor),
+                                        xMax: xMax * 100,
+                                        yMin: parseFloat(analysis.saturationValue),
+                                        yMax: parseFloat(analysis.saturationValue),
+                                        label: {
+                                            display: true,
+                                            content: 'Sat',
+                                            position: 'end'
+                                        }
                                     }
                                 })
                             }
@@ -1329,6 +1349,7 @@
                     }
                 }
             });
+
             if (analysis) {
                 chart.data.datasets[0].analysis = {
                     slope: adjustedSlope,
@@ -1338,23 +1359,27 @@
                     timeToSaturation: adjustedTimeToSaturationDisplay,
                     Vmax: adjustedVmax,
                     VmaxStart: adjustedVmaxStart,
-                    VmaxEnd: adjustedVmaxEnd, 
+                    VmaxEnd: adjustedVmaxEnd,
                     MeasUnit: unit,
                     Meas: label
-                }; // Store adjusted analysis for display
+                };
             }
+
             console.log("The chart is", chart);
             return chart;
         }
 
         function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode, isFullDisplay=false, refCalPoint=null, forBlankType=null,
-            XColumn = "Timestamp", YColumn = "Value") {
+            XColumn = "Timestamp", YColumn = "Value", groupColumn="TimePoint", groupVal=null) {
             destroyCharts();
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             $("#analysis-info").text("");
-
             data.sort((a, b) => a[XColumn] - b[XColumn]);
-            data = data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
+            data = data.filter(row => 
+                              row[XColumn] !== "NONE" && 
+                              row[YColumn] !== "NONE" && 
+                              (!groupVal || parseFloat(row[groupColumn]) === parseFloat(groupVal))
+                            );
 
             const baseMultiplier = getTimeUnitMultiplier('seconds');
             const targetMultiplier = getTimeUnitMultiplier(timeUnit);
