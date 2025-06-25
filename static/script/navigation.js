@@ -26,29 +26,6 @@ function browseDirectory() {
     });
 }
 
-function updateDirectory(path, deselect) {
-    console.log("Sending path to server:", path);
-    $.post('/browse', {path: path}, function(response) {
-        if (response.status === 'success') {
-            $("#directory").val(response.path);
-            $("#error-message").hide();
-            // console.log("Response files in update directory is: ". response.files);
-            updateFileTable(response.files, deselect);
-            if (deselect) {
-                deselectFile();
-            }
-        } else {
-            $("#error-message").text(response.message).show();
-        }
-    }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.log("AJAX error:", textStatus, errorThrown);
-        $("#error-message").text("Error updating directory").show();
-    });
-    $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
-        updateJSONTable(response.files);
-    })
-}
-
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
