@@ -774,7 +774,6 @@
             if (prevDropdownEntries && arraysEqual(prevDropdownEntries, entries)) {
                 return prevDropdownEntries;
             }
-
             const select = document.getElementById(dropdownId);
             // Store current selection
             const currentSelection = select.value;
@@ -797,7 +796,7 @@
             } else {
                 select.value = ''; // Reset to default if previous selection is gone
             }
-            return entries;
+            return entries.sort((a, b) => b - a);
         }
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
@@ -861,7 +860,8 @@
                                     const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
                                     console.log("Tell me the unique Time points ", uniqueTimePoints);
                                     prevDropdownEntries = populateDropdown(uniqueTimePoints);
-                                    updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
+                                    const timePoint = $("#regressed-time-point").val();
+                                    updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value", "TimePoint", timePoint);
                                 }
                             } else {
                                 analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
