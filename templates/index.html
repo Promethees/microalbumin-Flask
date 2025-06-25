@@ -72,12 +72,14 @@
         #export-analysis.hidden { display: none; }
         #set-exp-point-section { display: block; }
         #set-exp-point-section.hidden { display: none; }
-        #select-exp-blank-type { display: block; }
-        #select-exp-blank-type.hidden { display: none; }
+        /*#select-exp-blank-type { display: block; }
+        #select-exp-blank-type.hidden { display: none; }*/
         #range-display { display: block; }
         #range-display.hidden { display: none; }
         #full-display-section { display: block; }
         #full-display-section.hidden { display: none; }
+        #select-time-point { display: block; }
+        #select-time-point.hidden { display: none; }
     </style>
 </head>
 <body>
@@ -189,7 +191,12 @@
                         <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
                     {% endfor %}
                 </select>
-
+            </div>
+            <div class="section" id="select-time-point">
+                Select time point to derive concentration from
+                <select id="regressed-time-point">
+                    <option value=""></option>
+                </select> <span style="font-weight: bold;"> minute</span>
             </div>
             <div id="derived-concentration-section">
                 Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> nM/l
@@ -219,6 +226,14 @@
                 <label>
                 </label>
             </div>
+            <div id="select-exp-blank-type">
+                        Select Blank type to export/regress:
+                        <select id="exp-json-blank-type">
+                            <option value="MIXED">MIXED</option>
+                            <option value="BLANKED">BLANKED</option>
+                            <option value="NON-BLANKED">NON-BLANKED</option>
+                        </select>
+            </div>
             <div id="export-analysis">
                 <div>
                     <h3>Export analysis</h3>
@@ -226,14 +241,6 @@
                         Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
                         <br/>
                         <span id="est-val-exp"></span>
-                    </div>
-                    <div id="select-exp-blank-type">
-                        Select Blank type to export/regress:
-                        <select id="exp-json-blank-type">
-                            <option value="MIXED">MIXED</option>
-                            <option value="BLANKED">BLANKED</option>
-                            <option value="NON-BLANKED">NON-BLANKED</option>
-                        </select>
                     </div>
                     <label for="save-dir">Saving Directory: 
                     </label>
@@ -271,7 +278,8 @@
         let analysis = null;
         let json_msg = 'When fit_type: \n';
         let globalEstimatedValue = null;
-        let currExpTimePoint = null
+        let currExpTimePoint = null;
+        let prevDropdownEntries = null;
 
         json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
         json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
@@ -300,18 +308,18 @@
             $.get('/get_parents', function(parentResponse) {
                 console.log("Parent directory:", parentResponse.parent);
                 let parentHtml = parentResponse.parent ? 
-                    `${parentResponse.parent.split(delimiter).pop() ? 
-                        `<div onclick="updateDirectory('${parentResponse.parent}', 'true')">${parentResponse.parent.split(delimiter).pop()}</div>` : 
-                        '<div>No parent directory</div>'}` : 
+                    (parentResponse.parent.split(delimiter).pop() ? 
+                        `<div onclick="updateDirectory('${parentResponse.parent}', true)">${parentResponse.parent.split(delimiter).pop()}</div>` : 
+                        '<div>No parent directory</div>') : 
                     '<div>No parent directory</div>';
                 $("#parent-dir").html(parentHtml);
 
                 $.get('/get_children', function(childResponse) {
                     console.log("Child directories:", childResponse.children);
                     let childHtml = childResponse.children.length > 0 ? 
-                        `${childResponse.children.map(dir => 
-                            `<div onclick="updateDirectory('${dir}', 'true')">${dir.split(delimiter).pop()}</div>`
-                        ).join('')}` : 
+                        childResponse.children.map(dir => 
+                            `<div onclick="updateDirectory('${dir}', true)">${dir.split(delimiter).pop()}</div>`
+                        ).join('') : 
                         '<div>No child directories</div>';
                     $("#child-dirs").html(childHtml);
                 }).fail(function(jqXHR, textStatus, errorThrown) {
@@ -338,10 +346,11 @@
                 }
             }, 500);
 
-            $("#time-unit").on("change", function(){
+            $("#time-unit").on("change", function() {
                 const currTimeUnit = $(this).val().slice(0, -1);
                 $("#cal-time-unit").text(currTimeUnit);
-            })
+            });
+
             // Initialize measurement method listener
             $("#measurement-mode").on("change", function() {
                 const mode = $(this).val();
@@ -354,6 +363,7 @@
                 currentJSON = null;
                 currentJSONcontent = null;
                 $("#json-display").text("");
+                
                 if (mode === "kinetics") {
                     $("#window-size-section").removeClass("hidden");
                     $("#select-quantity-section").removeClass("hidden");
@@ -370,7 +380,8 @@
                     $("#concentration-reader-section").removeClass("hidden");
                     $("#analysis-info").removeClass("hidden");
                     $("#full-display-section").removeClass("hidden");
-                } else if (mode === "point"){
+                    $("#select-time-point").addClass("hidden");
+                } else if (mode === "point") {
                     $("#window-size-section").addClass("hidden");
                     $("#select-quantity-section").addClass("hidden"); 
                     $("#point-json-exp-section").addClass("hidden");
@@ -386,11 +397,16 @@
                     $("#concentration-reader-section").removeClass("hidden");
                     $("#analysis-info").removeClass("hidden");
                     $("#full-display-section").removeClass("hidden");
+                    $("#select-time-point").addClass("hidden");
                 } else {
                     $("#window-size-section").addClass("hidden");
-                    if ($("#cal-mode-select").val() === "kinetics") 
+                    if ($("#cal-mode-select").val() === "kinetics") {
                         $("#select-quantity-section").removeClass("hidden");
-                    else $("#select-quantity-section").addClass("hidden"); 
+                        $("#select-time-point").addClass("hidden");
+                    } else {
+                        $("#select-quantity-section").addClass("hidden");
+                        $("#select-time-point").removeClass("hidden");
+                    }
                     $("#point-json-exp-section").addClass("hidden");
                     $("#cal-json-sel-section").addClass("hidden");
                     $("#kinetics-lines").addClass("hidden");
@@ -398,11 +414,12 @@
                     $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
                     $("#json-display").addClass("hidden");
                     $("#export-analysis").addClass("hidden");
-                    $("#select-exp-blank-type").addClass("hidden");
+                    $("#select-exp-blank-type").removeClass("hidden");
                     $("#range-display").addClass("hidden");
                     $("#concentration-reader-section").addClass("hidden");
                     $("#full-display-section").addClass("hidden");
                 }
+                
                 if (currentFile) {
                     if (currentMeasurementMode !== "calibrate") {
                         let range = $("#range-value").val();
@@ -413,16 +430,28 @@
                         fetchData(null, null, null, currentFile, null);
                     }
                 } 
-                updateDirectory($("#directory").val(), true); // Refresh file table based on new mode
+                updateDirectory($("#directory").val(), true);
             });
 
             $("#cal-json-exp-section").on("change", function() {
                 currentFile = null;
             });
 
+            $("#cal-mode-select").on("change", function() {
+                if ($("#cal-mode-select").val() === "kinetics") {
+                    $("#select-quantity-section").removeClass("hidden");
+                    $("#select-time-point").addClass("hidden");
+                } else {
+                    $("#select-quantity-section").addClass("hidden");
+                    $("#select-time-point").removeClass("hidden");
+                }
+            });
+
             if (currentFile) {
                 $("#data-display-section").removeClass("hidden");
-            } else $('#data-display-section').addClass("hidden");
+            } else {
+                $('#data-display-section').addClass("hidden");
+            }
         });
 
         function browseDirectory() {
@@ -728,8 +757,48 @@
             if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last["Value"];
 
             return null;
-    }
+        }
 
+        function getUniqueColumnEntries(data, columnName="TimePoint") {
+            const uniqueColumnEntries = new Set(data.map(row => row[columnName]).filter(tp => tp));
+            return Array.from(uniqueColumnEntries);
+        }
+
+        function arraysEqual(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            return arr1.every((value, index) => value === arr2[index]);
+        }
+
+        // Triggered only after entries is changed
+        function populateDropdown(entries, dropdownId = 'regressed-time-point') {
+            if (prevDropdownEntries && arraysEqual(prevDropdownEntries, entries)) {
+                return prevDropdownEntries;
+            }
+
+            const select = document.getElementById(dropdownId);
+            // Store current selection
+            const currentSelection = select.value;
+            console.log("Tell me the current Selection ", currentSelection);
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+
+            entries.forEach(entry => {
+                const option = document.createElement('option');
+                option.value = entry;
+                option.textContent = entry;
+                select.appendChild(option);
+            });
+
+            // Restore selection if it still exists in the new data
+            if (currentSelection && entries.includes(currentSelection)) {
+                select.value = currentSelection;
+                console.log("restore current value");
+            } else {
+                select.value = ''; // Reset to default if previous selection is gone
+            }
+            return entries;
+        }
 
         function fetchData(range, unit, window_size, filename, jsonFile) {
             // console.log("JSON file is ", jsonFile);
@@ -789,6 +858,9 @@
                                 if (cal_type === "kinetics") {
                                     updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
                                 } else if (cal_type === "point") {
+                                    const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
+                                    console.log("Tell me the unique Time points ", uniqueTimePoints);
+                                    prevDropdownEntries = populateDropdown(uniqueTimePoints);
                                     updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
                                 }
                             } else {
