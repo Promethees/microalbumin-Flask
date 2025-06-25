@@ -279,8 +279,8 @@ function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode, isFul
         let analysis_blanked = null;
         let analysis_nonblanked = null;
         if (currentMeasurementMode !== "calibrate") {
-            analysis_blanked = calculateSlopeAndSaturation(allBlankedXColumn, allBlankedYColumn, window_size);
-            analysis_nonblanked = calculateSlopeAndSaturation(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
+            analysis_blanked = calculateKineticsQuantities(allBlankedXColumn, allBlankedYColumn, window_size);
+            analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
         }
 
         $("#blanked-canvas, #non-blanked-canvas").show();
@@ -354,7 +354,7 @@ function updatePlot(data, range, timeUnit, window_size, unit, isSplitMode, isFul
     } else {
         let mixAnalysis = null;
         if (currentMeasurementMode !== "calibrate") {
-            mixAnalysis = calculateSlopeAndSaturation(allXColumn, allYColumn, window_size);
+            mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
         }
         $("#plot-canvas").show();
         myChart = createChart(
