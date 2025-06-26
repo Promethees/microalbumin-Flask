@@ -188,6 +188,15 @@
                 <button id="export-btn" onclick="exportData()">Export Data</button>
                 <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
             </div>  
+            <div id="export-coef">
+                <div>
+                    <label for="save-file">File Name: </label>
+                    <input type="text" id="save-json-file" placeholder="Enter file name to regressed coefficients to(e.g., calibration)" style="width: 10em">
+                    <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
+                    <br/>
+                    Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
+                </div>
+            </div>
             <div id="analysis-info"></div>
             <div id="chart-container">
                 <canvas id="plot-canvas"></canvas>

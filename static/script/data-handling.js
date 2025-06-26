@@ -181,13 +181,14 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         // const regress_algo = $("#exp-json-time-point").val();
                         if (cal_type === "kinetics") {
                             const quantity_obj = document.getElementById('regressed-quantity');
-                            exp_json_content = updatePlot(response.data, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
+                            exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
+                            console.log("Get the the exp_json_content", exp_json_content);
                         } else if (cal_type === "point") {
                             const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
                             prevDropdownEntries = populateDropdown(uniqueTimePoints);
                             const timePoint = $("#regressed-time-point").val();
                             const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));
-                            exp_json_content = updatePlot(processingData, range=null, unit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
+                            exp_json_content = updatePlot(processingData, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
                         }
                     } else {
                         analysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
@@ -420,6 +421,43 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit
         };
         $.ajax({
             url: '/export_data',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function(response) {
+                if (response.status === 'success') {
+                    alert(`Success: ${response.message}!`);
+                } else {
+                    alert(`Error: ${response.message}`);
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error:", textStatus, errorThrown);
+                alert("Error exporting data");
+            }
+        });
+    } else {
+        alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+    }
+}
+
+function exportJSONCoef() {
+    const selectElement = document.getElementById('regressed-quantity');
+    console.log("Print me analysis ", exp_json_content);
+    if (exp_json_content) {
+        const data = {
+            fit_type: $("#exp-json-regress-algo").val(),
+            for_meas: exp_json_content.meas,
+            for_blank_type: $("#exp-json-blank-type").val(),
+            coef_content: exp_json_content.analysis,
+            time: ((currentMeasurementMode === "calibrate") && ($("#cal-mode-select").val() === "point")) ? $("#exp-json-time-value").val() : null,
+            file_name: $("#save-json-file").val(),
+            cal_mode: $("#cal-mode-select").val(),
+            cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
+            threshold_val: $("#threshold-value").val()
+        }
+        $.ajax({
+            url: '/export_cal_coefs',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(data),

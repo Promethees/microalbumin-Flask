@@ -74,3 +74,5 @@ th { background-color: #f2f2f2; }
 #select-time-point.hidden { display: none; }
 #select-regress-algo { display: block; }
 #select-regress-algo.hidden { display: none; }
+#export-coef { display: block; }
+#export-coef.hidden { display: none; }

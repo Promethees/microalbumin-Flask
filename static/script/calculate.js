@@ -58,9 +58,9 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     for (let i = 0; i <= XColumn.length - window_size; i++) {
         const x = XColumn.slice(i, i + window_size);
         const y = YColumn.slice(i, i + window_size);
-        const calc = calculateCoefAndRSquared(x, y, algo);
+        const calc = calculateCoefAndRSquared(x, y);
 
-        const intercept = y.reduce((a, b) => a + b, 0) / y.length - slope * (x.reduce((a, b) => a + b, 0) / x.length);
+        const intercept = y.reduce((a, b) => a + b, 0) / y.length - calc.slope * (x.reduce((a, b) => a + b, 0) / x.length);
 
         localSlopes.push(calc.slope);
         rSquaredValues.push(calc.rSquared);
@@ -343,12 +343,11 @@ function computeFit(value, fit_type, coef) {
             if (coef.length < 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
             return coef[0] * Math.pow(value, 2) + coef[1] * value + coef[2];
 
-        case "logarit":
         case "logarithmic":
             // Expect coef = [a, b]
             if (coef.length < 2) throw new Error("Logarithmic fit requires 2 coefficients: [a, b]");
-            if (coef[1] * value <= 0) throw new Error("Invalid input for logarithm: b * value must be > 0");
-            return coef[0] * Math.log(coef[1] * value);
+            if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
+            return coef[0] * Math.log(value) + coef[1];
 
         default:
             throw new Error("Unknown fit type: " + fit_type);

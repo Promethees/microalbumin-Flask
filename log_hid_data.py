@@ -30,6 +30,19 @@ KEYCODE_MAP = {
     0x2C: 'space', 0x36: ',', 0x37: '.'
 }
 
+# Generic helper function to get_next_filename
+def get_next_filename(fileType, base_dir, base_name):
+        pattern = os.path.join(base_dir, f"{base_name}_*[0-9]{fileType}")
+        existing_files = glob.glob(pattern)
+        number_pattern = re.compile(rf"{base_name}_(\d+){fileType}$")
+        numbers = []
+        for file in existing_files:
+            match = number_pattern.search(os.path.basename(file))
+            if match:
+                numbers.append(int(match.group(1)))
+        next_number = max(numbers, default=-1) + 1
+        return os.path.join(base_dir, f"{base_name}_{next_number}{fileType}")
+
 class HIDDataCollector:
     def __init__(self, base_dir, base_name="colorimeter_data", extension=".csv"):
         self.base_dir = base_dir
@@ -98,7 +111,7 @@ class HIDDataCollector:
         return bool(re.match(self.data_pattern, line))
 
     def handle_header(self):
-        self.output_file = self.get_next_filename()
+        self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)
         os.makedirs(self.base_dir, exist_ok=True)
         with open(self.output_file, "w") as f:
             f.write("Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration\n")
@@ -112,18 +125,6 @@ class HIDDataCollector:
                 f.write(data)
         except ValueError as e:
             self.log(f"Error parsing data: {e}")
-
-    def get_next_filename(self):
-        pattern = os.path.join(self.base_dir, f"{self.base_name}_*[0-9].csv")
-        existing_files = glob.glob(pattern)
-        number_pattern = re.compile(rf"{self.base_name}_(\d+)\.csv$")
-        numbers = []
-        for file in existing_files:
-            match = number_pattern.search(os.path.basename(file))
-            if match:
-                numbers.append(int(match.group(1)))
-        next_number = max(numbers, default=-1) + 1
-        return os.path.join(self.base_dir, f"{self.base_name}_{next_number}{self.extension}")
 
     def start(self):
         self.log("Searching for PyBadge HID device...")

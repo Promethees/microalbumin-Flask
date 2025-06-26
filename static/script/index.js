@@ -28,6 +28,7 @@ $("#non-blank-derived-concentration-section").addClass("hidden");
 $("#set-exp-point-section").addClass("hidden");
 $("#select-regress-algo").addClass("hidden");
 $("#select-time-point").addClass("hidden");
+$("#export-coef").addClass("hidden");
 
 const input = document.getElementById("window-size");
 
@@ -118,6 +119,7 @@ $(document).ready(function() {
             $("#full-display-section").removeClass("hidden");
             $("#select-time-point").addClass("hidden");
             $("#select-regress-algo").addClass("hidden");
+            $("#export-coef").addClass("hidden");
         } else if (mode === "point") {
             $("#window-size-section").addClass("hidden");
             $("#select-quantity-section").addClass("hidden"); 
@@ -136,6 +138,7 @@ $(document).ready(function() {
             $("#full-display-section").removeClass("hidden");
             $("#select-time-point").addClass("hidden");
             $("#select-regress-algo").addClass("hidden");
+            $("#export-coef").addClass("hidden");
         } else {
             $("#window-size-section").addClass("hidden");
             if ($("#cal-mode-select").val() === "kinetics") {
@@ -158,6 +161,7 @@ $(document).ready(function() {
             $("#full-display-section").addClass("hidden");
             $("#select-regress-algo").removeClass("hidden");
             $("#analysis-info").removeClass("hidden");
+            $("#export-coef").removeClass("hidden");
         }
         
         if (currentFile) {

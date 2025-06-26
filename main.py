@@ -13,7 +13,9 @@ import atexit
 import csv
 import pandas as pd
 import json
+from typing import List, Dict, Union, Any
 
+from log_hid_data import get_next_filename
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
@@ -37,6 +39,12 @@ else:
     delimiter = "/"
 
 json_root_path = os.path.join(os.getcwd(), "json")
+
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()  # Convert datetime to string
+        return super().default(obj)
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
@@ -140,6 +148,134 @@ def get_logs():
             logs = f.read()
         return jsonify({'status': 'success', 'logs': logs})
     return jsonify({'status': 'success', 'logs': 'No logs available'})
+
+@app.route('/export_cal_coefs', methods=['POST'])
+def export_cal_coefs():
+    data = request.get_json()
+    print(f"data is {data}")
+    fit_type = data.get('fit_type')
+    for_meas = data.get('for_meas')
+    for_blank_type = data.get('for_blank_type')
+    coef_content = data.get('coef_content')
+    time = data.get('time')
+    time_unit = "minute"
+    file_name = data.get('file_name', 'calibrate')
+    cal_mode = data.get('cal_mode', "kinetics")
+    cal_params = data.get('cal_params')
+    thres_val = float(data.get('threshold_val', 0))
+
+    export_path = os.path.join(json_root_path, cal_mode)
+    print("received coef_content:", coef_content)
+    try: 
+        export_path = os.getenv(export_path, export_path)
+        export_path = os.path.abspath(os.path.expanduser(export_path))
+        print(f"export path is {export_path}")
+        # Ensure directory exists
+        os.makedirs(export_path, exist_ok=True)
+
+        full_path = get_next_filename(".json", export_path, file_name)
+
+        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val))
+        json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
+
+        if (cal_mode == "point"):
+            json_content.update({"time": time, "time-unit": time_unit})
+        with open(full_path, "w") as f:
+            json.dump(json_content, f, cls=CustomEncoder, indent=4)
+        return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+def processJSONCoef(cal_params: List[str], coefficients: Union[List[float], List[List[float]]]) -> Dict[str, Any]:
+    """
+    Process analysis parameters and coefficients into a structured JSON object.
+    
+    Args:
+        cal_params: List of parameter names (e.g., ["Vmax", "slope", "sat", "Time To Sat"])
+        coefficients: Either:
+            - A 1D array [v, v] → Returns {"fit_coef": [v, v]}
+            - A 2D array [[v, v], [v, v], ...] → Returns {param1: {"fit_coef": [v, v]}, ...}
+    
+    Returns:
+        A JSON-compatible dictionary with "NONE" replacing None values.
+    
+    Raises:
+        Exception: If inputs are invalid.
+    """
+    # Validate inputs
+    if not isinstance(cal_params, list):
+        raise Exception("cal_params must be a list")
+    if not isinstance(coefficients, list):
+        raise Exception("coefficients must be a list")
+
+    def sanitize_value(v: Any) -> Union[float, str]:
+        """Replace None with 'NONE' to avoid JSON issues."""
+        return v if v is not None else "NONE"
+
+    # Case 1: coefficients is 1D (e.g., [v, v])
+    if all(not isinstance(x, list) for x in coefficients):
+        if len(coefficients) < 2:
+            raise Exception("1D coefficients must have at least 2 values")
+        
+        sanitized_coef = [sanitize_value(v) for v in coefficients]
+        return {"fit_coef": sanitized_coef}
+
+    # Case 2: coefficients is 2D (e.g., [[v, v], [v, v], ...])
+    elif all(isinstance(x, list) for x in coefficients):
+        if len(cal_params) != len(coefficients):
+            raise Exception("For 2D coefficients, cal_params and coefficients must have the same length")
+        
+        result = {}
+        for param, coef in zip(cal_params, coefficients):
+            if len(coef) < 2:
+                raise Exception(f"Each coefficient must be a list of at least 2 values (got {len(coef)})")
+            
+            processed_key = param.lower().replace(" ", "_")
+            sanitized_coef = [sanitize_value(v) for v in coef]
+            result[processed_key] = {"fit_coef": sanitized_coef}
+        return result
+
+    else:
+        raise Exception("coefficients must be either [v, v] or [[v, v], [v, v], ...]")
+
+def extractAnalysisCoefficients(
+    data: Union[List[Dict[str, Any]], Dict[str, Any]], 
+    threshold: float = 0.0  # Default threshold (adjust as needed)
+) -> Union[List[Any], List[List[Any]]]:
+    """
+    Extracts coefficients, setting them to null if rSquared < threshold.
+    
+    Args:
+        data: Single slope object or array of slope objects.
+        threshold: Minimum rSquared value to keep coefficients.
+    
+    Returns:
+        - Single object: Coefficients array (with null if filtered).
+        - Array: List of coefficients arrays (with null if filtered).
+    """
+    def process_entry(entry: Dict[str, Any]) -> List[Any]:
+        """Process one slope entry: return coefficients or nulls based on rSquared."""
+        r_squared = entry.get("rSquared")
+        # Convert rSquared to float if it's a string
+        if isinstance(r_squared, str):
+            try:
+                r_squared = float(r_squared)
+            except ValueError:
+                r_squared = None  # Treat invalid strings as None
+        if r_squared is None or (isinstance(r_squared, (float, int)) and r_squared < threshold):
+            return [None] * len(entry.get("coefficients", []))
+        return entry["coefficients"]
+    
+    # Case 1: Single object
+    if isinstance(data, dict):
+        return process_entry(data)
+    
+    # Case 2: Array of objects
+    elif isinstance(data, list):
+        return [process_entry(entry) for entry in data]
+    
+    else:
+        raise Exception("Input must be a slope object or array of slope objects")
 
 @app.route('/export_data', methods=['POST'])
 def export_data(mode="kinetics"):

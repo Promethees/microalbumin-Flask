@@ -199,7 +199,6 @@ function updatePlot(
     }
 
     const allGroups = getDataGroups(data, hasBlankType, forBlankType, XColumn, YColumn);
-
     const { allXColumn, allYColumn, allBlankedData, allNonBlankedData } = allGroups;
     const allBlankedXColumn = extractColumn(allBlankedData, XColumn);
     const allBlankedYColumn = extractColumn(allBlankedData, YColumn);
@@ -232,7 +231,7 @@ function updatePlot(
     const isCalPoint = currentMeasurementMode === "calibrate" && calMode === "point";
     const regressAlgo = $("#exp-json-regress-algo").val();
     const selectElement = document.getElementById('regressed-quantity');
-    const calParams = Array.from(selectElement.options).map(option => { return option.dataset.original });
+    const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
 
     if (isSplitMode) {
         const blankedData = filterBlankedData(filteredData, hasBlankType, true);
@@ -246,12 +245,11 @@ function updatePlot(
         let analysis_blanked = null;
         let analysis_nonblanked = null;
 
-        if (currentMeasurementMode !== "calibrate" || isCalPoint) {
+        if (currentMeasurementMode !== "calibrate") {
             analysis_blanked = calculateKineticsQuantities(allBlankedXColumn, allBlankedYColumn, window_size);
             analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
-        } else { 
+        } else {
             if (isCalKinetics) {
-                // const calParams = ["Vmax", "Slope", "Sat", "Time To Sat"];
                 analysis_blanked = calParams.map(col =>
                     calculateCoefAndRSquared(allBlankedXColumn, extractColumn(allBlankedData, col), regressAlgo)
                 );
@@ -283,11 +281,22 @@ function updatePlot(
                 blanked_string = getCalPointString(analysis_blanked);
                 non_blanked_string = getCalPointString(analysis_nonblanked);
             }
-            $("#analysis-info").html(`<span style="color: rgb(255, 99, 132);">
-                Blanked: ${blanked_string} </span> <br/>` +
-                `<span style="color: rgb(75, 192, 192);">
-                Non-Blanked: ${non_blanked_string} </span>`);
-            return ($("#exp-json-blank-type").val() === "BLANKED") ? analysis_blanked : analysis_nonblanked;
+            $("#analysis-info").html(
+                `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span><br>` +
+                `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
+            );
+
+            // Fixed syntax error
+            if ($("#exp-json-blank-type").val() === "BLANKED") {
+                analysis = analysis_blanked;
+            } else {
+                analysis = analysis_nonblanked;
+            }
+
+            return {
+                analysis,
+                meas: data[0]["Measurement"]
+            };
         }
     } else {
         let mixAnalysis = null;
@@ -295,7 +304,6 @@ function updatePlot(
             mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
         } else {
             if (isCalKinetics) {
-                // const calParams = ["Vmax", "Slope", "Sat", "Time To Sat"];
                 mixAnalysis = calParams.map(col =>
                     calculateCoefAndRSquared(allXColumn, extractColumn(filteredData, col), regressAlgo)
                 );
@@ -320,7 +328,10 @@ function updatePlot(
                 htmlString = getCalPointString(mixAnalysis);
             }
             $("#analysis-info").html(htmlString);
-            return mixAnalysis;
+            return {
+                analysis: mixAnalysis,
+                meas: data[0]["Measurement"]
+            };
         }
     }
 }
@@ -340,8 +351,6 @@ function getCalKineticsString(calParams, analysis) {
                 else coefString += "], ";  
             } 
         }    
-        console.log("Print me analysis coefs ", analysis[i].coefficients);
-        console.log("Print me coef string ", coefString);
         htmlString += `${calParams[i]}: Coef:` + coefString;
         htmlString += "rSquared: ";
         htmlString += analysis[i].rSquared ? analysis[i].rSquared : "--,";
@@ -422,6 +431,13 @@ function filterBlankedData(data, hasBlankType, isBlanked) {
                       : row['Blanked'] === false || row['Blanked'] === 0
         );
     }
+}
+
+function filterByTime(data, timeThreshold, forBlankType, hasBlankType, XColumn = "Timestamp") {
+    return data.filter(row =>
+        row[XColumn] >= timeThreshold &&
+        (!hasBlankType || !forBlankType || row["BlankType"] === forBlankType || row["BlankType"] === "MIXED")
+    );
 }
 
 function updateSplitModeAnalysisInfo(blankedChart, nonBlankedChart, unit, timeUnit) {

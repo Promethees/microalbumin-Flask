@@ -3,6 +3,6 @@
 	"for_meas": "ABSORBANCE",
 	"for_blank_type": "MIXED",
 	"time": 5,
-	"time-unit": "minutes",
+	"time-unit": "minute",
 	"fit_coef": [3, 4]
 }
