@@ -107,7 +107,6 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     const select = document.getElementById(dropdownId);
     // Store current selection
     const currentSelection = select.value;
-    console.log("Tell me the current Selection ", currentSelection);
     while (select.options.length > 1) {
         select.remove(1);
     }
@@ -122,7 +121,6 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     // Restore selection if it still exists in the new data
     if (currentSelection && entries.includes(currentSelection)) {
         select.value = currentSelection;
-        console.log("restore current value");
     } else {
         select.value = ''; // Reset to default if previous selection is gone
     }
@@ -182,7 +180,6 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         if (cal_type === "kinetics") {
                             const quantity_obj = document.getElementById('regressed-quantity');
                             exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
-                            console.log("Get the the exp_json_content", exp_json_content);
                         } else if (cal_type === "point") {
                             const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
                             prevDropdownEntries = populateDropdown(uniqueTimePoints);
@@ -443,7 +440,6 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit
 
 function exportJSONCoef() {
     const selectElement = document.getElementById('regressed-quantity');
-    console.log("Print me analysis ", exp_json_content);
     if (exp_json_content) {
         const data = {
             fit_type: $("#exp-json-regress-algo").val(),

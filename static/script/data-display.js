@@ -307,7 +307,6 @@ function updatePlot(
                 mixAnalysis = calParams.map(col =>
                     calculateCoefAndRSquared(allXColumn, extractColumn(filteredData, col), regressAlgo)
                 );
-                console.log(`Print mix analysis ${mixAnalysis} with respective ${regressAlgo}`);
             } else if (isCalPoint) {
                 mixAnalysis = calculateCoefAndRSquared(allXColumn, allYColumn, regressAlgo);
             }
