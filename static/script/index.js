@@ -199,7 +199,7 @@ $(document).ready(function() {
 });
 
 function updateDirectory(path, deselect) {
-    console.log("Sending path to server:", path);
+    // console.log("Sending path to server:", path);
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
             $("#directory").val(response.path);

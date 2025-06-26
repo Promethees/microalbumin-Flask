@@ -35,7 +35,7 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             const lin = linearRegression(x, y);
             coefficients = lin;
             slope = lin[0];
-            predicted = x.map(xi => lin.slope * xi + lin[1]);
+            predicted = x.map(xi => slope * xi + lin[1]);
             break;
     }
     const rSquared = calculateRSquared(predicted, y);
@@ -113,7 +113,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
 
         const x = XColumn.slice(start, end);
         const y = YColumn.slice(start, end);
-        const { slope, rSquared } = calculateCoefAndRSquared(x, y, algo);
+        const { slope, rSquared } = calculateCoefAndRSquared(x, y);
 
         linearSlope = slope;
         const avgX = x.reduce((a, b) => a + b, 0) / x.length;
