@@ -328,8 +328,6 @@ function exportData() {
         const saveFile = $("#save-file").val() || "results";
         const concentration = $("#con-value-read").val() || "NONE";
         const timeUnit = $("#time-unit").val();
-        // const fullPath = saveDir + delimiter + saveFile;
-        // const timePoint = $("#exp-json-time-value").val(); 
         let analysisData = null;
         let newFile = true;
         if (currentMeasurementMode === "kinetics") {

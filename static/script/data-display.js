@@ -1,10 +1,10 @@
 function createChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     if (!ctx || allXColumn.length === 0 || allYColumn.length === 0) {
-        console.error("Invalid chart data or context:", { canvasId, allXColumn, allYColumn });
+        $(`#${canvasId}`).hide();
         return null;
     }
-
+    $(`#${canvasId}`).show();
     let chartScaleConstant = 1;
     let adjustedSlope = null;
     let adjustedLinearStart = null;
@@ -286,7 +286,6 @@ function updatePlot(
                 `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
             );
 
-            // Fixed syntax error
             if ($("#exp-json-blank-type").val() === "BLANKED") {
                 analysis = analysis_blanked;
             } else {
