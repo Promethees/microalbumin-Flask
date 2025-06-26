@@ -440,36 +440,41 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit
 
 function exportJSONCoef() {
     const selectElement = document.getElementById('regressed-quantity');
-    if (exp_json_content) {
-        const data = {
-            fit_type: $("#exp-json-regress-algo").val(),
-            for_meas: exp_json_content.meas,
-            for_blank_type: $("#exp-json-blank-type").val(),
-            coef_content: exp_json_content.analysis,
-            time: ((currentMeasurementMode === "calibrate") && ($("#cal-mode-select").val() === "point")) ? $("#exp-json-time-value").val() : null,
-            file_name: $("#save-json-file").val(),
-            cal_mode: $("#cal-mode-select").val(),
-            cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
-            threshold_val: $("#threshold-value").val()
-        }
-        $.ajax({
-            url: '/export_cal_coefs',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function(response) {
-                if (response.status === 'success') {
-                    alert(`Success: ${response.message}!`);
-                } else {
-                    alert(`Error: ${response.message}`);
-                }
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.log("AJAX error:", textStatus, errorThrown);
-                alert("Error exporting data");
-            }
-        });
+    if ($("#cal-mode-select").val() === "point" && (!$("#regressed-time-point").val())){
+        alert("Please set time point to regress data from");
+        return null;
     } else {
-        alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+        if (exp_json_content) {
+            const data = {
+                fit_type: $("#exp-json-regress-algo").val(),
+                for_meas: exp_json_content.meas,
+                for_blank_type: $("#exp-json-blank-type").val(),
+                coef_content: exp_json_content.analysis,
+                time: $("#regressed-time-point").val(),
+                file_name: $("#save-json-file").val(),
+                cal_mode: $("#cal-mode-select").val(),
+                cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
+                threshold_val: $("#threshold-value").val()
+            }
+            $.ajax({
+                url: '/export_cal_coefs',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        alert(`Success: ${response.message}!`);
+                    } else {
+                        alert(`Error: ${response.message}`);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error:", textStatus, errorThrown);
+                    alert("Error exporting data");
+                }
+            });
+        } else {
+            alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+        }
     }
 }

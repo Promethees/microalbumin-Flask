@@ -364,7 +364,7 @@ function getCalPointString(analysis) {
         htmlString += "[";
         for (let j = 0; j < analysis.coefficients.length; j++) {
             htmlString += analysis.coefficients[j] ? Number(analysis.coefficients[j]).toFixed(5) : "--";
-            if (j < analysis.coefficients - 1) 
+            if (j < analysis.coefficients.length - 1) 
                 htmlString += ",";
         }
         htmlString += "], ";
