@@ -25,7 +25,15 @@
             </div>
             <div id="error-message"></div>
         </div>
-        <div class="section script-controls">
+        <div class="section">
+            <h2>{{ mode_input.title }}</h2>
+            <select id="measurement-mode">
+                {% for mode in mode_input.modes %}
+                <option value="{{ mode }}">{{ mode }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="section script-controls" id="log-hid-data">
             <h2>Log HID Data</h2>
             <div>
                 <label for="base-dir">Base Directory (--base-dir): </label>
@@ -40,14 +48,6 @@
             <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
             <div id="log-display"></div>
         </div>
-        <div class="section">
-            <h2>{{ mode_input.title }}</h2>
-            <select id="measurement-mode">
-                {% for mode in mode_input.modes %}
-                <option value="{{ mode }}">{{ mode }}</option>
-                {% endfor %}
-            </select>
-        </div>
         <div class="section" id="cal-json-exp-section"> 
             <h3>Select type of Calibration you'd like to do</h3>
             <select id="cal-mode-select">
@@ -56,6 +56,7 @@
             </select>
         </div>  
         <div class="section" id="cal-json-sel-section">
+            <h2>Select Coefficients for standard line</h2>
             <div id="file-table-container">
                 <table id="json-table">
                     <tr><th>Calibrated JSON</th><th>Action</th></tr>

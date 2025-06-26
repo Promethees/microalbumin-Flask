@@ -120,6 +120,7 @@ $(document).ready(function() {
             $("#select-time-point").addClass("hidden");
             $("#select-regress-algo").addClass("hidden");
             $("#export-coef").addClass("hidden");
+            $("#log-hid-data").removeClass("hidden");
         } else if (mode === "point") {
             $("#window-size-section").addClass("hidden");
             $("#select-quantity-section").addClass("hidden"); 
@@ -139,6 +140,7 @@ $(document).ready(function() {
             $("#select-time-point").addClass("hidden");
             $("#select-regress-algo").addClass("hidden");
             $("#export-coef").addClass("hidden");
+            $("#log-hid-data").removeClass("hidden");
         } else {
             $("#window-size-section").addClass("hidden");
             if ($("#cal-mode-select").val() === "kinetics") {
@@ -162,6 +164,7 @@ $(document).ready(function() {
             $("#select-regress-algo").removeClass("hidden");
             $("#analysis-info").removeClass("hidden");
             $("#export-coef").removeClass("hidden");
+            $("#log-hid-data").addClass("hidden");
         }
         
         if (currentFile) {
