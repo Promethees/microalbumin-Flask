@@ -1,16 +1,19 @@
-function calculateRSquared(predicted, y) {
-    const meanY = y.reduce((a, b) => a + b, 0) / y.length;
-    const ssTot = y.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
-    const ssRes = y.reduce((sum, yi, i) => sum + Math.pow(yi - predicted[i], 2), 0);
-    return ssTot === 0 ? 1 : 1 - ssRes / ssTot;
-}
-
 function calculateCoefAndRSquared(x, y, algo = "linear") {
     if (x.length !== y.length || x.length < 2) return { slope: 0, rSquared: 0, coefficients: null };
 
     let slope = 0;
     let predicted = [];
     let coefficients = null;
+    let rSquared = 0;
+
+    // Helper function to calculate R-squared
+    function computeRSquared(actual, predicted) {
+        if (actual.length !== predicted.length || actual.length < 1) return 0;
+        const meanY = actual.reduce((sum, yi) => sum + yi, 0) / actual.length;
+        const ssTotal = actual.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
+        const ssResidual = actual.reduce((sum, yi, i) => sum + Math.pow(yi - predicted[i], 2), 0);
+        return ssTotal === 0 ? 0 : 1 - ssResidual / ssTotal;
+    }
 
     switch (algo) {
         case "polynomial":
@@ -20,14 +23,30 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
                 coefficients.reduce((acc, c, i) => acc + c * Math.pow(xi, i), 0)
             );
             slope = polynomialRegressionSlope(x, y, degree);
+            rSquared = computeRSquared(y, predicted); // Standard R-squared for polynomial
             break;
 
         case "logarithmic":
-            if (x.some(xi => xi <= 0)) return { slope: 0, rSquared: 0, coefficients: null }; // invalid log(x)
-            const logCoeffs = logarithmicRegression(x, y);
+            // Return for negative values
+            if (x.some(xi => xi < 0)) return { slope: 0, rSquared: 0, coefficients: null };
+
+            // Filter out xi = 0 and corresponding yi
+            const filteredData = x.reduce((acc, xi, i) => {
+                if (xi !== 0) {
+                    acc.x.push(xi);
+                    acc.y.push(y[i]);
+                }
+                return acc;
+            }, { x: [], y: [] });
+
+            // Check if filtered data is valid
+            if (filteredData.x.length < 2) return { slope: 0, rSquared: 0, coefficients: null };
+
+            const logCoeffs = logarithmicRegression(filteredData.x, filteredData.y);
             coefficients = logCoeffs;
-            predicted = x.map(xi => logCoeffs[0] * Math.log(xi) + logCoeffs[1]);
-            slope = logarithmicRegressionSlope(x, y);
+            predicted = filteredData.x.map(xi => logCoeffs[0] * Math.log(Math.abs(xi)) + logCoeffs[1]);
+            slope = logarithmicRegressionSlope(filteredData.x, filteredData.y);
+            rSquared = computeRSquared(filteredData.y, predicted); // R-squared on filtered data
             break;
 
         case "linear":
@@ -36,13 +55,16 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             coefficients = lin;
             slope = lin[0];
             predicted = x.map(xi => slope * xi + lin[1]);
+            rSquared = computeRSquared(y, predicted); // Standard R-squared for linear
             break;
     }
-    const rSquared = calculateRSquared(predicted, y);
 
-    return { slope: slope, 
-             rSquared: rSquared, 
-             coefficients: coefficients };
+    console.log(`Tell me the coef ${coefficients} and rsquare ${rSquared} of algo ${algo}`);
+    return { 
+        slope: slope, 
+        rSquared: rSquared, 
+        coefficients: coefficients 
+    };
 }
 
 
@@ -79,7 +101,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         if (rSquaredValues[i] >= 0.95 && localSlopes[i] > Vmax && adjustedLocal > threshold) {
             Vmax = localSlopes[i];
             startVMax = i;
-            endVMax = startVMax + window_size - 1;
+            endVMax = startVMax + Number(window_size) - 1;
             yVMaxstart = Vmax * XColumn[startVMax] + intercepts[i];
             yVMaxend = Vmax * XColumn[endVMax] + intercepts[i];
         }
