@@ -14,16 +14,38 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     const chartType = isSinglePoint ? 'scatter' : 'line';
     const xMin = isSinglePoint ? XColumn[0] - 1 : Math.min(...XColumn);
     const xMax = isSinglePoint ? XColumn[0] + 1 : Math.max(...XColumn);
-    const yMin = 0;
-    const yMax = isSinglePoint ? YColumn[0] * 1.1 : Math.max(...YColumn) * 1.1;
 
-    // Calculate stepSize safely
+    // Check if all Y values are equal
+    const allYEqual = YColumn.every(y => y === YColumn[0]);
+    let yMin, yMax, yStepSize;
+
+    if (allYEqual) {
+        // Case: All Y values are equal
+        const yValue = YColumn[0];
+        if (yValue === 0) {
+            // If Y value is 0, set a small range around 0
+            yMin = -0.1;
+            yMax = 0.1;
+            yStepSize = 0.02; // Small step size for zero case
+        } else {
+            // For non-zero equal Y values, set range ±10% of the value
+            yMin = yValue * 0.9;
+            yMax = yValue * 1.1;
+            yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.01;
+        }
+    } else {
+        // Original logic for non-equal Y values
+        yMin = 0;
+        yMax = isSinglePoint ? YColumn[0] * 1.1 : Math.max(...YColumn) * 1.1;
+        yStepSize = isSinglePoint
+            ? Number(YColumn[0] / 10).toFixed(3) || 0.1
+            : Number((yMax - yMin) / 10).toFixed(3) || 0.1;
+    }
+
+    // Calculate xStepSize safely
     const xStepSize = isSinglePoint
         ? 0.5
         : Number((xMax - xMin) / (XColumn.length - 1)).toFixed(2) || 1;
-    const yStepSize = isSinglePoint
-        ? Number(YColumn[0] / 10).toFixed(2) || 0.1
-        : Number((yMax - yMin) / 10).toFixed(2) || 0.1;
 
     let chart = new Chart(ctx, {
         type: chartType,
@@ -35,7 +57,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                 borderColor: canvasId === 'blanked-canvas' ? 'rgb(255, 99, 132)' : 'rgb(75, 192, 192)',
                 tension: isSinglePoint ? 0 : 0.1, // No tension for scatter
                 fill: false,
-                pointRadius: isSinglePoint ? 5 : 3 // Larger point for scatter
+                pointRadius: isSinglePoint || allYEqual ? 5 : 3 // Larger points for single or equal Y values
             }]
         },
         options: {
@@ -71,13 +93,13 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                     annotations: {
                         ...(isFullDisplay && currentMeasurementMode === "point" && forThisBlankType && {
                             refCalLine: {
-                                type: 'line', // Use horizontal line for single point
+                                type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
                                 borderWidth: 3,
                                 xMin: parseFloat(refCalPoint),
                                 xMax: parseFloat(refCalPoint),
-                                yMin: 0,
-                                yMax: yMax,
+                                yMin: yMin, // Use updated yMin
+                                yMax: yMax, // Use updated yMax
                                 label: {
                                     display: true,
                                     content: 'RefCal',
