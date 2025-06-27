@@ -1,11 +1,8 @@
 import os
 import platform
 
-os_name = platform.system().lower()
-if "window" in os_name:
-    current_directory = os.path.expanduser("~\\Desktop\\")
-else:
-    current_directory = os.path.expanduser("~/Desktop/")
+# This will point to the directory where main.py is located
+current_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 def get_directory():
     global current_directory
@@ -19,23 +16,29 @@ def browse_directory(new_path):
         return True
     return False
 
-def get_parent_directory(current_dir):
-    parent = os.path.dirname(current_dir)
-    # Avoid returning root directory as parent if already at root
-    if parent == current_dir:
-        return None
-    # Check if parent directory is hidden
-    if parent and os.path.basename(parent).startswith('.'):
-        return get_parent_directory(parent)  # Recursively get the non-hidden parent
-    return parent
+def get_parent_directory(path, levels=1):
+    """
+    Returns the parent directory of the given path.
+    `levels` specifies how many levels up to go (default is 1).
+    """
+    if not path:
+        raise ValueError("Path cannot be empty.")
+    
+    path = os.path.abspath(path)
+    for _ in range(levels):
+        path = os.path.dirname(path)
+    
+    return path
 
-def get_child_directories(current_dir):
-    try:
-        # List directories, excluding hidden ones (starting with '.')
-        dirs = [os.path.join(current_dir, d) for d in os.listdir(current_dir)
-                if os.path.isdir(os.path.join(current_dir, d)) and not d.startswith('.')]
-        dirs.sort()  # Sort alphabetically
-        return dirs
-    except Exception as e:
-        print(f"Error listing child directories: {e}")
-        return []
+def get_child_directories(path):
+    """
+    Returns a list of full paths to all immediate subdirectories of the given path.
+    """
+    if not os.path.isdir(path):
+        raise ValueError(f"'{path}' is not a valid directory.")
+
+    return [
+        os.path.join(path, name)
+        for name in os.listdir(path)
+        if os.path.isdir(os.path.join(path, name))
+    ]
