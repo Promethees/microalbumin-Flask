@@ -1,49 +1,29 @@
-function createChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
+// Generates the Chart.js chart and returns the chart object
+function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     if (!ctx || allXColumn.length === 0 || allYColumn.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
     }
     $(`#${canvasId}`).show();
-    let chartScaleConstant = 1;
-    let adjustedSlope = null;
-    let adjustedLinearStart = null;
-    let adjustedLinearEnd = null;
-    let adjustedVmax = null;
-    let adjustedVmaxStart = null;
-    let adjustedVmaxEnd = null;
-    let adjustedTimeToSaturationDisplay = null;
-    let adjustedSaturationValue = null;
-
-    if (analysis) {
-        adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(4) : "--";
-        adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin) * conversionFactor).toFixed(2) : "--";
-        adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax) * conversionFactor).toFixed(2) : "--";
-        adjustedVmax = parseFloat(analysis.Vmax) / conversionFactor;
-        adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax) * conversionFactor).toFixed(2) : "--";
-        adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax) * conversionFactor).toFixed(2) : "--";
-        adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
-        adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
-        adjustedVmax = (3600 * adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
-    }
 
     const { XColumn, YColumn } = averageDuplicates(allXColumn, allYColumn);
 
     // Handle single data point edge case
     const isSinglePoint = XColumn.length === 1 && YColumn.length === 1;
-    const chartType = isSinglePoint ? 'scatter' : 'line'; // Use scatter for single point
-    const xMin = isSinglePoint ? XColumn[0] - 1 : Math.min(...XColumn); // Arbitrary range for single point
+    const chartType = isSinglePoint ? 'scatter' : 'line';
+    const xMin = isSinglePoint ? XColumn[0] - 1 : Math.min(...XColumn);
     const xMax = isSinglePoint ? XColumn[0] + 1 : Math.max(...XColumn);
     const yMin = 0;
     const yMax = isSinglePoint ? YColumn[0] * 1.1 : Math.max(...YColumn) * 1.1;
 
     // Calculate stepSize safely
     const xStepSize = isSinglePoint
-        ? 0.5 // Arbitrary step size for single point
-        : Number((xMax - xMin) / (XColumn.length - 1)).toFixed(2) || 1; // Fallback to 1 if NaN
+        ? 0.5
+        : Number((xMax - xMin) / (XColumn.length - 1)).toFixed(2) || 1;
     const yStepSize = isSinglePoint
-        ? Number(YColumn[0] / 10).toFixed(2) || 0.1 // Fallback for single point
-        : Number((yMax - yMin) / 10).toFixed(2) || 0.1; // Fallback to 0.1 if NaN
+        ? Number(YColumn[0] / 10).toFixed(2) || 0.1
+        : Number((yMax - yMin) / 10).toFixed(2) || 0.1;
 
     let chart = new Chart(ctx, {
         type: chartType,
@@ -159,24 +139,44 @@ function createChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, ra
         }
     });
 
+    // Attach analysis data to the chart if provided
     if (analysis) {
-        chart.data.datasets[0].analysis = {
-            slope: adjustedSlope,
-            linearStart: adjustedLinearStart,
-            linearEnd: adjustedLinearEnd,
-            saturationValue: adjustedSaturationValue,
-            timeToSaturation: adjustedTimeToSaturationDisplay,
-            Vmax: adjustedVmax,
-            VmaxStart: adjustedVmaxStart,
-            VmaxEnd: adjustedVmaxEnd,
-            MeasUnit: unit,
-            Meas: label
-        };
+        chart.data.datasets[0].analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
     }
+
     return chart;
 }
 
-// Refactored version of updatePlot with modular helpers
+function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
+    if (!analysis) {
+        return null;
+    }
+
+    let chartScaleConstant = 1;
+    let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(4) : "--";
+    let adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin) * conversionFactor).toFixed(2) : "--";
+    let adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax) * conversionFactor).toFixed(2) : "--";
+    let adjustedVmax = parseFloat(analysis.Vmax) / conversionFactor;
+    let adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax) * conversionFactor).toFixed(2) : "--";
+    let adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax) * conversionFactor).toFixed(2) : "--";
+    let adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
+    let adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
+    adjustedVmax = (3600 * adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
+
+    return {
+        slope: adjustedSlope,
+        linearStart: adjustedLinearStart,
+        linearEnd: adjustedLinearEnd,
+        saturationValue: adjustedSaturationValue,
+        timeToSaturation: adjustedTimeToSaturationDisplay,
+        Vmax: adjustedVmax,
+        VmaxStart: adjustedVmaxStart,
+        VmaxEnd: adjustedVmaxEnd,
+        MeasUnit: unit,
+        Meas: label
+    };
+}
+
 function updatePlot(
     data, range, timeUnit, window_size, unit, isSplitMode,
     isFullDisplay = false, refCalPoint = null, forBlankType = null,
@@ -263,14 +263,18 @@ function updatePlot(
         }
 
         $("#blanked-canvas, #non-blanked-canvas").show();
-        blankedChart = createChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
+        blankedChart = generateChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
             unit, timeUnit, range, conversionFactor, analysis_blanked, isFullDisplay, refCalPoint, forBlankType === "BLANKED");
-        nonBlankedChart = createChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
+        nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
             unit, timeUnit, range, conversionFactor, analysis_nonblanked, isFullDisplay, refCalPoint, forBlankType === "NON-BLANKED");
 
+        // Format analysis info for both charts
+        const blankedAnalysisInfo = formatAnalysisInfo(analysis_blanked, conversionFactor, unit, `${measurementLabel} (Blanked)`);
+        const nonBlankedAnalysisInfo = formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, `${measurementLabel} (Non-Blanked)`);
+
+        // Update analysis info display
         if (currentMeasurementMode !== "calibrate") {
-            updateSplitModeAnalysisInfo(blankedChart, nonBlankedChart, unit, timeUnit);
-            return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
+            updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
         } else {
             let blanked_string = "";
             let non_blanked_string = "";
@@ -285,13 +289,12 @@ function updatePlot(
                 `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span><br>` +
                 `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
             );
+        }
 
-            if ($("#exp-json-blank-type").val() === "BLANKED") {
-                analysis = analysis_blanked;
-            } else {
-                analysis = analysis_nonblanked;
-            }
-
+        if (currentMeasurementMode !== "calibrate") {
+            return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
+        } else {
+            const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
             return {
                 analysis,
                 meas: data[0]["Measurement"]
@@ -311,13 +314,12 @@ function updatePlot(
             }
         }
 
-        $("#plot-canvas").show();
-        myChart = createChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
-            unit, timeUnit, range, conversionFactor, mixAnalysis, isFullDisplay, refCalPoint, forBlankType === "MIXED");
+        // Format analysis info before chart creation
+        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, conversionFactor, unit, measurementLabel);
 
+        // Update analysis info display
         if (currentMeasurementMode !== "calibrate") {
-            updateSingleModeAnalysisInfo(myChart, unit, timeUnit);
-            return extractSingleResultSummary(data, mixAnalysis);
+            updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
         } else {
             let htmlString = "";
             if (isCalKinetics) {
@@ -326,6 +328,16 @@ function updatePlot(
                 htmlString = getCalPointString(mixAnalysis);
             }
             $("#analysis-info").html(htmlString);
+        }
+
+        // Generate chart
+        $("#plot-canvas").show();
+        const myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
+            unit, timeUnit, range, conversionFactor, mixAnalysis, isFullDisplay, refCalPoint, forBlankType === "MIXED");
+
+        if (currentMeasurementMode !== "calibrate") {
+            return extractSingleResultSummary(data, mixAnalysis);
+        } else {
             return {
                 analysis: mixAnalysis,
                 meas: data[0]["Measurement"]
@@ -438,23 +450,38 @@ function filterByTime(data, timeThreshold, forBlankType, hasBlankType, XColumn =
     );
 }
 
-function updateSplitModeAnalysisInfo(blankedChart, nonBlankedChart, unit, timeUnit) {
-    const b = blankedChart?.data.datasets[0].analysis;
-    const n = nonBlankedChart?.data.datasets[0].analysis;
-    $("#analysis-info").html(
-        `<span style="color: rgb(255, 99, 132);">
-        Blanked: Slope = ${b?.slope} ${unit}/${timeUnit}, Linear start = ${b?.linearStart} ${timeUnit},
-        Linear end = ${b?.linearEnd} ${timeUnit}, <br/>Vmax = ${b?.Vmax}${unit}/${timeUnit},
-        VmaxStart = ${b?.VmaxStart} ${timeUnit}, VmaxEnd = ${b?.VmaxEnd} ${timeUnit}, <br/>Saturation = ${b?.saturationValue},
-        Time to Saturation = ${b?.timeToSaturation} ${timeUnit}<br></span>` +
-        `<span style="color: rgb(75, 192, 192);">
-        Non-Blanked: Slope = ${n?.slope} ${unit}/${timeUnit}, Linear start = ${n?.linearStart} ${timeUnit},
-        Linear end = ${n?.linearEnd} ${timeUnit}, <br/>Vmax = ${n?.Vmax}${unit}/${timeUnit},
-        VmaxStart = ${n?.VmaxStart} ${timeUnit}, VmaxEnd = ${n?.VmaxEnd} ${timeUnit}, <br/>Saturation = ${n?.saturationValue},
-        Time to Saturation = ${n?.timeToSaturation} ${timeUnit}</span>`
-    );
+// New helper to format analysis metrics into HTML
+function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = '') {
+    if (!analysisInfo) return '';
+
+    const unitDisplay = unit !== "NONE" ? unit : '';
+    const html = `<span ${color ? `style="color: ${color};"` : ''}>
+        ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope} ${unitDisplay}/${timeUnit}, 
+        Linear start = ${analysisInfo.linearStart} ${timeUnit},
+        Linear end = ${analysisInfo.linearEnd} ${timeUnit}, <br/>
+        Vmax = ${analysisInfo.Vmax}${unitDisplay}/${timeUnit}, 
+        VmaxStart = ${analysisInfo.VmaxStart} ${timeUnit}, 
+        VmaxEnd = ${analysisInfo.VmaxEnd} ${timeUnit}, <br/>
+        Saturation = ${analysisInfo.saturationValue}, 
+        Time to Saturation = ${analysisInfo.timeToSaturation} ${timeUnit}
+    </span>`;
+    return html;
 }
 
+// Modified to accept analysis info directly
+function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit) {
+    let html = '';
+    if (blankedAnalysisInfo) {
+        html += formatAnalysisHtml(blankedAnalysisInfo, unit, timeUnit, 'rgb(255, 99, 132)', 'Blanked');
+        if (nonBlankedAnalysisInfo) html += '<br>';
+    }
+    if (nonBlankedAnalysisInfo) {
+        html += formatAnalysisHtml(nonBlankedAnalysisInfo, unit, timeUnit, 'rgb(75, 192, 192)', 'Non-Blanked');
+    }
+    $("#analysis-info").html(html || '');
+}
+
+// Preserved as-is
 function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) {
     return {
         split: true,
@@ -471,29 +498,40 @@ function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) 
     };
 }
 
-function updateSingleModeAnalysisInfo(myChart, unit, timeUnit) {
-    const ad = myChart?.data.datasets[0].analysis;
-    $("#analysis-info").html(
-        `Slope = ${ad.slope} ${unit !== "NONE" ? unit : ''}/${timeUnit},  
-        Linear start = ${ad.linearStart} ${timeUnit},
-        Linear end = ${ad.linearEnd} ${timeUnit}, <br/>
-        Vmax = ${ad.Vmax}${unit !== "NONE" ? unit : ''}/${timeUnit}, 
-        VmaxStart = ${ad.VmaxStart} ${timeUnit}, 
-        VmaxEnd = ${ad.VmaxEnd} ${timeUnit}, <br/>
-        Saturation = ${ad.saturationValue}, 
-        Time to Saturation = ${ad.timeToSaturation} ${timeUnit}`
-    );
+// Modified to accept analysis info directly
+function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
+    if (analysisInfo) {
+        $("#analysis-info").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
+    } else {
+        $("#analysis-info").html('');
+    }
 }
 
+// Preserved as-is
 function extractSingleResultSummary(data, mixAnalysis) {
     return {
-            split: false,
-            vmax: mixAnalysis.Vmax,
-            slope: mixAnalysis.slope,
-            sat: mixAnalysis.saturationValue,
-            time_to_sat: mixAnalysis.timeToSaturation,
-            meas: data[0]["Measurement"],
-            meas_unit: data[0]["Unit"]
-        } 
+        split: false,
+        vmax: mixAnalysis.Vmax,
+        slope: mixAnalysis.slope,
+        sat: mixAnalysis.saturationValue,
+        time_to_sat: mixAnalysis.timeToSaturation,
+        meas: data[0]["Measurement"],
+        meas_unit: data[0]["Unit"]
+    };
+}
+
+function destroyCharts() {
+    if (myChart) {
+        myChart.destroy();
+        myChart = null;
+    }
+    if (blankedChart) {
+        blankedChart.destroy();
+        blankedChart = null;
+    }
+    if (nonBlankedChart) {
+        nonBlankedChart.destroy();
+        nonBlankedChart = null;
+    }
 }
 

@@ -296,21 +296,6 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
     }); // Close $.get callback
 } // Close fetchData function
 
-function destroyCharts() {
-    if (myChart) {
-        myChart.destroy();
-        myChart = null;
-    }
-    if (blankedChart) {
-        blankedChart.destroy();
-        blankedChart = null;
-    }
-    if (nonBlankedChart) {
-        nonBlankedChart.destroy();
-        nonBlankedChart = null;
-    }
-}
-
 function toggleMode() {
     if (currentFile) {
         if (currentMeasurementMode !== "calibrate") {

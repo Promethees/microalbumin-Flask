@@ -64,8 +64,10 @@ th { background-color: #f2f2f2; }
 #export-analysis.hidden { display: none; }
 #set-exp-point-section { display: block; }
 #set-exp-point-section.hidden { display: none; }
-/*#select-exp-blank-type { display: block; }
-#select-exp-blank-type.hidden { display: none; }*/
+#select-exp-blank-type-meas { display: block; }
+#select-exp-blank-type-meas.hidden { display: none; }
+#select-exp-blank-type-cal { display: block; }
+#select-exp-blank-type-cal.hidden { display: none; }
 #range-display { display: block; }
 #range-display.hidden { display: none; }
 #full-display-section { display: block; }

@@ -154,8 +154,22 @@
                 <label>
                 </label>
             </div>
-            <div id="select-exp-blank-type">
-                Select Blank type to export/regress:
+            <div id="analysis-info"></div>
+            <div id="chart-container">
+                <canvas id="plot-canvas"></canvas>
+                <canvas id="blanked-canvas" style="display: none;"></canvas>
+                <canvas id="non-blanked-canvas" style="display: none;"></canvas>
+            </div>
+            <div id="select-exp-blank-type-meas">
+                Select Blank type to export:
+                <select id="exp-json-blank-type">
+                    <option value="MIXED">MIXED</option>
+                    <option value="BLANKED">BLANKED</option>
+                    <option value="NON-BLANKED">NON-BLANKED</option>
+                </select>
+            </div>
+            <div id="select-exp-blank-type-cal">
+                Select Blank type to regress:
                 <select id="exp-json-blank-type">
                     <option value="MIXED">MIXED</option>
                     <option value="BLANKED">BLANKED</option>
@@ -197,12 +211,6 @@
                     <br/>
                     Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
                 </div>
-            </div>
-            <div id="analysis-info"></div>
-            <div id="chart-container">
-                <canvas id="plot-canvas"></canvas>
-                <canvas id="blanked-canvas" style="display: none;"></canvas>
-                <canvas id="non-blanked-canvas" style="display: none;"></canvas>
             </div>   
         </div>
     </div>
