@@ -309,12 +309,29 @@ function toggleMode() {
 
 function exportData() {
     if ($("#time-unit").val() === "minutes") {
-        const saveDir = $("#save-dir").val() || "";
-        const saveFile = $("#save-file").val() || "results";
+        const saveDir = $("#save-dir").val().trim() || "";
+        const saveFile = $("#save-file").val().trim() || "results";
         const concentration = $("#con-value-read").val() || "NONE";
         const timeUnit = $("#time-unit").val();
         let analysisData = null;
         let newFile = true;
+
+        const isAbsolutePath = saveDir.match(/^(\/|[a-zA-Z]:\\)/);
+        // Get the directory of main.py (assuming it's in the current working directory)
+        const mainPyDir = '.';
+        let processedPath;
+        if (isAbsolutePath) {
+            // Use the full path as provided
+            processedPath = saveDir;
+        } else {
+            // Concatenate with main.py directory
+            processedPath = mainPyDir + (mainPyDir.endsWith('/') || mainPyDir.endsWith('\\') ? '' : '/') + saveDir;
+        }
+
+        // Mimic go-to-exp-btn behavior using jQuery event handling
+        $("#go-to-exp-btn").off('click').on('click', function() {
+            updateDirectory(processedPath, true, true);
+        });
         if (currentMeasurementMode === "kinetics") {
             switch ($("#exp-json-blank-type").val()) {
                 case "MIXED":

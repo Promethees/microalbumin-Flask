@@ -202,6 +202,7 @@
                     <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
                 </div>
                 <button id="export-btn" onclick="exportData()">Export Data</button>
+                <button id="go-to-exp-btn" onclick="updateDirectory($('#directory').val(), true, true)">Browse Saving Location</button>
                 <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
             </div>  
             <div id="export-coef">

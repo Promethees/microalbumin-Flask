@@ -211,8 +211,15 @@ $(document).ready(function() {
     }
 });
 
-function updateDirectory(path, deselect) {
+function updateDirectory(path, deselect, changeToCalibrate=false) {
     // console.log("Sending path to server:", path);
+    if(changeToCalibrate) {
+        $("#measurement-mode").val("calibrate");
+        currentMeasurementMode = "calibrate";
+        $("#cal-json-sel-section").addClass("hidden");
+        $("#cal-json-exp-section").removeClass("hidden");
+        $("#log-hid-data").addClass("hidden");
+    }
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
