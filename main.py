@@ -15,7 +15,7 @@ import pandas as pd
 import json
 from typing import List, Dict, Union, Any
 
-from log_hid_data import get_next_filename
+from log_hid_data import get_next_filename, parse_arguments
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
@@ -123,7 +123,9 @@ def run_script():
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     with open(log_file, 'a') as f:
         process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-    return jsonify({'status': 'success'})
+
+    args = parse_arguments()
+    return jsonify({'status': 'success', 'directory': args.base_dir})
 
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():

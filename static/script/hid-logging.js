@@ -1,6 +1,6 @@
 function runScript() {
-    const baseDir = $("#base-dir").val() || "";
-    const baseName = $("#base-name").val() || "";
+    const baseDir = $("#base-dir").val();
+    const baseName = $("#base-name").val();
     $("#base-dir").prop('disabled', true);
     $("#base-name").prop('disabled', true);
     $.ajax({
@@ -13,7 +13,14 @@ function runScript() {
                 scriptRunning = true;
                 $("#run-script-btn").prop('disabled', true);
                 $("#terminate-script-btn").prop('disabled', false);
+                $("#go-to-btn").prop('disabled', false);
                 $("#log-display").text("Script started...\n");
+
+                // Store the returned directory and update the go-to button
+                const targetDir = response.directory || $("#directory").val();
+                $("#go-to-btn").off('click').on('click', function() {
+                    updateDirectory(targetDir, true);
+                });
             } else {
                 $("#log-display").text(`Error: ${response.message}\n`);
                 $("#base-dir").prop('disabled', false);
@@ -51,6 +58,7 @@ function terminateScript() {
                     $("#terminate-script-btn").prop('disabled', true);
                     $("#base-dir").prop('disabled', false);
                     $("#base-name").prop('disabled', false);
+                    $("#go-to-btn").prop('disabled', true);
                 }
             }
         },
@@ -59,7 +67,7 @@ function terminateScript() {
             $("#log-display").append(`Error: Failed to terminate script\n`);
             scriptRunning = false;
             $("#run-script-btn").prop('disabled', false);
-            $("#terminate-script-btn").prop('disabled', true);
+            $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);
             $("#base-dir").prop('disabled', false);
             $("#base-name").prop('disabled', false);
         }
