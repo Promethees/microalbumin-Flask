@@ -1,5 +1,5 @@
 {
-	"fit_type": "logarit",
+	"fit_type": "logarithmic",
 	"for_blank_type": "BLANKED",
 	"for_meas": "ABSORBANCE",
 	"vmax": {
