@@ -16,6 +16,9 @@ let globalEstimatedValue = null;
 let currExpTimePoint = null;
 let prevDropdownEntries = null;
 let exp_json_content = null;
+
+const chartInstances = {};
+
 json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
 json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
 json_msg += '  + logarit: concentration = quantity_json[0]*loge(quantity_json[1]*quantity_value)\n';

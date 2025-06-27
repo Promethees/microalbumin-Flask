@@ -1,6 +1,17 @@
 // Generates the Chart.js chart and returns the chart object
 function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || allXColumn.length === 0 || allYColumn.length === 0) {
+        $(`#${canvasId}`).hide();
+        return null;
+    }
+
+    // Destroy existing chart instance if any
+    if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+    }
+
+    const ctx = canvas.getContext('2d');
     if (!ctx || allXColumn.length === 0 || allYColumn.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
@@ -164,6 +175,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     if (analysis) {
         chart.data.datasets[0].analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
     }
+    chartInstances[canvasId] = chart;
 
     return chart;
 }
