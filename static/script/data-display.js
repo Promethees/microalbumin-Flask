@@ -5,7 +5,6 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
         $(`#${canvasId}`).hide();
         return null;
     }
-    $(`#${canvasId}`).show();
 
     const { XColumn, YColumn } = averageDuplicates(allXColumn, allYColumn);
 
@@ -204,6 +203,10 @@ function updatePlot(
     isFullDisplay = false, refCalPoint = null, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
+    // Save current scroll position
+    const chartContainer = document.getElementById('chart-container');
+    const scrollPosition = chartContainer.scrollTop;
+
     destroyCharts();
     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
     $("#analysis-info").text("");
@@ -366,6 +369,10 @@ function updatePlot(
             };
         }
     }
+
+    setTimeout(() => {
+        chartContainer.scrollTop = scrollPosition;
+    }, 0);
 }
 
 
@@ -556,4 +563,3 @@ function destroyCharts() {
         nonBlankedChart = null;
     }
 }
-
