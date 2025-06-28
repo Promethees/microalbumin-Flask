@@ -16,6 +16,7 @@ let globalEstimatedValue = null;
 let currExpTimePoint = null;
 let prevDropdownEntries = null;
 let exp_json_content = null;
+let processedExpPath =  rootPath + delimiter + "export_data";
 
 const chartInstances = {};
 
@@ -45,6 +46,12 @@ input.addEventListener("keydown", function (e) {
     // Prevent all other key presses
     e.preventDefault();
   });
+
+function bindGoToExpButton() {
+    $("#go-to-exp-btn").off('click').on('click', function() {
+        updateDirectory(processedExpPath, true, true);
+    });
+}
 
 $(document).ready(function() {
     $.get('/get_parents', function(parentResponse) {
@@ -209,6 +216,8 @@ $(document).ready(function() {
     } else {
         $('#data-display-section').addClass("hidden");
     }
+
+    bindGoToExpButton();
 });
 
 function updateDirectory(path, deselect, changeToCalibrate=false) {

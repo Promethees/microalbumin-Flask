@@ -216,6 +216,8 @@
             </div>   
         </div>
     </div>
+        <script >const rootPath = "{{ directory | safe}}";
+        </script>
         <script src="{{ url_for('static', filename='script/index.js') }}"></script>
         <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
         <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>

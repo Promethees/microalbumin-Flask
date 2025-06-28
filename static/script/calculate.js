@@ -59,7 +59,6 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             break;
     }
 
-    console.log(`Tell me the coef ${coefficients} and rsquare ${rSquared} of algo ${algo}`);
     return { 
         slope: slope, 
         rSquared: rSquared, 

@@ -307,6 +307,45 @@ function toggleMode() {
     }
 }
 
+// Cross-platform path resolution function using server's OS separator
+function resolveRelativePath(base, relative) {
+    if (!relative) return base;
+    
+    // Detect separator from base path (from Flask's os.getcwd())
+    const separator = base.includes('\\') ? '\\' : '/';
+    
+    // Normalize relative path by replacing all separators with the server's separator
+    const normalizedRelative = relative.replace(/[\\\/]/g, separator);
+    
+    // Split base and normalized relative paths into segments
+    const baseSegments = base.split(/[\\\/]/).filter(segment => segment);
+    const relativeSegments = normalizedRelative.split(separator).filter(segment => segment);
+    
+    // Combine segments, handling '.' and '..'
+    const resolvedSegments = baseSegments.slice();
+    for (const segment of relativeSegments) {
+        if (segment === '.') {
+            continue; // Stay in current directory
+        } else if (segment === '..') {
+            resolvedSegments.pop(); // Move up one directory
+        } else {
+            resolvedSegments.push(segment); // Add subdirectory
+        }
+    }
+    
+    // Reconstruct the path
+    let resolvedPath = resolvedSegments.join(separator);
+    
+    // Preserve the base path's prefix (e.g., drive letter or root)
+    if (base.startsWith(separator)) {
+        resolvedPath = separator + resolvedPath;
+    } else if (base.match(/^[a-zA-Z]:[\\\/]/)) {
+        resolvedPath = base.slice(0, 2) + separator + resolvedPath;
+    }
+    
+    return resolvedPath || separator; // Fallback to root if empty
+}
+
 function exportData() {
     if ($("#time-unit").val() === "minutes") {
         const saveDir = $("#save-dir").val().trim() || "";
@@ -316,22 +355,20 @@ function exportData() {
         let analysisData = null;
         let newFile = true;
 
-        const isAbsolutePath = saveDir.match(/^(\/|[a-zA-Z]:\\)/);
-        // Get the directory of main.py (assuming it's in the current working directory)
-        const mainPyDir = '.';
-        let processedPath;
+        // Detect absolute paths for Mac/Linux and Windows
+        const isAbsolutePath = saveDir.match(/^(\/|[a-zA-Z]:[\\\/]|\\\\)/);
+        // Use mainPyDir from Flask (injected or fetched)
         if (isAbsolutePath) {
-            // Use the full path as provided
-            processedPath = saveDir;
+            // Use the full path as provided, normalizing separators
+            const separator = rootPath.includes('\\') ? '\\' : '/';
+            processedExpPath = saveDir.replace(/[\\\/]/g, separator);
         } else {
-            // Concatenate with main.py directory
-            processedPath = mainPyDir + (mainPyDir.endsWith('/') || mainPyDir.endsWith('\\') ? '' : '/') + saveDir;
+            // Resolve partial path relative to mainPyDir
+            processedExpPath = resolveRelativePath(rootPath, saveDir);
         }
 
-        // Mimic go-to-exp-btn behavior using jQuery event handling
-        $("#go-to-exp-btn").off('click').on('click', function() {
-            updateDirectory(processedPath, true, true);
-        });
+        bindGoToExpButton();
+        
         if (currentMeasurementMode === "kinetics") {
             switch ($("#exp-json-blank-type").val()) {
                 case "MIXED":
