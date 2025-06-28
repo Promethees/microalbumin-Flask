@@ -8,6 +8,23 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script>
+        async function pickDirectory(inputId) {
+            try {
+                const dirHandle = await window.showDirectoryPicker();
+                // Get the server-provided directory, ensuring it's defined
+                let basePath = "{{ directory | default('') }}".replace(/\\/g, '/').replace(/\/+$/, '');
+                // Construct full path by appending the selected directory name
+                const fullPath = basePath ? `${basePath}/${dirHandle.name}` : dirHandle.name;
+                const pathDisplay = document.getElementById(inputId);
+                pathDisplay.value = fullPath; // Display the OS-agnostic full path
+                // Store the dirHandle for further use (e.g., file operations)
+                window[inputId + 'Handle'] = dirHandle;
+            } catch (err) {
+                console.error('Directory selection canceled or failed:', err);
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -37,7 +54,8 @@
             <h2>Log HID Data</h2>
             <div>
                 <label for="base-dir">Base Directory (--base-dir): </label>
-                <input type="text" id="base-dir" placeholder="Enter directory to save recorded data from the Colorimeter. Leave empty to save to default directory" style="width: 50em">
+                <input type="text" id="base-dir" readonly style="width: 80%">
+                <button onclick="pickDirectory('base-dir')">Select Directory</button>
             </div>
             <div>
                 <label for="base-name">Base Name (--base-name): </label>
@@ -195,7 +213,8 @@
                     </div>
                     <label for="save-dir">Saving Directory: 
                     </label>
-                    <input type="text" id="save-dir" placeholder="Enter directory path to save analysis data. Leave empty to save to default directory" style="width: 50em">
+                    <input type="text" id="save-dir" readonly style="width: 80%">
+                    <button onclick="pickDirectory('save-dir')">Select Directory</button>
                 </div>
                 <div>
                     <label for="save-file">File Name: </label>
