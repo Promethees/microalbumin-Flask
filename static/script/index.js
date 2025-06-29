@@ -17,6 +17,7 @@ let currExpTimePoint = null;
 let prevDropdownEntries = null;
 let exp_json_content = null;
 let processedExpPath =  rootPath + delimiter + "export_data";
+let processedHidPath = rootPath + delimiter + "data";
 
 const chartInstances = {};
 
@@ -47,9 +48,10 @@ input.addEventListener("keydown", function (e) {
     e.preventDefault();
   });
 
-function bindGoToExpButton() {
-    $("#go-to-exp-btn").off('click').on('click', function() {
-        updateDirectory(processedExpPath, true, true);
+function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=processedExpPath, changeToCalibrate=true) {
+    $(buttonId).off('click').on('click', function() {
+        console.log(`${buttonId} clicked, using path:`, pathStr);
+        updateDirectory(pathStr, true, changeToCalibrate);
     });
 }
 
@@ -217,7 +219,8 @@ $(document).ready(function() {
         $('#data-display-section').addClass("hidden");
     }
 
-    bindGoToExpButton();
+    bindButtonToString("#go-to-exp-btn", processedExpPath);
+    bindButtonToString("#go-to-btn", processedHidPath, false);
 });
 
 function updateDirectory(path, deselect, changeToCalibrate=false) {

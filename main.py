@@ -40,11 +40,6 @@ else:
 
 json_root_path = os.path.join(os.getcwd(), "json")
 
-class CustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()  # Convert datetime to string
-        return super().default(obj)
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
@@ -84,7 +79,8 @@ def index():
                          mode_input=mode_input,
                          quantity_input=quantity_input,
                          file_list=file_list,
-                         cal_json_list=cal_json_list)
+                         cal_json_list=cal_json_list,
+                         delimiter=delimiter)
 
 @app.route('/browse', methods=['POST'])
 def browse():
@@ -279,13 +275,17 @@ def extractAnalysisCoefficients(
     else:
         raise Exception("Input must be a slope object or array of slope objects")
 
+from flask import request, jsonify
+import os
+import csv
+import time
+
 @app.route('/export_data', methods=['POST'])
 def export_data(mode="kinetics"):
-    default_path = os.path.join(os.getcwd(), "export_data")
     data = request.get_json()
     print(f"data is {data}")
     file_name = data.get('save_file', 'result')
-    export_path = data.get('save_dir' != "", default_path)
+    save_dir = data.get('save_dir')
     measurement = data.get('meas')
     vmax = data.get('vmax', 'NONE')
     slope = data.get('slope', 'NONE')
@@ -293,28 +293,21 @@ def export_data(mode="kinetics"):
     concentration = data.get('con')
     time_to_sat = data.get('timeSat', 'NONE')
     meas_unit = data.get('measUnit', 'NONE')
-
     blankT = data.get('blanked')
     time_unit = data.get('timeUnit')
-    
     newFile = data.get('newFile')
     meas_mode = data.get('measMode')
-
     value = data.get('estValue', 'NONE')
     time_point = data.get('timePoint')
-    print("Measurmenet mode is ", meas_mode)
+    print("Measurement mode is ", meas_mode)
     try:
-        
-        # Check if the provided path is an environment variable
-        export_path = os.getenv(export_path, export_path)
-
         # Ensure the directory path is absolute and normalized
-        export_path = os.path.abspath(os.path.expanduser(export_path))
+        export_path = os.path.abspath(os.path.expanduser(save_dir))
         print(f"export path is {export_path}")
         # Ensure directory exists
         os.makedirs(export_path, exist_ok=True)
         
-        full_path = os.path.join(export_path, file_name + "_" + meas_mode +".csv")
+        full_path = os.path.join(export_path, file_name + "_" + meas_mode + ".csv")
 
         # Check if file exists and has headers
         file_exists = os.path.isfile(full_path)
@@ -325,22 +318,21 @@ def export_data(mode="kinetics"):
         with open(full_path, "a", newline='') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
-                if (meas_mode == "kinetics"):
-                    writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Sat', 'Time To Sat', 'MeasUnit','TimeUnit', 'BlankType', 'MeasMode'])  # Write header if new file
+                if meas_mode == "kinetics":
+                    writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Sat', 'Time To Sat', 'MeasUnit', 'TimeUnit', 'BlankType', 'MeasMode'])
                 else:
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
-            # writer.writerow([vmax, slope, sat])  # Append data
             if check_row_exist(full_path, concentration, blankT, time_point, meas_mode):
-                if (meas_mode == "kinetics"):
+                if meas_mode == "kinetics":
                     message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
-                elif (meas_mode == "point"):
+                elif meas_mode == "point":
                     message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" at this {time_point} already exist in {full_path}"
                 status = "error"
             else: 
-                if (meas_mode == "kinetics"):
-                    writer.writerow([measurement,concentration,vmax,slope,sat,time_to_sat,meas_unit,time_unit,blankT,meas_mode])
+                if meas_mode == "kinetics":
+                    writer.writerow([measurement, concentration, vmax, slope, sat, time_to_sat, meas_unit, time_unit, blankT, meas_mode])
                 else:
-                    writer.writerow([measurement,concentration,value,meas_unit,time_point,time_unit,blankT,meas_mode])
+                    writer.writerow([measurement, concentration, value, meas_unit, time_point, time_unit, blankT, meas_mode])
                 message = f"Data exported at {full_path}"
                 status = "success" 
             f.close()
@@ -349,17 +341,24 @@ def export_data(mode="kinetics"):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-def check_row_exist(full_path, concentration, blankT, timePoint = None, measMode = "kinetics"):
-    with open(full_path, mode='r', newline='') as f:
-        reader = csv.reader(f)
-
-        for row in reader:
-            if (measMode == "kinetics"):
-                if row[con_col] == concentration and row[blankT_col_kin] == blankT:
-                    return True
-            elif (measMode == "point"):
-                if row[con_col] == concentration and row[blankT_col_pnt] == blankT and row[time_point_col] == timePoint:
-                    return True
+def check_row_exist(full_path, concentration, blankT, timePoint=None, measMode="kinetics"):
+    try:
+        with open(full_path, mode='r', newline='') as f:
+            reader = csv.reader(f)
+            # Assuming column indices based on headers
+            con_col = 1  # Concentration
+            blankT_col_kin = 8  # BlankType for kinetics
+            blankT_col_pnt = 6  # BlankType for point
+            time_point_col = 4  # TimePoint for point
+            for row in reader:
+                if measMode == "kinetics":
+                    if row[con_col] == concentration and row[blankT_col_kin] == blankT:
+                        return True
+                elif measMode == "point":
+                    if row[con_col] == concentration and row[blankT_col_pnt] == blankT and row[time_point_col] == timePoint:
+                        return True
+    except FileNotFoundError:
+        return False
     return False
 
 @app.route('/get_data', methods=['GET'])

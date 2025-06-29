@@ -18,17 +18,33 @@
                 const separator = basePath.includes('\\') ? '\\' : '/';
                 // Normalize basePath by removing trailing separators
                 basePath = basePath.replace(/[\\\/]+$/, '');
+                // Get the current path from the input field
+                const pathDisplay = document.getElementById(inputId);
+                let currentPath = pathDisplay.value || (basePath ? `${basePath}${separator}data` : 'data');
+                // Normalize currentPath by removing trailing separators
+                currentPath = currentPath.replace(/[\\\/]+$/, '');
                 let fullPath;
 
-                // Construct path with the appropriate separator
-                if (basePath) {
-                    fullPath = `${basePath}${separator}${dirHandle.name}`;
+                // Split current path into segments
+                const pathSegments = currentPath ? currentPath.split(separator).filter(segment => segment) : [];
+                // Check if dirHandle.name matches any segment
+                const matchIndex = pathSegments.indexOf(dirHandle.name);
+
+                if (matchIndex !== -1) {
+                    // Retract path to the matching segment
+                    fullPath = pathSegments.slice(0, matchIndex + 1).join(separator);
+                    // Preserve drive letter or root prefix
+                    if (currentPath.match(/^[a-zA-Z]:[\\\/]/)) {
+                        fullPath = currentPath.slice(0, 2) + separator + fullPath;
+                    } else if (currentPath.startsWith(separator)) {
+                        fullPath = separator + fullPath;
+                    }
                 } else {
-                    fullPath = dirHandle.name;
+                    // No match: append dirHandle.name to the current path
+                    fullPath = currentPath ? `${currentPath}${separator}${dirHandle.name}` : dirHandle.name;
                 }
 
                 // Update the input field with the constructed path
-                const pathDisplay = document.getElementById(inputId);
                 pathDisplay.value = fullPath;
 
                 // Store the dirHandle for client-side file operations
@@ -36,7 +52,7 @@
 
                 // Warn if no base path is provided
                 if (!basePath) {
-                    console.warn('No base path provided by server; using directory name only.');
+                    console.warn('No base path provided by server; using directory name or retracted path.');
                 }
             } catch (err) {
                 console.error('Directory selection canceled or failed:', err);
@@ -71,9 +87,10 @@
         <div class="section script-controls" id="log-hid-data">
             <h2>Log HID Data</h2>
             <div>
-                <label for="base-dir">Base Directory (--base-dir): </label>
-                <input type="text" id="base-dir" readonly style="width: 80%">
+                <label for="base-dir">Base Directory (--base-dir): 
+                <input type="text" id="base-dir" value="{{ directory | default('') }}{{ delimiter }}data" readonly style="width: 80%">
                 <button onclick="pickDirectory('base-dir')">Select Directory</button>
+                </label>
             </div>
             <div>
                 <label for="base-name">Base Name (--base-name): </label>
@@ -230,9 +247,9 @@
                         <span id="est-val-exp"></span>
                     </div>
                     <label for="save-dir">Saving Directory: 
-                    </label>
-                    <input type="text" id="save-dir" readonly style="width: 80%">
+                    <input type="text" id="save-dir" value="{{ directory | default('') }}{{ delimiter }}export_data" readonly style="width: 80%">
                     <button onclick="pickDirectory('save-dir')">Select Directory</button>
+                    </label>
                 </div>
                 <div>
                     <label for="save-file">File Name: </label>
