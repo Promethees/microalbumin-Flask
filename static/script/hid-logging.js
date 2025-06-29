@@ -1,5 +1,5 @@
 function runScript() {
-    const baseDir = $("#base-dir").val();
+    processedHidPath = $("#base-dir").val();
     const baseName = $("#base-name").val();
     $("#base-dir").prop('disabled', true);
     $("#base-name").prop('disabled', true);
@@ -7,7 +7,7 @@ function runScript() {
         url: '/run_script',
         type: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ base_dir: baseDir, base_name: baseName }),
+        data: JSON.stringify({ base_dir: processedHidPath, base_name: baseName }),
         success: function(response) {
             if (response.status === 'success') {
                 scriptRunning = true;
@@ -17,10 +17,12 @@ function runScript() {
                 $("#log-display").text("Script started...\n");
 
                 // Store the returned directory and update the go-to button
-                const targetDir = response.directory || $("#directory").val();
-                $("#go-to-btn").off('click').on('click', function() {
-                    updateDirectory(targetDir, true);
-                });
+                // const targetDir = response.directory || $("#directory").val();
+                // $("#go-to-btn").off('click').on('click', function() {
+                //     updateDirectory(targetDir, true);
+                // });
+                bindButtonToString("#go-to-btn", processedHidPath, false);
+
             } else {
                 $("#log-display").text(`Error: ${response.message}\n`);
                 $("#base-dir").prop('disabled', false);

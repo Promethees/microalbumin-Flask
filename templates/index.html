@@ -13,13 +13,31 @@
             try {
                 const dirHandle = await window.showDirectoryPicker();
                 // Get the server-provided directory, ensuring it's defined
-                let basePath = "{{ directory | default('') }}".replace(/\\/g, '/').replace(/\/+$/, '');
-                // Construct full path by appending the selected directory name
-                const fullPath = basePath ? `${basePath}/${dirHandle.name}` : dirHandle.name;
+                let basePath = "{{ directory | default('') }}";
+                // Detect the server's path separator from basePath
+                const separator = basePath.includes('\\') ? '\\' : '/';
+                // Normalize basePath by removing trailing separators
+                basePath = basePath.replace(/[\\\/]+$/, '');
+                let fullPath;
+
+                // Construct path with the appropriate separator
+                if (basePath) {
+                    fullPath = `${basePath}${separator}${dirHandle.name}`;
+                } else {
+                    fullPath = dirHandle.name;
+                }
+
+                // Update the input field with the constructed path
                 const pathDisplay = document.getElementById(inputId);
-                pathDisplay.value = fullPath; // Display the OS-agnostic full path
-                // Store the dirHandle for further use (e.g., file operations)
+                pathDisplay.value = fullPath;
+
+                // Store the dirHandle for client-side file operations
                 window[inputId + 'Handle'] = dirHandle;
+
+                // Warn if no base path is provided
+                if (!basePath) {
+                    console.warn('No base path provided by server; using directory name only.');
+                }
             } catch (err) {
                 console.error('Directory selection canceled or failed:', err);
             }

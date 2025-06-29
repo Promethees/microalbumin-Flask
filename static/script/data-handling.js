@@ -307,67 +307,16 @@ function toggleMode() {
     }
 }
 
-// Cross-platform path resolution function using server's OS separator
-function resolveRelativePath(base, relative) {
-    if (!relative) return base;
-    
-    // Detect separator from base path (from Flask's os.getcwd())
-    const separator = base.includes('\\') ? '\\' : '/';
-    
-    // Normalize relative path by replacing all separators with the server's separator
-    const normalizedRelative = relative.replace(/[\\\/]/g, separator);
-    
-    // Split base and normalized relative paths into segments
-    const baseSegments = base.split(/[\\\/]/).filter(segment => segment);
-    const relativeSegments = normalizedRelative.split(separator).filter(segment => segment);
-    
-    // Combine segments, handling '.' and '..'
-    const resolvedSegments = baseSegments.slice();
-    for (const segment of relativeSegments) {
-        if (segment === '.') {
-            continue; // Stay in current directory
-        } else if (segment === '..') {
-            resolvedSegments.pop(); // Move up one directory
-        } else {
-            resolvedSegments.push(segment); // Add subdirectory
-        }
-    }
-    
-    // Reconstruct the path
-    let resolvedPath = resolvedSegments.join(separator);
-    
-    // Preserve the base path's prefix (e.g., drive letter or root)
-    if (base.startsWith(separator)) {
-        resolvedPath = separator + resolvedPath;
-    } else if (base.match(/^[a-zA-Z]:[\\\/]/)) {
-        resolvedPath = base.slice(0, 2) + separator + resolvedPath;
-    }
-    
-    return resolvedPath || separator; // Fallback to root if empty
-}
-
 function exportData() {
     if ($("#time-unit").val() === "minutes") {
-        const saveDir = $("#save-dir").val().trim() || "";
+        processedExpPath = $("#save-dir").val().trim() || "";
         const saveFile = $("#save-file").val().trim() || "results";
         const concentration = $("#con-value-read").val() || "NONE";
         const timeUnit = $("#time-unit").val();
         let analysisData = null;
         let newFile = true;
 
-        // Detect absolute paths for Mac/Linux and Windows
-        const isAbsolutePath = saveDir.match(/^(\/|[a-zA-Z]:[\\\/]|\\\\)/);
-        // Use mainPyDir from Flask (injected or fetched)
-        if (isAbsolutePath) {
-            // Use the full path as provided, normalizing separators
-            const separator = rootPath.includes('\\') ? '\\' : '/';
-            processedExpPath = saveDir.replace(/[\\\/]/g, separator);
-        } else {
-            // Resolve partial path relative to mainPyDir
-            processedExpPath = resolveRelativePath(rootPath, saveDir);
-        }
-
-        bindGoToExpButton();
+        bindButtonToString("#go-to-exp-btn", processedExpPath);
         
         if (currentMeasurementMode === "kinetics") {
             switch ($("#exp-json-blank-type").val()) {
@@ -410,7 +359,7 @@ function exportData() {
                     }
                     break;
             }
-            sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+            sendExportData(processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
 
         } else if (currentMeasurementMode === "point") {
             if (currExpTimePoint) { 
@@ -420,7 +369,7 @@ function exportData() {
                     measurement: analysis.meas,
                     measUnit: analysis.meas_unit
                 } 
-                sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+                sendExportData(processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
                 if (analysis.meas_unit !== "NONE")
                     $("#est-val-exp").text(`Estimated ${analysis.meas} value being exported is ${globalEstimatedValue}${analysis.meas_unit}`);
                 else 
@@ -442,7 +391,7 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit
             vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
             slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
             sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
-            timeSat : analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
+            timeSat: analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",
             con: concentration,
             measUnit: analysisData.measUnit, 
             blanked: blankedType,
