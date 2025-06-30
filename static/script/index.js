@@ -115,75 +115,11 @@ $(document).ready(function() {
         $("#json-display").text("");
         
         if (mode === "kinetics") {
-            $("#window-size-section").removeClass("hidden");
-            $("#select-quantity-section").removeClass("hidden");
-            $("#point-json-exp-section").addClass("hidden");
-            $("#cal-json-sel-section").removeClass("hidden");
-            $("#kinetics-lines").removeClass("hidden");
-            $("#cal-json-exp-section").addClass("hidden");
-            $("#range-value").val("1000").prop("disabled", false);
-            $("#json-display").removeClass("hidden");
-            $("#export-analysis").removeClass("hidden");
-            $("#set-exp-point-section").addClass("hidden");
-            $("#select-exp-blank-type").removeClass("hidden");
-            $("#range-display").removeClass("hidden");
-            $("#concentration-reader-section").removeClass("hidden");
-            $("#analysis-info").removeClass("hidden");
-            $("#full-display-section").removeClass("hidden");
-            $("#select-time-point").addClass("hidden");
-            $("#select-regress-algo").addClass("hidden");
-            $("#export-coef").addClass("hidden");
-            $("#log-hid-data").removeClass("hidden");
-            $("#select-exp-blank-type-meas").removeClass("hidden");
-            $("#select-exp-blank-type-cal").addClass("hidden");
+            kineticsModeBehaviour();
         } else if (mode === "point") {
-            $("#window-size-section").addClass("hidden");
-            $("#select-quantity-section").addClass("hidden"); 
-            $("#point-json-exp-section").addClass("hidden");
-            $("#cal-json-sel-section").removeClass("hidden");
-            $("#kinetics-lines").addClass("hidden");
-            $("#cal-json-exp-section").addClass("hidden");
-            $("#range-value").val("1000").prop("disabled", false);
-            $("#json-display").removeClass("hidden");
-            $("#export-analysis").removeClass("hidden");
-            $("#set-exp-point-section").removeClass("hidden");
-            $("#select-exp-blank-type").removeClass("hidden");
-            $("#range-display").removeClass("hidden");
-            $("#concentration-reader-section").removeClass("hidden");
-            $("#analysis-info").removeClass("hidden");
-            $("#full-display-section").removeClass("hidden");
-            $("#select-time-point").addClass("hidden");
-            $("#select-regress-algo").addClass("hidden");
-            $("#export-coef").addClass("hidden");
-            $("#log-hid-data").removeClass("hidden");
-            $("#select-exp-blank-type-meas").removeClass("hidden");
-            $("#select-exp-blank-type-cal").addClass("hidden");
+            pointModeBehaviour();
         } else {
-            $("#window-size-section").addClass("hidden");
-            if ($("#cal-mode-select").val() === "kinetics") {
-                $("#select-quantity-section").removeClass("hidden");
-                $("#select-time-point").addClass("hidden");
-            } else {
-                $("#select-quantity-section").addClass("hidden");
-                $("#select-time-point").removeClass("hidden");
-            }
-            $("#point-json-exp-section").addClass("hidden");
-            $("#cal-json-sel-section").addClass("hidden");
-            $("#kinetics-lines").addClass("hidden");
-            $("#cal-json-exp-section").removeClass("hidden");
-            $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
-            $("#json-display").addClass("hidden");
-            $("#export-analysis").addClass("hidden");
-            $("#select-exp-blank-type").removeClass("hidden");
-            $("#range-display").addClass("hidden");
-            $("#concentration-reader-section").addClass("hidden");
-            $("#full-display-section").addClass("hidden");
-            $("#select-regress-algo").removeClass("hidden");
-            $("#analysis-info").removeClass("hidden");
-            $("#export-coef").removeClass("hidden");
-            $("#log-hid-data").addClass("hidden");
-            $("#select-exp-blank-type-meas").addClass("hidden");
-            $("#select-exp-blank-type-cal").removeClass("hidden");
+            calModeBehaviour(); 
         }
         
         if (currentFile) {
@@ -205,11 +141,9 @@ $(document).ready(function() {
 
     $("#cal-mode-select").on("change", function() {
         if ($("#cal-mode-select").val() === "kinetics") {
-            $("#select-quantity-section").removeClass("hidden");
-            $("#select-time-point").addClass("hidden");
+            calKineticsBehaviour();
         } else {
-            $("#select-quantity-section").addClass("hidden");
-            $("#select-time-point").removeClass("hidden");
+            calPointBehaviour();
         }
     });
 
@@ -223,14 +157,97 @@ $(document).ready(function() {
     bindButtonToString("#go-to-btn", processedHidPath, false);
 });
 
+function kineticsModeBehaviour() {
+    $("#window-size-section").removeClass("hidden");
+    $("#select-quantity-section").removeClass("hidden");
+    $("#point-json-exp-section").addClass("hidden");
+    $("#cal-json-sel-section").removeClass("hidden");
+    $("#kinetics-lines").removeClass("hidden");
+    $("#cal-json-exp-section").addClass("hidden");
+    $("#range-value").val("1000").prop("disabled", false);
+    $("#json-display").removeClass("hidden");
+    $("#export-analysis").removeClass("hidden");
+    $("#set-exp-point-section").addClass("hidden");
+    $("#select-exp-blank-type").removeClass("hidden");
+    $("#range-display").removeClass("hidden");
+    $("#concentration-reader-section").removeClass("hidden");
+    $("#analysis-info").removeClass("hidden");
+    $("#full-display-section").removeClass("hidden");
+    $("#select-time-point").addClass("hidden");
+    $("#select-regress-algo").addClass("hidden");
+    $("#export-coef").addClass("hidden");
+    $("#log-hid-data").removeClass("hidden");
+    $("#select-exp-blank-type-meas").removeClass("hidden");
+    $("#select-exp-blank-type-cal").addClass("hidden");
+}
+
+function pointModeBehaviour() {
+    $("#window-size-section").addClass("hidden");
+    $("#select-quantity-section").addClass("hidden"); 
+    $("#point-json-exp-section").addClass("hidden");
+    $("#cal-json-sel-section").removeClass("hidden");
+    $("#kinetics-lines").addClass("hidden");
+    $("#cal-json-exp-section").addClass("hidden");
+    $("#range-value").val("1000").prop("disabled", false);
+    $("#json-display").removeClass("hidden");
+    $("#export-analysis").removeClass("hidden");
+    $("#set-exp-point-section").removeClass("hidden");
+    $("#select-exp-blank-type").removeClass("hidden");
+    $("#range-display").removeClass("hidden");
+    $("#concentration-reader-section").removeClass("hidden");
+    $("#analysis-info").removeClass("hidden");
+    $("#full-display-section").removeClass("hidden");
+    $("#select-time-point").addClass("hidden");
+    $("#select-regress-algo").addClass("hidden");
+    $("#export-coef").addClass("hidden");
+    $("#log-hid-data").removeClass("hidden");
+    $("#select-exp-blank-type-meas").removeClass("hidden");
+    $("#select-exp-blank-type-cal").addClass("hidden");
+}
+
+function calModeBehaviour() {
+    $("#point-json-exp-section").addClass("hidden");
+    $("#cal-json-sel-section").addClass("hidden");
+    $("#kinetics-lines").addClass("hidden");
+    $("#cal-json-exp-section").removeClass("hidden");
+    $("#range-value").val("").prop("disabled", true).attr("placeholder", "Disabled in Calibration mode");
+    $("#json-display").addClass("hidden");
+    $("#export-analysis").addClass("hidden");
+    $("#select-exp-blank-type").removeClass("hidden");
+    $("#range-display").addClass("hidden");
+    $("#concentration-reader-section").addClass("hidden");
+    $("#full-display-section").addClass("hidden");
+    $("#select-regress-algo").removeClass("hidden");
+    $("#analysis-info").removeClass("hidden");
+    $("#export-coef").removeClass("hidden");
+    $("#log-hid-data").addClass("hidden");
+    $("#select-exp-blank-type-meas").addClass("hidden");
+    $("#select-exp-blank-type-cal").removeClass("hidden");
+    $("#window-size-section").addClass("hidden");
+    if ($("#cal-mode-select").val() === "kinetics") {
+            calKineticsBehaviour();
+        } else {
+            calPointBehaviour();
+        }
+    terminateScript(); 
+}
+
+function calKineticsBehaviour() {
+    $("#select-quantity-section").removeClass("hidden");
+    $("#select-time-point").addClass("hidden");
+}
+
+function calPointBehaviour() {
+    $("#select-quantity-section").addClass("hidden");
+    $("#select-time-point").removeClass("hidden");
+}
+
 function updateDirectory(path, deselect, changeToCalibrate=false) {
     // console.log("Sending path to server:", path);
     if(changeToCalibrate) {
         $("#measurement-mode").val("calibrate");
         currentMeasurementMode = "calibrate";
-        $("#cal-json-sel-section").addClass("hidden");
-        $("#cal-json-exp-section").removeClass("hidden");
-        $("#log-hid-data").addClass("hidden");
+        calModeBehaviour();
     } else {
         if (currentMeasurementMode !== "calibrate") {
             //Change #cal-mode-select in the background before switching to calibrate mode
