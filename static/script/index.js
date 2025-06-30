@@ -231,6 +231,11 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         $("#cal-json-sel-section").addClass("hidden");
         $("#cal-json-exp-section").removeClass("hidden");
         $("#log-hid-data").addClass("hidden");
+    } else {
+        if (currentMeasurementMode !== "calibrate") {
+            //Change #cal-mode-select in the background before switching to calibrate mode
+            $("#cal-mode-select").val(`${currentMeasurementMode}`); 
+        }
     }
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
