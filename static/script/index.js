@@ -112,6 +112,7 @@ $(document).ready(function() {
         }
         currentJSON = null;
         currentJSONcontent = null;
+        currentFile = null;
         $("#json-display").text("");
         
         if (mode === "kinetics") {
@@ -122,17 +123,17 @@ $(document).ready(function() {
             calModeBehaviour(); 
         }
         
-        if (currentFile) {
-            if (currentMeasurementMode !== "calibrate") {
-                let range = $("#range-value").val();
-                let unit = $("#time-unit").val();
-                let window_size = $("#window_size").val();
-                fetchData(range, unit, window_size, currentFile);
-            } else {
-                fetchData(null, null, null, currentFile, null);
-            }
-        } 
-        updateDirectory($("#directory").val(), true);
+        // if (currentFile) {
+        //     if (currentMeasurementMode !== "calibrate") {
+        //         let range = $("#range-value").val();
+        //         let unit = $("#time-unit").val();
+        //         let window_size = $("#window_size").val();
+        //         fetchData(range, unit, window_size, currentFile);
+        //     } else {
+        //         fetchData(null, null, null, currentFile, null);
+        //     }
+        // } 
+        // updateDirectory($("#directory").val(), true);
     });
 
     $("#cal-json-exp-section").on("change", function() {
