@@ -230,6 +230,7 @@ function calModeBehaviour() {
             calPointBehaviour();
         }
     terminateScript(); 
+    clearLogs();
 }
 
 function calKineticsBehaviour() {
