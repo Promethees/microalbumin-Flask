@@ -611,7 +611,7 @@ function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeV
             const yValues = filteredData.map(row => row[param]);
             
             // Call calculateCoefAndRSquared with extracted values
-            const result = calculateCoefAndRSquared(xValues, yValues, regressAlgo);
+            const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
             
             return result ;
         });
@@ -624,7 +624,7 @@ function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeV
         .sort((a, b) => a[XColumn] - b[XColumn]);
     const xValues = filteredData.map(row => row[XColumn]);
     const yValues = filteredData.map(row => row[YColumn]);
-    const result = calculateCoefAndRSquared(xValues, yValues, regressAlgo);
+    const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
     
     return  result ;
 }
