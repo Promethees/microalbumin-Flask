@@ -120,8 +120,7 @@ def run_script():
     with open(log_file, 'a') as f:
         process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
 
-    args = parse_arguments()
-    return jsonify({'status': 'success', 'directory': args.base_dir})
+    return jsonify({'status': 'success'})
 
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():
