@@ -95,12 +95,46 @@ $(document).ready(function() {
         if (currentDir) {
             updateDirectory(currentDir, false);
         }
+
+        if (currentFile) {
+            if (currentMeasurementMode !== "calibrate") {
+                let range = $("#range-value").val();
+                let unit = $("#time-unit").val();
+                let window_size = $("#window-size").val();
+                fetchData(range, unit, window_size, currentFile, currentJSONcontent);
+                $("#cal-time-unit").text(unit.slice(0, -1));
+            } else {
+                fetchData(null, null, null, currentFile, null);
+            }
+            $("#data-display-section").removeClass("hidden");
+        } else {
+            $("#data-display-section").addClass("hidden");
+        }
+
+        if (!currentJSON) {
+            $("#derived-concentration-section").addClass("hidden");
+            $("#blank-derived-concentration-section").addClass("hidden");
+            $("#non-blank-derived-concentration-section").addClass("hidden");
+        }
+
+
     }, 500);
 
-    $("#time-unit").on("change", function() {
-        const currTimeUnit = $(this).val().slice(0, -1);
-        $("#cal-time-unit").text(currTimeUnit);
-    });
+    // $("#time-unit").on("change", function() {
+    //     const currTimeUnit = $(this).val().slice(0, -1);
+    //     $("#cal-time-unit").text(currTimeUnit);
+    //     let range = $("#range-value").val();
+    //     let unit = $("#time-unit").val();
+    //     let window_size = $("#window-size").val();
+    //     fetchData(range, unit, window_size, currentFile, currentJSONcontent);
+    // });
+
+    // $("#range-unit, #window-size").on("change", function() {
+    //     let range = $("#range-value").val();
+    //     let unit = $("#time-unit").val();
+    //     let window_size = $("#window-size").val();
+    //     fetchData(range, unit, window_size, currentFile, currentJSONcontent);
+    // });
 
     // Initialize measurement method listener
     $("#measurement-mode").on("change", function() {
@@ -278,22 +312,22 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
 }
 
 // Refresh data display according to range, unit, window size set
-setInterval(function() {
-    if (currentFile) {
-        if (currentMeasurementMode !== "calibrate") {
-            let range = $("#range-value").val();
-            let unit = $("#time-unit").val();
-            let window_size = $("#window-size").val();
-            fetchData(range, unit, window_size, currentFile, currentJSONcontent);
-            $("#data-display-section").removeClass("hidden");
-        } else {
-            fetchData(null, null, null, currentFile, null);
-            $("#data-display-section").removeClass("hidden");
-        }
-    } else $("#data-display-section").addClass("hidden");
-    if (!currentJSON) {
-        $("#derived-concentration-section").addClass("hidden");
-        $("#blank-derived-concentration-section").addClass("hidden");
-        $("#non-blank-derived-concentration-section").addClass("hidden");
-    }
-}, 500);
+// setInterval(function() {
+//     if (currentFile) {
+//         if (currentMeasurementMode !== "calibrate") {
+//             let range = $("#range-value").val();
+//             let unit = $("#time-unit").val();
+//             let window_size = $("#window-size").val();
+//             fetchData(range, unit, window_size, currentFile, currentJSONcontent);
+//             $("#data-display-section").removeClass("hidden");
+//         } else {
+//             fetchData(null, null, null, currentFile, null);
+//             $("#data-display-section").removeClass("hidden");
+//         }
+//     } else $("#data-display-section").addClass("hidden");
+//     if (!currentJSON) {
+//         $("#derived-concentration-section").addClass("hidden");
+//         $("#blank-derived-concentration-section").addClass("hidden");
+//         $("#non-blank-derived-concentration-section").addClass("hidden");
+//     }
+// }, 500);
