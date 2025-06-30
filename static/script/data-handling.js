@@ -302,8 +302,8 @@ function toggleMode() {
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();
             let window_size = $("window_size").val();
-            fetchData(range, unit, window_size, currentFile);
-        } else fetchData(null, null, null, currentFile);
+            fetchData(range, unit, window_size, currentFile, currentJSONcontent);
+        } else fetchData(null, null, null, currentFile, currentJSONcontent);
     }
 }
 

@@ -226,11 +226,8 @@ function updatePlot(
     // Clean and sort data
     const selectElement = document.getElementById('regressed-quantity');
     const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
-    if (calParams.indexOf(YColumn) !== -1) {
-
-    }
-    data = preprocessData(data, XColumn, YColumn, calParams);
-
+    const rawData = data;
+    data = preprocessData(data, XColumn, YColumn);
     console.log("The data after being processed is ", data);
 
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
@@ -292,14 +289,14 @@ function updatePlot(
             analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
         } else {
             if (isCalKinetics) {
-                console.log("Give me the all blanked X Column at after the filter point ", allBlankedXColumn);
-                // console.log("Give me the all blanked data at after the filter point ", allBlankedData);
-                analysis_blanked = calParams.map(col =>
-                    calculateCoefAndRSquared(allBlankedXColumn, extractColumn(allBlankedData, col), regressAlgo)
-                );
-                analysis_nonblanked = calParams.map(col =>
-                    calculateCoefAndRSquared(allNonBlankedXColumn, extractColumn(allNonBlankedData, col), regressAlgo)
-                );
+                // analysis_blanked = calParams.map(col =>
+                //     calculateCoefAndRSquared(allBlankedXColumn, extractColumn(allBlankedData, col), regressAlgo)
+                // );
+                analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
+                // analysis_nonblanked = calParams.map(col =>
+                //     calculateCoefAndRSquared(allNonBlankedXColumn, extractColumn(allNonBlankedData, col), regressAlgo)
+                // );
+                analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
             } else {
                 analysis_blanked = calculateCoefAndRSquared(allBlankedXColumn, allBlankedYColumn, regressAlgo);
                 analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedXColumn, allNonBlankedYColumn, regressAlgo);
@@ -350,9 +347,10 @@ function updatePlot(
             mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
         } else {
             if (isCalKinetics) {
-                mixAnalysis = calParams.map(col =>
-                    calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, col), regressAlgo)
-                );
+                // mixAnalysis = calParams.map(col =>
+                //     calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, col), regressAlgo)
+                // );
+                mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
             } else if (isCalPoint) {
                 mixAnalysis = calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, YColumn), regressAlgo);
             }
@@ -434,23 +432,24 @@ function getCalPointString(analysis) {
     return htmlString;
 }
 
-function preprocessData(data, XColumn, YColumn, calParams=null) {
-    if (calParams && calParams.includes(YColumn)) {
-        let processedData = data; // Start with original data
-        
-        // Sequentially process data for each calParams element
-        for (const param of calParams) {
-            processedData = processedData
+function preprocessData(data, XColumn, YColumn) {
+    // Process data with original YColumn
+    return data
+        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
+        .sort((a, b) => a[XColumn] - b[XColumn]);
+}
+
+function preprocessDataCalParams(data, XColumn, YColumn, calParams) {
+    if (calParams && Array.isArray(calParams) && calParams.includes(YColumn)) {
+        // Store results for each calParams element
+        const results = calParams.map(param => {
+            const filteredData = data
                 .filter(row => row[XColumn] !== "NONE" && row[param] !== "NONE")
                 .sort((a, b) => a[XColumn] - b[XColumn]);
-        }
+            return { param, data: filteredData };
+        });
         
-        return processedData; // Return final processed data
-    } else {
-        // Process data with original YColumn
-        return data
-            .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
-            .sort((a, b) => a[XColumn] - b[XColumn]);
+        return results; // Return array of { param, data }
     }
 }
 
@@ -463,7 +462,6 @@ function extractAndConvert(data, colName, factor) {
 }
 
 function getDataGroups(data, hasBlankType, XColumn, YColumn) {
-    // const selected = filterByBlankType(data, forBlankType, hasBlankType);
     return {
         allXColumn: extractColumn(data, XColumn),
         allYColumn: extractColumn(data, YColumn),
@@ -596,4 +594,37 @@ function destroyCharts() {
         nonBlankedChart.destroy();
         nonBlankedChart = null;
     }
+}
+
+function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeValue, calculateCoefAndRSquared, regressAlgo) {
+    // Get preprocessed data
+    const dataMap = preprocessDataCalParams(data, XColumn, YColumn, calParams);
+    
+    // If dataMap is defined (i.e., YColumn is in calParams), process each param
+    if (dataMap) {
+        const results = dataMap.map(({ param, data }) => {
+            // Filter data for rows where BlankType === blankTypeValue and param is not "NONE"
+            const filteredData = data.filter(row => row['BlankType'] === blankTypeValue && row[param] !== "NONE");
+            
+            // Extract XColumn and param values
+            const xValues = filteredData.map(row => row[XColumn]);
+            const yValues = filteredData.map(row => row[param]);
+            
+            // Call calculateCoefAndRSquared with extracted values
+            const result = calculateCoefAndRSquared(xValues, yValues, regressAlgo);
+            
+            return result ;
+        });
+        
+        return results; // Return array of { param, result }
+    }
+    // Fallback: Process with original YColumn
+    const filteredData = data
+        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE" && row['BlankType'] === blankTypeValue)
+        .sort((a, b) => a[XColumn] - b[XColumn]);
+    const xValues = filteredData.map(row => row[XColumn]);
+    const yValues = filteredData.map(row => row[YColumn]);
+    const result = calculateCoefAndRSquared(xValues, yValues, regressAlgo);
+    
+    return  result ;
 }
