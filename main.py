@@ -40,6 +40,15 @@ else:
 
 json_root_path = os.path.join(os.getcwd(), "json")
 
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        elif hasattr(obj, '__dict__'):
+            return obj.__dict__  # Handle custom classes
+        return super().default(obj)
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
