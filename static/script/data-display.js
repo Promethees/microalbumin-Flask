@@ -224,7 +224,14 @@ function updatePlot(
     $("#analysis-info").text("");
 
     // Clean and sort data
-    data = preprocessData(data, XColumn, YColumn);
+    const selectElement = document.getElementById('regressed-quantity');
+    const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
+    if (calParams.indexOf(YColumn) !== -1) {
+
+    }
+    data = preprocessData(data, XColumn, YColumn, calParams);
+
+    console.log("The data after being processed is ", data);
 
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     const hasBlankType = data.some(row => 'BlankType' in row);
@@ -235,8 +242,8 @@ function updatePlot(
         return;
     }
 
-    const allGroups = getDataGroups(data, hasBlankType, forBlankType, XColumn, YColumn);
-    const { allXColumn, allYColumn, allBlankedData, allNonBlankedData } = allGroups;
+    const allGroups = getDataGroups(data, hasBlankType, XColumn, YColumn);
+    const { allXColumn, allYColumn, allBlankedData, allNonBlankedData, allMixedData } = allGroups;
     const allBlankedXColumn = extractColumn(allBlankedData, XColumn);
     const allBlankedYColumn = extractColumn(allBlankedData, YColumn);
     const allNonBlankedXColumn = extractColumn(allNonBlankedData, XColumn);
@@ -247,7 +254,7 @@ function updatePlot(
         if (isFullDisplay) range = Number.MAX_VALUE;
         const timeThreshold = Math.max(...allXColumn) - range * getTimeUnitMultiplier(timeUnit);
 
-        filteredData = filterByTime(data, timeThreshold, forBlankType, hasBlankType);
+        filteredData = filterByTime(data, timeThreshold, hasBlankType);
         if (filteredData.length === 0) {
             console.warn("No data after filtering with threshold:", timeThreshold);
             return;
@@ -256,7 +263,7 @@ function updatePlot(
         XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
         YColumnVals = extractColumn(filteredData, YColumn);
     } else {
-        filteredData = filterByBlankType(data, forBlankType, hasBlankType);
+        filteredData = filterByBlankType(data, hasBlankType);
         XColumnVals = extractColumn(filteredData, XColumn);
         YColumnVals = extractColumn(filteredData, YColumn);
     }
@@ -267,8 +274,6 @@ function updatePlot(
     const isCalKinetics = currentMeasurementMode === "calibrate" && calMode === "kinetics";
     const isCalPoint = currentMeasurementMode === "calibrate" && calMode === "point";
     const regressAlgo = $("#exp-json-regress-algo").val();
-    const selectElement = document.getElementById('regressed-quantity');
-    const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
 
     if (isSplitMode) {
         const blankedData = filterBlankedData(filteredData, hasBlankType, true);
@@ -287,6 +292,8 @@ function updatePlot(
             analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
         } else {
             if (isCalKinetics) {
+                console.log("Give me the all blanked X Column at after the filter point ", allBlankedXColumn);
+                // console.log("Give me the all blanked data at after the filter point ", allBlankedData);
                 analysis_blanked = calParams.map(col =>
                     calculateCoefAndRSquared(allBlankedXColumn, extractColumn(allBlankedData, col), regressAlgo)
                 );
@@ -344,10 +351,10 @@ function updatePlot(
         } else {
             if (isCalKinetics) {
                 mixAnalysis = calParams.map(col =>
-                    calculateCoefAndRSquared(allXColumn, extractColumn(filteredData, col), regressAlgo)
+                    calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, col), regressAlgo)
                 );
             } else if (isCalPoint) {
-                mixAnalysis = calculateCoefAndRSquared(allXColumn, allYColumn, regressAlgo);
+                mixAnalysis = calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, YColumn), regressAlgo);
             }
         }
 
@@ -427,10 +434,24 @@ function getCalPointString(analysis) {
     return htmlString;
 }
 
-function preprocessData(data, XColumn, YColumn) {
-    return data
-        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
-        .sort((a, b) => a[XColumn] - b[XColumn]);
+function preprocessData(data, XColumn, YColumn, calParams=null) {
+    if (calParams && calParams.includes(YColumn)) {
+        let processedData = data; // Start with original data
+        
+        // Sequentially process data for each calParams element
+        for (const param of calParams) {
+            processedData = processedData
+                .filter(row => row[XColumn] !== "NONE" && row[param] !== "NONE")
+                .sort((a, b) => a[XColumn] - b[XColumn]);
+        }
+        
+        return processedData; // Return final processed data
+    } else {
+        // Process data with original YColumn
+        return data
+            .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
+            .sort((a, b) => a[XColumn] - b[XColumn]);
+    }
 }
 
 function extractColumn(data, colName) {
@@ -441,13 +462,14 @@ function extractAndConvert(data, colName, factor) {
     return data.map(row => Number((row[colName] * factor).toFixed(2)));
 }
 
-function getDataGroups(data, hasBlankType, forBlankType, XColumn, YColumn) {
-    const selected = filterByBlankType(data, forBlankType, hasBlankType);
+function getDataGroups(data, hasBlankType, XColumn, YColumn) {
+    // const selected = filterByBlankType(data, forBlankType, hasBlankType);
     return {
-        allXColumn: extractColumn(selected, XColumn),
-        allYColumn: extractColumn(selected, YColumn),
+        allXColumn: extractColumn(data, XColumn),
+        allYColumn: extractColumn(data, YColumn),
         allBlankedData: filterBlankedData(data, hasBlankType, true),
-        allNonBlankedData: filterBlankedData(data, hasBlankType, false)
+        allNonBlankedData: filterBlankedData(data, hasBlankType, false),
+        allMixedData: (!hasBlankType) ? data : data.filter(row => row["BlankType"] === "MIXED")
     };
 }
 
@@ -463,11 +485,11 @@ function unitDisplay(unit) {
     return unit !== "NONE" ? `(${unit})` : "";
 }
 
-function filterByBlankType(data, forBlankType, hasBlankType) {
+function filterByBlankType(data, hasBlankType) {
     if (!hasBlankType) return data;
 
     return data.filter(row =>
-        !forBlankType || row['BlankType'] === forBlankType || row['BlankType'] === "MIXED"
+        row['BlankType'] === "BLANKED" || row['BlankType'] === "NON-BLANKED" || row['BlankType'] === "MIXED"
     );
 }
 
@@ -484,10 +506,10 @@ function filterBlankedData(data, hasBlankType, isBlanked) {
     }
 }
 
-function filterByTime(data, timeThreshold, forBlankType, hasBlankType, XColumn = "Timestamp") {
+function filterByTime(data, timeThreshold, hasBlankType, XColumn = "Timestamp") {
     return data.filter(row =>
         row[XColumn] >= timeThreshold &&
-        (!hasBlankType || !forBlankType || row["BlankType"] === forBlankType || row["BlankType"] === "MIXED")
+        !hasBlankType
     );
 }
 
