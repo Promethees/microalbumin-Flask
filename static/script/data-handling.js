@@ -99,7 +99,7 @@ function settingDerivedCon(jsonFile) {
     }
 }
 
-// Triggered only after entries is changed
+// Triggered only after entries is changed, used in Point calibration mode
 function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     if (AppState.prevDropdownEntries && arraysEqual(AppState.prevDropdownEntries, entries)) {
         return AppState.prevDropdownEntries;
@@ -124,7 +124,7 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     } else {
         select.value = ''; // Reset to default if previous selection is gone
     }
-    return entries.sort((a, b) => b - a);
+    return entries.sort((a, b) => Number(b) - Number(a));
 }
 
 function fetchData(range, unit, window_size, filename, jsonFile) {
@@ -182,6 +182,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                             AppState.exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
                         } else if (cal_type === "point") {
                             const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
+                            console.log("Give me uniqueTimePoints ", uniqueTimePoints);
                             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
                             const timePoint = $("#regressed-time-point").val();
                             const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));

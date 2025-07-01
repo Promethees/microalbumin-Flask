@@ -461,7 +461,7 @@ function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 
 
 function getUniqueColumnEntries(data, columnName="TimePoint") {
     const uniqueColumnEntries = new Set(data.map(row => row[columnName]).filter(tp => tp));
-    return Array.from(uniqueColumnEntries);
+    return Array.from(uniqueColumnEntries).sort((a, b) => Number(b) - Number(a));
 }
 
 function arraysEqual(arr1, arr2) {
