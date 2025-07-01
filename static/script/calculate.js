@@ -473,24 +473,24 @@ function computeFit(value, fit_type, coef) {
     switch (fit_type.toLowerCase()) {
         case "linear":
             // Expect coef = [a, b]
-            if (coef.length < 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
+            if (coef.length !== 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
             return coef[0] * value + coef[1];
 
         case "polynomial":
             // Expect coef = [a, b, c]
-            if (coef.length < 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
+            if (coef.length !== 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
             return coef[0] * Math.pow(value, 2) + coef[1] * value + coef[2];
 
         case "logarithmic":
-            // Expect coef = [a, b]
-            if (coef.length < 2) throw new Error("Logarithmic fit requires 2 coefficients: [a, b]");
+            // Expect coef = [a, b, c]
+            if (coef.length !== 3) throw new Error("Logarithmic fit requires 3 coefficients: [a, b, c]");
             if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
-            return coef[0] * Math.log(value) + coef[1];
+            return coef[0] * Math.log(value + coef[1]) + coef[2];
 
         case "exponential":
-            // Expect coef = [a, b]
-            if (coef.length < 2) throw new Error("Exponential fit requires 2 coefficients: [a, b]");
-            return coef[0] * Math.exp(value) + coef[1];
+            // Expect coef = [a, b, c]
+            if (coef.length !== 3) throw new Error("Exponential fit requires 3 coefficients: [a, b, c]");
+            return coef[0] * Math.exp(value * coef[1]) + coef[2];
 
         default:
             throw new Error("Unknown fit type: " + fit_type);
