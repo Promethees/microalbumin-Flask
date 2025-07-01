@@ -59,6 +59,10 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     const xStepSize = isSinglePoint
         ? 0.5
         : Number((xMax - xMin) / (XColumn.length - 1)).toFixed(2) || 1;
+        // Prepare regression line data if currentMeasurementMode is "calibrate" and analysis has coefficients
+
+    let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
+    console.log("regression data is ", regressionData);  
 
     let chart = new Chart(ctx, {
         type: chartType,
@@ -71,7 +75,17 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                 tension: isSinglePoint ? 0 : 0.1, // No tension for scatter
                 fill: false,
                 pointRadius: isSinglePoint || allYEqual ? 5 : 3 // Larger points for single or equal Y values
-            }]
+                },
+                ...(regressionData.length > 0 ? [{
+                    label: 'Regression',
+                    data: regressionData,
+                    borderColor: 'rgba(0, 128, 0, 0.7)', // Green for regression line
+                    tension: 0.1,
+                    fill: false,
+                    pointRadius: 0, // No points for regression line
+                    borderWidth: 2
+                }] : [])
+            ]
         },
         options: {
             animation: false,
@@ -620,4 +634,81 @@ function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeV
     const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
     
     return  result ;
+}
+
+// Helper function to derive data for regression line 
+function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
+    let regressionData = [];
+    let analysis = null;
+    if ($("#cal-mode-select").val() === "kinetics") {
+        const selectElement = document.getElementById('regressed-quantity');
+        const calParams = Array.from(selectElement.options).map(option => option.value);
+        const currQuantity = selectElement.value;
+        analysis = analysisArray[calParams.indexOf(currQuantity)];
+    } else 
+        analysis = analysisArray;
+
+    if (currentMeasurementMode === "calibrate" && analysis && analysis.coefficients && numDiv > 0) {
+        const step = (xMax - xMin) / (numDiv - 1); // 100 points including start and end
+        const regressAlgo = $("#exp-json-regress-algo").val();
+
+        for (let i = 0; i < numDiv; i++) {
+            const x = xMin + i * step;
+            let y = 0;
+
+            switch (regressAlgo) {
+                case "linear": {
+                    // Original: x = a * y + b => y = (x - b) / a
+                    const [ a, b ] = analysis.coefficients;
+                    console.log("analysis coefs is ", analysis.coefficients);
+                    y = a !== 0 ? (x - b) / a : 0; // Avoid division by zero
+                    break;
+                }
+
+                case "polynomial": {
+                    // Original: x = c_0 + c_1*y + c_2*y^2
+                    // Rewrite: c_2*y^2 + c_1*y + (c_0 - x) = 0
+                    // Solve for y using quadratic formula: y = (-c_1 ± √(c_1^2 - 4*c_2*(c_0 - x))) / (2*c_2)
+                    const [c_0, c_1, c_2] = analysis.coefficients; // Degree 2 polynomial: c_0 + c_1*y + c_2*y^2
+                    if (c_2 === 0) {
+                        // Degenerate case: linear equation
+                        y = c_1 !== 0 ? (x - c_0) / c_1 : 0; // Avoid division by zero
+                    } else {
+                        const discriminant = c_1 * c_1 - 4 * c_2 * (c_0 - x);
+                        if (discriminant >= 0) {
+                            // Use the positive root (or adjust based on context)
+                            y = (-c_1 + Math.sqrt(discriminant)) / (2 * c_2);
+                            // If negative root is needed, use: y = (-c_1 - Math.sqrt(discriminant)) / (2 * c_2)
+                        } else {
+                            y = 0; // Handle invalid discriminant (no real roots)
+                        }
+                    }
+                    break;
+                }
+
+                case "logarithmic": {
+                    // Original: x = a * ln(y) + b => y = exp((x - b) / a)
+                    const [ a, b ] = analysis.coefficients;
+                    console.log("analysis coefs is ", analysis.coefficients);
+                    y = a !== 0 ? Math.exp((x - b) / a) : 0; // Avoid division by zero
+                    break;
+                }
+
+                case "exponential": {
+                    // Original: x = a * exp(y) + b => y = ln((x - b) / a)
+                    const [ a, b ] = analysis.coefficients;
+                    console.log("analysis coefs is ", analysis.coefficients);
+                    y = (a !== 0 && x > b) ? Math.log((x - b) / a) : 0; // Ensure valid domain
+                    break;
+                }
+
+                default:
+                    y = 0;
+            }
+
+            regressionData.push({ x, y });
+        }
+    }
+    console.log("regression data is ", regressionData);
+    return regressionData;
 }
