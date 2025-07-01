@@ -1,6 +1,9 @@
 // Generates the Chart.js chart and returns the chart object
 function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
     const canvas = document.getElementById(canvasId);
+    // canvas.width = 100%;
+    // canvas.height = 280px;
+
     if (!canvas || allXColumn.length === 0 || allYColumn.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
@@ -288,13 +291,7 @@ function updatePlot(
             analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
         } else {
             if (isCalKinetics) {
-                // analysis_blanked = calParams.map(col =>
-                //     calculateCoefAndRSquared(allBlankedXColumn, extractColumn(allBlankedData, col), regressAlgo)
-                // );
                 analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
-                // analysis_nonblanked = calParams.map(col =>
-                //     calculateCoefAndRSquared(allNonBlankedXColumn, extractColumn(allNonBlankedData, col), regressAlgo)
-                // );
                 analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
             } else {
                 analysis_blanked = calculateCoefAndRSquared(allBlankedXColumn, allBlankedYColumn, regressAlgo);
@@ -346,9 +343,6 @@ function updatePlot(
             mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
         } else {
             if (isCalKinetics) {
-                // mixAnalysis = calParams.map(col =>
-                //     calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, col), regressAlgo)
-                // );
                 mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
             } else if (isCalPoint) {
                 mixAnalysis = calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, YColumn), regressAlgo);

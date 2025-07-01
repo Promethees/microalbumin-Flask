@@ -121,22 +121,6 @@ $(document).ready(function() {
 
     }, 500);
 
-    // $("#time-unit").on("change", function() {
-    //     const currTimeUnit = $(this).val().slice(0, -1);
-    //     $("#cal-time-unit").text(currTimeUnit);
-    //     let range = $("#range-value").val();
-    //     let unit = $("#time-unit").val();
-    //     let window_size = $("#window-size").val();
-    //     fetchData(range, unit, window_size, currentFile, currentJSONcontent);
-    // });
-
-    // $("#range-unit, #window-size").on("change", function() {
-    //     let range = $("#range-value").val();
-    //     let unit = $("#time-unit").val();
-    //     let window_size = $("#window-size").val();
-    //     fetchData(range, unit, window_size, currentFile, currentJSONcontent);
-    // });
-
     // Initialize measurement method listener
     $("#measurement-mode").on("change", function() {
         const mode = $(this).val();
@@ -158,17 +142,6 @@ $(document).ready(function() {
             calModeBehaviour(); 
         }
         
-        // if (currentFile) {
-        //     if (currentMeasurementMode !== "calibrate") {
-        //         let range = $("#range-value").val();
-        //         let unit = $("#time-unit").val();
-        //         let window_size = $("#window_size").val();
-        //         fetchData(range, unit, window_size, currentFile);
-        //     } else {
-        //         fetchData(null, null, null, currentFile, null);
-        //     }
-        // } 
-        // updateDirectory($("#directory").val(), true);
     });
 
     $("#cal-json-exp-section").on("change", function() {
@@ -280,7 +253,6 @@ function calPointBehaviour() {
 }
 
 function updateDirectory(path, deselect, changeToCalibrate=false) {
-    // console.log("Sending path to server:", path);
     if(changeToCalibrate) {
         $("#measurement-mode").val("calibrate");
         currentMeasurementMode = "calibrate";
@@ -295,7 +267,6 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
             $("#error-message").hide();
-            // console.log("Response files in update directory is: ". response.files);
             updateFileTable(response.files, deselect);
             if (deselect) {
                 deselectFile();
@@ -311,24 +282,3 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         updateJSONTable(response.files);
     })
 }
-
-// Refresh data display according to range, unit, window size set
-// setInterval(function() {
-//     if (currentFile) {
-//         if (currentMeasurementMode !== "calibrate") {
-//             let range = $("#range-value").val();
-//             let unit = $("#time-unit").val();
-//             let window_size = $("#window-size").val();
-//             fetchData(range, unit, window_size, currentFile, currentJSONcontent);
-//             $("#data-display-section").removeClass("hidden");
-//         } else {
-//             fetchData(null, null, null, currentFile, null);
-//             $("#data-display-section").removeClass("hidden");
-//         }
-//     } else $("#data-display-section").addClass("hidden");
-//     if (!currentJSON) {
-//         $("#derived-concentration-section").addClass("hidden");
-//         $("#blank-derived-concentration-section").addClass("hidden");
-//         $("#non-blank-derived-concentration-section").addClass("hidden");
-//     }
-// }, 500);

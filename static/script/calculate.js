@@ -246,14 +246,6 @@ function polynomialRegressionSlope(x, y, degree) {
 function logarithmicRegression(x, y) {
     const n = x.length;
     const lnX = x.map(xi => Math.log(xi));
-    const sumLnX = lnX.reduce((sum, xi) => sum + xi, 0);
-    const sumY = y.reduce((sum, yi) => sum + yi, 0);
-    const sumLnXY = lnX.reduce((sum, lnx, i) => sum + lnx * y[i], 0);
-    const sumLnX2 = lnX.reduce((sum, lnx) => sum + lnx * lnx, 0);
-
-    const a = (n * sumLnXY - sumLnX * sumY) / (n * sumLnX2 - sumLnX * sumLnX);
-    const b = (sumY - a * sumLnX) / n;
-
     return linearRegression(lnX, y);
 }
 
