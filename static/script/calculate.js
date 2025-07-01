@@ -1,3 +1,12 @@
+// Helper function to calculate R-squared
+function computeRSquared(actual, predicted) {
+    if (actual.length !== predicted.length || actual.length < 1) return 0;
+    const meanY = actual.reduce((sum, yi) => sum + yi, 0) / actual.length;
+    const ssTotal = actual.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
+    const ssResidual = actual.reduce((sum, yi, i) => sum + Math.pow(yi - predicted[i], 2), 0);
+    return ssTotal === 0 ? 0 : 1 - ssResidual / ssTotal;
+}
+
 function calculateCoefAndRSquared(x, y, algo = "linear") {
     if (x.length !== y.length || x.length < 2) return { slope: 0, rSquared: 0, coefficients: null };
 
@@ -5,15 +14,6 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
     let predicted = [];
     let coefficients = null;
     let rSquared = 0;
-
-    // Helper function to calculate R-squared
-    function computeRSquared(actual, predicted) {
-        if (actual.length !== predicted.length || actual.length < 1) return 0;
-        const meanY = actual.reduce((sum, yi) => sum + yi, 0) / actual.length;
-        const ssTotal = actual.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
-        const ssResidual = actual.reduce((sum, yi, i) => sum + Math.pow(yi - predicted[i], 2), 0);
-        return ssTotal === 0 ? 0 : 1 - ssResidual / ssTotal;
-    }
 
     switch (algo) {
         case "polynomial":
@@ -27,32 +27,18 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             break;
 
         case "logarithmic":
-            // Return for negative values
-            if (x.some(xi => xi < 0)) return { slope: 0, rSquared: 0, coefficients: null };
-
-            // Filter out xi = 0 and corresponding yi
-            const filteredData = x.reduce((acc, xi, i) => {
-                if (xi !== 0) {
-                    acc.x.push(xi);
-                    acc.y.push(y[i]);
-                }
-                return acc;
-            }, { x: [], y: [] });
-
-            // Check if filtered data is valid
-            if (filteredData.x.length < 2) return { slope: 0, rSquared: 0, coefficients: null };
-
-            const logCoeffs = logarithmicRegression(filteredData.x, filteredData.y);
-            coefficients = logCoeffs;
-            predicted = filteredData.x.map(xi => logCoeffs[0] * Math.log(Math.abs(xi)) + logCoeffs[1]);
-            slope = logarithmicRegressionSlope(filteredData.x, filteredData.y);
-            rSquared = computeRSquared(filteredData.y, predicted); // R-squared on filtered data
+            // Ensure x + b > 0 for logarithmic regression
+            coefficients = logarithmicRegression(x, y);
+            if (!coefficients) return { slope: 0, rSquared: 0, coefficients: null };
+            predicted = x.map(xi => coefficients[0] * Math.log(xi + coefficients[1]) + coefficients[2]);
+            slope = logarithmicRegressionSlope(x, y);
+            rSquared = computeRSquared(y, predicted); // R-squared on valid data
             break;
 
         case "exponential":
             const expCoeffs = exponentialRegression(x, y);
             coefficients = expCoeffs;
-            predicted = x.map(xi => expCoeffs[0] * Math.exp(xi) + expCoeffs[1]);
+            predicted = x.map(xi => expCoeffs[0] * Math.exp(xi * expCoeffs[1]) + expCoeffs[2]);
             slope = exponentialRegressionSlope(x, y);
             rSquared = computeRSquared(y, predicted);
             break;
@@ -242,33 +228,149 @@ function polynomialRegressionSlope(x, y, degree) {
     return slope;
 }
 
-// Logarithmic regression: y = a * ln(x) + b
+// Logarithmic regression: y = a * ln(x + b) + c
 function logarithmicRegression(x, y) {
-    const n = x.length;
-    const lnX = x.map(xi => Math.log(xi));
-    return linearRegression(lnX, y);
+    // Ensure x + b > 0, so b > -min(x)
+    const minX = Math.min(...x);
+    if (minX <= 0) {
+        // Initialize b slightly above -minX to ensure x + b > 0
+        let b = -minX + 0.1;
+        let bestB = b;
+        let bestRSquared = -Infinity;
+        let bestCoeffs = null;
+
+        // Try a range of b values
+        const step = 0.1;
+        const maxSteps = 100;
+        for (let i = 0; i < maxSteps; i++) {
+            // Transform x to ln(x + b)
+            const transformedX = x.map(xi => {
+                if (xi + b <= 0) return null;
+                return Math.log(xi + b);
+            });
+
+            // Filter out invalid data points
+            const validData = x.reduce((acc, xi, i) => {
+                if (transformedX[i] !== null && !isNaN(transformedX[i]) && isFinite(transformedX[i])) {
+                    acc.x.push(transformedX[i]);
+                    acc.y.push(y[i]);
+                }
+                return acc;
+            }, { x: [], y: [] });
+
+            if (validData.x.length < 2) {
+                b += step;
+                continue;
+            }
+
+            // Perform linear regression on ln(x + b) and y
+            const [a, c] = linearRegression(validData.x, validData.y);
+            
+            // Compute R-squared
+            const predicted = validData.x.map(xi => a * xi + c);
+            const rSquared = computeRSquared(validData.y, predicted);
+            
+            if (rSquared > bestRSquared) {
+                bestRSquared = rSquared;
+                bestB = b;
+                bestCoeffs = [a, bestB, c];
+            }
+            
+            b += step;
+        }
+
+        return bestCoeffs || null;
+    } else {
+        // If all x > 0, start with b = 0
+        let b = 0;
+        let bestB = b;
+        let bestRSquared = -Infinity;
+        let bestCoeffs = null;
+
+        const step = 0.1;
+        const maxSteps = 100;
+        for (let i = 0; i < maxSteps; i++) {
+            const transformedX = x.map(xi => {
+                if (xi + b <= 0) return null;
+                return Math.log(xi + b);
+            });
+
+            const validData = x.reduce((acc, xi, i) => {
+                if (transformedX[i] !== null && !isNaN(transformedX[i]) && isFinite(transformedX[i])) {
+                    acc.x.push(transformedX[i]);
+                    acc.y.push(y[i]);
+                }
+                return acc;
+            }, { x: [], y: [] });
+
+            if (validData.x.length < 2) {
+                b += step;
+                continue;
+            }
+
+            const [a, c] = linearRegression(validData.x, validData.y);
+            const predicted = validData.x.map(xi => a * xi + c);
+            const rSquared = computeRSquared(validData.y, predicted);
+
+            if (rSquared > bestRSquared) {
+                bestRSquared = rSquared;
+                bestB = b;
+                bestCoeffs = [a, bestB, c];
+            }
+
+            b += step;
+        }
+
+        return bestCoeffs || null;
+    }
 }
 
 // Logarithmic regression slope (approximated at midpoint)
 function logarithmicRegressionSlope(x, y) {
-    const { a } = logarithmicRegression(x, y);
+    const coeffs = logarithmicRegression(x, y);
+    if (!coeffs) return 0;
+    const [a, b] = coeffs;
     const midX = (Math.max(...x) + Math.min(...x)) / 2;
-    return a / midX; // Derivative of a*ln(x) + b is a/x
+    return a / (midX + b); // Derivative of a * ln(x + b) + c is a / (x + b)
 }
 
-// Exponential regression: y = a * e^x + b
-function exponentialRegression(x,y) {
-    const n = x.length;
-    const eX = x.map(xi => Math.exp(xi));
+// Exponential regression: y = a * e^(b * x) + c
+function exponentialRegression(x, y) {
+    // Initial guess for c: minimum y value or mean if all positive
+    const c = Math.min(...y) > 0 ? Math.min(...y) : y.reduce((sum, yi) => sum + yi, 0) / y.length;
+    
+    // Transform y to y' = y - c, then take logarithm: ln(y' - c) = ln(a) + b*x
+    const transformedY = y.map(yi => {
+        const diff = yi - c;
+        if (diff <= 0) return null; // Handle non-positive values
+        return Math.log(diff);
+    });
+    
+    // Filter out invalid data points
+    const validData = x.reduce((acc, xi, i) => {
+        if (transformedY[i] !== null && !isNaN(transformedY[i]) && isFinite(transformedY[i])) {
+            acc.x.push(xi);
+            acc.y.push(transformedY[i]);
+        }
+        return acc;
+    }, { x: [], y: [] });
 
-    return linearRegression(eX, y);
+    if (validData.x.length < 2) return null;
+
+    // Perform linear regression on x and ln(y - c)
+    const [b, lnA] = linearRegression(validData.x, validData.y);
+    const a = Math.exp(lnA);
+
+    return [a, b, c];
 }
 
 // Exponential regression slope (approximated at midpoint)
 function exponentialRegressionSlope(x, y) {
-    const { a } = linearRegression(x, y);
+    const coeffs = exponentialRegression(x, y);
+    if (!coeffs) return 0;
+    const [a, b] = coeffs;
     const midX = (Math.max(...x) + Math.min(...x)) / 2;
-    return a * Math.exp(midX);
+    return a * b * Math.exp(b * midX); // Derivative of a * e^(b*x) + c is a * b * e^(b*x)
 }
 
 // Gaussian elimination for solving linear systems

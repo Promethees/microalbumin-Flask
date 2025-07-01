@@ -62,7 +62,6 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
         // Prepare regression line data if currentMeasurementMode is "calibrate" and analysis has coefficients
 
     let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
-    console.log("regression data is ", regressionData);  
 
     let chart = new Chart(ctx, {
         type: chartType,
@@ -660,7 +659,6 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
                 case "linear": {
                     // Original: x = a * y + b => y = (x - b) / a
                     const [ a, b ] = analysis.coefficients;
-                    console.log("analysis coefs is ", analysis.coefficients);
                     y = a !== 0 ? (x - b) / a : 0; // Avoid division by zero
                     break;
                 }
@@ -687,18 +685,16 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
                 }
 
                 case "logarithmic": {
-                    // Original: x = a * ln(y) + b => y = exp((x - b) / a)
-                    const [ a, b ] = analysis.coefficients;
-                    console.log("analysis coefs is ", analysis.coefficients);
-                    y = a !== 0 ? Math.exp((x - b) / a) : 0; // Avoid division by zero
+                    // Original: x = a * ln(y + b) + c => y = exp((x - c) / a) - b
+                    const [ a, b, c ] = analysis.coefficients;
+                    y = a !== 0 ? Math.exp((x - c) / a) - b : 0; // Avoid division by zero
                     break;
                 }
 
                 case "exponential": {
-                    // Original: x = a * exp(y) + b => y = ln((x - b) / a)
-                    const [ a, b ] = analysis.coefficients;
-                    console.log("analysis coefs is ", analysis.coefficients);
-                    y = (a !== 0 && x > b) ? Math.log((x - b) / a) : 0; // Ensure valid domain
+                    // Original: x = a * exp(y * b) + c => y = ln((x - c) / a)/b
+                    const [ a, b, c ] = analysis.coefficients;
+                    y = (a !== 0 && x > c && b != 0) ? Math.log((x - c) / a)/b : 0; // Ensure valid domain
                     break;
                 }
 
@@ -709,6 +705,5 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
             regressionData.push({ x, y });
         }
     }
-    console.log("regression data is ", regressionData);
     return regressionData;
 }
