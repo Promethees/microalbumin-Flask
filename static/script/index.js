@@ -1,41 +1,88 @@
-let blankedChart = null;
-let nonBlankedChart = null;
-let myChart = null;
-let scriptRunning = false;
-let currentMeasurementMode = "kinetics";
-let currentFile = null;
-let currentJSON = null;
-let currentJSONcontent = null;
+function initDefaultState() {
+    // let blankedChart = null;
+    // let nonBlankedChart = null;
+    // let myChart = null;
+    // let scriptRunning = false;
+    // let currentMeasurementMode = "kinetics";
+    // let currentFile = null;
+    // let currentJSON = null;
+    // let currentJSONcontent = null;
 
-const platform = navigator.platform.toLowerCase();
-const delimiter = platform.includes("window") ? "\\" : "/";
-let refCalPoint = null;
-let analysis = null;
-let json_msg = 'When fit_type: \n';
-let globalEstimatedValue = null;
-let currExpTimePoint = null;
-let prevDropdownEntries = null;
-let exp_json_content = null;
-let processedExpPath =  rootPath + delimiter + "export_data";
-let processedHidPath = rootPath + delimiter + "data";
+    // const platform = navigator.platform.toLowerCase();
+    // const delimiter = platform.includes("window") ? "\\" : "/";
+    // let refCalPoint = null;
+    // let analysis = null;
+    // let json_msg = 'When fit_type: \n';
+    // let globalEstimatedValue = null;
+    // let currExpTimePoint = null;
+    // let prevDropdownEntries = null;
+    // let exp_json_content = null;
+    // let processedExpPath =  rootPath + delimiter + "export_data";
+    // let processedHidPath = rootPath + delimiter + "data";
 
-const chartInstances = {};
+    // const chartInstances = {};
 
-json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
-json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
-json_msg += '  + logarithmic: concentration = quantity_json[0]*loge(quantity_value + quantity_json[1]) + quantity_json[2]\n';
-json_msg += '  + exponential: concentration = quantity_json[0]*e^(quantity_value * quantity_json[1]) + quantity_json[2]\n';
+    // json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
+    // json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
+    // json_msg += '  + logarithmic: concentration = quantity_json[0]*loge(quantity_value + quantity_json[1]) + quantity_json[2]\n';
+    // json_msg += '  + exponential: concentration = quantity_json[0]*e^(quantity_value * quantity_json[1]) + quantity_json[2]\n';
 
-$("#point-json-exp-section").addClass("hidden");
-$("#cal-json-exp-section").addClass("hidden");
-$("#derived-concentration-section").addClass("hidden");
-$("#blank-derived-concentration-section").addClass("hidden");
-$("#non-blank-derived-concentration-section").addClass("hidden");
-$("#set-exp-point-section").addClass("hidden");
-$("#select-regress-algo").addClass("hidden");
-$("#select-time-point").addClass("hidden");
-$("#export-coef").addClass("hidden");
-$("#select-exp-blank-type-cal").addClass("hidden");
+    $("#point-json-exp-section").addClass("hidden");
+    $("#cal-json-exp-section").addClass("hidden");
+    $("#derived-concentration-section").addClass("hidden");
+    $("#blank-derived-concentration-section").addClass("hidden");
+    $("#non-blank-derived-concentration-section").addClass("hidden");
+    $("#set-exp-point-section").addClass("hidden");
+    $("#select-regress-algo").addClass("hidden");
+    $("#select-time-point").addClass("hidden");
+    $("#export-coef").addClass("hidden");
+    $("#select-exp-blank-type-cal").addClass("hidden");
+}
+
+const AppState = {
+    blankedChart: null,
+    nonBlankedChart: null,
+    myChart: null,
+    scriptRunning: false,
+    currentMeasurementMode: "kinetics",
+    currentFile: null,
+    currentJSON: null,
+    currentJSONcontent: null,
+    refCalPoint: null,
+    globalAnalysis: null,
+    json_msg: 'When fit_type: \n',
+    globalEstimatedValue: null,
+    currExpTimePoint: null,
+    prevDropdownEntries: null,
+    exp_json_content: null,
+    processedExpPath: rootPath + delimiter + "export_data",
+    processedHidPath: rootPath + delimiter + "data",
+    chartInstances: {},
+
+    reset: function() {
+        this.blankedChart = null;
+        this.nonBlankedChart = null;
+        this.myChart = null;
+        this.scriptRunning = false;
+        this.currentMeasurementMode = "kinetics";
+        this.currentFile = null;
+        this.currentJSON = null;
+        this.currentJSONcontent = null;
+        this.refCalPoint = null;
+        this.globalAnalysis = null;
+        this.globalEstimatedValue = null;
+        this.currExpTimePoint = null;
+        this.prevDropdownEntries = null;
+        this.exp_json_content = null;
+        Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
+    }
+};
+
+// Append to json_msg
+AppState.json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
+AppState.json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
+AppState.json_msg += '  + logarithmic: concentration = quantity_json[0]*loge(quantity_value + quantity_json[1]) + quantity_json[2]\n';
+AppState.json_msg += '  + exponential: concentration = quantity_json[0]*e^(quantity_value * quantity_json[1]) + quantity_json[2]\n';
 
 const input = document.getElementById("window-size");
 
@@ -49,7 +96,7 @@ input.addEventListener("keydown", function (e) {
     e.preventDefault();
   });
 
-function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=processedExpPath, changeToCalibrate=true) {
+function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=AppState.processedExpPath, changeToCalibrate=true) {
     $(buttonId).off('click').on('click', function() {
         console.log(`${buttonId} clicked, using path:`, pathStr);
         updateDirectory(pathStr, true, changeToCalibrate);
@@ -57,6 +104,8 @@ function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=processedExpPat
 }
 
 $(document).ready(function() {
+    AppState.reset();
+    initDefaultState();
     $.get('/get_parents', function(parentResponse) {
         console.log("Parent directory:", parentResponse.parent);
         let parentHtml = parentResponse.parent ? 
@@ -85,7 +134,7 @@ $(document).ready(function() {
 
     // Poll logs every 2 seconds if script is running
     setInterval(function() {
-        if (scriptRunning) {
+        if (AppState.scriptRunning) {
             fetchLogs();
         }
     }, 2000);
@@ -97,22 +146,22 @@ $(document).ready(function() {
             updateDirectory(currentDir, false);
         }
 
-        if (currentFile) {
-            if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentFile) {
+            if (AppState.currentMeasurementMode !== "calibrate") {
                 let range = $("#range-value").val();
                 let unit = $("#time-unit").val();
                 let window_size = $("#window-size").val();
-                fetchData(range, unit, window_size, currentFile, currentJSONcontent);
+                fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
                 $("#cal-time-unit").text(unit.slice(0, -1));
             } else {
-                fetchData(null, null, null, currentFile, null);
+                fetchData(null, null, null, AppState.currentFile, null);
             }
             $("#data-display-section").removeClass("hidden");
         } else {
             $("#data-display-section").addClass("hidden");
         }
 
-        if (!currentJSON) {
+        if (!AppState.currentJSON) {
             $("#derived-concentration-section").addClass("hidden");
             $("#blank-derived-concentration-section").addClass("hidden");
             $("#non-blank-derived-concentration-section").addClass("hidden");
@@ -124,14 +173,14 @@ $(document).ready(function() {
     // Initialize measurement method listener
     $("#measurement-mode").on("change", function() {
         const mode = $(this).val();
-        currentMeasurementMode = mode;
+        AppState.currentMeasurementMode = mode;
         const currentDir = $("#directory").val();
         if (currentDir) {
             updateDirectory(currentDir, true);
         }
-        currentJSON = null;
-        currentJSONcontent = null;
-        currentFile = null;
+        AppState.currentJSON = null;
+        AppState.currentJSONcontent = null;
+        AppState.currentFile = null;
         $("#json-display").text("");
         
         if (mode === "kinetics") {
@@ -145,7 +194,7 @@ $(document).ready(function() {
     });
 
     $("#cal-json-exp-section").on("change", function() {
-        currentFile = null;
+        AppState.currentFile = null;
     });
 
     $("#cal-mode-select").on("change", function() {
@@ -156,14 +205,14 @@ $(document).ready(function() {
         }
     });
 
-    if (currentFile) {
+    if (AppState.currentFile) {
         $("#data-display-section").removeClass("hidden");
     } else {
         $('#data-display-section').addClass("hidden");
     }
 
-    bindButtonToString("#go-to-exp-btn", processedExpPath);
-    bindButtonToString("#go-to-btn", processedHidPath, false);
+    bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
+    bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
 });
 
 function kineticsModeBehaviour() {
@@ -255,12 +304,12 @@ function calPointBehaviour() {
 function updateDirectory(path, deselect, changeToCalibrate=false) {
     if(changeToCalibrate) {
         $("#measurement-mode").val("calibrate");
-        currentMeasurementMode = "calibrate";
+        AppState.currentMeasurementMode = "calibrate";
         calModeBehaviour();
     } else {
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             //Change #cal-mode-select in the background before switching to calibrate mode
-            $("#cal-mode-select").val(`${currentMeasurementMode}`); 
+            $("#cal-mode-select").val(`${AppState.currentMeasurementMode}`); 
         }
     }
     $.post('/browse', {path: path}, function(response) {
@@ -278,7 +327,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         console.log("AJAX error:", textStatus, errorThrown);
         $("#error-message").text("Error updating directory").show();
     });
-    $.get('/get_json_cal', {mode: currentMeasurementMode}, function(response) {
+    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode}, function(response) {
         updateJSONTable(response.files);
     })
 }

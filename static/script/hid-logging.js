@@ -1,5 +1,5 @@
 function runScript() {
-    processedHidPath = $("#base-dir").val();
+    AppState.processedHidPath = $("#base-dir").val();
     const baseName = $("#base-name").val();
     $("#base-dir").prop('disabled', true);
     $("#base-name").prop('disabled', true);
@@ -7,21 +7,15 @@ function runScript() {
         url: '/run_script',
         type: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ base_dir: processedHidPath, base_name: baseName }),
+        data: JSON.stringify({ base_dir: AppState.processedHidPath, base_name: baseName }),
         success: function(response) {
             if (response.status === 'success') {
-                scriptRunning = true;
+                AppState.scriptRunning = true;
                 $("#run-script-btn").prop('disabled', true);
                 $("#terminate-script-btn").prop('disabled', false);
                 $("#go-to-btn").prop('disabled', false);
                 $("#log-display").text("Script started...\n");
-
-                // Store the returned directory and update the go-to button
-                // const targetDir = response.directory || $("#directory").val();
-                // $("#go-to-btn").off('click').on('click', function() {
-                //     updateDirectory(targetDir, true);
-                // });
-                bindButtonToString("#go-to-btn", processedHidPath, false);
+                bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
 
             } else {
                 $("#log-display").text(`Error: ${response.message}\n`);
@@ -46,7 +40,7 @@ function terminateScript() {
         success: function(response) {
             console.log("Terminate script response:", response);
             if (response.status === 'success') {
-                scriptRunning = false;
+                AppState.scriptRunning = false;
                 $("#run-script-btn").prop('disabled', false);
                 $("#terminate-script-btn").prop('disabled', true);
                 $("#base-dir").prop('disabled', false);
@@ -55,7 +49,7 @@ function terminateScript() {
             } else {
                 $("#log-display").append(`Error: ${response.message}\n`);
                 if (response.message.includes('No process running')) {
-                    scriptRunning = false;
+                    AppState.scriptRunning = false;
                     $("#run-script-btn").prop('disabled', false);
                     $("#terminate-script-btn").prop('disabled', true);
                     $("#base-dir").prop('disabled', false);
@@ -67,7 +61,7 @@ function terminateScript() {
         error: function(jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
             $("#log-display").append(`Error: Failed to terminate script\n`);
-            scriptRunning = false;
+            AppState.scriptRunning = false;
             $("#run-script-btn").prop('disabled', false);
             $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);
             $("#base-dir").prop('disabled', false);

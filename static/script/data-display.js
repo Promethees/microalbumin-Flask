@@ -9,11 +9,6 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
         return null;
     }
 
-    // Destroy existing chart instance if any
-    if (chartInstances[canvasId]) {
-        chartInstances[canvasId].destroy();
-    }
-
     const ctx = canvas.getContext('2d');
     if (!ctx || allXColumn.length === 0 || allYColumn.length === 0) {
         $(`#${canvasId}`).hide();
@@ -117,7 +112,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
             plugins: {
                 annotation: {
                     annotations: {
-                        ...(isFullDisplay && currentMeasurementMode === "point" && forThisBlankType && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "point" && forThisBlankType && {
                             refCalLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
@@ -133,7 +128,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.startVMax && !isSinglePoint && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysis.startVMax && !isSinglePoint && {
                             VMaxLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
@@ -149,7 +144,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.linearXMin && !isSinglePoint && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysis.linearXMin && !isSinglePoint && {
                             regressionLine: {
                                 type: 'line',
                                 borderColor: 'rgba(0, 0, 255, 0.5)',
@@ -165,7 +160,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && !isSinglePoint && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && !isSinglePoint && {
                             saturationLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 255, 0.5)',
@@ -191,7 +186,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     if (analysis) {
         chart.data.datasets[0].analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
     }
-    chartInstances[canvasId] = chart;
+    AppState.chartInstances[canvasId] = chart;
 
     return chart;
 }
@@ -262,7 +257,7 @@ function updatePlot(
     const allNonBlankedYColumn = extractColumn(allNonBlankedData, YColumn);
 
     let filteredData, XColumnVals, YColumnVals;
-    if (currentMeasurementMode !== "calibrate") {
+    if (AppState.currentMeasurementMode !== "calibrate") {
         if (isFullDisplay) range = Number.MAX_VALUE;
         const timeThreshold = Math.max(...allXColumn) - range * getTimeUnitMultiplier(timeUnit);
 
@@ -283,8 +278,8 @@ function updatePlot(
     const measurementLabel = determineMeasurementLabel(filteredData, XColumn, YColumn);
 
     const calMode = $("#cal-mode-select").val();
-    const isCalKinetics = currentMeasurementMode === "calibrate" && calMode === "kinetics";
-    const isCalPoint = currentMeasurementMode === "calibrate" && calMode === "point";
+    const isCalKinetics = AppState.currentMeasurementMode === "calibrate" && calMode === "kinetics";
+    const isCalPoint = AppState.currentMeasurementMode === "calibrate" && calMode === "point";
     const regressAlgo = $("#exp-json-regress-algo").val();
 
     if (isSplitMode) {
@@ -299,7 +294,7 @@ function updatePlot(
         let analysis_blanked = null;
         let analysis_nonblanked = null;
 
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             analysis_blanked = calculateKineticsQuantities(allBlankedXColumn, allBlankedYColumn, window_size);
             analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
         } else {
@@ -313,9 +308,9 @@ function updatePlot(
         }
 
         $("#blanked-canvas, #non-blanked-canvas").show();
-        blankedChart = generateChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
+        AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
             unit, timeUnit, range, conversionFactor, analysis_blanked, isFullDisplay, refCalPoint, forBlankType === "BLANKED");
-        nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
+        AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
             unit, timeUnit, range, conversionFactor, analysis_nonblanked, isFullDisplay, refCalPoint, forBlankType === "NON-BLANKED");
 
         // Format analysis info for both charts
@@ -323,7 +318,7 @@ function updatePlot(
         const nonBlankedAnalysisInfo = formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, `${measurementLabel} (Non-Blanked)`);
 
         // Update analysis info display
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
         } else {
             let blanked_string = "";
@@ -341,7 +336,7 @@ function updatePlot(
             );
         }
 
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
         } else {
             const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
@@ -352,7 +347,7 @@ function updatePlot(
         }
     } else {
         let mixAnalysis = null;
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
         } else {
             if (isCalKinetics) {
@@ -366,7 +361,7 @@ function updatePlot(
         const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, conversionFactor, unit, measurementLabel);
 
         // Update analysis info display
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
         } else {
             let htmlString = "";
@@ -380,10 +375,10 @@ function updatePlot(
 
         // Generate chart
         $("#plot-canvas").show();
-        const myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
+        AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
             unit, timeUnit, range, conversionFactor, mixAnalysis, isFullDisplay, refCalPoint, forBlankType === "MIXED");
 
-        if (currentMeasurementMode !== "calibrate") {
+        if (AppState.currentMeasurementMode !== "calibrate") {
             return extractSingleResultSummary(data, mixAnalysis);
         } else {
             return {
@@ -478,7 +473,7 @@ function getDataGroups(data, hasBlankType, XColumn, YColumn) {
 }
 
 function determineMeasurementLabel(data, XColumn, YColumn) {
-    if (currentMeasurementMode !== "calibrate") {
+    if (AppState.currentMeasurementMode !== "calibrate") {
         return data.length > 0 && 'Measurement' in data[0] ? data[0]['Measurement'] : 'Measurement';
     } else {
         return data.length > 0 && 'Concentration' in data[0] ? `${YColumn} against ${XColumn}` : 'Correlation';
@@ -588,17 +583,17 @@ function extractSingleResultSummary(data, mixAnalysis) {
 }
 
 function destroyCharts() {
-    if (myChart) {
-        myChart.destroy();
-        myChart = null;
+    if (AppState.myChart) {
+        AppState.myChart.destroy();
+        AppState.myChart = null;
     }
-    if (blankedChart) {
-        blankedChart.destroy();
-        blankedChart = null;
+    if (AppState.blankedChart) {
+        AppState.blankedChart.destroy();
+        AppState.blankedChart = null;
     }
-    if (nonBlankedChart) {
-        nonBlankedChart.destroy();
-        nonBlankedChart = null;
+    if (AppState.nonBlankedChart) {
+        AppState.nonBlankedChart.destroy();
+        AppState.nonBlankedChart = null;
     }
 }
 
@@ -647,7 +642,7 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
     } else 
         analysis = analysisArray;
 
-    if (currentMeasurementMode === "calibrate" && analysis && analysis.coefficients && numDiv > 0) {
+    if (AppState.currentMeasurementMode === "calibrate" && analysis && analysis.coefficients && numDiv > 0) {
         const step = (xMax - xMin) / (numDiv - 1); // 100 points including start and end
         const regressAlgo = $("#exp-json-regress-algo").val();
 

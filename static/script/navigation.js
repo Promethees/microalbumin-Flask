@@ -39,13 +39,10 @@ async function filterFiles(files) {
                 const cal_headers_point = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType", "MeasMode"];
                 if (data.headers) {
                     const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
-                    // const isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_1) || JSON.stringify(data.headers) === JSON.stringify(cal_headers_2);
-                    if (currentMeasurementMode === "kinetics" || currentMeasurementMode === "point") {
-                        // console.log("current data header is", data.headers);
+                    if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {
                         return isMeasHeader;
-                    } else if (currentMeasurementMode === "calibrate") {
+                    } else if (AppState.currentMeasurementMode === "calibrate") {
                         const cal_type = $("#cal-mode-select").val();
-                        // console.log("the cal type is ", cal_type);
                         let isCalHeader = false;
                         if (cal_type === "kinetics") {
                             isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_kinetics);
@@ -55,7 +52,6 @@ async function filterFiles(files) {
                         }
                         return isCalHeader;
                     }
-                    // return currentMeasurementMode === "kinetics" ? hasTimestamp : !hasTimestamp;
                 }
                 return false; // on error or no headers
             } catch (error) {
@@ -75,7 +71,7 @@ function updateJSONTable(files) {
     let html = '<tr><th>Calibrated JSON</th><th>Action</th></tr>';
     if (files && files.length > 0) {
         files.forEach(file => {
-           const isSelected = file === currentJSON ? ' class="selected"' : ''; 
+           const isSelected = file === AppState.currentJSON ? ' class="selected"' : ''; 
            html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">Select</button></td></tr>`;
         })
     } else {
@@ -91,7 +87,7 @@ function updateFileTable(files, deselect) {
     filterFiles(files).then((filteredFiles) => {
         if (filteredFiles && filteredFiles.length > 0) {
             filteredFiles.forEach(file => {
-                const isSelected = file === currentFile ? ' class="selected"' : '';
+                const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
                 html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">Select</button></td></tr>`;
             });
         } else {
@@ -99,9 +95,9 @@ function updateFileTable(files, deselect) {
         }
         $("#file-table").html(html);
         if (deselect) {
-            currentFile = null;
+            AppState.currentFile = null;
             $("#file-table tr").removeClass("selected");
-            updateFileDisplay(currentFile);
+            updateFileDisplay(AppState.currentFile);
         }
     });  
 }
@@ -117,7 +113,7 @@ function updateFileDisplay(curFile) {
 function fetchJSON(jsonFile, callback) {
     $.get('/get_json_content', {
         json_name: jsonFile,
-        mode: currentMeasurementMode
+        mode: AppState.currentMeasurementMode
     }, function(response) {
         callback(response.json, response.path);
     })

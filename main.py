@@ -79,8 +79,6 @@ def index():
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
     cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
-    print("reading default cal_json_list from ", os.path.join(os.getcwd(), "kinetics"))
-    print(cal_json_list)
     return render_template('index.html', 
                          title="Easy Sensor Kit",
                          directory=directory,
