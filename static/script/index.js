@@ -103,8 +103,29 @@ function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=AppState.proces
     });
 }
 
+function checkServerStatus() {
+    $.get('/ping')
+        .done(function() {
+            if (!serverAvailable) {
+                console.log('Server is back up, resuming polling...');
+                serverAvailable = true;
+            }
+        })
+        .fail(function() {
+            if (serverAvailable) {
+                console.log('Server is down, pausing polling and resetting state...');
+                serverAvailable = false;
+                AppState.reset();
+            }
+        });
+}
+
 $(document).ready(function() {
     AppState.reset();
+
+    // When server is Down, reset global variables
+    serverCheckInterval = setInterval(checkServerStatus, 5000);
+
     initDefaultState();
     $.get('/get_parents', function(parentResponse) {
         console.log("Parent directory:", parentResponse.parent);
@@ -133,14 +154,16 @@ $(document).ready(function() {
     });
 
     // Poll logs every 2 seconds if script is running
-    setInterval(function() {
+    logInterval = setInterval(function() {
+        if (!serverAvailable) return;
         if (AppState.scriptRunning) {
             fetchLogs();
         }
     }, 2000);
 
     // Periodically update file table every 0.5 seconds
-    setInterval(function() {
+    updateInterval = setInterval(function() {
+        if (!serverAvailable) return;
         const currentDir = $("#directory").val();
         if (currentDir) {
             updateDirectory(currentDir, false);

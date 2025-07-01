@@ -40,6 +40,10 @@ else:
 
 json_root_path = os.path.join(os.getcwd(), "json")
 
+@app.route('/ping')
+def ping():
+    return jsonify({'status': 'success'})
+
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):
@@ -59,17 +63,6 @@ def clear_logs():
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 500
-
-def cleanup():
-    global process
-    if process and process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-
-atexit.register(cleanup)
 
 @app.route('/')
 def index():
@@ -426,6 +419,49 @@ def open_browser(host, port):
         else:
             print(f"Failed to verify server is running on port {port}. Please check if the port is in use or accessible.")
 
+def is_port_open(host, port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    result = sock.connect_ex((host, port))
+    sock.close()
+    return result == 0
+
+def close_port(port, exclude_pid=None):
+    """Close processes using the specified port, excluding the given PID."""
+    try:
+        # Use lsof to find processes using the port
+        result = subprocess.run(
+            ['lsof', '-i', f':{port}', '-t'],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        pids = result.stdout.strip().split('\n')
+        current_pid = str(exclude_pid or os.getpid())
+        for pid in pids:
+            if pid and pid != current_pid:
+                print(f"Terminating process {pid} using port {port}")
+                subprocess.run(['kill', '-9', pid], check=False)
+    except subprocess.CalledProcessError as e:
+        print(f"Error closing port {port}: {e}")
+    except FileNotFoundError:
+        print("lsof not found; ensure lsof is installed (e.g., sudo apt install lsof)")
+
+def cleanup():
+    global process
+    if process and process.poll() is None:
+        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        process = None
+    # Close the Flask server port
+    close_port(args.port)
+    print("Cleaned up resources and closed port")
+
+atexit.register(cleanup)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port.')
     parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5000)')
@@ -433,6 +469,11 @@ if __name__ == '__main__':
 
     port = args.port
     host = '127.0.0.1'
+
+    # Check if port is in use before starting
+    # if is_port_open(host, port):
+    #     print(f"Port {port} is in use, attempting to free it...")
+    #     close_port(port)
 
     # Start browser opening in a separate thread
     browser_thread = threading.Thread(target=open_browser, args=(host, port), daemon=True)
