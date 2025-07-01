@@ -228,7 +228,6 @@ function updatePlot(
     const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
-    console.log("The data after being processed is ", data);
 
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     const hasBlankType = data.some(row => 'BlankType' in row);

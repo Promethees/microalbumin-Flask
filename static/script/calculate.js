@@ -49,6 +49,14 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             rSquared = computeRSquared(filteredData.y, predicted); // R-squared on filtered data
             break;
 
+        case "exponential":
+            const expCoeffs = exponentialRegression(x, y);
+            coefficients = expCoeffs;
+            predicted = x.map(xi => expCoeffs[0] * Math.exp(xi) + expCoeffs[1]);
+            slope = exponentialRegressionSlope(x, y);
+            rSquared = computeRSquared(y, predicted);
+            break;
+
         case "linear":
         default:
             const lin = linearRegression(x, y);
@@ -246,7 +254,7 @@ function logarithmicRegression(x, y) {
     const a = (n * sumLnXY - sumLnX * sumY) / (n * sumLnX2 - sumLnX * sumLnX);
     const b = (sumY - a * sumLnX) / n;
 
-    return [ a, b ];
+    return linearRegression(lnX, y);
 }
 
 // Logarithmic regression slope (approximated at midpoint)
@@ -254,6 +262,21 @@ function logarithmicRegressionSlope(x, y) {
     const { a } = logarithmicRegression(x, y);
     const midX = (Math.max(...x) + Math.min(...x)) / 2;
     return a / midX; // Derivative of a*ln(x) + b is a/x
+}
+
+// Exponential regression: y = a * e^x + b
+function exponentialRegression(x,y) {
+    const n = x.length;
+    const eX = x.map(xi => Math.exp(xi));
+
+    return linearRegression(eX, y);
+}
+
+// Exponential regression slope (approximated at midpoint)
+function exponentialRegressionSlope(x, y) {
+    const { a } = linearRegression(x, y);
+    const midX = (Math.max(...x) + Math.min(...x)) / 2;
+    return a * Math.exp(midX);
 }
 
 // Gaussian elimination for solving linear systems
@@ -369,6 +392,11 @@ function computeFit(value, fit_type, coef) {
             if (coef.length < 2) throw new Error("Logarithmic fit requires 2 coefficients: [a, b]");
             if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
             return coef[0] * Math.log(value) + coef[1];
+
+        case "exponential":
+            // Expect coef = [a, b]
+            if (coef.length < 2) throw new Error("Exponential fit requires 2 coefficients: [a, b]");
+            return coef[0] * Math.exp(value) + coef[1];
 
         default:
             throw new Error("Unknown fit type: " + fit_type);

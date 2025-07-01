@@ -24,6 +24,7 @@ const chartInstances = {};
 json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
 json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
 json_msg += '  + logarithmic: concentration = quantity_json[0]*loge(quantity_value) + quantity_json[1]\n';
+json_msg += '  + exponential: concentration = quantity_json[0]*e^(quantity_value) + quantity_json[1]\n';
 
 $("#point-json-exp-section").addClass("hidden");
 $("#cal-json-exp-section").addClass("hidden");
