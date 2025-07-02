@@ -302,8 +302,8 @@ function updatePlot(
                 analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
                 analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
             } else {
-                analysis_blanked = calculateCoefAndRSquared(allBlankedXColumn, allBlankedYColumn, regressAlgo);
-                analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedXColumn, allNonBlankedYColumn, regressAlgo);
+                analysis_blanked = calculateCoefAndRSquared(allBlankedYColumn, allBlankedXColumn, regressAlgo);
+                analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumn, allNonBlankedXColumn, regressAlgo);
             }
         }
 
@@ -353,7 +353,7 @@ function updatePlot(
             if (isCalKinetics) {
                 mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
             } else if (isCalPoint) {
-                mixAnalysis = calculateCoefAndRSquared(extractColumn(allMixedData, XColumn), extractColumn(allMixedData, YColumn), regressAlgo);
+                mixAnalysis = calculateCoefAndRSquared(extractColumn(allMixedData, YColumn), extractColumn(allMixedData, XColumn), regressAlgo);
             }
         }
 
