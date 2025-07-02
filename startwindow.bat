@@ -1,10 +1,32 @@
 @echo off
 
+REM Check if Python is installed
+where python >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo ❌ Python not found. Installing Python 3.7.2...
+    REM Download Python 3.7.2 installer
+    curl -o python-installer.exe https://www.python.org/ftp/python/3.7.2/python-3.7.2-amd64.exe
+    REM Install Python 3.7.2 silently
+    python-installer.exe /quiet InstallAllUsers=1 PrependPath=1
+    REM Clean up
+    del python-installer.exe
+    REM Refresh environment variables
+    set "PATH=%PATH%;C:\Program Files\Python37;C:\Program Files\Python37\Scripts"
+)
+
 REM Check Python version
-for /f "tokens=2 delims= " %%a in ('python --version') do set PY_VER=%%a
+for /f "tokens=2 delims= " %%a in ('python --version 2^>nul') do set PY_VER=%%a
 if not "%PY_VER%"=="3.7.2" (
     echo ❌ Python 3.7.2 is required. Current version: %PY_VER%
-    exit /b 1
+    echo Installing Python 3.7.2...
+    REM Download Python 3.7.2 installer
+    curl -o python-installer.exe https://www.python.org/ftp/python/3.7.2/python-3.7.2-amd64.exe
+    REM Install Python 3.7.2 silently
+    python-installer.exe /quiet InstallAllUsers=1 PrependPath=1
+    REM Clean up
+    del python-installer.exe
+    REM Refresh environment variables
+    set "PATH=%PATH%;C:\Program Files\Python37;C:\Program Files\Python37\Scripts"
 )
 
 REM Create venv if not exists
@@ -14,22 +36,21 @@ if not exist "venv" (
 
 call venv\Scripts\activate
 
-REM Đảm bảo pip đã được cài
+REM Ensure pip is installed
 echo Checking pip...
 python -m ensurepip --upgrade
 
-REM Cài đặt thư viện cần thiết
+REM Install required libraries
 echo Installing requirements...
 pip install --upgrade pip
 pip install -r requirements.txt
 
-REM Cài Flask nếu chưa có
+REM Install Flask if not already installed
 python -m pip install flask
 
-REM Cài pandas nếu chưa có
+REM Install pandas if not already installed
 python -m pip install pandas
 
-REM Chạy thử
+REM Start the app
 echo Starting app...
 python main.py
-
