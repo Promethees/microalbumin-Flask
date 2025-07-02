@@ -3,10 +3,10 @@
 REM Check if Python is installed
 where python >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo ❌ Python not found. Installing Python 3.7.2...
-    REM Download Python 3.7.2 installer
-    curl -o python-installer.exe https://www.python.org/ftp/python/3.7.2/python-3.7.2-amd64.exe
-    REM Install Python 3.7.2 silently
+    echo ❌ Python not found. Installing Python 3.7.9...
+    REM Download Python 3.7.9 installer
+    curl -o python-installer.exe https://www.python.org/ftp/python/3.7.9/python-3.7.9-amd64.exe
+    REM Install Python 3.7.9 silently
     python-installer.exe /quiet InstallAllUsers=1 PrependPath=1
     REM Clean up
     del python-installer.exe
@@ -16,12 +16,12 @@ if %ERRORLEVEL% neq 0 (
 
 REM Check Python version
 for /f "tokens=2 delims= " %%a in ('python --version 2^>nul') do set PY_VER=%%a
-if not "%PY_VER%"=="3.7.2" (
-    echo ❌ Python 3.7.2 is required. Current version: %PY_VER%
-    echo Installing Python 3.7.2...
-    REM Download Python 3.7.2 installer
-    curl -o python-installer.exe https://www.python.org/ftp/python/3.7.2/python-3.7.2-amd64.exe
-    REM Install Python 3.7.2 silently
+if not "%PY_VER%"=="3.7.9" (
+    echo ❌ Python 3.7.9 is required. Current version: %PY_VER%
+    echo Installing Python 3.7.9...
+    REM Download Python 3.7.9 installer
+    curl -o python-installer.exe https://www.python.org/ftp/python/3.7.9/python-3.7.9-amd64.exe
+    REM Install Python 3.7.9 silently
     python-installer.exe /quiet InstallAllUsers=1 PrependPath=1
     REM Clean up
     del python-installer.exe
