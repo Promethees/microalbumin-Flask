@@ -47,13 +47,13 @@ echo Installing requirements...
 pip install --upgrade pip
 pip install -r requirements.txt
 
-REM Ensure libhidapi-0.dll is present in the windows folder
-if not exist "windows\libhidapi-0.dll" (
-    echo ❌ libhidapi-0.dll not found in windows folder. Please place it in the 'windows' folder and retry.
+REM Ensure hidapi.dll is present in the windows folder
+if not exist "windows\hidapi.dll" (
+    echo ❌ hidapi.dll not found in windows folder. Please place it in the 'windows' folder and retry.
     exit /b 1
 )
 
-REM Modify hid/__init__.py to load libhidapi-0.dll explicitly
+REM Modify hid/__init__.py to load hidapi.dll explicitly
 set "HID_INIT_PATH=venv\Lib\site-packages\hid\__init__.py"
 if exist "%HID_INIT_PATH%" (
     REM Create a backup
@@ -65,7 +65,7 @@ if exist "%HID_INIT_PATH%" (
     echo import os > "%TEMP_FILE%"
     echo import ctypes >> "%TEMP_FILE%"
     echo. >> "%TEMP_FILE%"
-    echo # Explicitly load libhidapi-0.dll from windows folder >> "%TEMP_FILE%"
+    echo # Explicitly load hidapi.dll from windows folder >> "%TEMP_FILE%"
     echo lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../windows/hidapi.dll')) >> "%TEMP_FILE%"
     echo hidapi = ctypes.cdll.LoadLibrary(lib_path) >> "%TEMP_FILE%"
     echo. >> "%TEMP_FILE%"
@@ -99,7 +99,7 @@ if exist "%HID_INIT_PATH%" (
     powershell -Command "(Get-Content '%TEMP_FILE%') -notmatch 'hidapi = None .*raise ImportError' | Set-Content '%TEMP_FILE%'"
     copy /Y "%TEMP_FILE%" "%HID_INIT_PATH%" >nul
     del "%TEMP_FILE%"
-    echo Modified hid/__init__.py to load libhidapi-0.dll from windows/ directory and disabled original loop
+    echo Modified hid/__init__.py to load hidapi.dll from windows/ directory and disabled original loop
 ) else (
     echo ❌ Could not find hid/__init__.py. Please ensure the hid package is installed.
     exit /b 1
