@@ -274,7 +274,8 @@
     </div>
         <script >
             const rootPath = "{{ directory | safe}}";
-            const delimiter = "{{ delimiter }}";
+            const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+            // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
             let logInterval, updateInterval, serverCheckInterval;
         </script>

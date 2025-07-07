@@ -34,9 +34,9 @@ time_point_col = 4
 
 os_name = platform.system().lower()
 if "window" in os_name:
-    delimiter = "\\"
+    delimiter = "\\\\";
 else:
-    delimiter = "/"
+    delimiter = "/";
 
 json_root_path = os.path.join(os.getcwd(), "json")
 
