@@ -300,6 +300,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     if(changeToCalibrate) {
         $("#measurement-mode").val("calibrate");
         AppState.currentMeasurementMode = "calibrate";
+        AppState.currentFile = null;
         calModeBehaviour();
     } else {
         if (AppState.currentMeasurementMode !== "calibrate") {
@@ -307,6 +308,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
             $("#cal-mode-select").val(`${AppState.currentMeasurementMode}`); 
         }
     }
+    console.log("Updating directory to:", path);
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
