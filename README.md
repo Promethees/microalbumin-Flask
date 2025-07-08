@@ -89,8 +89,10 @@ microalbumin-Flask/
 ├── main.py             		# Flask app entry point
 ├── log_hid_data.py     		# Python script to log data read from the colorimeter from HID
 ├── README.md           		# Project documentation
-├── start.sh    				# Script to start the app in MacOS
-├── start.bat           		# Script to start the app in Windows
+├── setup.command    			# Script to start the app in MacOS
+├── startwindow-1-git.bat           # Script to start the app in Windows
+├── startwindow-2-pyenv-python.bat  # Script to start the app in Windows
+├── startwindow-3-venv-run.bat      # Script to start the app in Windows
 └── requirements.txt    		# Depedencies needed to download
 ```
 
@@ -102,7 +104,8 @@ Executing the scripts:
 	- Open the Directory in Terminal: Right-click > Services > New Terminal at Folder ![](/images/Terminal.png)
 	- Make the `setup.command` executable: `chmod +x start.command` then run it by double clikcing. Enter your password when prompted
 * In Windows:
-	- Right click on `startwindow.bat`, Select `Run as Administrator`. Enter your password when prompted.
+	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
+	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
 
 ## Notes
 
