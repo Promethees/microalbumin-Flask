@@ -14,34 +14,33 @@
                 const dirHandle = await window.showDirectoryPicker();
                 // Get the server-provided directory, ensuring it's defined
                 let basePath = "{{ directory | default('') }}";
-                // Detect the server's path separator from basePath
-                const separator = basePath.includes('\\') ? '\\' : '/';
-                // Normalize basePath by removing trailing separators
+                const delimiter = "{{ delimiter }}";
+                // Normalize basePath by removing trailing delimiter
                 basePath = basePath.replace(/[\\\/]+$/, '');
                 // Get the current path from the input field
                 const pathDisplay = document.getElementById(inputId);
-                let currentPath = pathDisplay.value || (basePath ? `${basePath}${separator}data` : 'data');
-                // Normalize currentPath by removing trailing separators
+                let currentPath = pathDisplay.value.replace(/\\\\/g, '\\') || (basePath ? `${basePath}${delimiter}data` : 'data');
+                // Normalize currentPath by removing trailing delimiter
                 currentPath = currentPath.replace(/[\\\/]+$/, '');
                 let fullPath;
 
                 // Split current path into segments
-                const pathSegments = currentPath ? currentPath.split(separator).filter(segment => segment) : [];
+                const pathSegments = currentPath ? currentPath.split(delimiter).filter(segment => segment) : [];
                 // Check if dirHandle.name matches any segment
                 const matchIndex = pathSegments.indexOf(dirHandle.name);
 
                 if (matchIndex !== -1) {
                     // Retract path to the matching segment
-                    fullPath = pathSegments.slice(0, matchIndex + 1).join(separator);
+                    fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
                     // Preserve drive letter or root prefix
                     if (currentPath.match(/^[a-zA-Z]:[\\\/]/)) {
-                        fullPath = currentPath.slice(0, 2) + separator + fullPath;
-                    } else if (currentPath.startsWith(separator)) {
-                        fullPath = separator + fullPath;
+                        fullPath = currentPath.slice(0, 2) + delimiter + fullPath;
+                    } else if (currentPath.startsWith(delimiter)) {
+                        fullPath = delimiter + fullPath;
                     }
                 } else {
                     // No match: append dirHandle.name to the current path
-                    fullPath = currentPath ? `${currentPath}${separator}${dirHandle.name}` : dirHandle.name;
+                    fullPath = currentPath ? `${currentPath}${delimiter}${dirHandle.name}` : dirHandle.name;
                 }
 
                 // Update the input field with the constructed path
