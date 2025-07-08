@@ -3,7 +3,9 @@ echo ===============================================
 echo  Welcome to the Easy Sensor Web Interface Setup
 echo ===============================================
 echo.
-echo This script will automatically set up and start the program.
+echo This script assumes Git and Python are already installed with pyenv.
+echo It will set up a virtual environment and install required libraries.
+echo If you haven't installed Git and Python yet, please run startwindow-1-git.bat first. 
 echo.
 echo If you see errors about permissions or installation, please:
 echo   1. Close this window.
@@ -13,88 +15,28 @@ echo.
 REM Note: This script does not exit on every error automatically.
 REM Each critical step checks for errors and exits if needed.
 
-REM Check if git is installed
-where git >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ❌ Git is not installed. Downloading and installing Git for Windows...
-    powershell -Command "Invoke-WebRequest -Uri https://github.com/git-for-windows/git/releases/latest/download/Git-2.45.2-64-bit.exe -OutFile git-installer.exe"
-    if exist git-installer.exe (
-        start /wait git-installer.exe /VERYSILENT /NORESTART
-        del git-installer.exe
-        echo Git installation complete. Please close this window and re-run startwindow.bat.
-    ) else (
-        echo Failed to download Git installer. Please check your internet connection or download Git manually from https://git-scm.com/download/win
-    )
-    pause
-    exit /b 1
-)
-
-REM Change to the script's directory (must be before any pyenv or Python commands)
-cd /d "%~dp0%"
-echo Current directory: %CD%
 
 REM Check if pyenv-win is installed, if not, install it
-if not exist "%USERPROFILE%\.pyenv\pyenv-win" (
-    echo ❌ pyenv not found. Installing pyenv-win...
-    powershell -Command "git clone https://github.com/pyenv-win/pyenv-win.git $env:USERPROFILE\.pyenv\pyenv-win"
-)
-REM Always set environment variables and PATH for pyenv-win
-set "PYENV=%USERPROFILE%\.pyenv\pyenv-win"
-set "PYENV_ROOT=%USERPROFILE%\.pyenv"
-set "PYENV_HOME=%USERPROFILE%\.pyenv\pyenv-win"
-set "PATH=%USERPROFILE%\.pyenv\pyenv-win\bin;%USERPROFILE%\.pyenv\pyenv-win\shims;%PATH%"
-REM Check if pyenv is now available
-where pyenv >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ❌ pyenv is still not recognized. Please restart your computer or log out and log in again, then re-run this script.
-    pause
-    exit /b 1
-)
+@REM if not exist "%USERPROFILE%\.pyenv\pyenv-win" (
+@REM     echo ❌ pyenv not found. Installing pyenv-win...
+@REM     powershell -Command "git clone https://github.com/pyenv-win/pyenv-win.git $env:USERPROFILE\.pyenv\pyenv-win"
+@REM )
+@REM REM Always set environment variables and PATH for pyenv-win
+@REM set "PYENV=%USERPROFILE%\.pyenv\pyenv-win"
+@REM set "PYENV_ROOT=%USERPROFILE%\.pyenv"
+@REM set "PYENV_HOME=%USERPROFILE%\.pyenv\pyenv-win"
+@REM set "PATH=%USERPROFILE%\.pyenv\pyenv-win\bin;%USERPROFILE%\.pyenv\pyenv-win\shims;%PATH%"
+@REM REM Check if pyenv is now available
+@REM where pyenv >nul 2>&1
+@REM if %ERRORLEVEL% neq 0 (
+@REM     echo ❌ pyenv is still not recognized. Please restart your computer or log out and log in again, then re-run this script.
+@REM     pause
+@REM     exit /b 1
+@REM )
 
 REM Check if Python 3.8.10 or 3.9.13 is installed via pyenv
-set "PYTHON_VERSION=3.8.10"
-pyenv versions | findstr 3.8.10 >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ❌ Python 3.8.10 not found. Checking for Python 3.9.13...
-    pyenv versions | findstr 3.9.13 >nul 2>&1
-    if %ERRORLEVEL% neq 0 (
-        echo ❌ Python 3.9.13 not found. Installing Python 3.8.10 via pyenv...
-        pyenv install 3.8.10
-        if %ERRORLEVEL% neq 0 (
-            echo Failed to install Python 3.8.10. Trying Python 3.9.13...
-            pyenv install 3.9.13
-            if %ERRORLEVEL% neq 0 (
-                echo ERROR: Failed to install Python 3.9.13. Please check pyenv and try again.
-                pause
-                exit /b 1
-            )
-            set "PYTHON_VERSION=3.9.13"
-        )
-    ) else (
-        echo Python 3.9.13 already installed. Using 3.9.13...
-        set "PYTHON_VERSION=3.9.13"
-    )
-) else (
-    echo Python 3.8.10 already installed. Proceeding...
-)
-
-REM Check if pyenv shims are available after install
-where python >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: pyenv shims are not available in PATH. Try closing and reopening this window, or run 'refreshenv' if available.
-    pause
-    exit /b 1
-)
-
-echo Setting Python %PYTHON_VERSION% as the local version for this directory...
-pyenv local %PYTHON_VERSION% | echo %PYTHON_VERSION% > .python-version
-if exist .python-version (
-    echo Successfully set Python %PYTHON_VERSION% as local version.
-) else (
-    echo Failed to set Python %PYTHON_VERSION% as local version. Could not write .python-version file.
-    pause
-    exit /b 1
-)
+:: Purpose: Check for Python 3.8.10, install if not found, else check/install Python 3.9.13
+:: Initialize variables
 
 REM Get the path to the pyenv Python
 for /f "delims=" %%i in ('pyenv which python') do set PYENV_PYTHON=%%i
