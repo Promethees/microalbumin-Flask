@@ -13,7 +13,7 @@ def browse_directory(new_path):
     global current_directory
     new_path = os.path.expanduser(new_path)
     if os.path.isdir(new_path):
-        current_directory = new_path
+        current_directory = os.path.abspath(new_path)
         # Convert single backslashes to double backslashes for JavaScript compatibility
         return current_directory.replace('\\', '\\\\')
     return False
@@ -41,6 +41,7 @@ def get_child_directories(path):
         raise ValueError(f"'{path}' is not a valid directory.")
 
     # Convert each child directory path to use double backslashes
+    path = os.path.abspath(path)
     return [
         os.path.join(path, name).replace('\\', '\\\\')
         for name in os.listdir(path)
