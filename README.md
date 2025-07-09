@@ -104,6 +104,17 @@ Executing the scripts:
 	- Open the Directory in Terminal: Right-click > Services > New Terminal at Folder ![](/images/Terminal.png)
 	- Make the `setup.command` executable: `chmod +x start.command` then run it by double clikcing. Enter your password when prompted
 * In Windows:
+	- Install `libusbK` driver for the PyBadge:
+		+ Download [Zadig](https://zadig.akeo.ie/)
+		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
+		![](/images/zadig_all_devices.PNG)
+		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
+		+ Install `libusbK` to the `Pybadge`
+		![](/images/libusbK.PNG)
+		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
+		![](/images/run.PNG)
+		+ Make sure that it is listed under `libusbK USB Devices` 
+		![](/images/DevManager.PNG)
 	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
 	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
 
