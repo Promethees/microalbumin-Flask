@@ -6,43 +6,18 @@ set -e
 # Change to the script's directory
 cd "$(dirname "$0")"
 
-# Check if Homebrew is installed
-if ! command -v brew &>/dev/null; then
-    echo "❌ Homebrew not found. Installing Homebrew..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
-
-# Check if pyenv is installed
-if ! command -v pyenv &>/dev/null; then
-    echo "❌ pyenv not found. Installing pyenv..."
-    brew install pyenv
+# Set Python 3.8.10 as the local version for this directory
+# Check Python version
+pyenv global 3.8.10 
+PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
+if [ "$PY_VER" != "3.8.10" ]; then
+    echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
+    pyenv global 3.8.10 | echo "Setting Python 3.8.10 via pyenv..."
 fi
 
 # Initialize pyenv
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
-
-# Check if Python 3.8.10 is installed
-if ! pyenv versions | grep -q "3.8.10"; then
-    echo "❌ Python 3.8.10 not found. Installing Python 3.8.10 via pyenv..."
-    # Set CFLAGS and LDFLAGS to use system headers
-    export CFLAGS="-I$(xcrun --show-sdk-path)/usr/include"
-    export LDFLAGS="-L$(xcrun --show-sdk-path)/usr/lib"
-    pyenv install 3.8.10
-else
-    echo "Python 3.8.10 already installed. Proceeding..."
-fi
-
-# Set Python 3.8.10 as the local version for this directory
-pyenv local 3.8.10
-
-# Check Python version
-PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
-if [ "$PY_VER" != "3.8.10" ]; then
-    echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
-    echo "Setting Python 3.8.10 via pyenv..."
-    pyenv local 3.8.10
-fi
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
@@ -122,9 +97,5 @@ else
     echo "❌ Could not find hid/__init__.py. Please ensure the hid package is installed."
     exit 1
 fi
-
-# Set the library path for macOS and run with sudo
-echo "Starting app..."
-sudo sh -c 'export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:./mac; ./venv/bin/python3 main.py'
-# Keep the Terminal window open for user interaction
-read -p "Press Enter to exit..."
+echo "Proceed to setup-3-run.command to launch the app"
+read -n 1 -s -r -p "Installation process done, press any key to proceed..."

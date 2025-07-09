@@ -99,10 +99,11 @@ microalbumin-Flask/
 
 ## Setup and Usage
 
-Executing the scripts:
+Installation:
 * In Mac:
-	- Open the Directory in Terminal: Right-click > Services > New Terminal at Folder ![](/images/Terminal.png)
-	- Make the `setup.command` executable: `chmod +x start.command` then run it by double clikcing. Enter your password when prompted
+	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
+	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
+	- Double click `setup-3-run.command` to run the application
 * In Windows:
 	- Install `libusbK` driver for the PyBadge:
 		+ Download [Zadig](https://zadig.akeo.ie/)
