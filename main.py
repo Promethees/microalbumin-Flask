@@ -15,7 +15,7 @@ import pandas as pd
 import json
 from typing import List, Dict, Union, Any
 
-from log_hid_data import get_next_filename, parse_arguments
+from get_next_filename import get_next_filename
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
