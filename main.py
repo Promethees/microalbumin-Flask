@@ -114,7 +114,7 @@ def run_script():
     base_dir = data.get('base_dir', 'data')
     base_name = data.get('base_name', 'colorimeter_data')
     if "window" in os_name:
-        cmd = ['python', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+        cmd = ['python', 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
     else:
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     with open(log_file, 'a') as f:
