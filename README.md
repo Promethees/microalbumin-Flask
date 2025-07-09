@@ -106,11 +106,11 @@ Installation:
 	- Double click `setup-3-run.command` to run the application
 * In Windows:
 	- Install `libusbK` driver for the PyBadge:
-		+ Download [Zadig](https://zadig.akeo.ie/)
+		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
 		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
 		![](/images/zadig_all_devices.PNG)
 		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
-		+ Install `libusbK` to the `Pybadge`
+		+ Install `libusbK 3.1.0.0` to the `Pybadge`
 		![](/images/libusbK.PNG)
 		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
 		![](/images/run.PNG)
