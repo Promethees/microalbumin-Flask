@@ -6,6 +6,9 @@ set "PYENV_PATH_CLONE=%USERPROFILE%\.pyenv\pyenv-win"
 set "PYENV_PATH=%USERPROFILE%\.pyenv\pyenv-win\pyenv-win"
 set "BIN_PATH=%PYENV_PATH%\bin"
 set "SHIMS_PATH=%PYENV_PATH%\shims"
+set "PREFERRED_PYTHON=3.8.10"
+set "FALLBACK_PYTHON=3.9.13"
+set "PYTHON_VERSION="
 
 :: Check pyenv-win installation
 :check_pyenv
@@ -87,10 +90,10 @@ if %ERRORLEVEL% equ 0 (
 :: Set global Python version
 :set_python
 if %ERRORLEVEL% equ 0 (
-    echo Setting Python %PYTHON_VERSION% as global version... | pyenv global %PYTHON_VERSION%
-    echo Python %PYTHON_VERSION% is now set as the global version.
-    echo Verifying Python version...
-    python --version
+    echo Setting Python %PYTHON_VERSION% as global version...
+    pyenv global %PYTHON_VERSION% | echo Python %PYTHON_VERSION% is now set as the global version.
+    @REM echo Verifying Python version...
+    @REM python --version || echo Python %PYTHON_VERSION% is set as the global version.
 ) else (
     echo ERROR: No Python version was set. Please check pyenv configuration.
     echo Press any key to continue . . .

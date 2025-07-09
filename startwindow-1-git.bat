@@ -9,9 +9,6 @@ set "GIT_INSTALLER_64=Git-2.50.0-64-bit.exe"
 set "GIT_INSTALLER_32=Git-2.50.0-32-bit.exe"
 set "DOWNLOAD_PATH=%TEMP%"
 set "INSTALL_PATH=C:\Program Files\Git"
-set "PREFERRED_PYTHON=3.8.10"
-set "FALLBACK_PYTHON=3.9.13"
-set "PYTHON_VERSION="
 
 :: Check for sufficient disk space on C:\ (Boot Camp may have limited space)
 @REM echo Checking available disk space on C:\...
@@ -123,7 +120,7 @@ echo Adding Git to PATH...
 setx PATH "%PATH%;%INSTALL_PATH%\cmd"
 
 echo Setup complete. Git already installed at %INSTALL_PATH%.
-echo Proceed to install pyenv-win and Python with "startwindow-2-git.bat"
+echo Proceed to install pyenv-win and Python with "startwindow-2-pyenv-python.bat"
 echo Press any key to continue . . .
 pause >nul
 endlocal
