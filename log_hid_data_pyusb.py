@@ -6,6 +6,7 @@ import os
 import re
 import glob
 import argparse
+import sys
 from get_next_filename import get_next_filename
 
 # PyBadge USB VID and PID (Adafruit PyBadge)
@@ -136,7 +137,8 @@ class HIDDataCollector:
         self.device = self.find_pybadge()
         if not self.device:
             self.log("PyBadge not found. Ensure it is connected and configured with libusbK driver.")
-            return
+            self.log_file.close()
+            sys.exit(1)  # Exit with non-zero status to indicate failure
 
         self.log(f"Found PyBadge: {self.device.manufacturer} {self.device.product} (VID: {hex(self.device.idVendor)}, PID: {hex(self.device.idProduct)})")
 
@@ -149,7 +151,8 @@ class HIDDataCollector:
             self.endpoint, self.interface = self.find_input_endpoint()
             if not self.endpoint:
                 self.log("Failed to find input endpoint. Exiting.")
-                return
+                self.log_file.close()
+                sys.exit(1)
 
             # Claim interface
             usb.util.claim_interface(self.device, self.interface)

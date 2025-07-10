@@ -118,9 +118,25 @@ def run_script():
     else:
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     with open(log_file, 'a') as f:
-        process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-
-    return jsonify({'status': 'success'})
+    try:
+        with open(log_file, 'a') as f:
+            process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+            try:
+                process.wait(timeout=5)
+                if process.returncode != 0:
+                    if os.path.exists(log_file):
+                        with open(log_file, 'r') as log_f:
+                            log_content = log_f.read()
+                            if "PyBadge not found" in log_content:
+                                process = None
+                                clear_logs()
+                                return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected. Please connect the device and try again.'})
+                    return jsonify({'status': 'failure', 'message': f'Script exited with code {process.returncode}'})
+            except subprocess.TimeoutExpired:
+                return jsonify({'status': 'success', 'message': 'Script started successfully'})
+    except Exception as e:
+        process = None
+        return jsonify({'status': 'failure', 'message': f'Failed to start script: {str(e)}'})
 
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():

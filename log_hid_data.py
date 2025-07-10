@@ -5,6 +5,7 @@ import os
 import re
 import glob
 import argparse
+import sys
 from get_next_filename import get_next_filename
 
 # PyBadge USB VID and PID (Adafruit PyBadge)
@@ -119,13 +120,13 @@ class HIDDataCollector:
         device_info = self.find_pybadge()
         if not device_info:
             self.log("PyBadge not found. Ensure it is connected and configured as an HID keyboard.")
-            return
+            self.log_file.close()
+            sys.exit(1)  # Exit with non-zero status to indicate failure
 
         self.log(f"Found PyBadge: {device_info['product_string']} (VID: {hex(device_info['vendor_id'])}, PID: {hex(device_info['product_id'])})")
 
         device = hid.Device(PYBADGE_VID, PYBADGE_PID)
 
-        # device.open(PYBADGE_VID, PYBADGE_PID)
         try:
             self.log("Reading HID reports. Press Ctrl+C to stop.")
             last_report = None
@@ -174,6 +175,5 @@ def parse_arguments():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    print(f"Using base directory: {args}")
     collector = HIDDataCollector(args.base_dir, args.base_name)
     collector.start()

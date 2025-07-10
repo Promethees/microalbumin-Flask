@@ -16,7 +16,13 @@ function runScript() {
                 $("#go-to-btn").prop('disabled', false);
                 $("#log-display").text("Script started...\n");
                 bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
-
+            } else if (response.status === 'device_not_found') {
+                $("#log-display").text(`Error: ${response.message}\n`);
+                $("#base-dir").prop('disabled', false);
+                $("#base-name").prop('disabled', false);
+                $("#run-script-btn").prop('disabled', false);
+                $("#terminate-script-btn").prop('disabled', true);
+                $("#go-to-btn").prop('disabled', true);
             } else {
                 $("#log-display").text(`Error: ${response.message}\n`);
                 $("#base-dir").prop('disabled', false);
@@ -26,6 +32,10 @@ function runScript() {
         error: function(jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
             $("#log-display").text(`Error: Failed to start script\n`);
+            $("#log-display").append(`Terminating the script\n`);
+            $("#run-script-btn").prop('disabled', false);
+            $("#terminate-script-btn").prop('disabled', true);
+            $("#go-to-btn").prop('disabled', true);
             $("#base-dir").prop('disabled', false);
             $("#base-name").prop('disabled', false);
         }
