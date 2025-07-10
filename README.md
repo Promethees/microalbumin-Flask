@@ -7,7 +7,9 @@ This document provides instruction on deploying a web interface that helps visua
 
 * **Directory** Browse host's directories to select CSV files.
 
-![](/images/browse.png)
+<div align="center">
+	<img src="/images/browse.png" width="400">
+</div>
 
 * **Set measurement Modes** The Applicatiob has 3 modes: **kinetics**, **point**, **calibrate**
 
