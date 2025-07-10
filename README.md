@@ -128,6 +128,7 @@ Installation:
 	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
 	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
 	- Double click `setup-3-run.command` to run the application
+	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
 * In Windows:
 	- Install `libusbK` driver for the PyBadge:
 		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
@@ -135,7 +136,7 @@ Installation:
 		<div align="center"> 
 			<img src="/images/zadig_all_devices.PNG" width="600">
 		</div>
-		
+
 		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
 		+ Install `libusbK 3.1.0.0` to the `Pybadge`
 		<div align="center">
@@ -154,6 +155,7 @@ Installation:
 
 	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
 	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
+	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
 
 ## Notes
 
