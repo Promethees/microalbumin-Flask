@@ -75,6 +75,29 @@ function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=AppState.proces
     });
 }
 
+function clearCache() {
+    $.ajax({
+        url: '/clear_cache',
+        type: 'POST',
+        success: function(response) {
+            if (response.status === 'success' && response.action === 'clear_storage') {
+                // Clear localStorage and sessionStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                $("#log-display").append("Client-side cache cleared.\n");
+                // Optionally reload the page to ensure fresh content
+                window.location.reload(true); // true forces reload from server, bypassing cache
+            } else {
+                $("#log-display").append(`Error clearing cache: ${response.message}\n`);
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.log("Clear cache AJAX error:", textStatus, errorThrown);
+            $("#log-display").append("Error: Failed to clear cache\n");
+        }
+    });
+}
+
 function checkServerStatus() {
     $.get('/ping')
         .done(function() {
@@ -85,7 +108,8 @@ function checkServerStatus() {
         })
         .fail(function() {
             if (serverAvailable) {
-                console.log('Server is down, pausing polling and resetting state...');
+                console.log('Server is down, pausing polling, clearing cache and resetting state...');
+                clearCache();
                 serverAvailable = false;
                 AppState.reset();
             }

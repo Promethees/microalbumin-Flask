@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 import os
 import sys
 import webbrowser
@@ -64,6 +64,22 @@ def clear_logs():
     except Exception as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 500
 
+@app.route('/clear_cache', methods=['POST'])
+def clear_cache():
+    try:
+        # Create response with cache-control headers to prevent caching
+        response = make_response(jsonify({
+            'status': 'success',
+            'message': 'Clearing client-side cache',
+            'action': 'clear_storage'
+        }))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    except Exception as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 500
+
 @app.route('/')
 def index():
     directory = get_directory()
@@ -72,7 +88,8 @@ def index():
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
     cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
-    return render_template('index.html', 
+    clear_logs()
+    response = make_response(render_template('index.html', 
                          title="Easy Sensor Kit",
                          directory= os.path.abspath(directory),
                          range_input=range_input,
@@ -80,7 +97,9 @@ def index():
                          quantity_input=quantity_input,
                          file_list=file_list,
                          cal_json_list=cal_json_list,
-                         delimiter=delimiter)
+                         delimiter=delimiter))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 @app.route('/browse', methods=['POST'])
 def browse():
@@ -117,7 +136,6 @@ def run_script():
         cmd = ['python', 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
     else:
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
-    with open(log_file, 'a') as f:
     try:
         with open(log_file, 'a') as f:
             process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
@@ -472,6 +490,9 @@ def cleanup():
         except subprocess.TimeoutExpired:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
         process = None
+    # Log cleanup action
+    with open(log_file, 'a') as f:
+        f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Server shutting down, notifying clients to clear cache\n")
     # Close the Flask server port
     close_port(args.port)
     print("Cleaned up resources and closed port")
