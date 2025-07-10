@@ -135,19 +135,23 @@ Installation:
 		<div align="center"> 
 			<img src="/images/zadig_all_devices.PNG" width="600">
 		</div>
+		
 		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
 		+ Install `libusbK 3.1.0.0` to the `Pybadge`
 		<div align="center">
 			<img src="/images/libusbK.PNG" width="600">
 		</div>
+
 		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
 		<div align="center">
 			<img src="/images/run.PNG" width="600">
 		</div>
+
 		+ Make sure that it is listed under `libusbK USB Devices` 
 		<div align="center">
 			<img src="/images/DevManager.PNG" width="600">
 		</div>
+
 	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
 	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
 
