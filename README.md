@@ -11,79 +11,79 @@ This document provides instruction on deploying a web interface that helps visua
 	<img src="/images/browse.png" width="600">
 </div>
 
-* **Set measurement Modes** The Applicatiob has 3 modes: **kinetics**, **point**, **calibrate**
+* ***Set measurement Modes*** The Applicatiob has 3 modes: `kinetics`, `point`, `calibrate`
 
-* **Select type of Calibration** You can specify which calibration you're calculating for, either **kinetics** or **point**
+* ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
-* **Log HID** Get data being sent from the **PyBadge** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
+* ***Log HID*** Get data being sent from the ***PyBadge*** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
 
 <div align="center">
 	<img src="/images/logHID.png" width="600">
 </div>
 
-* **Standard lines** Choose standard line you'd like to derive concentration from measurements. Disabled in **calibrate** mode. You can read detailed description in each standard line json to understand the calculation methods.
+* ***Standard lines*** Choose standard line you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard line json to understand the calculation methods.
 
 <div align="center">
 	<img src="/images/standardJSON.png" width="600">
 </div>
 
-* **File Selection** When a directory with csv files is browsed, the list of selectable csv files are displayed under **File Selection** table. Currently, the feature only supports display data from **ONE** file at a time. Click **Select** to visualize the chosen csv, **Deselect** to turn the visualization off.
+* ***File Selection*** When a directory with csv files is browsed, the list of selectable csv files are displayed under ***File Selection*** table. Currently, the feature only supports display data from ***ONE*** file at a time. Click `Select` to visualize the chosen csv, `Deselect` to turn the visualization off.
 
 <div align="center">
 	<img src="/images/fileselection.png" width="600">
 </div>
 
-* **Data Display**:
-	- **Display Range** Modification in display range changes the displayed data and respective unit displayed on the plot. 
-	- **Split by Blanked** Seperate data points into 2 plots, *Blanked* and *Non-Blanked*, which is set by value of column ['Blanked'] in the browsed csv.
+* ***Data Display***:
+	- `Display Range` Modification in display range changes the displayed data and respective unit displayed on the plot. 
+	- `Split by Blanked` Seperate data points into 2 plots, ***Blanked*** and ***Non-Blanked***, which is set by value of column ['Blanked'] in the browsed csv.
 
 	<div align="center">
 		<img src="/images/blank.png" width="600">
 	</div>
 
-	- **Full Display** Enable, Disable graphics of ***Vmax***, ***Linear***, ***Sat*** lines. When it is checked and a csv file is being browsed, all data of that file will be shown and **Display Range** value should be disabled.
-	- In **kinetics** and **point**, displayed data should show Measurement values (i.e Absorbance agains Time) 
+	- `Full Display` Enable, Disable graphics of `Vmax` (maximum reaction velocity throughout the process), `Linear` (average speed along reaction stage), `Sat` (Measured value at saturating point when no longer reactions happening) lines. When it is checked and a csv file is being browsed, all data of that file will be shown and `Display Range` value should be disabled.
+	- In `kinetics` and `point` measurement modes, displayed data should show Measurement values (i.e Absorbance agains Time) 
 
 	<div align="center">
 		<img src="/images/meas.png" width="600">
 	</div>
 
-	- In **calibrate** mode, if selected calibration type is **kinetics**, you can select which of these quantity: Vmax (maximum reaction velocity throughout the process), Slope (average speed along reaction stage), Sat (Measured value at saturating point when no longer reactions happening), and Time to Saturation.
+	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `Vmax`, `Slope` of `Linear` progression, `Sat`, and `Time to Saturation`.
 
 	<div align="center">
 		<img src="/images/calKinetics.png" width="600">
 	</div>
 
-	- In **calibrate** mode, if selected calibration type is **point**, you can select among timepoints, which are exported to the selected file earlier in the measuring stage for calibration. 
+	- In `calibrate` mode, if selected calibration type is `point`, you can select among timepoints, which are exported to the selected file earlier in the measuring stage for calibration. 
 
 	<div align="center">
 		<img src="/images/calPoint.png" width="600">
 	</div>
 
 
-* **Display Range** Filter data by time range and unit (seconds, minutes, hours). Only latest `<time><unit>` data points will be displayed. Disabled in **calibrate** mode
+* `Display Range` Filter data by time range and unit (seconds, minutes, hours). Only latest `<time><unit>` data points will be displayed. Disabled in `calibrate` mode
 
 <div align="center">
 	<img src="/images/displayrange.png" width="600">
 </div>
 
-* **Window size** Specifies the number of data in a group to determine local slopes. Minimum is 3, maximum is half of data size in the browsing csv file. Disabled in **point**, **calibrate** mode
+* `Window size` Specifies the number of data in a group to determine local slopes. Minimum is 3, maximum is half of data size in the browsing csv file. Disabled in `point`, `calibrate` mode
 
 <div align="center">
 	<img src="/images/window.png" width="600">
 </div>
 
-* **Export Analysis** 
-	- Become **Export coefficients for standard line** in **calibrate** mode
-	- For both **kinetics** and **point** modes:
-			+ Set **Display Unit** to **minutes** to ensure consistency among exported readings
-			+ When setting export of analysis for Blank Type **MIXED**, display graphic must be in non Split mode. In the opposite way, whenever Blank Type is either **BLANKED** or **NON-BLANKED**, Split mode is needed (also applied in **calibrate** mode)
-	- For **point** mode, key in the time point, the system will export with corresponding approximated measurement value at that time point for you. 
+* `Export Analysis` 
+	- Become ***Export coefficients for standard line*** in `calibrate` mode
+	- For both `kinetics` and `point` modes:
+			+ Set `Display Unit` to `minutes` to ensure consistency among exported readings
+			+ When setting export of analysis for Blank Type `MIXED`, display graphic must be in non Split mode. In the opposite way, whenever Blank Type is either `BLANKED` or `NON-BLANKED`, Split mode is needed (also applied in `calibrate` mode)
+	- For `point` mode, key in the time point, the system will export with corresponding approximated measurement value at that time point for you. 
 	<div align="center">
 		<img src="/images/exportA.png" width="600">
 	</div>
 
-	- For **calibrate** mode, you can specify the corresponding regression algorithm to export standard line with coefficients and plot on the chart. 
+	- For `calibrate` mode, you can specify the corresponding regression algorithm to export standard line with coefficients and plot on the chart. 
 	<div align="center">
 		<img src="/images/exportC.png" width="600">
 	</div>
