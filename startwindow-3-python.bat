@@ -1,4 +1,4 @@
-:: Install pyenv-win and Python 3.8.10 or 3.9.13
+:: Install Python 3.8.10 or 3.9.13
 @echo off   
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
@@ -12,38 +12,12 @@ set "PREFERRED_PYTHON=3.8.10"
 set "FALLBACK_PYTHON=3.9.13"
 set "PYTHON_VERSION="
 
-:: Check pyenv-win installation
-:check_pyenv
-echo Checking for pyenv-win installation...
-if exist "%BIN_PATH%\pyenv.bat" (
-    echo pyenv-win is already installed at %PYENV_PATH%.
-    goto :check_python
-)
-
-:: Install pyenv-win
-echo pyenv-win not found. Cloning pyenv-win repository to %PYENV_PATH_CLONE%...
-git clone https://github.com/pyenv-win/pyenv-win.git "%PYENV_PATH_CLONE%"
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to clone pyenv-win repository. Ensure Git is installed and try again.
-    echo Press any key to continue . . .
-    pause >nul
-    exit /b 1
-)
-
-:: Set pyenv-win environment variables
-echo Setting pyenv-win environment variables...
-setx PYENV "%PYENV_PATH%"
-setx PYENV_ROOT "%PYENV_PATH%"
-setx PYENV_HOME "%PYENV_PATH%"
-
-:: Add pyenv-win to PATH
-echo Adding pyenv-win to PATH...
-setx PATH "%BIN_PATH%;%SHIMS_PATH%;%PATH%"
-
 :: Verify pyenv-win installation
 "%BIN_PATH%\pyenv" --version >nul 2>&1 | echo Verifying pyenv-win installation...
 if %ERRORLEVEL% equ 0 (
-    echo pyenv-win installed and configured successfully. Version: | "%BIN_PATH%\pyenv" --version
+    for /f "delims=" %%v in ('"%BIN_PATH%\pyenv" --version') do (
+    echo pyenv-win installed and configured successfully. Version: %%v
+)
 ) else (
     echo ERROR: Failed to verify pyenv-win installation. Ensure the repository was cloned correctly.
     echo Press any key to continue . . .
@@ -108,7 +82,7 @@ echo Updating pyenv shims... | pyenv rehash
 
 echo Setup complete. Current Python Version: %PYTHON_VERSION%. Current Pyenv Version: %PYENV_VERSION%.
 echo Git and Python are ready to use on C:\ drive.
-echo Proceed to install dependencies with in the venv and run main program: with "startwindow.bat"
+echo Proceed to install dependencies with in the venv and run main program: with "startwindow-4-venv-run.bat"
 echo Press any key to continue . . .
 pause >nul
 endlocal
