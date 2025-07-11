@@ -1,21 +1,17 @@
 from flask import Flask, render_template, request, jsonify, make_response
 import os
 import sys
-import webbrowser
 import argparse
 import threading
 import time
-import socket
-import signal 
+import signal  
 import platform
 import subprocess
 import atexit
 import csv
 import pandas as pd
 import json
-from typing import List, Dict, Union, Any
 
-from get_next_filename import get_next_filename
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
@@ -23,17 +19,16 @@ from mode import get_mode_input
 from measure import get_dynamic_data
 from quantity import get_quantity_input
 from file import get_file_list
-import datetime
-import threading
+from get_next_filename import get_next_filename
+from script_monitor import check_log_for_errors, monitor_process
+from export_data import check_row_exist
+from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
+from browser_mgt import open_browser, close_port, is_port_open, cleanup
 
 app = Flask(__name__)
 process = None
 monitor_thread = None
 log_file = "log/script_logs.txt"
-con_col = 1
-blankT_col_kin = 8
-blankT_col_pnt = 6
-time_point_col = 4
 
 os_name = platform.system().lower()
 if "window" in os_name:
@@ -43,19 +38,10 @@ else:
 
 json_root_path = os.path.join(os.getcwd(), "json")
 
+# Region 1: USED by index.js
 @app.route('/ping')
 def ping():
     return jsonify({'status': 'success'})
-
-class CustomEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        elif isinstance(obj, Decimal):
-            return float(obj)
-        elif hasattr(obj, '__dict__'):
-            return obj.__dict__  # Handle custom classes
-        return super().default(obj)
 
 @app.route('/clear_logs', methods=['POST'])
 def clear_logs():
@@ -124,36 +110,39 @@ def get_children():
     child_dirs = get_child_directories(current_dir)
     return jsonify({'children': child_dirs})
 
-def check_log_for_errors(log_path):
-    """Check the log file for specific error patterns"""
-    if not os.path.exists(log_path):
-        return None
-    
-    with open(log_path, 'r') as f:
-        content = f.read()
-        if "PyBadge not found" in content:
-            return "device_not_found"
-        elif "Failed to find input endpoint. Exiting." in content:
-            return "input_endpoint_error"
-    return None
+@app.route('/get_json_cal', methods=['GET'])
+def get_json_cal():
+    mode = request.args.get('mode')
+    json_path = os.path.join(json_root_path, mode)
+    if os.path.exists(json_path):
+        json_files = get_file_list(json_path, "*.json")
 
-def monitor_process(proc, log_path):
-    """Monitor the subprocess for errors during runtime"""
-    try:
-        while proc.poll() is None:
-            # Check log for errors
-            error = check_log_for_errors(log_path)
-            if error:
-                return error
-            # Small sleep to prevent busy waiting
-            threading.Event().wait(0.5)
-        
-        # Process has finished, check if it ended with errors
-        return check_log_for_errors(log_path) or "process_completed"
-    except Exception as e:
-        print(f"Monitoring error: {e}")
-        return "monitoring_error"
+        return jsonify({'status': 'success', 'files': json_files})
+    return jsonify({'status': 'error', 'message': "Invalid directory"})
 
+# Region 2: USED by navigation.js
+@app.route('/get_json_content', methods=['GET'])
+def get_json_content():
+    selected_json = request.args.get('json_name')
+    mode = request.args.get('mode')
+    json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
+    print("print the json path ", json_path)
+    if os.path.exists(json_path):
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        print("print the json data", data)
+        return jsonify({'status': 'success', 'json': data, 'path': json_path})
+    return jsonify({'status': 'error', 'message': 'Error in reading the json file'})
+
+@app.route('/get_headers', methods=['GET'])
+def get_csv_headers():
+    read_file = request.args.get('file')
+    if os.path.exists(read_file):
+        df = pd.read_csv(read_file, nrows=0)
+        return jsonify({'headers': df.columns.tolist()}) 
+    return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
+
+# Region 3: USED by hid-logging.js
 @app.route('/run_script', methods=['POST'])
 def run_script():
     global process, monitor_thread
@@ -279,138 +268,12 @@ def get_logs():
         return jsonify({'status': 'success', 'logs': logs})
     return jsonify({'status': 'success', 'logs': 'No logs available'})
 
-@app.route('/export_cal_coefs', methods=['POST'])
-def export_cal_coefs():
-    data = request.get_json()
-    print(f"data is {data}")
-    fit_type = data.get('fit_type')
-    for_meas = data.get('for_meas')
-    for_blank_type = data.get('for_blank_type')
-    coef_content = data.get('coef_content')
-    time = data.get('time')
-    time_unit = "minute"
-    file_name = data.get('file_name', 'calibrate')
-    cal_mode = data.get('cal_mode', "kinetics")
-    cal_params = data.get('cal_params')
-    thres_val = float(data.get('threshold_val', 0))
-
-    export_path = os.path.join(json_root_path, cal_mode)
-    print("received coef_content:", coef_content)
-    try: 
-        export_path = os.getenv(export_path, export_path)
-        export_path = os.path.abspath(os.path.expanduser(export_path))
-        print(f"export path is {export_path}")
-        # Ensure directory exists
-        os.makedirs(export_path, exist_ok=True)
-
-        full_path = get_next_filename(".json", export_path, file_name)
-
-        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val))
-        json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
-
-        if (cal_mode == "point"):
-            json_content.update({"time": time, "time-unit": time_unit})
-        with open(full_path, "w") as f:
-            json.dump(json_content, f, cls=CustomEncoder, indent=4)
-        return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
-
-def processJSONCoef(cal_params: List[str], coefficients: Union[List[float], List[List[float]]]) -> Dict[str, Any]:
-    """
-    Process analysis parameters and coefficients into a structured JSON object.
-    
-    Args:
-        cal_params: List of parameter names (e.g., ["Vmax", "slope", "sat", "Time To Sat"])
-        coefficients: Either:
-            - A 1D array [v, v] → Returns {"fit_coef": [v, v]}
-            - A 2D array [[v, v], [v, v], ...] → Returns {param1: {"fit_coef": [v, v]}, ...}
-    
-    Returns:
-        A JSON-compatible dictionary with "NONE" replacing None values.
-    
-    Raises:
-        Exception: If inputs are invalid.
-    """
-    # Validate inputs
-    if not isinstance(cal_params, list):
-        raise Exception("cal_params must be a list")
-    if not isinstance(coefficients, list):
-        raise Exception("coefficients must be a list")
-
-    def sanitize_value(v: Any) -> Union[float, str]:
-        """Replace None with 'NONE' to avoid JSON issues."""
-        return v if v is not None else "NONE"
-
-    # Case 1: coefficients is 1D (e.g., [v, v])
-    if all(not isinstance(x, list) for x in coefficients):
-        if len(coefficients) < 2:
-            raise Exception("1D coefficients must have at least 2 values")
-        
-        sanitized_coef = [sanitize_value(v) for v in coefficients]
-        return {"fit_coef": sanitized_coef}
-
-    # Case 2: coefficients is 2D (e.g., [[v, v], [v, v], ...])
-    elif all(isinstance(x, list) for x in coefficients):
-        if len(cal_params) != len(coefficients):
-            raise Exception("For 2D coefficients, cal_params and coefficients must have the same length")
-        
-        result = {}
-        for param, coef in zip(cal_params, coefficients):
-            if len(coef) < 2:
-                raise Exception(f"Each coefficient must be a list of at least 2 values (got {len(coef)})")
-            
-            processed_key = param.lower().replace(" ", "_")
-            sanitized_coef = [sanitize_value(v) for v in coef]
-            result[processed_key] = {"fit_coef": sanitized_coef}
-        return result
-
-    else:
-        raise Exception("coefficients must be either [v, v] or [[v, v], [v, v], ...]")
-
-def extractAnalysisCoefficients(
-    data: Union[List[Dict[str, Any]], Dict[str, Any]], 
-    threshold: float = 0.0  # Default threshold (adjust as needed)
-) -> Union[List[Any], List[List[Any]]]:
-    """
-    Extracts coefficients, setting them to null if rSquared < threshold.
-    
-    Args:
-        data: Single slope object or array of slope objects.
-        threshold: Minimum rSquared value to keep coefficients.
-    
-    Returns:
-        - Single object: Coefficients array (with null if filtered).
-        - Array: List of coefficients arrays (with null if filtered).
-    """
-    def process_entry(entry: Dict[str, Any]) -> List[Any]:
-        """Process one slope entry: return coefficients or nulls based on rSquared."""
-        r_squared = entry.get("rSquared")
-        # Convert rSquared to float if it's a string
-        if isinstance(r_squared, str):
-            try:
-                r_squared = float(r_squared)
-            except ValueError:
-                r_squared = None  # Treat invalid strings as None
-        if r_squared is None or (isinstance(r_squared, (float, int)) and r_squared < threshold):
-            return [None] * len(entry.get("coefficients", []))
-        return entry["coefficients"]
-    
-    # Case 1: Single object
-    if isinstance(data, dict):
-        return process_entry(data)
-    
-    # Case 2: Array of objects
-    elif isinstance(data, list):
-        return [process_entry(entry) for entry in data]
-    
-    else:
-        raise Exception("Input must be a slope object or array of slope objects")
-
-from flask import request, jsonify
-import os
-import csv
-import time
+# Region 4: USED by data_handling.js
+@app.route('/get_data', methods=['GET'])
+def get_data():
+    selected_file = request.args.get('file')
+    data = get_dynamic_data(selected_file)
+    return jsonify(data)
 
 @app.route('/export_data', methods=['POST'])
 def export_data(mode="kinetics"):
@@ -473,128 +336,42 @@ def export_data(mode="kinetics"):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-def check_row_exist(full_path, concentration, blankT, timePoint=None, measMode="kinetics"):
-    try:
-        with open(full_path, mode='r', newline='') as f:
-            reader = csv.reader(f)
-            # Assuming column indices based on headers
-            con_col = 1  # Concentration
-            blankT_col_kin = 8  # BlankType for kinetics
-            blankT_col_pnt = 6  # BlankType for point
-            time_point_col = 4  # TimePoint for point
-            for row in reader:
-                if measMode == "kinetics":
-                    if row[con_col] == concentration and row[blankT_col_kin] == blankT:
-                        return True
-                elif measMode == "point":
-                    if row[con_col] == concentration and row[blankT_col_pnt] == blankT and row[time_point_col] == timePoint:
-                        return True
-    except FileNotFoundError:
-        return False
-    return False
+@app.route('/export_cal_coefs', methods=['POST'])
+def export_cal_coefs():
+    data = request.get_json()
+    print(f"data is {data}")
+    fit_type = data.get('fit_type')
+    for_meas = data.get('for_meas')
+    for_blank_type = data.get('for_blank_type')
+    coef_content = data.get('coef_content')
+    time = data.get('time')
+    time_unit = "minute"
+    file_name = data.get('file_name', 'calibrate')
+    cal_mode = data.get('cal_mode', "kinetics")
+    cal_params = data.get('cal_params')
+    thres_val = float(data.get('threshold_val', 0))
 
-@app.route('/get_data', methods=['GET'])
-def get_data():
-    selected_file = request.args.get('file')
-    data = get_dynamic_data(selected_file)
-    return jsonify(data)
+    export_path = os.path.join(json_root_path, cal_mode)
+    print("received coef_content:", coef_content)
+    try: 
+        export_path = os.getenv(export_path, export_path)
+        export_path = os.path.abspath(os.path.expanduser(export_path))
+        print(f"export path is {export_path}")
+        # Ensure directory exists
+        os.makedirs(export_path, exist_ok=True)
 
-@app.route('/get_headers', methods=['GET'])
-def get_csv_headers():
-    read_file = request.args.get('file')
-    if os.path.exists(read_file):
-        df = pd.read_csv(read_file, nrows=0)
-        return jsonify({'headers': df.columns.tolist()}) 
-    return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
+        full_path = get_next_filename(".json", export_path, file_name)
 
-@app.route('/get_json_cal', methods=['GET'])
-def get_json_cal():
-    mode = request.args.get('mode')
-    json_path = os.path.join(json_root_path, mode)
-    if os.path.exists(json_path):
-        json_files = get_file_list(json_path, "*.json")
+        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val))
+        json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
 
-        return jsonify({'status': 'success', 'files': json_files})
-    return jsonify({'status': 'error', 'message': "Invalid directory"})
-
-@app.route('/get_json_content', methods=['GET'])
-def get_json_content():
-    selected_json = request.args.get('json_name')
-    mode = request.args.get('mode')
-    json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
-    print("print the json path ", json_path)
-    if os.path.exists(json_path):
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-        print("print the json data", data)
-        return jsonify({'status': 'success', 'json': data, 'path': json_path})
-    return jsonify({'status': 'error', 'message': 'Error in reading the json file'})
-
-def is_port_open(host, port):
-    """Check if the specified port is open."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
-    result = sock.connect_ex((host, port))
-    sock.close()
-    return result == 0
-
-def open_browser(host, port):
-    """Open the browser after a short delay to ensure server is running."""
-    # Only open browser in the main process, not the reloader
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        time.sleep(2)  # Wait for server to start
-        if is_port_open(host, port):
-            try:
-                webbrowser.open(f'http://{host}:{port}')
-                print(f"Opened browser at http://{host}:{port}")
-            except Exception as e:
-                print(f"Failed to open browser: {e}")
-        else:
-            print(f"Failed to verify server is running on port {port}. Please check if the port is in use or accessible.")
-
-def is_port_open(host, port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
-    result = sock.connect_ex((host, port))
-    sock.close()
-    return result == 0
-
-def close_port(port, exclude_pid=None):
-    """Close processes using the specified port, excluding the given PID."""
-    try:
-        # Use lsof to find processes using the port
-        result = subprocess.run(
-            ['lsof', '-i', f':{port}', '-t'],
-            capture_output=True,
-            text=True,
-            check=False
-        )
-        pids = result.stdout.strip().split('\n')
-        current_pid = str(exclude_pid or os.getpid())
-        for pid in pids:
-            if pid and pid != current_pid:
-                print(f"Terminating process {pid} using port {port}")
-                subprocess.run(['kill', '-9', pid], check=False)
-    except subprocess.CalledProcessError as e:
-        print(f"Error closing port {port}: {e}")
-    except FileNotFoundError:
-        print("lsof not found; ensure lsof is installed (e.g., sudo apt install lsof)")
-
-def cleanup():
-    global process
-    if process and process.poll() is None:
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        process = None
-    # Log cleanup action
-    with open(log_file, 'a') as f:
-        f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Server shutting down, notifying clients to clear cache\n")
-    # Close the Flask server port
-    close_port(args.port)
-    print("Cleaned up resources and closed port")
+        if (cal_mode == "point"):
+            json_content.update({"time": time, "time-unit": time_unit})
+        with open(full_path, "w") as f:
+            json.dump(json_content, f, cls=CustomEncoder, indent=4)
+        return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 atexit.register(cleanup)
 
