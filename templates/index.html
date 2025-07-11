@@ -89,7 +89,7 @@
             <h2>Log HID Data</h2>
             <div>
                 <label for="base-dir">Base Directory (--base-dir): 
-                <input type="text" id="base-dir" value="{{ directory | default('') }}{{ delimiter }}data" readonly style="width: 80%">
+                <input type="text" id="base-dir" value="{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}data" readonly style="width: 80%">
                 <button onclick="pickDirectory('base-dir')">Select Directory</button>
                 </label>
             </div>
@@ -100,7 +100,7 @@
             <button id="run-script-btn" onclick="runScript()">Run Script</button>
             <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
             <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-            <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}{{ delimiter }}data` , true)" disabled="">Browse Saving Location</button>
+            <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}data` , true)" disabled="">Browse Saving Location</button>
             <div id="log-display"></div>
         </div>
         <div class="section" id="cal-json-exp-section"> 
@@ -249,7 +249,7 @@
                         <span id="est-val-exp"></span>
                     </div>
                     <label for="save-dir">Saving Directory: 
-                    <input type="text" id="save-dir" value="{{ directory | default('') }}{{ delimiter }}export_data" readonly style="width: 80%">
+                    <input type="text" id="save-dir" value="{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}export_data" readonly style="width: 80%">
                     <button onclick="pickDirectory('save-dir')">Select Directory</button>
                     </label>
                 </div>
@@ -258,7 +258,7 @@
                     <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
                 </div>
                 <button id="export-btn" onclick="exportData()">Export Data</button>
-                <button id="go-to-exp-btn" onclick="updateDirectory(`{{ directory | default('') }}{{ delimiter }}export_data` , true, true)">Browse Saving Location</button>
+                <button id="go-to-exp-btn" onclick="updateDirectory(`{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}export_data` , true, true)">Browse Saving Location</button>
                 <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
             </div>  
             <div id="export-coef">
