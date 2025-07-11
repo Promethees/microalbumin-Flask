@@ -150,9 +150,14 @@ def run_script():
                                 process = None
                                 clear_logs()
                                 return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected. Please connect the device and try again.'})
-                    return jsonify({'status': 'failure', 'message': f'Script exited with code {process.returncode}'})
+                            elif "Failed to find input endpoint. Exiting." in log_content:
+                                process = None
+                                clear_logs()
+                                return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint. Please check the device connection.'})
+                    return jsonify({'status': 'success', 'message': 'Script started successfully'})
             except subprocess.TimeoutExpired:
                 return jsonify({'status': 'success', 'message': 'Script started successfully'})
+                # return jsonify({'status': 'failure', 'message': f'Script exited with code {process.returncode}'})
     except Exception as e:
         process = None
         return jsonify({'status': 'failure', 'message': f'Failed to start script: {str(e)}'})
@@ -162,16 +167,32 @@ def terminate_script():
     global process
     if process is None or process.poll() is not None:
         return jsonify({'status': 'failure', 'message': 'No process running'})
-    # Use pgid to terminate the entire process group
-    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+
     try:
-        process.wait(timeout=5)
-        process = None
-        return jsonify({'status': 'success'})
-    except subprocess.TimeoutExpired:
-        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        process = None
-        return jsonify({'status': 'success'})
+        if "window" in os_name:
+            # On Windows, use terminate() or kill() for the process
+            process.terminate()  # Try graceful termination
+            try:
+                process.wait(timeout=5)
+                process = None
+                return jsonify({'status': 'success'})
+            except subprocess.TimeoutExpired:
+                process.kill()  # Force kill if it doesn't terminate
+                process = None
+                return jsonify({'status': 'success'})
+        else:
+            # On Unix-like systems, use os.killpg for process group
+            try:
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                process.wait(timeout=5)
+                process = None
+                return jsonify({'status': 'success'})
+            except subprocess.TimeoutExpired:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                process = None
+                return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'failure', 'message': f'Error terminating process: {str(e)}'})
 
 @app.route('/get_logs', methods=['GET'])
 def get_logs():

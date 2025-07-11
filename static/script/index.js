@@ -47,6 +47,8 @@ const AppState = {
         this.prevDropdownEntries = null;
         this.exp_json_content = null;
         Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
+        terminateScript();
+        clearLogs();
     }
 };
 

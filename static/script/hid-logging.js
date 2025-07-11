@@ -33,6 +33,7 @@ function runScript() {
             console.log("AJAX error:", textStatus, errorThrown);
             $("#log-display").text(`Error: Failed to start script\n`);
             $("#log-display").append(`Terminating the script\n`);
+            AppState.scriptRunning = false;
             $("#run-script-btn").prop('disabled', false);
             $("#terminate-script-btn").prop('disabled', true);
             $("#go-to-btn").prop('disabled', true);
@@ -70,7 +71,7 @@ function terminateScript() {
         },
         error: function(jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
-            $("#log-display").append(`Error: Failed to terminate script\n`);
+            $("#log-display").append(`Error: Failed to terminate script, error: ${errorThrown}\n`);
             AppState.scriptRunning = false;
             $("#run-script-btn").prop('disabled', false);
             $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);

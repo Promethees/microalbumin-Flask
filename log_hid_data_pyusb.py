@@ -177,7 +177,7 @@ class HIDDataCollector:
                     if e.errno == 110:  # Timeout
                         pass  # Ignore timeouts, continue polling
                     else:
-                        self.log(f"Device is disconnected or error occurred: {str(e)}")
+                        self.log(f"Waiting for the next report sent by the device")
                     time.sleep(0.1)  # Slow down on errors
 
         except KeyboardInterrupt:
