@@ -36,7 +36,7 @@ Installation:
 		</div>
 
 	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
-	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
+	- Repeat with `startwindow-2-pyenv.bat` -> `startwindow-3-python.bat` -> `startwindow-4-venv-run.bat`. Run ***ONE BY ONE!***
 	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
 
 ## Overview
@@ -152,10 +152,13 @@ microalbumin-Flask/
 ├── main.py             		# Flask app entry point
 ├── log_hid_data.py     		# Python script to log data read from the colorimeter from HID
 ├── README.md           		# Project documentation
-├── setup.command    			# Script to start the app in MacOS
+├── setup-1-install-pyenv.command   # Script to start the app in MacOS
+├── setup-2-install-venv.command    # Script to start the app in MacOS
+├── setup-3-run.command   			# Script to start the app in MacOS
 ├── startwindow-1-git.bat           # Script to start the app in Windows
-├── startwindow-2-pyenv-python.bat  # Script to start the app in Windows
-├── startwindow-3-venv-run.bat      # Script to start the app in Windows
+├── startwindow-2-pyenv.bat  		# Script to start the app in Windows
+├── startwindow-3-python.bat      	# Script to start the app in Windows
+├── startwindow-4-venv-run.bat      # Script to start the app in Windows
 └── requirements.txt    		# Depedencies needed to download
 ```
 
