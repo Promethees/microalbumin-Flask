@@ -137,6 +137,7 @@ class HIDDataCollector:
         self.device = self.find_pybadge()
         if not self.device:
             self.log("PyBadge not found. Ensure it is connected and configured with libusbK driver.")
+            self.log("Terminating script.")
             self.log_file.close()
             sys.exit(1)  # Exit with non-zero status to indicate failure
 
@@ -175,8 +176,14 @@ class HIDDataCollector:
                     time.sleep(0.001)  # Prevent CPU overuse
                 except usb.core.USBError as e:
                     if e.errno == 110:  # Timeout
-                        pass  # Ignore timeouts, continue polling
+                        pass                        
                     else:
+                        if not self.find_pybadge():
+                            self.log("PyBadge not found. Ensure it is connected and configured with libusbK driver.")
+                            self.log("Terminating script.")
+                            self.device = None
+                            sys.exit(1) # Exit with non-zero status to indicate failure
+
                         self.log(f"Waiting for the next report sent by the device")
                     time.sleep(0.1)  # Slow down on errors
 

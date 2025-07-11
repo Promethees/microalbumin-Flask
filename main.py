@@ -24,9 +24,11 @@ from measure import get_dynamic_data
 from quantity import get_quantity_input
 from file import get_file_list
 import datetime
+import threading
 
 app = Flask(__name__)
 process = None
+monitor_thread = None
 log_file = "log/script_logs.txt"
 con_col = 1
 blankT_col_kin = 8
@@ -122,45 +124,120 @@ def get_children():
     child_dirs = get_child_directories(current_dir)
     return jsonify({'children': child_dirs})
 
+def check_log_for_errors(log_path):
+    """Check the log file for specific error patterns"""
+    if not os.path.exists(log_path):
+        return None
+    
+    with open(log_path, 'r') as f:
+        content = f.read()
+        if "PyBadge not found" in content:
+            return "device_not_found"
+        elif "Failed to find input endpoint. Exiting." in content:
+            return "input_endpoint_error"
+    return None
+
+def monitor_process(proc, log_path):
+    """Monitor the subprocess for errors during runtime"""
+    try:
+        while proc.poll() is None:
+            # Check log for errors
+            error = check_log_for_errors(log_path)
+            if error:
+                return error
+            # Small sleep to prevent busy waiting
+            threading.Event().wait(0.5)
+        
+        # Process has finished, check if it ended with errors
+        return check_log_for_errors(log_path) or "process_completed"
+    except Exception as e:
+        print(f"Monitoring error: {e}")
+        return "monitoring_error"
+
 @app.route('/run_script', methods=['POST'])
 def run_script():
+    global process, monitor_thread
+    
     os_name = platform.system().lower()
-    global process
+    
+    # Check if process is already running
     if process and process.poll() is None:
         return jsonify({'status': 'failure', 'message': 'A script is already running'})
+    
     if not request.is_json:
         return jsonify({'status': 'failure', 'message': 'Request must be JSON'}), 400
+    
     data = request.get_json()
     base_dir = data.get('base_dir', 'data')
     base_name = data.get('base_name', 'colorimeter_data')
+    
     if "window" in os_name:
         cmd = ['python', 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
     else:
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+    
     try:
         with open(log_file, 'a') as f:
             process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+            
+            # Start monitoring thread
+            monitor_thread = threading.Thread(
+                target=lambda: monitor_process(process, log_file),
+                daemon=True
+            )
+            monitor_thread.start()
+            
+            # Initial check (like your original code)
             try:
-                process.wait(timeout=5)
-                if process.returncode != 0:
-                    if os.path.exists(log_file):
-                        with open(log_file, 'r') as log_f:
-                            log_content = log_f.read()
-                            if "PyBadge not found" in log_content:
-                                process = None
-                                clear_logs()
-                                return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected. Please connect the device and try again.'})
-                            elif "Failed to find input endpoint. Exiting." in log_content:
-                                process = None
-                                clear_logs()
-                                return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint. Please check the device connection.'})
-                    return jsonify({'status': 'success', 'message': 'Script started successfully'})
+                process.wait(timeout=1)
+                error = check_log_for_errors(log_file)
+                if error:
+                    process = None
+                    clear_logs()
+                    if error == "device_not_found":
+                        print("Device not found in log, returning error")
+                        return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected. Please connect the device and try again.'})
+                    elif error == "input_endpoint_error":
+                        return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint. Please check the device connection.'})
+                return jsonify({'status': 'success', 'message': 'Script is still running'})
             except subprocess.TimeoutExpired:
-                return jsonify({'status': 'success', 'message': 'Script started successfully'})
-                # return jsonify({'status': 'failure', 'message': f'Script exited with code {process.returncode}'})
+                return jsonify({'status': 'success', 'message': 'Script is still running'})
+                
     except Exception as e:
         process = None
         return jsonify({'status': 'failure', 'message': f'Failed to start script: {str(e)}'})
+
+@app.route('/check_status', methods=['GET'])
+def check_status():
+    """Endpoint to check process status and detect runtime errors"""
+    global process
+    
+    if process is None:
+        return jsonify({'status': 'not_running', 'message': 'No process running'})
+    
+    # First check for errors in log
+    error = check_log_for_errors(log_file)
+    if error:
+        process = None
+        clear_logs()
+        if error == "device_not_found":
+            return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected during runtime.'})
+        elif error == "input_endpoint_error":
+            return jsonify({'status': 'failure', 'message': 'Input endpoint error detected during runtime.'})
+    
+    # Then check process status
+    if process.poll() is None:
+        return jsonify({'status': 'running', 'message': 'Script is running'})
+    else:
+        # Process has finished - check one final time for errors
+        error = check_log_for_errors(log_file)
+        process = None
+        if error:
+            if error == "device_not_found":
+                return jsonify({'status': 'device_not_found', 'message': 'PyBadge device was not found.'})
+            elif error == "input_endpoint_error":
+                return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint.'})
+        return jsonify({'status': 'success', 'message': 'Script still running, waiting for device to send next report'})
 
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():
