@@ -1,5 +1,44 @@
 # Easy Sensor Kit Web application
 
+## Setup and Usage
+Download: 
+* Click on `Code`, in the DropDown, select `Download Zip`. 
+* In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
+
+Installation:
+* In Mac:
+	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
+	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
+	- Double click `setup-3-run.command` to run the application
+	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
+* In Windows:
+	- Install `libusbK` driver for the PyBadge:
+		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
+		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
+		<div align="center"> 
+			<img src="/images/zadig_all_devices.PNG" width="600">
+		</div>
+
+		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
+		+ Install `libusbK 3.1.0.0` to the `Pybadge`
+		<div align="center">
+			<img src="/images/libusbK.PNG" width="600">
+		</div>
+
+		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
+		<div align="center">
+			<img src="/images/run.PNG" width="600">
+		</div>
+
+		+ Make sure that it is listed under `libusbK USB Devices` 
+		<div align="center">
+			<img src="/images/DevManager.PNG" width="600">
+		</div>
+
+	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
+	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
+	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
+
 ## Overview
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
 
@@ -119,43 +158,6 @@ microalbumin-Flask/
 ├── startwindow-3-venv-run.bat      # Script to start the app in Windows
 └── requirements.txt    		# Depedencies needed to download
 ```
-
-
-## Setup and Usage
-
-Installation:
-* In Mac:
-	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
-	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
-	- Double click `setup-3-run.command` to run the application
-	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
-* In Windows:
-	- Install `libusbK` driver for the PyBadge:
-		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
-		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
-		<div align="center"> 
-			<img src="/images/zadig_all_devices.PNG" width="600">
-		</div>
-
-		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
-		+ Install `libusbK 3.1.0.0` to the `Pybadge`
-		<div align="center">
-			<img src="/images/libusbK.PNG" width="600">
-		</div>
-
-		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
-		<div align="center">
-			<img src="/images/run.PNG" width="600">
-		</div>
-
-		+ Make sure that it is listed under `libusbK USB Devices` 
-		<div align="center">
-			<img src="/images/DevManager.PNG" width="600">
-		</div>
-
-	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
-	- Repeat with `startwindow-2-pyenv-python.bat` then `startwindow-3-venv-run.bat`. 
-	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
 
 ## Notes
 
