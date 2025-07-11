@@ -14,7 +14,7 @@ set "SHIMS_PATH=%PYENV_PATH%\shims"
 echo Checking for pyenv-win installation...
 if exist "%BIN_PATH%\pyenv.bat" (
     echo pyenv-win is already installed at %PYENV_PATH%.
-    goto :check_python
+    goto :set_pyenv
 )
 
 :: Install pyenv-win
@@ -28,6 +28,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: Set pyenv-win environment variables
+:set_pyenv
 echo Setting pyenv-win environment variables...
 setx PYENV "%PYENV_PATH%"
 setx PYENV_ROOT "%PYENV_PATH%"

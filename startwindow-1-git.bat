@@ -26,12 +26,13 @@ set "INSTALL_PATH=C:\Program Files\Git"
 
 :: Check if Git is already installed
 echo Checking if Git is already installed...
-where git >nul 2>&1
+git --version >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     echo Git is already installed and available in PATH.
     git --version
     echo Press any key to continue . . .
     pause >nul
+    exit /b 0
 )
 
 :: Check if Git exists in the default installation path
@@ -42,6 +43,7 @@ if exist "%INSTALL_PATH%\cmd\git.exe" (
     echo Git added to PATH. Please restart Command Prompt to use Git.
     echo Press any key to continue . . .
     pause >nul
+    exit /b 0
 )
 
 :: Check system architecture for Boot Camp (typically 64-bit on modern Macs)
