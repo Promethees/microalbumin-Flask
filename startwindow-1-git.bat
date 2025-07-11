@@ -1,4 +1,6 @@
 @echo off
+:: Ensure the script runs from its own directory
+cd /d "%~dp0"
 setlocal EnableDelayedExpansion
 
 :: Purpose: Install Git (with architecture compatibility for Boot Camp on C:\)

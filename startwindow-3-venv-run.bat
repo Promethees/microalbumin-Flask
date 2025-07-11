@@ -1,4 +1,6 @@
 @echo off
+:: Ensure the script runs from its own directory
+cd /d "%~dp0"
 echo ===============================================
 echo  Welcome to the Easy Sensor Web Interface Setup
 echo ===============================================
@@ -46,11 +48,19 @@ python -m ensurepip --upgrade
 REM Install required libraries
 echo Installing requirements...
 pip install --upgrade pip
-pip install -r requirements-win.txt
+pip install -r "%~dp0requirements-win.txt"
 
 
 REM Set the library path and start the app
 echo Starting app...
-set "PATH=%PATH%;%~dp0windows"
-python main.py
+
+:: Ensure python executable is used from the virtual environment
+if not exist "%~dp0venv\Scripts\python.exe" (
+    echo ERROR: Python executable not found in the virtual environment.
+    echo Please run script "startwindow-2-pyenv-python.bat" to set up Python and pyenv.
+    echo If you have already run it, ensure the virtual environment is created correctly.
+    pause
+    exit /b 1
+)
+"%~dp0venv\Scripts\python.exe" "%~dp0main.py"
 pause

@@ -1,5 +1,7 @@
 :: Install pyenv-win and Python 3.8.10 or 3.9.13
 @echo off   
+:: Ensure the script runs from its own directory
+cd /d "%~dp0"
 setlocal EnableDelayedExpansion
 
 set "PYENV_PATH_CLONE=%USERPROFILE%\.pyenv\pyenv-win"
