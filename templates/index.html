@@ -33,8 +33,10 @@
                     // Retract path to the matching segment
                     fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
                     // Preserve drive letter or root prefix
-                    if (currentPath.match(/^[a-zA-Z]:[\\\/]/)) {
-                        fullPath = currentPath.slice(0, 2) + delimiter + fullPath;
+                    const driveLetterMatch = currentPath.match(/^([a-zA-Z]:)[\\\/]/);
+                    if (driveLetterMatch) {
+                        // For Windows paths, replace the drive letter in the path
+                        fullPath = fullPath.replace(/^[a-zA-Z]:[\\\/]?/, driveLetterMatch[1] + delimiter);
                     } else if (currentPath.startsWith(delimiter)) {
                         fullPath = delimiter + fullPath;
                     }
