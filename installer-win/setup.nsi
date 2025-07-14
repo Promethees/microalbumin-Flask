@@ -5,7 +5,8 @@
 !define APP_NAME "EasySensor Kit"
 !define APP_VERSION "1.0"
 !define INSTALL_DIR "$PROGRAMFILES\EasySensor Kit"
-!define RUNNER_NAME "${APP_NAME}"
+!define RUNNER_NAME "${APP_NAME}" 
+!define MUI_ICON "setup.ico"
 
 ; Request admin privileges for the installer
 RequestExecutionLevel admin

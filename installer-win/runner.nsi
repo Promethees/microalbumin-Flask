@@ -15,7 +15,9 @@ RequestExecutionLevel admin ; Request admin privileges for the installer
 
 ;--------------------------------
 ; Interface Settings
-!define MUI_ABORTWARNING
+!define MUI_ABORTWARNING 
+!define MUI_ICON "runner.ico"
+
 
 ;--------------------------------
 ; Pages
