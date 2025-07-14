@@ -1,11 +1,11 @@
-; Installer script for MyApp
+; Installer script for EasySensorKit
 ; Requires NSIS 3.0 or later
 
 ; Define the application name and version
 !define APP_NAME "EasySensor Kit"
 !define APP_VERSION "1.0"
-!define INSTALL_DIR "$PROGRAMFILES\${APP_NAME}"
-!define RUNNER_NAME "${APP_NAME} Runner"
+!define INSTALL_DIR "$PROGRAMFILES\EasySensor Kit"
+!define RUNNER_NAME "${APP_NAME}"
 
 ; Request admin privileges for the installer
 RequestExecutionLevel admin
@@ -92,7 +92,7 @@ Section "Install" SEC01
   DetailPrint "startwindow-1-git.bat completed with exit code: $0"
   
   DetailPrint "Running startwindow-0-clone-repo.bat..."
-  ExecWait '"cmd.exe" /c "$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code" "$GitHubToken"' $0
+  ExecWait '"$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code" "$GitHubToken"' $0
   DetailPrint "Github token used was $GitHubToken $0"
   DetailPrint "startwindow-0-clone-repo.bat completed with exit code: $0"
   
