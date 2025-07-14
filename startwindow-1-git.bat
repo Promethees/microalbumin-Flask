@@ -39,8 +39,23 @@ if %ERRORLEVEL% equ 0 (
 if exist "%INSTALL_PATH%\cmd\git.exe" (
     echo Git is installed at %INSTALL_PATH% but not in PATH.
     echo Adding Git to PATH...
-    setx PATH "%PATH%;%INSTALL_PATH%\cmd"
-    echo Git added to PATH. Please restart Command Prompt to use Git.
+    :: Get current PATH
+    for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "CURRENT_PATH=%%b"
+    :: Check if Git path is already in PATH to avoid duplicates
+    echo !CURRENT_PATH! | findstr /I /C:"%INSTALL_PATH%\cmd" >nul
+    if !ERRORLEVEL! neq 0 (
+        set "NEW_PATH=%CURRENT_PATH%;%INSTALL_PATH%\cmd"
+        setx PATH "!NEW_PATH!"
+        if !ERRORLEVEL! neq 0 (
+            echo ERROR: Failed to update PATH. Please check permissions and try running as administrator.
+            echo Press any key to continue . . .
+            pause >nul
+            exit /b 1
+        )
+        echo Git added to PATH. Please restart Command Prompt to use Git.
+    ) else (
+        echo Git path already exists in PATH. Skipping PATH update.
+    )
     echo Press any key to continue . . .
     pause >nul
     exit /b 0
@@ -121,9 +136,25 @@ if exist "%DOWNLOAD_PATH%\%GIT_INSTALLER%" (
 
 :: Add Git to PATH
 echo Adding Git to PATH...
-setx PATH "%PATH%;%INSTALL_PATH%\cmd"
+:: Get current PATH
+for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "CURRENT_PATH=%%b"
+:: Check if Git path is already in PATH to avoid duplicates
+echo !CURRENT_PATH! | findstr /I /C:"%INSTALL_PATH%\cmd" >nul
+if !ERRORLEVEL! neq 0 (
+    set "NEW_PATH=%CURRENT_PATH%;%INSTALL_PATH%\cmd"
+    setx PATH "!NEW_PATH!"
+    if !ERRORLEVEL! neq 0 (
+        echo ERROR: Failed to update PATH. Please check permissions and try running as administrator.
+        echo Press any key to continue . . .
+        pause >nul
+        exit /b 1
+    )
+    echo Git added to PATH.
+) else (
+    echo Git path already exists in PATH. Skipping PATH update.
+)
 
-echo Setup complete. Git already installed at %INSTALL_PATH%.
+echo Setup complete. Git installed at %INSTALL_PATH%.
 echo Proceed to install pyenv-win and Python with "startwindow-2-pyenv-python.bat"
 echo Press any key to continue . . .
 pause >nul
