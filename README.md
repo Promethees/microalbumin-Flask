@@ -6,12 +6,12 @@ Download:
 * In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
 
 Installation:
-* In Mac:
+* On Mac:
 	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
 	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
 	- Double click `setup-3-run.command` to run the application
 	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
-* In Windows:
+* On Windows:
 	- Install `libusbK` driver for the PyBadge:
 		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
 		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
@@ -34,10 +34,17 @@ Installation:
 		<div align="center">
 			<img src="/images/DevManager.PNG" width="600">
 		</div>
+		
+	- Using Installer: 
+		+ Get the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
+		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
+		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
+		+ After the installation, you can use `EasySensor Kit` icon on the Desktop to start the app
 
-	- Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
-	- Repeat with `startwindow-2-pyenv.bat` -> `startwindow-3-python.bat` -> `startwindow-4-venv-run.bat`. Run ***ONE BY ONE!***
-	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
+	- Using batch scripts:
+		+ Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
+		+ Repeat with `startwindow-2-pyenv.bat` -> `startwindow-3-python.bat` -> `startwindow-4-venv-run.bat`. Run ***ONE BY ONE!***
+		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
 
 ## Overview
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
