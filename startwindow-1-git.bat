@@ -12,17 +12,15 @@ set "GIT_INSTALLER_32=Git-2.50.0-32-bit.exe"
 set "DOWNLOAD_PATH=%TEMP%"
 set "INSTALL_PATH=C:\Program Files\Git"
 
-:: Check for sufficient disk space on C:\ (Boot Camp may have limited space)
-@REM echo Checking available disk space on C:\...
-@REM for /f "tokens=2" %%a in ('fsutil volume diskfree C: ^| findstr /C:"Total # of free bytes"') do set "FREE_BYTES=%%a"
-@REM set /a FREE_GB=%FREE_BYTES% / 1024 / 1024 / 1024
-@REM if %FREE_GB% LSS 2 (
-@REM     echo ERROR: Insufficient disk space on C:\. At least 2 GB is required.
-@REM     echo Current free space: ~%FREE_GB% GB
-@REM     echo Press any key to continue . . .
-@REM     pause >nul
-@REM     exit /b 1
-@REM )
+:: Check if running as administrator
+net session >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: This script must be run as Administrator to modify system PATH.
+    echo Please right-click the script and select "Run as administrator".
+    echo Press any key to continue . . .
+    pause >nul
+    exit /b 1
+)
 
 :: Check if Git is already installed
 echo Checking if Git is already installed...
@@ -39,15 +37,29 @@ if %ERRORLEVEL% equ 0 (
 if exist "%INSTALL_PATH%\cmd\git.exe" (
     echo Git is installed at %INSTALL_PATH% but not in PATH.
     echo Adding Git to PATH...
-    :: Get current PATH
-    for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "CURRENT_PATH=%%b"
+    :: Get current system and user PATH
+    for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "SYSTEM_PATH=%%b"
+    for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH') do set "USER_PATH=%%b"
+    set "CURRENT_PATH=%SYSTEM_PATH%;%USER_PATH%"
+    :: Remove any trailing semicolon
+    if "!CURRENT_PATH:~-1!"==";" set "CURRENT_PATH=!CURRENT_PATH:~0,-1!"
     :: Check if Git path is already in PATH to avoid duplicates
     echo !CURRENT_PATH! | findstr /I /C:"%INSTALL_PATH%\cmd" >nul
     if !ERRORLEVEL! neq 0 (
-        set "NEW_PATH=%CURRENT_PATH%;%INSTALL_PATH%\cmd"
-        setx PATH "!NEW_PATH!"
+        set "NEW_PATH=!CURRENT_PATH!;%INSTALL_PATH%\cmd"
+        :: Check PATH length to avoid setx limitations
+        set "PATH_LENGTH=0"
+        for /L %%n in (0,1,8192) do if "!NEW_PATH:~%%n,1!" neq "" set /a PATH_LENGTH+=1
+        if !PATH_LENGTH! GTR 1024 (
+            echo WARNING: PATH length exceeds 1024 characters, which may cause issues with setx.
+            echo Please shorten the existing PATH manually before proceeding.
+            echo Press any key to continue . . .
+            pause >nul
+            exit /b 1
+        )
+        setx PATH "!NEW_PATH!" /M
         if !ERRORLEVEL! neq 0 (
-            echo ERROR: Failed to update PATH. Please check permissions and try running as administrator.
+            echo ERROR: Failed to update PATH. Please check permissions.
             echo Press any key to continue . . .
             pause >nul
             exit /b 1
@@ -136,15 +148,29 @@ if exist "%DOWNLOAD_PATH%\%GIT_INSTALLER%" (
 
 :: Add Git to PATH
 echo Adding Git to PATH...
-:: Get current PATH
-for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "CURRENT_PATH=%%b"
+:: Get current system and user PATH
+for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "SYSTEM_PATH=%%b"
+for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH') do set "USER_PATH=%%b"
+set "CURRENT_PATH=%SYSTEM_PATH%;%USER_PATH%"
+:: Remove any trailing semicolon
+if "!CURRENT_PATH:~-1!"==";" set "CURRENT_PATH=!CURRENT_PATH:~0,-1!"
 :: Check if Git path is already in PATH to avoid duplicates
 echo !CURRENT_PATH! | findstr /I /C:"%INSTALL_PATH%\cmd" >nul
 if !ERRORLEVEL! neq 0 (
-    set "NEW_PATH=%CURRENT_PATH%;%INSTALL_PATH%\cmd"
-    setx PATH "!NEW_PATH!"
+    set "NEW_PATH=!CURRENT_PATH!;%INSTALL_PATH%\cmd"
+    :: Check PATH length to avoid setx limitations
+    set "PATH_LENGTH=0"
+    for /L %%n in (0,1,8192) do if "!NEW_PATH:~%%n,1!" neq "" set /a PATH_LENGTH+=1
+    if !PATH_LENGTH! GTR 1024 (
+        echo WARNING: PATH length exceeds 1024 characters, which may cause issues with setx.
+        echo Please shorten the existing PATH manually before proceeding.
+        echo Press any key to continue . . .
+        pause >nul
+        exit /b 1
+    )
+    setx PATH "!NEW_PATH!" /M
     if !ERRORLEVEL! neq 0 (
-        echo ERROR: Failed to update PATH. Please check permissions and try running as administrator.
+        echo ERROR: Failed to update PATH. Please check permissions.
         echo Press any key to continue . . .
         pause >nul
         exit /b 1
