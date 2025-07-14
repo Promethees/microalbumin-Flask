@@ -6,7 +6,6 @@ import datetime
 import time
 import subprocess
 import argparse
-import process
 
 def is_port_open(host, port):
     """Check if the specified port is open."""
