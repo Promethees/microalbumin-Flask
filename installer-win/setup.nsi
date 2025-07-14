@@ -81,11 +81,12 @@ Section "Install" SEC01
   File "startwindow-0-clone-repo.bat"
   File "startwindow-2-pyenv.bat"
   File "startwindow-3-python.bat"
-  File "startwindow-4-venv-run.bat"
+  File "startwindow-4-venv.bat"
+  File "startwindow-5-run.bat"
   
   ; Include the precompiled app runner
   File "EasySensor Kit.exe"
-  
+
   ; Execute the setup batch scripts with admin privileges
   DetailPrint "Running startwindow-1-git.bat..."
   ExecWait '"cmd.exe" /c "$INSTDIR\startwindow-1-git.bat"' $0
@@ -103,6 +104,10 @@ Section "Install" SEC01
   DetailPrint "Running startwindow-3-python.bat..."
   ExecWait '"cmd.exe" /c "$INSTDIR\startwindow-3-python.bat"' $0
   DetailPrint "startwindow-3-python.bat completed with exit code: $0"
+
+  DetailPrint "Running startwindow-4-venv.bat..."
+  ExecWait '"cmd.exe" /c "$INSTDIR\startwindow-4-venv.bat"' $0
+  DetailPrint "startwindow-4-venv.bat completed with exit code: $0"
   
   ; Create desktop shortcut for the app runner
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${RUNNER_NAME}.exe"
@@ -112,17 +117,23 @@ Section "Install" SEC01
 SectionEnd
 
 Section "Uninstall"
+  ExecWait 'net stop "${RUNNER_NAME}"'
+  ExecWait '"$INSTDIR\nssm.exe" remove "${RUNNER_NAME}" confirm'
+  Delete "$SMPROGRAMS\${APP_NAME}\*.*"
+  RMDir "$SMPROGRAMS\${APP_NAME}"
+
   ; Delete installed files
   Delete "$INSTDIR\startwindow-1-git.bat"
   Delete "$INSTDIR\startwindow-0-clone-repo.bat"
   Delete "$INSTDIR\startwindow-2-pyenv.bat"
   Delete "$INSTDIR\startwindow-3-python.bat"
-  Delete "$INSTDIR\startwindow-4-venv-run.bat"
+  Delete "$INSTDIR\startwindow-4-venv.bat"
+  Delete "$INSTDIR\startwindow-5-run.bat"
   Delete "$INSTDIR\${RUNNER_NAME}.exe"
-  Delete "$INSTDIR\Uninstall.exe"
-  
+  Delete "$INSTDIR\code\*.*"
   ; Delete desktop shortcut
   Delete "$DESKTOP\${APP_NAME}.lnk"
+  Delete "$INSTDIR\Uninstall.exe"
   
   ; Delete installation directory
   RMDir /r "$INSTDIR"

@@ -50,16 +50,6 @@ echo Installing requirements...
 pip install --upgrade pip
 pip install -r "%~dp0code\requirements-win.txt"
 
-REM Set the library path and start the app
-echo Starting app...
-
-:: Ensure python executable is used from the virtual environment
-if not exist "%~dp0code\venv\Scripts\python.exe" (
-    echo ERROR: Python executable not found in the virtual environment.
-    echo Please run script "startwindow-2-pyenv-python.bat" to set up Python and pyenv.
-    echo If you have already run it, ensure the virtual environment is created correctly.
-    pause
-    exit /b 1
-)
-"%~dp0code\venv\Scripts\python.exe" "%~dp0code\main_code.py"
-pause
+echo Virtual environment setup complete.
+echo Press any key to continue...
+pause > nul
