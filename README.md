@@ -34,13 +34,14 @@ Installation:
 		<div align="center">
 			<img src="/images/DevManager.PNG" width="600">
 		</div>
-		
+
 	- Using Installer: 
 		+ Get the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
 		+ After the installation, you can use `EasySensor Kit` icon on the Desktop to start the app
-
+		+ For `Uninstallation`, navigate to the local fodler in which you save the Program Files, use `Uninstall.exe` to uninstall
+		
 	- Using batch scripts:
 		+ Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
 		+ Repeat with `startwindow-2-pyenv.bat` -> `startwindow-3-python.bat` -> `startwindow-4-venv-run.bat`. Run ***ONE BY ONE!***
