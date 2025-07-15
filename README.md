@@ -8,6 +8,8 @@ Download:
 Installation:
 * On Mac:
 	- Using installer:
+		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
+		+ After the download is done, reenable with `sudo spctl --master-enable`
 		+ Download the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
 		+ Open the `EasySensorKit.dmg`
 		+ From it, run `install-tools-clone-repo`, then `install-venv` to install dependencies and virtual environment. 
