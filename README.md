@@ -7,10 +7,20 @@ Download:
 
 Installation:
 * On Mac:
-	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
-	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
-	- Double click `setup-3-run.command` to run the application
-	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
+	- Using installer:
+		+ Download the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
+		+ Open the `EasySensorKit.dmg`
+		+ From it, run `install-tools-clone-repo`, then `install-venv` to install dependencies and virtual environment. 
+		+ Key in your device password to proceed when prompted 
+		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
+		+ Use `run` to start the Application when all of the above steps are finished
+		+ Use `uninstall` to uninstall the application. 
+
+	- Using batch scripts:
+		+ Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
+		+ Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
+		+ Double click `setup-3-run.command` to run the application
+		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
 * On Windows:
 	- Install `libusbK` driver for the PyBadge:
 		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
@@ -36,7 +46,7 @@ Installation:
 		</div>
 
 	- Using Installer: 
-		+ Get the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
+		+ Download the [![Latest release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
 		+ After the installation, you can use `EasySensor Kit` icon on the Desktop to start the app
