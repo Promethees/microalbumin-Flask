@@ -86,7 +86,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
             scales: {
                 x: {
                     type: 'linear',
-                    title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (nM/l)' },
+                    title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (mg/L)' },
                     min: xMin,
                     max: xMax,
                     ticks: {

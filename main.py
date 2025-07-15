@@ -319,9 +319,9 @@ def export_data(mode="kinetics"):
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             if check_row_exist(full_path, concentration, blankT, time_point, meas_mode):
                 if meas_mode == "kinetics":
-                    message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
+                    message = f"Error: This {concentration} mg/L concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
                 elif meas_mode == "point":
-                    message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" at this {time_point} already exist in {full_path}"
+                    message = f"Error: This {concentration} mg/L concentration value with this blank Type \"{blankT}\" at this {time_point} already exist in {full_path}"
                 status = "error"
             else: 
                 if meas_mode == "kinetics":
