@@ -143,12 +143,24 @@
                 if (driveLetterMatch) {
                     // For Windows paths, replace the drive letter in the path
                     fullPath = fullPath.replace(/^[a-zA-Z]:[\\\/]?/, driveLetterMatch[1] + delimiter);
-                } else if (currentPath.startsWith(delimiter)) {
-                    fullPath = delimiter + fullPath;
+                } 
+                // Verify the fullPath with the server
+                try {
+                    const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
+                    const result = await response.json();
+                    if (!result.exists) {
+                        alert(`Please only select Directories existing in the current path or immediate subdirectories of the displayed path only!`);
+                        console.warn(`Path "${fullPath}" does not exist on the server.`);
+                        return;
+                    }
+                } catch (fetchErr) {
+                    console.error('Failed to verify path with server:', fetchErr);
+                    alert('Failed to verify the selected path with the server. Please try again.');
+                    return;
                 }
 
                 // Update the input field with the constructed path
-                pathDisplay.value = fullPath.replace('//','/');
+                pathDisplay.value = fullPath;
 
                 // Store the current dirHandle for the next selection and client-side file operations
                 window[inputId + 'Handle'] = dirHandle;

@@ -98,6 +98,16 @@ def browse():
         return jsonify({'status': 'success', 'path': new_path, 'files': file_list})
     return jsonify({'status': 'error', 'message': 'Invalid directory'})
 
+@app.route('/browse_export', methods=['GET'])
+def browse_export():
+    # Get the path from the query parameter
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'exists': False, 'error': 'No path provided'}), 400
+    # Check if the path exists on the server
+    exists = os.path.exists(path)
+    return jsonify({'exists': exists})
+
 @app.route('/get_parents', methods=['GET'])
 def get_parents():
     current_dir = get_directory()
