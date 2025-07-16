@@ -1,6 +1,7 @@
 function initDefaultState() {
     $("#point-json-exp-section").addClass("hidden");
     $("#cal-json-exp-section").addClass("hidden");
+    $("#select-quantity-section").addClass("hidden");
     $("#derived-concentration-section").addClass("hidden");
     $("#blank-derived-concentration-section").addClass("hidden");
     $("#non-blank-derived-concentration-section").addClass("hidden");
@@ -183,6 +184,7 @@ $(document).ready(function() {
         }
 
         if (!AppState.currentJSON) {
+            $("#select-quantity-section").addClass("hidden");
             $("#derived-concentration-section").addClass("hidden");
             $("#blank-derived-concentration-section").addClass("hidden");
             $("#non-blank-derived-concentration-section").addClass("hidden");

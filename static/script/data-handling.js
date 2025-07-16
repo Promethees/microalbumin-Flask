@@ -63,6 +63,7 @@ function deselectFile(tableSelector="#file-table") {
         AppState.currentJSONcontent = null;
         $("#json-display").text("");
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+        $("#select-quantity-section").addClass("hidden");
         $("#derived-concentration-section").addClass("hidden");
         $("#blank-derived-concentration-section").addClass("hidden");
         $("#non-blank-derived-concentration-section").addClass("hidden");
@@ -146,7 +147,9 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                     derived_con_text = derivedConSettings.derived_con_text;
                     if (derived_section) {
                         derived_section.classList.remove("hidden");
+                        $("#select-quantity-section").removeClass("hidden");
                     } else { // derived_section is null -> hide all
+                        $("#select-quantity-section").addClass("hidden");
                         $("#derived-concentration-section").addClass("hidden");
                         $("#blank-derived-concentration-section").addClass("hidden");
                         $("#non-blank-derived-concentration-section").addClass("hidden");
@@ -283,6 +286,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         }
                     }
                 } else {
+                    $("#select-quantity-section").addClass("hidden");
                     $("#derived-concentration-section").addClass("hidden");
                     $("#blank-derived-concentration-section").addClass("hidden");
                     $("#non-blank-derived-concentration-section").addClass("hidden");
