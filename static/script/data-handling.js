@@ -302,7 +302,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
 } // Close fetchData function
 
 function toggleMode() {
-    if ($("#full-display").is(":checked")) {
+    if ($("#full-display").is(":checked") && AppState.currentMeasurementMode !== "calibrate") {
         $("#quantity-checkboxes").removeClass("hidden");
     } else {   
         $("#quantity-checkboxes").addClass("hidden");
