@@ -4,6 +4,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     $(button).closest("tr").addClass("selected");
 
     if (tableSelector === "#file-table") {
+        AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
         processDataDisplay(AppState.currentFile);
     } else if (tableSelector === "#json-table") {
@@ -308,6 +309,8 @@ function toggleMode() {
         $("#quantity-checkboxes").addClass("hidden");
     }
     if (AppState.currentFile) {
+        // Nullify previous file so that graphics can be redrawn
+        AppState.prevFile = null; 
         if (AppState.currentMeasurementMode !== "calibrate") {
             let range = $("#range-value").val();
             let unit = $("#time-unit").val();

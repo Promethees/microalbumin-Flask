@@ -19,6 +19,7 @@ const AppState = {
     scriptRunning: false,
     currentMeasurementMode: "kinetics",
     currentFile: null,
+    prevFile: null, 
     currentJSON: null,
     currentJSONcontent: null,
     refCalPoint: null,
@@ -176,7 +177,11 @@ $(document).ready(function() {
                 fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
                 $("#cal-time-unit").text(unit.slice(0, -1));
             } else {
-                fetchData(null, null, null, AppState.currentFile, null);
+                if (AppState.currentFile !== AppState.prevFile) {
+                    AppState.prevFile = AppState.currentFile;
+                    // If the file has changed, fetch data again
+                    fetchData(null, null, null, AppState.currentFile, null);
+                }
             }
             $("#data-display-section").removeClass("hidden");
         } else {
