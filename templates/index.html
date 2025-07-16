@@ -327,7 +327,14 @@
                     <label id="full-display-section">
                         <input type="checkbox" id="full-display" onchange="toggleMode()"> Full display: See all data and special lines</p>
                     </label>
-                    <label>
+                    <label id="quantity-checkboxes" class="hidden">
+                        <h3>Quantities to display on graphic</h3>
+                        {% for quantity in quantity_input.quantities %}
+                            {% if quantity != "Time To Sat" %}
+                                <input type="checkbox" class="quantity-checkbox" value="{{ quantity }}" id="{{ quantity.lower().replace(' ', '_') }}" checked>
+                                <span>{{ quantity }}</span>
+                            {% endif %}
+                        {% endfor %}
                     </label>
                 </div>
                 <div id="analysis-info"></div>

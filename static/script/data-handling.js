@@ -298,6 +298,11 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
 } // Close fetchData function
 
 function toggleMode() {
+    if ($("#full-display").is(":checked")) {
+        $("#quantity-checkboxes").removeClass("hidden");
+    } else {   
+        $("#quantity-checkboxes").addClass("hidden");
+    }
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
             let range = $("#range-value").val();

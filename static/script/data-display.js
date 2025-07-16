@@ -1,6 +1,9 @@
 // Generates the Chart.js chart and returns the chart object
 function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, range, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
     const canvas = document.getElementById(canvasId);
+    const vmax_chkbox = document.getElementById('vmax');
+    const slope_chkbox = document.getElementById('slope');
+    const sat_chkbox = document.getElementById('sat');
     // canvas.width = 100%;
     // canvas.height = 280px;
 
@@ -128,7 +131,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysis.startVMax && !isSinglePoint && {
+                        ...(isFullDisplay && vmax_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.startVMax && !isSinglePoint && {
                             VMaxLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
@@ -144,7 +147,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysis.linearXMin && !isSinglePoint && {
+                        ...(isFullDisplay && slope_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.linearXMin && !isSinglePoint && {
                             regressionLine: {
                                 type: 'line',
                                 borderColor: 'rgba(0, 0, 255, 0.5)',
@@ -160,7 +163,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && !isSinglePoint && {
+                        ...(isFullDisplay && sat_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && !isSinglePoint && {
                             saturationLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 255, 0.5)',
