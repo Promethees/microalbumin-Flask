@@ -65,7 +65,7 @@ This document provides instruction on deploying a web interface that helps visua
 ## Features
 * ***Init prompt*** Instruct you to select the correct started Directory for Directory Picker
 
-<div align="center>
+<div align="center">
 	<img src="/images/init-prompt.png" width="600">
 </div>
 
