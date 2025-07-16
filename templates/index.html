@@ -9,46 +9,148 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
+        // Predefine window[inputId + 'Handle'] for the input field
+        window['base-dirHandle'] = null;
+        window['save-dirHandle'] = null;
+
+        // Initialize by enforcing selection of the main.py directory
+        async function initDirectory() {
+            try {
+                const basePath = "{{ directory | safe }}";
+                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
+                const basePathSegments = basePath.split(delimiter).filter(segment => segment);
+                const baseDirName = basePathSegments[basePathSegments.length - 1];
+                const promptMessage = document.getElementById('prompt-message');
+                const errorMessage = document.getElementById('error-message');
+                const initButton = document.getElementById('init-button');
+
+                // Disable button during selection to prevent multiple clicks
+                initButton.disabled = true;
+
+                // Update prompt message
+                promptMessage.textContent = `Please select the directory containing main.py (expected: ${basePath})`;
+                errorMessage.style.display = 'none';
+
+                // Open the directory picker
+                const dirHandle = await window.showDirectoryPicker({ startIn: 'documents' });
+
+                // Check if the selected directory name matches the expected basePath
+                if (dirHandle.name === baseDirName) {
+                    // Set the initial path and store the handle
+                    window['base-dirHandle'] = dirHandle;
+                    window['save-dirHandle'] = dirHandle;
+                    console.log(`Initialized directory handle for "${basePath}"`);
+
+                    // Show main content and hide prompt
+                    document.getElementById('init-prompt').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+                } else {
+                    // Show error message and allow retry
+                    alert(`Selected directory "${dirHandle.name}" does not match expected "${baseDirName}".`);
+                    initButton.disabled = true; // Re-enable button for retry
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a moment before re-enabling
+                }
+            } catch (err) {
+                console.error('Initial directory selection canceled or failed:', err);
+                // Show error message and allow retry
+                errorMessage.textContent = `Selection failed or was canceled. Please select the directory "${baseDirName}".`;
+                errorMessage.style.display = 'block';
+                initButton.disabled = false; // Re-enable button for retry
+            }
+            finally {
+                // Ensure the button is re-enabled if user cancels the selection
+                const initButton = document.getElementById('init-button');
+                if (initButton) {
+                    initButton.disabled = false;
+                }
+            }
+        }
+
         async function pickDirectory(inputId) {
             try {
-                const dirHandle = await window.showDirectoryPicker();
-                // Get the server-provided directory, ensuring it's defined
-                let basePath = "{{ directory | default('') }}";
-                const delimiter = "{{ delimiter }}";
-                // Normalize basePath by removing trailing delimiter
-                basePath = basePath.replace(/[\\\/]+$/, '');
                 // Get the current path from the input field
                 const pathDisplay = document.getElementById(inputId);
-                let currentPath = pathDisplay.value.replace(/\\\\/g, '\\') || (basePath ? `${basePath}${delimiter}data` : 'data');
+                let currentPath = pathDisplay.value.replace(/\\\\/g, '\\') || '';
+                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
                 // Normalize currentPath by removing trailing delimiter
                 currentPath = currentPath.replace(/[\\\/]+$/, '');
-                let fullPath;
 
-                // Split current path into segments
+                // Get the server-provided base directory (directory of main.py)
+                let basePath = "{{ directory | safe }}";
+                // Normalize basePath by removing trailing delimiter
+                basePath = basePath.replace(/[\\\/]+$/, '');
+                // Set default path to basePath if currentPath is empty
+                if (!currentPath) {
+                    currentPath = basePath || 'data';
+                }
+
+                // Split current path into segments and "pop" the last segment
                 const pathSegments = currentPath ? currentPath.split(delimiter).filter(segment => segment) : [];
-                // Check if dirHandle.name matches any segment
-                const matchIndex = pathSegments.indexOf(dirHandle.name);
+                const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : null;
+                console.log(`previous stored dir handle: ${window[inputId + 'Handle']}`);
+                // Retrieve the previously stored dirHandle, if any
+                const storedDirHandle = window[inputId + 'Handle'] || null;
+                // Set previousDirHandle if its name matches the last segment of currentPath
+                const previousDirHandle = storedDirHandle && lastSegment && storedDirHandle.name === lastSegment ? storedDirHandle : null;
 
+                // Determine the startIn option for showDirectoryPicker
+                let startIn = previousDirHandle || 'documents';
+
+                // Open the directory picker, starting at the specified directory if possible
+                const dirHandle = await window.showDirectoryPicker({ startIn });
+
+                // Validate if the selected directory is a subdirectory of basePath
+                let shouldAppend = true;
+                let fullPath;
+                const selectedDirName = dirHandle.name;
+                const basePathSegments = basePath.split(delimiter).filter(segment => segment);
+                const baseDirName = basePathSegments[basePathSegments.length - 1];
+
+                // Check if the selected directory name is already in the path
+                const matchIndex = pathSegments.indexOf(selectedDirName);
                 if (matchIndex !== -1) {
-                    // Retract path to the matching segment
+                    // If the selected folder is already in the path, retract to it
                     fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
-                    // Preserve drive letter or root prefix
-                    const driveLetterMatch = currentPath.match(/^([a-zA-Z]:)[\\\/]/);
-                    if (driveLetterMatch) {
-                        // For Windows paths, replace the drive letter in the path
-                        fullPath = fullPath.replace(/^[a-zA-Z]:[\\\/]?/, driveLetterMatch[1] + delimiter);
-                    } else if (currentPath.startsWith(delimiter)) {
-                        fullPath = delimiter + fullPath;
-                    }
+                    shouldAppend = false;
+                    console.log(`Retracting path to existing segment: ${fullPath}`);
+                } else if (previousDirHandle && previousDirHandle.name === selectedDirName) {
+                    // If the same folder as previous is selected, keep the current path
+                    fullPath = currentPath;
+                    shouldAppend = false;
+                    console.log(`Same folder selected, keeping path: ${fullPath}`);
+                } else if (selectedDirName === baseDirName) {
+                    // If the basePath directory is selected, set path to basePath
+                    fullPath = basePath;
+                    shouldAppend = false;
+                    console.log(`Selected base directory, setting path to: ${fullPath}`);
                 } else {
-                    // No match: append dirHandle.name to the current path
-                    fullPath = currentPath ? `${currentPath}${delimiter}${dirHandle.name}` : dirHandle.name;
+                    // Check if the selection is likely a subdirectory (heuristic based on basePath)
+                    if (basePath && !currentPath.startsWith(basePath)) {
+                        const proceed = confirm(
+                            `The selected directory "${selectedDirName}" is not within the server directory "${basePath}". Proceed anyway?`
+                        );
+                        if (!proceed) {
+                            console.warn(`User canceled selection of "${selectedDirName}" as it is outside "${basePath}".`);
+                            return;
+                        }
+                    }
+                    // Append the new directory name
+                    fullPath = currentPath ? `${currentPath}${delimiter}${selectedDirName}` : selectedDirName;
+                }
+
+                // Preserve drive letter or root prefix
+                const driveLetterMatch = currentPath.match(/^([a-zA-Z]:)[\\\/]/);
+                if (driveLetterMatch) {
+                    // For Windows paths, replace the drive letter in the path
+                    fullPath = fullPath.replace(/^[a-zA-Z]:[\\\/]?/, driveLetterMatch[1] + delimiter);
+                } else if (currentPath.startsWith(delimiter)) {
+                    fullPath = delimiter + fullPath;
                 }
 
                 // Update the input field with the constructed path
-                pathDisplay.value = fullPath;
+                pathDisplay.value = fullPath.replace('//','/');
 
-                // Store the dirHandle for client-side file operations
+                // Store the current dirHandle for the next selection and client-side file operations
                 window[inputId + 'Handle'] = dirHandle;
 
                 // Warn if no base path is provided
@@ -63,214 +165,222 @@
 </head>
 <body>
     <div class="container">
-        <h1>{{ title }}</h1>
-        
-        <div class="section">
-            <h2>Directory</h2>
-            <input type="text" id="directory" value="{{ directory }}" onchange="updateDirectory(this.value, true)">
-            <button onclick="browseDirectory()">Browse Path</button>
-            <div id="dir-suggestions">
-                <h3>Go back</h3>
-                <div id="parent-dir"></div>
-                <h3>Go forward</h3>
-                <div id="child-dirs"></div>
-            </div>
-            <div id="error-message"></div>
+        <!-- Initial prompt shown on page load -->
+        <div id="init-prompt">
+            <p id="prompt-message">Please select the directory containing main.py (expected: {{ directory | safe }})</p>
+            <button onclick="initDirectory()" id="init-button">Select Directory</button>
+            <p id="error-message" class="error" style="display: none;"></p>
         </div>
-        <div class="section">
-            <h2>{{ mode_input.title }}</h2>
-            <select id="measurement-mode">
-                {% for mode in mode_input.modes %}
-                <option value="{{ mode }}">{{ mode }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="section script-controls" id="log-hid-data">
-            <h2>Log HID Data</h2>
-            <div>
-                <label for="base-dir">Base Directory (--base-dir): 
-                <input type="text" id="base-dir" value="{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}data" readonly style="width: 80%">
-                <button onclick="pickDirectory('base-dir')">Select Directory</button>
-                </label>
+        <div id="main-content" class="hidden">
+            <h1>{{ title }}</h1>
+            
+            <div class="section">
+                <h2>Directory</h2>
+                <input type="text" id="directory" value="{{ directory }}" onchange="updateDirectory(this.value, true)">
+                <button onclick="browseDirectory()">Browse Path</button>
+                <div id="dir-suggestions">
+                    <h3>Go back</h3>
+                    <div id="parent-dir"></div>
+                    <h3>Go forward</h3>
+                    <div id="child-dirs"></div>
+                </div>
+                <div id="error-message"></div>
             </div>
-            <div>
-                <label for="base-name">Base Name (--base-name): </label>
-                <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
-            </div>
-            <button id="run-script-btn" onclick="runScript()">Run Script</button>
-            <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
-            <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-            <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}data` , true)" disabled="">Browse Saving Location</button>
-            <div id="log-display"></div>
-        </div>
-        <div class="section" id="cal-json-exp-section"> 
-            <h3>Select type of Calibration you'd like to do</h3>
-            <select id="cal-mode-select">
-                <option value="kinetics">kinetics</option>
-                <option value="point">point</option>
-            </select>
-        </div>  
-        <div class="section" id="cal-json-sel-section">
-            <h2>Select Coefficients for standard line</h2>
-            <div id="file-table-container">
-                <table id="json-table">
-                    <tr><th>Calibrated JSON</th><th>Action</th></tr>
-                    {% if cal_json_list %}
-                        {% for file in cal_json_list %}
-                        <tr>
-                            <td>{{ file }}</td>
-                            <td><button onclick="selectFile('{{ file }}', this, '#json-table')">Select</button></td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr><td colspan="2">No Calibrated JSON is available.</td></tr>
-                    {% endif %}
-                </table> 
-            </div>
-            <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
-            <div id="json-display"></div>
-        </div>
-        <div class="section">
-            <h2>File Selection</h2>
-            <div id="file-table-container">
-                <table id="file-table">
-                    <tr><th>File Name</th><th>Action</th></tr>
-                    {% if file_list %}
-                        {% for file in file_list %}
-                        <tr>
-                            <td>{{ file }}</td>
-                            <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr><td colspan="2">No CSV files found in the directory.</td></tr>
-                    {% endif %}
-                </table>
-            </div>
-            <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
-        </div>
-        <div class="section" id="data-display-section">
-            <h2>Data Display</h2>
-            <!-- Display selected file name -->
-            <div id="selected-file-display">No file selected</div>
-            <div id="concentration-reader-section">
-                Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> ng/µL
-            </div>
-            <div class="section" id="point-json-exp-section">
-                Reference point is at <span type="number" id="cal-point"></span> 
-                <br/>
-                <span id="cal-time-unit" style="font-weight: bold;">second</span><span id="add-json-section"></span>
-            </div>
-            <div class="section" id="window-size-section">
-                Select window size for Vmax regression
-                <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
-                <div id="wd-size-error"></div>
-            </div>
-            <div class="section" id="select-quantity-section">
-                Select quantity to derive concentration from
-                <select id="regressed-quantity">
-                    {% for quantity in quantity_input.quantities %}
-                        {% set transformed = quantity.lower().replace(' ', '_') %}
-                        <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
+            <div class="section">
+                <h2>{{ mode_input.title }}</h2>
+                <select id="measurement-mode">
+                    {% for mode in mode_input.modes %}
+                    <option value="{{ mode }}">{{ mode }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div id="select-time-point">
-                Select time point to derive concentration from
-                <select id="regressed-time-point">
-                    <option value=""></option>
-                </select> <span style="font-weight: bold;"> minute</span>
-            </div>
-            <div id="derived-concentration-section">
-                Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> ng/µL
-            </div>
-            <div id="blank-derived-concentration-section">
-                <span style="font-weight: bold;"> Blanked </span>concentration derived from the csv is <span style="font-weight: bold;" id="blank-der-con-value"></span> ng/µL
-            </div>
-            <div id="non-blank-derived-concentration-section">
-                <span style="font-weight: bold;"> Non blanked</span> concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> ng/µL
-            </div>
-            <div class="section" id="range-display">
-                <h3>{{ range_input.title }}</h3>
-                <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
-                <select id="time-unit">
-                    {% for unit in range_input.units %}
-                    <option value="{{ unit }}">{{ unit }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div id="mode-toggle">
-                <label>
-                    <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
-                </label>
-                <label id="full-display-section">
-                    <input type="checkbox" id="full-display" onchange="toggleMode()"> Full display: See all data and special lines</p>
-                </label>
-                <label>
-                </label>
-            </div>
-            <div id="analysis-info"></div>
-            <div id="chart-container">
-                <canvas id="plot-canvas" style="min-width: 100%; min-height: 280px"></canvas>
-                <canvas id="blanked-canvas" style="display: none;"></canvas>
-                <canvas id="non-blanked-canvas" style="display: none;"></canvas>
-            </div>
-            <div id="select-exp-blank-type-meas">
-                Select Blank type to export:
-                <select id="exp-json-blank-type">
-                    <option value="MIXED">MIXED</option>
-                    <option value="BLANKED">BLANKED</option>
-                    <option value="NON-BLANKED">NON-BLANKED</option>
-                </select>
-            </div>
-            <div id="select-exp-blank-type-cal">
-                Select Blank type to regress:
-                <select id="exp-json-blank-type">
-                    <option value="MIXED">MIXED</option>
-                    <option value="BLANKED">BLANKED</option>
-                    <option value="NON-BLANKED">NON-BLANKED</option>
-                </select>
-            </div>
-            <div id="select-regress-algo"> 
-                Select Regress Algo to export:
-                <select id="exp-json-regress-algo">
-                    <option value="polynomial">polynomial</option>
-                    <option value="linear">linear</option>
-                    <option value="logarithmic">logarithmic</option>
-                    <option value="exponential">exponential</option>
-                </select>
-            </div>
-            <div id="export-analysis">
+            <div class="section script-controls" id="log-hid-data">
+                <h2>Log HID Data</h2>
                 <div>
-                    <h3>Export analysis</h3>
-                    <div class="section" id="set-exp-point-section">
-                        Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
-                        <br/>
-                        <span id="est-val-exp"></span>
-                    </div>
-                    <label for="save-dir">Saving Directory: 
-                    <input type="text" id="save-dir" value="{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}export_data" readonly style="width: 80%">
-                    <button onclick="pickDirectory('save-dir')">Select Directory</button>
+                    <label for="base-dir">Base Directory (--base-dir): 
+                    <input type="text" id="base-dir" value="{{ directory | default('') }}" style="width: 80%">
+                    <button onclick="pickDirectory('base-dir')">Select Directory</button>
                     </label>
                 </div>
                 <div>
-                    <label for="save-file">File Name: </label>
-                    <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
+                    <label for="base-name">Base Name (--base-name): </label>
+                    <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
                 </div>
-                <button id="export-btn" onclick="exportData()">Export Data</button>
-                <button id="go-to-exp-btn" onclick="updateDirectory(`{{ directory | default('') }}{{ delimiter | replace('\\\\', '\\') }}export_data` , true, true)">Browse Saving Location</button>
-                <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
+                <button id="run-script-btn" onclick="runScript()">Run Script</button>
+                <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
+                <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
+                <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true)" disabled="">Browse Saving Location</button>
+                <div id="log-display"></div>
+            </div>
+            <div class="section" id="cal-json-exp-section"> 
+                <h3>Select type of Calibration you'd like to do</h3>
+                <select id="cal-mode-select">
+                    <option value="kinetics">kinetics</option>
+                    <option value="point">point</option>
+                </select>
             </div>  
-            <div id="export-coef">
-                <h3>Export coefficients for standard line</h3>
-                <div>
-                    <label for="save-file">File Name: </label>
-                    <input type="text" id="save-json-file" placeholder="Enter file name to regressed coefficients to(e.g., calibration)" style="width: 10em">
-                    <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
-                    <br/>
-                    Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
+            <div class="section" id="cal-json-sel-section">
+                <h2>Select Coefficients for standard line</h2>
+                <div id="file-table-container">
+                    <table id="json-table">
+                        <tr><th>Calibrated JSON</th><th>Action</th></tr>
+                        {% if cal_json_list %}
+                            {% for file in cal_json_list %}
+                            <tr>
+                                <td>{{ file }}</td>
+                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">Select</button></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2">No Calibrated JSON is available.</td></tr>
+                        {% endif %}
+                    </table> 
                 </div>
-            </div>   
+                <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
+                <div id="json-display"></div>
+            </div>
+            <div class="section">
+                <h2>File Selection</h2>
+                <div id="file-table-container">
+                    <table id="file-table">
+                        <tr><th>File Name</th><th>Action</th></tr>
+                        {% if file_list %}
+                            {% for file in file_list %}
+                            <tr>
+                                <td>{{ file }}</td>
+                                <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2">No CSV files found in the directory.</td></tr>
+                        {% endif %}
+                    </table>
+                </div>
+                <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
+            </div>
+            <div class="section" id="data-display-section">
+                <h2>Data Display</h2>
+                <!-- Display selected file name -->
+                <div id="selected-file-display">No file selected</div>
+                <div id="concentration-reader-section">
+                    Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> ng/µL
+                </div>
+                <div class="section" id="point-json-exp-section">
+                    Reference point is at <span type="number" id="cal-point"></span> 
+                    <br/>
+                    <span id="cal-time-unit" style="font-weight: bold;">second</span><span id="add-json-section"></span>
+                </div>
+                <div class="section" id="window-size-section">
+                    Select window size for Vmax regression
+                    <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
+                    <div id="wd-size-error"></div>
+                </div>
+                <div class="section" id="select-quantity-section">
+                    Select quantity to derive concentration from
+                    <select id="regressed-quantity">
+                        {% for quantity in quantity_input.quantities %}
+                            {% set transformed = quantity.lower().replace(' ', '_') %}
+                            <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="select-time-point">
+                    Select time point to derive concentration from
+                    <select id="regressed-time-point">
+                        <option value=""></option>
+                    </select> <span style="font-weight: bold;"> minute</span>
+                </div>
+                <div id="derived-concentration-section">
+                    Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value"></span> ng/µL
+                </div>
+                <div id="blank-derived-concentration-section">
+                    <span style="font-weight: bold;"> Blanked </span>concentration derived from the csv is <span style="font-weight: bold;" id="blank-der-con-value"></span> ng/µL
+                </div>
+                <div id="non-blank-derived-concentration-section">
+                    <span style="font-weight: bold;"> Non blanked</span> concentration derived from the csv is <span style="font-weight: bold;" id="non-blank-der-con-value"></span> ng/µL
+                </div>
+                <div class="section" id="range-display">
+                    <h3>{{ range_input.title }}</h3>
+                    <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
+                    <select id="time-unit">
+                        {% for unit in range_input.units %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="mode-toggle">
+                    <label>
+                        <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
+                    </label>
+                    <label id="full-display-section">
+                        <input type="checkbox" id="full-display" onchange="toggleMode()"> Full display: See all data and special lines</p>
+                    </label>
+                    <label>
+                    </label>
+                </div>
+                <div id="analysis-info"></div>
+                <div id="chart-container">
+                    <canvas id="plot-canvas" style="min-width: 100%; min-height: 280px"></canvas>
+                    <canvas id="blanked-canvas" style="display: none;"></canvas>
+                    <canvas id="non-blanked-canvas" style="display: none;"></canvas>
+                </div>
+                <div id="select-exp-blank-type-meas">
+                    Select Blank type to export:
+                    <select id="exp-json-blank-type">
+                        <option value="MIXED">MIXED</option>
+                        <option value="BLANKED">BLANKED</option>
+                        <option value="NON-BLANKED">NON-BLANKED</option>
+                    </select>
+                </div>
+                <div id="select-exp-blank-type-cal">
+                    Select Blank type to regress:
+                    <select id="exp-json-blank-type">
+                        <option value="MIXED">MIXED</option>
+                        <option value="BLANKED">BLANKED</option>
+                        <option value="NON-BLANKED">NON-BLANKED</option>
+                    </select>
+                </div>
+                <div id="select-regress-algo"> 
+                    Select Regress Algo to export:
+                    <select id="exp-json-regress-algo">
+                        <option value="polynomial">polynomial</option>
+                        <option value="linear">linear</option>
+                        <option value="logarithmic">logarithmic</option>
+                        <option value="exponential">exponential</option>
+                    </select>
+                </div>
+                <div id="export-analysis">
+                    <div>
+                        <h3>Export analysis</h3>
+                        <div class="section" id="set-exp-point-section">
+                            Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
+                            <br/>
+                            <span id="est-val-exp"></span>
+                        </div>
+                        <label for="save-dir">Saving Directory: 
+                        <input type="text" id="save-dir" value="{{ directory | default('') }}" style="width: 80%">
+                        <button onclick="pickDirectory('save-dir')">Select Directory</button>
+                        </label>
+                    </div>
+                    <div>
+                        <label for="save-file">File Name: </label>
+                        <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
+                    </div>
+                    <button id="export-btn" onclick="exportData()">Export Data</button>
+                    <button id="go-to-exp-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true, true)">Browse Saving Location</button>
+                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
+                </div>  
+                <div id="export-coef">
+                    <h3>Export coefficients for standard line</h3>
+                    <div>
+                        <label for="save-file">File Name: </label>
+                        <input type="text" id="save-json-file" placeholder="Enter file name to regressed coefficients to(e.g., calibration)" style="width: 10em">
+                        <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
+                        <br/>
+                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
+                    </div>
+                </div>   
+            </div>
         </div>
     </div>
         <script >

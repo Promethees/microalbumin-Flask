@@ -1,3 +1,27 @@
+/* Style for the initial prompt */
+#init-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    text-align: center;
+}
+
+#init-prompt.hidden {
+    display: none;
+}
+
+#init-prompt button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#main-content.hidden {
+    display: none;
+}
+
 body { 
     font-family: Arial, sans-serif; 
     margin: 20px; 
