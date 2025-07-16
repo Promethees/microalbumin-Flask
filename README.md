@@ -63,8 +63,13 @@ Installation:
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
 
 ## Features
+* ***Init prompt*** Instruct you to select the correct started Directory for Directory Picker
 
-* **Directory** Browse host's directories to select CSV files.
+<div align="center>
+	<img src="/images/init-prompt.png" width="600">
+</div>
+
+* ***Directory*** Browse host's directories to select CSV files.
 
 <div align="center">
 	<img src="/images/browse.png" width="600">
@@ -75,6 +80,7 @@ This document provides instruction on deploying a web interface that helps visua
 * ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
 * ***Log HID*** Get data being sent from the ***PyBadge*** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
+	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
 <div align="center">
 	<img src="/images/logHID.png" width="600">
@@ -147,6 +153,7 @@ This document provides instruction on deploying a web interface that helps visua
 		<img src="/images/exportC.png" width="600">
 	</div>
 
+	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
 ## Directory Structure
 ```
