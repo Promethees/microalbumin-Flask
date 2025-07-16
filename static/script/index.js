@@ -298,6 +298,7 @@ function calModeBehaviour() {
     $("#range-display").addClass("hidden");
     $("#concentration-reader-section").addClass("hidden");
     $("#full-display-section").addClass("hidden");
+    $("#quantity-checkboxes").addClass("hidden");
     $("#select-regress-algo").removeClass("hidden");
     $("#analysis-info").removeClass("hidden");
     $("#export-coef").removeClass("hidden");
