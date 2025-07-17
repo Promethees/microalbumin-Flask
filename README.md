@@ -1,8 +1,10 @@
 # Easy Sensor Kit Web application
 
 ## Setup and Usage
-Download: 
+Get this source code: 
 * Click on `Code`, in the DropDown, select `Download Zip`. 
+* Or clone with `Github Desktop`, `ssh`, `https`
+<img src="/images/CloneRepo.png" width="500">
 * In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
 
 Installation:
