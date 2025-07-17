@@ -169,19 +169,19 @@ microalbumin-Flask/
 │   └── index.html	# Frontend template with Chart.js integration
 ├── static/
 │	├── script/  
-│	│	├── index.js	# To be executed first, entry point of the script, 
-│	│	│				defining AppState global variables 
+│	│	├── index.js		# To be executed first, entry point of the script, 
+│	│	│					defining AppState global variables 
 │	│	├── calculate.js	# Functions handling numbers, calculations
 │	│	├── data-display.js	# Functions responsible for data display: updatePlot, 
-│	│	│					generateChart
+│	│	│	generateChart
 │	│	├── data-handling.js	# Functions relating with selecting, exporting, 
-│	│	│						fetching data
+│	│	│			fetching data
 │	│	├── hid-logging.js	# Functions interacting with with Colorimeter's 
-│	│	│					HID interface
+│	│	│		HID interface
 │	│	└── navigation.js	# Functions responsible for browsing, updating 
-│	│						correct states
+│	│			correct states
 │	└── style.css 
-├── main.py			# Flask app entry point
+├── main.py		# Flask app entry point
 ├── log_hid_data.py	# Python script to log data read from the colorimeter from HID
 ├── README.md		# Project documentation
 ├── setup-1-install-pyenv.command	# Script to start the app in MacOS
