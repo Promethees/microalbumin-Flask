@@ -98,6 +98,16 @@ def browse():
         return jsonify({'status': 'success', 'path': new_path, 'files': file_list})
     return jsonify({'status': 'error', 'message': 'Invalid directory'})
 
+@app.route('/browse_export', methods=['GET'])
+def browse_export():
+    # Get the path from the query parameter
+    path = request.args.get('path')
+    if not path:
+        return jsonify({'exists': False, 'error': 'No path provided'}), 400
+    # Check if the path exists on the server
+    exists = os.path.exists(path)
+    return jsonify({'exists': exists})
+
 @app.route('/get_parents', methods=['GET'])
 def get_parents():
     current_dir = get_directory()
@@ -319,9 +329,9 @@ def export_data(mode="kinetics"):
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             if check_row_exist(full_path, concentration, blankT, time_point, meas_mode):
                 if meas_mode == "kinetics":
-                    message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
+                    message = f"Error: This {concentration} ng/µL concentration value with this blank Type \"{blankT}\" already exist in {full_path}"
                 elif meas_mode == "point":
-                    message = f"Error: This {concentration} nM/l concentration value with this blank Type \"{blankT}\" at this {time_point} already exist in {full_path}"
+                    message = f"Error: This {concentration} ng/µL concentration value with this blank Type \"{blankT}\" at this {time_point} already exist in {full_path}"
                 status = "error"
             else: 
                 if meas_mode == "kinetics":

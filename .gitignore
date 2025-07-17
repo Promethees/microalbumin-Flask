@@ -3,3 +3,5 @@ venv
 /data
 /export_data
 *.exe
+/installer-mac/**/
+.python-version

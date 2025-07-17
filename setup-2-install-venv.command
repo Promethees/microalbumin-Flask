@@ -6,18 +6,19 @@ set -e
 # Change to the script's directory
 cd "$(dirname "$0")"
 
+# Initialize pyenv
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+
 # Set Python 3.8.10 as the local version for this directory
 # Check Python version
 pyenv global 3.8.10 
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
 if [ "$PY_VER" != "3.8.10" ]; then
     echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
-    pyenv global 3.8.10 | echo "Setting Python 3.8.10 via pyenv..."
+    pyenv local 3.8.10 | echo "Setting Python 3.8.10 via pyenv..."
+    pyenv shell 3.8.10
 fi
-
-# Initialize pyenv
-eval "$(pyenv init --path)"
-eval "$(pyenv init -)"
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then

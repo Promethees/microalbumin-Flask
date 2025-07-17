@@ -1,16 +1,30 @@
 # Easy Sensor Kit Web application
 
 ## Setup and Usage
-Download: 
+### Get this source code: 
 * Click on `Code`, in the DropDown, select `Download Zip`. 
+* Or clone with `Github Desktop`, `ssh`, `https`
+<img src="/images/CloneRepo.png" width="300">
 * In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
 
-Installation:
+### Installation:
 * On Mac:
-	- Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
-	- Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
-	- Double click `setup-3-run.command` to run the application
-	- For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
+	- Using installer:
+		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
+		+ After the download is done, reenable with `sudo spctl --master-enable`
+		+ Download the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
+		+ Open the `EasySensorKit.dmg`
+		+ From it, run `install-tools-clone-repo`, then `install-venv` to install dependencies and virtual environment. 
+		+ Key in your device password to proceed when prompted 
+		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
+		+ Use `run` to start the Application when all of the above steps are finished
+		+ Use `uninstall` to uninstall the application. 
+
+	- Using batch scripts:
+		+ Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
+		+ Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
+		+ Double click `setup-3-run.command` to run the application
+		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
 * On Windows:
 	- Install `libusbK` driver for the PyBadge:
 		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
@@ -36,7 +50,7 @@ Installation:
 		</div>
 
 	- Using Installer: 
-		+ Get the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
+		+ Download the [![Latest release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
 		+ After the installation, you can use `EasySensor Kit` icon on the Desktop to start the app
@@ -51,8 +65,13 @@ Installation:
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
 
 ## Features
+* ***Init prompt*** Instruct you to select the correct started Directory for Directory Picker
 
-* **Directory** Browse host's directories to select CSV files.
+<div align="center">
+	<img src="/images/init-prompt.png" width="600">
+</div>
+
+* ***Directory*** Browse host's directories to select CSV files.
 
 <div align="center">
 	<img src="/images/browse.png" width="600">
@@ -63,6 +82,7 @@ This document provides instruction on deploying a web interface that helps visua
 * ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
 * ***Log HID*** Get data being sent from the ***PyBadge*** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
+	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
 <div align="center">
 	<img src="/images/logHID.png" width="600">
@@ -135,39 +155,51 @@ This document provides instruction on deploying a web interface that helps visua
 		<img src="/images/exportC.png" width="600">
 	</div>
 
+	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
 ## Directory Structure
 ```
 microalbumin-Flask/
 ├── src/
-│   ├── file_path.py    		# Manages directory navigation
-│   ├── file.py         		# Handles file listing
-│   ├── measure.py      		# Processes CSV data for plotting
-│   ├── mode.py      			# Includes measurement modes used in the project
-│   ├── quantity.py     		# Includes quantites for standard line regression
-│   └── range.py        		# Defines range input parameters
+│   ├── browser_mgt.py		# Manages browser behavior
+│   ├── export_cal_json.py	# Handle JSON for calibration
+│   ├── export_data.py		# Handle export data format
+│   ├── file_path.py		# Manages directory navigation
+│   ├── file.py			# Handles file listing
+│   ├── get_next_filename.py	# Process file name to generate the next
+│   ├── measure.py		# Processes CSV data for plotting
+│   ├── mode.py			# Includes measurement modes used in the project
+│   ├── quantity.py		# Includes quantities for standard line regression
+│   ├── range.py		# Defines range input parameters
+│   └── script_monitor.py	# turns off Run Script if HID device is off
 ├── templates/
-│   └── index.html      		# Frontend template with Chart.js integration
+│   └── index.html		# Frontend template with Chart.js integration
 ├── static/
-│   ├── script/  
-│   │	├── index.js 			# To be executed first, entry point of the script, defining AppState global variables 
-│   │	├── calculate.js 		# Functions handling numbers, calculations
-│   │	├── data-display.js 	# Functions responsible for data display: updatePlot, generateChart
-│   │	├── data-handling.js 	# Functions relating with selecting, exporting, fetching data
-│   │	├── hid-logging.js 		# Functions interacting with with Colorimeter's HID interface
-│   │	└── navigation.js 		# Functions responsible for browsing, updating correct states
+│	├── script/  
+│	│	├── index.js		# To be executed first, entry point of the script, 
+│	│	│			defining AppState global variables 
+│	│	├── calculate.js	# Functions handling numbers, calculations
+│	│	├── data-display.js	# Functions responsible for data display: updatePlot, 
+│	│	│			generateChart
+│	│	├── data-handling.js	# Functions relating with selecting, exporting, 
+│	│	│			fetching data
+│	│	├── hid-logging.js	# Functions interacting with with Colorimeter's 
+│	│	│			HID interface
+│	│	└── navigation.js	# Functions responsible for browsing, updating 
+│	│				correct states
 │	└── style.css 
-├── main.py             		# Flask app entry point
-├── log_hid_data.py     		# Python script to log data read from the colorimeter from HID
-├── README.md           		# Project documentation
-├── setup-1-install-pyenv.command   # Script to start the app in MacOS
-├── setup-2-install-venv.command    # Script to start the app in MacOS
-├── setup-3-run.command   			# Script to start the app in MacOS
-├── startwindow-1-git.bat           # Script to start the app in Windows
-├── startwindow-2-pyenv.bat  		# Script to start the app in Windows
-├── startwindow-3-python.bat      	# Script to start the app in Windows
-├── startwindow-4-venv-run.bat      # Script to start the app in Windows
-└── requirements.txt    		# Depedencies needed to download
+├── main.py		# Flask app entry point
+├── log_hid_data.py	# Python script to log data read from the colorimeter from HID
+├── README.md		# Project documentation
+├── setup-1-install-pyenv.command	# Script to start the app on MacOS
+├── setup-2-install-venv.command	# Script to start the app on MacOS
+├── setup-3-run.command		# Script to start the app on MacOS
+├── startwindow-1-git.bat	# Script to start the app on Windows
+├── startwindow-2-pyenv.bat	# Script to start the app on Windows
+├── startwindow-3-python.bat	# Script to start the app on Windows
+├── startwindow-4-venv-run.bat	# Script to start the app on Windows
+├── requirements-win.txt	# Dependencies needed to download on Windows
+└── requirements.txt		# Dependencies needed to download
 ```
 
 ## Notes
