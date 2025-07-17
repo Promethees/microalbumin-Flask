@@ -159,19 +159,19 @@ This document provides instruction on deploying a web interface that helps visua
 ```
 microalbumin-Flask/
 ├── src/
-│   ├── browser_mgt.py	# Manages browser behavior
+│   ├── browser_mgt.py		# Manages browser behavior
 │   ├── export_cal_json.py	# Handle JSON for calibration
-│   ├── export_data.py	# Handle export data format
-│   ├── file_path.py	# Manages directory navigation
-│   ├── file.py		# Handles file listing
+│   ├── export_data.py		# Handle export data format
+│   ├── file_path.py		# Manages directory navigation
+│   ├── file.py			# Handles file listing
 │   ├── get_next_filename.py	# Process file name to generate the next
-│   ├── measure.py	# Processes CSV data for plotting
-│   ├── mode.py		# Includes measurement modes used in the project
-│   ├── quantity.py	# Includes quantities for standard line regression
-│   ├── range.py	# Defines range input parameters
+│   ├── measure.py		# Processes CSV data for plotting
+│   ├── mode.py			# Includes measurement modes used in the project
+│   ├── quantity.py		# Includes quantities for standard line regression
+│   ├── range.py		# Defines range input parameters
 │   └── script_monitor.py	# turns off Run Script if HID device is off
 ├── templates/
-│   └── index.html	# Frontend template with Chart.js integration
+│   └── index.html		# Frontend template with Chart.js integration
 ├── static/
 │	├── script/  
 │	│	├── index.js		# To be executed first, entry point of the script, 
