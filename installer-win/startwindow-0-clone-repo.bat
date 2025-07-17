@@ -18,6 +18,9 @@ if "%~2"=="" (
     exit /b 1
 )
 
+:: Set Version tag
+set "VERSION_TAG=v0.0.1beta"
+
 :: Set installation directory and token
 set "INSTALL_DIR=%~1"
 set "GITHUB_TOKEN=%~2"
@@ -49,18 +52,36 @@ if not exist "!INSTALL_DIR!" (
 :: Clone the repository and capture output
 echo Cloning repository to "!INSTALL_DIR!"...
 git clone "!REPO_URL!" "!INSTALL_DIR!" 2>&1 | findstr /V "Cloning into"
-@REM if %ERRORLEVEL% neq 0 (
-@REM     echo ERROR: Failed to clone repository. Git output:
-@REM     git clone "!REPO_URL!" "!INSTALL_DIR!" 2>&1
-@REM     pause >nul
-@REM     exit /b 1
-@REM )
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Failed to clone repository.
+    pause >nul
+    exit /b 1
+)
 
 :: Change to the installation directory
 cd /d "!INSTALL_DIR!"
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to change to directory "!INSTALL_DIR!".
     echo Please check the directory path and try again.
+    pause >nul
+    exit /b 1
+)
+
+:: Checkout specific tag
+echo Checking out tag "!VERSION_TAG!"...
+git checkout tags/"!VERSION_TAG!"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Failed to checkout tag "!VERSION_TAG!".
+    echo Please check if the tag exists.
+    pause >nul
+    exit /b 1
+)
+
+:: Remove Git history
+echo Removing Git history...
+rd /s /q ".git"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Failed to remove Git history.
     pause >nul
     exit /b 1
 )
@@ -83,7 +104,7 @@ if exist "!INSTALL_DIR!\mac" (
 :: del /s /q "!INSTALL_DIR!\*.txt" >nul 2>&1
 :: rmdir /s /q "!INSTALL_DIR!\test" >nul 2>&1
 
-echo Repository cloned successfully to "!INSTALL_DIR!".
+echo Repository cloned successfully to "!INSTALL_DIR!" with tag "!VERSION_TAG!".
 echo You can now proceed with the next steps in the setup process.
 echo Press any key to continue...
 pause >nul
