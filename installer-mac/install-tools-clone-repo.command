@@ -17,6 +17,9 @@ if [ -z "$CURRENT_USER" ]; then
     exit 1
 fi
 
+# Define version tag
+VERSION_TAG="v0.0.1beta"
+
 # Set Homebrew installation directory
 HOMEBREW_PREFIX="/Users/$CURRENT_USER/homebrew"
 
@@ -95,14 +98,33 @@ if [ -d "$INSTALL_DIR" ]; then
     echo "Directory $INSTALL_DIR already exists. Removing it..."
     rm -rf "$INSTALL_DIR"
 fi
-git clone "https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git" "$INSTALL_DIR"
+su - "$CURRENT_USER" -c "git clone \"https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git\" \"$INSTALL_DIR\""
 if [ $? -ne 0 ]; then
     echo "❌ Error: Failed to clone repository."
     osascript -e 'display dialog "Failed to clone repository. Check your GitHub token and network connection." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
     exit 1
 fi
 
-echo "Repository cloned successfully to $INSTALL_DIR."
+# Checkout specific tag
+echo "Checking out tag $VERSION_TAG..."
+cd "$INSTALL_DIR"
+su - "$CURRENT_USER" -c "git checkout tags/$VERSION_TAG"
+if [ $? -ne 0 ]; then
+    echo "❌ Error: Failed to checkout tag $VERSION_TAG."
+    osascript -e "display dialog \"Failed to checkout tag $VERSION_TAG. Check if the tag exists.\" buttons {\"OK\"} default button \"OK\" with title \"EasySensorKit Installer\""
+    exit 1
+fi
+
+# Remove Git history
+echo "Removing Git history..."
+rm -rf "$INSTALL_DIR/.git"
+if [ $? -ne 0 ]; then
+    echo "❌ Error: Failed to remove Git history."
+    osascript -e 'display dialog "Failed to remove Git history." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    exit 1
+fi
+
+echo "Repository cloned successfully to $INSTALL_DIR with tag $VERSION_TAG."
 echo "Preinstall script completed at $(date)"
-osascript -e 'display dialog "Installation step 1 complete. Please run install-venv.command to continue." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+osascript -e "display dialog \"Installation step 1 complete. Please run install-venv.command to continue.\" buttons {\"OK\"} default button \"OK\" with title \"EasySensorKit Installer\""
 exit 0
