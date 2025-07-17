@@ -40,7 +40,7 @@ class HIDDataCollector:
         self.running = True
         self.buffer = ""
         self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
-        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,2},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)\n$"
+        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)\n$"
         self.session_started = False
         self.device = None
         self.endpoint = None
@@ -159,21 +159,22 @@ class HIDDataCollector:
             # Claim interface
             usb.util.claim_interface(self.device, self.interface)
             self.log("Reading HID reports. Press Ctrl+C to stop.")
-            last_report = None
+            # last_report = None
 
             while self.running:
                 try:
                     # Read data from input endpoint
                     data = self.device.read(self.endpoint.bEndpointAddress, REPORT_LENGTH, timeout=5000)
                     # self.log(f"Raw data received: {data}")
-                    if data and (data != last_report or not self.decode_report(data)):
+                    # if data and (data != last_report or not self.decode_report(data)):
+                    if data:
                         # self.log(f"Received: {list(data)}")
                         keys = self.decode_report(data)
                         if keys:
                             # self.log(f"Decoded keys: {keys}")
                             for key in keys:
                                 self.process_key(key)
-                        last_report = data
+                        # last_report = data
                     time.sleep(0.001)  # Prevent CPU overuse
                 except usb.core.USBError as e:
                     if e.errno == 110:  # Timeout
