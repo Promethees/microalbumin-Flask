@@ -159,34 +159,35 @@ This document provides instruction on deploying a web interface that helps visua
 ```
 microalbumin-Flask/
 ├── src/
-│   ├── file_path.py    		# Manages directory navigation
-│   ├── file.py         		# Handles file listing
-│   ├── measure.py      		# Processes CSV data for plotting
-│   ├── mode.py      			# Includes measurement modes used in the project
-│   ├── quantity.py     		# Includes quantites for standard line regression
-│   └── range.py        		# Defines range input parameters
+│   ├── file_path.py	# Manages directory navigation
+│   ├── file.py	# Handles file listing
+│   ├── measure.py	# Processes CSV data for plotting
+│   ├── mode.py	# Includes measurement modes used in the project
+│   ├── quantity.py	# Includes quantites for standard line regression
+│   └── range.py	# Defines range input parameters
 ├── templates/
-│   └── index.html      		# Frontend template with Chart.js integration
+│   └── index.html	# Frontend template with Chart.js integration
 ├── static/
-│   ├── script/  
-│   │	├── index.js 			# To be executed first, entry point of the script, defining AppState global variables 
-│   │	├── calculate.js 		# Functions handling numbers, calculations
-│   │	├── data-display.js 	# Functions responsible for data display: updatePlot, generateChart
-│   │	├── data-handling.js 	# Functions relating with selecting, exporting, fetching data
-│   │	├── hid-logging.js 		# Functions interacting with with Colorimeter's HID interface
-│   │	└── navigation.js 		# Functions responsible for browsing, updating correct states
+│	├── script/  
+│	│	├── index.js	# To be executed first, entry point of the script, defining AppState 
+│	│	│				global variables 
+│	│	├── calculate.js	# Functions handling numbers, calculations
+│	│	├── data-display.js	# Functions responsible for data display: updatePlot, generateChart
+│	│	├── data-handling.js	# Functions relating with selecting, exporting, fetching data
+│	│	├── hid-logging.js	# Functions interacting with with Colorimeter's HID interface
+│	│	└── navigation.js 		# Functions responsible for browsing, updating correct states
 │	└── style.css 
-├── main.py             		# Flask app entry point
-├── log_hid_data.py     		# Python script to log data read from the colorimeter from HID
-├── README.md           		# Project documentation
-├── setup-1-install-pyenv.command   # Script to start the app in MacOS
-├── setup-2-install-venv.command    # Script to start the app in MacOS
-├── setup-3-run.command   			# Script to start the app in MacOS
-├── startwindow-1-git.bat           # Script to start the app in Windows
-├── startwindow-2-pyenv.bat  		# Script to start the app in Windows
-├── startwindow-3-python.bat      	# Script to start the app in Windows
-├── startwindow-4-venv-run.bat      # Script to start the app in Windows
-└── requirements.txt    		# Depedencies needed to download
+├── main.py	# Flask app entry point
+├── log_hid_data.py	# Python script to log data read from the colorimeter from HID
+├── README.md	# Project documentation
+├── setup-1-install-pyenv.command	# Script to start the app in MacOS
+├── setup-2-install-venv.command	# Script to start the app in MacOS
+├── setup-3-run.command	# Script to start the app in MacOS
+├── startwindow-1-git.bat	# Script to start the app in Windows
+├── startwindow-2-pyenv.bat	# Script to start the app in Windows
+├── startwindow-3-python.bat	# Script to start the app in Windows
+├── startwindow-4-venv-run.bat	# Script to start the app in Windows
+└── requirements.txt	# Depedencies needed to download
 ```
 
 ## Notes
