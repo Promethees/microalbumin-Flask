@@ -311,6 +311,7 @@ function calModeBehaviour() {
     $("#select-exp-blank-type-meas").addClass("hidden");
     $("#select-exp-blank-type-cal").removeClass("hidden");
     $("#window-size-section").addClass("hidden");
+    $("#select-quantity-section").removeClass("hidden");
     if ($("#cal-mode-select").val() === "kinetics") {
             calKineticsBehaviour();
         } else {
