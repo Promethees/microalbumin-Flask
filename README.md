@@ -1,13 +1,13 @@
 # Easy Sensor Kit Web application
 
 ## Setup and Usage
-Get this source code: 
+### Get this source code: 
 * Click on `Code`, in the DropDown, select `Download Zip`. 
 * Or clone with `Github Desktop`, `ssh`, `https`
 <img src="/images/CloneRepo.png" width="300">
 * In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
 
-Installation:
+### Installation:
 * On Mac:
 	- Using installer:
 		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
