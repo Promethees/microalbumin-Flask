@@ -53,16 +53,20 @@ function resetUIAfterError() {
     $("#base-dir").prop('disabled', false);
     $("#base-name").prop('disabled', false);
     $("#run-script-btn").prop('disabled', false);
+    $("#run-script-btn").addClass('blinking');
     $("#terminate-script-btn").prop('disabled', true);
     $("#go-to-btn").prop('disabled', true);
+    $("#go-to-btn").removeClass('blinking');
 }
 
 function resetUIAfterCompletion() {
     $("#base-dir").prop('disabled', false);
     $("#base-name").prop('disabled', false);
     $("#run-script-btn").prop('disabled', false);
+    $("#run-script-btn").addClass('blinking');
     $("#terminate-script-btn").prop('disabled', true);
     $("#go-to-btn").prop('disabled', false);
+    $("#go-to-btn").addClass('blinking');
 }
 
 // Modified runScript function
@@ -77,6 +81,7 @@ function runScript() {
     $("#base-dir").prop('disabled', true);
     $("#base-name").prop('disabled', true);
     $("#run-script-btn").prop('disabled', true);
+    $("#run-script-btn").removeClass('blinking');
     
     $.ajax({
         url: '/run_script',
@@ -88,6 +93,7 @@ function runScript() {
                 AppState.scriptRunning = true;
                 $("#terminate-script-btn").prop('disabled', false);
                 $("#go-to-btn").prop('disabled', false);
+                $("#go-to-btn").addClass('blinking');
                 $("#log-display").text("Script started...\n");
                 bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
                 
@@ -138,6 +144,7 @@ function terminateScript() {
             if (response.status === 'success') {
                 AppState.scriptRunning = false;
                 $("#run-script-btn").prop('disabled', false);
+                $("#run-script-btn").addClass('blinking');
                 $("#terminate-script-btn").prop('disabled', true);
                 $("#base-dir").prop('disabled', false);
                 $("#base-name").prop('disabled', false);
@@ -147,10 +154,12 @@ function terminateScript() {
                 if (response.message.includes('No process running')) {
                     AppState.scriptRunning = false;
                     $("#run-script-btn").prop('disabled', false);
+                    $("#run-script-btn").addClass('blinking');
                     $("#terminate-script-btn").prop('disabled', true);
                     $("#base-dir").prop('disabled', false);
                     $("#base-name").prop('disabled', false);
                     $("#go-to-btn").prop('disabled', true);
+                    $("#go-to-btn").addClass('blinking');
                 }
             }
         },
@@ -159,7 +168,9 @@ function terminateScript() {
             $("#log-display").append(`Error: Failed to terminate script, error: ${errorThrown}\n`);
             AppState.scriptRunning = false;
             $("#run-script-btn").prop('disabled', false);
+            $("#run-script-btn").addClass('blinking');
             $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);
+            $("#go-to-btn").removeClass('blinking');
             $("#base-dir").prop('disabled', false);
             $("#base-name").prop('disabled', false);
         }

@@ -234,7 +234,7 @@
                     <label for="base-name">Base Name (--base-name): </label>
                     <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
                 </div>
-                <button id="run-script-btn" onclick="runScript()">Run Script</button>
+                <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
                 <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
                 <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true)" disabled="">Browse Saving Location</button>
