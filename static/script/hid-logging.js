@@ -159,7 +159,7 @@ function terminateScript() {
                     $("#base-dir").prop('disabled', false);
                     $("#base-name").prop('disabled', false);
                     $("#go-to-btn").prop('disabled', true);
-                    $("#go-to-btn").addClass('blinking');
+                    $("#go-to-btn").removeClass('blinking');
                 }
             }
         },
