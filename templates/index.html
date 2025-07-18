@@ -304,7 +304,7 @@
                 </div>
                 <div class="section" id="select-quantity-section">
                     Select quantity to derive concentration from
-                    <select id="regressed-quantity">
+                    <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
                             {% set transformed = quantity.lower().replace(' ', '_') %}
                             <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>

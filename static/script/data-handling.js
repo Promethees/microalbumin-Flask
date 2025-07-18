@@ -135,164 +135,164 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
         file: $("#directory").val() + delimiter + filename
     }, function(response) {
         if (response.data && response.data.length > 0) {
-            if (window_size > response.data.length / 2) {
-                $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-                $("#analysis-info").html(`<span style="color: red;">Window Size is greater than half of data size. The file has only ${response.data.length} data points</span>`);
-            } else {
-                let derivedConSettings = null;
-                let derived_section = null;
-                let derived_con_text = null;
-                if (jsonFile) {
-                    derivedConSettings = settingDerivedCon(jsonFile);
-                    derived_section = derivedConSettings.derived_section;
-                    derived_con_text = derivedConSettings.derived_con_text;
-                    if (derived_section) {
-                        derived_section.classList.remove("hidden");
-                        $("#select-quantity-section").removeClass("hidden");
-                    } else { // derived_section is null -> hide all
-                        $("#select-quantity-section").addClass("hidden");
-                        $("#derived-concentration-section").addClass("hidden");
-                        $("#blank-derived-concentration-section").addClass("hidden");
-                        $("#non-blank-derived-concentration-section").addClass("hidden");
-                    }
-                }
-
-                const isSplitMode = $("#split-mode").is(":checked");
-                const isFullDisplay = $("#full-display").is(":checked");
-                const displayRangeInput = document.getElementById('range-value');
-                const fullDisplayCheckbox = document.getElementById('full-display');
-
-                // Move event listener outside the AJAX callback or nest it properly
-                fullDisplayCheckbox.addEventListener('change', function() {
-                    const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
-                    if (this.checked) {
-                        displayRangeInput.disabled = true;
-                        displayRangeInput.placeholder = "Disabled by Full Display";
-                        displayRangeInput.value = "";
-                    } else {
-                        displayRangeInput.disabled = false;
-                        displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
-                    }
-                });
-
-                if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                    AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, AppState.refCalPoint, jsonFile["for_blank_type"]);
-                } else {
-                    if (AppState.currentMeasurementMode === "calibrate") {
-                        const cal_type = $("#cal-mode-select").val();
-                        // const regress_algo = $("#exp-json-time-point").val();
-                        if (cal_type === "kinetics") {
-                            const quantity_obj = document.getElementById('regressed-quantity');
-                            AppState.exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
-                        } else if (cal_type === "point") {
-                            const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
-                            console.log("Give me uniqueTimePoints ", uniqueTimePoints);
-                            AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
-                            const timePoint = $("#regressed-time-point").val();
-                            const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));
-                            AppState.exp_json_content = updatePlot(processingData, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
-                        }
-                    } else {
-                        AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
-                    }
-                }
-
-                if (AppState.currentMeasurementMode !== "calibrate") {                            
-                    const conValueInput = document.getElementById('con-value-read');
-                    const conValueFromFile = response.data.map(row => row['Concentration'])[0];
-
-                    if (conValueFromFile !== "NONE") {
-                        conValueInput.value = conValueFromFile;
-                        conValueInput.disabled = true;
-                    } else {
-                        conValueInput.disabled = false;
-                        conValueInput.value = "";
-                    }
-
-                    if (AppState.currentMeasurementMode === "kinetics") {
-                        const conQuantityInput = document.getElementById('regressed-quantity').value;
-                        if (jsonFile) {
-                            const coef = jsonFile[conQuantityInput]["fit_coef"];
-                            let value = null;
-                            switch(conQuantityInput) {
-                                case "vmax":
-                                    if (jsonFile["for_blank_type"] === "MIXED") {
-                                        value = AppState.globalAnalysis.vmax * 60;
-                                    } else if (jsonFile["for_blank_type"] === "BLANKED") {
-                                        value = AppState.globalAnalysis.vmax_blanked * 60;
-                                    } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
-                                        value = AppState.globalAnalysis.vmax_non_blanked * 60;
-                                    }
-                                    break;
-                                case "slope":
-                                    if (jsonFile["for_blank_type"] === "MIXED") {
-                                        value = AppState.globalAnalysis.slope * 60;
-                                    } else if (jsonFile["for_blank_type"] === "BLANKED") {
-                                        value = AppState.globalAnalysis.slope_blanked * 60;
-                                    } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
-                                        value = AppState.globalAnalysis.slope_non_blanked * 60;
-                                    }
-                                    break;
-                                case "sat":
-                                    if (jsonFile["for_blank_type"] === "MIXED") {
-                                        value = AppState.globalAnalysis.sat;
-                                    } else if (jsonFile["for_blank_type"] === "BLANKED") {
-                                        value = AppState.globalAnalysis.sat_blanked;
-                                    } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
-                                        value = AppState.globalAnalysis.sat_non_blanked;
-                                    }
-                                    break;
-                                case "time_to_sat":
-                                    if (jsonFile["for_blank_type"] === "MIXED") {
-                                        value = AppState.globalAnalysis.time_to_sat / 60;
-                                    } else if (jsonFile["for_blank_type"] === "BLANKED") {
-                                        value = AppState.globalAnalysis.time_to_sat_blanked / 60;
-                                    } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
-                                        value = AppState.globalAnalysis.time_to_sat_non_blanked / 60;
-                                    }
-                                    break;
-                            }
-                            calculated_con = computeFit(value, jsonFile["fit_type"], coef);
-                            derived_con_text.innerHTML = `${calculated_con}`;
-                        }
-                    } else if (AppState.currentMeasurementMode === "point") {
-                        if (jsonFile) {
-                            const timeUnitSet = $("#time-unit").val();
-                            const calPoint = $("#cal-point");
-                            $("#point-json-exp-section").removeClass("hidden");
-
-                            const jsonTimePoint = jsonFile["time"];
-                            const jsonTimeUnit = jsonFile["time-unit"];
-
-                            const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit);
-                            const targetMultiplier = getTimeUnitMultiplier(timeUnitSet);
-                            const conversionFactor = baseMultiplier / targetMultiplier;
-                            AppState.refCalPoint = jsonTimePoint * conversionFactor;
-                            calPoint.text(AppState.refCalPoint);
-
-                            const estValueRead = getEstimatedValue(response.data, jsonTimePoint * 60, jsonFile["for_blank_type"]).toFixed(4);
-                            if (estValueRead) {
-                                const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"];
-                                $("#add-json-section").text(`. The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
-                            } else {
-                                $("#add-json-section").text("");
-                            }
-                            calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
-                            derived_con_text.innerHTML = `${calculated_con}`;
-                        }
-                        AppState.currExpTimePoint = $("#exp-json-time-value").val();
-                        let currExpBlankType = $("#exp-json-blank-type").val();
-                        if (AppState.currExpTimePoint) {
-                            AppState.globalEstimatedValue = getEstimatedValue(response.data, AppState.currExpTimePoint * 60, currExpBlankType);
-                        }
-                    }
-                } else {
+            // if (window_size > response.data.length / 2) {
+            //     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
+            //     $("#analysis-info").html(`<span style="color: red;">Window Size is greater than half of data size. The file has only ${response.data.length} data points</span>`);
+            // } else {
+            let derivedConSettings = null;
+            let derived_section = null;
+            let derived_con_text = null;
+            if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
+                derivedConSettings = settingDerivedCon(jsonFile);
+                derived_section = derivedConSettings.derived_section;
+                derived_con_text = derivedConSettings.derived_con_text;
+                if (derived_section) {
+                    derived_section.classList.remove("hidden");
+                    $("#select-quantity-section").removeClass("hidden");
+                } else { // derived_section is null -> hide all
                     $("#select-quantity-section").addClass("hidden");
                     $("#derived-concentration-section").addClass("hidden");
                     $("#blank-derived-concentration-section").addClass("hidden");
                     $("#non-blank-derived-concentration-section").addClass("hidden");
                 }
             }
+
+            const isSplitMode = $("#split-mode").is(":checked");
+            const isFullDisplay = $("#full-display").is(":checked");
+            const displayRangeInput = document.getElementById('range-value');
+            const fullDisplayCheckbox = document.getElementById('full-display');
+
+            // Move event listener outside the AJAX callback or nest it properly
+            fullDisplayCheckbox.addEventListener('change', function() {
+                const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
+                if (this.checked) {
+                    displayRangeInput.disabled = true;
+                    displayRangeInput.placeholder = "Disabled by Full Display";
+                    displayRangeInput.value = "";
+                } else {
+                    displayRangeInput.disabled = false;
+                    displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
+                }
+            });
+
+            if (AppState.currentMeasurementMode === "point" && jsonFile) {
+                AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, AppState.refCalPoint, jsonFile["for_blank_type"]);
+            } else {
+                if (AppState.currentMeasurementMode === "calibrate") {
+                    const cal_type = $("#cal-mode-select").val();
+                    // const regress_algo = $("#exp-json-time-point").val();
+                    if (cal_type === "kinetics") {
+                        const quantity_obj = document.getElementById('regressed-quantity');
+                        AppState.exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
+                    } else if (cal_type === "point") {
+                        const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
+                        console.log("Give me uniqueTimePoints ", uniqueTimePoints);
+                        AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
+                        const timePoint = $("#regressed-time-point").val();
+                        const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));
+                        AppState.exp_json_content = updatePlot(processingData, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
+                    }
+                } else {
+                    AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
+                }
+            }
+
+            if (AppState.currentMeasurementMode !== "calibrate") {                            
+                const conValueInput = document.getElementById('con-value-read');
+                const conValueFromFile = response.data.map(row => row['Concentration'])[0];
+
+                if (conValueFromFile !== "NONE") {
+                    conValueInput.value = conValueFromFile;
+                    conValueInput.disabled = true;
+                } else {
+                    conValueInput.disabled = false;
+                    conValueInput.value = "";
+                }
+
+                if (AppState.currentMeasurementMode === "kinetics") {
+                    const conQuantityInput = document.getElementById('regressed-quantity').value;
+                    if (jsonFile) {
+                        const coef = jsonFile[conQuantityInput]["fit_coef"];
+                        let value = null;
+                        switch(conQuantityInput) {
+                            case "vmax":
+                                if (jsonFile["for_blank_type"] === "MIXED") {
+                                    value = AppState.globalAnalysis.vmax * 60;
+                                } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                    value = AppState.globalAnalysis.vmax_blanked * 60;
+                                } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                    value = AppState.globalAnalysis.vmax_non_blanked * 60;
+                                }
+                                break;
+                            case "slope":
+                                if (jsonFile["for_blank_type"] === "MIXED") {
+                                    value = AppState.globalAnalysis.slope * 60;
+                                } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                    value = AppState.globalAnalysis.slope_blanked * 60;
+                                } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                    value = AppState.globalAnalysis.slope_non_blanked * 60;
+                                }
+                                break;
+                            case "sat":
+                                if (jsonFile["for_blank_type"] === "MIXED") {
+                                    value = AppState.globalAnalysis.sat;
+                                } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                    value = AppState.globalAnalysis.sat_blanked;
+                                } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                    value = AppState.globalAnalysis.sat_non_blanked;
+                                }
+                                break;
+                            case "time_to_sat":
+                                if (jsonFile["for_blank_type"] === "MIXED") {
+                                    value = AppState.globalAnalysis.time_to_sat / 60;
+                                } else if (jsonFile["for_blank_type"] === "BLANKED") {
+                                    value = AppState.globalAnalysis.time_to_sat_blanked / 60;
+                                } else if (jsonFile["for_blank_type"] === "NON-BLANKED") {
+                                    value = AppState.globalAnalysis.time_to_sat_non_blanked / 60;
+                                }
+                                break;
+                        }
+                        calculated_con = computeFit(value, jsonFile["fit_type"], coef);
+                        derived_con_text.innerHTML = `${calculated_con}`;
+                    }
+                } else if (AppState.currentMeasurementMode === "point") {
+                    if (jsonFile) {
+                        const timeUnitSet = $("#time-unit").val();
+                        const calPoint = $("#cal-point");
+                        $("#point-json-exp-section").removeClass("hidden");
+
+                        const jsonTimePoint = jsonFile["time"];
+                        const jsonTimeUnit = jsonFile["time-unit"];
+
+                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit);
+                        const targetMultiplier = getTimeUnitMultiplier(timeUnitSet);
+                        const conversionFactor = baseMultiplier / targetMultiplier;
+                        AppState.refCalPoint = jsonTimePoint * conversionFactor;
+                        calPoint.text(AppState.refCalPoint);
+
+                        const estValueRead = getEstimatedValue(response.data, jsonTimePoint * 60, jsonFile["for_blank_type"]).toFixed(4);
+                        if (estValueRead) {
+                            const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"];
+                            $("#add-json-section").text(`. The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
+                        } else {
+                            $("#add-json-section").text("");
+                        }
+                        calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
+                        derived_con_text.innerHTML = `${calculated_con}`;
+                    }
+                    AppState.currExpTimePoint = $("#exp-json-time-value").val();
+                    let currExpBlankType = $("#exp-json-blank-type").val();
+                    if (AppState.currExpTimePoint) {
+                        AppState.globalEstimatedValue = getEstimatedValue(response.data, AppState.currExpTimePoint * 60, currExpBlankType);
+                    }
+                }
+            } else {
+                $("#select-quantity-section").removeClass("hidden");
+                $("#derived-concentration-section").addClass("hidden");
+                $("#blank-derived-concentration-section").addClass("hidden");
+                $("#non-blank-derived-concentration-section").addClass("hidden");
+            }
+            // }
         } else {
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
