@@ -66,106 +66,121 @@
             }
         }
 
+        async function normalizePath(path, delimiter) {
+            // Normalize path by replacing double backslashes and removing trailing delimiters
+            return path.replace(/\\\\/g, '\\').replace(/[\\\/]+$/, '');
+        }
+
+        function getPathPrefix(path) {
+            // Extract drive letter or root prefix (e.g., 'C:\' or '/')
+            const driveLetterMatch = path.match(/^([a-zA-Z]:[\\\/]?|\/)/);
+            return driveLetterMatch ? driveLetterMatch[1] : '';
+        }
+
+        function constructFullPath(currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter, previousDirHandle, baseDirName) {
+            let fullPath;
+            let shouldAppend = true;
+
+            if (matchIndex !== -1) {
+                // If the selected folder is already in the path, retract to it
+                fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
+                shouldAppend = false;
+                console.log(`Retracting path to existing segment: ${fullPath}`);
+            } else if (previousDirHandle && previousDirHandle.name === selectedDirName) {
+                // If the same folder as previous is selected, keep the current path
+                fullPath = currentPath;
+                shouldAppend = false;
+                console.log(`Same folder selected, keeping path: ${fullPath}`);
+            } else if (selectedDirName === baseDirName) {
+                // If the basePath directory is selected, set path to basePath
+                fullPath = basePath;
+                shouldAppend = false;
+                console.log(`Selected base directory, setting path to: ${fullPath}`);
+            } else {
+                // Append the new directory name
+                fullPath = currentPath ? `${currentPath}${delimiter}${selectedDirName}` : selectedDirName;
+            }
+
+            // Preserve drive letter or root prefix
+            const prefix = getPathPrefix(currentPath || basePath);
+            if (prefix && !fullPath.startsWith(prefix)) {
+                fullPath = `${prefix}${fullPath}`;
+            }
+
+            return { fullPath, shouldAppend };
+        }
+
+        async function verifyPathWithServer(fullPath) {
+            try {
+                const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
+                const result = await response.json();
+                if (!result.exists) {
+                    alert(`Please only select Directories existing in the current path or immediate subdirectories of the displayed path only!`);
+                    console.warn(`Path "${fullPath}" does not exist on the server.`);
+                    return false;
+                }
+                return true;
+            } catch (fetchErr) {
+                console.error('Failed to verify path with server:', fetchErr);
+                alert('Failed to verify the selected path with the server. Please try again.');
+                return false;
+            }
+        }
+
         async function pickDirectory(inputId) {
             try {
-                // Get the current path from the input field
                 const pathDisplay = document.getElementById(inputId);
-                let currentPath = pathDisplay.value.replace(/\\\\/g, '\\') || '';
-                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
-                // Normalize currentPath by removing trailing delimiter
-                currentPath = currentPath.replace(/[\\\/]+$/, '');
-
-                // Get the server-provided base directory (directory of main.py)
-                let basePath = "{{ directory | safe }}";
-                // Normalize basePath by removing trailing delimiter
-                basePath = basePath.replace(/[\\\/]+$/, '');
-                // Set default path to basePath if currentPath is empty
+                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}";
+                
+                // Normalize paths
+                let currentPath = await normalizePath(pathDisplay.value || '', delimiter);
+                let basePath = await normalizePath("{{ directory | safe }}" || 'data', delimiter);
+                
+                // Set default path if empty
                 if (!currentPath) {
-                    currentPath = basePath || 'data';
+                    currentPath = basePath;
                 }
 
-                // Split current path into segments and "pop" the last segment
+                // Split current path into segments
                 const pathSegments = currentPath ? currentPath.split(delimiter).filter(segment => segment) : [];
                 const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : null;
-                console.log(`previous stored dir handle: ${window[inputId + 'Handle']}`);
-                // Retrieve the previously stored dirHandle, if any
+
+                // Retrieve previous directory handle
                 const storedDirHandle = window[inputId + 'Handle'] || null;
-                // Set previousDirHandle if its name matches the last segment of currentPath
                 const previousDirHandle = storedDirHandle && lastSegment && storedDirHandle.name === lastSegment ? storedDirHandle : null;
 
-                // Determine the startIn option for showDirectoryPicker
-                let startIn = previousDirHandle || 'documents';
-
-                // Open the directory picker, starting at the specified directory if possible
-                const dirHandle = await window.showDirectoryPicker({ startIn });
-
-                // Validate if the selected directory is a subdirectory of basePath
-                let shouldAppend = true;
-                let fullPath;
+                // Open directory picker
+                const dirHandle = await window.showDirectoryPicker({ startIn: previousDirHandle || 'documents' });
                 const selectedDirName = dirHandle.name;
-                const basePathSegments = basePath.split(delimiter).filter(segment => segment);
-                const baseDirName = basePathSegments[basePathSegments.length - 1];
+                const baseDirName = basePath.split(delimiter).filter(segment => segment).pop();
 
-                // Check if the selected directory name is already in the path
+                // Validate if selection is within basePath
+                // if (basePath && !currentPath.startsWith(basePath) && selectedDirName !== baseDirName) {
+                //     const proceed = confirm(
+                //         `The selected directory "${selectedDirName}" is not within the server directory "${basePath}". Proceed anyway?`
+                //     );
+                //     if (!proceed) {
+                //         console.warn(`User canceled selection of "${selectedDirName}" as it is outside "${basePath}".`);
+                //         return;
+                //     }
+                // }
+
+                // Construct full path
                 const matchIndex = pathSegments.indexOf(selectedDirName);
-                if (matchIndex !== -1) {
-                    // If the selected folder is already in the path, retract to it
-                    fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
-                    shouldAppend = false;
-                    console.log(`Retracting path to existing segment: ${fullPath}`);
-                } else if (previousDirHandle && previousDirHandle.name === selectedDirName) {
-                    // If the same folder as previous is selected, keep the current path
-                    fullPath = currentPath;
-                    shouldAppend = false;
-                    console.log(`Same folder selected, keeping path: ${fullPath}`);
-                } else if (selectedDirName === baseDirName) {
-                    // If the basePath directory is selected, set path to basePath
-                    fullPath = basePath;
-                    shouldAppend = false;
-                    console.log(`Selected base directory, setting path to: ${fullPath}`);
-                } else {
-                    // Check if the selection is likely a subdirectory (heuristic based on basePath)
-                    if (basePath && !currentPath.startsWith(basePath)) {
-                        const proceed = confirm(
-                            `The selected directory "${selectedDirName}" is not within the server directory "${basePath}". Proceed anyway?`
-                        );
-                        if (!proceed) {
-                            console.warn(`User canceled selection of "${selectedDirName}" as it is outside "${basePath}".`);
-                            return;
-                        }
-                    }
-                    // Append the new directory name
-                    fullPath = currentPath ? `${currentPath}${delimiter}${selectedDirName}` : selectedDirName;
-                }
+                const { fullPath, shouldAppend } = constructFullPath(
+                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter, previousDirHandle, baseDirName
+                );
 
-                // Preserve drive letter or root prefix
-                const driveLetterMatch = currentPath.match(/^([a-zA-Z]:)[\\\/]/);
-                if (driveLetterMatch) {
-                    // For Windows paths, replace the drive letter in the path
-                    fullPath = fullPath.replace(/^[a-zA-Z]:[\\\/]?/, driveLetterMatch[1] + delimiter);
-                } 
-                // Verify the fullPath with the server
-                try {
-                    const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
-                    const result = await response.json();
-                    if (!result.exists) {
-                        alert(`Please only select Directories existing in the current path or immediate subdirectories of the displayed path only!`);
-                        console.warn(`Path "${fullPath}" does not exist on the server.`);
-                        return;
-                    }
-                } catch (fetchErr) {
-                    console.error('Failed to verify path with server:', fetchErr);
-                    alert('Failed to verify the selected path with the server. Please try again.');
+                // Verify path with server
+                if (!(await verifyPathWithServer(fullPath))) {
                     return;
                 }
 
-                // Update the input field with the constructed path
+                // Update input field and store directory handle
                 pathDisplay.value = fullPath;
-
-                // Store the current dirHandle for the next selection and client-side file operations
                 window[inputId + 'Handle'] = dirHandle;
 
-                // Warn if no base path is provided
+                // Warn if no base path
                 if (!basePath) {
                     console.warn('No base path provided by server; using directory name or retracted path.');
                 }
