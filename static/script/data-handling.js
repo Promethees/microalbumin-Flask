@@ -72,159 +72,354 @@ function deselectFile(tableSelector="#file-table") {
     }
 }
 
-function deleteFile(fileName, button, tableSelector = "#file-table") {
-    // Show confirmation dialog using SweetAlert2
-    Swal.fire({
-        title: 'Are you sure?',
-        text: `Do you want to delete ${fileName}? This action cannot be undone.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Remove the file from the table
-            $(button).closest("tr").remove();
-            console.log("Deleting file:", fileName, "from table:", tableSelector);
+function editFile(fileName, button, tableSelector = "#file-table") {
+    if (tableSelector !== "#file-table") {
+        Swal.fire({
+            title: 'Error!',
+            text: 'Editing is only supported for CSV files in #file-table.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
 
-            // Update the AppState
-            if (tableSelector === "#file-table") {
-                if (AppState.currentFile === fileName) {
-                    deselectFile(tableSelector);
+    // Check if script is running
+    checkScriptStatus().then((isRunning) => {
+        if (isRunning || AppState.scriptRunning) {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Cannot edit files while the data collection process is running. Stop the process and try again.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                const terminateBtn = $('#terminate-script-btn');
+                if (terminateBtn.length) {
+                    terminateBtn.focus();
+                    terminateBtn.addClass('blinking');
+                    setTimeout(() => {
+                        terminateBtn.removeClass('blinking');
+                    }, 5000);
                 }
-
-                $.post('/delete_file', { 
-                    filename: fileName, 
-                    path: $("#directory").val(), 
-                    tabletype: tableSelector 
-                }, function(response) {
-                    if (response.status === 'success') {
-                        Swal.fire({
-                            title: 'Deleted!',
-                            text: response.message,
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: response.message,
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            // Focus on terminate button and add blinking class
-                            const terminateBtn = $('#terminate-script-btn');
-                            if (terminateBtn.length) {
-                                terminateBtn.focus();
-                                terminateBtn.addClass('blinking');
-                                // Remove blinking class after 5 seconds
-                                setTimeout(() => {
-                                    terminateBtn.removeClass('blinking');
-                                }, 5000);
-                            }
-                        });
-                    }
-                }).fail(function(jqXHR) {
-                    let errorMessage = 'An unexpected error occurred while deleting the file';
-                    if (jqXHR.status === 400) {
-                        errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
-                    } else if (jqXHR.status === 403) {
-                        errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
-                    } else if (jqXHR.status === 404) {
-                        errorMessage = jqXHR.responseJSON?.message || 'File not found';
-                    } else if (jqXHR.status === 423) {
-                        errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
-                    }
-                    Swal.fire({
-                        title: 'Error!',
-                        text: errorMessage,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        // Focus on terminate button and add blinking class
-                        const terminateBtn = $('#terminate-script-btn');
-                        if (terminateBtn.length) {
-                            terminateBtn.focus();
-                            terminateBtn.addClass('blinking');
-                            // Remove blinking class after 5 seconds
-                            setTimeout(() => {
-                                terminateBtn.removeClass('blinking');
-                            }, 5000);
-                        }
-                    });
-                });
-            } else if (tableSelector === "#json-table") {
-                if (AppState.currentJSON === fileName) {
-                    deselectFile(tableSelector);
-                }
-
-                console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
-
-                $.post('/delete_file', { 
-                    filename: fileName, 
-                    mode: AppState.currentMeasurementMode, 
-                    tabletype: tableSelector 
-                }, function(response) {
-                    if (response.status === 'success') {
-                        Swal.fire({
-                            title: 'Deleted!',
-                            text: response.message,
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: response.message,
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            // Focus on terminate button and add blinking class
-                            const terminateBtn = $('#terminate-script-btn');
-                            if (terminateBtn.length) {
-                                terminateBtn.focus();
-                                terminateBtn.addClass('blinking');
-                                // Remove blinking class after 5 seconds
-                                setTimeout(() => {
-                                    terminateBtn.removeClass('blinking');
-                                }, 5000);
-                            }
-                        });
-                    }
-                }).fail(function(jqXHR) {
-                    let errorMessage = 'An unexpected error occurred while deleting the file';
-                    if (jqXHR.status === 400) {
-                        errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
-                    } else if (jqXHR.status === 403) {
-                        errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
-                    } else if (jqXHR.status === 404) {
-                        errorMessage = jqXHR.responseJSON?.message || 'File not found';
-                    } else if (jqXHR.status === 423) {
-                        errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
-                    }
-                    Swal.fire({
-                        title: 'Error!',
-                        text: errorMessage,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        // Focus on terminate button and add blinking class
-                        const terminateBtn = $('#terminate-script-btn');
-                        if (terminateBtn.length) {
-                            terminateBtn.focus();
-                            terminateBtn.addClass('blinking');
-                            // Remove blinking class after 5 seconds
-                            setTimeout(() => {
-                                terminateBtn.removeClass('blinking');
-                            }, 5000);
-                        }
-                    });
-                });
-            }
+            });
+            return;
         }
+
+        // Disable delete button for this file during editing
+        const row = $(button).closest("tr");
+        const deleteBtn = row.find("button:contains('Delete')");
+        deleteBtn.prop('disabled', true).addClass('disabled').attr('aria-disabled', 'true');
+
+        // Fetch CSV content
+        $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent($("#directory").val())}`, function(content) {
+            Swal.fire({
+                title: `Edit ${fileName}`,
+                html: `
+                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%;">${content.content}</textarea>
+                    <p style="font-size: 0.8em; color: #666;">Expected format: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration</p>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                preConfirm: () => {
+                    const content = document.getElementById('swal-input-content').value;
+                    if (!content.trim()) {
+                        Swal.showValidationMessage('Content cannot be empty');
+                        return false;
+                    }
+
+                    // Define regex patterns
+                    const headerPattern = /^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$/;
+                    const dataPattern = /^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$/;
+
+                    const lines = content.trim().split('\n');
+                    if (lines.length < 1) {
+                        Swal.showValidationMessage('Content must contain at least the header');
+                        return false;
+                    }
+                    console.log("Line 1 is:", lines[0]);
+                    // Validate header
+                    if (!headerPattern.test(lines[0])) {
+                        Swal.showValidationMessage('Invalid header. Must match: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration');
+                        return false;
+                    }
+
+                    // Validate data rows
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!dataPattern.test(lines[i])) {
+                            Swal.showValidationMessage(`Invalid data in row ${i + 1}. Must match: \\d+\\.\\d{1,2},[A-Za-z]+,\\d+\\.\\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\\d+)`);
+                            return false;
+                        }
+                    }
+
+                    return content;
+                }
+            }).then((result) => {
+                // Re-enable delete button regardless of outcome
+                deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
+
+                if (result.isConfirmed) {
+                    const newContent = result.value;
+                    const newFileName = fileName; // No renaming in current implementation
+
+                    $.post('/edit_file', {
+                        filename: fileName,
+                        new_filename: newFileName,
+                        path: $("#directory").val(),
+                        content: newContent
+                    }, function(response) {
+                        if (response.status === 'success') {
+                            Swal.fire({
+                                title: 'Updated!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error!',
+                                text: response.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                const terminateBtn = $('#terminate-script-btn');
+                                if (terminateBtn.length) {
+                                    terminateBtn.focus();
+                                    terminateBtn.addClass('blinking');
+                                    setTimeout(() => {
+                                        terminateBtn.removeClass('blinking');
+                                    }, 5000);
+                                }
+                            });
+                        }
+                    }).fail(function(jqXHR) {
+                        let errorMessage = 'An unexpected error occurred while saving the file';
+                        if (jqXHR.status === 400) {
+                            errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+                        } else if (jqXHR.status === 403) {
+                            errorMessage = jqXHR.responseJSON?.message || 'Permission denied while saving the file';
+                        } else if (jqXHR.status === 404) {
+                            errorMessage = jqXHR.responseJSON?.message || 'File not found';
+                        } else if (jqXHR.status === 423) {
+                            errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+                        }
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errorMessage,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            const terminateBtn = $('#terminate-script-btn');
+                            if (terminateBtn.length) {
+                                terminateBtn.focus();
+                                terminateBtn.addClass('blinking');
+                                setTimeout(() => {
+                                    terminateBtn.removeClass('blinking');
+                                }, 5000);
+                            }
+                        });
+                    });
+                }
+            });
+        }).fail(function(jqXHR) {
+            let errorMessage = 'Failed to load file content';
+            if (jqXHR.status === 404) {
+                errorMessage = 'File not found';
+            } else if (jqXHR.status === 403) {
+                errorMessage = 'Permission denied';
+            } else if (jqXHR.status === 423) {
+                errorMessage = 'File is in use by the data collection process. Stop the process and try again.';
+            }
+            Swal.fire({
+                title: 'Error!',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
+                const terminateBtn = $('#terminate-script-btn');
+                if (terminateBtn.length) {
+                    terminateBtn.focus();
+                    terminateBtn.addClass('blinking');
+                    setTimeout(() => {
+                        terminateBtn.removeClass('blinking');
+                    }, 5000);
+                }
+            });
+        });
+    });
+}
+
+function deleteFile(fileName, button, tableSelector = "#file-table") {
+    // Check if script is running
+    checkScriptStatus().then((isRunning) => {
+        if (isRunning || AppState.scriptRunning) {
+            Swal.fire({
+                title: 'Error!',
+                text: 'Cannot delete files while the data collection process is running. Stop the process and try again.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                const terminateBtn = $('#terminate-script-btn');
+                if (terminateBtn.length) {
+                    terminateBtn.focus();
+                    terminateBtn.addClass('blinking');
+                    setTimeout(() => {
+                        terminateBtn.removeClass('blinking');
+                    }, 5000);
+                }
+            });
+            return;
+        }
+
+        // Show confirmation dialog using SweetAlert2
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you want to delete ${fileName}? This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Remove the file from the table
+                $(button).closest("tr").remove();
+                console.log("Deleting file:", fileName, "from table:", tableSelector);
+
+                // Update the AppState
+                if (tableSelector === "#file-table") {
+                    if (AppState.currentFile === fileName) {
+                        deselectFile(tableSelector);
+                    }
+
+                    $.post('/delete_file', { 
+                        filename: fileName, 
+                        path: $("#directory").val(), 
+                        tabletype: tableSelector 
+                    }, function(response) {
+                        if (response.status === 'success') {
+                            Swal.fire({
+                                title: 'Deleted!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error!',
+                                text: response.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                const terminateBtn = $('#terminate-script-btn');
+                                if (terminateBtn.length) {
+                                    terminateBtn.focus();
+                                    terminateBtn.addClass('blinking');
+                                    setTimeout(() => {
+                                        terminateBtn.removeClass('blinking');
+                                    }, 5000);
+                                }
+                            });
+                        }
+                    }).fail(function(jqXHR) {
+                        let errorMessage = 'An unexpected error occurred while deleting the file';
+                        if (jqXHR.status === 400) {
+                            errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+                        } else if (jqXHR.status === 403) {
+                            errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
+                        } else if (jqXHR.status === 404) {
+                            errorMessage = jqXHR.responseJSON?.message || 'File not found';
+                        } else if (jqXHR.status === 423) {
+                            errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+                        }
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errorMessage,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            const terminateBtn = $('#terminate-script-btn');
+                            if (terminateBtn.length) {
+                                terminateBtn.focus();
+                                terminateBtn.addClass('blinking');
+                                setTimeout(() => {
+                                    terminateBtn.removeClass('blinking');
+                                }, 5000);
+                            }
+                        });
+                    });
+                } else if (tableSelector === "#json-table") {
+                    if (AppState.currentJSON === fileName) {
+                        deselectFile(tableSelector);
+                    }
+
+                    console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
+
+                    $.post('/delete_file', { 
+                        filename: fileName, 
+                        mode: AppState.currentMeasurementMode, 
+                        tabletype: tableSelector 
+                    }, function(response) {
+                        if (response.status === 'success') {
+                            Swal.fire({
+                                title: 'Deleted!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error!',
+                                text: response.message,
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                const terminateBtn = $('#terminate-script-btn');
+                                if (terminateBtn.length) {
+                                    terminateBtn.focus();
+                                    terminateBtn.addClass('blinking');
+                                    setTimeout(() => {
+                                        terminateBtn.removeClass('blinking');
+                                    }, 5000);
+                                }
+                            });
+                        }
+                    }).fail(function(jqXHR) {
+                        let errorMessage = 'An unexpected error occurred while deleting the file';
+                        if (jqXHR.status === 400) {
+                            errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+                        } else if (jqXHR.status === 403) {
+                            errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
+                        } else if (jqXHR.status === 404) {
+                            errorMessage = jqXHR.responseJSON?.message || 'File not found';
+                        } else if (jqXHR.status === 423) {
+                            errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+                        }
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errorMessage,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        }).then(() => {
+                            const terminateBtn = $('#terminate-script-btn');
+                            if (terminateBtn.length) {
+                                terminateBtn.focus();
+                                terminateBtn.addClass('blinking');
+                                setTimeout(() => {
+                                    terminateBtn.removeClass('blinking');
+                                }, 5000);
+                            }
+                        });
+                    });
+                }
+            }
+        });
     });
 }
 

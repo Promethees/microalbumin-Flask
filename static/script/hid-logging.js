@@ -2,43 +2,37 @@ let statusCheckInterval = null;
 const STATUS_CHECK_INTERVAL = 2000; // Check every 2 seconds
 
 function checkScriptStatus() {
-    $.ajax({
-        url: '/check_status',
-        type: 'GET',
-        success: function(response) {
-            if (response.status === 'device_not_found') {
-                // Device error detected
-                clearStatusCheck();
+    return new Promise((resolve) => {
+        $.ajax({
+            url: '/check_status',
+            type: 'GET',
+            success: function(response) {
+                if (response.status === 'device_not_found' || response.status === 'failure' || response.status === 'success' || response.status === 'not_running') {
+                    clearStatusCheck();
+                    AppState.scriptRunning = false;
+                    if (response.status !== 'success') {
+                        if (response.status !== 'not_running') {
+                            $("#log-display").append(`Error: ${response.message}\n`);
+                        }
+                        else console.log("Script is not running");
+                        resetUIAfterError();
+                    } else {
+                        $("#log-display").append("Script completed successfully\n");
+                        resetUIAfterCompletion();
+                    }
+                    resolve(false); // Script is not running
+                } else {
+                    AppState.scriptRunning = true;
+                    resolve(true); // Script is running
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.log("Status check error:", textStatus, errorThrown);
+                $("#log-display").append("Error checking script status\n");
                 AppState.scriptRunning = false;
-                $("#log-display").append(`Error: ${response.message}\n`);
-                resetUIAfterError();
+                resolve(false); // Assume not running on error
             }
-            else if (response.status === 'failure') {
-                // Other error detected
-                clearStatusCheck();
-                AppState.scriptRunning = false;
-                $("#log-display").append(`Error: ${response.message}\n`);
-                resetUIAfterError();
-            }
-            else if (response.status === 'success') {
-                // Script completed successfully
-                clearStatusCheck();
-                AppState.scriptRunning = false;
-                $("#log-display").append("Script completed successfully\n");
-                resetUIAfterCompletion();
-            }
-            else if (response.status === 'not_running') {
-                // Script isn't running (unexpected state)
-                clearStatusCheck();
-                AppState.scriptRunning = false;
-                $("#log-display").append("Script is not running\n");
-                resetUIAfterError();
-            }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            console.log("Status check error:", textStatus, errorThrown);
-            $("#log-display").append("Error checking script status\n");
-        }
+        });
     });
 }
 

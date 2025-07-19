@@ -219,3 +219,19 @@ th {
     50% { border-color: transparent; }
     100% { border-color: var(--blink-color, transparent); }
 }
+
+.swal2-input-group {
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+.swal2-input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.swal2-input {
+    width: 100%;
+    box-sizing: border-box;
+}
