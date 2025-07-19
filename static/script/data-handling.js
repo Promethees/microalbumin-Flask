@@ -72,6 +72,118 @@ function deselectFile(tableSelector="#file-table") {
     }
 }
 
+function deleteFile(fileName, button, tableSelector = "#file-table") {
+    // Show confirmation dialog using SweetAlert2
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Do you want to delete ${fileName}? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Remove the file from the table
+            $(button).closest("tr").remove();
+            console.log("Deleting file:", fileName, "from table:", tableSelector);
+
+            // Update the AppState
+            if (tableSelector === "#file-table") {
+                if (AppState.currentFile === fileName) {
+                    deselectFile(tableSelector);
+                }
+
+                $.post('/delete_file', { 
+                    filename: fileName, 
+                    path: $("#directory").val(), 
+                    tabletype: tableSelector 
+                }, function(response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message,
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: response.message,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                }).fail(function(jqXHR) {
+                    let errorMessage = 'An unexpected error occurred while deleting the file';
+                    if (jqXHR.status === 400) {
+                        errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+                    } else if (jqXHR.status === 403) {
+                        errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
+                    } else if (jqXHR.status === 404) {
+                        errorMessage = jqXHR.responseJSON?.message || 'File not found';
+                    } else if (jqXHR.status === 423) {
+                        errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Terminate the process and try again.';
+                    }
+                    Swal.fire({
+                        title: 'Error!',
+                        text: errorMessage,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            } else if (tableSelector === "#json-table") {
+                if (AppState.currentJSON === fileName) {
+                    deselectFile(tableSelector);
+                }
+
+                console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
+
+                $.post('/delete_file', { 
+                    filename: fileName, 
+                    mode: AppState.currentMeasurementMode, 
+                    tabletype: tableSelector 
+                }, function(response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message,
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: response.message,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                }).fail(function(jqXHR) {
+                    let errorMessage = 'An unexpected error occurred while deleting the file';
+                    if (jqXHR.status === 400) {
+                        errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+                    } else if (jqXHR.status === 403) {
+                        errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
+                    } else if (jqXHR.status === 404) {
+                        errorMessage = jqXHR.responseJSON?.message || 'File not found';
+                    } else if (jqXHR.status === 423) {
+                        errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+                    }
+                    Swal.fire({
+                        title: 'Error!',
+                        text: errorMessage,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            }
+        }
+    });
+}
+
 function settingDerivedCon(jsonFile) {
     let derived_section = null;
     let derived_con_text = null;

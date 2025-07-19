@@ -11,6 +11,7 @@ import atexit
 import csv
 import pandas as pd
 import json
+from http import HTTPStatus
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -279,6 +280,91 @@ def get_logs():
     return jsonify({'status': 'success', 'logs': 'No logs available'})
 
 # Region 4: USED by data_handling.js
+@app.route('/delete_file', methods=['POST'])
+def delete_file():
+    global process
+    try:
+        file_name = request.form.get('filename')
+        tabletype = request.form.get('tabletype')
+        mode = request.form.get('mode')
+        path = request.form.get('path') if request.form.get('path') else get_directory()
+
+        # Input validation
+        if not file_name or not tabletype:
+            return jsonify({
+                'status': 'error',
+                'message': 'Filename and tabletype are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Construct file path based on tabletype
+        if tabletype == '#json-table':
+            if not mode:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Mode is required for JSON table type'
+                }), HTTPStatus.BAD_REQUEST
+            json_path = os.path.join(json_root_path, mode)
+            file_path = os.path.join(json_path, file_name)
+            print(f"JSON file path is {file_path}")
+        else:
+            file_path = os.path.join(path, file_name)
+            print(f"CSV file path is {file_path}")
+
+        # Validate file path to prevent directory traversal
+        if '..' in os.path.normpath(file_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'File {file_name} not found'
+            }), HTTPStatus.NOT_FOUND
+
+        # Check if the subprocess is running and might be using the file
+        if process and process.poll() is None:
+            # Since log_hid_data.py writes intermittently, we can't know the exact file
+            # but we can warn if the process is active and the file is in the target directory
+            if path.startswith(os.path.abspath(os.path.join(os.getcwd(), 'data'))):
+                return jsonify({
+                    'status': 'error',
+                    'message': f'File {file_name} may be in use by the data collection process'
+                }), HTTPStatus.LOCKED
+
+        # Attempt to delete the file
+        try:
+            os.remove(file_path)
+            return jsonify({
+                'status': 'success',
+                'message': f'File {file_name} deleted successfully'
+            }), HTTPStatus.OK
+        except PermissionError as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Permission denied while deleting {file_name}: {str(e)}'
+            }), HTTPStatus.FORBIDDEN
+        except OSError as e:
+            if e.errno == 16:  # EBUSY: Resource busy
+                return jsonify({
+                    'status': 'error',
+                    'message': f'File {file_name} is currently in use by another process'
+                }), HTTPStatus.LOCKED
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Failed to delete {file_name}: {str(e)}'
+                }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        print(f"Unexpected error in delete_file: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while deleting the file'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+         
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
