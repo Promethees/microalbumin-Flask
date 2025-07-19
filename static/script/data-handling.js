@@ -113,6 +113,17 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                             text: response.message,
                             icon: 'error',
                             confirmButtonText: 'OK'
+                        }).then(() => {
+                            // Focus on terminate button and add blinking class
+                            const terminateBtn = $('#terminate-script-btn');
+                            if (terminateBtn.length) {
+                                terminateBtn.focus();
+                                terminateBtn.addClass('blinking');
+                                // Remove blinking class after 5 seconds
+                                setTimeout(() => {
+                                    terminateBtn.removeClass('blinking');
+                                }, 5000);
+                            }
                         });
                     }
                 }).fail(function(jqXHR) {
@@ -124,13 +135,24 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                     } else if (jqXHR.status === 404) {
                         errorMessage = jqXHR.responseJSON?.message || 'File not found';
                     } else if (jqXHR.status === 423) {
-                        errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Terminate the process and try again.';
+                        errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
                     }
                     Swal.fire({
                         title: 'Error!',
                         text: errorMessage,
                         icon: 'error',
                         confirmButtonText: 'OK'
+                    }).then(() => {
+                        // Focus on terminate button and add blinking class
+                        const terminateBtn = $('#terminate-script-btn');
+                        if (terminateBtn.length) {
+                            terminateBtn.focus();
+                            terminateBtn.addClass('blinking');
+                            // Remove blinking class after 5 seconds
+                            setTimeout(() => {
+                                terminateBtn.removeClass('blinking');
+                            }, 5000);
+                        }
                     });
                 });
             } else if (tableSelector === "#json-table") {
@@ -159,6 +181,17 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                             text: response.message,
                             icon: 'error',
                             confirmButtonText: 'OK'
+                        }).then(() => {
+                            // Focus on terminate button and add blinking class
+                            const terminateBtn = $('#terminate-script-btn');
+                            if (terminateBtn.length) {
+                                terminateBtn.focus();
+                                terminateBtn.addClass('blinking');
+                                // Remove blinking class after 5 seconds
+                                setTimeout(() => {
+                                    terminateBtn.removeClass('blinking');
+                                }, 5000);
+                            }
                         });
                     }
                 }).fail(function(jqXHR) {
@@ -177,6 +210,17 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                         text: errorMessage,
                         icon: 'error',
                         confirmButtonText: 'OK'
+                    }).then(() => {
+                        // Focus on terminate button and add blinking class
+                        const terminateBtn = $('#terminate-script-btn');
+                        if (terminateBtn.length) {
+                            terminateBtn.focus();
+                            terminateBtn.addClass('blinking');
+                            // Remove blinking class after 5 seconds
+                            setTimeout(() => {
+                                terminateBtn.removeClass('blinking');
+                            }, 5000);
+                        }
                     });
                 });
             }

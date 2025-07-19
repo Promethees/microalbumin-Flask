@@ -331,7 +331,7 @@ def delete_file():
             if path.startswith(os.path.abspath(os.path.join(os.getcwd(), 'data'))):
                 return jsonify({
                     'status': 'error',
-                    'message': f'File {file_name} may be in use by the data collection process'
+                    'message': f'The data collection process is currently running. Please terminate it before deleting files.'
                 }), HTTPStatus.LOCKED
 
         # Attempt to delete the file

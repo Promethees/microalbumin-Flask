@@ -56,6 +56,7 @@ function resetUIAfterError() {
     $("#run-script-btn").addClass('blinking');
     $("#terminate-script-btn").prop('disabled', true);
     $("#go-to-btn").prop('disabled', true);
+    $("#terminate-script-btn").removeClass('blinking');
     $("#go-to-btn").removeClass('blinking');
 }
 
@@ -66,7 +67,7 @@ function resetUIAfterCompletion() {
     $("#run-script-btn").addClass('blinking');
     $("#terminate-script-btn").prop('disabled', true);
     $("#go-to-btn").prop('disabled', false);
-    $("#go-to-btn").addClass('blinking');
+    $("#go-to-btn").removeClass('blinking');
 }
 
 // Modified runScript function
@@ -159,6 +160,7 @@ function terminateScript() {
                     $("#base-dir").prop('disabled', false);
                     $("#base-name").prop('disabled', false);
                     $("#go-to-btn").prop('disabled', true);
+                    $("#terminate-script-btn").removeClass('blinking');
                     $("#go-to-btn").removeClass('blinking');
                 }
             }
@@ -170,6 +172,7 @@ function terminateScript() {
             $("#run-script-btn").prop('disabled', false);
             $("#run-script-btn").addClass('blinking');
             $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);
+            $("#terminate-script-btn").removeClass('blinking');
             $("#go-to-btn").removeClass('blinking');
             $("#base-dir").prop('disabled', false);
             $("#base-name").prop('disabled', false);
