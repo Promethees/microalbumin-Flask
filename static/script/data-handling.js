@@ -104,6 +104,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             return;
         }
 
+        // Deselect the file if it’s currently selected to avoid conflicts
+        // if (AppState.currentFile === fileName) {
+        //     deselectFile(tableSelector);
+        // }
+
         // Disable delete button for this file during editing
         const row = $(button).closest("tr");
         const deleteBtn = row.find("button:contains('Delete')");
@@ -113,8 +118,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent($("#directory").val())}`, function(content) {
             Swal.fire({
                 title: `Edit ${fileName}`,
+                width: '700px',
                 html: `
-                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%;">${content.content}</textarea>
+                    Rename: <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px;">${content.content}</textarea>
                     <p style="font-size: 0.8em; color: #666;">Expected format: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration</p>
                 `,
                 focusConfirm: false,
@@ -124,9 +131,14 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
                 preConfirm: () => {
+                    const newFileName = document.getElementById('swal-input-filename').value;
                     const content = document.getElementById('swal-input-content').value;
                     if (!content.trim()) {
                         Swal.showValidationMessage('Content cannot be empty');
+                        return false;
+                    }
+                    if (!newFileName.trim() || !newFileName.endsWith('.csv')) {
+                        Swal.showValidationMessage('Filename must end with .csv');
                         return false;
                     }
 
@@ -139,7 +151,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         Swal.showValidationMessage('Content must contain at least the header');
                         return false;
                     }
-                    console.log("Line 1 is:", lines[0]);
+
                     // Validate header
                     if (!headerPattern.test(lines[0])) {
                         Swal.showValidationMessage('Invalid header. Must match: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration');
@@ -154,26 +166,36 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         }
                     }
 
-                    return content;
+                    return { newFileName, content };
                 }
             }).then((result) => {
                 // Re-enable delete button regardless of outcome
                 deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
 
                 if (result.isConfirmed) {
-                    const newContent = result.value;
-                    const newFileName = fileName; // No renaming in current implementation
-
+                    const { newFileName, content } = result.value;
+                    console.log("Saving edited file:", newFileName, "with content:", content);
                     $.post('/edit_file', {
                         filename: fileName,
                         new_filename: newFileName,
                         path: $("#directory").val(),
-                        content: newContent
+                        content: content
                     }, function(response) {
                         if (response.status === 'success') {
+                            if (fileName !== newFileName) {
+                                // Update table row if renamed
+                                row.find("td:first").text(newFileName); // Update filename in the table
+                                row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '#file-table')`);
+                                row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '#file-table')`);
+                                row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '#file-table')`);
+                                if (AppState.currentFile === fileName) AppState.currentFile = newFileName;
+                                textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
+                            } else {
+                                textMsg = `File ${fileName} content updated successfully.`;
+                            }
                             Swal.fire({
                                 title: 'Updated!',
-                                text: response.message,
+                                text: textMsg,
                                 icon: 'success',
                                 timer: 2000,
                                 showConfirmButton: false

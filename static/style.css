@@ -232,6 +232,22 @@ th {
 }
 
 .swal2-input {
-    width: 100%;
+    width: 50%;
     box-sizing: border-box;
+    font-size: 16px;
+    padding: 10px 14px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: none;
+}
+
+.swal2-input:focus {
+    border-color: #3085d6; /* SweetAlert default blue */
+    box-shadow: 0 0 0 4px rgba(48, 133, 214, 0.2);
+}
+
+.swal2-input::placeholder {
+    color: #aaa;
 }
