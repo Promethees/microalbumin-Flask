@@ -83,7 +83,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         return;
     }
 
-    // Check if script is running
     checkScriptStatus().then((isRunning) => {
         if (isRunning || AppState.scriptRunning) {
             Swal.fire({
@@ -104,35 +103,107 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             return;
         }
 
-        // Deselect the file if it’s currently selected to avoid conflicts
-        // if (AppState.currentFile === fileName) {
-        //     deselectFile(tableSelector);
-        // }
-
-        // Disable delete button for this file during editing
         const row = $(button).closest("tr");
         const deleteBtn = row.find("button:contains('Delete')");
         deleteBtn.prop('disabled', true).addClass('disabled').attr('aria-disabled', 'true');
+
+        let editMode = 'text';
+        let originalContent = ''; // Store original content for reference
+
+        function renderContent(content) {
+            originalContent = content.content; // Store the original content
+            let html = '';
+            if (editMode === 'text') {
+                html = `
+                    Rename:<input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px;">${content.content}</textarea>
+                `;
+            } else {
+                const lines = content.content.trim().split('\n');
+                const headers = lines[0].split(',');
+                const data = lines.slice(1);
+                
+                html = `
+                    Rename:<input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
+                        <table id="swal-edit-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="position: sticky; top: 0; background: white;">
+                                    ${headers.map(col => `<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">${col}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody id="swal-edit-body">
+                                ${data.map((row, rowIndex) => {
+                                    const cells = row.split(',');
+                                    return `<tr>
+                                        ${cells.map((cell, cellIndex) => `
+                                            <td contenteditable="true" 
+                                                style="border: 1px solid #ddd; padding: 8px;"
+                                                data-col="${headers[cellIndex]}"
+                                                data-row="${rowIndex}">
+                                                ${cell.trim()}
+                                            </td>
+                                        `).join('')}
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p style="font-size: 0.8em; color: #666; margin-top: 5px;">
+                        Click cells to edit. Save to apply changes.
+                    </p>
+                `;
+            }
+            return html;
+        }
 
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent($("#directory").val())}`, function(content) {
             Swal.fire({
                 title: `Edit ${fileName}`,
-                width: '700px',
-                html: `
-                    Rename: <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
-                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px;">${content.content}</textarea>
-                    <p style="font-size: 0.8em; color: #666;">Expected format: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration</p>
-                `,
+                width: '800px',
+                html: renderContent(content),
+                footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px;">Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode</button>',
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Save Changes',
                 cancelButtonText: 'Cancel',
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33',
+                didOpen: () => {
+                    const toggleButton = document.getElementById('toggle-mode');
+                    toggleButton.addEventListener('click', () => {
+                        editMode = editMode === 'text' ? 'table' : 'text';
+                        toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode';
+                        Swal.getHtmlContainer().innerHTML = renderContent({content: originalContent});
+                    });
+                },
                 preConfirm: () => {
                     const newFileName = document.getElementById('swal-input-filename').value;
-                    const content = document.getElementById('swal-input-content').value;
+                    let content;
+                    
+                    if (editMode === 'text') {
+                        content = document.getElementById('swal-input-content').value;
+                    } else {
+                        // Reconstruct CSV from table
+                        const table = document.getElementById('swal-edit-table');
+                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent);
+                        const rows = Array.from(table.querySelectorAll('tbody tr'));
+                        
+                        const csvRows = rows.map(row => {
+                            return Array.from(row.querySelectorAll('td')).map(td => {
+                                // Escape commas and newlines in cell content
+                                let cellContent = td.textContent.trim();
+                                if (cellContent.includes(',') || cellContent.includes('\n') || cellContent.includes('"')) {
+                                    return `"${cellContent.replace(/"/g, '""')}"`;
+                                }
+                                return cellContent;
+                            }).join(',');
+                        });
+                        
+                        content = [headers.join(','), ...csvRows].join('\n');
+                    }
+
                     if (!content.trim()) {
                         Swal.showValidationMessage('Content cannot be empty');
                         return false;
@@ -169,12 +240,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     return { newFileName, content };
                 }
             }).then((result) => {
-                // Re-enable delete button regardless of outcome
                 deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
 
                 if (result.isConfirmed) {
                     const { newFileName, content } = result.value;
-                    console.log("Saving edited file:", newFileName, "with content:", content);
+
                     $.post('/edit_file', {
                         filename: fileName,
                         new_filename: newFileName,
@@ -182,9 +252,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         content: content
                     }, function(response) {
                         if (response.status === 'success') {
+                            let textMsg;
                             if (fileName !== newFileName) {
-                                // Update table row if renamed
-                                row.find("td:first").text(newFileName); // Update filename in the table
+                                row.find("td:first").text(newFileName);
                                 row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '#file-table')`);
                                 row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '#file-table')`);
                                 row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '#file-table')`);
@@ -206,55 +276,43 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 text: response.message,
                                 icon: 'error',
                                 confirmButtonText: 'OK'
-                            }).then(() => {
-                                const terminateBtn = $('#terminate-script-btn');
-                                if (terminateBtn.length) {
-                                    terminateBtn.focus();
-                                    terminateBtn.addClass('blinking');
-                                    setTimeout(() => {
-                                        terminateBtn.removeClass('blinking');
-                                    }, 5000);
-                                }
                             });
                         }
                     }).fail(function(jqXHR) {
                         let errorMessage = 'An unexpected error occurred while saving the file';
-                        if (jqXHR.status === 400) {
-                            errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+                        if (jqXHR.responseJSON?.message) {
+                            errorMessage = jqXHR.responseJSON.message;
+                        } else if (jqXHR.status === 400) {
+                            errorMessage = 'Invalid request';
                         } else if (jqXHR.status === 403) {
-                            errorMessage = jqXHR.responseJSON?.message || 'Permission denied while saving the file';
+                            errorMessage = 'Permission denied';
                         } else if (jqXHR.status === 404) {
-                            errorMessage = jqXHR.responseJSON?.message || 'File not found';
+                            errorMessage = 'File not found';
                         } else if (jqXHR.status === 423) {
-                            errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+                            errorMessage = 'File is locked by the data collection process';
                         }
+                        
                         Swal.fire({
                             title: 'Error!',
                             text: errorMessage,
                             icon: 'error',
                             confirmButtonText: 'OK'
-                        }).then(() => {
-                            const terminateBtn = $('#terminate-script-btn');
-                            if (terminateBtn.length) {
-                                terminateBtn.focus();
-                                terminateBtn.addClass('blinking');
-                                setTimeout(() => {
-                                    terminateBtn.removeClass('blinking');
-                                }, 5000);
-                            }
                         });
                     });
                 }
             });
         }).fail(function(jqXHR) {
             let errorMessage = 'Failed to load file content';
-            if (jqXHR.status === 404) {
+            if (jqXHR.responseJSON?.message) {
+                errorMessage = jqXHR.responseJSON.message;
+            } else if (jqXHR.status === 404) {
                 errorMessage = 'File not found';
             } else if (jqXHR.status === 403) {
                 errorMessage = 'Permission denied';
             } else if (jqXHR.status === 423) {
-                errorMessage = 'File is in use by the data collection process. Stop the process and try again.';
+                errorMessage = 'File is in use by the data collection process';
             }
+            
             Swal.fire({
                 title: 'Error!',
                 text: errorMessage,
@@ -262,14 +320,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 confirmButtonText: 'OK'
             }).then(() => {
                 deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
-                const terminateBtn = $('#terminate-script-btn');
-                if (terminateBtn.length) {
-                    terminateBtn.focus();
-                    terminateBtn.addClass('blinking');
-                    setTimeout(() => {
-                        terminateBtn.removeClass('blinking');
-                    }, 5000);
-                }
             });
         });
     });
