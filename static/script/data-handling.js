@@ -107,7 +107,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         const deleteBtn = row.find("button:contains('Delete')");
         deleteBtn.prop('disabled', true).addClass('disabled').attr('aria-disabled', 'true');
 
-        let editMode = 'text';
+        let editMode = 'table'; // Default to table mode
         let originalContent = ''; // Store original content for reference
 
         function renderContent(content) {
@@ -136,14 +136,22 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 ${data.map((row, rowIndex) => {
                                     const cells = row.split(',');
                                     return `<tr>
-                                        ${cells.map((cell, cellIndex) => `
+                                        ${cells.map((cell, cellIndex) => 
+                                            cellIndex === 0 || cellIndex === 2 ?
+                                            `
                                             <td contenteditable="true" 
                                                 style="border: 1px solid #ddd; padding: 8px;"
                                                 data-col="${headers[cellIndex]}"
                                                 data-row="${rowIndex}">
                                                 ${cell.trim()}
                                             </td>
-                                        `).join('')}
+                                            ` :
+                                            `<td contenteditable="false" 
+                                                style="border: 1px solid #ddd; padding: 8px;"
+                                                data-col="${headers[cellIndex]}"
+                                                data-row="${rowIndex}">
+                                                ${cell.trim()}
+                                            </td>`).join('')}
                                     </tr>`;
                                 }).join('')}
                             </tbody>
