@@ -14,6 +14,7 @@ import json
 from http import HTTPStatus
 from datetime import datetime
 import re
+from filelock import FileLock
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -358,8 +359,10 @@ def edit_file():
 
         # Write the new content
         try:
-            with open(new_file_path, 'w') as f:
-                f.write(content)
+            lock_path = new_file_path + '.lock'
+            with FileLock(lock_path):
+                with open(new_file_path, 'w') as f:
+                    f.write(content)
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
             return jsonify({
