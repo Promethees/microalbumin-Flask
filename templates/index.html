@@ -9,6 +9,8 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Predefine window[inputId + 'Handle'] for the input field
         window['base-dirHandle'] = null;
@@ -251,12 +253,13 @@
                 <h2>Select Coefficients for standard line</h2>
                 <div id="file-table-container">
                     <table id="json-table">
-                        <tr><th>Calibrated JSON</th><th>Action</th></tr>
+                        <tr><th>Calibrated JSON</th><th colspan="2">Action</th></tr>
                         {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
                                 <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">Select</button></td>
+                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
+                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -271,12 +274,14 @@
                 <h2>File Selection</h2>
                 <div id="file-table-container">
                     <table id="file-table">
-                        <tr><th>File Name</th><th>Action</th></tr>
+                        <tr><th>File Name</th><th colspan="2">Action</th></tr>
                         {% if file_list %}
                             {% for file in file_list %}
                             <tr>
                                 <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
+                                <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
+                                <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
+                                <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
                             </tr>
                             {% endfor %}
                         {% else %}
