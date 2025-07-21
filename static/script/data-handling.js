@@ -761,7 +761,9 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                     }
                 }
             } else {
-                $("#select-quantity-section").removeClass("hidden");
+                if ($("#cal-mode-select").val() === "kinetics") {
+                    $("#select-quantity-section").removeClass("hidden");
+                }
                 $("#derived-concentration-section").addClass("hidden");
                 $("#blank-derived-concentration-section").addClass("hidden");
                 $("#non-blank-derived-concentration-section").addClass("hidden");
