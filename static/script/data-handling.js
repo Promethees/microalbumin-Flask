@@ -115,56 +115,74 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             let html = '';
             if (editMode === 'text') {
                 html = `
-                    Rename:<input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
-                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px;">${content.content}</textarea>
+                    <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px; font-family: monospace;">${content.content}</textarea>
                 `;
             } else {
                 const lines = content.content.trim().split('\n');
                 const headers = lines[0].split(',');
                 const data = lines.slice(1);
                 
+                const nonEditableColumns = ['Measurement', 'Unit', 'Type', 'Blanked', 'Concentration', 
+                                        'TimeUnit', 'BlankType', 'MeasMode', 'MeasUnit'];
+                
                 html = `
-                    Rename:<input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
                     <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
-                        <table id="swal-edit-table" style="width: 100%; border-collapse: collapse;">
+                        <table id="swal-edit-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
                             <thead>
-                                <tr style="position: sticky; top: 0; background: white;">
-                                    ${headers.map(col => `<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">${col}</th>`).join('')}
+                                <tr style="position: sticky; top: 0; background: white; z-index: 10;">
+                                    ${headers.map(col => `
+                                        <th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
+                                            font-size: 0.85em; font-weight: bold; white-space: nowrap;">
+                                            ${col}
+                                        </th>
+                                    `).join('')}
                                 </tr>
                             </thead>
                             <tbody id="swal-edit-body">
                                 ${data.map((row, rowIndex) => {
                                     const cells = row.split(',');
                                     return `<tr>
-                                        ${cells.map((cell, cellIndex) => 
-                                            cellIndex === 0 || cellIndex === 2 ?
-                                            `
-                                            <td contenteditable="true" 
-                                                style="border: 1px solid #ddd; padding: 8px;"
-                                                data-col="${headers[cellIndex]}"
-                                                data-row="${rowIndex}">
-                                                ${cell.trim()}
-                                            </td>
-                                            ` :
-                                            `<td contenteditable="false" 
-                                                style="border: 1px solid #ddd; padding: 8px;"
-                                                data-col="${headers[cellIndex]}"
-                                                data-row="${rowIndex}">
-                                                ${cell.trim()}
-                                            </td>`).join('')}
+                                        ${cells.map((cell, cellIndex) => {
+                                            const columnName = headers[cellIndex];
+                                            const isEditable = !nonEditableColumns.includes(columnName);
+                                            return `
+                                                <td ${isEditable ? 'contenteditable="true"' : 'class="non-editable"'} 
+                                                    style="border: 1px solid #ddd; padding: 6px;
+                                                    font-size: 0.82em;
+                                                    ${!isEditable ? 'background-color: #f8f8f8; cursor: not-allowed;' : ''}
+                                                    ${columnName === 'Timestamp' ? 'white-space: nowrap;' : ''}
+                                                    ${columnName === 'Value' || columnName === 'Concentration' ? 'text-align: right;' : ''}"
+                                                    data-col="${columnName}"
+                                                    data-row="${rowIndex}">
+                                                    ${cell.trim()}
+                                                </td>
+                                            `;
+                                        }).join('')}
                                     </tr>`;
                                 }).join('')}
                             </tbody>
                         </table>
                     </div>
                     <p style="font-size: 0.8em; color: #666; margin-top: 5px;">
-                        Click cells to edit. Save to apply changes.
+                        Click cells to edit (gray cells are read-only). Save to apply changes.
                     </p>
+                    <style>
+                        #swal-edit-table td {
+                            word-break: break-word;
+                            max-width: 200px;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+                        #swal-edit-table th {
+                            min-width: 80px;
+                        }
+                    </style>
                 `;
             }
             return html;
         }
-
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent($("#directory").val())}`, function(content) {
             Swal.fire({
@@ -195,7 +213,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     } else {
                         // Reconstruct CSV from table
                         const table = document.getElementById('swal-edit-table');
-                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent);
+                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
                         const rows = Array.from(table.querySelectorAll('tbody tr'));
                         
                         const csvRows = rows.map(row => {
@@ -221,9 +239,24 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         return false;
                     }
 
-                    // Define regex patterns
-                    const headerPattern = /^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$/;
-                    const dataPattern = /^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$/;
+                    // Define multiple pattern pairs for validation
+                    const patternSets = [
+                        {
+                            header: /^\s*Timestamp\s*,\s*Measurement\s*,\s*Value\s*,\s*Unit\s*,\s*Type\s*,\s*Blanked\s*,\s*Concentration\s*$/,
+                            data: /^\s*\d+\.\d{1,2}\s*,\s*[A-Za-z]+\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*$/,
+                            error: 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+                        },
+                        {
+                            header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Vmax\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*MeasUnit\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
+                            data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
+                            error: 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                        },
+                        {
+                            header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Value\s*,\s*MeasUnit\s*,\s*TimePoint\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
+                            data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
+                            error: 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+                        }
+                    ];
 
                     const lines = content.trim().split('\n');
                     if (lines.length < 1) {
@@ -231,16 +264,26 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         return false;
                     }
 
-                    // Validate header
-                    if (!headerPattern.test(lines[0])) {
-                        Swal.showValidationMessage('Invalid header. Must match: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration');
+                    // Normalize the header line by removing extra spaces
+                    const normalizedHeader = lines[0].replace(/\s*,\s*/g, ',');
+
+                    // Find matching pattern set
+                    const matchedPattern = patternSets.find(pattern => {
+                        // Test against both the original and normalized header
+                        return pattern.header.test(lines[0]) || pattern.header.test(normalizedHeader);
+                    });
+                    
+                    if (!matchedPattern) {
+                        const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
+                        Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
                         return false;
                     }
 
-                    // Validate data rows
+                    // Validate data rows with the matched pattern
                     for (let i = 1; i < lines.length; i++) {
-                        if (!dataPattern.test(lines[i])) {
-                            Swal.showValidationMessage(`Invalid data in row ${i + 1}. Must match: \\d+\\.\\d{1,2},[A-Za-z]+,\\d+\\.\\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\\d+)`);
+                        const normalizedLine = lines[i].replace(/\s*,\s*/g, ',');
+                        if (!matchedPattern.data.test(lines[i]) && !matchedPattern.data.test(normalizedLine)) {
+                            Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
                             return false;
                         }
                     }

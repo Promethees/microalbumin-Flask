@@ -340,21 +340,51 @@ def edit_file():
             }), HTTPStatus.CONFLICT
 
         # Validate content with regex
-        header_pattern = r"^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$"
-        data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$"
+        pattern_sets = [
+            {
+                'header': r"^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$",
+                'data': r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$",
+                'error': 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+            },
+            {
+                'header': r"^Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
+                'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+            },
+            {
+                'header': r"^Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode$",
+                'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),[A-Za-z]+,(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                'error': 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+            }
+        ]
 
         lines = content.strip().split('\n')
-        if not lines or not re.match(header_pattern, lines[0]):
+        if not lines:
             return jsonify({
                 'status': 'error',
-                'message': 'Invalid CSV header. Must match: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+                'message': 'Content cannot be empty'
             }), HTTPStatus.BAD_REQUEST
 
+        # Find matching pattern set
+        matched_pattern = None
+        for pattern in pattern_sets:
+            if re.match(pattern['header'], lines[0]):
+                matched_pattern = pattern
+                break
+
+        if not matched_pattern:
+            valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid CSV header. Must match one of: {valid_headers}'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Validate data rows with the matched pattern
         for i, line in enumerate(lines[1:], 2):
-            if not re.match(data_pattern, line):
+            if not re.match(matched_pattern['data'], line):
                 return jsonify({
                     'status': 'error',
-                    'message': f'Invalid data in row {i}. Must match: \\d+\\.\\d{1,2},[A-Za-z]+,\\d+\\.\\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\\d+)'
+                    'message': f'Invalid data in row {i} for the detected format.'
                 }), HTTPStatus.BAD_REQUEST
 
         # Write the new content
