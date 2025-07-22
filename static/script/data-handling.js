@@ -434,7 +434,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         const jsonTimePoint = jsonFile["time"];
                         const jsonTimeUnit = jsonFile["time-unit"];
 
-                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit + "s");
+                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit["time-unit"] + "s");
                         const targetMultiplier = getTimeUnitMultiplier(timeUnitSet);
                         const conversionFactor = baseMultiplier / targetMultiplier;
                         AppState.refCalPoint = jsonTimePoint * conversionFactor;
