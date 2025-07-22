@@ -251,3 +251,20 @@ th {
 .swal2-input::placeholder {
     color: #aaa;
 }
+
+#swal-edit-table tr.selected {
+    background-color: #e6f2ff !important;
+}
+#swal-edit-table tr.selected td {
+    background-color: #e6f2ff !important;
+}
+
+#swal-edit-table td {
+    word-break: break-word;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#swal-edit-table th {
+    min-width: 80px;
+}

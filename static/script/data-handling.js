@@ -110,6 +110,141 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         let editMode = 'table'; // Default to table mode
         let originalContent = ''; // Store original content for reference
 
+        const nonEditableColumns = ['Measurement', 'Unit', 'Type', 'Blanked', 'Concentration', 
+                              'TimeUnit', 'BlankType', 'MeasMode', 'MeasUnit'];
+
+        function setupTableEvents() {
+            const table = document.getElementById('swal-edit-table');
+            if (!table) return;
+
+            const addRowBtn = document.getElementById('add-row-btn');
+            const deleteRowBtn = document.getElementById('delete-row-btn');
+            let selectedRow = null;
+
+            // Row selection
+            table.addEventListener('click', function(e) {
+                const cell = e.target.closest('td, th');
+                if (!cell) return;
+                
+                const row = cell.closest('tr');
+                if (!row || row.parentNode.tagName !== 'TBODY') return;
+                
+                // Clear previous selection
+                const previouslySelected = table.querySelector('tr.selected');
+                if (previouslySelected) {
+                    previouslySelected.classList.remove('selected');
+                }
+                
+                // Set new selection
+                row.classList.add('selected');
+                selectedRow = row;
+                if (deleteRowBtn) deleteRowBtn.disabled = false;
+                
+                // If clicking an editable cell, focus it
+                if (cell.tagName === 'TD' && cell.contentEditable === 'true') {
+                    cell.focus();
+                }
+            });
+
+            // Add row
+            if (addRowBtn) {
+                addRowBtn.addEventListener('click', function() {
+                    const tbody = document.getElementById('swal-edit-body');
+                    if (!tbody) return;
+                    
+                    const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                    const newRow = document.createElement('tr');
+                    newRow.dataset.rowIndex = tbody.children.length;
+                    
+                    // Get reference values from first existing row (if available)
+                    const referenceValues = {};
+                    const defaultValues = {'Timestamp': '0.00', 
+                                            'Measurement': 'ABSORBANCE',
+                                            'Unit': 'NONE',
+                                            'Type': 'NONE',
+                                            'Blanked': 'FALSE', 
+                                            'Concentration': 'NONE', 
+                                            'Value': '0.00',
+                                            'Vmax': '0.00',
+                                            'Slope': '0.00',
+                                            'Sat': '0.00',
+                                            'Time To Sat': '0.00',
+                                            'MeasUnit': 'NONE',
+                                            'TimeUnit': 'minutes',
+                                            'BlankType': 'NONE',
+                                            'MeasMode': 'kinetics',
+                                            'TimePoint': '0'};
+                    if (tbody.children.length > 0) {
+                        const firstRow = tbody.children[0];
+                        headers.forEach((header, index) => {
+                            if (nonEditableColumns.includes(header)) {
+                                if (header !== 'Concentration' || AppState.currentMeasurementMode !== 'calibrate') {
+                                    referenceValues[header] = firstRow.children[index].textContent;
+                                }
+                            }
+                        });
+                    }
+                    
+                    headers.forEach((header, index) => {
+                        let isEditable = true;
+                        // In calibrate mode, 'Concentration' is editable
+                        if (header !== 'Concentration' || AppState.currentMeasurementMode !== 'calibrate') {
+                            isEditable = !nonEditableColumns.includes(header);
+                        }
+                        const td = document.createElement('td');
+                        td.dataset.col = header;
+                        
+                        // Set default values
+                        let defaultValue = '';
+                        console.log(`References values are:`, referenceValues);
+                        if (!isEditable && referenceValues[header]) {
+                            defaultValue = referenceValues[header];
+                        } else {
+                            defaultValue = defaultValues[header] || '';
+                        }
+                        
+                        td.textContent = defaultValue;
+                        Object.assign(td.style, {
+                            border: '1px solid #ddd',
+                            padding: '6px',
+                            fontSize: '0.82em',
+                            backgroundColor: !isEditable ? '#f8f8f8' : '',
+                            cursor: !isEditable ? 'not-allowed' : '',
+                            whiteSpace: header === 'Timestamp' ? 'nowrap' : '',
+                            textAlign: (header === 'Value' || header === 'Concentration') ? 'right' : ''
+                        });
+                        
+                        if (isEditable) {
+                            td.contentEditable = true;
+                        }
+                        
+                        newRow.appendChild(td);
+                    });
+                    
+                    tbody.appendChild(newRow);
+                    // Auto-select the new row
+                    if (selectedRow) {
+                        selectedRow.classList.remove('selected');
+                    }
+                    newRow.classList.add('selected');
+                    newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    selectedRow = newRow;
+                    if (deleteRowBtn) deleteRowBtn.disabled = false;
+                });
+            }
+
+            // Delete row
+            if (deleteRowBtn) {
+                deleteRowBtn.addEventListener('click', function() {
+                    if (selectedRow) {
+                        selectedRow.remove();
+                        selectedRow = null;
+                        deleteRowBtn.disabled = true;
+                    }
+                });
+            }
+        }
+        
         function renderContent(content) {
             originalContent = content.content; // Store the original content
             let html = '';
@@ -123,11 +258,16 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 const headers = lines[0].split(',');
                 const data = lines.slice(1);
                 
-                const nonEditableColumns = ['Measurement', 'Unit', 'Type', 'Blanked', 'Concentration', 
-                                        'TimeUnit', 'BlankType', 'MeasMode', 'MeasUnit'];
-                
                 html = `
                     <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                        <button id="add-row-btn" class="swal2-confirm swal2-styled" style="padding: 5px 10px;">
+                            Add Row (+)
+                        </button>
+                        <button id="delete-row-btn" class="swal2-deny swal2-styled" style="padding: 5px 10px;" disabled>
+                            Delete Selected Row (-)
+                        </button>
+                    </div>
                     <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
                         <table id="swal-edit-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
                             <thead>
@@ -143,10 +283,13 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             <tbody id="swal-edit-body">
                                 ${data.map((row, rowIndex) => {
                                     const cells = row.split(',');
-                                    return `<tr>
+                                    return `<tr data-row-index="${rowIndex}">
                                         ${cells.map((cell, cellIndex) => {
                                             const columnName = headers[cellIndex];
-                                            const isEditable = !nonEditableColumns.includes(columnName);
+                                            let isEditable = true;
+                                            if (columnName !== 'Concentration' || AppState.currentMeasurementMode !== 'calibrate') {
+                                                isEditable = !nonEditableColumns.includes(columnName);
+                                            }
                                             return `
                                                 <td ${isEditable ? 'contenteditable="true"' : 'class="non-editable"'} 
                                                     style="border: 1px solid #ddd; padding: 6px;
@@ -154,8 +297,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                                     ${!isEditable ? 'background-color: #f8f8f8; cursor: not-allowed;' : ''}
                                                     ${columnName === 'Timestamp' ? 'white-space: nowrap;' : ''}
                                                     ${columnName === 'Value' || columnName === 'Concentration' ? 'text-align: right;' : ''}"
-                                                    data-col="${columnName}"
-                                                    data-row="${rowIndex}">
+                                                    data-col="${columnName}">
                                                     ${cell.trim()}
                                                 </td>
                                             `;
@@ -166,23 +308,13 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         </table>
                     </div>
                     <p style="font-size: 0.8em; color: #666; margin-top: 5px;">
-                        Click cells to edit (gray cells are read-only). Save to apply changes.
+                        Click cells to edit (gray cells are read-only). Select rows to delete. Save to apply changes.
                     </p>
-                    <style>
-                        #swal-edit-table td {
-                            word-break: break-word;
-                            max-width: 200px;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                        }
-                        #swal-edit-table th {
-                            min-width: 80px;
-                        }
-                    </style>
                 `;
             }
             return html;
         }
+
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent($("#directory").val())}`, function(content) {
             Swal.fire({
@@ -198,11 +330,26 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 cancelButtonColor: '#d33',
                 didOpen: () => {
                     const toggleButton = document.getElementById('toggle-mode');
-                    toggleButton.addEventListener('click', () => {
-                        editMode = editMode === 'text' ? 'table' : 'text';
-                        toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode';
-                        Swal.getHtmlContainer().innerHTML = renderContent({content: originalContent});
-                    });
+                    // toggleButton.addEventListener('click', () => {
+                    //     editMode = editMode === 'text' ? 'table' : 'text';
+                    //     toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode';
+                    //     Swal.getHtmlContainer().innerHTML = renderContent({content: originalContent});
+                    // });
+                    if (editMode === 'table') {
+                        setupTableEvents();
+                    }
+                    
+                    if (toggleButton) {
+                        toggleButton.addEventListener('click', () => {
+                            editMode = editMode === 'text' ? 'table' : 'text';
+                            toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode';
+                            Swal.getHtmlContainer().innerHTML = renderContent({content: originalContent});
+                            if (editMode === 'table') {
+                                // Need a small delay to allow DOM to update
+                                setTimeout(setupTableEvents, 50);
+                            }
+                        });
+                    }
                 },
                 preConfirm: () => {
                     const newFileName = document.getElementById('swal-input-filename').value;
