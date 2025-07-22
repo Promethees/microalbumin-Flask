@@ -23,7 +23,6 @@
                 const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
                 const basePathSegments = basePath.split(delimiter).filter(segment => segment);
                 const baseDirName = basePathSegments[basePathSegments.length - 1];
-                const promptMessage = document.getElementById('prompt-message');
                 const errorMessage = document.getElementById('error-message');
                 const initButton = document.getElementById('init-button');
 
@@ -31,7 +30,6 @@
                 initButton.disabled = true;
 
                 // Update prompt message
-                promptMessage.textContent = `Please select the directory containing main.py (expected: ${basePath})`;
                 errorMessage.style.display = 'none';
 
                 // Open the directory picker
@@ -224,7 +222,7 @@
             </p>
             
             <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <p id="prompt-message" style="color: #34495e; font-size: 1rem; margin-bottom: 1.5rem;">
+                <p id="prompt-message">
                     Please select the directory containing <code>main.py</code> to get started.<br>
                     <small style="color: #95a5a6;">(expected: {{ directory | safe }})</small>
                 </p>
