@@ -195,6 +195,19 @@
 </head>
 <body>
     <div class="container">
+        <button id="shutdown-btn" style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        ">Shutdown Server</button>
         <!-- Initial prompt shown on page load -->
         <div id="init-prompt">
             <p id="prompt-message">Please select the directory containing main.py (expected: {{ directory | safe }})</p>
@@ -429,6 +442,30 @@
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
             let logInterval, updateInterval, serverCheckInterval;
+            document.getElementById('shutdown-btn').addEventListener('click', function() {
+                const confirmationMessage = "{{ production_mode }}" === "True"
+                    ? 'WARNING: Production mode. This will terminate the server process and close the terminal. Continue?'
+                    : 'Are you sure you want to shutdown the server?';
+                
+                if (confirm(confirmationMessage)) {
+                    fetch('/shutdown', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        window.location.href = '/goodbye';
+                    });
+                }
+            });
         </script>
         <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}"></script>

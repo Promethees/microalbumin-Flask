@@ -41,6 +41,8 @@ else:
     delimiter = "/";
 
 json_root_path = os.path.join(os.getcwd(), "json")
+# Configuration - Set this to False for development, True for production
+PRODUCTION_MODE = True  # Change this based on your environment
 
 # Region 1: USED by index.js
 @app.route('/ping')
@@ -90,9 +92,37 @@ def index():
                          quantity_input=quantity_input,
                          file_list=file_list,
                          cal_json_list=cal_json_list,
-                         delimiter=delimiter))
+                         delimiter=delimiter,
+                         production_mode= PRODUCTION_MODE))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
+
+def delayed_termination():
+    """Wait a moment before terminating to allow the response to complete"""
+    time.sleep(5)  # Give the browser time to load the goodbye page
+    if PRODUCTION_MODE:
+        # In production, we need to kill the entire process group
+        if platform.system() == 'Windows':
+            os.kill(os.getpid(), signal.SIGTERM)
+        else:
+            os.killpg(os.getpgid(os.getpid()), signal.SIGTERM)
+    else:
+        # In development, use the Werkzeug shutdown mechanism
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    # Start termination after a short delay
+    threading.Thread(target=delayed_termination).start()
+    # Redirect to goodbye page immediately
+    return render_template('goodbye.html', production_mode=PRODUCTION_MODE)
+
+# @app.route('/goodbye')
+# def goodbye():
+#     return render_template('goodbye.html', production_mode=PRODUCTION_MODE)
 
 @app.route('/browse', methods=['POST'])
 def browse():
