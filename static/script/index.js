@@ -285,6 +285,7 @@ function pointModeBehaviour() {
     $("#concentration-reader-section").removeClass("hidden");
     $("#analysis-info").removeClass("hidden");
     $("#full-display-section").removeClass("hidden");
+    $("#quantity-checkboxes").addClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");

@@ -434,7 +434,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         const jsonTimePoint = jsonFile["time"];
                         const jsonTimeUnit = jsonFile["time-unit"];
 
-                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit);
+                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit + "s");
                         const targetMultiplier = getTimeUnitMultiplier(timeUnitSet);
                         const conversionFactor = baseMultiplier / targetMultiplier;
                         AppState.refCalPoint = jsonTimePoint * conversionFactor;
@@ -443,7 +443,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         const estValueRead = getEstimatedValue(response.data, jsonTimePoint * 60, jsonFile["for_blank_type"]).toFixed(4);
                         if (estValueRead) {
                             const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"];
-                            $("#add-json-section").text(`. The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
+                            $("#add-json-section").text(`The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
                         } else {
                             $("#add-json-section").text("");
                         }
@@ -475,7 +475,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
 } // Close fetchData function
 
 function toggleMode() {
-    if ($("#full-display").is(":checked") && AppState.currentMeasurementMode !== "calibrate") {
+    if ($("#full-display").is(":checked") && AppState.currentMeasurementMode === "kinetics") {
         $("#quantity-checkboxes").removeClass("hidden");
     } else {   
         $("#quantity-checkboxes").addClass("hidden");
