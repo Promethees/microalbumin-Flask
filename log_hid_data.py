@@ -92,7 +92,7 @@ class HIDDataCollector:
             self.buffer += ' '
         else:
             self.buffer += key
-        self.log(f"Current buffer is {self.buffer}")  
+        # self.log(f"Current buffer is {self.buffer}")  
         # Optional, uncomment if needed
 
     def is_header(self, line):
