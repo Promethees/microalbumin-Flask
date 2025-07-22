@@ -10,6 +10,8 @@ function initDefaultState() {
     $("#select-time-point").addClass("hidden");
     $("#export-coef").addClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
+    $("#terminate-script-btn").removeClass('blinking');
+    $("#go-to-btn").removeClass('blinking');
 }
 
 const AppState = {
@@ -189,7 +191,7 @@ $(document).ready(function() {
         }
 
         if (!AppState.currentJSON) {
-            $("#select-quantity-section").addClass("hidden");
+            // $("#select-quantity-section").addClass("hidden");
             $("#derived-concentration-section").addClass("hidden");
             $("#blank-derived-concentration-section").addClass("hidden");
             $("#non-blank-derived-concentration-section").addClass("hidden");
@@ -245,7 +247,7 @@ $(document).ready(function() {
 
 function kineticsModeBehaviour() {
     $("#window-size-section").removeClass("hidden");
-    $("#select-quantity-section").removeClass("hidden");
+    $("#select-quantity-section").addClass("hidden");
     $("#point-json-exp-section").addClass("hidden");
     $("#cal-json-sel-section").removeClass("hidden");
     $("#kinetics-lines").removeClass("hidden");
@@ -311,7 +313,6 @@ function calModeBehaviour() {
     $("#select-exp-blank-type-meas").addClass("hidden");
     $("#select-exp-blank-type-cal").removeClass("hidden");
     $("#window-size-section").addClass("hidden");
-    $("#select-quantity-section").removeClass("hidden");
     if ($("#cal-mode-select").val() === "kinetics") {
             calKineticsBehaviour();
         } else {
@@ -343,7 +344,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
             $("#cal-mode-select").val(`${AppState.currentMeasurementMode}`); 
         }
     }
-    console.log("Updating directory to:", path);
+    // console.log("Updating directory to:", path);
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
