@@ -480,14 +480,10 @@ function toggleMode() {
     } else {   
         $("#quantity-checkboxes").addClass("hidden");
     }
+    // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
-        // Nullify previous file so that graphics can be redrawn
-        AppState.prevFile = null; 
         if (AppState.currentMeasurementMode !== "calibrate") {
-            let range = $("#range-value").val();
-            let unit = $("#time-unit").val();
-            let window_size = $("window_size").val();
-            fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
+            drawMeasurementChart();
         } else fetchData(null, null, null, AppState.currentFile, AppState.currentJSONcontent);
     }
 }

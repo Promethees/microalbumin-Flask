@@ -172,17 +172,19 @@ $(document).ready(function() {
         }
 
         if (AppState.currentFile) {
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                let range = $("#range-value").val();
-                let unit = $("#time-unit").val();
-                let window_size = $("#window-size").val();
-                fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
-                $("#cal-time-unit").text(unit.slice(0, -1));
-            } else {
-                if (AppState.currentFile !== AppState.prevFile) {
+            if (AppState.currentFile !== AppState.prevFile) {
+                if (AppState.scriptRunning) {
+                    // Nullify previous file so that graphics can be redrawn
+                    AppState.prevFile = null;
+                    drawMeasurementChart();
+                } else {
                     AppState.prevFile = AppState.currentFile;
                     // If the file has changed, fetch data again
-                    fetchData(null, null, null, AppState.currentFile, null);
+                    if (AppState.currentMeasurementMode === "calibrate") {
+                        fetchData(null, null, null, AppState.currentFile, null);
+                    } else {
+                        drawMeasurementChart();
+                    }
                 }
             }
             $("#data-display-section").removeClass("hidden");
@@ -364,4 +366,12 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     $.get('/get_json_cal', {mode: AppState.currentMeasurementMode}, function(response) {
         updateJSONTable(response.files);
     })
+}
+
+function drawMeasurementChart() {
+    let range = $("#range-value").val();
+    let unit = $("#time-unit").val();
+    let window_size = $("#window-size").val();
+    fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
+    $("#cal-time-unit").text(unit.slice(0, -1));
 }
