@@ -20,7 +20,7 @@ sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
 from mode import get_mode_input
-from measure import get_dynamic_data
+from measure import get_dynamic_data, sort_csv_file
 from quantity import get_quantity_input
 from file import get_file_list
 from get_next_filename import get_next_filename
@@ -659,7 +659,9 @@ def export_data(mode="kinetics"):
                     writer.writerow([measurement, concentration, value, meas_unit, time_point, time_unit, blankT, meas_mode])
                 message = f"Data exported at {full_path}"
                 status = "success" 
+                # Add this line to sort the file after insertion
             f.close()
+            sort_csv_file(full_path, meas_mode)
 
         return jsonify({"status": status, "message": message})
     except Exception as e:
