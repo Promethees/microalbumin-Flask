@@ -19,7 +19,7 @@
         // Initialize by enforcing selection of the main.py directory
         async function initDirectory() {
             try {
-                const basePath = "{{ directory | safe }}";
+                const basePath = "{{ directory }}";
                 const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
                 const basePathSegments = basePath.split(delimiter).filter(segment => segment);
                 const baseDirName = basePathSegments[basePathSegments.length - 1];
@@ -135,7 +135,7 @@
                 
                 // Normalize paths
                 let currentPath = await normalizePath(pathDisplay.value || '', delimiter);
-                let basePath = await normalizePath("{{ directory | safe }}" || 'data', delimiter);
+                let basePath = await normalizePath("{{ directory }}" || 'data', delimiter);
                 
                 // Set default path if empty
                 if (!currentPath) {
@@ -224,7 +224,7 @@
             <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
                 <p id="prompt-message">
                     Please select the directory containing <code>main.py</code> to get started.<br>
-                    <small style="color: #95a5a6;">(expected: {{ directory | safe }})</small>
+                    <small style="color: #95a5a6;">(expected: {{ directory }})</small>
                 </p>
                 
                 <button onclick="initDirectory()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
@@ -462,7 +462,7 @@
         </footer>
     </div>
         <script >
-            const rootPath = "{{ directory | safe}}";
+            const rootPath = "{{ directory }}";
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
