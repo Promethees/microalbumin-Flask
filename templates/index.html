@@ -135,7 +135,7 @@
                 
                 // Normalize paths
                 let currentPath = await normalizePath(pathDisplay.value || '', delimiter);
-                let basePath = await normalizePath("{{ directory }}" || 'data', delimiter);
+                let basePath = await normalizePath("{{ directory }}" || '', delimiter);
                 
                 // Set default path if empty
                 if (!currentPath) {

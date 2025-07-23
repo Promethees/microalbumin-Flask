@@ -358,7 +358,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         filename: fileName,
                         new_filename: newFileName,
                         path: $("#directory").val(),
-                        content: content
+                        content: content,
+                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp'
                     }, function(response) {
                         if (response.status === 'success') {
                             let textMsg;

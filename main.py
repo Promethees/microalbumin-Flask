@@ -329,6 +329,7 @@ def edit_file():
         new_file_name = request.form.get('new_filename', file_name)  # Default to original name if not provided
         path = request.form.get('path') if request.form.get('path') else get_directory()
         content = request.form.get('content')
+        calibrate_mode = request.form.get('calibrate_mode')
 
         # Input validation
         if not file_name or not content:
@@ -423,6 +424,9 @@ def edit_file():
             with FileLock(lock_path):
                 with open(new_file_path, 'w') as f:
                     f.write(content)
+                    f.close()
+            if calibrate_mode:
+                sort_csv_file(new_file_path, calibrate_mode)
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
             return jsonify({
