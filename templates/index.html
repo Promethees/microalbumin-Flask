@@ -19,7 +19,7 @@
         // Initialize by enforcing selection of the main.py directory
         async function initDirectory() {
             try {
-                const basePath = "{{ directory }}";
+                const basePath = '{{ directory | tojson }}'.replace("\"","");
                 const delimiter = "{{ delimiter  }}"; // Normalize delimiter
                 const basePathSegments = basePath.split(delimiter.replace("\\\\","\\")).filter(segment => segment);
                 const baseDirName = basePathSegments[basePathSegments.length - 1];
@@ -135,7 +135,7 @@
                 
                 // Normalize paths
                 let currentPath = await normalizePath(pathDisplay.value || '', delimiter.replace('\\\\', '\\'));
-                let basePath = await normalizePath("{{ directory }}" || '', delimiter.replace('\\\\', '\\'));
+                let basePath = await normalizePath('{{ directory | tojson }}' || '', delimiter.replace('\\\\', '\\'));
                 
                 // Set default path if empty
                 if (!currentPath) {
@@ -240,7 +240,7 @@
             
             <div class="section">
                 <h2>Directory</h2>
-                <input type="text" id="directory" value="{{ directory }}" onchange="updateDirectory(this.value, true)">
+                <input type="text" id="directory" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)">
                 <button onclick="browseDirectory()">Browse Path</button>
                 <div id="dir-suggestions">
                     <h3>Go back</h3>
@@ -462,7 +462,7 @@
         </footer>
     </div>
         <script >
-            const rootPath = "{{ directory }}";
+            const rootPath = '{{ directory | tojson }}'.replace("\"","");
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
