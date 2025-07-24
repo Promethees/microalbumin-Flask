@@ -10,8 +10,10 @@ function browseDirectory() {
 
         $.get('/get_children', function(childResponse) {
             console.log("Child directories:", childResponse.children);
-            let childHtml = childResponse.children.length > 0 ? 
-                `${childResponse.children.map(dir => 
+            const sortedChildren = childResponse.children.sort((a, b) => a.localeCompare(b));
+            // Update the child directories display
+            let childHtml = sortedChildren.length > 0 ? 
+                `${sortedChildren.map(dir => 
                     `<div onclick="updateDirectory('${dir}', 'true')">${dir.split(delimiter).pop()}</div>`
                 ).join('')}` : 
                 '<div>No child directories</div>';
