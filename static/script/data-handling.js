@@ -318,7 +318,11 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                 derived_con_text = derivedConSettings.derived_con_text;
                 if (derived_section) {
                     derived_section.classList.remove("hidden");
-                    $("#select-quantity-section").removeClass("hidden");
+                    if (AppState.currentMeasurementMode === "kinetics") {
+                        $("#select-quantity-section").removeClass("hidden");
+                    } else {
+                        $("#select-quantity-section").addClass("hidden");
+                    }
                 } else { // derived_section is null -> hide all
                     $("#select-quantity-section").addClass("hidden");
                     $("#derived-concentration-section").addClass("hidden");
@@ -434,7 +438,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                         const jsonTimePoint = jsonFile["time"];
                         const jsonTimeUnit = jsonFile["time-unit"];
 
-                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit["time-unit"] + "s");
+                        const baseMultiplier = getTimeUnitMultiplier(jsonTimeUnit + "s");
                         const targetMultiplier = getTimeUnitMultiplier(timeUnitSet);
                         const conversionFactor = baseMultiplier / targetMultiplier;
                         AppState.refCalPoint = jsonTimePoint * conversionFactor;
