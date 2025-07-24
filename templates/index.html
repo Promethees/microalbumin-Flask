@@ -20,8 +20,8 @@
         async function initDirectory() {
             try {
                 const basePath = "{{ directory }}";
-                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
-                const basePathSegments = basePath.split(delimiter).filter(segment => segment);
+                const delimiter = "{{ delimiter  }}"; // Normalize delimiter
+                const basePathSegments = basePath.split(delimiter.replace("\\\\","\\")).filter(segment => segment);
                 const baseDirName = basePathSegments[basePathSegments.length - 1];
                 const errorMessage = document.getElementById('error-message');
                 const initButton = document.getElementById('init-button');
@@ -131,11 +131,11 @@
         async function pickDirectory(inputId) {
             try {
                 const pathDisplay = document.getElementById(inputId);
-                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}";
+                const delimiter = "{{ delimiter }}";
                 
                 // Normalize paths
-                let currentPath = await normalizePath(pathDisplay.value || '', delimiter);
-                let basePath = await normalizePath("{{ directory }}" || '', delimiter);
+                let currentPath = await normalizePath(pathDisplay.value || '', delimiter.replace('\\\\', '\\'));
+                let basePath = await normalizePath("{{ directory }}" || '', delimiter.replace('\\\\', '\\'));
                 
                 // Set default path if empty
                 if (!currentPath) {
@@ -143,7 +143,7 @@
                 }
 
                 // Split current path into segments
-                const pathSegments = currentPath ? currentPath.split(delimiter).filter(segment => segment) : [];
+                const pathSegments = currentPath ? currentPath.split(delimiter.replace('\\\\', '\\')).filter(segment => segment) : [];
                 const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : null;
 
                 // Retrieve previous directory handle
@@ -153,7 +153,7 @@
                 // Open directory picker
                 const dirHandle = await window.showDirectoryPicker({ startIn: previousDirHandle || 'documents' });
                 const selectedDirName = dirHandle.name;
-                const baseDirName = basePath.split(delimiter).filter(segment => segment).pop();
+                const baseDirName = basePath.split(delimiter.replace('\\\\', '\\')).filter(segment => segment).pop();
 
                 // Validate if selection is within basePath
                 // if (basePath && !currentPath.startsWith(basePath) && selectedDirName !== baseDirName) {
@@ -169,7 +169,7 @@
                 // Construct full path
                 const matchIndex = pathSegments.indexOf(selectedDirName);
                 const { fullPath, shouldAppend } = constructFullPath(
-                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter, previousDirHandle, baseDirName
+                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter.replace('\\\\', '\\'), previousDirHandle, baseDirName
                 );
 
                 // Verify path with server
