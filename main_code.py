@@ -11,12 +11,16 @@ import atexit
 import csv
 import pandas as pd
 import json
+from http import HTTPStatus
+from datetime import datetime
+import re
+from filelock import FileLock
 
 sys.path.append('code\src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
 from mode import get_mode_input
-from measure import get_dynamic_data
+from measure import get_dynamic_data, sort_csv_file
 from quantity import get_quantity_input
 from file import get_file_list
 from get_next_filename import get_next_filename
@@ -37,6 +41,8 @@ else:
     delimiter = "/";
 
 json_root_path = os.path.join(os.getcwd(), "json")
+# Configuration - Set this to False for development, True for production
+PRODUCTION_MODE = True  # Change this based on your environment
 
 # Region 1: USED by index.js
 @app.route('/ping')
@@ -86,9 +92,37 @@ def index():
                          quantity_input=quantity_input,
                          file_list=file_list,
                          cal_json_list=cal_json_list,
-                         delimiter=delimiter))
+                         delimiter=delimiter,
+                         production_mode= PRODUCTION_MODE))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
+
+def delayed_termination():
+    """Wait a moment before terminating to allow the response to complete"""
+    time.sleep(5)  # Give the browser time to load the goodbye page
+    if PRODUCTION_MODE:
+        # In production, we need to kill the entire process group
+        if platform.system() == 'Windows':
+            os.kill(os.getpid(), signal.SIGTERM)
+        else:
+            os.killpg(os.getpgid(os.getpid()), signal.SIGTERM)
+    else:
+        # In development, use the Werkzeug shutdown mechanism
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    # Start termination after a short delay
+    threading.Thread(target=delayed_termination).start()
+    # Redirect to goodbye page immediately
+    return render_template('goodbye.html', production_mode=PRODUCTION_MODE)
+
+# @app.route('/goodbye')
+# def goodbye():
+#     return render_template('goodbye.html', production_mode=PRODUCTION_MODE)
 
 @app.route('/browse', methods=['POST'])
 def browse():
@@ -279,11 +313,300 @@ def get_logs():
     return jsonify({'status': 'success', 'logs': 'No logs available'})
 
 # Region 4: USED by data_handling.js
+@app.route('/edit_file', methods=['POST'])
+def edit_file():
+    global process
+    try:
+        # Check if script is running
+        if process and process.poll() is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot edit files while the data collection process is running'
+            }), HTTPStatus.LOCKED
+
+        # Extract request data
+        file_name = request.form.get('filename')
+        new_file_name = request.form.get('new_filename', file_name)  # Default to original name if not provided
+        path = request.form.get('path') if request.form.get('path') else get_directory()
+        content = request.form.get('content')
+        calibrate_mode = request.form.get('calibrate_mode')
+
+        # Input validation
+        if not file_name or not content:
+            return jsonify({
+                'status': 'error',
+                'message': 'Filename and content are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        if not new_file_name.endswith('.csv'):
+            return jsonify({
+                'status': 'error',
+                'message': 'New file name must end with .csv'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Construct file paths
+        file_path = os.path.join(path, file_name)
+        new_file_path = os.path.join(path, new_file_name)
+        print(f"Editing CSV file: {file_path} to {new_file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+
+        # Validate file path to prevent directory traversal
+        if '..' in os.path.normpath(file_path) or '..' in os.path.normpath(new_file_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Check if original file exists
+        if not os.path.exists(file_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'File {file_name} not found'
+            }), HTTPStatus.NOT_FOUND
+
+        # Check if new file name already exists (unless it's the same file)
+        if file_name != new_file_name and os.path.exists(new_file_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'File {new_file_name} already exists'
+            }), HTTPStatus.CONFLICT
+
+        # Validate content with regex
+        pattern_sets = [
+            {
+                'header': r"^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$",
+                'data': r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$",
+                'error': 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+            },
+            {
+                'header': r"^Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
+                'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+            },
+            {
+                'header': r"^Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode$",
+                'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),[A-Za-z]+,(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                'error': 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+            }
+        ]
+
+        lines = content.strip().split('\n')
+        if not lines:
+            return jsonify({
+                'status': 'error',
+                'message': 'Content cannot be empty'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Find matching pattern set
+        matched_pattern = None
+        for pattern in pattern_sets:
+            if re.match(pattern['header'], lines[0]):
+                matched_pattern = pattern
+                break
+
+        if not matched_pattern:
+            valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid CSV header. Must match one of: {valid_headers}'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Validate data rows with the matched pattern
+        for i, line in enumerate(lines[1:], 2):
+            if not re.match(matched_pattern['data'], line):
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Invalid data in row {i} for the detected format.'
+                }), HTTPStatus.BAD_REQUEST
+
+        # Write the new content
+        try:
+            lock_path = new_file_path + '.lock'
+            with FileLock(lock_path):
+                with open(new_file_path, 'w') as f:
+                    f.write(content)
+                    f.close()
+            if calibrate_mode:
+                sort_csv_file(new_file_path, calibrate_mode)
+            if file_name != new_file_name:
+                os.remove(file_path)  # Remove old file if renamed
+            return jsonify({
+                'status': 'success',
+                'message': f'File {file_name} updated successfully' + (f' and renamed to {new_file_name}' if file_name != new_file_name else '')
+            }), HTTPStatus.OK
+        except PermissionError as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Permission denied while writing {new_file_name}: {str(e)}'
+            }), HTTPStatus.FORBIDDEN
+        except OSError as e:
+            if e.errno == 16:  # EBUSY: Resource busy
+                return jsonify({
+                    'status': 'error',
+                    'message': f'File {new_file_name} is currently in use by another process'
+                }), HTTPStatus.LOCKED
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Failed to write {new_file_name}: {str(e)}'
+                }), HTTPStatus.INTERNAL_SERVER_ERROR
+    except Exception as e:
+        print(f"Unexpected error in edit_file: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while saving the file'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+          
+@app.route('/delete_file', methods=['POST'])
+def delete_file():
+    try:
+        # Check if script is running
+        if process and process.poll() is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot delete files while the data collection process is running'
+            }), HTTPStatus.LOCKED
+
+        file_name = request.form.get('filename')
+        tabletype = request.form.get('tabletype')
+        mode = request.form.get('mode')
+        path = request.form.get('path') if request.form.get('path') else get_directory()
+
+        # Input validation
+        if not file_name or not tabletype:
+            return jsonify({
+                'status': 'error',
+                'message': 'Filename and tabletype are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Construct file path based on tabletype
+        if tabletype == '#json-table':
+            if not mode:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Mode is required for JSON table type'
+                }), HTTPStatus.BAD_REQUEST
+            json_path = os.path.join(json_root_path, mode)
+            file_path = os.path.join(json_path, file_name)
+            print(f"JSON file path is {file_path}")
+        else:
+            file_path = os.path.join(path, file_name)
+            print(f"CSV file path is {file_path}")
+
+        # Validate file path to prevent directory traversal
+        if '..' in os.path.normpath(file_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'File {file_name} not found'
+            }), HTTPStatus.NOT_FOUND
+
+        # Attempt to delete the file
+        try:
+            os.remove(file_path)
+            return jsonify({
+                'status': 'success',
+                'message': f'File {file_name} deleted successfully'
+            }), HTTPStatus.OK
+        except PermissionError as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Permission denied while deleting {file_name}: {str(e)}'
+            }), HTTPStatus.FORBIDDEN
+        except OSError as e:
+            if e.errno == 16:  # EBUSY: Resource busy
+                return jsonify({
+                    'status': 'error',
+                    'message': f'File {file_name} is currently in use by another process'
+                }), HTTPStatus.LOCKED
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Failed to delete {file_name}: {str(e)}'
+                }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        print(f"Unexpected error in delete_file: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while deleting the file'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+         
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
     data = get_dynamic_data(selected_file)
     return jsonify(data)
+
+@app.route('/get_file_content', methods=['GET'])
+def get_file_content():
+    try:
+        file_name = request.args.get('file')
+        path = request.args.get('path') if request.args.get('path') else get_directory()
+
+        if not file_name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Filename is required'
+            }), HTTPStatus.BAD_REQUEST
+
+        file_path = os.path.join(path, file_name)
+        print(f"Fetching raw content for editing from CSV file: {file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+
+        # Validate file path to prevent directory traversal
+        if '..' in os.path.normpath(file_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Check if file exists (reuse get_dynamic_data for existence check)
+        result = get_dynamic_data(file_path)
+        if 'error' in result and result['error']:
+            return jsonify({
+                'status': 'error',
+                'message': result['error']
+            }), HTTPStatus.NOT_FOUND
+
+        # Check if the subprocess is running
+        if process and process.poll() is None:
+            if path.startswith(os.path.abspath(os.path.join(os.getcwd(), 'data'))):
+                return jsonify({
+                    'status': 'error',
+                    'message': f'File {file_name} may be in use by the data collection process'
+                }), HTTPStatus.LOCKED
+
+        # Ensure the file is a CSV
+        if not file_name.lower().endswith('.csv'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Only CSV files are supported'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Read raw content
+        with open(file_path, 'r') as f:
+            content = f.read()
+
+        return jsonify({
+            'status': 'success',
+            'content': content
+        })
+    except PermissionError as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Permission denied while accessing {file_name}: {str(e)}'
+        }), HTTPStatus.FORBIDDEN
+    except Exception as e:
+        print(f"Unexpected error in get_file_content: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while fetching file content'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @app.route('/export_data', methods=['POST'])
 def export_data(mode="kinetics"):
@@ -340,7 +663,9 @@ def export_data(mode="kinetics"):
                     writer.writerow([measurement, concentration, value, meas_unit, time_point, time_unit, blankT, meas_mode])
                 message = f"Data exported at {full_path}"
                 status = "success" 
+                # Add this line to sort the file after insertion
             f.close()
+            sort_csv_file(full_path, meas_mode)
 
         return jsonify({"status": status, "message": message})
     except Exception as e:

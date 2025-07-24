@@ -4,4 +4,9 @@ venv
 /export_data
 *.exe
 /installer-mac/**/
+/installer-mac/*.dmg
 .python-version
+*.lock
+*.csv
+*.zip
+/data/*.csv

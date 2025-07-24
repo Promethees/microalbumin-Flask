@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ht.ico') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         // Predefine window[inputId + 'Handle'] for the input field
         window['base-dirHandle'] = null;
@@ -16,11 +19,10 @@
         // Initialize by enforcing selection of the main.py directory
         async function initDirectory() {
             try {
-                const basePath = "{{ directory | safe }}";
+                const basePath = "{{ directory }}";
                 const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
                 const basePathSegments = basePath.split(delimiter).filter(segment => segment);
                 const baseDirName = basePathSegments[basePathSegments.length - 1];
-                const promptMessage = document.getElementById('prompt-message');
                 const errorMessage = document.getElementById('error-message');
                 const initButton = document.getElementById('init-button');
 
@@ -28,7 +30,6 @@
                 initButton.disabled = true;
 
                 // Update prompt message
-                promptMessage.textContent = `Please select the directory containing main.py (expected: ${basePath})`;
                 errorMessage.style.display = 'none';
 
                 // Open the directory picker
@@ -66,106 +67,121 @@
             }
         }
 
+        async function normalizePath(path, delimiter) {
+            // Normalize path by replacing double backslashes and removing trailing delimiters
+            return path.replace(/\\\\/g, '\\').replace(/[\\\/]+$/, '');
+        }
+
+        function getPathPrefix(path) {
+            // Extract drive letter or root prefix (e.g., 'C:\' or '/')
+            const driveLetterMatch = path.match(/^([a-zA-Z]:[\\\/]?|\/)/);
+            return driveLetterMatch ? driveLetterMatch[1] : '';
+        }
+
+        function constructFullPath(currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter, previousDirHandle, baseDirName) {
+            let fullPath;
+            let shouldAppend = true;
+
+            if (matchIndex !== -1) {
+                // If the selected folder is already in the path, retract to it
+                fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
+                shouldAppend = false;
+                console.log(`Retracting path to existing segment: ${fullPath}`);
+            } else if (previousDirHandle && previousDirHandle.name === selectedDirName) {
+                // If the same folder as previous is selected, keep the current path
+                fullPath = currentPath;
+                shouldAppend = false;
+                console.log(`Same folder selected, keeping path: ${fullPath}`);
+            } else if (selectedDirName === baseDirName) {
+                // If the basePath directory is selected, set path to basePath
+                fullPath = basePath;
+                shouldAppend = false;
+                console.log(`Selected base directory, setting path to: ${fullPath}`);
+            } else {
+                // Append the new directory name
+                fullPath = currentPath ? `${currentPath}${delimiter}${selectedDirName}` : selectedDirName;
+            }
+
+            // Preserve drive letter or root prefix
+            const prefix = getPathPrefix(currentPath || basePath);
+            if (prefix && !fullPath.startsWith(prefix)) {
+                fullPath = `${prefix}${fullPath}`;
+            }
+
+            return { fullPath, shouldAppend };
+        }
+
+        async function verifyPathWithServer(fullPath) {
+            try {
+                const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
+                const result = await response.json();
+                if (!result.exists) {
+                    alert(`Please only select Directories existing in the current path or immediate subdirectories of the displayed path only!`);
+                    console.warn(`Path "${fullPath}" does not exist on the server.`);
+                    return false;
+                }
+                return true;
+            } catch (fetchErr) {
+                console.error('Failed to verify path with server:', fetchErr);
+                alert('Failed to verify the selected path with the server. Please try again.');
+                return false;
+            }
+        }
+
         async function pickDirectory(inputId) {
             try {
-                // Get the current path from the input field
                 const pathDisplay = document.getElementById(inputId);
-                let currentPath = pathDisplay.value.replace(/\\\\/g, '\\') || '';
-                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}"; // Normalize delimiter
-                // Normalize currentPath by removing trailing delimiter
-                currentPath = currentPath.replace(/[\\\/]+$/, '');
-
-                // Get the server-provided base directory (directory of main.py)
-                let basePath = "{{ directory | safe }}";
-                // Normalize basePath by removing trailing delimiter
-                basePath = basePath.replace(/[\\\/]+$/, '');
-                // Set default path to basePath if currentPath is empty
+                const delimiter = "{{ delimiter | replace('\\\\', '\\') }}";
+                
+                // Normalize paths
+                let currentPath = await normalizePath(pathDisplay.value || '', delimiter);
+                let basePath = await normalizePath("{{ directory }}" || '', delimiter);
+                
+                // Set default path if empty
                 if (!currentPath) {
-                    currentPath = basePath || 'data';
+                    currentPath = basePath;
                 }
 
-                // Split current path into segments and "pop" the last segment
+                // Split current path into segments
                 const pathSegments = currentPath ? currentPath.split(delimiter).filter(segment => segment) : [];
                 const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : null;
-                console.log(`previous stored dir handle: ${window[inputId + 'Handle']}`);
-                // Retrieve the previously stored dirHandle, if any
+
+                // Retrieve previous directory handle
                 const storedDirHandle = window[inputId + 'Handle'] || null;
-                // Set previousDirHandle if its name matches the last segment of currentPath
                 const previousDirHandle = storedDirHandle && lastSegment && storedDirHandle.name === lastSegment ? storedDirHandle : null;
 
-                // Determine the startIn option for showDirectoryPicker
-                let startIn = previousDirHandle || 'documents';
-
-                // Open the directory picker, starting at the specified directory if possible
-                const dirHandle = await window.showDirectoryPicker({ startIn });
-
-                // Validate if the selected directory is a subdirectory of basePath
-                let shouldAppend = true;
-                let fullPath;
+                // Open directory picker
+                const dirHandle = await window.showDirectoryPicker({ startIn: previousDirHandle || 'documents' });
                 const selectedDirName = dirHandle.name;
-                const basePathSegments = basePath.split(delimiter).filter(segment => segment);
-                const baseDirName = basePathSegments[basePathSegments.length - 1];
+                const baseDirName = basePath.split(delimiter).filter(segment => segment).pop();
 
-                // Check if the selected directory name is already in the path
+                // Validate if selection is within basePath
+                // if (basePath && !currentPath.startsWith(basePath) && selectedDirName !== baseDirName) {
+                //     const proceed = confirm(
+                //         `The selected directory "${selectedDirName}" is not within the server directory "${basePath}". Proceed anyway?`
+                //     );
+                //     if (!proceed) {
+                //         console.warn(`User canceled selection of "${selectedDirName}" as it is outside "${basePath}".`);
+                //         return;
+                //     }
+                // }
+
+                // Construct full path
                 const matchIndex = pathSegments.indexOf(selectedDirName);
-                if (matchIndex !== -1) {
-                    // If the selected folder is already in the path, retract to it
-                    fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
-                    shouldAppend = false;
-                    console.log(`Retracting path to existing segment: ${fullPath}`);
-                } else if (previousDirHandle && previousDirHandle.name === selectedDirName) {
-                    // If the same folder as previous is selected, keep the current path
-                    fullPath = currentPath;
-                    shouldAppend = false;
-                    console.log(`Same folder selected, keeping path: ${fullPath}`);
-                } else if (selectedDirName === baseDirName) {
-                    // If the basePath directory is selected, set path to basePath
-                    fullPath = basePath;
-                    shouldAppend = false;
-                    console.log(`Selected base directory, setting path to: ${fullPath}`);
-                } else {
-                    // Check if the selection is likely a subdirectory (heuristic based on basePath)
-                    if (basePath && !currentPath.startsWith(basePath)) {
-                        const proceed = confirm(
-                            `The selected directory "${selectedDirName}" is not within the server directory "${basePath}". Proceed anyway?`
-                        );
-                        if (!proceed) {
-                            console.warn(`User canceled selection of "${selectedDirName}" as it is outside "${basePath}".`);
-                            return;
-                        }
-                    }
-                    // Append the new directory name
-                    fullPath = currentPath ? `${currentPath}${delimiter}${selectedDirName}` : selectedDirName;
-                }
+                const { fullPath, shouldAppend } = constructFullPath(
+                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter, previousDirHandle, baseDirName
+                );
 
-                // Preserve drive letter or root prefix
-                const driveLetterMatch = currentPath.match(/^([a-zA-Z]:)[\\\/]/);
-                if (driveLetterMatch) {
-                    // For Windows paths, replace the drive letter in the path
-                    fullPath = fullPath.replace(/^[a-zA-Z]:[\\\/]?/, driveLetterMatch[1] + delimiter);
-                } 
-                // Verify the fullPath with the server
-                try {
-                    const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
-                    const result = await response.json();
-                    if (!result.exists) {
-                        alert(`Please only select Directories existing in the current path or immediate subdirectories of the displayed path only!`);
-                        console.warn(`Path "${fullPath}" does not exist on the server.`);
-                        return;
-                    }
-                } catch (fetchErr) {
-                    console.error('Failed to verify path with server:', fetchErr);
-                    alert('Failed to verify the selected path with the server. Please try again.');
+                // Verify path with server
+                if (!(await verifyPathWithServer(fullPath))) {
                     return;
                 }
 
-                // Update the input field with the constructed path
+                // Update input field and store directory handle
                 pathDisplay.value = fullPath;
-
-                // Store the current dirHandle for the next selection and client-side file operations
                 window[inputId + 'Handle'] = dirHandle;
 
-                // Warn if no base path is provided
+                // Warn if no base path
                 if (!basePath) {
                     console.warn('No base path provided by server; using directory name or retracted path.');
                 }
@@ -177,12 +193,48 @@
 </head>
 <body>
     <div class="container">
+        <button id="shutdown-btn" style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        ">Shutdown Server</button>
         <!-- Initial prompt shown on page load -->
-        <div id="init-prompt">
-            <p id="prompt-message">Please select the directory containing main.py (expected: {{ directory | safe }})</p>
-            <button onclick="initDirectory()" id="init-button">Select Directory</button>
-            <p id="error-message" class="error" style="display: none;"></p>
-        </div>
+        <div id="init-prompt" style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; padding: 2rem; border-radius: 10px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <!-- Company Logo -->
+            <img src="../static/ht-logo.jpeg" alt="Company Logo" style="height: 400px; margin-bottom: 1rem;">
+            
+            <!-- Software Name with Styling -->
+            <h1 style="color: #2c3e50; font-size: 2.2rem; margin-bottom: 0.5rem; font-weight: 600;">
+                <span style="color: #3498db;">Easy </span>Sensor Kit
+            </h1>
+            
+            <p style="color: #7f8c8d; margin-bottom: 2rem; font-size: 1.1rem;">
+                Welcome to the EasySensor Kit Software!<br>
+                The best low-cost solution for your colorimetric measurements.
+            </p>
+            
+            <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <p id="prompt-message">
+                    Please select the directory containing <code>main.py</code> to get started.<br>
+                    <small style="color: #95a5a6;">(expected: {{ directory }})</small>
+                </p>
+                
+                <button onclick="initDirectory()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    Select Directory
+                </button>
+                
+                <p id="error-message" class="error" style="display: none; color: #e74c3c; margin-top: 1rem;"></p>
+            </div>
+            
+        </div>            
         <div id="main-content" class="hidden">
             <h1>{{ title }}</h1>
             
@@ -218,10 +270,10 @@
                     <label for="base-name">Base Name (--base-name): </label>
                     <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
                 </div>
-                <button id="run-script-btn" onclick="runScript()">Run Script</button>
+                <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
                 <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true)" disabled="">Browse Saving Location</button>
+                <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true)" disabled>Browse Saving Location</button>
                 <div id="log-display"></div>
             </div>
             <div class="section" id="cal-json-exp-section"> 
@@ -235,12 +287,13 @@
                 <h2>Select Coefficients for standard line</h2>
                 <div id="file-table-container">
                     <table id="json-table">
-                        <tr><th>Calibrated JSON</th><th>Action</th></tr>
+                        <tr><th>Calibrated JSON</th><th colspan="2">Action</th></tr>
                         {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
                                 <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">Select</button></td>
+                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
+                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -255,12 +308,14 @@
                 <h2>File Selection</h2>
                 <div id="file-table-container">
                     <table id="file-table">
-                        <tr><th>File Name</th><th>Action</th></tr>
+                        <tr><th>File Name</th><th colspan="2">Action</th></tr>
                         {% if file_list %}
                             {% for file in file_list %}
                             <tr>
                                 <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this)">Select</button></td>
+                                <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
+                                <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
+                                <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -279,8 +334,9 @@
                 </div>
                 <div class="section" id="point-json-exp-section">
                     Reference point is at <span type="number" id="cal-point"></span> 
-                    <br/>
-                    <span id="cal-time-unit" style="font-weight: bold;">second</span><span id="add-json-section"></span>
+                    <span id="cal-time-unit" style="font-weight: bold;">second</span>
+                    </br>
+                    <span id="add-json-section"></span>
                 </div>
                 <div class="section" id="window-size-section">
                     Select window size for Vmax regression
@@ -289,7 +345,7 @@
                 </div>
                 <div class="section" id="select-quantity-section">
                     Select quantity to derive concentration from
-                    <select id="regressed-quantity">
+                    <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
                             {% set transformed = quantity.lower().replace(' ', '_') %}
                             <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
@@ -298,7 +354,7 @@
                 </div>
                 <div id="select-time-point">
                     Select time point to derive concentration from
-                    <select id="regressed-time-point">
+                    <select id="regressed-time-point" onchange="toggleMode()">
                         <option value=""></option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
@@ -401,19 +457,47 @@
                 </div>   
             </div>
         </div>
+        <footer style="font-size: 0.8rem; color: #95a5a6; text-align: center;">
+            © 2025 HT BioTec. All rights reserved.
+        </footer>
     </div>
         <script >
-            const rootPath = "{{ directory | safe}}";
+            const rootPath = "{{ directory }}";
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
             let logInterval, updateInterval, serverCheckInterval;
+            document.getElementById('shutdown-btn').addEventListener('click', function() {
+                const confirmationMessage = "{{ production_mode }}" === "True"
+                    ? 'WARNING: Production mode. This will terminate the server process and close the terminal. Continue?'
+                    : 'Are you sure you want to shutdown the server?';
+                
+                if (confirm(confirmationMessage)) {
+                    fetch('/shutdown', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        window.location.href = '/goodbye';
+                    });
+                }
+            });
         </script>
         <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}"></script>
         <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
         <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
         <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
         <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
 </body>
 </html>

@@ -10,6 +10,8 @@ function initDefaultState() {
     $("#select-time-point").addClass("hidden");
     $("#export-coef").addClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
+    $("#terminate-script-btn").removeClass('blinking');
+    $("#go-to-btn").removeClass('blinking');
 }
 
 const AppState = {
@@ -170,17 +172,19 @@ $(document).ready(function() {
         }
 
         if (AppState.currentFile) {
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                let range = $("#range-value").val();
-                let unit = $("#time-unit").val();
-                let window_size = $("#window-size").val();
-                fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
-                $("#cal-time-unit").text(unit.slice(0, -1));
-            } else {
-                if (AppState.currentFile !== AppState.prevFile) {
+            if (AppState.currentFile !== AppState.prevFile) {
+                if (AppState.scriptRunning) {
+                    // Nullify previous file so that graphics can be redrawn
+                    AppState.prevFile = null;
+                    drawMeasurementChart();
+                } else {
                     AppState.prevFile = AppState.currentFile;
                     // If the file has changed, fetch data again
-                    fetchData(null, null, null, AppState.currentFile, null);
+                    if (AppState.currentMeasurementMode === "calibrate") {
+                        fetchData(null, null, null, AppState.currentFile, null);
+                    } else {
+                        drawMeasurementChart();
+                    }
                 }
             }
             $("#data-display-section").removeClass("hidden");
@@ -189,7 +193,7 @@ $(document).ready(function() {
         }
 
         if (!AppState.currentJSON) {
-            $("#select-quantity-section").addClass("hidden");
+            // $("#select-quantity-section").addClass("hidden");
             $("#derived-concentration-section").addClass("hidden");
             $("#blank-derived-concentration-section").addClass("hidden");
             $("#non-blank-derived-concentration-section").addClass("hidden");
@@ -245,7 +249,7 @@ $(document).ready(function() {
 
 function kineticsModeBehaviour() {
     $("#window-size-section").removeClass("hidden");
-    $("#select-quantity-section").removeClass("hidden");
+    $("#select-quantity-section").addClass("hidden");
     $("#point-json-exp-section").addClass("hidden");
     $("#cal-json-sel-section").removeClass("hidden");
     $("#kinetics-lines").removeClass("hidden");
@@ -283,6 +287,7 @@ function pointModeBehaviour() {
     $("#concentration-reader-section").removeClass("hidden");
     $("#analysis-info").removeClass("hidden");
     $("#full-display-section").removeClass("hidden");
+    $("#quantity-checkboxes").addClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");
@@ -342,7 +347,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
             $("#cal-mode-select").val(`${AppState.currentMeasurementMode}`); 
         }
     }
-    console.log("Updating directory to:", path);
+    // console.log("Updating directory to:", path);
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
@@ -361,4 +366,12 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     $.get('/get_json_cal', {mode: AppState.currentMeasurementMode}, function(response) {
         updateJSONTable(response.files);
     })
+}
+
+function drawMeasurementChart() {
+    let range = $("#range-value").val();
+    let unit = $("#time-unit").val();
+    let window_size = $("#window-size").val();
+    fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
+    $("#cal-time-unit").text(unit.slice(0, -1));
 }

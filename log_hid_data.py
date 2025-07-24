@@ -42,7 +42,7 @@ class HIDDataCollector:
         self.running = True
         self.buffer = ""
         self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
-        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,2},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+\.\d{1,2})\n$"
+        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)\n$"
         self.session_started = False
         # Initialize log file in /log directory
         self.log_dir = os.path.join(os.getcwd(), "log")
@@ -92,7 +92,8 @@ class HIDDataCollector:
             self.buffer += ' '
         else:
             self.buffer += key
-        # self.log(f"Current buffer is {self.buffer}")  # Optional, uncomment if needed
+        # self.log(f"Current buffer is {self.buffer}")  
+        # Optional, uncomment if needed
 
     def is_header(self, line):
         return bool(re.match(self.header_pattern, line))
@@ -130,17 +131,20 @@ class HIDDataCollector:
 
         try:
             self.log("Reading HID reports. Press Ctrl+C to stop.")
-            last_report = None
+            # last_report = None
 
             while self.running:
                 report = device.read(REPORT_LENGTH, timeout=5000)
                 if report:
-                    timestamp = time.time()
+                    # self.log(f"Raw report: {report}")
                     keys = self.decode_report(report)
-                    if keys and (report != last_report or not keys):
+                    # self.log(f"Decoded keys: {keys}")
+                    # if keys and (report != last_report):
+                    if keys:
                         for key in keys:  # Process each key in the report
+                            # self.log(f"Processing key: {key}")
                             self.process_key(key)
-                        last_report = report
+                        # last_report = report
                 time.sleep(0.001)
 
         except KeyboardInterrupt:
