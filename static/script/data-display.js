@@ -6,19 +6,20 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     const sat_chkbox = document.getElementById('sat');
     // canvas.width = 100%;
     // canvas.height = 280px;
+    const { x: processedX, y: processedY } = preprocessData(allXColumn, allYColumn);
 
-    if (!canvas || allXColumn.length === 0 || allYColumn.length === 0) {
+    if (!canvas || processedX.length === 0 || processedY.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
     }
 
     const ctx = canvas.getContext('2d');
-    if (!ctx || allXColumn.length === 0 || allYColumn.length === 0) {
+    if (!ctx || processedX.length === 0 || processedY.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
     }
 
-    const { XColumn, YColumn } = averageDuplicates(allXColumn, allYColumn);
+    const { XColumn, YColumn } = averageDuplicates(processedX, processedY);
 
     // Handle single data point edge case
     const isSinglePoint = XColumn.length === 1 && YColumn.length === 1;

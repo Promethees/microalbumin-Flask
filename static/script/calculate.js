@@ -8,7 +8,12 @@ function computeRSquared(actual, predicted) {
 }
 
 function calculateCoefAndRSquared(x, y, algo = "linear") {
-    if (x.length !== y.length || x.length < 2) return { slope: 0, rSquared: 0, coefficients: null };
+    // Preprocess the data first
+    const { x: processedX, y: processedY } = preprocessData(x, y);
+    
+    if (processedX.length !== processedY.length || processedX.length < 2) {
+        return { slope: 0, rSquared: 0, coefficients: null };
+    }
 
     let slope = 0;
     let predicted = [];
@@ -18,38 +23,37 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
     switch (algo) {
         case "polynomial":
             const degree = 2;
-            coefficients = polynomialRegression(x, y, degree);
-            predicted = x.map(xi =>
+            coefficients = polynomialRegression(processedX, processedY, degree);
+            predicted = processedX.map(xi =>
                 coefficients.reduce((acc, c, i) => acc + c * Math.pow(xi, i), 0)
             );
-            slope = polynomialRegressionSlope(x, y, degree);
-            rSquared = computeRSquared(y, predicted); // Standard R-squared for polynomial
+            slope = polynomialRegressionSlope(processedX, processedY, degree);
+            rSquared = computeRSquared(processedY, predicted);
             break;
 
         case "logarithmic":
-            // Ensure x + b > 0 for logarithmic regression
-            coefficients = logarithmicRegression(x, y);
+            coefficients = logarithmicRegression(processedX, processedY);
             if (!coefficients) return { slope: 0, rSquared: 0, coefficients: null };
-            predicted = x.map(xi => coefficients[0] * Math.log(xi + coefficients[1]) + coefficients[2]);
-            slope = logarithmicRegressionSlope(x, y);
-            rSquared = computeRSquared(y, predicted); // R-squared on valid data
+            predicted = processedX.map(xi => coefficients[0] * Math.log(xi + coefficients[1]) + coefficients[2]);
+            slope = logarithmicRegressionSlope(processedX, processedY);
+            rSquared = computeRSquared(processedY, predicted);
             break;
 
         case "exponential":
-            const expCoeffs = exponentialRegression(x, y);
+            const expCoeffs = exponentialRegression(processedX, processedY);
             coefficients = expCoeffs;
-            predicted = x.map(xi => expCoeffs[0] * Math.exp(xi * expCoeffs[1]) + expCoeffs[2]);
-            slope = exponentialRegressionSlope(x, y);
-            rSquared = computeRSquared(y, predicted);
+            predicted = processedX.map(xi => expCoeffs[0] * Math.exp(xi * expCoeffs[1]) + expCoeffs[2]);
+            slope = exponentialRegressionSlope(processedX, processedY);
+            rSquared = computeRSquared(processedY, predicted);
             break;
 
         case "linear":
         default:
-            const lin = linearRegression(x, y);
+            const lin = linearRegression(processedX, processedY);
             coefficients = lin;
             slope = lin[0];
-            predicted = x.map(xi => slope * xi + lin[1]);
-            rSquared = computeRSquared(y, predicted); // Standard R-squared for linear
+            predicted = processedX.map(xi => slope * xi + lin[1]);
+            rSquared = computeRSquared(processedY, predicted);
             break;
     }
 
@@ -527,4 +531,37 @@ function getTimeUnitMultiplier(unit) {
         'hours': 3600
     };
     return multipliers[unit] || 1;
+}
+
+function preprocessData(x, y) {
+    // Create a map to store sum and count of y values for each x
+    const xMap = new Map();
+    
+    // Process each pair
+    for (let i = 0; i < x.length; i++) {
+        const currentX = x[i];
+        const currentY = y[i];
+        
+        // Skip if y is "NONE"
+        if (currentY === "NONE") continue;
+        
+        if (!xMap.has(currentX)) {
+            xMap.set(currentX, { sum: currentY, count: 1 });
+        } else {
+            const entry = xMap.get(currentX);
+            entry.sum += currentY;
+            entry.count++;
+        }
+    }
+    
+    // Convert the map back to arrays
+    const processedX = [];
+    const processedY = [];
+    
+    xMap.forEach((value, key) => {
+        processedX.push(key);
+        processedY.push(value.sum / value.count);
+    });
+    
+    return { x: processedX, y: processedY };
 }
