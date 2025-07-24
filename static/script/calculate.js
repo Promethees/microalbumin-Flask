@@ -9,7 +9,7 @@ function computeRSquared(actual, predicted) {
 
 function calculateCoefAndRSquared(x, y, algo = "linear") {
     // Preprocess the data first
-    const { x: processedX, y: processedY } = preprocessData(x, y);
+    const { x: processedX, y: processedY } = mapDuplicates(x, y);
     
     if (processedX.length !== processedY.length || processedX.length < 2) {
         return { slope: 0, rSquared: 0, coefficients: null };
@@ -533,7 +533,7 @@ function getTimeUnitMultiplier(unit) {
     return multipliers[unit] || 1;
 }
 
-function preprocessData(x, y) {
+function mapDuplicates(x, y) {
     // Create a map to store sum and count of y values for each x
     const xMap = new Map();
     

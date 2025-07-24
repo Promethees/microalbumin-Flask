@@ -6,7 +6,7 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     const sat_chkbox = document.getElementById('sat');
     // canvas.width = 100%;
     // canvas.height = 280px;
-    const { x: processedX, y: processedY } = preprocessData(allXColumn, allYColumn);
+    const { x: processedX, y: processedY } = mapDuplicates(allXColumn, allYColumn);
 
     if (!canvas || processedX.length === 0 || processedY.length === 0) {
         $(`#${canvasId}`).hide();
