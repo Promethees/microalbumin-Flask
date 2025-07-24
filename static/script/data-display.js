@@ -121,8 +121,8 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
                                 borderWidth: 3,
-                                xMin: parseFloat(refCalPoint * getTimeUnitMultiplier('minutes') / getTimeUnitMultiplier($("time-unit").val())),
-                                xMax: parseFloat(refCalPoint * getTimeUnitMultiplier('minutes') / getTimeUnitMultiplier($("time-unit").val())),
+                                xMin: AppState.refCalPoint,
+                                xMax: AppState.refCalPoint,
                                 yMin: yMin, // Use updated yMin
                                 yMax: yMax, // Use updated yMax
                                 label: {

@@ -349,28 +349,6 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                 }
             });
 
-            if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, AppState.refCalPoint, jsonFile["for_blank_type"]);
-            } else {
-                if (AppState.currentMeasurementMode === "calibrate") {
-                    const cal_type = $("#cal-mode-select").val();
-                    // const regress_algo = $("#exp-json-time-point").val();
-                    if (cal_type === "kinetics") {
-                        const quantity_obj = document.getElementById('regressed-quantity');
-                        AppState.exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
-                    } else if (cal_type === "point") {
-                        const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
-                        console.log("Give me uniqueTimePoints ", uniqueTimePoints);
-                        AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
-                        const timePoint = $("#regressed-time-point").val();
-                        const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));
-                        AppState.exp_json_content = updatePlot(processingData, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
-                    }
-                } else {
-                    AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
-                }
-            }
-
             if (AppState.currentMeasurementMode !== "calibrate") {                            
                 const conValueInput = document.getElementById('con-value-read');
                 const conValueFromFile = response.data.map(row => row['Concentration'])[0];
@@ -467,6 +445,28 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
                 $("#derived-concentration-section").addClass("hidden");
                 $("#blank-derived-concentration-section").addClass("hidden");
                 $("#non-blank-derived-concentration-section").addClass("hidden");
+            }
+
+            if (AppState.currentMeasurementMode === "point" && jsonFile) {
+                AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay, AppState.refCalPoint, jsonFile["for_blank_type"]);
+            } else {
+                if (AppState.currentMeasurementMode === "calibrate") {
+                    const cal_type = $("#cal-mode-select").val();
+                    // const regress_algo = $("#exp-json-time-point").val();
+                    if (cal_type === "kinetics") {
+                        const quantity_obj = document.getElementById('regressed-quantity');
+                        AppState.exp_json_content = updatePlot(response.data, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", quantity_obj.selectedOptions[0].text);
+                    } else if (cal_type === "point") {
+                        const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
+                        console.log("Give me uniqueTimePoints ", uniqueTimePoints);
+                        AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
+                        const timePoint = $("#regressed-time-point").val();
+                        const processingData = response.data.filter(row => !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint));
+                        AppState.exp_json_content = updatePlot(processingData, range=null, timeUnit=null, window_size=null, response.data[0]["MeasUnit"], isSplitMode, true, null, null, "Concentration", "Value");
+                    }
+                } else {
+                    AppState.globalAnalysis = updatePlot(response.data, range, unit, window_size, response.unit || "NONE", isSplitMode, isFullDisplay);
+                }
             }
             // }
         } else {
