@@ -208,10 +208,16 @@ th {
     animation: blink 1s infinite; /* Blinking animation */
 }
 
-#run-script-btn,#terminate-script-btn,#go-to-btn:disabled {
+#run-script-btn:disabled,
+#terminate-script-btn:disabled,
+#go-to-btn:disabled {
     cursor: not-allowed;
-    /* opacity: 0.6; */
-    /* border: 2px solid #000000;  */
+}
+
+#run-script-btn:not(:disabled),
+#terminate-script-btn:not(:disabled),
+#go-to-btn:not(:disabled) {
+    cursor: pointer; /* or 'default' if you prefer */
 }
 
 @keyframes blink {
