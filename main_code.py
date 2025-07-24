@@ -205,7 +205,8 @@ def run_script():
     base_name = data.get('base_name', 'colorimeter_data')
     
     if "window" in os_name:
-        cmd = ['python', 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
+        venv_python = os.path.join('venv', 'Scripts', 'python.exe')
+        cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
     else:
         cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
     
