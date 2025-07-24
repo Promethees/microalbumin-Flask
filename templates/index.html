@@ -370,7 +370,7 @@
                 <div class="section" id="range-display">
                     <h3>{{ range_input.title }}</h3>
                     <input type="number" id="range-value" value="{{ range_input.value }}" min="1">
-                    <select id="time-unit">
+                    <select id="time-unit" onchange="toggleMode()">
                         {% for unit in range_input.units %}
                         <option value="{{ unit }}">{{ unit }}</option>
                         {% endfor %}
