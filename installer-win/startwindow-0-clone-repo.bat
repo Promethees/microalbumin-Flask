@@ -52,11 +52,6 @@ if not exist "!INSTALL_DIR!" (
 :: Clone the repository and capture output
 echo Cloning repository to "!INSTALL_DIR!"...
 git clone "!REPO_URL!" "!INSTALL_DIR!" 2>&1 | findstr /V "Cloning into"
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to clone repository.
-    pause >nul
-    exit /b 1
-)
 
 :: Change to the installation directory
 cd /d "!INSTALL_DIR!"
