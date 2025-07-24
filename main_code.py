@@ -652,9 +652,9 @@ def export_data(mode="kinetics"):
                 else:
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             if meas_mode == "kinetics":
-                writer.writerow([measurement, concentration, vmax, slope, sat, time_to_sat, meas_unit, time_unit, blankT, meas_mode])
+                writer.writerow([measurement, concentration, vmax, slope, sat, time_to_sat, meas_unit, 'minutes', blankT, meas_mode])
             else:
-                writer.writerow([measurement, concentration, value, meas_unit, time_point, time_unit, blankT, meas_mode])
+                writer.writerow([measurement, concentration, value, meas_unit, time_point, 'minutes', blankT, meas_mode])
             message = f"Data exported at {full_path}"
             status = "success" 
             # Add this line to sort the file after insertion

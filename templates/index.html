@@ -443,7 +443,7 @@
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
                     <button id="go-to-exp-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true, true)">Browse Saving Location</button>
-                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data is only supported when Time unit in <span style="font-weight: bold;">Display Range</span> is set to <span style="font-weight: bold;">"minutes"!</span></p>
+                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data will automatically convert the kinetics quantities to per <span style="font-weight: bold;">"minutes"!</span></p>
                 </div>  
                 <div id="export-coef">
                     <h3>Export coefficients for standard line</h3>

@@ -489,78 +489,73 @@ function toggleMode() {
 }
 
 function exportData() {
-    if ($("#time-unit").val() === "minutes") {
-        AppState.processedExpPath = $("#save-dir").val().trim() || "";
-        const saveFile = $("#save-file").val().trim() || "results";
-        const concentration = $("#con-value-read").val() || "NONE";
-        const timeUnit = $("#time-unit").val();
-        let analysisData = null;
-        let newFile = true;
+    AppState.processedExpPath = $("#save-dir").val().trim() || "";
+    const saveFile = $("#save-file").val().trim() || "results";
+    const concentration = $("#con-value-read").val() || "NONE";
+    const timeUnit = $("#time-unit").val();
+    let analysisData = null;
 
-        bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-        
-        if (AppState.currentMeasurementMode === "kinetics") {
-            switch ($("#exp-json-blank-type").val()) {
-                case "MIXED":
-                    if (!$("#split-mode").is(":checked")) {
-                        analysisData = {
-                            Vmax: AppState.globalAnalysis.vmax * getTimeUnitMultiplier('minutes'),
-                            slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
-                            saturationValue: AppState.globalAnalysis.sat,
-                            timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
-                            measurement: AppState.globalAnalysis.meas,
-                            measUnit: AppState.globalAnalysis.meas_unit
-                        };
-                    }
-                    break;
+    bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
+    
+    if (AppState.currentMeasurementMode === "kinetics") {
+        switch ($("#exp-json-blank-type").val()) {
+            case "MIXED":
+                if (!$("#split-mode").is(":checked")) {
+                    analysisData = {
+                        Vmax: AppState.globalAnalysis.vmax * getTimeUnitMultiplier('minutes'),
+                        slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
+                        saturationValue: AppState.globalAnalysis.sat,
+                        timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
+                        measurement: AppState.globalAnalysis.meas,
+                        measUnit: AppState.globalAnalysis.meas_unit
+                    };
+                }
+                break;
 
-                case "BLANKED":
-                    if ($("#split-mode").is(":checked")) {
-                        analysisData = {
-                            Vmax: AppState.globalAnalysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
-                            slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
-                            saturationValue: AppState.globalAnalysis.sat_blanked,
-                            timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
-                            measurement: AppState.globalAnalysis.meas,
-                            measUnit: AppState.globalAnalysis.meas_unit
-                        };
-                    }
-                    break;
+            case "BLANKED":
+                if ($("#split-mode").is(":checked")) {
+                    analysisData = {
+                        Vmax: AppState.globalAnalysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
+                        slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
+                        saturationValue: AppState.globalAnalysis.sat_blanked,
+                        timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
+                        measurement: AppState.globalAnalysis.meas,
+                        measUnit: AppState.globalAnalysis.meas_unit
+                    };
+                }
+                break;
 
-                case "NON-BLANKED": 
-                    if ($("#split-mode").is(":checked")) {
-                        analysisData = {
-                            Vmax: AppState.globalAnalysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
-                            slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
-                            saturationValue: AppState.globalAnalysis.sat_non_blanked,
-                            timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
-                            measurement: AppState.globalAnalysis.meas,
-                            measUnit: AppState.globalAnalysis.meas_unit
-                        };
-                    }
-                    break;
-            }
-            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
-
-        } else if (AppState.currentMeasurementMode === "point") {
-            if (AppState.currExpTimePoint) { 
-                analysisData = {
-                    estValue: AppState.globalEstimatedValue,
-                    timePoint: AppState.currExpTimePoint,
-                    measurement: AppState.globalAnalysis.meas,
-                    measUnit: AppState.globalAnalysis.meas_unit
-                } 
-                sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
-                if (AppState.globalAnalysis.meas_unit !== "NONE")
-                    $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${AppState.globalEstimatedValue}${AppState.globalAnalysis.meas_unit}`);
-                else 
-                    $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${AppState.globalEstimatedValue}`);
-            } else {
-                alert("Please set the reference time point to export data");
-            }
+            case "NON-BLANKED": 
+                if ($("#split-mode").is(":checked")) {
+                    analysisData = {
+                        Vmax: AppState.globalAnalysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
+                        slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
+                        saturationValue: AppState.globalAnalysis.sat_non_blanked,
+                        timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
+                        measurement: AppState.globalAnalysis.meas,
+                        measUnit: AppState.globalAnalysis.meas_unit
+                    };
+                }
+                break;
         }
-    } else {
-        alert(`Please change your units in Display Range section from ${$("#time-unit").val()} to minutes!`);
+        sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+
+    } else if (AppState.currentMeasurementMode === "point") {
+        if (AppState.currExpTimePoint) { 
+            analysisData = {
+                estValue: AppState.globalEstimatedValue,
+                timePoint: AppState.currExpTimePoint,
+                measurement: AppState.globalAnalysis.meas,
+                measUnit: AppState.globalAnalysis.meas_unit
+            } 
+            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+            if (AppState.globalAnalysis.meas_unit !== "NONE")
+                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${AppState.globalEstimatedValue}${AppState.globalAnalysis.meas_unit}`);
+            else 
+                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${AppState.globalEstimatedValue}`);
+        } else {
+            alert("Please set the reference time point to export data");
+        }
     }
 }
 
