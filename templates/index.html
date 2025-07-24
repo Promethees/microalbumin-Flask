@@ -19,10 +19,10 @@
         // Initialize by enforcing selection of the main.py directory
         async function initDirectory() {
             try {
-                const basePath = '{{ directory | tojson }}'.replace("\"","");
+                const basePath = '{{ directory | tojson }}'
                 const delimiter = "{{ delimiter  }}"; // Normalize delimiter
                 const basePathSegments = basePath.split(delimiter.replace("\\\\","\\")).filter(segment => segment);
-                const baseDirName = basePathSegments[basePathSegments.length - 1];
+                const baseDirName = basePathSegments[basePathSegments.length - 1].replace("\"","");
                 const errorMessage = document.getElementById('error-message');
                 const initButton = document.getElementById('init-button');
 
@@ -462,7 +462,7 @@
         </footer>
     </div>
         <script >
-            const rootPath = '{{ directory | tojson }}'.replace("\"","");
+            const rootPath = '{{ directory | tojson }}';
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
