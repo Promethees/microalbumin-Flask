@@ -1,5 +1,5 @@
 // Generates the Chart.js chart and returns the chart object
-function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, conversionFactor, analysis, isFullDisplay, refCalPoint = null, forThisBlankType = false) {
+function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, conversionFactor, analysis, isFullDisplay, forThisBlankType = false) {
     const canvas = document.getElementById(canvasId);
     const vmax_chkbox = document.getElementById('vmax');
     const slope_chkbox = document.getElementById('slope');
@@ -227,7 +227,7 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
 
 function updatePlot(
     data, range, timeUnit, window_size, unit, isSplitMode,
-    isFullDisplay = false, refCalPoint = null, forBlankType = null,
+    isFullDisplay = false, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
     // Save current scroll position
@@ -313,9 +313,9 @@ function updatePlot(
 
         $("#blanked-canvas, #non-blanked-canvas").show();
         AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
-            unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, refCalPoint, forBlankType === "BLANKED");
+            unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, forBlankType === "BLANKED");
         AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
-            unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, refCalPoint, forBlankType === "NON-BLANKED");
+            unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED");
 
         // Format analysis info for both charts
         const blankedAnalysisInfo = formatAnalysisInfo(analysis_blanked, conversionFactor, unit, `${measurementLabel} (Blanked)`);
@@ -380,7 +380,7 @@ function updatePlot(
         // Generate chart
         $("#plot-canvas").show();
         AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
-            unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, refCalPoint, forBlankType === "MIXED");
+            unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, forBlankType === "MIXED");
 
         if (AppState.currentMeasurementMode !== "calibrate") {
             return extractSingleResultSummary(data, mixAnalysis);
