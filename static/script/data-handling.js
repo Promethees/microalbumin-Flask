@@ -381,7 +381,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 } 
                 // Handle point mode
                 else if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                    processPointMode(response, jsonFile);
+                    processPointMode(response, jsonFile, derived_con_text);
                 }
             } 
             // Handle calibration mode
@@ -410,7 +410,7 @@ function getKineticValue(property, blankType) {
     }
 }
 
-function processPointMode(response, jsonFile) {
+function processPointMode(response, jsonFile, derived_con_text) {
     const timeUnitSet = $("#time-unit").val();
     const calPoint = $("#cal-point");
     $("#point-json-exp-section").removeClass("hidden");
