@@ -334,17 +334,15 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
             const fullDisplayCheckbox = document.getElementById('full-display');
 
             // Move event listener outside the AJAX callback or nest it properly
-            fullDisplayCheckbox.addEventListener('change', function() {
-                const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
-                if (this.checked) {
-                    displayRangeInput.disabled = true;
-                    displayRangeInput.placeholder = "Disabled by Full Display";
-                    displayRangeInput.value = "";
-                } else {
-                    displayRangeInput.disabled = false;
-                    displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
-                }
-            });
+            const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
+            if (fullDisplayCheckbox.checked) {
+                displayRangeInput.disabled = true;
+                displayRangeInput.placeholder = "Disabled by Full Display";
+                displayRangeInput.value = "";
+            } else {
+                displayRangeInput.disabled = false;
+                displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
+            }
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input

@@ -340,7 +340,7 @@
                 </div>
                 <div class="section" id="window-size-section">
                     Select window size for Vmax regression
-                    <input type="number" id="window-size" value="4" min="3" style="width: 5em;">
+                    <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
                     <div id="wd-size-error"></div>
                 </div>
                 <div class="section" id="select-quantity-section">
@@ -387,7 +387,7 @@
                         <h3>Quantities to display on graphic</h3>
                         {% for quantity in quantity_input.quantities %}
                             {% if quantity != "Time To Sat" %}
-                                <input type="checkbox" class="quantity-checkbox" value="{{ quantity }}" id="{{ quantity.lower().replace(' ', '_') }}" checked>
+                                <input type="checkbox" class="quantity-checkbox" value="{{ quantity }}" id="{{ quantity.lower().replace(' ', '_') }}" checked onchange="toggleMode()">
                                 <span>{{ quantity }}</span>
                             {% endif %}
                         {% endfor %}
