@@ -182,11 +182,11 @@ $(document).ready(function() {
                 } else {
                     AppState.prevFile = AppState.currentFile;
                     // If the file has changed, fetch data again
-                    if (AppState.currentMeasurementMode === "calibrate") {
-                        fetchData(null, null, null, AppState.currentFile, null);
-                    } else {
-                        drawMeasurementChart();
-                    }
+                    // if (AppState.currentMeasurementMode === "calibrate") {
+                    //     fetchData(null, null, null, AppState.currentFile, null);
+                    // } else {
+                    //     drawMeasurementChart();
+                    // }
                 }
             }
             $("#data-display-section").removeClass("hidden");
@@ -371,9 +371,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
 }
 
 function drawMeasurementChart() {
-    let range = $("#range-value").val();
     let unit = $("#time-unit").val();
     let window_size = $("#window-size").val();
-    fetchData(range, unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
     $("#cal-time-unit").text(unit.slice(0, -1));
 }

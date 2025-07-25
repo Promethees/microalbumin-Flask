@@ -27,7 +27,6 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
 
 function processDataDisplay(fileName, jsonFileContent=null) {
     // Get user inputs
-    let range = $("#range-value").val();
     let unit = $("#time-unit").val();
     let window_size = $("#window-size").val();
 
@@ -46,7 +45,7 @@ function processDataDisplay(fileName, jsonFileContent=null) {
     $("#wd-size-error").hide();
 
     // Proceed with fetching and displaying data
-    fetchData(range, unit, window_size, fileName, jsonFileContent);
+    fetchData(unit, window_size, fileName, jsonFileContent);
     updateFileDisplay(fileName);
 }
 
@@ -299,7 +298,7 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     return entries.sort((a, b) => Number(b) - Number(a));
 }
 
-function fetchData(range, unit, window_size, filename, jsonFile) {
+function fetchData(unit, window_size, filename, jsonFile) {
     const fullPath = $("#directory").val() + delimiter + filename;
     $.get('/get_data', {
         file: $("#directory").val() + delimiter + filename
@@ -391,7 +390,7 @@ function fetchData(range, unit, window_size, filename, jsonFile) {
             }
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, range, unit, window_size, isSplitMode, isFullDisplay);
+            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay);
         } else {
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
@@ -452,8 +451,9 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile, range, unit, window_size, isSplitMode, isFullDisplay) {
+function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay) {
     if (AppState.currentMeasurementMode === "point" && jsonFile) {
+        const range = $("#range-value").val();
         AppState.globalAnalysis = updatePlot(
             response.data, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay, 
@@ -483,6 +483,7 @@ function updatePlotBasedOnMode(response, jsonFile, range, unit, window_size, isS
             );
         }
     } else {
+        console.log("Range is ", range, "Unit is ", unit, "Window size is ", window_size);
         AppState.globalAnalysis = updatePlot(
             response.data, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay
@@ -500,7 +501,7 @@ function toggleMode() {
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
             drawMeasurementChart();
-        } else fetchData(null, null, null, AppState.currentFile, AppState.currentJSONcontent);
+        } else fetchData(null, null, AppState.currentFile, AppState.currentJSONcontent);
     }
 }
 
