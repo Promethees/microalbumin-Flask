@@ -483,7 +483,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
             );
         }
     } else {
-        console.log("Range is ", range, "Unit is ", unit, "Window size is ", window_size);
+        const range = $("#range-value").val();
         AppState.globalAnalysis = updatePlot(
             response.data, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay
