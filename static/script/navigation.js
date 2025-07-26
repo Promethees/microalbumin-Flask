@@ -124,6 +124,10 @@ function fetchJSON(jsonFile, callback) {
 function browseSavingLocation(path, deselect, changeToCalibrate=false) {
     blinkingItem("#file-selection", 5000);
     updateDirectory(path, deselect, changeToCalibrate);
+    if (AppState.currentMeasurementMode === "calibrate") {
+        blinkingItem("#cal-mode-select", 5000);
+        blinkingItem("#measurement-mode", 5000);
+    }
 }
 
 function blinkingItem(id, timeOut=5000) {

@@ -197,7 +197,7 @@ th {
     animation: blink 1s infinite; /* Blinking animation */
 }
 
-#go-to-btn.blinking, #file-selection.blinking, #log-display.blinking, #chart-container.blinking {
+#go-to-btn.blinking, #file-selection.blinking, #log-display.blinking, #chart-container.blinking, #measurement-mode.blinking, #cal-mode-select.blinking {
     border: 2px solid #00ff00; /* Green border when enabled */
     --blink-color: #00ff00; /* Custom property for blink color */
     animation: blink 1s infinite; /* Blinking animation */
