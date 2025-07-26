@@ -42,7 +42,7 @@ def sort_csv_file(file_path, meas_mode):
         if meas_mode == "kinetics":
             print("Sorting in kinetics mode")
             # Sort by concentration (index 1), vmax (index 2), slope (index 3), sat (index 4), time_to_sat (index 5), blank type (index 8)
-            sorted_rows = sorted(rows, key=lambda x: (float(x[1]), float(x[2]), float(x[3]), float(x[4]), float(x[5]), x[8]))
+            sorted_rows = sorted(rows, key=lambda x: (float(x[1]), float(x[2]), float(x[3]), x[4], x[5], x[8]))
             # sorted_rows = sorted(rows, key=lambda x: (x[1]))
         elif meas_mode == "point":
             # Sort by concentration (index 1), time_point (index 4), and blank type (index 6)

@@ -474,9 +474,14 @@ function toggleMode() {
 }
 
 function exportData() {
+    if ($("#con-value-read").val() === "") {
+        alert("Please enter a concentration value before exporting data.");
+        blinkingItem('#con-value-read', 5000);
+        return;
+    }
     AppState.processedExpPath = $("#save-dir").val().trim() || "";
     const saveFile = $("#save-file").val().trim() || "results";
-    const concentration = $("#con-value-read").val() || "NONE";
+    const concentration = $("#con-value-read").val();
     const timeUnit = $("#time-unit").val();
     let analysisData = null;
 
