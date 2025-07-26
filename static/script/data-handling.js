@@ -6,7 +6,8 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     if (tableSelector === "#file-table") {
         AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
-        processDataDisplay(AppState.currentFile);
+        console.log("Current json content is", AppState.currentJSONcontent);
+        processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
         fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
@@ -280,6 +281,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
                 derived_con_text = derivedConSettings.derived_con_text;
+                console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
                 if (derived_section) {
                     derived_section.classList.remove("hidden");
                     if (AppState.currentMeasurementMode === "kinetics") {
@@ -371,9 +373,9 @@ function fetchData(unit, window_size, filename, jsonFile) {
 function getKineticValue(property, blankType) {
     const analysis = AppState.globalAnalysis;
     switch(blankType) {
-        case "MIXED": return analysis[property];
-        case "BLANKED": return analysis[`${property}_blanked`];
-        case "NON-BLANKED": return analysis[`${property}_non_blanked`];
+        case "MIXED": return analysis ? analysis[property] : null;
+        case "BLANKED": return analysis ? analysis[`${property}_blanked`] : null;
+        case "NON-BLANKED": return analysis ? analysis[`${property}_non_blanked`] : null;
         default: return null;
     }
 }
