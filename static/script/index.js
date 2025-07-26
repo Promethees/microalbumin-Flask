@@ -27,13 +27,12 @@ const AppState = {
     refCalPoint: null,
     globalAnalysis: null,
     json_msg: 'When fit_type: \n',
-    globalEstimatedValue: null,
-    currExpTimePoint: null,
     prevDropdownEntries: null,
     exp_json_content: null,
     processedExpPath: rootPath + delimiter + "export_data",
     processedHidPath: rootPath + delimiter + "data",
     chartInstances: {},
+    responseData: null,
 
     reset: function() {
         this.blankedChart = null;
@@ -46,10 +45,9 @@ const AppState = {
         this.currentJSONcontent = null;
         this.refCalPoint = null;
         this.globalAnalysis = null;
-        this.globalEstimatedValue = null;
-        this.currExpTimePoint = null;
         this.prevDropdownEntries = null;
         this.exp_json_content = null;
+        this.responseData = null;
         Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         terminateScript();
         clearLogs();

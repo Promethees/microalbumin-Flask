@@ -62,6 +62,7 @@ function processDataDisplay(fileName, jsonFileContent=null) {
 function deselectFile(tableSelector="#file-table") {
     $(`${tableSelector} tr`).removeClass("selected");
     if (tableSelector === "#file-table") {
+        AppState.responseData = null;
         destroyCharts();
         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
         AppState.currentFile = null;
@@ -306,6 +307,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
             const isFullDisplay = $("#full-display").is(":checked");
             const displayRangeInput = document.getElementById('range-value');
             const fullDisplayCheckbox = document.getElementById('full-display');
+            AppState.responseData = response.data; // Reset point data
 
             // Move event listener outside the AJAX callback or nest it properly
             const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
@@ -324,8 +326,8 @@ function fetchData(unit, window_size, filename, jsonFile) {
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input
                 const conValueInput = document.getElementById('con-value-read');
-                const conValueFromFile = response.data.map(row => row['Concentration'])[0];
-                
+                const conValueFromFile = AppState.responseData.map(row => row['Concentration'])[0];
+
                 conValueInput.disabled = conValueFromFile !== "NONE";
                 conValueInput.value = conValueFromFile !== "NONE" ? conValueFromFile : "";
                 
@@ -396,11 +398,10 @@ function updateRefCalPoint(jsonFile) {
 
 function processPointMode(response, jsonFile, derived_con_text) {
     $("#point-json-exp-section").removeClass("hidden");
-
     // Display estimated value
-    const estValueRead = getEstimatedValue(response.data, AppState.refCalPoint * 60, jsonFile["for_blank_type"]).toFixed(4);
+    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * 60, jsonFile["for_blank_type"]).toFixed(4);
     if (estValueRead) {
-        const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"];
+        const unitPrinted = AppState.responseData[0]["Unit"] === "NONE" ? "" : AppState.responseData[0]["Unit"];
         $("#add-json-section").text(`The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
     } else {
         $("#add-json-section").text("");
@@ -408,13 +409,6 @@ function processPointMode(response, jsonFile, derived_con_text) {
     
     calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
     derived_con_text.innerHTML = `${calculated_con}`;
-
-    // Store current experiment values
-    AppState.currExpTimePoint = $("#exp-json-time-value").val();
-    let currExpBlankType = $("#exp-json-blank-type").val();
-    if (AppState.currExpTimePoint) {
-        AppState.globalEstimatedValue = getEstimatedValue(response.data, AppState.currExpTimePoint * 60, currExpBlankType);
-    }
 }
 
 function handleCalibrationMode() {
@@ -431,7 +425,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         const range = $("#range-value").val();
         updateRefCalPoint(jsonFile);
         AppState.globalAnalysis = updatePlot(
-            response.data, range, unit, window_size, 
+            AppState.responseData, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay, 
             jsonFile["for_blank_type"]
         );
@@ -441,28 +435,28 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                response.data, null, null, null, 
-                response.data[0]["MeasUnit"], isSplitMode, true, null, 
+                AppState.responseData, null, null, null, 
+                AppState.responseData[0]["MeasUnit"], isSplitMode, true, null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
-            const uniqueTimePoints = getUniqueColumnEntries(response.data, 'TimePoint');
+            const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
             console.log("Give me uniqueTimePoints ", uniqueTimePoints);
             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
             const timePoint = $("#regressed-time-point").val();
-            const processingData = response.data.filter(row => 
+            const processingData = AppState.responseData.filter(row => 
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
                 processingData, null, null, null, 
-                response.data[0]["MeasUnit"], isSplitMode, true, null, 
+                AppState.responseData[0]["MeasUnit"], isSplitMode, true, null, 
                 "Concentration", "Value"
             );
         }
     } else {
         const range = $("#range-value").val();
         AppState.globalAnalysis = updatePlot(
-            response.data, range, unit, window_size, 
+            AppState.responseData, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay
         );
     }
@@ -540,18 +534,26 @@ function exportData() {
         sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
 
     } else if (AppState.currentMeasurementMode === "point") {
-        if (AppState.currExpTimePoint) { 
+        // Store current experiment values
+        const currExpTimePoint = $("#exp-json-time-value").val();
+        let currExpBlankType = $("#exp-json-blank-type").val();
+        let globalEstimatedValue = null;
+        console.log("point data is ", AppState.responseData);
+        if (currExpTimePoint) {
+            globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, currExpBlankType).toFixed(4);
+        }
+        if (currExpTimePoint) { 
             analysisData = {
-                estValue: AppState.globalEstimatedValue,
-                timePoint: AppState.currExpTimePoint,
+                estValue: globalEstimatedValue,
+                timePoint: currExpTimePoint,
                 measurement: AppState.globalAnalysis.meas,
                 measUnit: AppState.globalAnalysis.meas_unit
             } 
             sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
             if (AppState.globalAnalysis.meas_unit !== "NONE")
-                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${AppState.globalEstimatedValue}${AppState.globalAnalysis.meas_unit}`);
+                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${globalEstimatedValue}${AppState.globalAnalysis.meas_unit}`);
             else 
-                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${AppState.globalEstimatedValue}`);
+                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${globalEstimatedValue}`);
         } else {
             alert("Please set the reference time point to export data");
         }
