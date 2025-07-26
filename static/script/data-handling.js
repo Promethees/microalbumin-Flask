@@ -357,10 +357,6 @@ function fetchData(unit, window_size, filename, jsonFile) {
                         derived_con_text.innerHTML = `${calculated_con}`;
                     }
                 } 
-                // Handle point mode
-                else if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                    processPointMode(response, jsonFile, derived_con_text);
-                }
             } 
             // Handle calibration mode
             else {
@@ -386,20 +382,23 @@ function getKineticValue(property, blankType) {
     }
 }
 
-function processPointMode(response, jsonFile, derived_con_text) {
-    const timeUnitSet = $("#time-unit").val();
+function updateRefCalPoint(jsonFile) {
     const calPoint = $("#cal-point");
-    $("#point-json-exp-section").removeClass("hidden");
-
-    // Convert time units
+    const timeUnitSet = $("#time-unit").val();
     const jsonTimePoint = jsonFile["time"];
     const jsonTimeUnit = jsonFile["time-unit"];
+    
+    // Convert time units
     const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(timeUnitSet);
     AppState.refCalPoint = jsonTimePoint * conversionFactor;
     calPoint.text(AppState.refCalPoint);
+}
+
+function processPointMode(response, jsonFile, derived_con_text) {
+    $("#point-json-exp-section").removeClass("hidden");
 
     // Display estimated value
-    const estValueRead = getEstimatedValue(response.data, jsonTimePoint * 60, jsonFile["for_blank_type"]).toFixed(4);
+    const estValueRead = getEstimatedValue(response.data, AppState.refCalPoint * 60, jsonFile["for_blank_type"]).toFixed(4);
     if (estValueRead) {
         const unitPrinted = response.data[0]["Unit"] === "NONE" ? "" : response.data[0]["Unit"];
         $("#add-json-section").text(`The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
@@ -427,14 +426,16 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay) {
+function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay, derived_con_text = document.getElementById('der-con-value')) {
     if (AppState.currentMeasurementMode === "point" && jsonFile) {
         const range = $("#range-value").val();
+        updateRefCalPoint(jsonFile);
         AppState.globalAnalysis = updatePlot(
             response.data, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay, 
             jsonFile["for_blank_type"]
         );
+        processPointMode(response, jsonFile, derived_con_text);
     } else if (AppState.currentMeasurementMode === "calibrate") {
         const cal_type = $("#cal-mode-select").val();
         if (cal_type === "kinetics") {
