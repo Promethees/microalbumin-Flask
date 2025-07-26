@@ -23,6 +23,9 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
         });
     }    
+    // Smoothly scroll to the bottom of the page
+    $("html, body").animate({ scrollTop: $(document).height() }, 1000);
+    blinkingItem('#chart-container', 3000);
 }
 
 function processDataDisplay(fileName, jsonFileContent=null) {
@@ -81,14 +84,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 icon: 'error',
                 confirmButtonText: 'OK'
             }).then(() => {
-                const terminateBtn = $('#terminate-script-btn');
-                if (terminateBtn.length) {
-                    terminateBtn.focus();
-                    terminateBtn.addClass('blinking');
-                    setTimeout(() => {
-                        terminateBtn.removeClass('blinking');
-                    }, 5000);
-                }
+                blinkingItem('#terminate-script-btn', 5000);
             });
             return;
         }
@@ -134,14 +130,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                                 icon: 'error',
                                 confirmButtonText: 'OK'
                             }).then(() => {
-                                const terminateBtn = $('#terminate-script-btn');
-                                if (terminateBtn.length) {
-                                    terminateBtn.focus();
-                                    terminateBtn.addClass('blinking');
-                                    setTimeout(() => {
-                                        terminateBtn.removeClass('blinking');
-                                    }, 5000);
-                                }
+                                blinkingItem('#terminate-script-btn', 5000);
                             });
                         }
                     }).fail(function(jqXHR) {
@@ -161,14 +150,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                             icon: 'error',
                             confirmButtonText: 'OK'
                         }).then(() => {
-                            const terminateBtn = $('#terminate-script-btn');
-                            if (terminateBtn.length) {
-                                terminateBtn.focus();
-                                terminateBtn.addClass('blinking');
-                                setTimeout(() => {
-                                    terminateBtn.removeClass('blinking');
-                                }, 5000);
-                            }
+                            blinkingItem('#terminate-script-btn', 5000);
                         });
                     });
                 } else if (tableSelector === "#json-table") {
@@ -198,14 +180,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                                 icon: 'error',
                                 confirmButtonText: 'OK'
                             }).then(() => {
-                                const terminateBtn = $('#terminate-script-btn');
-                                if (terminateBtn.length) {
-                                    terminateBtn.focus();
-                                    terminateBtn.addClass('blinking');
-                                    setTimeout(() => {
-                                        terminateBtn.removeClass('blinking');
-                                    }, 5000);
-                                }
+                                blinkingItem('#terminate-script-btn', 5000);
                             });
                         }
                     }).fail(function(jqXHR) {
@@ -225,14 +200,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                             icon: 'error',
                             confirmButtonText: 'OK'
                         }).then(() => {
-                            const terminateBtn = $('#terminate-script-btn');
-                            if (terminateBtn.length) {
-                                terminateBtn.focus();
-                                terminateBtn.addClass('blinking');
-                                setTimeout(() => {
-                                    terminateBtn.removeClass('blinking');
-                                }, 5000);
-                            }
+                            blinkingItem('#terminate-script-btn', 5000);
                         });
                     });
                 }

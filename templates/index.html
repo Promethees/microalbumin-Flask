@@ -273,8 +273,8 @@
                 <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
                 <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                <button id="go-to-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true)" disabled>Browse Saving Location</button>
-                <div id="log-display"></div>
+                <button id="go-to-btn" onclick="browseSavingLocation(`{{ directory | default('') }}` , true)" disabled>Browse Saving Location</button>
+                <div id="log-display" tabindex="-1"></div>
             </div>
             <div class="section" id="cal-json-exp-section"> 
                 <h3>Select type of Calibration you'd like to do</h3>
@@ -304,8 +304,8 @@
                 <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
                 <div id="json-display"></div>
             </div>
-            <div class="section">
-                <h2>File Selection</h2>
+            <div class="section" id="file-selection" tabindex="-1">
+                <h2 >File Selection</h2>
                 <div id="file-table-container">
                     <table id="file-table">
                         <tr><th>File Name</th><th colspan="2">Action</th></tr>
@@ -394,7 +394,7 @@
                     </label>
                 </div>
                 <div id="analysis-info"></div>
-                <div id="chart-container">
+                <div id="chart-container" tabindex="-1">
                     <canvas id="plot-canvas" style="min-width: 100%; min-height: 280px"></canvas>
                     <canvas id="blanked-canvas" style="display: none;"></canvas>
                     <canvas id="non-blanked-canvas" style="display: none;"></canvas>
@@ -442,7 +442,7 @@
                         <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
-                    <button id="go-to-exp-btn" onclick="updateDirectory(`{{ directory | default('') }}` , true, true)">Browse Saving Location</button>
+                    <button id="go-to-exp-btn" onclick="browseSavingLocation(`{{ directory | default('') }}` , true, true)">Browse Saving Location</button>
                     <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data will automatically convert the kinetics quantities to per <span style="font-weight: bold;">"minutes"!</span></p>
                 </div>  
                 <div id="export-coef">

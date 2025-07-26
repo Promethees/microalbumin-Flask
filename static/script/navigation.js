@@ -120,3 +120,19 @@ function fetchJSON(jsonFile, callback) {
         callback(response.json, response.path);
     })
 }
+
+function browseSavingLocation(path, deselect, changeToCalibrate=false) {
+    blinkingItem("#file-selection", 5000);
+    updateDirectory(path, deselect, changeToCalibrate);
+}
+
+function blinkingItem(id, timeOut=5000) {
+    const element = $(id);
+    if (element.length) {
+        element.focus();
+        element.addClass('blinking');
+        setTimeout(() => {
+            element.removeClass('blinking');
+        }, timeOut);
+    }
+}

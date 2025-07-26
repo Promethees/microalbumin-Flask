@@ -71,6 +71,9 @@ function runScript() {
     
     // Clear any existing status checks
     clearStatusCheck();
+
+    // Blink the log display section
+    blinkingItem("#log-display", 3000);
     
     // Disable UI elements
     $("#base-dir").prop('disabled', true);
