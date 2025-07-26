@@ -6,8 +6,13 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     if (tableSelector === "#file-table") {
         AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
-        console.log("Current json content is", AppState.currentJSONcontent);
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+        $("#split-mode").prop("checked", false);
+        $("#blanked-canvas, #non-blanked-canvas").hide();
+        $("#plot-canvas").show();
+        $("#full-display").prop("checked", false);
+        $("#range-value").val(1000);
+        $("#range-value").prop("disabled", false);
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
         fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
@@ -281,7 +286,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
                 derived_con_text = derivedConSettings.derived_con_text;
-                console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
+                // console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
                 if (derived_section) {
                     derived_section.classList.remove("hidden");
                     if (AppState.currentMeasurementMode === "kinetics") {
@@ -312,6 +317,9 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 displayRangeInput.disabled = false;
                 displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
             }
+
+            // Update plot based on current mode
+            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay);
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input
@@ -359,8 +367,6 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 handleCalibrationMode();
             }
 
-            // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay);
         } else {
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
             $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
