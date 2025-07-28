@@ -283,7 +283,6 @@ function fetchData(unit, window_size, filename, jsonFile) {
         file: $("#directory").val() + delimiter + filename
     }, function(response) {
         if (response.data && response.data.length > 0) {
-            console.log("Data fetched successfully:", response.data);
             let derivedConSettings = null;
             let derived_section = null;
             let derived_con_text = null;

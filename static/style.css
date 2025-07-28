@@ -133,7 +133,7 @@ th {
 
 #chart-container {
     overflow-y: auto;
-    max-height: 40%; /* Adjust as needed */
+    height: 40%; /* Adjust as needed */
     position: relative; /* Helps with scroll positioning */
 }
 

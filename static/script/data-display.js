@@ -7,7 +7,6 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     // canvas.width = 100%;
     // canvas.height = 280px;
     const { x: processedX, y: processedY } = mapDuplicates(allXColumn, allYColumn);
-    console.log("RefCal Point is", AppState.refCalPoint, "for this blank type", forThisBlankType);
 
     if (!canvas || processedX.length === 0 || processedY.length === 0) {
         $(`#${canvasId}`).hide();
