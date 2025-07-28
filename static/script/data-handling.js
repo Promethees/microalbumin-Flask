@@ -1,4 +1,10 @@
-function selectFile(fileName, button, tableSelector = "#file-table") {        
+function selectFile(fileName, button, tableSelector = "#file-table") {   
+    // Temporarily disable the button to prevent multiple clicks
+    $(button).prop("disabled", true);
+    setTimeout(() => {
+        $(button).prop("disabled", false);
+    }, 1000); // Re-enable the button after 1 second
+
     // Clear previous selection and highlight the current row
     $(`${tableSelector} tr`).removeClass("selected");
     $(button).closest("tr").addClass("selected");

@@ -121,7 +121,12 @@ function fetchJSON(jsonFile, callback) {
     })
 }
 
-function browseSavingLocation(path, deselect, changeToCalibrate=false) {
+function browseSavingLocation(path, deselect, changeToCalibrate=false, button = null) {
+    // Temporarily disable the button to prevent multiple clicks
+    $(button).prop("disabled", true);
+    setTimeout(() => {
+        $(button).prop("disabled", false);
+    }, 1000); // Re-enable the button after 1 second
     blinkingItem("#file-selection", 5000);
     updateDirectory(path, deselect, changeToCalibrate);
     if (AppState.currentMeasurementMode === "calibrate") {

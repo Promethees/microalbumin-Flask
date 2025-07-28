@@ -273,7 +273,7 @@
                 <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
                 <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                <button id="go-to-btn" onclick="browseSavingLocation(`{{ directory | default('') }}` , true)" disabled>Browse Saving Location</button>
+                <button id="go-to-btn" onclick="browseSavingLocation(`$(#base-dir).val()` , true, false, this)" disabled>Browse Saving Location</button>
                 <div id="log-display" tabindex="-1"></div>
             </div>
             <div class="section" id="cal-json-exp-section"> 
@@ -442,7 +442,7 @@
                         <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(`{{ directory | default('') }}` , true, true)">Browse Saving Location</button>
+                    <button id="go-to-exp-btn" onclick="browseSavingLocation(`$(#save-dir).val()` , true, true, this)">Browse Saving Location</button>
                     <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data will automatically convert the kinetics quantities to per <span style="font-weight: bold;">"minutes"!</span></p>
                 </div>  
                 <div id="export-coef">
