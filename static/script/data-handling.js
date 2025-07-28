@@ -6,13 +6,17 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     if (tableSelector === "#file-table") {
         AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
-        processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
         $("#split-mode").prop("checked", false);
         $("#blanked-canvas, #non-blanked-canvas").hide();
         $("#plot-canvas").show();
         $("#full-display").prop("checked", false);
+        $("#quantity-checkboxes").addClass("hidden");
         $("#range-value").val(1000);
         $("#range-value").prop("disabled", false);
+        $('.quantity-checkbox').each(function() {
+            $(this).prop("checked", true);
+        });
+        processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
         fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
