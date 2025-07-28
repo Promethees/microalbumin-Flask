@@ -135,8 +135,10 @@ function blinkingItem(id, timeOut=5000) {
     if (element.length) {
         element.focus();
         element.addClass('blinking');
-        setTimeout(() => {
-            element.removeClass('blinking');
-        }, timeOut);
+        if (timeOut) {
+            setTimeout(() => {
+                element.removeClass('blinking');
+            }, timeOut);
+        }
     }
 }

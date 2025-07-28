@@ -299,6 +299,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                     } else {
                         $("#select-quantity-section").addClass("hidden");
                     }
+                    blinkingItem(derived_con_text, null);
                 } else { // derived_section is null -> hide all
                     $("#select-quantity-section").addClass("hidden");
                     $("#derived-concentration-section").addClass("hidden");

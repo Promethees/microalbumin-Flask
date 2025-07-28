@@ -205,6 +205,13 @@ th {
     animation: blink 1s infinite; /* Blinking animation */
 }
 
+#der-con-value.blinking, #blank-der-con-value.blinking,
+#non-blank-der-con-value.blinking {
+    border: 2px solid #6c3baa; /* Purple border for concentration values */
+    --blink-color: #6c3baa; /* Custom property for blink color */
+    animation: blink 1s infinite; /* Blinking animation */
+}
+
 #run-script-btn:disabled,
 #terminate-script-btn:disabled,
 #go-to-btn:disabled {
