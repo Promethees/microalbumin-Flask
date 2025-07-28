@@ -66,6 +66,12 @@ function resetUIAfterCompletion() {
 
 // Modified runScript function
 function runScript() {
+    const isValidFileName = validateFileName("base-name");
+    const isValidPathName = validatePathName("base-dir");
+    if (!isValidFileName || !isValidPathName) {
+        return; // Stop if validation fails
+    }
+
     AppState.processedHidPath = $("#base-dir").val();
     const baseName = $("#base-name").val();
     

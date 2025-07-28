@@ -265,10 +265,12 @@
                     <input type="text" id="base-dir" value="{{ directory | default('') }}" style="width: 80%">
                     <button onclick="pickDirectory('base-dir')">Select Directory</button>
                     </label>
+                    <span id="base-dir-error" class="error"></span>
                 </div>
                 <div>
                     <label for="base-name">Base Name (--base-name): </label>
                     <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
+                    <span id="base-name-error" class="error"></span>
                 </div>
                 <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
                 <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
@@ -436,10 +438,12 @@
                         <input type="text" id="save-dir" value="{{ directory | default('') }}" style="width: 80%">
                         <button onclick="pickDirectory('save-dir')">Select Directory</button>
                         </label>
+                        <span id="save-dir-error" class="error"></span>
                     </div>
                     <div>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
+                        <span id="save-file-error" class="error"></span>
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
                     <button id="go-to-exp-btn" onclick="browseSavingLocation(`$(#save-dir).val()` , true, true, this)">Browse Saving Location</button>
@@ -450,6 +454,7 @@
                     <div>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-json-file" placeholder="Enter file name to regressed coefficients to(e.g., calibration)" style="width: 10em">
+                        <span id="save-json-file-error" class="error"></span>
                         <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
                         <br/>
                         Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
@@ -491,6 +496,135 @@
                     });
                 }
             });
+            document.getElementById('base-name').addEventListener('input', function() {
+                validateFileName('base-name');
+            });
+            document.getElementById('save-file').addEventListener('input', function() {
+                validateFileName('save-file');
+            });
+            document.getElementById('save-json-file').addEventListener('input', function() {
+                validateFileName('save-json-file');
+            });
+
+            document.getElementById('base-dir').addEventListener('input', function() {
+                validatePathName('base-dir');
+            });
+            document.getElementById('save-dir').addEventListener('input', function() {
+                validatePathName('save-dir');
+            });
+
+            function validateFileName(inputId) {
+                const input = document.getElementById(inputId);
+                const errorElement = document.getElementById(`${inputId}-error`);
+                const fileName = input.value.trim();
+                
+                // Reset state
+                errorElement.textContent = '';
+                input.classList.remove('invalid', 'valid');
+                
+                const illegalChars = /[\\/:*?"<>|\0]/g;
+                if (illegalChars.test(fileName)) {
+                    errorElement.textContent = 'File name cannot contain: \\ / : * ? " < > |';
+                    input.classList.add('invalid');
+                    return false;
+                }
+                
+                const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+                if (reservedNames.test(fileName)) {
+                    errorElement.textContent = 'Reserved system name (CON, PRN, AUX, etc.)';
+                    input.classList.add('invalid');
+                    return false;
+                }
+                
+                if (fileName !== input.value) {
+                    errorElement.textContent = 'No leading/trailing spaces';
+                    input.classList.add('invalid');
+                    return false;
+                }
+                
+                if (fileName.startsWith('.') || fileName.endsWith('.')) {
+                    errorElement.textContent = 'Cannot start/end with period';
+                    input.classList.add('invalid');
+                    return false;
+                }
+                
+                if (fileName.length > 255) {
+                    errorElement.textContent = 'Max 255 characters';
+                    input.classList.add('invalid');
+                    return false;
+                }
+                
+                input.classList.add('valid');
+                return true;
+            }
+
+            function validatePathName(inputId) {
+                const input = document.getElementById(inputId);
+                const errorElement = document.getElementById(`${inputId}-error`);
+                const path = input.value.trim();
+                
+                // Reset state
+                errorElement.textContent = '';
+                input.classList.remove('invalid', 'valid');
+                
+                if (path === '') {
+                    errorElement.textContent = 'Path cannot be empty';
+                    input.classList.add('invalid');
+                    return false;
+                }
+
+                // Check for invalid characters (platform-specific)
+                let invalidChars;
+                if (path.includes('\\')) {
+                    // Windows path
+                    invalidChars = /[*?"<>|\0]/g;
+                    if (/:/.test(path) && !/^[a-zA-Z]:\\/.test(path)) {
+                    errorElement.textContent = 'Windows paths must start with drive letter (e.g., C:\\)';
+                    input.classList.add('invalid');
+                    return false;
+                    }
+                } else {
+                    // Unix-like path
+                    invalidChars = /[\0]/g;
+                    if (!path.startsWith('/')) {
+                    errorElement.textContent = 'Unix paths must start with /';
+                    input.classList.add('invalid');
+                    return false;
+                    }
+                }
+
+                if (invalidChars.test(path)) {
+                    errorElement.textContent = `Path contains invalid characters`;
+                    input.classList.add('invalid');
+                    return false;
+                }
+
+                // Check for reserved names in path components
+                const reservedNames = /(^|\/|\\)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$|\\|\/)/i;
+                if (reservedNames.test(path)) {
+                    errorElement.textContent = 'Path contains reserved system names';
+                    input.classList.add('invalid');
+                    return false;
+                }
+
+                // Check for relative path components
+                if (/\.\.($|[\\/])/.test(path)) {
+                    errorElement.textContent = 'Relative paths (..) are not allowed';
+                    input.classList.add('invalid');
+                    return false;
+                }
+
+                // Check for trailing slash
+                if (/[\\/]$/.test(path)) {
+                    errorElement.textContent = 'Path should not end with a slash';
+                    input.classList.add('invalid');
+                    return false;
+                }
+
+                input.classList.add('valid');
+                return true;
+                }
+
         </script>
         <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}"></script>

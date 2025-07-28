@@ -487,6 +487,13 @@ function toggleMode() {
 }
 
 function exportData() {
+    const isValidFileName = validateFileName("save-file");
+    const isValidPathName = validatePathName("save-dir");
+    // Validate file name and path before proceeding
+    if (!isValidFileName || !isValidPathName) {
+        return; // Stop if validation fails
+    }
+    
     if ($("#con-value-read").val() === "") {
         alert("Please enter a concentration value before exporting data.");
         blinkingItem('#con-value-read', 5000);
@@ -612,6 +619,10 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit
 }
 
 function exportJSONCoef() {
+    if (!validateFileName("save-json-file")) {
+        return; // Stop if validation fails
+    }
+    
     const selectElement = document.getElementById('regressed-quantity');
     if ($("#cal-mode-select").val() === "point" && (!$("#regressed-time-point").val())){
         alert("Please set time point to regress data from");
