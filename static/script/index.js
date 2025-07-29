@@ -59,6 +59,7 @@ AppState.json_msg += '  + linear: concentration = quantity_json[0]*quantity_valu
 AppState.json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
 AppState.json_msg += '  + logarithmic: concentration = quantity_json[0]*loge(quantity_value + quantity_json[1]) + quantity_json[2]\n';
 AppState.json_msg += '  + exponential: concentration = quantity_json[0]*e^(quantity_value * quantity_json[1]) + quantity_json[2]\n';
+AppState.json_msg += '  + Michaelis-Menten: concentration = (quantity_json[0] * quantity_value) / (quantity_json[1] - quantity_value)\n';
 
 const input = document.getElementById("window-size");
 

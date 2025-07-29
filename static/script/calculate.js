@@ -44,6 +44,11 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
             coefficients = expCoeffs;
             predicted = processedX.map(xi => expCoeffs[0] * Math.exp(xi * expCoeffs[1]) + expCoeffs[2]);
             slope = exponentialRegressionSlope(processedX, processedY);
+        case "Michaelis-Menten":
+            const expCoeffsMM = michaelisMentenConcentrationRegression(processedX, processedY);
+            coefficients = [expCoeffsMM.Vmax, expCoeffsMM.Km];
+            predicted = processedX.map(xi => coefficients[1] * xi / (coefficients[0] - xi));
+            slope = coefficients[1] / (coefficients[0] - 1);
             rSquared = computeRSquared(processedY, predicted);
             break;
 
@@ -417,6 +422,64 @@ function gaussianElimination(A, b) {
     return x;
 }
 
+// Michaelis-Menten function: [S] = (Km * v) / (Vmax - v)
+function mmFunction(params, rates) {
+    const [Vmax, Km] = params;
+    // Return a large value for invalid parameters to guide optimization
+    if (Vmax <= 0 || Km <= 0) {
+        return rates.map(() => Infinity);
+    }
+    return rates.map(v => {
+        if (v >= Vmax || v < 0) {
+            return Infinity; // Handle invalid rates gracefully
+        }
+        return (Km * v) / (Vmax - v);
+    });
+}
+
+// Residual function for optimization
+function residual(params, rates, substrates) {
+    const predicted = mmFunction(params, rates);
+    return predicted.map((pred, i) => pred === Infinity ? Infinity : pred - substrates[i]);
+}
+
+// Derive Vmax, Km coefficients for Michaelis-Menten concentration regression
+function michaelisMentenConcentrationRegression(rates, substrates) {
+    // Input validation
+    if (!Array.isArray(rates) || !Array.isArray(substrates) || rates.length !== substrates.length || rates.length === 0) {
+        return { error: "Invalid input: rates and substrates must be arrays of equal length and non-empty" };
+    }
+    if (rates.some(v => !Number.isFinite(v)) || substrates.some(s => !Number.isFinite(s) || s < 0)) {
+        return { error: "Invalid input: rates and substrates must contain finite, non-negative numbers" };
+    }
+
+    // Initial guess for parameters [Vmax, Km]
+    const VmaxGuess = Math.max(...rates) * 1.1; // Slightly overestimate Vmax
+    const halfMaxRateIndex = rates.findIndex(v => v >= VmaxGuess / 2);
+    const KmGuess = halfMaxRateIndex !== -1 ? substrates[halfMaxRateIndex] : substrates[Math.floor(substrates.length / 2)];
+
+    const initialParams = [VmaxGuess, KmGuess];
+
+    try {
+        // Perform Levenberg-Marquardt optimization (assuming numeric.levmar exists)
+        const result = numeric.uncmin(
+            params => numeric.norm2(residual(params, rates, substrates)),
+            initialParams
+        );
+
+        const [Vmax, Km] = result.solution;
+
+        // Validate fitted parameters
+        if (Vmax <= 0 || Km <= 0) {
+            return { error: "Optimization resulted in invalid parameters (Vmax or Km non-positive)" };
+        }
+
+        return { Vmax, Km };
+    } catch (error) {
+        return { error: `Optimization failed: ${error.message}` };
+    }
+}
+
 function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 60) {
     if (!Array.isArray(data) || data.length === 0) return null;
 
@@ -495,6 +558,12 @@ function computeFit(value, fit_type, coef) {
             // Expect coef = [a, b, c]
             if (coef.length !== 3) throw new Error("Exponential fit requires 3 coefficients: [a, b, c]");
             return coef[0] * Math.exp(value * coef[1]) + coef[2];
+
+        case "michaelis-menten":
+            // Expect coef = [Vmax, Km]
+            if (coef.length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
+            if (value >= coef[0] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value} must be < Vmax: ${coef[0]} and >= 0`);
+            return (coef[1] * value) / (coef[0] - value);
 
         default:
             throw new Error("Unknown fit type: " + fit_type);

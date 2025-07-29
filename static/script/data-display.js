@@ -697,6 +697,12 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
                     break;
                 }
 
+                case "Michaelis-Menten":
+                    // Original: x = (Km * y) / (Vmax - y) => y = (Vmax * x) / (Km + x)
+                    const [ Vmax, Km ] = analysis.coefficients;
+                    y = (Vmax * x)/ (Km + x);
+                    break;
+
                 default:
                     y = 0;
             }
