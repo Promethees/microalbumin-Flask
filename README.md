@@ -88,7 +88,7 @@ This document provides instruction on deploying a web interface that helps visua
 	<img src="/images/logHID.png" width="600">
 </div>
 
-* ***Standard lines*** Choose standard line you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard line json to understand the calculation methods.
+* ***Standard curves*** Choose standard curve you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard curve json to understand the calculation methods.
 
 <div align="center">
 	<img src="/images/standardJSON.png" width="600">
@@ -141,7 +141,7 @@ This document provides instruction on deploying a web interface that helps visua
 </div>
 
 * `Export Analysis` 
-	- Become ***Export coefficients for standard line*** in `calibrate` mode
+	- Become ***Export coefficients for standard curve*** in `calibrate` mode
 	- For both `kinetics` and `point` modes:
 			+ Set `Display Unit` to `minutes` to ensure consistency among exported readings
 			+ When setting export of analysis for Blank Type `MIXED`, display graphic must be in non Split mode. In the opposite way, whenever Blank Type is either `BLANKED` or `NON-BLANKED`, Split mode is needed (also applied in `calibrate` mode)
@@ -150,7 +150,7 @@ This document provides instruction on deploying a web interface that helps visua
 		<img src="/images/exportA.png" width="600">
 	</div>
 
-	- For `calibrate` mode, you can specify the corresponding regression algorithm to export standard line with coefficients and plot on the chart. 
+	- For `calibrate` mode, you can specify the corresponding regression algorithm to export standard curve with coefficients and plot on the chart. 
 	<div align="center">
 		<img src="/images/exportC.png" width="600">
 	</div>
@@ -169,7 +169,7 @@ microalbumin-Flask/
 │   ├── get_next_filename.py	# Process file name to generate the next
 │   ├── measure.py		# Processes CSV data for plotting
 │   ├── mode.py			# Includes measurement modes used in the project
-│   ├── quantity.py		# Includes quantities for standard line regression
+│   ├── quantity.py		# Includes quantities for standard curve regression
 │   ├── range.py		# Defines range input parameters
 │   └── script_monitor.py	# turns off Run Script if HID device is off
 ├── templates/
