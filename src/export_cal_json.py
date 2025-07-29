@@ -17,7 +17,7 @@ def processJSONCoef(cal_params: List[str], coefficients: Union[List[float], List
     Process analysis parameters and coefficients into a structured JSON object.
     
     Args:
-        cal_params: List of parameter names (e.g., ["Vmax", "slope", "sat", "Time To Sat"])
+        cal_params: List of parameter names (e.g., ["maxRate", "slope", "sat", "Time To Sat"])
         coefficients: Either:
             - A 1D array [v, v] → Returns {"fit_coef": [v, v]}
             - A 2D array [[v, v], [v, v], ...] → Returns {param1: {"fit_coef": [v, v]}, ...}

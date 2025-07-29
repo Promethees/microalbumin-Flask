@@ -108,14 +108,14 @@ This document provides instruction on deploying a web interface that helps visua
 		<img src="/images/blank.png" width="600">
 	</div>
 
-	- `Full Display` Enable, Disable graphics of `Vmax` (maximum reaction velocity throughout the process), `Linear` (average speed along reaction stage), `Sat` (Measured value at saturating point when no longer reactions happening) lines. When it is checked and a csv file is being browsed, all data of that file will be shown and `Display Range` value should be disabled.
+	- `Full Display` Enable, Disable graphics of `maxRate` (maximum reaction velocity throughout the process), `Linear` (average speed along reaction stage), `Sat` (Measured value at saturating point when no longer reactions happening) lines. When it is checked and a csv file is being browsed, all data of that file will be shown and `Display Range` value should be disabled.
 	- In `kinetics` and `point` measurement modes, displayed data should show Measurement values (i.e Absorbance agains Time) 
 
 	<div align="center">
 		<img src="/images/meas.png" width="600">
 	</div>
 
-	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `Vmax`, `Slope` of `Linear` progression, `Sat`, and `Time to Saturation`.
+	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `maxRate`, `Slope` of `Linear` progression, `Sat`, and `Time to Saturation`.
 
 	<div align="center">
 		<img src="/images/calKinetics.png" width="600">

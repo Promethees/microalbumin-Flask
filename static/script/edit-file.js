@@ -86,7 +86,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     const referenceValues = {};
                     const defaultValues = {'Timestamp': '0.00', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
                                             'Type': 'NONE', 'Blanked': 'FALSE', 'Concentration': 'NONE', 
-                                            'Value': '0.00', 'Vmax': '0.00', 'Slope': '0.00',
+                                            'Value': '0.00', 'maxRate': '0.00', 'Slope': '0.00',
                                             'Sat': '0.00', 'Time To Sat': '0.00', 'MeasUnit': 'NONE',
                                             'TimeUnit': 'minutes', 'BlankType': 'NONE', 'MeasMode': 'kinetics',
                                             'TimePoint': '0'};
@@ -305,9 +305,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             error: 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
                         },
                         {
-                            header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Vmax\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*MeasUnit\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
+                            header: /^\s*Measurement\s*,\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*MeasUnit\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
                             data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
-                            error: 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                            error: 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
                         },
                         {
                             header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Value\s*,\s*MeasUnit\s*,\s*TimePoint\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,

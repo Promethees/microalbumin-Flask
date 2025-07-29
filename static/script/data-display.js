@@ -1,7 +1,7 @@
 // Generates the Chart.js chart and returns the chart object
 function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, conversionFactor, analysis, isFullDisplay, forThisBlankType = false) {
     const canvas = document.getElementById(canvasId);
-    const vmax_chkbox = document.getElementById('vmax');
+    const maxrate_chkbox = document.getElementById('maxrate');
     const slope_chkbox = document.getElementById('slope');
     const sat_chkbox = document.getElementById('sat');
     // canvas.width = 100%;
@@ -132,18 +132,18 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && vmax_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.startVMax && !isSinglePoint && {
-                            VMaxLine: {
+                        ...(isFullDisplay && maxrate_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.startMaxRate && !isSinglePoint && {
+                            maxRateLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
                                 borderWidth: 3,
-                                xMin: parseFloat(analysis.startVMax * conversionFactor),
-                                xMax: parseFloat(analysis.endVMax * conversionFactor),
-                                yMin: parseFloat(analysis.yVMaxstart),
-                                yMax: parseFloat(analysis.yVMaxend),
+                                xMin: parseFloat(analysis.startMaxRate * conversionFactor),
+                                xMax: parseFloat(analysis.endMaxRate * conversionFactor),
+                                yMin: parseFloat(analysis.yMaxRateStart),
+                                yMax: parseFloat(analysis.yMaxRateEnd),
                                 label: {
                                     display: true,
-                                    content: 'VMax',
+                                    content: 'MaxRate',
                                     position: 'start'
                                 }
                             }
@@ -204,12 +204,12 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
     let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(4) : "--";
     let adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin) * conversionFactor).toFixed(2) : "--";
     let adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax) * conversionFactor).toFixed(2) : "--";
-    let adjustedVmax = parseFloat(analysis.Vmax) / conversionFactor;
-    let adjustedVmaxStart = analysis.startVMax ? (parseFloat(analysis.startVMax) * conversionFactor).toFixed(2) : "--";
-    let adjustedVmaxEnd = analysis.endVMax ? (parseFloat(analysis.endVMax) * conversionFactor).toFixed(2) : "--";
+    let adjustedMaxRate = parseFloat(analysis.maxRate) / conversionFactor;
+    let adjustedMaxRateStart = analysis.startMaxRate ? (parseFloat(analysis.startMaxRate) * conversionFactor).toFixed(2) : "--";
+    let adjustedMaxRateEnd = analysis.endMaxRate ? (parseFloat(analysis.endMaxRate) * conversionFactor).toFixed(2) : "--";
     let adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
     let adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
-    adjustedVmax = (3600 * adjustedVmax).toFixed(5) !== "0.00000" ? adjustedVmax.toFixed(5) : "--";
+    adjustedMaxRate = (3600 * adjustedMaxRate).toFixed(5) !== "0.00000" ? adjustedMaxRate.toFixed(5) : "--";
 
     return {
         slope: adjustedSlope,
@@ -217,9 +217,9 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
         linearEnd: adjustedLinearEnd,
         saturationValue: adjustedSaturationValue,
         timeToSaturation: adjustedTimeToSaturationDisplay,
-        Vmax: adjustedVmax,
-        VmaxStart: adjustedVmaxStart,
-        VmaxEnd: adjustedVmaxEnd,
+        maxRate: adjustedMaxRate,
+        maxRateStart: adjustedMaxRateStart,
+        maxRateEnd: adjustedMaxRateEnd,
         MeasUnit: unit,
         Meas: label
     };
@@ -519,15 +519,15 @@ function filterByTime(data, timeThreshold, hasBlankType, XColumn = "Timestamp") 
 // New helper to format analysis metrics into HTML
 function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = '') {
     if (!analysisInfo) return '';
-
+    console.log("Formatting analysis info:", analysisInfo);
     const unitDisplay = unit !== "NONE" ? unit : '';
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope} ${unitDisplay}/${timeUnit}, 
         Linear start = ${analysisInfo.linearStart} ${timeUnit},
         Linear end = ${analysisInfo.linearEnd} ${timeUnit}, <br/>
-        Vmax = ${analysisInfo.Vmax}${unitDisplay}/${timeUnit}, 
-        VmaxStart = ${analysisInfo.VmaxStart} ${timeUnit}, 
-        VmaxEnd = ${analysisInfo.VmaxEnd} ${timeUnit}, <br/>
+        maxRate = ${analysisInfo.maxRate}${unitDisplay}/${timeUnit}, 
+        maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit}, 
+        maxRateEnd = ${analysisInfo.maxRateEnd} ${timeUnit}, <br/>
         Saturation = ${analysisInfo.saturationValue}, 
         Time to Saturation = ${analysisInfo.timeToSaturation} ${timeUnit}
     </span>`;
@@ -551,11 +551,11 @@ function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo
 function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) {
     return {
         split: true,
-        vmax_blanked: analysis_blanked.Vmax,
+        maxrate_blanked: analysis_blanked.maxRate,
         slope_blanked: analysis_blanked.slope,
         sat_blanked: analysis_blanked.saturationValue,
         time_to_sat_blanked: analysis_blanked.timeToSaturation,
-        vmax_non_blanked: analysis_nonblanked.Vmax,
+        maxrate_non_blanked: analysis_nonblanked.maxRate,
         slope_non_blanked: analysis_nonblanked.slope,
         sat_non_blanked: analysis_nonblanked.saturationValue,
         time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation,
@@ -577,7 +577,7 @@ function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
 function extractSingleResultSummary(data, mixAnalysis) {
     return {
         split: false,
-        vmax: mixAnalysis.Vmax,
+        maxrate: mixAnalysis.maxRate,
         slope: mixAnalysis.slope,
         sat: mixAnalysis.saturationValue,
         time_to_sat: mixAnalysis.timeToSaturation,

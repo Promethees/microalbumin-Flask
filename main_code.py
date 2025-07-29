@@ -379,9 +379,9 @@ def edit_file():
                 'error': 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
             },
             {
-                'header': r"^Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
+                'header': r"^Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
                 'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
-                'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,Vmax,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
             },
             {
                 'header': r"^Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode$",
@@ -616,7 +616,7 @@ def export_data(mode="kinetics"):
     file_name = data.get('save_file', 'result')
     save_dir = data.get('save_dir')
     measurement = data.get('meas')
-    vmax = data.get('vmax', 'NONE')
+    maxrate = data.get('maxrate', 'NONE')
     slope = data.get('slope', 'NONE')
     sat = data.get('sat', 'NONE')
     concentration = data.get('con')
@@ -648,11 +648,11 @@ def export_data(mode="kinetics"):
             writer = csv.writer(f)
             if not file_exists and newFile:
                 if meas_mode == "kinetics":
-                    writer.writerow(['Measurement', 'Concentration', 'Vmax', 'Slope', 'Sat', 'Time To Sat', 'MeasUnit', 'TimeUnit', 'BlankType', 'MeasMode'])
+                    writer.writerow(['Measurement', 'Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'MeasUnit', 'TimeUnit', 'BlankType', 'MeasMode'])
                 else:
                     writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
             if meas_mode == "kinetics":
-                writer.writerow([measurement, concentration, vmax, slope, sat, time_to_sat, meas_unit, 'minutes', blankT, meas_mode])
+                writer.writerow([measurement, concentration, maxrate, slope, sat, time_to_sat, meas_unit, 'minutes', blankT, meas_mode])
             else:
                 writer.writerow([measurement, concentration, value, meas_unit, time_point, 'minutes', blankT, meas_mode])
             message = f"Data exported at {full_path}"

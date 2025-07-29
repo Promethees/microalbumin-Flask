@@ -28,7 +28,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
             $("#json-display").text(`Current mode is \"${AppState.currentMeasurementMode}\".\nJSON file read from ${JSON_path}\n`);
             if (AppState.currentMeasurementMode === "kinetics") {
-                $("#json-display").append("Quantity value is either Vmax, Slope, Saturation, Time to Saturation, which ever is set by user.\n");
+                $("#json-display").append("Quantity value is either maxRate, Slope, Saturation, Time to Saturation, which ever is set by user.\n");
             } else if (AppState.currentMeasurementMode === "point") {
                  $("#json-display").append("Quantity value is the Absorbance value read from selected data file whose recorded time is the closest to the time set in this JSON.\n");
             }
@@ -349,8 +349,8 @@ function fetchData(unit, window_size, filename, jsonFile) {
                     
                     // Calculate value based on quantity and blank type
                     switch(conQuantityInput) {
-                        case "vmax":
-                            value = getKineticValue("vmax", blankType) * 60;
+                        case "maxrate":
+                            value = getKineticValue("maxrate", blankType) * 60;
                             break;
                         case "slope":
                             value = getKineticValue("slope", blankType) * 60;
@@ -506,13 +506,13 @@ function exportData() {
     let analysisData = null;
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-    
+    console.log("Global analysis data is ", AppState.globalAnalysis);
     if (AppState.currentMeasurementMode === "kinetics") {
         switch ($("#exp-json-blank-type").val()) {
             case "MIXED":
                 if (!$("#split-mode").is(":checked")) {
                     analysisData = {
-                        Vmax: AppState.globalAnalysis.vmax * getTimeUnitMultiplier('minutes'),
+                        maxrate: AppState.globalAnalysis.maxrate * getTimeUnitMultiplier('minutes'),
                         slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
                         saturationValue: AppState.globalAnalysis.sat,
                         timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
@@ -525,7 +525,7 @@ function exportData() {
             case "BLANKED":
                 if ($("#split-mode").is(":checked")) {
                     analysisData = {
-                        Vmax: AppState.globalAnalysis.vmax_blanked * getTimeUnitMultiplier('minutes'),
+                        maxrate: AppState.globalAnalysis.maxrate_blanked * getTimeUnitMultiplier('minutes'),
                         slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
                         saturationValue: AppState.globalAnalysis.sat_blanked,
                         timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
@@ -538,7 +538,7 @@ function exportData() {
             case "NON-BLANKED": 
                 if ($("#split-mode").is(":checked")) {
                     analysisData = {
-                        Vmax: AppState.globalAnalysis.vmax_non_blanked * getTimeUnitMultiplier('minutes'),
+                        maxrate: AppState.globalAnalysis.maxrate_non_blanked * getTimeUnitMultiplier('minutes'),
                         slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
                         saturationValue: AppState.globalAnalysis.sat_non_blanked,
                         timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
@@ -578,11 +578,12 @@ function exportData() {
 }
 
 function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, blankedType, newFile=true) {
+    console.log("analysisData is ", analysisData);
     if (analysisData) {
         const data = {
             save_dir: saveDir,
             save_file: saveFile,
-            vmax: analysisData.Vmax !== "--" ? analysisData.Vmax : "NONE",
+            maxrate: analysisData.maxrate !== "--" ? analysisData.maxrate : "NONE",
             slope: analysisData.slope !== "--" ? analysisData.slope : "NONE",
             sat: analysisData.saturationValue !== "--" ? analysisData.saturationValue : "NONE",
             timeSat: analysisData.timeToSaturation !== "--" ? analysisData.timeToSaturation : "NONE",

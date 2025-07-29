@@ -113,7 +113,7 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
 
 function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     if (XColumn.length < 2 || YColumn.length < 2 || window_size < 2 || window_size > XColumn.length) {
-        return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", Vmax: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 };
+        return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", maxRate: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 };
     }
 
     let localSlopes = [];
@@ -132,29 +132,29 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         intercepts.push(intercept);
     }
 
-    let Vmax = 0;
+    let maxRate = 0;
     let threshold = 0.2;
-    let startVMax = -1;
-    let endVMax = -1;
-    let yVMaxstart = 0;
-    let yVMaxend = 0;
+    let startMaxRate = -1;
+    let endMaxRate = -1;
+    let yMaxRateStart = 0;
+    let yMaxRateEnd = 0;
 
     for (let i = 0; i < localSlopes.length; i++) {
         const adjustedLocal = 3600 * localSlopes[i];
-        if (rSquaredValues[i] >= 0.95 && localSlopes[i] > Vmax && adjustedLocal > threshold) {
-            Vmax = localSlopes[i];
-            startVMax = i;
-            endVMax = startVMax + Number(window_size) - 1;
-            yVMaxstart = Vmax * XColumn[startVMax] + intercepts[i];
-            yVMaxend = Vmax * XColumn[endVMax] + intercepts[i];
+        if (rSquaredValues[i] >= 0.95 && localSlopes[i] > maxRate && adjustedLocal > threshold) {
+            maxRate = localSlopes[i];
+            startMaxRate = i;
+            endMaxRate = startMaxRate + Number(window_size) - 1;
+            yMaxRateStart = maxRate * XColumn[startMaxRate] + intercepts[i];
+            yMaxRateEnd = maxRate * XColumn[endMaxRate] + intercepts[i];
         }
     }
 
     let linearStartIdx = -1;
     let linearEndIdx = -1;
-    if (Vmax !== 0) {
+    if (maxRate !== 0) {
         for (let i = 0; i < localSlopes.length; i++) {
-            if (localSlopes[i] >= 0.7 * Vmax) {
+            if (localSlopes[i] >= 0.7 * maxRate) {
                 if (linearStartIdx === -1) linearStartIdx = i;
                 linearEndIdx = i;
             }
@@ -211,15 +211,15 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         intercept: linearIntercept.toFixed(2),
         saturationValue,
         timeToSaturation,
-        Vmax: Vmax.toFixed(6),
+        maxRate: maxRate.toFixed(6),
         linearYMin: linearYMin.toFixed(2),
         linearYMax: linearYMax.toFixed(2),
         linearXMin: linearStartIdx !== -1 ? linearXMin.toFixed(2) : null,
         linearXMax: linearEndIdx !== -1 ? linearXMax.toFixed(2) : null,
-        startVMax: startVMax !== -1 ? XColumn[startVMax].toFixed(2) : null,
-        endVMax: endVMax !== -1 ? XColumn[endVMax].toFixed(2) : null,
-        yVMaxstart,
-        yVMaxend,
+        startMaxRate: startMaxRate !== -1 ? XColumn[startMaxRate].toFixed(2) : null,
+        endMaxRate: endMaxRate !== -1 ? XColumn[endMaxRate].toFixed(2) : null,
+        yMaxRateStart,
+        yMaxRateEnd,
         timeStartSaturation
     };
 }
