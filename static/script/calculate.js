@@ -578,6 +578,9 @@ function arraysEqual(arr1, arr2) {
 }
 
 function computeFit(value, fit_type, coef) {
+    if (coef[0] === 'NONE' || coef[0] === 'NaN') {
+        throw new Error(`Fit_type: ${fit_type} cannot be used to derive concentration from ${$("#regressed-quantity").val()}`);
+    }
     switch (fit_type.toLowerCase()) {
         case "linear":
             // Expect coef = [a, b]
