@@ -366,7 +366,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                     if (value !== null) {
                         const coef = jsonFile[conQuantityInput]["fit_coef"];
                         try {
-                            calculated_con = computeFit(value, jsonFile["fit_type"], coef);
+                            calculated_con = computeFit(value, jsonFile["fit_type"], coef).toFixed(4);
                             derived_con_text.innerHTML = `${calculated_con}`;
                         } catch (error) {
                             console.error("Error computing derived concentration:", error);
@@ -422,7 +422,7 @@ function processPointMode(response, jsonFile, derived_con_text) {
         $("#add-json-section").text("");
     }
     try {
-        calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
+        calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
         derived_con_text.innerHTML = `${calculated_con}`;
     } catch (error) {
         console.error("Error computing derived concentration:", error);
