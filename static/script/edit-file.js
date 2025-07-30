@@ -378,10 +378,16 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
                                 row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
                                 row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
-                                if (AppState.currentFile === fileName) AppState.currentFile = newFileName;
                                 textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
                             } else {
                                 textMsg = `File ${fileName} content updated successfully.`;
+                            }
+                            // Update AppState and Data display if the currently selected file is being edited
+                            if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
+                                console.log("Changing data display");
+                                deselectFile(tableSelector);
+                                selectFile(newFileName, button, tableSelector);
+                                toggleMode();
                             }
                             Swal.fire({
                                 title: 'Updated!',
@@ -443,6 +449,4 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
         });
     });
-    // Refresh data display section after editing
-    toggleMode();
 }
