@@ -365,8 +365,13 @@ function fetchData(unit, window_size, filename, jsonFile) {
                     
                     if (value !== null) {
                         const coef = jsonFile[conQuantityInput]["fit_coef"];
-                        calculated_con = computeFit(value, jsonFile["fit_type"], coef);
-                        derived_con_text.innerHTML = `${calculated_con}`;
+                        try {
+                            calculated_con = computeFit(value, jsonFile["fit_type"], coef);
+                            derived_con_text.innerHTML = `${calculated_con}`;
+                        } catch (error) {
+                            console.error("Error computing derived concentration:", error);
+                            derived_con_text.innerHTML = `<span style="color: red;">${error.message}</span>`;
+                        }
                     }
                 } 
             } 
@@ -416,9 +421,13 @@ function processPointMode(response, jsonFile, derived_con_text) {
     } else {
         $("#add-json-section").text("");
     }
-    
-    calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
-    derived_con_text.innerHTML = `${calculated_con}`;
+    try {
+        calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]);
+        derived_con_text.innerHTML = `${calculated_con}`;
+    } catch (error) {
+        console.error("Error computing derived concentration:", error);
+        derived_con_text.innerHTML = `<span style="color: red;">$${error.message}</span>`;
+    }
 }
 
 function handleCalibrationMode() {
