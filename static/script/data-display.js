@@ -522,14 +522,14 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
     console.log("Formatting analysis info:", analysisInfo);
     const unitDisplay = unit !== "NONE" ? unit : '';
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
-        ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope} ${unitDisplay}/${timeUnit}, 
-        Linear start = ${analysisInfo.linearStart} ${timeUnit},
-        Linear end = ${analysisInfo.linearEnd} ${timeUnit}, <br/>
-        maxRate = ${analysisInfo.maxRate}${unitDisplay}/${timeUnit}, 
-        maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit}, 
-        maxRateEnd = ${analysisInfo.maxRateEnd} ${timeUnit}, <br/>
+        ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope}${unitDisplay}/${timeUnit.slice(0, -1)}, 
+        Linear start = ${analysisInfo.linearStart} ${timeUnit.slice(0, -1)}, <br/>
+        Linear end = ${analysisInfo.linearEnd} ${timeUnit.slice(0, -1)}, <br/>
+        maxRate = ${analysisInfo.maxRate}${unitDisplay}/${timeUnit.slice(0, -1)}, 
+        maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit.slice(0, -1)}, 
+        maxRateEnd = ${analysisInfo.maxRateEnd} ${timeUnit.slice(0, -1)}, <br/>
         Saturation = ${analysisInfo.saturationValue}, 
-        Time to Saturation = ${analysisInfo.timeToSaturation} ${timeUnit}
+        Time to Saturation = ${analysisInfo.timeToSaturation} ${timeUnit.slice(0, -1)}
     </span>`;
     return html;
 }

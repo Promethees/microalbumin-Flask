@@ -603,7 +603,7 @@ function computeFit(value, fit_type, coef) {
         case "michaelis-menten":
             // Expect coef = [Vmax, Km]
             if (coef.length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
-            if (value >= coef[0] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value} must be < Vmax: ${coef[0]} and >= 0`);
+            if (value >= coef[0] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value}/minute must be < Vmax: ${coef[0]} and >= 0`);
             return (coef[1] * value) / (coef[0] - value);
 
         default:
