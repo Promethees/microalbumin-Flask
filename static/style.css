@@ -1,4 +1,21 @@
-/* Style for the initial prompt */
+/* General Layout and Typography */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    max-width: 50vw;
+    width: 100%;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+/* Initial Prompt Styling */
 #init-prompt {
     display: flex;
     flex-direction: column;
@@ -18,153 +35,28 @@
     cursor: pointer;
 }
 
+#init-button:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#prompt-message {
+    color: #34495e !important;
+    font-size: 1rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* Main Content and Visibility */
 #main-content.hidden {
     display: none;
 }
 
-body { 
-    font-family: Arial, sans-serif; 
-    margin: 20px; 
-    display: flex;
-    justify-content: center;
+.hidden {
+    display: none !important;
 }
 
-.container {
-    max-width: 50vw;
-    width: 100%;
-}
-
-.section { 
-    margin-bottom: 20px; 
-}
-
-table { 
-    border-collapse: collapse; 
-    width: 100%; 
-}
-
-th, td { 
-    border: 1px solid #ddd; 
-    padding: 8px; 
-    text-align: left; 
-}
-
-th { 
-    background-color: #f2f2f2; 
-}
-
-#data-display, 
-#file-table-container, 
-#parent-dir, 
-#child-dirs, 
-#log-display, 
-#json-display {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-#file-table-container { 
-    max-height: 120px; 
-}
-
-#parent-dir, 
-#child-dirs { 
-    max-height: 100px; 
-}
-
-#error-message, 
-#wd-size-error {
-    color: red; 
-    display: none;
-}
-
-#file-table, 
-#json-table {
-    width: 100%;
-}
-
-#file-table tr.selected, 
-#json-table tr.selected {
-    background-color: #e0f7fa;
-}
-
-#file-table button, 
-#json-table button {
-    cursor: pointer;
-}
-
-#directory { 
-    width: 70%; 
-}
-
-#dir-suggestions { 
-    margin-top: 5px; 
-}
-
-#parent-dir h3, 
-#child-dirs h3 { 
-    margin: 0; 
-    font-size: 1em; 
-    font-weight: bold; 
-}
-
-#parent-dir div, 
-#child-dirs div { 
-    padding: 5px; 
-    cursor: pointer; 
-}
-
-#parent-dir div:hover, 
-#child-dirs div:hover { 
-    background-color: #f0f0f0; 
-}
-
-#deselect-btn { 
-    margin-top: 5px; 
-    padding: 5px 10px; 
-}
-
-#plot-canvas, 
-#blanked-canvas, 
-#non-blanked-canvas { 
-    width: 100%; 
-    height: 280px; 
-}
-
-#chart-container {
-    overflow-y: auto;
-    height: 40%; /* Adjust as needed */
-    position: relative; /* Helps with scroll positioning */
-}
-
-#mode-toggle { 
-    margin-bottom: 10px; 
-}
-
-#analysis-info { 
-    margin-top: 10px; 
-    font-size: 0.9em; 
-    color: #333; 
-}
-
-#log-display, 
-#json-display {
-    border: 1px solid #ddd; 
-    padding: 10px; 
-    background-color: #f9f9f9; 
-    white-space: pre-wrap;
-}
-
-.script-controls { 
-    margin-top: 10px; 
-}
-
-/* Section visibility toggles */
-.hidden { 
-    display: none !important; 
-}
-
-/* Default section display states */
+/* Default Section Visibility */
 #window-size-section,
 #select-quantity-section,
 #data-display-section,
@@ -190,26 +82,102 @@ th {
     display: block;
 }
 
-#run-script-btn.blinking, 
-#terminate-script-btn.blinking {
-    border: 2px solid #ff0000; /* Red border when enabled */
-    --blink-color: #ff0000; /* Custom property for blink color */
-    animation: blink 1s infinite; /* Blinking animation */
+/* Table Styling */
+table {
+    border-collapse: collapse;
+    width: 100%;
 }
 
-#go-to-btn.blinking, #file-selection.blinking, #log-display.blinking, 
-#chart-container.blinking, #measurement-mode.blinking, #cal-mode-select.blinking,
-#con-value-read.blinking {
-    border: 2px solid #00ff00; /* Green border when enabled */
-    --blink-color: #00ff00; /* Custom property for blink color */
-    animation: blink 1s infinite; /* Blinking animation */
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
 }
 
-#der-con-value.blinking, #blank-der-con-value.blinking,
-#non-blank-der-con-value.blinking {
-    border: 2px solid #6c3baa; /* Purple border for concentration values */
-    --blink-color: #6c3baa; /* Custom property for blink color */
-    animation: blink 1s infinite; /* Blinking animation */
+th {
+    background-color: #f2f2f2;
+}
+
+#file-table,
+#json-table {
+    width: 100%;
+}
+
+#file-table tr.selected,
+#json-table tr.selected {
+    background-color: #e0f7fa;
+}
+
+#file-table button,
+#json-table button {
+    cursor: pointer;
+}
+
+/* Scrollable Containers */
+#data-display,
+#file-table-container,
+#parent-dir,
+#child-dirs,
+#log-display,
+#json-display {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#file-table-container {
+    max-height: 120px;
+}
+
+#parent-dir,
+#child-dirs {
+    max-height: 100px;
+}
+
+/* Directory Navigation */
+#directory {
+    width: 70%;
+}
+
+#dir-suggestions {
+    margin-top: 5px;
+}
+
+#parent-dir h3,
+#child-dirs h3 {
+    margin: 0;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+#parent-dir div,
+#child-dirs div {
+    padding: 5px;
+    cursor: pointer;
+}
+
+#parent-dir div:hover,
+#child-dirs div:hover {
+    background-color: #f0f0f0;
+}
+
+/* Buttons and Controls */
+#deselect-btn {
+    margin-top: 5px;
+    padding: 5px 10px;
+}
+
+#mode-toggle {
+    margin-bottom: 10px;
+}
+
+.script-controls {
+    margin-top: 10px;
+}
+
+#run-script-btn:not(:disabled),
+#terminate-script-btn:not(:disabled),
+#go-to-btn:not(:disabled) {
+    cursor: pointer;
 }
 
 #run-script-btn:disabled,
@@ -218,10 +186,74 @@ th {
     cursor: not-allowed;
 }
 
-#run-script-btn:not(:disabled),
-#terminate-script-btn:not(:disabled),
-#go-to-btn:not(:disabled) {
-    cursor: pointer; /* or 'default' if you prefer */
+/* Canvas and Chart */
+#plot-canvas,
+#blanked-canvas,
+#non-blanked-canvas {
+    width: 100%;
+    height: 280px;
+}
+
+#chart-container {
+    overflow-y: auto;
+    height: 40%;
+    position: relative;
+}
+
+/* Display Sections */
+#log-display,
+#json-display {
+    border: 1px solid #ddd;
+    padding: 10px;
+    background-color: #f9f9f9;
+    white-space: pre-wrap;
+}
+
+#analysis-info {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #333;
+}
+
+/* Error Messages */
+#error-message,
+#wd-size-error {
+    color: red;
+    display: none;
+}
+
+.error {
+    color: red;
+    margin-top: 5px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Blinking Animations */
+#run-script-btn.blinking,
+#terminate-script-btn.blinking {
+    border: 2px solid #ff0000;
+    --blink-color: #ff0000;
+    animation: blink 1s infinite;
+}
+
+#go-to-btn.blinking,
+#file-selection.blinking,
+#log-display.blinking,
+#chart-container.blinking,
+#measurement-mode.blinking,
+#cal-mode-select.blinking,
+#con-value-read.blinking {
+    border: 2px solid #00ff00;
+    --blink-color: #00ff00;
+    animation: blink 1s infinite;
+}
+
+#der-con-value.blinking,
+#blank-der-con-value.blinking,
+#non-blank-der-con-value.blinking {
+    border: 2px solid #6c3baa;
+    --blink-color: #6c3baa;
+    animation: blink 1s infinite;
 }
 
 @keyframes blink {
@@ -230,6 +262,12 @@ th {
     100% { border-color: var(--blink-color, transparent); }
 }
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* SweetAlert2 Customizations */
 .swal2-input-group {
     margin-bottom: 10px;
     text-align: left;
@@ -254,7 +292,7 @@ th {
 }
 
 .swal2-input:focus {
-    border-color: #3085d6; /* SweetAlert default blue */
+    border-color: #3085d6;
     box-shadow: 0 0 0 4px rgba(48, 133, 214, 0.2);
 }
 
@@ -265,6 +303,7 @@ th {
 #swal-edit-table tr.selected {
     background-color: #e6f2ff !important;
 }
+
 #swal-edit-table tr.selected td {
     background-color: #e6f2ff !important;
 }
@@ -275,31 +314,16 @@ th {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 #swal-edit-table th {
     min-width: 80px;
 }
 
-#init-button:hover {
-    background: #2980b9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+/* Input Validation */
+.invalid {
+    border: 2px solid red;
 }
 
-.error {
-    animation: fadeIn 0.3s ease;
+.valid {
+    border: 2px solid green;
 }
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-#prompt-message {
-    color: #34495e !important;
-    font-size: 1rem !important;
-    margin-bottom: 1.5rem !important;
-}
-
-.invalid { border: 2px solid red; }
-.valid { border: 2px solid green; }
-.error { color: red; margin-top: 5px; }
