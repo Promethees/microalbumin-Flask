@@ -523,7 +523,7 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
     const unitDisplay = unit !== "NONE" ? unit : '';
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope}${unitDisplay}/${timeUnit.slice(0, -1)}, 
-        Linear start = ${analysisInfo.linearStart} ${timeUnit.slice(0, -1)}, <br/>
+        Linear start = ${analysisInfo.linearStart} ${timeUnit.slice(0, -1)},
         Linear end = ${analysisInfo.linearEnd} ${timeUnit.slice(0, -1)}, <br/>
         maxRate = ${analysisInfo.maxRate}${unitDisplay}/${timeUnit.slice(0, -1)}, 
         maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit.slice(0, -1)}, 
