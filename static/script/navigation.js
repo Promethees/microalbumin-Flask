@@ -70,11 +70,11 @@ async function filterFiles(files) {
 }
 
 function updateJSONTable(files) {
-    let html = '<tr><th>Calibrated JSON</th><th colspan="2">Action</th></tr>';
+    let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
     if (files && files.length > 0) {
         files.forEach(file => {
            const isSelected = file === AppState.currentJSON ? ' class="selected"' : ''; 
-           html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td></tr>`;
+           html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 

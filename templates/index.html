@@ -290,13 +290,14 @@
                 <h2>Select Coefficients for standard curve</h2>
                 <div id="file-table-container">
                     <table id="json-table">
-                        <tr><th>Calibrated JSON</th><th colspan="2">Action</th></tr>
+                        <tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>
                         {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
                                 <td>{{ file }}</td>
                                 <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
                                 <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
+                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -469,7 +470,7 @@
         </footer>
     </div>
         <script >
-            const rootPath = '{{ directory | tojson }}';
+            const rootPath = JSON.parse('{{ directory | tojson }}');
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;

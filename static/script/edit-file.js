@@ -1,14 +1,4 @@
 function editFile(fileName, button, tableSelector = "#file-table") {
-    if (tableSelector !== "#file-table") {
-        Swal.fire({
-            title: 'Error!',
-            text: 'Editing is only supported for CSV files in #file-table.',
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-        return;
-    }
-
     checkScriptStatus().then((isRunning) => {
         if (isRunning || AppState.scriptRunning) {
             Swal.fire({
@@ -33,7 +23,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         const deleteBtn = row.find("button:contains('Delete')");
         deleteBtn.prop('disabled', true).addClass('disabled').attr('aria-disabled', 'true');
 
-        let editMode = 'table'; // Default to table mode
+        let editMode = tableSelector === '#file-table' ? 'table' : 'text'; // Force text mode for non-#file-table
         let originalContent = ''; // Store original content for reference
 
         const nonEditableColumns = ['Measurement', 'Unit', 'Type', 'Blanked', 'Concentration', 
@@ -230,14 +220,14 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }
             return html;
         }
-
+        const filePath = tableSelector === '#file-table' ? $("#directory").val() : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
         // Fetch CSV content
-        $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent($("#directory").val())}`, function(content) {
+        $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function(content) {
             Swal.fire({
                 title: `Edit ${fileName}`,
                 width: '800px',
                 html: renderContent(content),
-                footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px;">Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode</button>',
+                footer: tableSelector === '#file-table' ? '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px;">Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode</button>' : '',
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Save Changes',
@@ -250,7 +240,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         setupTableEvents();
                     }
                     
-                    if (toggleButton) {
+                    if (toggleButton && tableSelector === '#file-table') {
                         toggleButton.addEventListener('click', () => {
                             editMode = editMode === 'text' ? 'table' : 'text';
                             toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode';
@@ -292,56 +282,76 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         Swal.showValidationMessage('Content cannot be empty');
                         return false;
                     }
-                    if (!newFileName.trim() || !newFileName.endsWith('.csv')) {
-                        Swal.showValidationMessage('Filename must end with .csv');
+                    if (!newFileName.trim()) {
+                        Swal.showValidationMessage('New file name cannot be empty');
                         return false;
-                    }
-
-                    // Define multiple pattern pairs for validation
-                    const patternSets = [
-                        {
-                            header: /^\s*Timestamp\s*,\s*Measurement\s*,\s*Value\s*,\s*Unit\s*,\s*Type\s*,\s*Blanked\s*,\s*Concentration\s*$/,
-                            data: /^\s*\d+\.\d{1,2}\s*,\s*[A-Za-z]+\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*$/,
-                            error: 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
-                        },
-                        {
-                            header: /^\s*Measurement\s*,\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*MeasUnit\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
-                            data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
-                            error: 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
-                        },
-                        {
-                            header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Value\s*,\s*MeasUnit\s*,\s*TimePoint\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
-                            data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
-                            error: 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+                    } else {
+                        if (tableSelector === '#file-table' && !newFileName.endsWith('.csv')) {
+                            Swal.showValidationMessage('File name must end with .csv');
+                            return false;
                         }
-                    ];
-
-                    const lines = content.trim().split('\n');
-                    if (lines.length < 1) {
-                        Swal.showValidationMessage('Content must contain at least the header');
-                        return false;
+                        if (tableSelector === '#json-table' && !newFileName.endsWith('.json')) {
+                            Swal.showValidationMessage('File name must end with .json');
+                            return false;
+                        }
                     }
 
-                    // Normalize the header line by removing extra spaces
-                    const normalizedHeader = lines[0].replace(/\s*,\s*/g, ',');
+                    // Validate content based on tableSelector
+                    if (tableSelector === '#file-table') {
+                        // CSV validation (for both table and text mode)
+                        const patternSets = [
+                            {
+                                header: /^\s*Timestamp\s*,\s*Measurement\s*,\s*Value\s*,\s*Unit\s*,\s*Type\s*,\s*Blanked\s*,\s*Concentration\s*$/,
+                                data: /^\s*\d+\.\d{1,2}\s*,\s*[A-Za-z]+\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*$/,
+                                error: 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+                            },
+                            {
+                                header: /^\s*Measurement\s*,\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*MeasUnit\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
+                                data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
+                                error: 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                            },
+                            {
+                                header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Value\s*,\s*MeasUnit\s*,\s*TimePoint\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
+                                data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
+                                error: 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+                            }
+                        ];
 
-                    // Find matching pattern set
-                    const matchedPattern = patternSets.find(pattern => {
-                        // Test against both the original and normalized header
-                        return pattern.header.test(lines[0]) || pattern.header.test(normalizedHeader);
-                    });
-                    
-                    if (!matchedPattern) {
-                        const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
-                        Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
-                        return false;
-                    }
+                        const lines = content.trim().split('\n');
+                        if (lines.length < 1) {
+                            Swal.showValidationMessage('Content must contain at least the header');
+                            return false;
+                        }
 
-                    // Validate data rows with the matched pattern
-                    for (let i = 1; i < lines.length; i++) {
-                        const normalizedLine = lines[i].replace(/\s*,\s*/g, ',');
-                        if (!matchedPattern.data.test(lines[i]) && !matchedPattern.data.test(normalizedLine)) {
-                            Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
+                        // Normalize the header line by removing extra spaces
+                        const normalizedHeader = lines[0].replace(/\s*,\s*/g, ',');
+
+                        // Find matching pattern set
+                        const matchedPattern = patternSets.find(pattern => {
+                            // Test against both the original and normalized header
+                            return pattern.header.test(lines[0]) || pattern.header.test(normalizedHeader);
+                        });
+                        
+                        if (!matchedPattern) {
+                            const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
+                            Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
+                            return false;
+                        }
+
+                        // Validate data rows with the matched pattern
+                        for (let i = 1; i < lines.length; i++) {
+                            const normalizedLine = lines[i].replace(/\s*,\s*/g, ',');
+                            if (!matchedPattern.data.test(lines[i]) && !matchedPattern.data.test(normalizedLine)) {
+                                Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
+                                return false;
+                            }
+                        }
+                    } else if (tableSelector === '#json-table' && editMode === 'text') {
+                        // JSON validation for text mode
+                        try {
+                            JSON.parse(content);
+                        } catch (e) {
+                            Swal.showValidationMessage(`Invalid JSON format: ${e.message}`);
                             return false;
                         }
                     }
@@ -357,7 +367,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     $.post('/edit_file', {
                         filename: fileName,
                         new_filename: newFileName,
-                        path: $("#directory").val(),
+                        path: filePath,
                         content: content,
                         calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp'
                     }, function(response) {
@@ -365,9 +375,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             let textMsg;
                             if (fileName !== newFileName) {
                                 row.find("td:first").text(newFileName);
-                                row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '#file-table')`);
-                                row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '#file-table')`);
-                                row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '#file-table')`);
+                                row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
+                                row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
+                                row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
                                 if (AppState.currentFile === fileName) AppState.currentFile = newFileName;
                                 textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
                             } else {
@@ -433,4 +443,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
         });
     });
+    // Refresh data display section after editing
+    toggleMode();
 }

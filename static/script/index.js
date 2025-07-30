@@ -31,6 +31,7 @@ const AppState = {
     exp_json_content: null,
     processedExpPath: rootPath + delimiter + "export_data",
     processedHidPath: rootPath + delimiter + "data",
+    jsonPath: rootPath + delimiter + 'json',
     chartInstances: {},
     responseData: null,
 
