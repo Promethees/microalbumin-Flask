@@ -521,6 +521,8 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
     if (!analysisInfo) return '';
     console.log("Formatting analysis info:", analysisInfo);
     const unitDisplay = unit !== "NONE" ? unit : '';
+    const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
+    const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope}${unitDisplay}/${timeUnit.slice(0, -1)}, 
         Linear start = ${analysisInfo.linearStart} ${timeUnit.slice(0, -1)},
@@ -528,8 +530,8 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
         maxRate = ${analysisInfo.maxRate}${unitDisplay}/${timeUnit.slice(0, -1)}, 
         maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit.slice(0, -1)}, 
         maxRateEnd = ${analysisInfo.maxRateEnd} ${timeUnit.slice(0, -1)}, <br/>
-        Saturation = ${analysisInfo.saturationValue}, 
-        Time to Saturation = ${analysisInfo.timeToSaturation} ${timeUnit.slice(0, -1)}
+        Saturation = ${displaySat}${unitDisplay}, 
+        Time to Saturation = ${displayTimeSat} ${timeUnit.slice(0, -1)}
     </span>`;
     return html;
 }
