@@ -15,6 +15,7 @@ from http import HTTPStatus
 from datetime import datetime
 import re
 from filelock import FileLock
+import serial.tools.list_ports
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -204,13 +205,38 @@ def run_script():
     base_dir = data.get('base_dir', 'data')
     base_name = data.get('base_name', 'colorimeter_data')
     
-    if "window" in os_name:
-        venv_python = os.path.join('venv', 'Scripts', 'python.exe')
-        cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
-    else:
-        cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
-    
     try:
+        # Connect to PyBadge and send start signal
+        pybadge = connect_to_device()
+        print(f"Connected to PyBadge at {pybadge.port}")
+        
+        # Send start signal with newline
+        pybadge.write(b'1\n')
+        
+        # Read acknowledgment with timeout
+        start_time = time.time()
+        timeout = 5  # seconds
+        ack_received = False
+        
+        while time.time() - start_time < timeout:
+            if pybadge.in_waiting:
+                response = pybadge.readline().decode('utf-8').strip()
+                if response == "ACK_START":
+                    ack_received = True
+                    break
+            time.sleep(0.1)
+        
+        if not ack_received:
+            pybadge.close()
+            return jsonify({'status': 'failure', 'message': 'No acknowledgment from PyBadge'})
+        
+        # Rest of the run_script code...
+        if "window" in os_name:
+            venv_python = os.path.join('venv', 'Scripts', 'python.exe')
+            cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
+        else:
+            cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+        
         with open(log_file, 'a') as f:
             process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
             
@@ -221,7 +247,7 @@ def run_script():
             )
             monitor_thread.start()
             
-            # Initial check (like your original code)
+            # Initial check
             try:
                 process.wait(timeout=1)
                 error = check_log_for_errors(log_file)
@@ -272,7 +298,7 @@ def check_status():
             elif error == "input_endpoint_error":
                 return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint.'})
         return jsonify({'status': 'success', 'message': 'Script still running, waiting for device to send next report'})
-
+    
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():
     global process
@@ -280,19 +306,42 @@ def terminate_script():
         return jsonify({'status': 'failure', 'message': 'No process running'})
 
     try:
+        # Send stop signal and wait for acknowledgment
+        pybadge = connect_to_device()
+        print(f"Connected to PyBadge at {pybadge.port}")
+
+        # Send stop signal with newline
+        pybadge.write(b'0\n')
+        
+        # Read acknowledgment with timeout
+        start_time = time.time()
+        timeout = 5  # seconds
+        ack_received = False
+        
+        while time.time() - start_time < timeout:
+            if pybadge.in_waiting:
+                response = pybadge.readline().decode('utf-8').strip()
+                if response == "ACK_STOP":
+                    ack_received = True
+                    break
+            time.sleep(0.1)
+        
+        if not ack_received:
+            pybadge.close()
+            return jsonify({'status': 'failure', 'message': 'No acknowledgment from PyBadge'})
+        
+        # Rest of the terminate_script code...
         if "window" in os_name:
-            # On Windows, use terminate() or kill() for the process
-            process.terminate()  # Try graceful termination
+            process.terminate()
             try:
                 process.wait(timeout=5)
                 process = None
                 return jsonify({'status': 'success'})
             except subprocess.TimeoutExpired:
-                process.kill()  # Force kill if it doesn't terminate
+                process.kill()
                 process = None
                 return jsonify({'status': 'success'})
         else:
-            # On Unix-like systems, use os.killpg for process group
             try:
                 os.killpg(os.getpgid(process.pid), signal.SIGTERM)
                 process.wait(timeout=5)
@@ -304,6 +353,31 @@ def terminate_script():
                 return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'failure', 'message': f'Error terminating process: {str(e)}'})
+    
+def connect_to_device(vid = 0x239A, pid = 0x8034):
+    """Automatically find and connect to Device"""
+
+    # Find the port
+    port = None
+    for p in serial.tools.list_ports.comports():
+        if p.vid == vid and p.pid == pid:
+            port = p.device
+            break
+    
+    if not port:
+        raise Exception("Device (Pybadge) not found. Is it connected?")
+    
+    # Configure and open serial connection
+    ser = serial.Serial(
+        port=port,
+        baudrate=115200,
+        timeout=1,
+        write_timeout=1
+    )
+    
+    # Wait for connection to establish
+    time.sleep(2)
+    return ser
 
 @app.route('/get_logs', methods=['GET'])
 def get_logs():
