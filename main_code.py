@@ -15,6 +15,7 @@ from http import HTTPStatus
 from datetime import datetime
 import re
 from filelock import FileLock
+import serial.tools.list_ports
 
 sys.path.append('code\src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -204,13 +205,38 @@ def run_script():
     base_dir = data.get('base_dir', 'data')
     base_name = data.get('base_name', 'colorimeter_data')
     
-    if "window" in os_name:
-        venv_python = os.path.join('venv', 'Scripts', 'python.exe')
-        cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
-    else:
-        cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
-    
     try:
+        # Connect to PyBadge and send start signal
+        pybadge = connect_to_device()
+        print(f"Connected to PyBadge at {pybadge.port}")
+        
+        # Send start signal with newline
+        pybadge.write(b'1\n')
+        
+        # Read acknowledgment with timeout
+        start_time = time.time()
+        timeout = 5  # seconds
+        ack_received = False
+        
+        while time.time() - start_time < timeout:
+            if pybadge.in_waiting:
+                response = pybadge.readline().decode('utf-8').strip()
+                if response == "ACK_START":
+                    ack_received = True
+                    break
+            time.sleep(0.1)
+        
+        if not ack_received:
+            pybadge.close()
+            return jsonify({'status': 'failure', 'message': 'No acknowledgment from PyBadge'})
+        
+        # Rest of the run_script code...
+        if "window" in os_name:
+            venv_python = os.path.join('venv', 'Scripts', 'python.exe')
+            cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
+        else:
+            cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+        
         with open(log_file, 'a') as f:
             process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
             
@@ -221,7 +247,7 @@ def run_script():
             )
             monitor_thread.start()
             
-            # Initial check (like your original code)
+            # Initial check
             try:
                 process.wait(timeout=1)
                 error = check_log_for_errors(log_file)
@@ -272,7 +298,7 @@ def check_status():
             elif error == "input_endpoint_error":
                 return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint.'})
         return jsonify({'status': 'success', 'message': 'Script still running, waiting for device to send next report'})
-
+    
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():
     global process
@@ -280,19 +306,42 @@ def terminate_script():
         return jsonify({'status': 'failure', 'message': 'No process running'})
 
     try:
+        # Send stop signal and wait for acknowledgment
+        pybadge = connect_to_device()
+        print(f"Connected to PyBadge at {pybadge.port}")
+
+        # Send stop signal with newline
+        pybadge.write(b'0\n')
+        
+        # Read acknowledgment with timeout
+        start_time = time.time()
+        timeout = 5  # seconds
+        ack_received = False
+        
+        while time.time() - start_time < timeout:
+            if pybadge.in_waiting:
+                response = pybadge.readline().decode('utf-8').strip()
+                if response == "ACK_STOP":
+                    ack_received = True
+                    break
+            time.sleep(0.1)
+        
+        if not ack_received:
+            pybadge.close()
+            return jsonify({'status': 'failure', 'message': 'No acknowledgment from PyBadge'})
+        
+        # Rest of the terminate_script code...
         if "window" in os_name:
-            # On Windows, use terminate() or kill() for the process
-            process.terminate()  # Try graceful termination
+            process.terminate()
             try:
                 process.wait(timeout=5)
                 process = None
                 return jsonify({'status': 'success'})
             except subprocess.TimeoutExpired:
-                process.kill()  # Force kill if it doesn't terminate
+                process.kill()
                 process = None
                 return jsonify({'status': 'success'})
         else:
-            # On Unix-like systems, use os.killpg for process group
             try:
                 os.killpg(os.getpgid(process.pid), signal.SIGTERM)
                 process.wait(timeout=5)
@@ -304,6 +353,31 @@ def terminate_script():
                 return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'failure', 'message': f'Error terminating process: {str(e)}'})
+    
+def connect_to_device(vid = 0x239A, pid = 0x8034):
+    """Automatically find and connect to Device"""
+
+    # Find the port
+    port = None
+    for p in serial.tools.list_ports.comports():
+        if p.vid == vid and p.pid == pid:
+            port = p.device
+            break
+    
+    if not port:
+        raise Exception("Device (Pybadge) not found. Is it connected?")
+    
+    # Configure and open serial connection
+    ser = serial.Serial(
+        port=port,
+        baudrate=115200,
+        timeout=1,
+        write_timeout=1
+    )
+    
+    # Wait for connection to establish
+    time.sleep(2)
+    return ser
 
 @app.route('/get_logs', methods=['GET'])
 def get_logs():
@@ -339,16 +413,17 @@ def edit_file():
                 'message': 'Filename and content are required'
             }), HTTPStatus.BAD_REQUEST
 
-        if not new_file_name.endswith('.csv'):
+        # Validate file extension
+        if not (new_file_name.endswith('.csv') or new_file_name.endswith('.json')):
             return jsonify({
                 'status': 'error',
-                'message': 'New file name must end with .csv'
+                'message': 'New file name must end with .csv or .json'
             }), HTTPStatus.BAD_REQUEST
 
         # Construct file paths
         file_path = os.path.join(path, file_name)
         new_file_path = os.path.join(path, new_file_name)
-        print(f"Editing CSV file: {file_path} to {new_file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        print(f"Editing file: {file_path} to {new_file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
         # Validate file path to prevent directory traversal
         if '..' in os.path.normpath(file_path) or '..' in os.path.normpath(new_file_path):
@@ -371,63 +446,79 @@ def edit_file():
                 'message': f'File {new_file_name} already exists'
             }), HTTPStatus.CONFLICT
 
-        # Validate content with regex
-        pattern_sets = [
-            {
-                'header': r"^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$",
-                'data': r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$",
-                'error': 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
-            },
-            {
-                'header': r"^Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
-                'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
-                'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
-            },
-            {
-                'header': r"^Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode$",
-                'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),[A-Za-z]+,(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
-                'error': 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
-            }
-        ]
-
-        lines = content.strip().split('\n')
-        if not lines:
-            return jsonify({
-                'status': 'error',
-                'message': 'Content cannot be empty'
-            }), HTTPStatus.BAD_REQUEST
-
-        # Find matching pattern set
-        matched_pattern = None
-        for pattern in pattern_sets:
-            if re.match(pattern['header'], lines[0]):
-                matched_pattern = pattern
-                break
-
-        if not matched_pattern:
-            valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
-            return jsonify({
-                'status': 'error',
-                'message': f'Invalid CSV header. Must match one of: {valid_headers}'
-            }), HTTPStatus.BAD_REQUEST
-
-        # Validate data rows with the matched pattern
-        for i, line in enumerate(lines[1:], 2):
-            if not re.match(matched_pattern['data'], line):
+        # Validate content based on file extension
+        if new_file_name.endswith('.json'):
+            try:
+                # Validate JSON format
+                json.loads(content)
+            except json.JSONDecodeError as e:
                 return jsonify({
                     'status': 'error',
-                    'message': f'Invalid data in row {i} for the detected format.'
+                    'message': f'Invalid JSON format: {str(e)}'
                 }), HTTPStatus.BAD_REQUEST
+        else:  # CSV validation
+            pattern_sets = [
+                {
+                    'header': r"^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$",
+                    'data': r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$",
+                    'error': 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+                },
+                {
+                    'header': r"^Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
+                    'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                    'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                },
+                {
+                    'header': r"^Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode$",
+                    'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),[A-Za-z]+,(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                    'error': 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+                }
+            ]
+
+            lines = content.strip().split('\n')
+            if not lines:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Content cannot be empty'
+                }), HTTPStatus.BAD_REQUEST
+
+            # Find matching pattern set
+            matched_pattern = None
+            for pattern in pattern_sets:
+                if re.match(pattern['header'], lines[0]):
+                    matched_pattern = pattern
+                    break
+
+            if not matched_pattern:
+                valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Invalid CSV header. Must match one of: {valid_headers}'
+                }), HTTPStatus.BAD_REQUEST
+
+            # Validate data rows with the matched pattern
+            for i, line in enumerate(lines[1:], 2):
+                if not re.match(matched_pattern['data'], line):
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'Invalid data in row {i} for the detected format.'
+                    }), HTTPStatus.BAD_REQUEST
 
         # Write the new content
         try:
             lock_path = new_file_path + '.lock'
             with FileLock(lock_path):
-                with open(new_file_path, 'w') as f:
-                    f.write(content)
-                    f.close()
-            if calibrate_mode:
-                sort_csv_file(new_file_path, calibrate_mode)
+                if new_file_name.endswith('.json'):
+                    # Pretty print JSON with indentation
+                    parsed_json = json.loads(content)
+                    with open(new_file_path, 'w') as f:
+                        json.dump(parsed_json, f, indent=2)
+                else:
+                    with open(new_file_path, 'w') as f:
+                        f.write(content)
+                    if calibrate_mode:
+                        sort_csv_file(new_file_path, calibrate_mode)
+                f.close()
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
             return jsonify({
@@ -557,7 +648,7 @@ def get_file_content():
             }), HTTPStatus.BAD_REQUEST
 
         file_path = os.path.join(path, file_name)
-        print(f"Fetching raw content for editing from CSV file: {file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        print(f"Fetching raw content for editing from file: {file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
         # Validate file path to prevent directory traversal
         if '..' in os.path.normpath(file_path):
@@ -582,26 +673,37 @@ def get_file_content():
                     'message': f'File {file_name} may be in use by the data collection process'
                 }), HTTPStatus.LOCKED
 
-        # Ensure the file is a CSV
-        if not file_name.lower().endswith('.csv'):
+        # Ensure the file is either CSV or JSON
+        if not (file_name.lower().endswith('.csv') or file_name.lower().endswith('.json')):
             return jsonify({
                 'status': 'error',
-                'message': 'Only CSV files are supported'
+                'message': 'Only CSV and JSON files are supported'
             }), HTTPStatus.BAD_REQUEST
 
         # Read raw content
-        with open(file_path, 'r') as f:
-            content = f.read()
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
 
-        return jsonify({
-            'status': 'success',
-            'content': content
-        })
-    except PermissionError as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Permission denied while accessing {file_name}: {str(e)}'
-        }), HTTPStatus.FORBIDDEN
+            # For JSON files, validate the content
+            if file_name.lower().endswith('.json'):
+                try:
+                    json.loads(content)
+                except json.JSONDecodeError as e:
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'Invalid JSON file format: {str(e)}'
+                    }), HTTPStatus.BAD_REQUEST
+
+            return jsonify({
+                'status': 'success',
+                'content': content
+            })
+        except PermissionError as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Permission denied while accessing {file_name}: {str(e)}'
+            }), HTTPStatus.FORBIDDEN
     except Exception as e:
         print(f"Unexpected error in get_file_content: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
         return jsonify({
