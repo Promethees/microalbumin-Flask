@@ -29,9 +29,9 @@ const AppState = {
     json_msg: 'When fit_type: \n',
     prevDropdownEntries: null,
     exp_json_content: null,
-    processedExpPath: rootPath + delimiter + "export_data",
-    processedHidPath: rootPath + delimiter + "data",
-    jsonPath: rootPath + delimiter + 'json',
+    processedExpPath: getNativePath(rootPath, 'export_data'),
+    processedHidPath: getNativePath(rootPath, 'data'),
+    jsonPath: getNativePath(rootPath, 'json'),
     chartInstances: {},
     responseData: null,
 

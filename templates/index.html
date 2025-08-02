@@ -471,8 +471,15 @@
     </div>
         <script >
             // const rootPath = JSON.parse('{{ directory | tojson }}');
-            const rootPath = '{{ directory | tojson }}';
+            const rootPath = {{ directory | tojson | safe}};
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+
+            function getNativePath(...paths) {
+                const isWindows = navigator.userAgent.includes('Windows');
+                const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
+                return isWindows ? joined.replace(/\//g, '\\') : joined;
+            }
+
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
             let logInterval, updateInterval, serverCheckInterval;

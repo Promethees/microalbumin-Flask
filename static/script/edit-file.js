@@ -220,7 +220,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }
             return html;
         }
-        const filePath = tableSelector === '#file-table' ? $("#directory").val() : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
+        // const filePath = tableSelector === '#file-table' ? $("#directory").val() : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
+        const filePath = tableSelector === '#file-table' ? $("#directory").val() : getNativePath(AppState.jsonPath, AppState.currentMeasurementMode);
+        console.log("File Path is ", filePath);
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function(content) {
             Swal.fire({
