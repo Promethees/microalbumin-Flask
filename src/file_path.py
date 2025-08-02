@@ -7,7 +7,8 @@ current_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'
 def get_directory():
     global current_directory
     # Convert single backslashes to double backslashes for JavaScript compatibility
-    return current_directory.replace('\\', '\\\\')
+    # return current_directory.replace('\\', '\\\\')
+    return current_directory
 
 def browse_directory(new_path):
     global current_directory

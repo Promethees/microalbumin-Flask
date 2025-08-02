@@ -470,7 +470,8 @@
         </footer>
     </div>
         <script >
-            const rootPath = JSON.parse('{{ directory | tojson }}');
+            // const rootPath = JSON.parse('{{ directory | tojson }}');
+            const rootPath = '{{ directory | tojson }}';
             const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             // const delimiter = "{{ delimiter }}";
             let serverAvailable = true;
