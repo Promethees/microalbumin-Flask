@@ -46,6 +46,8 @@
                     // Show main content and hide prompt
                     document.getElementById('init-prompt').classList.add('hidden');
                     document.getElementById('main-content').classList.remove('hidden');
+
+                    $("html, body").animate({ scrollTop: 0 }, 0);
                 } else {
                     // Show error message and allow retry
                     alert(`Selected directory "${dirHandle.name}" does not match expected "${baseDirName}".`);
