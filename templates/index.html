@@ -262,9 +262,9 @@
                 </select>
             </div>
             <div class="section script-controls" id="log-hid-data">
-                <h2>Log HID Data</h2>
+                <h2>Reading Colorimetric Data</h2>
                 <div>
-                    <label for="base-dir">Base Directory (--base-dir): 
+                    <label for="base-dir">Saving Directory (--base-dir): 
                     <input type="text" id="base-dir" value="{{ directory | default('') }}" style="width: 80%">
                     <button onclick="pickDirectory('base-dir')">Select Directory</button>
                     </label>
@@ -277,7 +277,7 @@
                 </div>
                 <div>
                     <label>Timeout: </label>
-                    <input type="checkbox" id="inf-timeout" style="font-weight: bold;">Infinite</input> 
+                    <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input> 
                     <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
                     <select id="timeout-unit">
                         {% for unit in range_input.units %}
@@ -296,8 +296,8 @@
                 </div> 
                 <span id="timeout-interval-error" class="error"></span>  
                 <br/>             
-                <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
-                <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
+                <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
+                <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
                 <button id="go-to-btn" onclick="browseSavingLocation(`$(#base-dir).val()` , true, false, this)" disabled>Browse Saving Location</button>
                 <div id="log-display" tabindex="-1"></div>
