@@ -272,9 +272,30 @@
                 </div>
                 <div>
                     <label for="base-name">Base Name (--base-name): </label>
-                    <input type="text" id="base-name" placeholder="Enter a name for pattern for recorded data files' names" style="width: 10em">
+                    <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
                     <span id="base-name-error" class="error"></span>
                 </div>
+                <div>
+                    <label>Timeout: </label>
+                    <input type="checkbox" id="inf-timeout" style="font-weight: bold;">Infinite</input> 
+                    <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
+                    <select id="timeout-unit">
+                        {% for unit in range_input.units %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>Interval: </label>
+                    <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
+                    <select id="interval-unit">
+                        {% for unit in range_input.units %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                        {% endfor %}
+                    </select>
+                </div> 
+                <span id="timeout-interval-error" class="error"></span>  
+                <br/>             
                 <button id="run-script-btn" onclick="runScript()" class="blinking">Run Script</button>
                 <button id="terminate-script-btn" onclick="terminateScript()" disabled>Terminate Script</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
@@ -637,6 +658,64 @@
                 input.classList.add('valid');
                 return true;
                 }
+
+            function validateTimeoutInterval() {
+                const infTimeout = document.getElementById('inf-timeout');
+                const timeoutInput = document.getElementById('timeout');
+                const timeoutUnit = document.getElementById('timeout-unit').value;
+                const intervalInput = document.getElementById('interval');
+                const intervalUnit = document.getElementById('interval-unit').value;
+                const errorElement = document.getElementById(`timeout-interval-error`);
+                errorElement.textContent = '';
+
+                // Disable timeout input when Infinity is checked
+                timeoutInput.disabled = infTimeout.checked;
+
+                // Get input values
+                const timeoutValue = timeoutInput.value.trim();
+                const intervalValue = intervalInput.value.trim();
+
+                // Validation logic
+                // Case 1: Both inputs are empty
+                if (timeoutValue === '' && intervalValue === '') {
+                    return true;
+                }
+
+                // Case 2: Infinity is checked
+                if (infTimeout.checked) {
+                    if (intervalValue === '' || parseFloat(intervalValue) >= 0)
+                        return true;
+                    else {
+                        errorElement.textContent = 'Interval value is less than zero!';
+                        return false;
+                    }
+                }
+
+                // Case 3: Only one input is provided
+                if ((timeoutValue === '' && intervalValue !== '') || (timeoutValue !== '' && intervalValue === '')) {
+                    errorElement.textContent = 'Please have both of these metrics values or give BOTH blank or check Infinite checkbox';
+                    return false;
+                }
+
+                // Case 4: Both inputs provided, compare converted values
+                const timeoutSec = parseFloat(timeoutValue) * getTimeUnitMultiplier(timeoutUnit);
+                const intervalSec = parseFloat(intervalValue) * getTimeUnitMultiplier(intervalUnit);
+
+                // Check if inputs are valid numbers and interval is less than timeout
+                if (isNaN(timeoutSec) || isNaN(intervalSec) || timeoutSec <= 0 || intervalSec < 0) {
+                    errorElement.textContent = 'Invalid inputs or Timeout/Interval value is less than 0';
+                    return false;
+                }
+
+                return intervalSec < timeoutSec;
+            }
+
+            // Event listener to toggle timeout input disabled state
+            document.getElementById('inf-timeout').addEventListener('change', function() {
+                document.getElementById('timeout').value = '';
+                document.getElementById('timeout').disabled = this.checked;
+                document.getElementById('timeout-unit').disabled = this.checked;                
+            });
 
         </script>
         <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>

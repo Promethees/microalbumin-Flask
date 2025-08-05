@@ -187,6 +187,59 @@ def get_csv_headers():
         return jsonify({'headers': df.columns.tolist()}) 
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
+# Helper function to send commands and wait for acknowledgments
+def send_command_and_wait_ack(pybadge, commands, expected_acks, error_acks, timeout=5):
+    # Flush input buffer to clear any residual data
+    pybadge.reset_input_buffer()
+    
+    # Ensure commands are newline-terminated and send as a chunk
+    command_chunk = "".join(cmd if cmd.endswith("\n") else cmd + "\n" for cmd in commands)
+    print(f"Sending command chunk: {command_chunk.strip()}")
+    pybadge.write(command_chunk.encode())
+    pybadge.flush()  # Ensure all data is sent
+    time.sleep(0.2 * len(commands))  # Adjust delay based on number of commands
+    
+    start_time = time.time()
+    responses_received = []
+    
+    while len(responses_received) < len(commands) and time.time() - start_time < timeout:
+        if pybadge.in_waiting:
+            response = pybadge.readline().decode('utf-8').strip()
+            if response:  # Ignore empty responses
+                print(f"Received response: {response}")
+                responses_received.append(response)
+                
+                # Check responses in order of expected acks
+                for i, (cmd, expected_ack, error_ack) in enumerate(zip(commands, expected_acks, error_acks)):
+                    if i >= len(responses_received):
+                        break
+                    response = responses_received[i]
+                    if response == expected_ack:
+                        print(f"Success: {expected_ack} received for {cmd.strip()}")
+                    elif response == error_ack:
+                        error_msg = f"Failed to process {cmd.split(':')[0] if ':' in cmd else cmd} command on PyBadge"
+                        print(f"Error: {error_msg}")
+                        return False, error_msg
+                    else:
+                        error_msg = f"Unexpected response: {response} for {cmd.strip()}"
+                        print(f"Error: {error_msg}")
+                        return False, error_msg
+                
+                # If all expected responses are received, return success
+                if len(responses_received) == len(commands):
+                    all_success = all(responses_received[i] == expected_acks[i] for i in range(len(commands)))
+                    if all_success:
+                        return True, None
+                    else:
+                        error_msg = f"Not all responses matched expected acks"
+                        print(f"Error: {error_msg}")
+                        return False, error_msg
+        time.sleep(0.1)
+    
+    error_msg = f"Timeout: Received {len(responses_received)}/{len(commands)} acknowledgments for commands {', '.join(cmd.strip() for cmd in commands)}"
+    print(f"Timeout: {error_msg}")
+    return False, error_msg
+
 # Region 3: USED by hid-logging.js
 @app.route('/run_script', methods=['POST'])
 def run_script():
@@ -194,7 +247,6 @@ def run_script():
     
     os_name = platform.system().lower()
     
-    # Check if process is already running
     if process and process.poll() is None:
         return jsonify({'status': 'failure', 'message': 'A script is already running'})
     
@@ -204,33 +256,28 @@ def run_script():
     data = request.get_json()
     base_dir = data.get('base_dir', 'data')
     base_name = data.get('base_name', 'colorimeter_data')
-    
+    timeout_sec = data.get('timeout_sec')
+    interval_sec = data.get('interval_sec')
+    print("Interval seconds is ", interval_sec)
     try:
-        # Connect to PyBadge and send start signal
         pybadge = connect_to_device()
         print(f"Connected to PyBadge at {pybadge.port}")
         
-        # Send start signal with newline
-        pybadge.write(b'1\n')
+        # Prepare commands and their respective acks
+        commands = [
+            "1\n",
+            f"TIMEOUT:{float(timeout_sec) if timeout_sec is not None else -1}\n",
+            f"INTERVAL:{float(interval_sec) if interval_sec is not None else -1}\n"
+        ]
+        expected_acks = ["ACK_START", "ACK_TIMEOUT", "ACK_INTERVAL"]
+        error_acks = ["ERR_START", "ERR_TIMEOUT", "ERR_INTERVAL"]
         
-        # Read acknowledgment with timeout
-        start_time = time.time()
-        timeout = 5  # seconds
-        ack_received = False
-        
-        while time.time() - start_time < timeout:
-            if pybadge.in_waiting:
-                response = pybadge.readline().decode('utf-8').strip()
-                if response == "ACK_START":
-                    ack_received = True
-                    break
-            time.sleep(0.1)
-        
-        if not ack_received:
+        # Send all commands and wait for acks
+        success, error_msg = send_command_and_wait_ack(pybadge, commands, expected_acks, error_acks)
+        if not success:
             pybadge.close()
-            return jsonify({'status': 'failure', 'message': 'No acknowledgment from PyBadge'})
+            return jsonify({'status': 'failure', 'message': error_msg})
         
-        # Rest of the run_script code...
         if "window" in os_name:
             venv_python = os.path.join('venv', 'Scripts', 'python.exe')
             cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
@@ -240,14 +287,12 @@ def run_script():
         with open(log_file, 'a') as f:
             process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
             
-            # Start monitoring thread
             monitor_thread = threading.Thread(
                 target=lambda: monitor_process(process, log_file),
                 daemon=True
             )
             monitor_thread.start()
             
-            # Initial check
             try:
                 process.wait(timeout=1)
                 error = check_log_for_errors(log_file)
@@ -265,6 +310,8 @@ def run_script():
                 
     except Exception as e:
         process = None
+        if 'pybadge' in locals():
+            pybadge.close()
         return jsonify({'status': 'failure', 'message': f'Failed to start script: {str(e)}'})
 
 @app.route('/check_status', methods=['GET'])
@@ -302,39 +349,26 @@ def check_status():
 @app.route('/terminate_script', methods=['POST'])
 def terminate_script():
     global process
+    
     if process is None or process.poll() is not None:
         return jsonify({'status': 'failure', 'message': 'No process running'})
 
     try:
-        # Send stop signal and wait for acknowledgment
         pybadge = connect_to_device()
         print(f"Connected to PyBadge at {pybadge.port}")
 
-        # Send stop signal with newline
-        pybadge.write(b'0\n')
+        # Send stop command using helper function
+        success, error_msg = send_command_and_wait_ack(pybadge, ["0\n"], ["ACK_STOP"], ["ERR_STOP"])
+        pybadge.close()  # Close serial connection after sending stop command
+        if not success:
+            return jsonify({'status': 'failure', 'message': error_msg})
         
-        # Read acknowledgment with timeout
-        start_time = time.time()
-        timeout = 5  # seconds
-        ack_received = False
-        
-        while time.time() - start_time < timeout:
-            if pybadge.in_waiting:
-                response = pybadge.readline().decode('utf-8').strip()
-                if response == "ACK_STOP":
-                    ack_received = True
-                    break
-            time.sleep(0.1)
-        
-        if not ack_received:
-            pybadge.close()
-            return jsonify({'status': 'failure', 'message': 'No acknowledgment from PyBadge'})
-        
-        # Rest of the terminate_script code...
+        # Terminate the running process
+        os_name = platform.system().lower()
         if "window" in os_name:
             process.terminate()
             try:
-                process.wait(timeout=5)
+                process.wait(timeout=3)
                 process = None
                 return jsonify({'status': 'success'})
             except subprocess.TimeoutExpired:
@@ -344,14 +378,17 @@ def terminate_script():
         else:
             try:
                 os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                process.wait(timeout=5)
+                process.wait(timeout=3)
                 process = None
                 return jsonify({'status': 'success'})
             except subprocess.TimeoutExpired:
                 os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                 process = None
                 return jsonify({'status': 'success'})
+                
     except Exception as e:
+        if 'pybadge' in locals():
+            pybadge.close()
         return jsonify({'status': 'failure', 'message': f'Error terminating process: {str(e)}'})
     
 def connect_to_device(vid = 0x239A, pid = 0x8034):

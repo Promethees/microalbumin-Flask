@@ -52,6 +52,11 @@ function resetUIAfterError() {
     $("#go-to-btn").prop('disabled', true);
     $("#terminate-script-btn").removeClass('blinking');
     $("#go-to-btn").removeClass('blinking');
+    $("#inf-timeout").prop('disabled', false);
+    $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
+    $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
+    $("#interval").prop('disabled', false);
+    $("#interval-unit").prop('disabled', false);
 }
 
 function resetUIAfterCompletion() {
@@ -62,13 +67,23 @@ function resetUIAfterCompletion() {
     $("#terminate-script-btn").prop('disabled', true);
     $("#go-to-btn").prop('disabled', false);
     $("#go-to-btn").removeClass('blinking');
+    $("#inf-timeout").prop('disabled', false);
+    $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
+    $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
+    $("#interval").prop('disabled', false);
+    $("#interval-unit").prop('disabled', false);
 }
 
 // Modified runScript function
 function runScript() {
     const isValidFileName = validateFileName("base-name");
     const isValidPathName = validatePathName("base-dir");
-    if (!isValidFileName || !isValidPathName) {
+    const isValidTimeoutInterval = validateTimeoutInterval();
+    const timeoutInput = document.getElementById('timeout');
+    const timeoutUnit = document.getElementById('timeout-unit').value;
+    const intervalInput = document.getElementById('interval');
+    const intervalUnit = document.getElementById('interval-unit').value;
+    if (!isValidFileName || !isValidPathName || !isValidTimeoutInterval) {
         return; // Stop if validation fails
     }
 
@@ -86,12 +101,26 @@ function runScript() {
     $("#base-name").prop('disabled', true);
     $("#run-script-btn").prop('disabled', true);
     $("#run-script-btn").removeClass('blinking');
+    $("#inf-timeout").prop('disabled', true);
+    $("#timeout").prop('disabled', true);
+    $("#timeout-unit").prop('disabled', true);
+    $("#interval").prop('disabled', true);
+    $("#interval-unit").prop('disabled', true);
+
+    const timeoutValue = timeoutInput.value.trim();
+    const intervalValue = intervalInput.value.trim();
+    console.log(`Internal Value is ${intervalValue}`);
     
     $.ajax({
         url: '/run_script',
         type: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ base_dir: AppState.processedHidPath, base_name: baseName }),
+        data: JSON.stringify({ 
+            base_dir: AppState.processedHidPath, 
+            base_name: baseName,
+            inf_checked: document.getElementById('inf-timeout').checked,
+            timeout_sec: timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier(timeoutUnit) : null,
+            interval_sec: intervalValue ?  parseFloat(intervalValue) * getTimeUnitMultiplier(intervalUnit): null}),
         success: function(response) {
             if (response.status === 'success') {
                 AppState.scriptRunning = true;
@@ -153,6 +182,11 @@ function terminateScript() {
                 $("#base-dir").prop('disabled', false);
                 $("#base-name").prop('disabled', false);
                 $("#log-display").append("Script terminated.\n");
+                $("#inf-timeout").prop('disabled', false);
+                $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
+                $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
+                $("#interval").prop('disabled', false);
+                $("#interval-unit").prop('disabled', false);
             } else {
                 $("#log-display").append(`Error: ${response.message}\n`);
                 if (response.message.includes('No process running')) {
@@ -165,6 +199,11 @@ function terminateScript() {
                     $("#go-to-btn").prop('disabled', true);
                     $("#terminate-script-btn").removeClass('blinking');
                     $("#go-to-btn").removeClass('blinking');
+                    $("#inf-timeout").prop('disabled', false);
+                    $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
+                    $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
+                    $("#interval").prop('disabled', false);
+                    $("#interval-unit").prop('disabled', false);
                 }
             }
         },
@@ -179,6 +218,11 @@ function terminateScript() {
             $("#go-to-btn").removeClass('blinking');
             $("#base-dir").prop('disabled', false);
             $("#base-name").prop('disabled', false);
+            $("#inf-timeout").prop('disabled', false);
+            $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
+            $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
+            $("#interval").prop('disabled', false);
+            $("#interval-unit").prop('disabled', false);
         }
     });
 }
