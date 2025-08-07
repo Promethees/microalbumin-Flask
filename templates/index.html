@@ -707,7 +707,12 @@
                     return false;
                 }
 
-                return intervalSec < timeoutSec;
+                if (intervalSec >= timeoutSec) {
+                    errorElement.textContent = 'Interval must be smaller than Timeout! Please adjust your values';
+                    return false;
+                }
+
+                return true;
             }
 
             // Event listener to toggle timeout input disabled state
