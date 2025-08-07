@@ -666,6 +666,8 @@
                 const intervalInput = document.getElementById('interval');
                 const intervalUnit = document.getElementById('interval-unit').value;
                 const errorElement = document.getElementById(`timeout-interval-error`);
+                const timeout = document.getElementById(`timeout`);
+                const interval = document.getElementById(`interval`);
                 errorElement.textContent = '';
 
                 // Disable timeout input when Infinity is checked
@@ -675,18 +677,29 @@
                 const timeoutValue = timeoutInput.value.trim();
                 const intervalValue = intervalInput.value.trim();
 
+                // Remove outer edge
+                timeout.classList.remove('invalid', 'valid');
+                interval.classList.remove('invalid', 'valid');
+
                 // Validation logic
                 // Case 1: Both inputs are empty
                 if (timeoutValue === '' && intervalValue === '') {
+                    timeout.classList.add('valid');
+                    interval.classList.add('valid');
                     return true;
                 }
 
                 // Case 2: Infinity is checked
                 if (infTimeout.checked) {
-                    if (intervalValue === '' || parseFloat(intervalValue) >= 0)
+                    if (intervalValue === '' || parseFloat(intervalValue) >= 0) {
+                        timeout.classList.add('valid');
+                        interval.classList.add('valid');
                         return true;
+                    }
                     else {
                         errorElement.textContent = 'Interval value is less than zero!';
+                        timeout.classList.add('invalid');
+                        interval.classList.add('invalid');
                         return false;
                     }
                 }
@@ -694,6 +707,8 @@
                 // Case 3: Only one input is provided
                 if ((timeoutValue === '' && intervalValue !== '') || (timeoutValue !== '' && intervalValue === '')) {
                     errorElement.textContent = 'Please have both of these metrics values or give BOTH blank or check Infinite checkbox';
+                    timeout.classList.add('invalid');
+                    interval.classList.add('invalid');
                     return false;
                 }
 
@@ -704,14 +719,20 @@
                 // Check if inputs are valid numbers and interval is less than timeout
                 if (isNaN(timeoutSec) || isNaN(intervalSec) || timeoutSec <= 0 || intervalSec < 0) {
                     errorElement.textContent = 'Invalid inputs or Timeout/Interval value is less than 0';
+                    timeout.classList.add('invalid');
+                    interval.classList.add('invalid');
                     return false;
                 }
 
                 if (intervalSec >= timeoutSec) {
                     errorElement.textContent = 'Interval must be smaller than Timeout! Please adjust your values';
+                    timeout.classList.add('invalid');
+                    interval.classList.add('invalid');
                     return false;
                 }
-
+                
+                timeout.classList.add('valid');
+                interval.classList.add('valid');
                 return true;
             }
 
