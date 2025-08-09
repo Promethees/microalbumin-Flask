@@ -328,8 +328,8 @@ function updatePlot(
             let blanked_string = "";
             let non_blanked_string = "";
             if (isCalKinetics) {
-                blanked_string = getCalKineticsString(calParams, analysis_blanked);
-                non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked);
+                blanked_string = getCalKineticsString(calParams, analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+                non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
             } else if (isCalPoint) {
                 blanked_string = getCalPointString(analysis_blanked);
                 non_blanked_string = getCalPointString(analysis_nonblanked);
@@ -370,7 +370,7 @@ function updatePlot(
         } else {
             let htmlString = "";
             if (isCalKinetics) {
-                htmlString = getCalKineticsString(calParams, mixAnalysis);
+                htmlString = getCalKineticsString(calParams, mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
             } else {
                 htmlString = getCalPointString(mixAnalysis);
             }
@@ -399,16 +399,28 @@ function updatePlot(
 
 
 // Helper Functions
-function getCalKineticsString(calParams, analysis) {
+function getCalKineticsString(calParams, analysis, isMM=false) {
     let htmlString = "";
     for (let i = 0; i < calParams.length; i++) {
         let coefString = "";
         if (analysis[i].coefficients) {
-            coefString += "[";
+            if (!isMM) {
+                coefString += "[a = ";
+            } else {
+                coefString += "[V = ";
+            }
             for (let j = 0; j < analysis[i].coefficients.length; j++) {
                 coefString += analysis[i].coefficients[j] ? Number(analysis[i].coefficients[j]).toFixed(5) : "--";
                 if (j < analysis[i].coefficients.length - 1) 
-                    coefString += ",";
+                    if (!isMM) {
+                        if (j === 0) {
+                            coefString += ", b = ";
+                        } else {
+                            coefString += ", c = ";
+                        }
+                    } else {
+                        coefString += ", Km = ";
+                    }
                 else coefString += "], ";  
             } 
         }    
