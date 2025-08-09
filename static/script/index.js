@@ -64,6 +64,34 @@ AppState.json_msg += '  + Michaelis-Menten: concentration = (quantity_json[0] * 
 
 const input = document.getElementById("window-size");
 
+const descriptions = {
+      polynomial: {
+        title: "Polynomial Function (Second Degree)",
+        math: "\\[ [S] = ax^2 + bx + c \\]",
+        text: "A second-degree polynomial function, also known as a quadratic function, has the form \\( ax^2 + bx + c \\), where \\( a \\neq 0 \\), \\( [S] \\) is <span style=\"color: darkviolet; font-weight: bold;\">Substrate Concentration</span>, \\( x \\) is <span id=\"selected-quantity\" style=\"color: darkviolet; font-weight: bold;\"></span>."
+      },
+      linear: {
+        title: "Linear Function",
+        math: "\\[ [S] = ax + b \\]",
+        text: "A linear function represents a straight line with slope \\( a \\) and y-intercept \\( b \\). It models relationships with a constant rate of change, where \\( [S] \\) is <span style=\"color: darkviolet; font-weight: bold;\">Substrate Concentration</span>, \\( x \\) is <span id=\"selected-quantity\" style=\"color: darkviolet; font-weight: bold;\"></span>."
+      },
+      logarithmic: {
+        title: "Logarithmic Function",
+        math: "\\[ [S] = a \\ln(x) + b \\]",
+        text: "A logarithmic function, based on the natural logarithm, grows slowly for large \\( x \\). It’s used to model phenomena like growth rates or data with diminishing returns, where \\( [S] \\) is <span style=\"color: darkviolet; font-weight: bold;\">Substrate Concentration</span>, \\( x \\) is <span id=\"selected-quantity\" style=\"color: darkviolet; font-weight: bold;\"></span>, \\( a \\) scales the curve and \\( b \\) shifts it."
+      },
+      exponential: {
+        title: "Exponential Function",
+        math: "\\[ [S] = a e^{bx} \\]",
+        text: "An exponential function grows or decays rapidly based on the exponent \\( bx \\). It’s used for processes like population growth or radioactive decay, where \\( [S] \\) is <span style=\"color: darkviolet; font-weight: bold;\">Substrate Concentration</span>, \\( x \\) is <span id=\"selected-quantity\" style=\"color: darkviolet; font-weight: bold;\"></span>, \\( a \\) is the initial value and \\( b \\) determines the rate."
+      },
+      'Michaelis-Menten': {
+        title: "Michaelis-Menten Function",
+        math: "\\[ [S] = \\frac{K_m x}{V_{\\max} - x} \\]",
+        text: "The Michaelis-Menten function models enzyme kinetics, where \\( x \\) is <span id=\"selected-quantity\" style=\"color: darkviolet; font-weight: bold;\"></span>, \\( V_{\\max} \\) is the maximum rate, \\( [S] \\) is <span style=\"color: darkviolet; font-weight: bold;\">Substrate Concentration</span>, and \\( K_m \\) is the substrate concentration at half \\( V_{\\max} \\) is the maximum reaction rate. Used in biochemistry."
+      }
+    };
+
 input.addEventListener("keydown", function (e) {
     // Allow: ArrowUp, ArrowDown, Tab, etc.
     if (
@@ -247,6 +275,18 @@ $(document).ready(function() {
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
     bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
+
+    const select = document.getElementById("exp-json-regress-algo");
+    const selected = select.value;
+    const desc = descriptions[selected];  
+    document.getElementById("func-desc").innerHTML = `
+        <h2>${desc.title}</h2>
+        <p>${desc.math}</p>
+        <p>${desc.text}</p>
+      `;
+      MathJax.typeset();
+    const sel_quant = document.querySelector("#regressed-quantity");
+    document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
 });
 
 function kineticsModeBehaviour() {
@@ -271,6 +311,7 @@ function kineticsModeBehaviour() {
     $("#log-hid-data").removeClass("hidden");
     $("#select-exp-blank-type-meas").removeClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
+    $("#func-desc").addClass("hidden");
 }
 
 function pointModeBehaviour() {
@@ -296,6 +337,7 @@ function pointModeBehaviour() {
     $("#log-hid-data").removeClass("hidden");
     $("#select-exp-blank-type-meas").removeClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
+    $("#func-desc").addClass("hidden");
 }
 
 function calModeBehaviour() {
@@ -318,6 +360,7 @@ function calModeBehaviour() {
     $("#select-exp-blank-type-meas").addClass("hidden");
     $("#select-exp-blank-type-cal").removeClass("hidden");
     $("#window-size-section").addClass("hidden");
+    $("#func-desc").removeClass("hidden");
     if ($("#cal-mode-select").val() === "kinetics") {
             calKineticsBehaviour();
         } else {
@@ -325,6 +368,7 @@ function calModeBehaviour() {
         }
     terminateScript(); 
     clearLogs();
+    $("#selected-function").text($("#exp-json-regress-algo").val());
 }
 
 function calKineticsBehaviour() {

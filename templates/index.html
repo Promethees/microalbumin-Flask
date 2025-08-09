@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>
         // Predefine window[inputId + 'Handle'] for the input field
         window['base-dirHandle'] = null;
@@ -385,6 +386,17 @@
                         <option value=""></option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
+                <div id="select-regress-algo"> 
+                    Select Regress Algo to export:
+                    <select id="exp-json-regress-algo" onchange="toggleMode()">
+                        <option value="polynomial">polynomial</option>
+                        <option value="linear">linear</option>
+                        <option value="logarithmic">logarithmic</option>
+                        <option value="exponential">exponential</option>
+                        <option value="Michaelis-Menten">Michaelis-Menten</option>
+                    </select>
+                </div>
+                <div id="func-desc" class="hidden"></div>
                 <div id="derived-concentration-section">
                     Concentration derived from the csv is <span style="font-weight: bold;" id="der-con-value" tabindex="-1"></span> ng/µL
                 </div>
@@ -440,16 +452,6 @@
                         <option value="MIXED">MIXED</option>
                         <option value="BLANKED">BLANKED</option>
                         <option value="NON-BLANKED">NON-BLANKED</option>
-                    </select>
-                </div>
-                <div id="select-regress-algo"> 
-                    Select Regress Algo to export:
-                    <select id="exp-json-regress-algo" onchange="toggleMode()">
-                        <option value="polynomial">polynomial</option>
-                        <option value="linear">linear</option>
-                        <option value="logarithmic">logarithmic</option>
-                        <option value="exponential">exponential</option>
-                        <option value="Michaelis-Menten">Michaelis-Menten</option>
                     </select>
                 </div>
                 <div id="export-analysis">

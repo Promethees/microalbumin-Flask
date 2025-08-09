@@ -493,6 +493,17 @@ function toggleMode() {
             drawMeasurementChart();
         } else fetchData(null, null, AppState.currentFile, AppState.currentJSONcontent);
     }
+    const select = document.getElementById("exp-json-regress-algo");
+    const selected = select.value;
+    const desc = descriptions[selected];
+    document.getElementById("func-desc").innerHTML = `
+        <h2>${desc.title}</h2>
+        <p>${desc.math}</p>
+        <p>${desc.text}</p>
+      `;
+      MathJax.typeset();
+    const sel_quant = document.querySelector("#regressed-quantity");
+    document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
 }
 
 function exportData() {

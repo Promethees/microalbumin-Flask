@@ -407,7 +407,7 @@ function getCalKineticsString(calParams, analysis, isMM=false) {
             if (!isMM) {
                 coefString += "[a = ";
             } else {
-                coefString += "[V = ";
+                coefString += "[V_max = ";
             }
             for (let j = 0; j < analysis[i].coefficients.length; j++) {
                 coefString += analysis[i].coefficients[j] ? Number(analysis[i].coefficients[j]).toFixed(5) : "--";
