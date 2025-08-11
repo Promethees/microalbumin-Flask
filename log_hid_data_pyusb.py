@@ -41,6 +41,7 @@ class HIDDataCollector:
         self.buffer = ""
         self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
         self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)\n$"
+        self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
         self.device = None
         self.endpoint = None
@@ -105,6 +106,10 @@ class HIDDataCollector:
                     self.session_started = True
                 elif self.is_valid_data(line_with_newline) and self.session_started:
                     self.process_data(line_with_newline)
+                elif self.is_end_session(line_with_newline) and self.session_started:
+                    self.log(line_with_newline)
+                    self.session_started = False
+                    self.buffer = ''  # Reset buffer on session end
             self.buffer = lines[-1]
         elif key == "space":
             self.buffer += ' '
@@ -116,6 +121,9 @@ class HIDDataCollector:
 
     def is_valid_data(self, line):
         return bool(re.match(self.data_pattern, line))
+    
+    def is_end_session(self, line):
+        return bool(re.match(self.end_pattern, line))
 
     def handle_header(self):
         self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)
