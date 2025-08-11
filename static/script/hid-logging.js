@@ -229,11 +229,41 @@ function terminateScript() {
 function fetchLogs() {
     $.get('/get_logs', function(response) {
         if (response.status === 'success') {
-            $("#log-display").text(response.logs);
+            const logs = response.logs;
+            $("#log-display").text(logs);
+
+            // Check for specific termination patterns
+            if (/PyBadge not found/.test(logs)) {
+                showTerminationNotice("PyBadge not found. Please check the connection.", 'error');
+            }
+            else if (/Failed to find input endpoint/.test(logs)) {
+                showTerminationNotice("Failed to find input endpoint. Please verify USB connection.", 'error');
+            }
+            else if (/SESSION TIMEOUT/.test(logs)) {
+                showTerminationNotice("Session ended due to timeout.", 'info');
+            }
         }
     }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("AJAX error:", textStatus, errorThrown);
         $("#log-display").append(`Error: Failed to fetch logs\n`);
+    });
+}
+
+// Helper function to show popup & terminate script
+function showTerminationNotice(message, iconType) {
+    // Call terminateScript immediately
+    terminateScript();
+    clearLogs();
+    // Show SweetAlert2 auto-close popup
+    Swal.fire({
+        title: 'Reading Stopped',
+        text: message,
+        icon: iconType,
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+        background: '#f9f9f9',
+        color: '#333'
     });
 }
 

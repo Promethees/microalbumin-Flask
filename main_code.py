@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response, Response
+from flask import Flask, render_template, request, jsonify, make_response
 import os
 import sys
 import argparse
@@ -15,7 +15,6 @@ from http import HTTPStatus
 from datetime import datetime
 import re
 from filelock import FileLock
-import queue
 
 sys.path.append('code\src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -25,7 +24,7 @@ from measure import get_dynamic_data, sort_csv_file
 from quantity import get_quantity_input
 from file import get_file_list
 from get_next_filename import get_next_filename
-from script_monitor import check_log_for_errors, monitor_process
+from script_monitor import check_log_for_errors
 from export_data import check_row_exist
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from browser_mgt import open_browser, close_port, is_port_open, cleanup
@@ -222,16 +221,6 @@ def api_current_output():
         return jsonify({"exists": False, "message": str(e)}), 500
 
 # Region 3: USED by hid-logging.js
-event_queue = queue.Queue()
-
-@app.route('/events')
-def stream_events():
-    def event_stream():
-        while True:
-            msg = event_queue.get()
-            yield f"data: {msg}\n\n"
-    return Response(event_stream(), mimetype="text/event-stream")
-
 @app.route('/run_script', methods=['POST'])
 def run_script():
     global process, monitor_thread
@@ -276,14 +265,7 @@ def run_script():
             cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
         
         with open(log_file, 'a') as f:
-            process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-            
-            monitor_thread = threading.Thread(
-                target=lambda: monitor_process(process, log_file, event_queue),
-                daemon=True
-            )
-            monitor_thread.start()
-            
+            process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)    
             try:
                 process.wait(timeout=1)
                 error = check_log_for_errors(log_file)
