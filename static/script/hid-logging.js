@@ -254,17 +254,19 @@ function showTerminationNotice(message, iconType) {
     // Call terminateScript immediately
     terminateScript();
     clearLogs();
-    // Show SweetAlert2 auto-close popup
-    Swal.fire({
-        title: 'Reading Stopped',
-        text: message,
-        icon: iconType,
-        showConfirmButton: false,
-        timer: 4000,
-        timerProgressBar: true,
-        background: '#f9f9f9',
-        color: '#333'
-    });
+    if ($("#notify-me").is(":checked")) {
+        // Show SweetAlert2 auto-close popup
+        Swal.fire({
+            title: 'Reading Stopped',
+            text: message,
+            icon: iconType,
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+            background: '#f9f9f9',
+            color: '#333'
+        });
+    }
 }
 
 function clearLogs() {
