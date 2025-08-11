@@ -127,11 +127,60 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
     setTimeout(() => {
         $(button).prop("disabled", false);
     }, 1000); // Re-enable the button after 1 second
-    blinkingItem("#file-selection", 5000);
-    updateDirectory(path, deselect, changeToCalibrate);
+
     if (AppState.currentMeasurementMode === "calibrate") {
         blinkingItem("#cal-mode-select", 5000);
         blinkingItem("#measurement-mode", 5000);
+        blinkingItem("#file-selection", 5000);
+    } else {
+        fetch('/api/current_output')
+        .then(response => {
+            if (!response.ok) {
+                // no marker or server error -> fallback
+                return { exists: false };
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.exists) {
+                // Use server-provided directory (with trailing separator if needed)
+                const dirPath = data.dir_with_sep || data.dir || path;
+                const fileName = data.filename;
+
+                updateDirectory(dirPath, deselect, changeToCalibrate);
+
+                // Wait for the table to refresh/populate, then select the row's button
+                setTimeout(() => {
+                    // find a TD whose text exactly equals the filename
+                    const $cell = $("#file-table tr td").filter(function() {
+                        return $(this).text().trim() === fileName;
+                    }).first();
+
+                    if ($cell.length) {
+                        const $row = $cell.closest("tr");
+                        // try to find a button in the row (change selector to match your table if needed)
+                        const $btn = $row.find("button").first();
+
+                        if ($btn.length) {
+                            selectFile(fileName, $btn[0], "#file-table");
+                        } else {
+                            // fallback: pass the cell element so selectFile still finds the row to highlight
+                            selectFile(fileName, $cell[0], "#file-table");
+                        }
+                    } else {
+                        console.warn(`File "${fileName}" not found in #file-table.`);
+                    }
+                }, 500); // adjust delay if your table takes longer to populate
+            } else {
+                // no recorded path -> fallback to original behavior
+                updateDirectory(path, deselect, changeToCalibrate);
+                blinkingItem("#file-selection", 5000);
+            }
+        })
+        .catch(err => {
+            console.error("Error fetching current_output:", err);
+            updateDirectory(path, deselect, changeToCalibrate);
+        });
     }
 }
 

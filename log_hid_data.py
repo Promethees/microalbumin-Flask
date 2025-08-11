@@ -108,6 +108,16 @@ class HIDDataCollector:
             f.write("Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration\n")
         self.log(f"New session started. Header written to {self.output_file}")
 
+        # Save latest output path so Flask can find it
+        latest_file_marker = os.path.join(self.log_dir, "current_output.txt")
+
+        # Clear any old content before writing
+        open(latest_file_marker, "w").close()
+
+        # Now write the latest file path
+        with open(latest_file_marker, "w") as marker:
+            marker.write(self.output_file)
+            
     def process_data(self, data):
         try:
             timestamp, measurement_name, value, units, type_tag, blanked, concen = data.strip().split(',')

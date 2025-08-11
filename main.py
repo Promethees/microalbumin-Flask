@@ -187,6 +187,39 @@ def get_csv_headers():
         return jsonify({'headers': df.columns.tolist()}) 
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
+@app.route("/api/current_output", methods=["GET"])
+def api_current_output():
+    try:
+        # adjust this to the actual location of the "log" folder if needed
+        marker_path = os.path.join(os.getcwd(), "log", "current_output.txt")
+
+        if not os.path.isfile(marker_path):
+            return jsonify({"exists": False, "message": "marker not found"}), 404
+
+        with open(marker_path, "r", encoding="utf-8") as f:
+            content = f.read().strip()
+
+        if not content:
+            return jsonify({"exists": False, "message": "marker empty"}), 204
+
+        # normalize path (handles Windows backslashes and POSIX slashes)
+        full_path = os.path.normpath(content)
+        dirpath, filename = os.path.split(full_path)
+
+        # include a directory string that ends with the OS-specific separator
+        dir_with_sep = dirpath + (os.sep if dirpath else "")
+
+        return jsonify({
+            "exists": True,
+            "full_path": full_path,
+            "dir": dirpath,
+            "dir_with_sep": dir_with_sep,
+            "filename": filename
+        }), 200
+
+    except Exception as e:
+        return jsonify({"exists": False, "message": str(e)}), 500
+
 # Region 3: USED by hid-logging.js
 @app.route('/run_script', methods=['POST'])
 def run_script():
