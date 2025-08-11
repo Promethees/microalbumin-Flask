@@ -30,7 +30,7 @@ from export_cal_json import processJSONCoef, extractAnalysisCoefficients, Custom
 from browser_mgt import open_browser, close_port, is_port_open, cleanup
 from send_command import connect_to_device, send_command_and_wait_ack
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 process = None
 monitor_thread = None
 log_file = "log/script_logs.txt"
@@ -95,7 +95,7 @@ def index():
                          cal_json_list=cal_json_list,
                          delimiter=delimiter,
                          production_mode= PRODUCTION_MODE))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    # response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
 def delayed_termination():

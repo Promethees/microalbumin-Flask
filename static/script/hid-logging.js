@@ -254,18 +254,34 @@ function showTerminationNotice(message, iconType) {
     // Call terminateScript immediately
     terminateScript();
     clearLogs();
-    if ($("#notify-me").is(":checked")) {
-        // Show SweetAlert2 auto-close popup
-        Swal.fire({
-            title: 'Reading Stopped',
-            text: message,
-            icon: iconType,
-            showConfirmButton: false,
-            timer: 4000,
-            timerProgressBar: true,
-            background: '#f9f9f9',
-            color: '#333'
-        });
+    if (iconType === 'info') {
+        if ($("#notify-me").is(":checked")) {
+            const audio = new Audio('../static/done.mp3');
+            audio.play().catch(err => console.warn("Audio play blocked:", err));
+            // Show SweetAlert2 auto-close popup
+            Swal.fire({
+                title: 'Reading Stopped',
+                text: message,
+                icon: iconType,
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true,
+                background: '#f9f9f9',
+                color: '#333'
+            });
+        }
+    } else {
+        Swal.fire(
+            {
+                title: 'Error!',
+                text: message,
+                icon: iconType, 
+                showConfirmButton: false,
+                confirmButtonText: 'OK',
+                background: '#f9f9f9',
+                color: '#333'
+            }
+        )
     }
 }
 

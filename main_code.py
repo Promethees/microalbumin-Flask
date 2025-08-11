@@ -95,7 +95,7 @@ def index():
                          cal_json_list=cal_json_list,
                          delimiter=delimiter,
                          production_mode= PRODUCTION_MODE))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    # response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
 def delayed_termination():
