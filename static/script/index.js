@@ -64,6 +64,17 @@ AppState.json_msg += '  + Michaelis-Menten: concentration = (quantity_json[0] * 
 
 const input = document.getElementById("window-size");
 
+// Add event listener for signal pushed by server
+const eventSource = new EventSource('/events');
+
+eventSource.onmessage = function(event) {
+    if (event.data === "terminate") {
+        console.log("Backend requested termination");
+        terminateScript(); // This calls your existing AJAX handler
+        clearLogs();
+    }
+};
+
 const descriptions = {
       polynomial: {
         title: "Polynomial Function (Second Degree)",

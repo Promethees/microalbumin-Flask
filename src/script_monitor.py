@@ -14,19 +14,33 @@ def check_log_for_errors(log_path):
             return "input_endpoint_error"
     return None
 
-def monitor_process(proc, log_path):
-    """Monitor the subprocess for errors during runtime"""
+def check_log_for_timeout_msg(log_path):
+    """Check the log file for specific error patterns"""
+    if not os.path.exists(log_path):
+        return None
+    
+    with open(log_path, 'r') as f:
+        content = f.read()
+        if "SESSION TIMEOUT" in content:
+            return "SESSION TIMEOUT"
+    return None
+
+def monitor_process(proc, log_path, event_queue):
     try:
         while proc.poll() is None:
             # Check log for errors
             error = check_log_for_errors(log_path)
             if error:
-                return error
-            # Small sleep to prevent busy waiting
-            threading.Event().wait(0.5)
-        
-        # Process has finished, check if it ended with errors
-        return check_log_for_errors(log_path) or "process_completed"
+                print(f"Monitor: Detected error '{error}'")
+                event_queue.put("terminate")
+                break
+
+            # Check for session timeout/end
+            timeout_signal = check_log_for_timeout_msg(log_path)
+            if timeout_signal:
+                print(f"Monitor: Detected '{timeout_signal}'")
+                event_queue.put("terminate")
+                break
     except Exception as e:
-        print(f"Monitoring error: {e}")
-        return "monitoring_error"
+        print(f"Error in monitor_process: {e}")
+

@@ -43,6 +43,7 @@ class HIDDataCollector:
         self.buffer = ""
         self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
         self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)\n$"
+        self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
         # Initialize log file in /log directory
         self.log_dir = os.path.join(os.getcwd(), "log")
@@ -77,29 +78,50 @@ class HIDDataCollector:
 
     def process_key(self, key):
         """Process a single keypress, buffering until newline."""
+        # Sanitize input to prevent invalid characters (optional, depending on requirements)
+        if not self.is_valid_key(key):
+            return  # Ignore invalid keys
+
         if key == 'enter':
             self.buffer += '\n'
             lines = self.buffer.split('\n')
             for line in lines[:-1]:
                 line_with_newline = line + '\n'
-                if self.is_header(line_with_newline):
-                    self.handle_header()
-                    self.session_started = True
-                elif self.is_valid_data(line_with_newline) and self.session_started:
-                    self.process_data(line_with_newline)
-            self.buffer = lines[-1]
+                try:
+                    if self.is_header(line_with_newline) and not self.session_started:
+                        self.handle_header()
+                        self.session_started = True
+                    elif self.is_valid_data(line_with_newline) and self.session_started:
+                        self.process_data(line_with_newline)
+                    elif self.is_end_session(line_with_newline) and self.session_started:
+                        self.log(line_with_newline)
+                        self.session_started = False
+                        self.buffer = ''  # Reset buffer on session end
+                    else:
+                        # Log or handle unexpected lines (optional)
+                        self.log(f"Unexpected line: {line_with_newline}")
+                except Exception as e:
+                    self.log(f"Error processing line '{line_with_newline}': {e}")
+            self.buffer = lines[-1] if lines[-1] else ''  # Handle empty last line
         elif key == "space":
             self.buffer += ' '
         else:
             self.buffer += key
-        # self.log(f"Current buffer is {self.buffer}")  
-        # Optional, uncomment if needed
+        # Uncomment for debugging
+        # self.log(f"Current buffer is {self.buffer}")
+
+    def is_valid_key(self, key):
+        """Validate the input key (example implementation)."""
+        return isinstance(key, str) and (key == 'enter' or key == 'space' or key.isprintable())
 
     def is_header(self, line):
         return bool(re.match(self.header_pattern, line))
 
     def is_valid_data(self, line):
         return bool(re.match(self.data_pattern, line))
+    
+    def is_end_session(self, line):
+        return bool(re.match(self.end_pattern, line))
 
     def handle_header(self):
         self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)

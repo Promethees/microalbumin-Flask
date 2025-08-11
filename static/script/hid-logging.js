@@ -109,7 +109,6 @@ function runScript() {
 
     const timeoutValue = timeoutInput.value.trim();
     const intervalValue = intervalInput.value.trim();
-    console.log(`Internal Value is ${intervalValue}`);
     
     $.ajax({
         url: '/run_script',
