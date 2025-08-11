@@ -285,8 +285,18 @@ $(document).ready(function() {
         <p>${desc.text}</p>
       `;
       MathJax.typeset();
-    const sel_quant = document.querySelector("#regressed-quantity");
-    document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
+    
+    if ($("#cal-mode-select").val === "kinetics") {
+        const sel_quant = document.querySelector("#regressed-quantity");
+        document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
+    } else {
+        const sel_time = document.querySelector("#regressed-time-point");
+        if (sel_time.value) {
+            document.querySelector("#selected-quantity").textContent = "Endpoint Value at " + sel_time.value + " minute";
+        } else {
+            document.querySelector("#selected-quantity").textContent = "Endpoint Value";
+        }
+    }
 });
 
 function kineticsModeBehaviour() {
