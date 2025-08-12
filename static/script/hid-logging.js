@@ -224,6 +224,7 @@ function terminateScript() {
             $("#interval-unit").prop('disabled', false);
         }
     });
+    clearLogs();
 }
 
 function fetchLogs() {
@@ -253,7 +254,6 @@ function fetchLogs() {
 function showTerminationNotice(message, iconType) {
     // Call terminateScript immediately
     terminateScript();
-    clearLogs();
     if (iconType === 'info') {
         if ($("#notify-me").is(":checked")) {
             const audio = new Audio('../static/done.mp3');

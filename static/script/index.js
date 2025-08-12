@@ -51,7 +51,6 @@ const AppState = {
         this.responseData = null;
         Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         terminateScript();
-        clearLogs();
     }
 };
 
@@ -378,7 +377,6 @@ function calModeBehaviour() {
             calPointBehaviour();
         }
     terminateScript(); 
-    clearLogs();
     $("#selected-function").text($("#exp-json-regress-algo").val());
 }
 
