@@ -12,6 +12,8 @@ if ! command -v brew &>/dev/null; then
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
+brew install xz
+
 # Check if pyenv is installed
 if ! command -v pyenv &>/dev/null; then
     echo "❌ pyenv not found. Installing pyenv..."

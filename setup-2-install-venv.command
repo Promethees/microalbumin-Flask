@@ -12,7 +12,7 @@ eval "$(pyenv init -)"
 
 # Set Python 3.8.10 as the local version for this directory
 # Check Python version
-pyenv global 3.8.10 
+sudo pyenv global 3.8.10 
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
 if [ "$PY_VER" != "3.8.10" ]; then
     echo "❌ Python 3.8.10 is required. Current version: $PY_VER"

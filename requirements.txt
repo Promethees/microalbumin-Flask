@@ -4,4 +4,4 @@ hidapi==0.14.0
 hid==1.0.7 
 markupsafe==2.0.1
 filelock==3.16.1
-serial==0.0.97
+pyserial==3.5
