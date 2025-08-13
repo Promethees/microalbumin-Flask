@@ -47,7 +47,7 @@ python -m ensurepip --upgrade
 
 REM Install required libraries
 echo Installing requirements...
-pip install --upgrade pip
+python -m pip install --upgrade pip
 pip install -r "%~dp0requirements-win.txt"
 
 
