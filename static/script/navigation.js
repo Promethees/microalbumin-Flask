@@ -127,11 +127,11 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
     setTimeout(() => {
         $(button).prop("disabled", false);
     }, 1000); // Re-enable the button after 1 second
-
-    if (AppState.currentMeasurementMode === "calibrate") {
+    if (button.id === "go-to-exp-btn") {
         blinkingItem("#cal-mode-select", 5000);
         blinkingItem("#measurement-mode", 5000);
         blinkingItem("#file-selection", 5000);
+        updateDirectory(path, deselect, changeToCalibrate);
     } else {
         fetch('/api/current_output')
         .then(response => {
