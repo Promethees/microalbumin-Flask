@@ -133,7 +133,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     }
 
     let maxRate = 0;
-    let threshold = 0.2;
+    let threshold = 0.05;
     let startMaxRate = -1;
     let endMaxRate = -1;
     let yMaxRateStart = 0;
@@ -195,7 +195,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         } else {
             const theRest = YColumn.slice(end);
             const sortedValuesForRest = [...theRest].sort((a, b) => a - b);
-            saturationValue = sortedValuesForRest[Math.floor(theRest.length / 2)].toFixed(2);
+            saturationValue = sortedValuesForRest[Math.floor(theRest.length / 2)];
         }
         timeToSaturation = (XColumn[end - 1] - XColumn[start]).toFixed(2);
         timeStartSaturation = XColumn[end - 1].toFixed(2);
