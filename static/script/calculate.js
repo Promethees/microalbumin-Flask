@@ -10,8 +10,9 @@ function computeRSquared(actual, predicted) {
 function calculateCoefAndRSquared(x, y, algo = "linear") {
     // Preprocess the data first
     const { x: processedX, y: processedY } = mapDuplicates(x, y);
-    
-    if (processedX.length !== processedY.length || processedX.length < 2) {
+    x = x.map(num => parseFloat(num));
+    y = y.map(num => parseFloat(num));
+    if (x.length !== y.length || x.length < 2) {
         return { slope: 0, rSquared: 0, coefficients: null };
     }
 
@@ -24,15 +25,15 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
         case "polynomial":
             try {
                 const degree = 2;
-                coefficients = polynomialRegression(processedX, processedY, degree);
+                coefficients = polynomialRegression(x, y, degree);
                 if (!coefficients || !Array.isArray(coefficients)) {
                     throw new Error("polynomialRegression returned invalid coefficients");
                 }
-                predicted = processedX.map(xi =>
+                predicted = x.map(xi =>
                     coefficients.reduce((acc, c, i) => acc + c * Math.pow(xi, i), 0)
                 );
-                slope = polynomialRegressionSlope(processedX, processedY, degree);
-                rSquared = computeRSquared(processedY, predicted);
+                slope = polynomialRegressionSlope(x, y, degree);
+                rSquared = computeRSquared(x, predicted);
             } catch (error) {
                 console.error("Error in polynomial regression:", error.message);
                 return { slope: 0, rSquared: 0, coefficients: null };
@@ -41,13 +42,13 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
 
         case "logarithmic":
             try {
-                coefficients = logarithmicRegression(processedX, processedY);
+                coefficients = logarithmicRegression(x, y);
                 if (!coefficients || !Array.isArray(coefficients)) {
                     throw new Error("logarithmicRegression returned invalid coefficients");
                 }
-                predicted = processedX.map(xi => coefficients[0] * Math.log(xi + coefficients[1]) + coefficients[2]);
-                slope = logarithmicRegressionSlope(processedX, processedY);
-                rSquared = computeRSquared(processedY, predicted);
+                predicted = x.map(xi => coefficients[0] * Math.log(xi + coefficients[1]) + coefficients[2]);
+                slope = logarithmicRegressionSlope(x, y);
+                rSquared = computeRSquared(y, predicted);
             } catch (error) {
                 console.error("Error in logarithmic regression:", error.message);
                 return { slope: 0, rSquared: 0, coefficients: null };
@@ -56,13 +57,13 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
 
         case "exponential":
             try {
-                coefficients = exponentialRegression(processedX, processedY);
+                coefficients = exponentialRegression(x, y);
                 if (!coefficients || !Array.isArray(coefficients) || coefficients.length < 3) {
                     throw new Error("exponentialRegression returned invalid coefficients");
                 }
-                predicted = processedX.map(xi => coefficients[0] * Math.exp(xi * coefficients[1]) + coefficients[2]);
-                slope = exponentialRegressionSlope(processedX, processedY);
-                rSquared = computeRSquared(processedY, predicted);
+                predicted = x.map(xi => coefficients[0] * Math.exp(xi * coefficients[1]) + coefficients[2]);
+                slope = exponentialRegressionSlope(x, y);
+                rSquared = computeRSquared(y, predicted);
             } catch (error) {
                 console.error("Error in exponential regression:", error.message);
                 return { slope: 0, rSquared: 0, coefficients: null };
@@ -71,14 +72,14 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
 
         case "Michaelis-Menten":
             try {
-                const expCoeffsMM = michaelisMentenConcentrationRegression(processedX, processedY);
+                const expCoeffsMM = michaelisMentenConcentrationRegression(x, y);
                 if (!expCoeffsMM || !expCoeffsMM.Vmax || !expCoeffsMM.Km) {
                     throw new Error("michaelisMentenConcentrationRegression returned invalid coefficients");
                 }
                 coefficients = [expCoeffsMM.Vmax, expCoeffsMM.Km];
-                predicted = processedX.map(xi => coefficients[1] * xi / (coefficients[0] - xi));
+                predicted = x.map(xi => coefficients[1] * xi / (coefficients[0] - xi));
                 slope = coefficients[1] / (coefficients[0] - 1);
-                rSquared = computeRSquared(processedY, predicted);
+                rSquared = computeRSquared(y, predicted);
             } catch (error) {
                 console.error("Error in Michaelis-Menten regression:", error.message);
                 return { slope: 0, rSquared: 0, coefficients: null };
@@ -88,14 +89,14 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
         case "linear":
         default:
             try {
-                const lin = linearRegression(processedX, processedY);
+                const lin = linearRegression(x, y);
                 if (!lin || !Array.isArray(lin)) {
                     throw new Error("linearRegression returned invalid coefficients");
                 }
                 coefficients = lin;
                 slope = lin[0];
-                predicted = processedX.map(xi => slope * xi + lin[1]);
-                rSquared = computeRSquared(processedY, predicted);
+                predicted = x.map(xi => slope * xi + lin[1]);
+                rSquared = computeRSquared(y, predicted);
             } catch (error) {
                 console.error("Error in linear regression:", error.message);
                 return { slope: 0, rSquared: 0, coefficients: null };
