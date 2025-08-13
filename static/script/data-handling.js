@@ -502,7 +502,6 @@ function toggleMode() {
         <p>${desc.text}</p>
       `;
       MathJax.typeset();
-    if ($("#cal-mode-select").val === "kinetics") {
     if ($("#cal-mode-select").val() === "kinetics") {
         const sel_quant = document.querySelector("#regressed-quantity");
         document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
