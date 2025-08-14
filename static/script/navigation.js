@@ -26,6 +26,7 @@ function browseDirectory() {
         console.log("Error fetching parent directory:", textStatus, errorThrown);
         $("#error-message").text("Error fetching parent directory").show();
     });
+    blinkingItem("#file-selection", 5000);
 }
 
 async function filterFiles(files) {
