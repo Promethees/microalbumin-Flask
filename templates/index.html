@@ -19,46 +19,15 @@
         window['save-dirHandle'] = null;
 
         // Initialize by enforcing selection of the main.py directory
-        async function initDirectory() {
+        async function init() {
             try {
-                const basePath = '{{ directory | tojson }}'
-                const delimiter = "{{ delimiter  }}"; // Normalize delimiter
-                const basePathSegments = basePath.split(delimiter.replace("\\\\","\\")).filter(segment => segment);
-                const baseDirName = basePathSegments[basePathSegments.length - 1].replace("\"","");
-                const errorMessage = document.getElementById('error-message');
-                const initButton = document.getElementById('init-button');
-
-                // Disable button during selection to prevent multiple clicks
-                initButton.disabled = true;
-
-                // Update prompt message
-                errorMessage.style.display = 'none';
-
-                // Open the directory picker
-                const dirHandle = await window.showDirectoryPicker({ startIn: 'documents' });
-
-                // Check if the selected directory name matches the expected basePath
-                if (dirHandle.name === baseDirName) {
-                    // Set the initial path and store the handle
-                    window['base-dirHandle'] = dirHandle;
-                    window['save-dirHandle'] = dirHandle;
-                    console.log(`Initialized directory handle for "${basePath}"`);
-
-                    // Show main content and hide prompt
-                    document.getElementById('init-prompt').classList.add('hidden');
-                    document.getElementById('main-content').classList.remove('hidden');
-
-                    $("html, body").animate({ scrollTop: 0 }, 0);
-                } else {
-                    // Show error message and allow retry
-                    alert(`Selected directory "${dirHandle.name}" does not match expected "${baseDirName}".`);
-                    initButton.disabled = true; // Re-enable button for retry
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait a moment before re-enabling
-                }
+                // Show main content and hide prompt
+                document.getElementById('init-prompt').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
             } catch (err) {
-                console.error('Initial directory selection canceled or failed:', err);
+                console.error('Initialization selection canceled or failed:', err);
                 // Show error message and allow retry
-                errorMessage.textContent = `Selection failed or was canceled. Please select the directory "${baseDirName}".`;
+                errorMessage.textContent = `Unexpected Error happened, please check if server is still running.`;
                 errorMessage.style.display = 'block';
                 initButton.disabled = false; // Re-enable button for retry
             }
@@ -225,19 +194,21 @@
                 The best low-cost solution for your colorimetric measurements.
             </p>
             
-            <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <p id="prompt-message">
+            <!-- <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;"> -->
+                <!-- <p id="prompt-message">
                     Please select the directory containing <code>main.py</code> to get started.<br>
                     <small style="color: #95a5a6;">(expected: {{ directory }})</small>
-                </p>
+                </p> -->
                 
-                <button onclick="initDirectory()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    Select Directory
+                <!-- <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    Get Started
                 </button>
                 
                 <p id="error-message" class="error" style="display: none; color: #e74c3c; margin-top: 1rem;"></p>
-            </div>
-            
+            </div> -->
+            <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                Get Started
+            </button>
         </div>            
         <div id="main-content" class="hidden">
             <h1>{{ title }}</h1>
@@ -265,14 +236,14 @@
             <div class="section script-controls" id="log-hid-data">
                 <h2>Reading Colorimetric Data</h2>
                 <div>
-                    <label for="base-dir">Saving Directory (--base-dir): 
-                    <input type="text" id="base-dir" value="{{ directory | default('') }}" style="width: 80%">
-                    <button onclick="pickDirectory('base-dir')">Select Directory</button>
+                    <label for="base-dir">Saving Directory: 
+                    <input type="text" id="base-dir" value="{{ directory | default('') }}" style="width: 100%">
+                    <!-- <button onclick="pickDirectory('base-dir')">Select Directory</button> -->
                     </label>
                     <span id="base-dir-error" class="error"></span>
                 </div>
                 <div>
-                    <label for="base-name">Base Name (--base-name): </label>
+                    <label for="base-name">Base Name: </label>
                     <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
                     <span id="base-name-error" class="error"></span>
                 </div>
@@ -464,8 +435,8 @@
                             <span id="est-val-exp"></span>
                         </div>
                         <label for="save-dir">Saving Directory: 
-                        <input type="text" id="save-dir" value="{{ directory | default('') }}" style="width: 80%">
-                        <button onclick="pickDirectory('save-dir')">Select Directory</button>
+                        <input type="text" id="save-dir" value="{{ directory | default('') }}" style="width: 100%">
+                        <!-- <button onclick="pickDirectory('save-dir')">Select Directory</button> -->
                         </label>
                         <span id="save-dir-error" class="error"></span>
                     </div>
