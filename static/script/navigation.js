@@ -197,3 +197,26 @@ function blinkingItem(id, timeOut=5000) {
         }
     }
 }
+
+function scrollWhenVisible(elementId, duration) {
+    const $target = $("#" + elementId);
+    
+    // Function to check if element is visible
+    function isVisible($elem) {
+        return $elem.is(":visible") && $elem.css("display") !== "none";
+    }
+    
+    // If element is already visible, scroll immediately
+    if (isVisible($target)) {
+        $("html, body").animate({ scrollTop: $target.offset().top }, duration);
+        return;
+    }
+    
+    // Poll for visibility every 100ms
+    const interval = setInterval(function() {
+        if (isVisible($target)) {
+            $("html, body").animate({ scrollTop: $target.offset().top }, duration);
+            clearInterval(interval); // Stop polling once visible
+        }
+    }, 100);
+}

@@ -40,7 +40,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         });
     }    
     // Smoothly scroll to the bottom of the page
-    $("html, body").animate({ scrollTop: $(document).height() }, 1000);
+    scrollWhenVisible("data-display-section", 1000);
     blinkingItem('#chart-container', 3000);
 }
 
