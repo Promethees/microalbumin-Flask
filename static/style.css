@@ -1,9 +1,69 @@
 /* General Layout and Typography */
+:root {
+    --text-color-light: #333333;
+    --text-color-dark: #ffffff;
+    --bg-color-light: #ffffff;
+    --bg-color-dark: #333333;
+    --table-border-light: #333333;
+    --table-border-dark: #ffffff;
+    --chart-grid-light: #cccccc;
+    --chart-grid-dark: #666666;
+    --chart-title-light: #333333;
+    --chart-title-dark: #aaaaaa;
+    --chart-label-light: #333333;
+    --chart-label-dark: #aaaaaa;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
     display: flex;
     justify-content: center;
+}
+
+body.light {
+    background-color: #ffffff;
+    color: #333333;
+}
+body.dark {
+    background-color: #333333;
+    color: #ffffff;
+}
+
+.toggle-container {
+    width: 80px;
+    height: 40px;
+    background-color: #ccc;
+    border-radius: 20px;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    cursor: pointer;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.toggle-button {
+    width: 36px;
+    height: 36px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.toggle-button::before {
+    content: '☀️';
+    font-size: 20px;
+}
+.dark .toggle-button::before {
+    content: '🌙';
+}
+.toggle-button.active {
+    transform: translateX(40px);
 }
 
 .container {
@@ -98,16 +158,6 @@ th {
     background-color: #f2f2f2;
 }
 
-#file-table,
-#json-table {
-    width: 100%;
-}
-
-#file-table tr.selected,
-#json-table tr.selected {
-    background-color: #e0f7fa;
-}
-
 #file-table button,
 #json-table button {
     cursor: pointer;
@@ -158,6 +208,7 @@ th {
 #parent-dir div:hover,
 #child-dirs div:hover {
     background-color: #f0f0f0;
+    color: var(--text-color-light);
 }
 
 /* Buttons and Controls */
@@ -174,16 +225,16 @@ th {
     margin-top: 10px;
 }
 
-#run-script-btn:not(:disabled),
-#terminate-script-btn:not(:disabled),
-#go-to-btn:not(:disabled) {
+.hid-btn:not(:disabled){
     cursor: pointer;
 }
 
-#run-script-btn:disabled,
-#terminate-script-btn:disabled,
-#go-to-btn:disabled {
+.hid-btn:disabled {
     cursor: not-allowed;
+}
+
+.dark .hid-btn:disabled {
+    color: var(--text-color-dark);
 }
 
 /* Canvas and Chart */
@@ -213,6 +264,10 @@ th {
     margin-top: 10px;
     font-size: 0.9em;
     color: #333;
+}
+
+.dark #analysis-info {
+    color: var(--text-color-dark);
 }
 
 /* Error Messages */
@@ -248,11 +303,19 @@ th {
     animation: blink 1s infinite;
 }
 
-#der-con-value.blinking,
-#blank-der-con-value.blinking,
-#non-blank-der-con-value.blinking {
-    border: 2px solid #6c3baa;
-    --blink-color: #6c3baa;
+.der-con-value {
+    font-weight: bold;
+}
+
+.light .der-con-value.blinking {
+    border: 2px solid darkviolet;
+    --blink-color: darkviolet;
+    animation: blink 1s infinite;
+}
+
+.dark .der-con-value.blinking {
+    border: 2px solid #DA70D6 ;
+    --blink-color: #DA70D6;
     animation: blink 1s infinite;
 }
 
@@ -326,4 +389,61 @@ th {
 
 .valid {
     border: 2px solid green;
+}
+
+#file-table-container {
+    width: 100%;
+    margin: 20px auto;
+}
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+.table th, .table td {
+    padding: 10px;
+    border: 1px solid;
+    text-align: left;
+}
+.light .table {
+    border-color: var(--table-border-light);
+}
+.dark .table {
+    border-color: var(--table-border-dark);
+}
+.light .table .selected {
+    background-color: #e0f7fa;
+}
+
+.dark .table .selected {
+    background-color: #1e3a8a;
+}
+
+.table th {
+    background-color: #f0f0f0;
+}
+.dark .table th {
+    background-color: #555555;
+}
+.table td {
+    color: var(--text-color-light);
+}
+.dark .table td {
+    color: var(--text-color-dark);
+}
+
+.dark .display {
+    color: var(--text-color-light);
+}
+
+.sel-quantity {
+    font-weight: bold;
+}
+
+.light .sel-quantity {
+    color: darkviolet;
+}
+
+.dark .sel-quantity {
+    color: #DA70D6;
 }

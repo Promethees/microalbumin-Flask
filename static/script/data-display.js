@@ -90,11 +90,20 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
             scales: {
                 x: {
                     type: 'linear',
-                    title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (ng/µL)' },
+                    title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (ng/µL)',
+                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim() 
+                    },
                     min: xMin,
                     max: xMax,
+                    grid: {
+                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-dark').trim()
+                        },
                     ticks: {
                         stepSize: xStepSize,
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
                         callback: function(value) {
                             return Number(value).toFixed(2);
                         }
@@ -102,11 +111,20 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                 },
                 y: {
                     type: 'linear',
-                    title: { display: true, text: unit !== "NONE" ? unit : '' },
+                    title: { display: true, text: unit !== "NONE" ? unit : '',
+                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim()
+                    },
                     min: yMin,
                     max: yMax,
+                    grid: {
+                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-dark').trim()
+                        },
                     ticks: {
                         stepSize: yStepSize,
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
                         callback: function(value) {
                             return Number(value).toFixed(3);
                         }
@@ -114,6 +132,18 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                 }
             },
             plugins: {
+                legend: {
+                    labels: {
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim()
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Display selected CSV Content',
+                    color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-title-light').trim() :
+                        getComputedStyle(document.documentElement).getPropertyValue('--chart-title-dark').trim()
+                },
                 annotation: {
                     annotations: {
                         ...(isFullDisplay && AppState.currentMeasurementMode === "point" && forThisBlankType && {
@@ -531,7 +561,7 @@ function filterByTime(data, timeThreshold, hasBlankType, XColumn = "Timestamp") 
 // New helper to format analysis metrics into HTML
 function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = '') {
     if (!analysisInfo) return '';
-    console.log("Formatting analysis info:", analysisInfo);
+    // console.log("Formatting analysis info:", analysisInfo);
     const unitDisplay = unit !== "NONE" ? unit : '';
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
