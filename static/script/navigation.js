@@ -3,7 +3,7 @@ function browseDirectory(blinkItem = false) {
         console.log("Parent directory:", parentResponse.parent);
         let parentHtml = parentResponse.parent ? 
             `${parentResponse.parent.split(delimiter).pop() ? 
-                `<div onclick="updateDirectory('${parentResponse.parent}', 'true')">${parentResponse.parent.split(delimiter).pop()}</div>` : 
+                `<div onclick="updateDirectory('${parentResponse.parent}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(delimiter).pop()}</div>` : 
                 '<div>No parent directory</div>'}` : 
             '<div>No parent directory</div>';
         $("#parent-dir").html(parentHtml);
