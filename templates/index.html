@@ -24,6 +24,8 @@
                 // Show main content and hide prompt
                 document.getElementById('init-prompt').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
+                document.getElementById('title').classList.remove('hidden');
+                document.getElementById('logo').classList.remove('hidden');
             } catch (err) {
                 console.error('Initialization selection canceled or failed:', err);
                 // Show error message and allow retry
@@ -166,8 +168,15 @@
 </head>
 <body class="light">
     <div class="container">
-        <div class="toggle-container" id="toggleContainer">
-            <div class="toggle-button" id="toggleButton"></div>
+        <div class="top-left">
+            <img src="../static/ht-noname.png" style="height: 70px; width: 60px" id="logo" class="hidden"> <img>
+            <div id="title" class="title-place hidden">
+                <h1 id="htbio"><span style="color: #ff4444;">HT</span>Biotec</h1>
+                <h1><span style="color: #3498db;">Easy</span> Sensor Kit</h1>
+            </div>
+            <div class="toggle-container" id="toggleContainer">
+                <div class="toggle-button" id="toggleButton"></div>
+            </div>
         </div>
         <button id="shutdown-btn" style="
             position: fixed;
@@ -214,8 +223,6 @@
             </button>
         </div>            
         <div id="main-content" class="hidden">
-            <h1>{{ title }}</h1>
-            
             <div class="section">
                 <h2>Directory</h2>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
