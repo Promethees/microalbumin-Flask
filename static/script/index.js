@@ -173,7 +173,7 @@ $(document).ready(function() {
             // Update the child directories display
             let childHtml = sortedChildren.length > 0 ? 
                 sortedChildren.map(dir => 
-                    `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory()">${dir.split(delimiter).pop()}</div>`
+                    `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory(true)">${dir.split(delimiter).pop()}</div>`
                 ).join('') : 
                 '<div>No child directories</div>';
             $("#child-dirs").html(childHtml);

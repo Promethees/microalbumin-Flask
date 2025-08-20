@@ -1,4 +1,4 @@
-function browseDirectory() {
+function browseDirectory(blinkItem = false) {
     $.get('/get_parents', function(parentResponse) {
         console.log("Parent directory:", parentResponse.parent);
         let parentHtml = parentResponse.parent ? 
@@ -14,7 +14,7 @@ function browseDirectory() {
             // Update the child directories display
             let childHtml = sortedChildren.length > 0 ? 
                 `${sortedChildren.map(dir => 
-                    `<div onclick="updateDirectory('${dir}', 'true')" ondblclick="browseDirectory()">${dir.split(delimiter).pop()}</div>`
+                    `<div onclick="updateDirectory('${dir}', 'true')" ondblclick="browseDirectory(true)">${dir.split(delimiter).pop()}</div>`
                 ).join('')}` : 
                 '<div>No child directories</div>';
             $("#child-dirs").html(childHtml);
@@ -26,7 +26,8 @@ function browseDirectory() {
         console.log("Error fetching parent directory:", textStatus, errorThrown);
         $("#error-message").text("Error fetching parent directory").show();
     });
-    blinkingItem("#file-selection", 5000);
+    if (blinkItem)
+        blinkingItem("#file-selection", 5000);
 }
 
 async function filterFiles(files) {
