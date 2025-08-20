@@ -1,9 +1,9 @@
-/* General Layout and Typography */
+/* ==========================================================================
+   CSS Variables (Custom Properties)
+   ========================================================================== */
 :root {
     --text-color-light: #333333;
     --text-color-dark: #ffffff;
-    --bg-color-light: #ffffff;
-    --bg-color-dark: #333333;
     --table-border-light: #333333;
     --table-border-dark: #ffffff;
     --chart-grid-light: #cccccc;
@@ -14,6 +14,9 @@
     --chart-label-dark: #aaaaaa;
 }
 
+/* ==========================================================================
+   Base Styles & Layout
+   ========================================================================== */
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
@@ -25,34 +28,49 @@ body.light {
     background-color: #ffffff;
     color: #333333;
 }
+
 body.dark {
     background-color: #333333;
-    color: #ffffff;
+    color: #eeeeee;
 }
 
+.container {
+    max-width: 50vw;
+    width: 100%;
+}
+
+.section {
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Header & Navigation Components
+   ========================================================================== */
 .top-left {
     display: block;
-    align-items: center; 
-    gap: 5px; 
+    align-items: center;
+    gap: 5px;
     position: fixed;
     left: 20px;
-    top: 20px; 
+    top: 20px;
 }
 
-/* Only the first 3 elements should be grouped in flex */
 .top-left .flex-group {
     display: flex;
     align-items: center;
     gap: 5px;
 }
 
-/* Any additional elements will continue horizontally */
 .top-left > *:not(.flex-group) {
-    margin-left: 10px; /* adjust spacing for blocks after the 3rd */
+    margin-left: 10px;
 }
 
 .title-place {
-    position: static; 
+    position: static;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -77,13 +95,16 @@ body.dark {
     color: var(--text-color-dark);
 }
 
+/* ==========================================================================
+   Theme Toggle Component
+   ========================================================================== */
 .toggle-container {
     width: 60px;
     height: 30px;
     background-color: #ccc;
     border-radius: 15px;
     margin-left: 25px;
-    position: static; 
+    position: static;
     cursor: pointer;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
@@ -91,37 +112,36 @@ body.dark {
 .toggle-button {
     width: 27px;
     height: 27px;
-    background-color: #ffffff; /* Light mode */
+    background-color: #ffffff;
     border-radius: 50%;
     position: static;
     transition: transform 0.3s ease, background-color 0.3s ease;
     display: flex;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .toggle-button::before {
     content: '☀️';
     font-size: 20px;
 }
+
 .dark .toggle-button::before {
     content: '🌙';
 }
+
+.dark .toggle-button {
+    background-color: #1e3a8a;
+}
+
 .toggle-button.active {
     transform: translateX(30px);
 }
 
-.container {
-    max-width: 50vw;
-    width: 100%;
-}
-
-.section {
-    margin-bottom: 20px;
-}
-
-/* Initial Prompt Styling */
+/* ==========================================================================
+   Initial Prompt & Welcome Screen
+   ========================================================================== */
 #init-prompt {
     display: flex;
     flex-direction: column;
@@ -144,7 +164,7 @@ body.dark {
 #init-button:hover {
     background: #2980b9;
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 #prompt-message {
@@ -153,13 +173,11 @@ body.dark {
     margin-bottom: 1.5rem !important;
 }
 
-/* Main Content and Visibility */
+/* ==========================================================================
+   Main Content Area
+   ========================================================================== */
 #main-content.hidden {
     display: none;
-}
-
-.hidden {
-    display: none !important;
 }
 
 /* Default Section Visibility */
@@ -188,7 +206,9 @@ body.dark {
     display: block;
 }
 
-/* Table Styling */
+/* ==========================================================================
+   Table Styles
+   ========================================================================== */
 table {
     border-collapse: collapse;
     width: 100%;
@@ -209,7 +229,72 @@ th {
     cursor: pointer;
 }
 
-/* Scrollable Containers */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.table th, .table td {
+    padding: 10px;
+    border: 1px solid;
+    text-align: left;
+}
+
+.light .table {
+    border-color: var(--table-border-light);
+}
+
+.dark .table {
+    border-color: var(--table-border-dark);
+}
+
+.light .table .selected {
+    background-color: #e0f7fa;
+}
+
+.dark .table .selected {
+    background-color: #1e3a8a;
+}
+
+.table th {
+    background-color: #f0f0f0;
+}
+
+.dark .table th {
+    background-color: #555555;
+}
+
+.table td {
+    color: var(--text-color-light);
+}
+
+.dark .table td {
+    color: var(--text-color-dark);
+}
+
+#swal-edit-table tr.selected {
+    background-color: #e6f2ff !important;
+}
+
+#swal-edit-table tr.selected td {
+    background-color: #e6f2ff !important;
+}
+
+#swal-edit-table td {
+    word-break: break-word;
+    max-width: 200px;
+    overflow: hidden;
+    text-overtext-overflow: ellipsis;
+}
+
+#swal-edit-table th {
+    min-width: 80px;
+}
+
+/* ==========================================================================
+   Scrollable Containers
+   ========================================================================== */
 #data-display,
 #file-table-container,
 #parent-dir,
@@ -222,6 +307,8 @@ th {
 
 #file-table-container {
     max-height: 120px;
+    width: 100%;
+    margin: 20px auto;
 }
 
 #parent-dir,
@@ -229,7 +316,9 @@ th {
     max-height: 200px;
 }
 
-/* Directory Navigation */
+/* ==========================================================================
+   Directory Navigation
+   ========================================================================== */
 #directory {
     width: 70%;
 }
@@ -257,7 +346,9 @@ th {
     color: var(--text-color-light);
 }
 
-/* Buttons and Controls */
+/* ==========================================================================
+   Buttons & Controls
+   ========================================================================== */
 #deselect-btn {
     margin-top: 5px;
     padding: 5px 10px;
@@ -271,7 +362,7 @@ th {
     margin-top: 10px;
 }
 
-.hid-btn:not(:disabled){
+.hid-btn:not(:disabled) {
     cursor: pointer;
 }
 
@@ -283,7 +374,9 @@ th {
     color: var(--text-color-dark);
 }
 
-/* Canvas and Chart */
+/* ==========================================================================
+   Charts & Canvas Elements
+   ========================================================================== */
 #plot-canvas,
 #blanked-canvas,
 #non-blanked-canvas {
@@ -297,7 +390,9 @@ th {
     position: relative;
 }
 
-/* Display Sections */
+/* ==========================================================================
+   Display Sections
+   ========================================================================== */
 #log-display,
 #json-display {
     border: 1px solid #ddd;
@@ -316,67 +411,13 @@ th {
     color: var(--text-color-dark);
 }
 
-/* Error Messages */
-#error-message,
-#wd-size-error {
-    color: red;
-    display: none;
+.dark .display {
+    color: var(--text-color-light);
 }
 
-.error {
-    color: red;
-    margin-top: 5px;
-    animation: fadeIn 0.3s ease;
-}
-
-/* Blinking Animations */
-#run-script-btn.blinking,
-#terminate-script-btn.blinking {
-    border: 2px solid #ff0000;
-    --blink-color: #ff0000;
-    animation: blink 1s infinite;
-}
-
-#go-to-btn.blinking,
-#file-selection.blinking,
-#log-display.blinking,
-#chart-container.blinking,
-#measurement-mode.blinking,
-#cal-mode-select.blinking,
-#con-value-read.blinking {
-    border: 2px solid #00ff00;
-    --blink-color: #00ff00;
-    animation: blink 1s infinite;
-}
-
-.der-con-value {
-    font-weight: bold;
-}
-
-.light .der-con-value.blinking {
-    border: 2px solid darkviolet;
-    --blink-color: darkviolet;
-    animation: blink 1s infinite;
-}
-
-.dark .der-con-value.blinking {
-    border: 2px solid #DA70D6 ;
-    --blink-color: #DA70D6;
-    animation: blink 1s infinite;
-}
-
-@keyframes blink {
-    0% { border-color: var(--blink-color, transparent); }
-    50% { border-color: transparent; }
-    100% { border-color: var(--blink-color, transparent); }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* SweetAlert2 Customizations */
+/* ==========================================================================
+   Form Elements & Inputs
+   ========================================================================== */
 .swal2-input-group {
     margin-bottom: 10px;
     text-align: left;
@@ -409,25 +450,6 @@ th {
     color: #aaa;
 }
 
-#swal-edit-table tr.selected {
-    background-color: #e6f2ff !important;
-}
-
-#swal-edit-table tr.selected td {
-    background-color: #e6f2ff !important;
-}
-
-#swal-edit-table td {
-    word-break: break-word;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#swal-edit-table th {
-    min-width: 80px;
-}
-
 /* Input Validation */
 .invalid {
     border: 2px solid red;
@@ -437,51 +459,9 @@ th {
     border: 2px solid green;
 }
 
-#file-table-container {
-    width: 100%;
-    margin: 20px auto;
-}
-.table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-.table th, .table td {
-    padding: 10px;
-    border: 1px solid;
-    text-align: left;
-}
-.light .table {
-    border-color: var(--table-border-light);
-}
-.dark .table {
-    border-color: var(--table-border-dark);
-}
-.light .table .selected {
-    background-color: #e0f7fa;
-}
-
-.dark .table .selected {
-    background-color: #1e3a8a;
-}
-
-.table th {
-    background-color: #f0f0f0;
-}
-.dark .table th {
-    background-color: #555555;
-}
-.table td {
-    color: var(--text-color-light);
-}
-.dark .table td {
-    color: var(--text-color-dark);
-}
-
-.dark .display {
-    color: var(--text-color-light);
-}
-
+/* ==========================================================================
+   Special Text Elements
+   ========================================================================== */
 .sel-quantity {
     font-weight: bold;
 }
@@ -492,4 +472,69 @@ th {
 
 .dark .sel-quantity {
     color: #DA70D6;
+}
+
+.der-con-value {
+    font-weight: bold;
+}
+
+/* ==========================================================================
+   Error Messages & Validation
+   ========================================================================== */
+#error-message,
+#wd-size-error {
+    color: red;
+    display: none;
+}
+
+.error {
+    color: red;
+    margin-top: 5px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* ==========================================================================
+   Animations & Effects
+   ========================================================================== */
+@keyframes blink {
+    0% { border-color: var(--blink-color, transparent); }
+    50% { border-color: transparent; }
+    100% { border-color: var(--blink-color, transparent); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Blinking Elements */
+#run-script-btn.blinking,
+#terminate-script-btn.blinking {
+    border: 2px solid #ff0000;
+    --blink-color: #ff0000;
+    animation: blink 1s infinite;
+}
+
+#go-to-btn.blinking,
+#file-selection.blinking,
+#log-display.blinking,
+#chart-container.blinking,
+#measurement-mode.blinking,
+#cal-mode-select.blinking,
+#con-value-read.blinking {
+    border: 2px solid #00ff00;
+    --blink-color: #00ff00;
+    animation: blink 1s infinite;
+}
+
+.light .der-con-value.blinking {
+    border: 2px solid darkviolet;
+    --blink-color: darkviolet;
+    animation: blink 1s infinite;
+}
+
+.dark .der-con-value.blinking {
+    border: 2px solid #DA70D6;
+    --blink-color: #DA70D6;
+    animation: blink 1s infinite;
 }

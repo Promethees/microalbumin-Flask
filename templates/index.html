@@ -318,7 +318,7 @@
                         {% endif %}
                     </table> 
                 </div>
-                <button id="deselect-btn" onclick="deselectFile('#json-table')">Deselect</button>
+                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
                 <div id="json-display" class="display"></div>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
@@ -340,7 +340,7 @@
                         {% endif %}
                     </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile()">Deselect</button>
+                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;">Deselect</button>
             </div>
             <div class="section" id="data-display-section">
                 <h2>Data Display</h2>
@@ -459,7 +459,7 @@
                     </div>
                     <div>
                         <label for="save-file">File Name: </label>
-                        <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 10em">
+                        <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
                         <span id="save-file-error" class="error"></span>
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
