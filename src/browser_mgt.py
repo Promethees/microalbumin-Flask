@@ -50,18 +50,19 @@ def close_port(port, exclude_pid=None):
     except FileNotFoundError:
         print("lsof not found; ensure lsof is installed (e.g., sudo apt install lsof)")
 
-def cleanup():
-    global process
-    if process and process.poll() is None:
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        process = None
-    # Log cleanup action
-    with open(log_file, 'a') as f:
-        f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Server shutting down, notifying clients to clear cache\n")
-    # Close the Flask server port
-    close_port(args.port)
-    print("Cleaned up resources and closed port")
+def cleanup(process, log_file, args):
+    try:
+        if process and process.poll() is None:
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            process = None
+    finally:
+        # Log cleanup action
+        with open(log_file, 'a') as f:
+            f.write(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Server shutting down, notifying clients to clear cache\n")
+        # Close the Flask server port
+        close_port(args.port)
+        print("Cleaned up resources and closed port")

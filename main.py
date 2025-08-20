@@ -27,13 +27,14 @@ from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_data import check_row_exist
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
-from browser_mgt import open_browser, close_port, is_port_open, cleanup
+from browser_mgt import open_browser, cleanup
 from send_command import connect_to_device, send_command_and_wait_ack
 
 app = Flask(__name__, static_folder='static')
 process = None
 monitor_thread = None
 log_file = "log/script_logs.txt"
+args = None
 
 os_name = platform.system().lower()
 if "window" in os_name:
@@ -789,8 +790,6 @@ def export_cal_coefs():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-atexit.register(cleanup)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port.')
     parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5000)')
@@ -799,15 +798,10 @@ if __name__ == '__main__':
     port = args.port
     host = '127.0.0.1'
 
-    # Check if port is in use before starting
-    # if is_port_open(host, port):
-    #     print(f"Port {port} is in use, attempting to free it...")
-    #     close_port(port)
-
     # Start browser opening in a separate thread
     browser_thread = threading.Thread(target=open_browser, args=(host, port), daemon=True)
     browser_thread.start()
-
+    atexit.register(cleanup, process, log_file, args)
     # Run Flask server in the main thread
     try:
         app.run(debug=True, host='127.0.0.1', port=port)
