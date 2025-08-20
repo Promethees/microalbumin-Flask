@@ -26,6 +26,7 @@
                 document.getElementById('main-content').classList.remove('hidden');
                 document.getElementById('title').classList.remove('hidden');
                 document.getElementById('logo').classList.remove('hidden');
+                document.getElementById('meas-mode-section').classList.remove('hidden');
             } catch (err) {
                 console.error('Initialization selection canceled or failed:', err);
                 // Show error message and allow retry
@@ -169,14 +170,33 @@
 <body class="light">
     <div class="container">
         <div class="top-left">
-            <img src="../static/ht-noname.png" style="height: 70px; width: 60px" id="logo" class="hidden"> <img>
-            <div id="title" class="title-place hidden">
-                <h1 id="htbio"><span style="color: #ff4444;">HT</span>Biotec</h1>
-                <h1><span style="color: #3498db;">Easy</span> Sensor Kit</h1>
+            <div class="flex-group">
+                <img src="../static/ht-noname.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo" class="hidden" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+                
+                <div id="title" class="title-place hidden">
+                    <h1 id="htbio"><span style="color: #ff4444;">HT</span>Biotec</h1>
+                    <h1><span style="color: #3498db;">Easy</span> Sensor Kit</h1>
+                </div>
+                
+                <div class="toggle-container" id="toggleContainer">
+                    <div class="toggle-button" id="toggleButton"></div>
+                </div>
             </div>
-            <div class="toggle-container" id="toggleContainer">
-                <div class="toggle-button" id="toggleButton"></div>
+            <div class="section hidden" style="position: static;" id="meas-mode-section">
+                <h2>{{ mode_input.title }}</h2>
+                <select id="measurement-mode">
+                    {% for mode in mode_input.modes %}
+                    <option value="{{ mode }}">{{ mode }}</option>
+                    {% endfor %}
+                </select>
             </div>
+            <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
+                <h3>Calibrating for:</h3>
+                <select id="cal-mode-select">
+                    <option value="kinetics">kinetics</option>
+                    <option value="point">point</option>
+                </select>
+            </div>  
         </div>
         <button id="shutdown-btn" style="
             position: fixed;
@@ -237,14 +257,6 @@
                 </div>
                 <div id="error-message"></div>
             </div>
-            <div class="section">
-                <h2>{{ mode_input.title }}</h2>
-                <select id="measurement-mode">
-                    {% for mode in mode_input.modes %}
-                    <option value="{{ mode }}">{{ mode }}</option>
-                    {% endfor %}
-                </select>
-            </div>
             <div class="section script-controls" id="log-hid-data">
                 <h2>Reading Colorimetric Data</h2>
                 <div>
@@ -287,13 +299,6 @@
                 <button id="go-to-btn" onclick="browseSavingLocation(`$(#base-dir).val()` , true, false, this)" class="hid-btn" disabled>View live data</button>
                 <div id="log-display" tabindex="-1" class="display"></div>
             </div>
-            <div class="section" id="cal-json-exp-section"> 
-                <h3>Select type of Calibration you'd like to do</h3>
-                <select id="cal-mode-select">
-                    <option value="kinetics">kinetics</option>
-                    <option value="point">point</option>
-                </select>
-            </div>  
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>
                 <div id="file-table-container">

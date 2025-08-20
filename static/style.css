@@ -31,12 +31,24 @@ body.dark {
 }
 
 .top-left {
-    display: flex;
+    display: block;
     align-items: center; 
     gap: 5px; 
     position: fixed;
     left: 20px;
     top: 20px; 
+}
+
+/* Only the first 3 elements should be grouped in flex */
+.top-left .flex-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Any additional elements will continue horizontally */
+.top-left > *:not(.flex-group) {
+    margin-left: 10px; /* adjust spacing for blocks after the 3rd */
 }
 
 .title-place {
