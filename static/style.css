@@ -505,7 +505,7 @@ th {
 }
 
 .dark .table .selected {
-    background-color: #1e3a8a;
+    background-color: #566283;
 }
 
 .table th {
@@ -529,7 +529,7 @@ body.light #swal-edit-table tr.selected {
 }
 
 body.dark #swal-edit-table tr.selected {
-    background-color: #1e3a8a !important;
+    background-color: #566283 !important;
 }
 
 body.light #swal-edit-table tr.selected td {
@@ -537,7 +537,7 @@ body.light #swal-edit-table tr.selected td {
 }
 
 body.dark #swal-edit-table tr.selected td {
-    background-color: #1e3a8a !important;
+    background-color: #566283 !important;
 }
 
 #swal-edit-table td {
@@ -565,6 +565,7 @@ body.dark #swal-edit-table tr.selected td {
 }
 
 #file-table-container {
+    overflow-y: auto;
     max-height: 120px;
     width: 100%;
     margin: 20px auto;
@@ -860,7 +861,7 @@ body.light #swal-edit-table td.non-editable {
 
 body.dark #swal-edit-table td.non-editable {
     background-color: #333333 !important;
-    color: #777777;
+    color: #999999;
 }
 
 /* Help text below the editor */
