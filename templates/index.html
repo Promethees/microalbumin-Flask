@@ -293,10 +293,10 @@
                 <span id="timeout-interval-error" class="error"></span>  
                 <input type="checkbox" id="notify-me">Notify me when Done</input>
                 <br/>
-                <button id="run-script-btn" onclick="runScript()" class="blinking hid-btn">Start reading</button>
-                <button id="terminate-script-btn" onclick="terminateScript()" class="hid-btn" disabled>Stop reading</button>
-                <button id="clear-logs-btn" onclick="clearLogs()" class="hid-btn">Clear Logs</button>
-                <button id="go-to-btn" onclick="browseSavingLocation(`$(#base-dir).val()` , true, false, this)" class="hid-btn" disabled>View live data</button>
+                <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
+                <button id="terminate-script-btn" onclick="terminateScript()"  disabled>Stop reading</button>
+                <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
+                <button id="go-to-btn" onclick="browseSavingLocation(`$(#base-dir).val()` , true, false, this)" disabled>View live data</button>
                 <div id="log-display" tabindex="-1" class="display"></div>
             </div>
             <div class="section" id="cal-json-sel-section">

@@ -24,16 +24,6 @@ body {
     justify-content: center;
 }
 
-body.light {
-    background-color: #ffffff;
-    color: #333333;
-}
-
-body.dark {
-    background-color: #333333;
-    color: #eeeeee;
-}
-
 .container {
     max-width: 50vw;
     width: 100%;
@@ -41,10 +31,259 @@ body.dark {
 
 .section {
     margin-bottom: 20px;
+    width: 100% !important;
 }
 
 .hidden {
     display: none !important;
+}
+/* Light Theme */
+body.light {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+    background-color: #e0e0e0;
+    color: #333333;
+    border: 1px solid #cccccc;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+    background-color: #d0d0d0;
+    transform: scale(1.05);
+}
+
+body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):enabled {
+    opacity: 1;
+}
+
+body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+    background-color: #f0f0f0;
+    color: #999999;
+    border: 1px solid #dddddd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.light input[type="text"] {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+    transition: border-color 0.2s ease;
+}
+
+body.light input[type="text"]:hover:enabled {
+    border-color: #999999;
+}
+
+body.light input[type="text"]:enabled {
+    opacity: 1;
+}
+
+body.light input[type="text"]:disabled {
+    background-color: #f0f0f0;
+    color: #999999;
+    border: 1px solid #dddddd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.light input[type="checkbox"] {
+    accent-color: #333333;
+    border: 1px solid #cccccc;
+    cursor: pointer;
+}
+
+body.light input[type="checkbox"]:hover:enabled {
+    border-color: #999999;
+}
+
+body.light input[type="checkbox"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+body.light input[type="radio"] {
+    accent-color: #333333;
+    border: 1px solid #cccccc;
+    cursor: pointer;
+}
+
+body.light input[type="radio"]:hover:enabled {
+    border-color: #999999;
+}
+
+body.light input[type="radio"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+body.light select {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+body.light select:hover:enabled {
+    border-color: #999999;
+}
+
+body.light select:enabled {
+    opacity: 1;
+}
+
+body.light select:disabled {
+    background-color: #f0f0f0;
+    color: #999999;
+    border: 1px solid #dddddd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.light option {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+/* Dark Theme */
+body.dark {
+    background-color: #333333;
+    color: #eeeeee;
+}
+
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+    background-color: #555555;
+    color: #eeeeee;
+    border: 1px solid #aaaaaa;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+    background-color: #666666;
+    transform: scale(1.05);
+}
+
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):enabled {
+    opacity: 1;
+}
+
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+    background-color: #3a3a3a;
+    color: #777777;
+    border: 1px solid #555555;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.dark input[type="text"] {
+    background-color: #444444;
+    color: #eeeeee;
+    border: 1px solid #666666;
+    transition: border-color 0.2s ease;
+}
+
+body.dark input[type="text"]:hover:enabled {
+    border-color: #888888;
+}
+
+body.dark input[type="text"]:enabled {
+    opacity: 1;
+}
+
+body.dark input[type="text"]:disabled {
+    background-color: #3a3a3a;
+    color: #777777;
+    border: 1px solid #555555;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.dark input[type="number"] {
+    background-color: #444444;
+    color: #eeeeee;
+    border: 1px solid #666666;
+    transition: border-color 0.2s ease;
+}
+
+body.dark input[type="number"]:hover:enabled {
+    border-color: #888888;
+}
+
+body.dark input[type="number"]:enabled {
+    opacity: 1;
+}
+
+body.dark input[type="number"]:disabled {
+    background-color: #3a3a3a;
+    color: #777777;
+    border: 1px solid #555555;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.dark input[type="checkbox"] {
+    accent-color: #eeeeee;
+    border: 1px solid #666666;
+    cursor: pointer;
+}
+
+body.dark input[type="checkbox"]:hover:enabled {
+    border-color: #888888;
+}
+
+body.dark input[type="checkbox"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+body.dark input[type="radio"] {
+    accent-color: #eeeeee;
+    border: 1px solid #666666;
+    cursor: pointer;
+}
+
+body.dark input[type="radio"]:hover:enabled {
+    border-color: #888888;
+}
+
+body.dark input[type="radio"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+body.dark select {
+    background-color: #444444;
+    color: #eeeeee;
+    border: 1px solid #aaaaaa;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+body.dark select:hover:enabled {
+    border-color: #888888;
+}
+
+body.dark select:enabled {
+    opacity: 1;
+}
+
+body.dark select:disabled {
+    background-color: #3a3a3a;
+    color: #777777;
+    border: 1px solid #555555;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+body.dark option {
+    background-color: #444444;
+    color: #eeeeee;
 }
 
 /* ==========================================================================
@@ -273,19 +512,28 @@ th {
     color: var(--text-color-dark);
 }
 
-#swal-edit-table tr.selected {
+body.light #swal-edit-table tr.selected {
     background-color: #e6f2ff !important;
 }
 
-#swal-edit-table tr.selected td {
+body.dark #swal-edit-table tr.selected {
+    background-color: #1e3a8a !important;
+}
+
+body.light #swal-edit-table tr.selected td {
     background-color: #e6f2ff !important;
+}
+
+body.dark #swal-edit-table tr.selected td {
+    background-color: #1e3a8a !important;
 }
 
 #swal-edit-table td {
     word-break: break-word;
     max-width: 200px;
     overflow: hidden;
-    text-overtext-overflow: ellipsis;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* required for ellipsis to show */
 }
 
 #swal-edit-table th {
@@ -303,6 +551,7 @@ th {
 #json-display {
     max-height: 300px;
     overflow-y: auto;
+    width: 100%;
 }
 
 #file-table-container {
@@ -362,18 +611,6 @@ th {
     margin-top: 10px;
 }
 
-.hid-btn:not(:disabled) {
-    cursor: pointer;
-}
-
-.hid-btn:disabled {
-    cursor: not-allowed;
-}
-
-.dark .hid-btn:disabled {
-    color: var(--text-color-dark);
-}
-
 /* ==========================================================================
    Charts & Canvas Elements
    ========================================================================== */
@@ -393,11 +630,20 @@ th {
 /* ==========================================================================
    Display Sections
    ========================================================================== */
-#log-display,
-#json-display {
+body.light #log-display,
+body.light #json-display {
     border: 1px solid #ddd;
     padding: 10px;
     background-color: #f9f9f9;
+    white-space: pre-wrap;
+}
+
+body.dark #log-display,
+body.dark #json-display {
+    border: 1px solid #555;
+    padding: 10px;
+    background-color: #222;
+    color: #eee;
     white-space: pre-wrap;
 }
 
@@ -537,4 +783,138 @@ th {
     border: 2px solid #DA70D6;
     --blink-color: #DA70D6;
     animation: blink 1s infinite;
+}
+
+/* ==========================================================================
+   SweetAlert2 Content Editor (Light/Dark Integration)
+   ========================================================================== */
+
+/* Inputs & textarea */
+body.light #swal-input-filename,
+body.light #swal-input-content {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+}
+
+body.dark #swal-input-filename,
+body.dark #swal-input-content {
+    background-color: #444444;
+    color: #eeeeee;
+    border: 1px solid #666666;
+}
+
+/* Table (swal2 editor) */
+#swal-edit-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    font-size: 0.82em;
+}
+
+body.light #swal-edit-table {
+    background-color: #ffffff;
+    color: #333333;
+}
+
+body.dark #swal-edit-table {
+    background-color: #1e1e1e;
+    color: #e5e5e5;
+}
+
+body.light #swal-edit-table th {
+    background-color: #f9f9f9;
+    border: 1px solid #cccccc;
+    color: #333333;
+}
+
+body.dark #swal-edit-table th {
+    background-color: #2b2b2b;
+    border: 1px solid #444444;
+    color: #e5e5e5;
+}
+
+body.light #swal-edit-table td {
+    border: 1px solid #cccccc;
+    color: #333333;
+}
+
+body.dark #swal-edit-table td {
+    border: 1px solid #444444;
+    color: #e5e5e5;
+}
+
+/* Non-editable cells */
+#swal-edit-table td.non-editable {
+    cursor: not-allowed;
+}
+
+body.light #swal-edit-table td.non-editable {
+    background-color: #f8f8f8;
+    color: #999999;
+}
+
+body.dark #swal-edit-table td.non-editable {
+    background-color: #333333 !important;
+    color: #777777;
+}
+
+/* Help text below the editor */
+#swal-edit-table + p {
+    font-size: 0.8em;
+    margin-top: 5px;
+}
+
+body.light #swal-edit-table + p {
+    color: #666666;
+}
+
+body.dark #swal-edit-table + p {
+    color: #aaaaaa;
+}
+
+/* ==========================================================================
+   SweetAlert2 Popup Theme (Light/Dark Integration)
+   ========================================================================== */
+
+/* Popup container */
+body.light .swal2-popup {
+    background: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #cccccc;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+body.dark .swal2-popup {
+    background: #1e1e1e !important;
+    color: #eeeeee !important;
+    border: 1px solid #444444;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+/* Title */
+body.light .swal2-title {
+    color: #222222 !important;
+}
+
+body.dark .swal2-title {
+    color: #eeeeee !important;
+}
+
+/* Text / content */
+body.light .swal2-html-container {
+    color: #333333 !important;
+}
+
+body.dark .swal2-html-container {
+    color: #cccccc !important;
+}
+
+/* Overlay backdrop */
+body.light .swal2-container.swal2-backdrop-show {
+    background: rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark .swal2-container.swal2-backdrop-show {
+    background: rgba(0, 0, 0, 0.7) !important;
 }

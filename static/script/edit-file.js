@@ -229,12 +229,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 title: `Edit ${fileName}`,
                 width: '800px',
                 html: renderContent(content),
-                footer: tableSelector === '#file-table' ? '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px;">Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode</button>' : '',
+                footer: tableSelector === '#file-table' ? '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode</button>' : '',
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Save Changes',
                 cancelButtonText: 'Cancel',
-                confirmButtonColor: '#3085d6',
+                confirmButtonColor: '#50C878',
                 cancelButtonColor: '#d33',
                 didOpen: () => {
                     const toggleButton = document.getElementById('toggle-mode');
