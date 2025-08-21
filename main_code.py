@@ -15,6 +15,8 @@ from http import HTTPStatus
 from datetime import datetime
 import re
 from filelock import FileLock
+import shutil
+from pathlib import Path
 
 sys.path.append('code\src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -613,6 +615,82 @@ def delete_file():
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while deleting the file'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+    
+@app.route('/copy_file', methods=['POST'])
+def copy_file():
+    try:
+        # Prevent copy during running process
+        if process and process.poll() is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot copy files while the data collection process is running'
+            }), HTTPStatus.LOCKED
+
+        file_name = request.form.get('filename')
+        mode = request.form.get('mode')
+        tabletype = request.form.get('tabletype')
+        path = request.form.get('path') if request.form.get('path') else get_directory()
+
+        # Input validation
+        if not file_name or not tabletype:
+            return jsonify({
+                'status': 'error',
+                'message': 'Filename and tabletype are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        # Construct source file path
+        if tabletype == '#json-table':
+            if not mode:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Mode is required for JSON table type'
+                }), HTTPStatus.BAD_REQUEST
+            src_dir = os.path.join(json_root_path, mode)
+        else:
+            src_dir = path
+
+        src_path = os.path.join(src_dir, file_name)
+
+        # Validate file path
+        if '..' in os.path.normpath(src_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        if not os.path.exists(src_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'Source file {file_name} not found'
+            }), HTTPStatus.NOT_FOUND
+
+        # Generate new filename using helper
+        dst_path = get_next_filename(".json", src_dir, Path(file_name).stem) if tabletype == '#json-table' else get_next_filename(".csv", src_dir, Path(file_name).stem)
+
+        try:
+            shutil.copy2(src_path, dst_path)  # preserve metadata
+            return jsonify({
+                'status': 'success',
+                'message': f'File copied to {dst_path}',
+                'new_filename': dst_path
+            }), HTTPStatus.OK
+        except PermissionError as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Permission denied while copying {file_name}: {str(e)}'
+            }), HTTPStatus.FORBIDDEN
+        except OSError as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Failed to copy {file_name}: {str(e)}'
+            }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        print(f"Unexpected error in copy_file: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while copying the file'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
          
 @app.route('/get_data', methods=['GET'])
