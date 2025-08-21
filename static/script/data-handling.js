@@ -12,6 +12,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     if (tableSelector === "#file-table") {
         AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
+        $("#copy-file-btn").prop("disabled", false);
         $("#split-mode").prop("checked", false);
         $("#blanked-canvas, #non-blanked-canvas").hide();
         $("#plot-canvas").show();
@@ -25,6 +26,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
+        $("#copy-json-btn").prop("disabled", false);
         fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
             $("#json-display").text(`Current mode is \"${AppState.currentMeasurementMode}\".\nJSON file read from ${JSON_path}\n`);
             if (AppState.currentMeasurementMode === "kinetics") {
@@ -42,6 +44,80 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     // Smoothly scroll to the bottom of the page
     scrollWhenVisible("data-display-section", 1000);
     blinkingItem('#chart-container', 3000);
+}
+
+function copyFile(tableSelector = "#file-table") {
+    const currentFile = tableSelector === "#file-table" ? AppState.currentFile : AppState.currentJSON;
+
+    if (!currentFile) {
+        Swal.fire({
+            title: 'Error!',
+            text: 'No file selected to copy.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    const filePath = tableSelector === "#file-table" ? $("#directory").val() : currentFile;
+
+    $.ajax({
+        url: '/copy_file',
+        method: 'POST',
+        data: {
+            filepath: filePath,
+            filename: currentFile,
+            mode: AppState.currentMeasurementMode,
+            tabletype: tableSelector
+        },
+        success: function(response) {
+            if (response.status === 'success') {
+                Swal.fire({
+                    title: 'Success!',
+                    text: response.message,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    if (tableSelector === "#file-table") {
+                        updateDirectory($("#directory").val());
+                    } else if (tableSelector === "#json-table") {
+                        updateJSONTable();
+                    }
+                });
+            } else {
+                // Handle expected error responses from backend
+                Swal.fire({
+                    title: 'Error!',
+                    text: response.message || 'An unknown error occurred while copying the file.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            // Handle AJAX errors (network/server issues)
+            let message;
+            if (xhr.status === 423) { // HTTPStatus.LOCKED
+                message = 'File operation is locked because a process is currently running.';
+            } else if (xhr.status === 404) {
+                message = 'The file you are trying to copy was not found.';
+            } else if (xhr.status === 403) {
+                message = 'Permission denied. Please check your file permissions.';
+            } else if (xhr.status === 400) {
+                message = 'Invalid request. Please check the input data.';
+            } else {
+                message = 'Unexpected error: ' + (xhr.responseJSON?.message || error);
+            }
+
+            Swal.fire({
+                title: 'Error!',
+                text: message,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    });
 }
 
 function processDataDisplay(fileName, jsonFileContent=null) {
@@ -78,6 +154,7 @@ function deselectFile(tableSelector="#file-table") {
         AppState.currentFile = null;
         $("#analysis-info").text("");
         updateFileDisplay(AppState.currentFile);
+        $("#copy-file-btn").prop("disabled", true);
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = null;
         AppState.currentJSONcontent = null;
@@ -88,6 +165,7 @@ function deselectFile(tableSelector="#file-table") {
         $("#blank-derived-concentration-section").addClass("hidden");
         $("#non-blank-derived-concentration-section").addClass("hidden");
         $("#point-json-exp-section").addClass("hidden");
+        $("#copy-json-btn").prop("disabled", true);
     }
 }
 
@@ -535,7 +613,7 @@ function exportData() {
     let analysisData = null;
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-    console.log("Global analysis data is ", AppState.globalAnalysis);
+    // console.log("Global analysis data is ", AppState.globalAnalysis);
     if (AppState.currentMeasurementMode === "kinetics") {
         switch ($("#exp-json-blank-type").val()) {
             case "MIXED":
