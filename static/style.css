@@ -37,6 +37,19 @@ body {
 .hidden {
     display: none !important;
 }
+
+#base-dir-label, #save-dir-label {
+    display: flex;              /* make label a flexbox */
+    align-items: center;        /* align text + input vertically */
+    width: 100%;                /* span full parent width */
+    gap: 8px;                   /* optional spacing between text and input */
+}
+
+input#base-dir, input#save-dir {
+    flex: 1;                    /* take remaining space */
+    min-width: 0;               /* prevent flex overflow */
+}
+
 /* Light Theme */
 body.light {
     background-color: #ffffff;
@@ -428,7 +441,6 @@ body.dark option {
 #cal-json-sel-section,
 #kinetics-lines,
 #cal-json-exp-section,
-#json-display,
 #derived-concentration-section,
 #blank-derived-concentration-section,
 #non-blank-derived-concentration-section,
@@ -543,15 +555,13 @@ body.dark #swal-edit-table tr.selected td {
 /* ==========================================================================
    Scrollable Containers
    ========================================================================== */
-#data-display,
-#file-table-container,
 #parent-dir,
 #child-dirs,
-#log-display,
-#json-display {
+.display {
     max-height: 300px;
     overflow-y: auto;
     width: 100%;
+    box-sizing: border-box; 
 }
 
 #file-table-container {
@@ -630,16 +640,14 @@ body.dark #swal-edit-table tr.selected td {
 /* ==========================================================================
    Display Sections
    ========================================================================== */
-body.light #log-display,
-body.light #json-display {
+body.light .display {
     border: 1px solid #ddd;
     padding: 10px;
     background-color: #f9f9f9;
     white-space: pre-wrap;
 }
 
-body.dark #log-display,
-body.dark #json-display {
+body.dark .display{
     border: 1px solid #555;
     padding: 10px;
     background-color: #222;
@@ -647,18 +655,14 @@ body.dark #json-display {
     white-space: pre-wrap;
 }
 
-#analysis-info {
+body.light #analysis-info {
     margin-top: 10px;
     font-size: 0.9em;
     color: #333;
 }
 
-.dark #analysis-info {
+body.dark #analysis-info {
     color: var(--text-color-dark);
-}
-
-.dark .display {
-    color: var(--text-color-light);
 }
 
 /* ==========================================================================
@@ -773,13 +777,13 @@ body.dark #json-display {
     animation: blink 1s infinite;
 }
 
-.light .der-con-value.blinking {
+body.light .der-con-value.blinking {
     border: 2px solid darkviolet;
     --blink-color: darkviolet;
     animation: blink 1s infinite;
 }
 
-.dark .der-con-value.blinking {
+body.dark .der-con-value.blinking {
     border: 2px solid #DA70D6;
     --blink-color: #DA70D6;
     animation: blink 1s infinite;
