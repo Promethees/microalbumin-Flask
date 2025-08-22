@@ -27,6 +27,7 @@
                 document.getElementById('title').classList.remove('hidden');
                 document.getElementById('logo').classList.remove('hidden');
                 document.getElementById('meas-mode-section').classList.remove('hidden');
+                document.getElementById('options-section').classList.remove('hidden');
             } catch (err) {
                 console.error('Initialization selection canceled or failed:', err);
                 // Show error message and allow retry
@@ -197,6 +198,10 @@
                     <option value="point">point</option>
                 </select>
             </div>  
+            <div class="section hidden" style="position: static;" id="options-section">
+                <h3>Options</h3>
+                <input type="checkbox" id="no-swal-checkbox" unchecked>Disable popups</input>
+            </div>
         </div>
         <button id="shutdown-btn" style="
             position: fixed;

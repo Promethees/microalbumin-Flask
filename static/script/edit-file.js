@@ -391,6 +391,15 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 selectFile(newFileName, button, tableSelector);
                                 toggleMode();
                             }
+                            if ($("#no-swal-checkbox").is(":checked")) {
+                                console.log(textMsg);
+                                if (tableSelector === "#file-table") {
+                                    updateDirectory($("#directory").val());
+                                } else if (tableSelector === "#json-table") {
+                                    updateJSONTable();
+                                }
+                                return; // Exit if no popup is needed
+                            }
                             Swal.fire({
                                 title: 'Updated!',
                                 text: textMsg,
