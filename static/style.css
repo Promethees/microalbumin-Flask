@@ -309,6 +309,7 @@ body.dark option {
     position: fixed;
     left: 20px;
     top: 20px;
+    max-width: 25vw;
 }
 
 .top-left .flex-group {
@@ -555,8 +556,7 @@ body.dark #swal-edit-table tr.selected td {
 /* ==========================================================================
    Scrollable Containers
    ========================================================================== */
-#parent-dir,
-#child-dirs,
+.dir-blocks,
 .display {
     max-height: 300px;
     overflow-y: auto;
@@ -571,8 +571,7 @@ body.dark #swal-edit-table tr.selected td {
     margin: 20px auto;
 }
 
-#parent-dir,
-#child-dirs {
+.dir-blocks {
     max-height: 200px;
 }
 
@@ -583,25 +582,23 @@ body.dark #swal-edit-table tr.selected td {
     width: 70%;
 }
 
-#dir-suggestions {
+#dir-suggestions,
+#dir-suggestions-top {
     margin-top: 5px;
 }
 
-#parent-dir h3,
-#child-dirs h3 {
+.dir-blocks h3 {
     margin: 0;
     font-size: 1em;
     font-weight: bold;
 }
 
-#parent-dir div,
-#child-dirs div {
+.dir-blocks div {
     padding: 5px;
     cursor: pointer;
 }
 
-#parent-dir div:hover,
-#child-dirs div:hover {
+.dir-blocks div:hover {
     background-color: #f0f0f0;
     color: var(--text-color-light);
 }

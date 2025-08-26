@@ -184,6 +184,19 @@
                 </div>
             </div>
             <div class="section hidden" style="position: static;" id="meas-mode-section">
+                <div class="section" id="top-left-dir-section">
+                    <h2>Directory</h2>
+                    <div style="display: block; justify-content: space-between; align-items: center;">
+                        <input type="text" id="directory-top" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
+                        <button onclick="browseDirectory()" style="">Browse Path</button>
+                    </div>
+                    <div id="dir-suggestions-top">
+                        <h3>Go back</h3>
+                        <div id="parent-dir-top" class="dir-blocks"></div>
+                        <h3>Go forward</h3>
+                        <div id="child-dirs-top" class="dir-blocks"></div>
+                    </div>
+                </div>
                 <h2>{{ mode_input.title }}</h2>
                 <select id="measurement-mode">
                     {% for mode in mode_input.modes %}
@@ -256,9 +269,9 @@
                 </div>
                 <div id="dir-suggestions">
                     <h3>Go back</h3>
-                    <div id="parent-dir"></div>
+                    <div id="parent-dir" class="dir-blocks"></div>
                     <h3>Go forward</h3>
-                    <div id="child-dirs"></div>
+                    <div id="child-dirs" class="dir-blocks"></div>
                 </div>
                 <div id="error-message"></div>
             </div>
@@ -757,7 +770,47 @@
                 document.getElementById('timeout').disabled = this.checked;
                 document.getElementById('timeout-unit').disabled = this.checked;                
             });
+            
+            document.addEventListener("DOMContentLoaded", () => {
+                    const mainDirSection = document.querySelector("#main-content .section"); // Main Directory section
+                    const topLeftDirSection = document.querySelector("#top-left-dir-section");  // Top-left Directory section
 
+                    const mainDirInput = document.getElementById("directory");
+                    const topDirInput = document.getElementById("directory-top");
+
+                    const parentDirMain = document.getElementById("parent-dir");
+                    const childDirMain = document.getElementById("child-dirs");
+                    const parentDirTop = document.getElementById("parent-dir-top");
+                    const childDirTop = document.getElementById("child-dirs-top");
+
+                    // Hide top-left on load
+                    topLeftDirSection.style.display = "none";
+
+                    // Keep inputs synced both ways
+                    mainDirInput.addEventListener("input", () => {
+                        topDirInput.value = mainDirInput.value;
+                    });
+                    topDirInput.addEventListener("input", () => {
+                        mainDirInput.value = topDirInput.value;
+                    });
+
+                    // Observer to toggle top-left visibility
+                    const observer = new IntersectionObserver(entries => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                // Main visible → hide top-left
+                                topLeftDirSection.style.display = "none";
+                            } else {
+                                // Main scrolled away → show top-left
+                                topLeftDirSection.style.display = "block";
+                                parentDirTop.innerHTML = parentDirMain.innerHTML;
+                                childDirTop.innerHTML = childDirMain.innerHTML;
+                            }
+                        });
+                    }, { threshold: 0 });
+
+                    observer.observe(mainDirSection);
+                });
         </script>
         <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}"></script>
