@@ -406,6 +406,8 @@ body.dark option {
     align-items: center;
     justify-content: center;
     height: 100vh;
+    max-width: 50vw;
+    width: 100%;
     text-align: center;
 }
 
@@ -958,6 +960,8 @@ body.dark .swal2-container.swal2-backdrop-show {
     }
 
     #init-prompt {
+        max-width: 100%;  /* expand fully */
+        width: 100%;
         order: 2;
     }
 
