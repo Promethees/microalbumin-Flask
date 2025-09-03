@@ -121,8 +121,10 @@ def delayed_termination():
 def shutdown():
     # Start termination after a short delay
     threading.Thread(target=delayed_termination).start()
+    data = request.get_json()
+    mode = data.get('mode', 'light')
     # Redirect to goodbye page immediately
-    return render_template('goodbye.html', production_mode=PRODUCTION_MODE)
+    return render_template('goodbye.html', production_mode=PRODUCTION_MODE, mode=mode)
 
 # @app.route('/goodbye')
 # def goodbye():

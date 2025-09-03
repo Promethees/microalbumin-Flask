@@ -540,11 +540,13 @@
                     : 'Are you sure you want to shutdown the server?';
                 
                 if (confirm(confirmationMessage)) {
+                    // Determine the current mode
                     fetch('/shutdown', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                        }
+                        },
+                        body: JSON.stringify({ mode: AppState.lightDisplay ? 'light' : 'dark' }) // Send mode to server
                     })
                     .then(response => response.text())
                     .then(html => {

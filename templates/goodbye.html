@@ -15,19 +15,42 @@
             background-color: #f5f5f5;
             text-align: center;
         }
-        .goodbye-container {
-            background-color: white;
+        body.light {
+            background-color: #f5f5f5;
+            color: #000000;
+        }
+        body.dark {
+            background-color: #444444;
+            color: #eeeeee;
+        }
+        body.light .goodbye-container {
+            background-color: #ffffff;
+            color: inherit;
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             max-width: 500px;
         }
-        h1 {
+        body.dark .goodbye-container {
+            background-color: #111111;
+            color: inherit;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 500px;
+        }
+        body.light h1 {
             color: #333;
         }
-        p {
+        body.dark h1 {
+            color: #eeeeee;
+        }
+        body.light p {
             color: #666;
             margin-bottom: 1rem;
+        }
+        body.dark p {
+            color: #aaaaaa;
         }
         .production-warning {
             color: #d32f2f;
@@ -44,7 +67,7 @@
         }
     </style>
 </head>
-<body>
+<body class="{{ mode }}">
     <div class="goodbye-container">
         <div class="icon">✓</div>
         <h1>Server Shutdown Complete</h1>
