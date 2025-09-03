@@ -188,7 +188,7 @@
                     <h2>Directory</h2>
                     <div style="display: block; justify-content: space-between; align-items: center;">
                         <input type="text" id="directory-top" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
-                        <button onclick="browseDirectory()" style="">Browse Path</button>
+                        <button onclick="browseDirectory()">Browse Path</button>
                     </div>
                     <div id="dir-suggestions-top">
                         <h3>Go back</h3>
@@ -366,7 +366,7 @@
                 <!-- Display selected file name -->
                 <div id="selected-file-display">No file selected</div>
                 <div id="concentration-reader-section">
-                    Concentration from the csv is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> ng/µL
+                    Concentration from the sample is <input type="number" id="con-value-read" value="" min=0 style="width: 5em;"> </input> ng/µL
                 </div>
                 <div class="section" id="point-json-exp-section">
                     Reference point is at <span type="number" id="cal-point"></span> 
