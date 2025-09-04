@@ -1,4 +1,6 @@
 // const delimiter = "{{ delimiter }}";
+document.getElementById("year").textContent = new Date().getFullYear();
+
 let serverAvailable = true;
 let logInterval, updateInterval, serverCheckInterval;
 
