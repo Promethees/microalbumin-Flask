@@ -496,7 +496,6 @@ th {
 }
 
 .table {
-    width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
 }
@@ -576,6 +575,8 @@ body.dark #swal-edit-table tr.selected td {
     overflow-y: auto;
     width: 100%;
     box-sizing: border-box; 
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 #file-table-container {
@@ -583,6 +584,8 @@ body.dark #swal-edit-table tr.selected td {
     max-height: 120px;
     width: 100%;
     margin: 20px auto;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 .dir-blocks {
@@ -615,6 +618,39 @@ body.dark #swal-edit-table tr.selected td {
 .dir-blocks div:hover {
     background-color: #f0f0f0;
     color: var(--text-color-light);
+}
+
+/* Chrome, Edge, Safari */
+.table::-webkit-scrollbar , .display::-webkit-scrollbar, .dir-blocks::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table::-webkit-scrollbar-track, .display::-webkit-scrollbar-track, .dir-blocks::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+.table::-webkit-scrollbar-thumb, .display::-webkit-scrollbar-thumb, .dir-blocks::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 4px;
+    opacity: 0.7;
+}
+
+/* Light mode */
+.light .dir-blocks,
+.light .display,
+.light .table,
+.light #file-table-container {
+    --scrollbar-track: #f0f0f0;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode */
+.dark .dir-blocks,
+.dark .display,
+.dark .table,
+.dark #file-table-container {
+    --scrollbar-track: #2a2a2a;
+    --scrollbar-thumb: rgba(255, 255, 255, 0.4);
 }
 
 /* ==========================================================================
