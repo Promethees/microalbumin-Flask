@@ -406,6 +406,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
+            $("#directory-top").val(response.path);
             $("#error-message").hide();
             updateFileTable(response.files, deselect);
             if (deselect) {
