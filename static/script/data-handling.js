@@ -596,7 +596,9 @@ function exportData() {
         blinkingItem('#con-value-read', 5000);
         return;
     }
-    AppState.processedExpPath = $("#save-dir").val().trim() || "";
+    AppState.processedExpPath = $("#same-dir-as-data").is(":checked")
+    ? $("#directory").val().trim() || ""
+    : $("#save-dir").val().trim() || "";
     const saveFile = $("#save-file").val().trim() || "results";
     const concentration = $("#con-value-read").val();
     const timeUnit = $("#time-unit").val();

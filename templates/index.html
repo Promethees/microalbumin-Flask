@@ -471,11 +471,12 @@
                             <span id="est-val-exp"></span>
                         </div>
                         <label id="save-dir-label" for="save-dir">Saving Directory: 
-                        <input type="text" id="save-dir" value="{{ directory | default('') }}">
+                        <input type="text" id="save-dir" value="{{ directory | default('') }}" disabled>
                         <!-- <button onclick="pickDirectory('save-dir')">Select Directory</button> -->
                         </label>
                         <span id="save-dir-error" class="error"></span>
                     </div>
+                    <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data file</input>
                     <div>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">

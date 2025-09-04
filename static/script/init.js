@@ -47,6 +47,15 @@ document.getElementById('shutdown-btn').addEventListener('click', function() {
         });
     }
 });
+
+const sameDirCheckbox = document.getElementById("same-dir-as-data");
+const saveDirInput = document.getElementById("save-dir");
+
+sameDirCheckbox.addEventListener("change", function() {
+    // Enable if unchecked, disable if checked
+    saveDirInput.disabled = this.checked;
+});
+
 document.getElementById('base-name').addEventListener('input', function() {
     validateFileName('base-name');
 });
@@ -60,7 +69,7 @@ document.getElementById('save-json-file').addEventListener('input', function() {
 document.getElementById('base-dir').addEventListener('input', function() {
     validatePathName('base-dir');
 });
-document.getElementById('save-dir').addEventListener('input', function() {
+saveDirInput.addEventListener('input', function() {
     validatePathName('save-dir');
 });
 
