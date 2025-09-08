@@ -482,7 +482,7 @@ function updateRefCalPoint(jsonFile) {
 function processPointMode(response, jsonFile, derived_con_text) {
     $("#point-json-exp-section").removeClass("hidden");
     // Display estimated value
-    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * 60, jsonFile["for_blank_type"]).toFixed(4);
+    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier($("#time-unit").val()), jsonFile["for_blank_type"]).toFixed(4);
     if (estValueRead) {
         const unitPrinted = AppState.responseData[0]["Unit"] === "NONE" ? "" : AppState.responseData[0]["Unit"];
         $("#add-json-section").text(`The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
@@ -490,7 +490,7 @@ function processPointMode(response, jsonFile, derived_con_text) {
         $("#add-json-section").text("");
     }
     try {
-        calculated_con = computeFit(estValueRead, jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
+        calculated_con = computeFit(parseFloat(estValueRead), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
         derived_con_text.innerHTML = `${calculated_con}`;
     } catch (error) {
         console.error("Error computing derived concentration:", error);
