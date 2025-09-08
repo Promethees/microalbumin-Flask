@@ -5,7 +5,7 @@ import signal
 import datetime
 import time
 import subprocess
-import argparse
+import platform
 
 def is_port_open(host, port):
     """Check if the specified port is open."""
@@ -66,3 +66,36 @@ def cleanup(process, log_file, args):
         # Close the Flask server port
         close_port(args.port)
         print("Cleaned up resources and closed port")
+
+def ensure_host_mapping(alias, ip="127.0.0.1"):
+    """
+    Ensure alias is mapped to the given IP in the system hosts file.
+    Requires admin/root privileges.
+    """
+    if platform.system() == "Windows":
+        hosts_path = r"C:\Windows\System32\drivers\etc\hosts"
+    else:  # Linux, macOS
+        hosts_path = "/etc/hosts"
+
+    try:
+        # Read current hosts file
+        with open(hosts_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        # Check if alias already mapped
+        for line in lines:
+            if alias in line:
+                print(f"[INFO] '{alias}' already mapped in hosts file.")
+                return
+
+        # Append mapping
+        with open(hosts_path, "a", encoding="utf-8") as f:
+            f.write(f"\n{ip}   {alias}\n")
+
+        print(f"[INFO] Added mapping: {ip} -> {alias} in {hosts_path}")
+
+    except PermissionError:
+        print(f"[ERROR] Permission denied while modifying {hosts_path}.")
+        print("Run this script with administrator/root privileges.")
+    except Exception as e:
+        print(f"[ERROR] Failed to update hosts file: {e}")

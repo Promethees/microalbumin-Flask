@@ -29,7 +29,7 @@ from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_data import check_row_exist
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
-from browser_mgt import open_browser, cleanup
+from browser_mgt import open_browser, cleanup, ensure_host_mapping
 from send_command import connect_to_device, send_command_and_wait_ack
 
 app = Flask(__name__, static_folder='static')
@@ -871,20 +871,26 @@ def export_cal_coefs():
         return jsonify({"status": "error", "message": str(e)})
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run the Flask app with a specified port.')
-    parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5000)')
+    parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
+    parser.add_argument('--port', type=int, default=5099, help='Port to run the Flask app on (default: 5099)')
+    parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
     args = parser.parse_args()
 
-    port = args.port
     host = '127.0.0.1'
+    port = args.port
+    alias = args.alias or host
 
-    # Start browser opening in a separate thread
-    browser_thread = threading.Thread(target=open_browser, args=(host, port), daemon=True)
+    if alias and alias != '127.0.0.1':
+        ensure_host_mapping(alias)
+
+    # Launch browser with alias
+    browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
     browser_thread.start()
+
     atexit.register(cleanup, process, log_file, args)
-    # Run Flask server in the main thread
+
     try:
-        app.run(debug=True, host='127.0.0.1', port=port)
+        app.run(debug=True, host=host, port=port)
     except Exception as e:
         print(f"Failed to start Flask server: {e}")
         sys.exit(1)
