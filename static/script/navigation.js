@@ -38,9 +38,9 @@ async function filterFiles(files) {
             try {
                 const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                 const data = await response.json();
-                const meas_headers = ["Timestamp","Measurement","Value","Unit","Type","Blanked","Concentration"];
-                const cal_headers_kinetics = ["Measurement","Concentration","maxRate","Slope","Sat","Time To Sat", "MeasUnit", "TimeUnit","BlankType", "MeasMode"];
-                const cal_headers_point = ["Measurement","Concentration", "Value", "MeasUnit", "TimePoint", "TimeUnit", "BlankType", "MeasMode"];
+                const meas_headers = ["Timestamp","Value","Type","Blanked"];
+                const cal_headers_kinetics = ["Concentration","maxRate","Slope","Sat","Time To Sat","BlankType"];
+                const cal_headers_point = ["Concentration", "Value", "TimePoint", "TimeUnit", "BlankType"];
                 if (data.headers) {
                     const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
                     if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {

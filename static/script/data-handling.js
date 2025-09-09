@@ -386,6 +386,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
             const displayRangeInput = document.getElementById('range-value');
             const fullDisplayCheckbox = document.getElementById('full-display');
             AppState.responseData = response.data; // Reset point data
+            AppState.metaData = response.metadata; // Reset metadata
 
             // Move event listener outside the AJAX callback or nest it properly
             const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
@@ -404,9 +405,9 @@ function fetchData(unit, window_size, filename, jsonFile) {
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input
                 const conValueInput = document.getElementById('con-value-read');
-                const conValueFromFile = AppState.responseData.map(row => row['Concentration'])[0];
+                const conValueFromFile = AppState.metaData["Concentration"] || "NONE";
 
-                conValueInput.disabled = conValueFromFile !== "NONE";
+                conValueInput.disabled = conValueFromFile.toLowerCase() !== "none";
                 conValueInput.value = conValueFromFile !== "NONE" ? conValueFromFile : "";
                 
                 // Handle kinetics mode
@@ -484,7 +485,7 @@ function processPointMode(response, jsonFile, derived_con_text) {
     // Display estimated value
     const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier($("#time-unit").val()), jsonFile["for_blank_type"]).toFixed(4);
     if (estValueRead) {
-        const unitPrinted = AppState.responseData[0]["Unit"] === "NONE" ? "" : AppState.responseData[0]["Unit"];
+        const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
         $("#add-json-section").text(`The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
     } else {
         $("#add-json-section").text("");
@@ -512,7 +513,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         const range = $("#range-value").val();
         updateRefCalPoint(jsonFile);
         AppState.globalAnalysis = updatePlot(
-            AppState.responseData, range, unit, window_size, 
+            AppState.responseData, AppState.metaData, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay, 
             jsonFile["for_blank_type"]
         );
@@ -522,8 +523,8 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, null, null, null, 
-                AppState.responseData[0]["MeasUnit"], isSplitMode, true, null, 
+                AppState.responseData, AppState.metaData, null, null, null, 
+                AppState.metaData["MeasUnit"], isSplitMode, true, null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
@@ -535,15 +536,15 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
-                processingData, null, null, null, 
-                AppState.responseData[0]["MeasUnit"], isSplitMode, true, null, 
+                processingData, AppState.metaData, null, null, null, 
+                AppState.metaData["MeasUnit"], isSplitMode, true, null, 
                 "Concentration", "Value"
             );
         }
     } else {
         const range = $("#range-value").val();
         AppState.globalAnalysis = updatePlot(
-            AppState.responseData, range, unit, window_size, 
+            AppState.responseData, AppState.metaData, range, unit, window_size, 
             response.unit || "NONE", isSplitMode, isFullDisplay
         );
     }

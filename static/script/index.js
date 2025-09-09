@@ -34,6 +34,7 @@ const AppState = {
     jsonPath: getNativePath(rootPath, 'json'),
     chartInstances: {},
     responseData: null,
+    metaData: null,
     lightDisplay: true,
 
     reset: function() {
@@ -50,6 +51,7 @@ const AppState = {
         this.prevDropdownEntries = null;
         this.exp_json_content = null;
         this.responseData = null;
+        this.metaData = null;
         Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         terminateScript();
     }

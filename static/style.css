@@ -856,6 +856,59 @@ body.dark #swal-input-content {
     border: 1px solid #666666;
 }
 
+/* Meta data box */
+.light .metadata-box {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.light .metadata-box h4 {
+    margin: 0 0 8px;
+    font-size: 1em;
+    color: #333;
+}
+
+.light #swal-metadata-table thead th,
+.light #swal-edit-table thead th {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.light #swal-metadata-table tbody td,
+.light #swal-edit-table tbody td {
+    background: #fff;
+    color: #000;
+}
+
+.dark .metadata-box {
+    background: #2b2b2b;
+    border: 1px solid #555;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.dark .metadata-box h4 {
+    margin: 0 0 8px;
+    font-size: 1em;
+    color: #e0e0e0;
+}
+
+.dark #swal-metadata-table thead th,
+.dark #swal-edit-table thead th {
+    background: #3a3a3a;
+    color: #e0e0e0;
+}
+
+.dark #swal-metadata-table tbody td,
+.dark #swal-edit-table tbody td {
+    background: #1e1e1e;
+    color: #ddd;
+}
+
 /* Table (swal2 editor) */
 #swal-edit-table {
     border-collapse: collapse;

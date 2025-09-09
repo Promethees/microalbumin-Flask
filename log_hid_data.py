@@ -16,11 +16,10 @@ PYBADGE_PID = 0x8034  # PyBadge Product ID (from hid_read_keyboard.py)
 # Standard USB HID keyboard report format: 8 bytes
 # Byte 0: Modifier keys (ignored)
 # Byte 1: Reserved (0x00)
-# Bytes 2-7: Keycodes (one key per report for KeyboardLayoutUS.write())
+# Bytes 2-7: Keycodes
 REPORT_LENGTH = 8
 
-# Keycode mapping (from USB HID Usage Tables, Keyboard/Keypad Page)
-# Maps to uppercase letters and literal characters as sent by KeyboardLayoutUS.write()
+# Keycode mapping (shifted characters only, as per US keyboard layout)
 KEYCODE_MAP = {
     0x04: 'A', 0x05: 'B', 0x06: 'C', 0x07: 'D', 0x08: 'E', 0x09: 'F',
     0x0A: 'G', 0x0B: 'H', 0x0C: 'I', 0x0D: 'J', 0x0E: 'K', 0x0F: 'L',
@@ -30,7 +29,7 @@ KEYCODE_MAP = {
     0x1E: '1', 0x1F: '2', 0x20: '3', 0x21: '4', 0x22: '5', 0x23: '6',
     0x24: '7', 0x25: '8', 0x26: '9', 0x27: '0',
     0x28: 'enter', 0x29: 'escape', 0x2A: 'backspace', 0x2B: 'tab',
-    0x2C: 'space', 0x36: ',', 0x37: '.'
+    0x2C: 'space', 0x36: ',', 0x37: '.', 0x33: ':'
 }
 
 class HIDDataCollector:
@@ -41,8 +40,10 @@ class HIDDataCollector:
         self.output_file = None
         self.running = True
         self.buffer = ""
-        self.header_pattern = r"^TIMESTAMP,MEASUREMENT,VALUE,UNIT,TYPE,BLANKED,CONCENTRATION\n$"
-        self.data_pattern = r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)\n$"
+        self.metadata = {}
+        self.metadata_pattern = r"^3 (MEASUREMENT|UNIT|CONCENTRATION):\s*([A-Za-z0-9]+)$"
+        self.main_header_pattern = r"^TIMESTAMP,VALUE,TYPE,BLANKED\n$"
+        self.data_pattern = r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$"
         self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
         # Initialize log file in /log directory
@@ -65,7 +66,7 @@ class HIDDataCollector:
         return None
 
     def decode_report(self, report):
-        """Decode an 8-byte HID keyboard report into keys."""
+        """Decode an 8-byte HID keyboard report into keys, using shifted map by default."""
         if len(report) != REPORT_LENGTH:
             return []
 
@@ -78,7 +79,6 @@ class HIDDataCollector:
 
     def process_key(self, key):
         """Process a single keypress, buffering until newline."""
-        # Sanitize input to prevent invalid characters (optional, depending on requirements)
         if not self.is_valid_key(key):
             return  # Ignore invalid keys
 
@@ -88,62 +88,79 @@ class HIDDataCollector:
             for line in lines[:-1]:
                 line_with_newline = line + '\n'
                 try:
-                    if self.is_header(line_with_newline) and not self.session_started:
-                        self.handle_header()
-                        self.session_started = True
+                    if self.is_metadata(line_with_newline) and not self.session_started:
+                        self.handle_metadata(line_with_newline)
+                    elif self.is_main_header(line_with_newline) and not self.session_started:
+                        self.handle_main_header(line_with_newline)
                     elif self.is_valid_data(line_with_newline) and self.session_started:
                         self.process_data(line_with_newline)
                     elif self.is_end_session(line_with_newline) and self.session_started:
                         self.log(line_with_newline)
                         self.session_started = False
-                        self.buffer = ''  # Reset buffer on session end
+                        self.buffer = ''
+                        self.metadata = {}
                     else:
-                        # Log or handle unexpected lines (optional)
                         self.log(f"Unexpected line: {line_with_newline}")
                 except Exception as e:
                     self.log(f"Error processing line '{line_with_newline}': {e}")
-            self.buffer = lines[-1] if lines[-1] else ''  # Handle empty last line
+            self.buffer = lines[-1] if lines[-1] else ''
         elif key == "space":
             self.buffer += ' '
         else:
             self.buffer += key
-        # Uncomment for debugging
-        # self.log(f"Current buffer is {self.buffer}")
 
     def is_valid_key(self, key):
-        """Validate the input key (example implementation)."""
-        return isinstance(key, str) and (key == 'enter' or key == 'space' or key.isprintable())
+        """Validate the input key."""
+        return isinstance(key, str) and (key == 'enter' or key == 'space' or key.isprintable() or key in '#:')
 
-    def is_header(self, line):
-        return bool(re.match(self.header_pattern, line))
+    def is_metadata(self, line):
+        return bool(re.match(self.metadata_pattern, line))
 
+    def is_main_header(self, line):
+        return bool(re.match(self.main_header_pattern, line))
+    
     def is_valid_data(self, line):
         return bool(re.match(self.data_pattern, line))
     
     def is_end_session(self, line):
         return bool(re.match(self.end_pattern, line))
 
-    def handle_header(self):
+    def handle_metadata(self, line):
+        """Process metadata header lines."""
+        match = re.match(self.metadata_pattern, line)
+        if match:
+            key, value = match.groups()
+            self.metadata[key] = value
+            self.log(f"Received metadata: {key} = {value}")
+
+    def handle_main_header(self, line):
+        """Process the main CSV header and start the session if metadata is complete."""
+        if len(self.metadata) != 3:
+            self.log("Main header received but metadata incomplete.")
+            return
+
         self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)
         os.makedirs(self.base_dir, exist_ok=True)
         with open(self.output_file, "w") as f:
-            f.write("Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration\n")
+            # Write metadata as comments
+            for key, value in self.metadata.items():
+                f.write(f"# {key.title()}: {value}\n")
+            # Write main CSV header
+            f.write("Timestamp,Value,Type,Blanked\n")
         self.log(f"New session started. Header written to {self.output_file}")
 
         # Save latest output path so Flask can find it
         latest_file_marker = os.path.join(self.log_dir, "current_output.txt")
-
-        # Clear any old content before writing
         open(latest_file_marker, "w").close()
-
-        # Now write the latest file path
         with open(latest_file_marker, "w") as marker:
             marker.write(self.output_file)
-            
+        
+        self.session_started = True
+
     def process_data(self, data):
         try:
-            timestamp, measurement_name, value, units, type_tag, blanked, concen = data.strip().split(',')
-            self.log(f"Received: Timestamp: {timestamp}s, Measurement: {measurement_name}, Value: {value} {units}, Type: {type_tag}, Blanked: {blanked}, Concentration: {concen}")
+            timestamp, value, type_tag, blanked = data.strip().split(',')
+            self.log(f"Received: Timestamp: {timestamp}s, Value: {value}, Type: {type_tag}, Blanked: {blanked}")
             with open(self.output_file, "a") as f:
                 f.write(data)
         except ValueError as e:
@@ -155,7 +172,7 @@ class HIDDataCollector:
         if not device_info:
             self.log("PyBadge not found. Ensure it is connected and configured as an HID keyboard.")
             self.log_file.close()
-            sys.exit(1)  # Exit with non-zero status to indicate failure
+            sys.exit(1)
 
         self.log(f"Found PyBadge: {device_info['product_string']} (VID: {hex(device_info['vendor_id'])}, PID: {hex(device_info['product_id'])})")
 
@@ -163,20 +180,13 @@ class HIDDataCollector:
 
         try:
             self.log("Reading HID reports. Press Ctrl+C to stop.")
-            # last_report = None
-
             while self.running:
                 report = device.read(REPORT_LENGTH, timeout=5000)
                 if report:
-                    # self.log(f"Raw report: {report}")
                     keys = self.decode_report(report)
-                    # self.log(f"Decoded keys: {keys}")
-                    # if keys and (report != last_report):
                     if keys:
-                        for key in keys:  # Process each key in the report
-                            # self.log(f"Processing key: {key}")
+                        for key in keys:
                             self.process_key(key)
-                        # last_report = report
                 time.sleep(0.001)
 
         except KeyboardInterrupt:

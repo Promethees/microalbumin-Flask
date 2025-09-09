@@ -256,7 +256,7 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
 }
 
 function updatePlot(
-    data, range, timeUnit, window_size, unit, isSplitMode,
+    data, metadata, range, timeUnit, window_size, unit, isSplitMode,
     isFullDisplay = false, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
@@ -309,7 +309,7 @@ function updatePlot(
         YColumnVals = extractColumn(filteredData, YColumn);
     }
 
-    const measurementLabel = determineMeasurementLabel(filteredData, XColumn, YColumn);
+    const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
 
     const calMode = $("#cal-mode-select").val();
     const isCalKinetics = AppState.currentMeasurementMode === "calibrate" && calMode === "kinetics";
@@ -376,7 +376,7 @@ function updatePlot(
             const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
             return {
                 analysis,
-                meas: data[0]["Measurement"]
+                meas: metadata["Measurement"]
             };
         }
     } else {
@@ -413,11 +413,11 @@ function updatePlot(
             unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, forBlankType === "MIXED");
 
         if (AppState.currentMeasurementMode !== "calibrate") {
-            return extractSingleResultSummary(data, mixAnalysis);
+            return extractSingleResultSummary(metadata, mixAnalysis);
         } else {
             return {
                 analysis: mixAnalysis,
-                meas: data[0]["Measurement"]
+                meas: metadata["Measurement"]
             };
         }
     }
@@ -518,11 +518,11 @@ function getDataGroups(data, hasBlankType, XColumn, YColumn) {
     };
 }
 
-function determineMeasurementLabel(data, XColumn, YColumn) {
+function determineMeasurementLabel(metadata, XColumn, YColumn) {
     if (AppState.currentMeasurementMode !== "calibrate") {
-        return data.length > 0 && 'Measurement' in data[0] ? data[0]['Measurement'] : 'Measurement';
+        return 'Measurement' in metadata ? metadata['Measurement'] : 'Measurement';
     } else {
-        return data.length > 0 && 'Concentration' in data[0] ? `${YColumn} against ${XColumn}` : 'Correlation';
+        return 'MeasMode' in metadata ? `${YColumn} against ${XColumn}` : 'Correlation';
     }
 }
 
@@ -603,8 +603,8 @@ function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) 
         slope_non_blanked: analysis_nonblanked.slope,
         sat_non_blanked: analysis_nonblanked.saturationValue,
         time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation,
-        meas: data[0]["Measurement"],
-        meas_unit: data[0]["Unit"]
+        meas: metadata["Measurement"],
+        meas_unit: metadata["Unit"]
     };
 }
 
@@ -618,15 +618,15 @@ function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
 }
 
 // Preserved as-is
-function extractSingleResultSummary(data, mixAnalysis) {
+function extractSingleResultSummary(metadata, mixAnalysis) {
     return {
         split: false,
         maxrate: mixAnalysis.maxRate,
         slope: mixAnalysis.slope,
         sat: mixAnalysis.saturationValue,
         time_to_sat: mixAnalysis.timeToSaturation,
-        meas: data[0]["Measurement"],
-        meas_unit: data[0]["Unit"]
+        meas: metadata["Measurement"],
+        meas_unit: metadata["Unit"]
     };
 }
 

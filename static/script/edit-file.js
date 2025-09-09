@@ -26,7 +26,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         let editMode = tableSelector === '#file-table' ? 'table' : 'text'; // Force text mode for non-#file-table
         let originalContent = ''; // Store original content for reference
 
-        const nonEditableColumns = ['Measurement', 'Unit', 'Type', 'Blanked', 'Concentration', 
+        const nonEditableColumns = ['Unit', 'Type', 'Blanked', 'Concentration', 
                               'TimeUnit', 'BlankType', 'MeasMode', 'MeasUnit'];
 
         function setupTableEvents() {
@@ -154,6 +154,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         function renderContent(content) {
             originalContent = content.content; // Store the original content
             let html = '';
+
             if (editMode === 'text') {
                 html = `
                     <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
@@ -161,11 +162,55 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 `;
             } else {
                 const lines = content.content.trim().split('\n');
-                const headers = lines[0].split(',');
-                const data = lines.slice(1);
-                
+
+                // Separate metadata (lines starting with "#") and data lines
+                const metadata = {};
+                const dataLines = [];
+                lines.forEach(line => {
+                    if (line.startsWith("#")) {
+                        const parts = line.substring(1).split(":");
+                        if (parts.length === 2) {
+                            metadata[parts[0].trim()] = parts[1].trim();
+                        }
+                    } else {
+                        dataLines.push(line);
+                    }
+                });
+
+                // Extract headers + data
+                const headers = dataLines.length > 0 ? dataLines[0].split(',') : [];
+                const data = dataLines.slice(1);
+
+                // Build editable metadata table
+                const metadataHtml = Object.keys(metadata).length > 0 ? `
+                    <div class="metadata-box">
+                        <h4>Metadata</h4>
+                        <table id="swal-metadata-table" style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+                            <thead>
+                                <tr>
+                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Key</th>
+                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.entries(metadata).map(([key, value]) => `
+                                    <tr>
+                                        <td style="border: 1px solid #ddd; padding: 6px; font-weight: bold;">${key}</td>
+                                        <td contenteditable="true" data-meta-key="${key}" 
+                                            style="border: 1px solid #ddd; padding: 6px;">
+                                            ${value}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '';
+
+                // Build data table
                 html = `
                     <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    ${metadataHtml}
                     <div style="display: flex; justify-content: space-between; margin: 10px 0;">
                         <button id="add-row-btn" class="swal2-confirm swal2-styled" style="padding: 5px 10px;">
                             Add Row (+)
@@ -257,18 +302,33 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 preConfirm: () => {
                     const newFileName = document.getElementById('swal-input-filename').value;
                     let content;
-                    
+
                     if (editMode === 'text') {
                         content = document.getElementById('swal-input-content').value;
                     } else {
-                        // Reconstruct CSV from table
+                        // --- Collect metadata lines ---
+                        const metaTable = document.getElementById('swal-metadata-table');
+                        let metaLines = [];
+                        if (metaTable) {
+                            const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
+                            metaLines = metaRows.map(row => {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length === 2) {
+                                    const key = cells[0].textContent.trim();
+                                    const value = cells[1].textContent.trim();
+                                    return `# ${key}: ${value}`;
+                                }
+                                return null;
+                            }).filter(Boolean);
+                        }
+
+                        // --- Collect main data table ---
                         const table = document.getElementById('swal-edit-table');
                         const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
                         const rows = Array.from(table.querySelectorAll('tbody tr'));
-                        
+
                         const csvRows = rows.map(row => {
                             return Array.from(row.querySelectorAll('td')).map(td => {
-                                // Escape commas and newlines in cell content
                                 let cellContent = td.textContent.trim();
                                 if (cellContent.includes(',') || cellContent.includes('\n') || cellContent.includes('"')) {
                                     return `"${cellContent.replace(/"/g, '""')}"`;
@@ -276,46 +336,32 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 return cellContent;
                             }).join(',');
                         });
-                        
-                        content = [headers.join(','), ...csvRows].join('\n');
-                    }
 
-                    if (!content.trim()) {
-                        Swal.showValidationMessage('Content cannot be empty');
-                        return false;
-                    }
-                    if (!newFileName.trim()) {
-                        Swal.showValidationMessage('New file name cannot be empty');
-                        return false;
-                    } else {
-                        if (tableSelector === '#file-table' && !newFileName.endsWith('.csv')) {
-                            Swal.showValidationMessage('File name must end with .csv');
-                            return false;
-                        }
-                        if (tableSelector === '#json-table' && !newFileName.endsWith('.json')) {
-                            Swal.showValidationMessage('File name must end with .json');
-                            return false;
-                        }
+                        // --- Final content (metadata first, then CSV) ---
+                        content = [...metaLines, headers.join(','), ...csvRows].join('\n');
                     }
 
                     // Validate content based on tableSelector
                     if (tableSelector === '#file-table') {
-                        // CSV validation (for both table and text mode)
                         const patternSets = [
                             {
-                                header: /^\s*Timestamp\s*,\s*Measurement\s*,\s*Value\s*,\s*Unit\s*,\s*Type\s*,\s*Blanked\s*,\s*Concentration\s*$/,
-                                data: /^\s*\d+\.\d{1,2}\s*,\s*[A-Za-z]+\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*$/,
-                                error: 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+                                // Pattern 1: Requires metadata
+                                header: /^\s*Timestamp\s*,\s*Value\s*,\s*Type\s*,\s*Blanked\s*$/,
+                                data: /^\s*\d+\.\d{1,2}\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*(TRUE|FALSE)\s*$/,
+                                error: 'Invalid format (Pattern 1). Header must be: Timestamp,Value,Type,Blanked',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*Unit\s*:\s*.+$/, /^#\s*Concentration\s*:\s*.+$/]
                             },
                             {
-                                header: /^\s*Measurement\s*,\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*MeasUnit\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
-                                data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
-                                error: 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                                header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*BlankType\s*$/,
+                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*$/,
+                                error: 'Invalid format (Pattern 2). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             },
                             {
-                                header: /^\s*Measurement\s*,\s*Concentration\s*,\s*Value\s*,\s*MeasUnit\s*,\s*TimePoint\s*,\s*TimeUnit\s*,\s*BlankType\s*,\s*MeasMode\s*$/,
-                                data: /^\s*[A-Za-z]+\s*,\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
-                                error: 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+                                header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*BlankType\s*$/,
+                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*$/,
+                                error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             }
                         ];
 
@@ -325,31 +371,50 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             return false;
                         }
 
-                        // Normalize the header line by removing extra spaces
-                        const normalizedHeader = lines[0].replace(/\s*,\s*/g, ',');
+                        // Extract metadata lines and data lines
+                        const metaLines = lines.filter(line => line.trim().startsWith('#'));
+                        const dataLines = lines.filter(line => !line.trim().startsWith('#'));
 
-                        // Find matching pattern set
+                        if (dataLines.length < 1) {
+                            Swal.showValidationMessage('CSV must contain a header after metadata');
+                            return false;
+                        }
+
+                        // Normalize the header line
+                        const normalizedHeader = dataLines[0].replace(/\s*,\s*/g, ',');
+
+                        // Find matching pattern
                         const matchedPattern = patternSets.find(pattern => {
-                            // Test against both the original and normalized header
-                            return pattern.header.test(lines[0]) || pattern.header.test(normalizedHeader);
+                            return pattern.header.test(dataLines[0]) || pattern.header.test(normalizedHeader);
                         });
-                        
+
                         if (!matchedPattern) {
                             const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
                             Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
                             return false;
                         }
 
-                        // Validate data rows with the matched pattern
-                        for (let i = 1; i < lines.length; i++) {
-                            const normalizedLine = lines[i].replace(/\s*,\s*/g, ',');
-                            if (!matchedPattern.data.test(lines[i]) && !matchedPattern.data.test(normalizedLine)) {
+                        // ✅ Metadata validation if defined
+                        console.log("Metadata lines are: ", metaLines);
+                        if (matchedPattern.meta && matchedPattern.meta.length > 0) {
+                            for (let rule of matchedPattern.meta) {
+                                const found = metaLines.some(line => rule.test(line));
+                                if (!found) {
+                                    Swal.showValidationMessage(`Missing required metadata: must include "${rule}"`);
+                                    return false;
+                                }
+                            }
+                        }
+
+                        // ✅ Data validation
+                        for (let i = 1; i < dataLines.length; i++) {
+                            const normalizedLine = dataLines[i].replace(/\s*,\s*/g, ',');
+                            if (!matchedPattern.data.test(dataLines[i]) && !matchedPattern.data.test(normalizedLine)) {
                                 Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
                                 return false;
                             }
                         }
                     } else if (tableSelector === '#json-table' && editMode === 'text') {
-                        // JSON validation for text mode
                         try {
                             JSON.parse(content);
                         } catch (e) {

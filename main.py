@@ -22,12 +22,12 @@ sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
 from range import get_range_input
 from mode import get_mode_input
-from measure import get_dynamic_data, sort_csv_file
+from measure import sort_csv_file
 from quantity import get_quantity_input
-from file import get_file_list
+from file import get_file_list, get_dynamic_data
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
-from export_data import check_row_exist
+from export_data import check_row_exist, check_metadata_consistency
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from browser_mgt import open_browser, cleanup, ensure_host_mapping
 from send_command import connect_to_device, send_command_and_wait_ack
@@ -188,7 +188,7 @@ def get_json_content():
 def get_csv_headers():
     read_file = request.args.get('file')
     if os.path.exists(read_file):
-        df = pd.read_csv(read_file, nrows=0)
+        df = pd.read_csv(read_file, nrows=0, comment = "#")  # Read only the header row, ignore comment lines
         return jsonify({'headers': df.columns.tolist()}) 
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
@@ -449,19 +449,22 @@ def edit_file():
         else:  # CSV validation
             pattern_sets = [
                 {
-                    'header': r"^Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration$",
-                    'data': r"^\d+\.\d{1,2},[A-Za-z]+,\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,(NONE|\d+)$",
-                    'error': 'Invalid format (Pattern 1). Header must be: Timestamp,Measurement,Value,Unit,Type,Blanked,Concentration'
+                    'header': r"^Timestamp,Value,Type,Blanked$",
+                    'data': r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z]+,[A-Za-z]+$",
+                    'meta': ["Measurement", "Unit", "Concentration"],
+                    'error': 'Invalid format (Colorimeter data). Header must be: Timestamp,Measurement,Value,Type,Blanked. Metadata must include Measurement, Unit, and Concentration.'
                 },
                 {
-                    'header': r"^Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode$",
-                    'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
-                    'error': 'Invalid format (Pattern 2). Header must be: Measurement,Concentration,maxRate,Slope,Sat,Time To Sat,MeasUnit,TimeUnit,BlankType,MeasMode'
+                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat,BlankType$",
+                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+$",
+                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+                    'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
-                    'header': r"^Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode$",
-                    'data': r"^[A-Za-z]+,(NONE|\d+),(NONE|\d+|\d+\.\d+),[A-Za-z]+,(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
-                    'error': 'Invalid format (Pattern 3). Header must be: Measurement,Concentration,Value,MeasUnit,TimePoint,TimeUnit,BlankType,MeasMode'
+                    'header': r"^Concentration,Value,TimePoint,TimeUnit,BlankType$",
+                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                    'meta': ["Measurement", "MeasUnit", "MeasMode"],
+                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,TimeUnit,BlankType. Metadata must include Measurement, MeasUnit, and MeasMode.'
                 }
             ]
 
@@ -472,10 +475,21 @@ def edit_file():
                     'message': 'Content cannot be empty'
                 }), HTTPStatus.BAD_REQUEST
 
-            # Find matching pattern set
+            # --- Separate metadata and data lines ---
+            metadata_lines = [line.strip() for line in lines if line.strip().startswith('#')]
+            data_lines = [line.strip() for line in lines if not line.strip().startswith('#')]
+
+            if not data_lines:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'CSV must contain at least a header row after metadata'
+                }), HTTPStatus.BAD_REQUEST
+
+            # --- Detect header pattern ---
+            header_line = data_lines[0].replace(" ", "")
             matched_pattern = None
             for pattern in pattern_sets:
-                if re.match(pattern['header'], lines[0]):
+                if re.match(pattern['header'], header_line):
                     matched_pattern = pattern
                     break
 
@@ -486,8 +500,24 @@ def edit_file():
                     'message': f'Invalid CSV header. Must match one of: {valid_headers}'
                 }), HTTPStatus.BAD_REQUEST
 
-            # Validate data rows with the matched pattern
-            for i, line in enumerate(lines[1:], 2):
+            # --- Validate metadata for this pattern ---
+            required_meta = matched_pattern.get("meta", [])
+            if required_meta:
+                meta_dict = {}
+                for line in metadata_lines:
+                    if ":" in line:
+                        key, value = line.lstrip("#").split(":", 1)
+                        meta_dict[key.strip()] = value.strip()
+
+                missing_meta = [m for m in required_meta if m not in meta_dict]
+                if missing_meta:
+                    return jsonify({
+                        'status': 'error',
+                        'message': f'Missing metadata fields: {", ".join(missing_meta)}'
+                    }), HTTPStatus.BAD_REQUEST
+
+            # --- Validate data rows ---
+            for i, line in enumerate(data_lines[1:], 2):
                 if not re.match(matched_pattern['data'], line):
                     return jsonify({
                         'status': 'error',
@@ -780,7 +810,6 @@ def get_file_content():
 @app.route('/export_data', methods=['POST'])
 def export_data(mode="kinetics"):
     data = request.get_json()
-    print(f"data is {data}")
     file_name = data.get('save_file', 'result')
     save_dir = data.get('save_dir')
     measurement = data.get('meas')
@@ -791,45 +820,53 @@ def export_data(mode="kinetics"):
     time_to_sat = data.get('timeSat', 'NONE')
     meas_unit = data.get('measUnit', 'NONE')
     blankT = data.get('blanked')
-    time_unit = data.get('timeUnit')
     newFile = data.get('newFile')
     meas_mode = data.get('measMode')
+    time_unit = data.get('timeUnit') if meas_mode == "point" else "minutes"
     value = data.get('estValue', 'NONE')
     time_point = data.get('timePoint')
-    print("Measurement mode is ", meas_mode)
+
     try:
-        # Ensure the directory path is absolute and normalized
         export_path = os.path.abspath(os.path.expanduser(save_dir))
-        print(f"export path is {export_path}")
-        # Ensure directory exists
         os.makedirs(export_path, exist_ok=True)
-        
         full_path = os.path.join(export_path, file_name + "_" + meas_mode + ".csv")
 
-        # Check if file exists and has headers
         file_exists = os.path.isfile(full_path)
-        message = None
-        status = None
+
+        # ✅ Check metadata consistency if file already exists
+        if file_exists:
+            check_metadata_consistency(full_path, measurement, meas_unit, time_unit, meas_mode)
+
         if not newFile:
             time.sleep(1)
+
         with open(full_path, "a", newline='') as f:
             writer = csv.writer(f)
-            if not file_exists and newFile:
-                if meas_mode == "kinetics":
-                    writer.writerow(['Measurement', 'Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'MeasUnit', 'TimeUnit', 'BlankType', 'MeasMode'])
-                else:
-                    writer.writerow(['Measurement', 'Concentration', 'Value', 'MeasUnit', 'TimePoint', 'TimeUnit', 'BlankType', 'MeasMode'])
-            if meas_mode == "kinetics":
-                writer.writerow([measurement, concentration, maxrate, slope, sat, time_to_sat, meas_unit, 'minutes', blankT, meas_mode])
-            else:
-                writer.writerow([measurement, concentration, value, meas_unit, time_point, 'minutes', blankT, meas_mode])
-            message = f"Data exported at {full_path}"
-            status = "success" 
-            # Add this line to sort the file after insertion
-            f.close()
-            sort_csv_file(full_path, meas_mode)
 
-        return jsonify({"status": status, "message": message})
+            if not file_exists and newFile:
+                # Write metadata
+                f.write(f"# Measurement: {measurement}\n")
+                f.write(f"# MeasUnit: {meas_unit}\n")
+                if meas_mode == "kinetics":
+                    f.write(f"# TimeUnit: {time_unit}\n")
+                f.write(f"# MeasMode: {meas_mode}\n") 
+
+                # Write headers
+                if meas_mode == "kinetics":
+                    writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
+                else:
+                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'TimeUnit', 'BlankType'])
+
+            # Write data
+            if meas_mode == "kinetics":
+                writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
+            else:
+                writer.writerow([concentration, value, time_point, time_unit, blankT])
+
+        sort_csv_file(full_path, meas_mode)
+
+        return jsonify({"status": "success", "message": f"Data exported at {full_path}"})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
