@@ -29,8 +29,6 @@ def get_dynamic_data(file_path):
 
             with open(file_path, "r") as f:
                 lines = f.readlines()
-                for i, line in enumerate(lines, 1):
-                    print(f"{i}: {repr(line)}")
 
             # Separate metadata and CSV data
             data_lines = []

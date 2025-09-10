@@ -873,7 +873,6 @@ def export_data(mode="kinetics"):
 @app.route('/export_cal_coefs', methods=['POST'])
 def export_cal_coefs():
     data = request.get_json()
-    print(f"data is {data}")
     fit_type = data.get('fit_type')
     for_meas = data.get('for_meas')
     for_blank_type = data.get('for_blank_type')
