@@ -523,7 +523,7 @@ function michaelisMentenConcentrationRegression(rates, substrates) {
 }
 
 function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 60) {
-    if (!Array.isArray(data) || data.length === 0) return null;
+    if (!Array.isArray(data) || data.length === 0 || !timepoint) return null;
 
     // Sort data by timestamp
     data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);

@@ -652,26 +652,16 @@ function exportData() {
     } else if (AppState.currentMeasurementMode === "point") {
         // Store current experiment values
         const currExpTimePoint = $("#exp-json-time-value").val();
-        let currExpBlankType = $("#exp-json-blank-type").val();
-        let globalEstimatedValue = null;
-        console.log("point data is ", AppState.responseData);
-        if (currExpTimePoint) {
-            globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, currExpBlankType).toFixed(4);
-        }
-        if (currExpTimePoint) { 
+        if (currExpTimePoint && AppState.globalEstimatedValue) { 
             analysisData = {
-                estValue: globalEstimatedValue,
+                estValue: AppState.globalEstimatedValue.toFixed(4),
                 timePoint: currExpTimePoint,
                 measurement: AppState.globalAnalysis.meas,
                 measUnit: AppState.globalAnalysis.meas_unit
             } 
             sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
-            if (AppState.globalAnalysis.meas_unit !== "NONE")
-                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${globalEstimatedValue}${AppState.globalAnalysis.meas_unit}`);
-            else 
-                $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${globalEstimatedValue}`);
         } else {
-            alert("Please set the reference time point to export data");
+            alert("Please set the reference time point to export data or ensure time point is within the recorded time range.");
         }
     }
 }

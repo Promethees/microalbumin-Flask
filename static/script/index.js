@@ -36,6 +36,7 @@ const AppState = {
     responseData: null,
     metaData: null,
     lightDisplay: true,
+    globalEstimatedValue: null,
 
     reset: function() {
         this.blankedChart = null;
@@ -52,6 +53,7 @@ const AppState = {
         this.exp_json_content = null;
         this.responseData = null;
         this.metaData = null;
+        this.globalEstimatedValue = null;
         Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         terminateScript();
     }

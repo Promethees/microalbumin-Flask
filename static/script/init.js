@@ -73,6 +73,26 @@ saveDirInput.addEventListener('input', function() {
     validatePathName('save-dir');
 });
 
+const expPoint = document.getElementById('exp-json-time-value');
+expPoint.addEventListener('change', function() {
+    const estValError = document.getElementById('est-val-error');
+    const estValExp = document.getElementById('est-val-exp');
+    const currExpBlankType = document.getElementById('exp-json-blank-type').value;
+    const currExpTimePoint = $("#exp-json-time-value").val();
+    AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, currExpBlankType);
+    console.log("Estimated value is ", AppState.globalEstimatedValue);
+    if (!AppState.globalEstimatedValue) {
+        estValError.textContent = 'Error: Reference point is outside the range of the data or not set!';
+        estValExp.textContent = '';
+    } else {
+        estValError.textContent = '';
+        if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
+            estValExp.textContent = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}`;
+        else 
+            estValExp.textContent = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
+    }
+});
+
 function validateFileName(inputId) {
     const input = document.getElementById(inputId);
     const errorElement = document.getElementById(`${inputId}-error`);
