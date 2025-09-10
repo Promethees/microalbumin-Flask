@@ -461,10 +461,10 @@ def edit_file():
                     'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
-                    'header': r"^Concentration,Value,TimePoint,TimeUnit,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+$",
-                    'meta': ["Measurement", "MeasUnit", "MeasMode"],
-                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,TimeUnit,BlankType. Metadata must include Measurement, MeasUnit, and MeasMode.'
+                    'header': r"^Concentration,Value,TimePoint,BlankType$",
+                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+$",
+                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
                 }
             ]
 
@@ -847,21 +847,20 @@ def export_data(mode="kinetics"):
                 # Write metadata
                 f.write(f"# Measurement: {measurement}\n")
                 f.write(f"# MeasUnit: {meas_unit}\n")
-                if meas_mode == "kinetics":
-                    f.write(f"# TimeUnit: {time_unit}\n")
+                f.write(f"# TimeUnit: {time_unit}\n")
                 f.write(f"# MeasMode: {meas_mode}\n") 
 
                 # Write headers
                 if meas_mode == "kinetics":
                     writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
                 else:
-                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'TimeUnit', 'BlankType'])
+                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
 
             # Write data
             if meas_mode == "kinetics":
                 writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
             else:
-                writer.writerow([concentration, value, time_point, time_unit, blankT])
+                writer.writerow([concentration, value, time_point, blankT])
 
         sort_csv_file(full_path, meas_mode)
 
