@@ -462,7 +462,7 @@ def edit_file():
                 },
                 {
                     'header': r"^Concentration,Value,TimePoint,TimeUnit,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+,[A-Za-z]+$",
+                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+$",
                     'meta': ["Measurement", "MeasUnit", "MeasMode"],
                     'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,TimeUnit,BlankType. Metadata must include Measurement, MeasUnit, and MeasMode.'
                 }
@@ -822,7 +822,7 @@ def export_data(mode="kinetics"):
     blankT = data.get('blanked')
     newFile = data.get('newFile')
     meas_mode = data.get('measMode')
-    time_unit = data.get('timeUnit') if meas_mode == "point" else "minutes"
+    time_unit = "minute" if meas_mode == "point" else "minutes"
     value = data.get('estValue', 'NONE')
     time_point = data.get('timePoint')
 

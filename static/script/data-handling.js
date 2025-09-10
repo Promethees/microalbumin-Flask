@@ -602,7 +602,6 @@ function exportData() {
     : $("#save-dir").val().trim() || "";
     const saveFile = $("#save-file").val().trim() || "results";
     const concentration = $("#con-value-read").val();
-    const timeUnit = $("#time-unit").val();
     let analysisData = null;
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
@@ -648,7 +647,7 @@ function exportData() {
                 }
                 break;
         }
-        sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+        sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
 
     } else if (AppState.currentMeasurementMode === "point") {
         // Store current experiment values
@@ -666,7 +665,7 @@ function exportData() {
                 measurement: AppState.globalAnalysis.meas,
                 measUnit: AppState.globalAnalysis.meas_unit
             } 
-            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, timeUnit, $("#exp-json-blank-type").val());
+            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
             if (AppState.globalAnalysis.meas_unit !== "NONE")
                 $("#est-val-exp").text(`Estimated ${AppState.globalAnalysis.meas} value being exported is ${globalEstimatedValue}${AppState.globalAnalysis.meas_unit}`);
             else 
@@ -677,7 +676,7 @@ function exportData() {
     }
 }
 
-function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit, blankedType, newFile=true) {
+function sendExportData(saveDir, saveFile, analysisData, concentration, blankedType, newFile=true) {
     console.log("analysisData is ", analysisData);
     if (analysisData) {
         const data = {
@@ -690,7 +689,6 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, timeUnit
             con: concentration,
             measUnit: analysisData.measUnit, 
             blanked: blankedType,
-            timeUnit: timeUnit,
             newFile: newFile,
             measMode: AppState.currentMeasurementMode,
             meas: analysisData.measurement,

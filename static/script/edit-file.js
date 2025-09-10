@@ -358,10 +358,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             },
                             {
-                                header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*$/,
-                                error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
-                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                                header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*TimeUnit\s*,\s*BlankType\s*$/,
+                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*,\s*[A-Za-z]+\s*$/,
+                                error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,TimeUnit,BlankType',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             }
                         ];
 
