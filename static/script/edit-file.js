@@ -26,8 +26,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         let editMode = tableSelector === '#file-table' ? 'table' : 'text'; // Force text mode for non-#file-table
         let originalContent = ''; // Store original content for reference
 
-        const nonEditableColumns = ['Unit', 'Type', 'Blanked', 'Concentration', 
-                              'TimeUnit', 'BlankType', 'MeasMode', 'MeasUnit'];
+        const nonEditableColumns = ['Unit', 'Type', 'Blanked', 'Concentration', 'BlankType'];
+        const nonEditableMetadata = ['TimeUnit', 'MeasMode'];
 
         function setupTableEvents() {
             const table = document.getElementById('swal-edit-table');
@@ -185,23 +185,29 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 const metadataHtml = Object.keys(metadata).length > 0 ? `
                     <div class="metadata-box">
                         <h4>Metadata</h4>
-                        <table id="swal-metadata-table" style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+                        <table id="swal-metadata-table" class="metadata-table">
                             <thead>
                                 <tr>
-                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Key</th>
-                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left;">Value</th>
+                                    <th>Key</th>
+                                    <th>Value</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${Object.entries(metadata).map(([key, value]) => `
-                                    <tr>
-                                        <td style="border: 1px solid #ddd; padding: 6px; font-weight: bold;">${key}</td>
-                                        <td contenteditable="true" data-meta-key="${key}" 
-                                            style="border: 1px solid #ddd; padding: 6px;">
-                                            ${value}
-                                        </td>
-                                    </tr>
-                                `).join('')}
+                                ${Object.entries(metadata).map(([key, value]) => {
+                                    const isNonEditable = nonEditableMetadata.includes(key);
+                                    return `
+                                        <tr>
+                                            <td class="metadata-key">${key}</td>
+                                            <td 
+                                                ${isNonEditable ? '' : 'contenteditable="true"'} 
+                                                data-meta-key="${key}" 
+                                                class="metadata-value ${isNonEditable ? 'noneditable' : ''}"
+                                            >
+                                                ${value}
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>

@@ -883,6 +883,15 @@ body.dark #swal-input-content {
     color: #000;
 }
 
+/* Noneditable metadata cells */
+.light #swal-metadata-table tbody td.noneditable {
+    background: #f5f5f5;   /* slightly different than editable white */
+    color: #777;           /* dimmed text */
+    font-style: italic;
+    pointer-events: none;
+    user-select: none;
+}
+
 .dark .metadata-box {
     background: #2b2b2b;
     border: 1px solid #555;
@@ -907,6 +916,14 @@ body.dark #swal-input-content {
 .dark #swal-edit-table tbody td {
     background: #1e1e1e;
     color: #ddd;
+}
+
+.dark #swal-metadata-table tbody td.noneditable {
+    background: #252525;   /* slightly lighter than editable dark */
+    color: #999;           /* dimmed text */
+    font-style: italic;
+    pointer-events: none;
+    user-select: none;
 }
 
 /* Table (swal2 editor) */
