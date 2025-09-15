@@ -48,6 +48,23 @@ document.getElementById('shutdown-btn').addEventListener('click', function() {
     }
 });
 
+document.getElementById('multi-source').addEventListener('change', function() {
+    const numSourcesSelect = document.getElementById('num-sources-section');
+    if (this.checked) {
+        numSourcesSelect.classList.remove('hidden');
+        AppState.multiSource = true;
+    } else {
+        numSourcesSelect.classList.add('hidden');
+        AppState.multiSource = false;
+        AppState.numSources = 1;
+    }
+});
+
+document.getElementById('num-sources').addEventListener('change', function() {
+    AppState.numSources = parseInt(this.value);
+    console.log("Number of sources set to:", AppState.numSources);
+});
+
 const sameDirCheckbox = document.getElementById("same-dir-as-data");
 const saveDirInput = document.getElementById("save-dir");
 

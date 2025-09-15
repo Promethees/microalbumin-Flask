@@ -86,7 +86,7 @@ def index():
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
-    cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
+    cal_json_list = get_file_list(os.path.join(json_root_path, "single_sensor", "kinetics"), "*.json")
     clear_logs()
     response = make_response(render_template('index.html', 
                          title="Easy Sensor Kit",
@@ -163,9 +163,16 @@ def get_children():
 @app.route('/get_json_cal', methods=['GET'])
 def get_json_cal():
     mode = request.args.get('mode')
-    json_path = os.path.join(json_root_path, mode)
+    is_multi_sources = request.args.get('isMultiSource', 'false').lower() == 'true'
+    num_sources = int(request.args.get('numSources', 1))
+    if is_multi_sources:
+        json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
+    else:
+        json_path = os.path.join(json_root_path, 'single_sensor', mode)
+    # print("The json path is ", json_path)
     if os.path.exists(json_path):
         json_files = get_file_list(json_path, "*.json")
+        print("The json files are ", json_files)
 
         return jsonify({'status': 'success', 'files': json_files})
     return jsonify({'status': 'error', 'message': "Invalid directory"})
@@ -175,7 +182,12 @@ def get_json_cal():
 def get_json_content():
     selected_json = request.args.get('json_name')
     mode = request.args.get('mode')
-    json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
+    is_multi_source = request.args.get('isMultiSource', 'false').lower() == 'true'
+    num_sources = int(request.args.get('numSources', 1))
+    if is_multi_source:
+        json_path = os.path.join(os.path.join(json_root_path, f"{num_sources}_sensors"), mode, selected_json)
+    else:
+        json_path = os.path.join(os.path.join(json_root_path, "single_sensor", mode), selected_json)
     print("print the json path ", json_path)
     if os.path.exists(json_path):
         with open(json_path, 'r') as f:
@@ -461,10 +473,10 @@ def edit_file():
                     'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
-                    'header': r"^Concentration,Value,TimePoint,TimeUnit,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+,[A-Za-z]+$",
-                    'meta': ["Measurement", "MeasUnit", "MeasMode"],
-                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,TimeUnit,BlankType. Metadata must include Measurement, MeasUnit, and MeasMode.'
+                    'header': r"^Concentration,Value,TimePoint,BlankType$",
+                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),[A-Za-z]+$",
+                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
                 }
             ]
 
@@ -582,6 +594,8 @@ def delete_file():
         tabletype = request.form.get('tabletype')
         mode = request.form.get('mode')
         path = request.form.get('path') if request.form.get('path') else get_directory()
+        is_multi_source = request.form.get('isMultiSource', 'false').lower() == 'true'
+        num_sources = int(request.form.get('numSources', 1))
 
         # Input validation
         if not file_name or not tabletype:
@@ -597,7 +611,10 @@ def delete_file():
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            json_path = os.path.join(json_root_path, mode)
+            if is_multi_source:
+                json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
+            else:
+                json_path = os.path.join(json_root_path, "single_sensor", mode)
             file_path = os.path.join(json_path, file_name)
             print(f"JSON file path is {file_path}")
         else:
@@ -663,7 +680,8 @@ def copy_file():
         mode = request.form.get('mode')
         tabletype = request.form.get('tabletype')
         path = request.form.get('path') if request.form.get('path') else get_directory()
-
+        is_multi_source = request.form.get('isMultiSource', 'false').lower() == 'true'
+        num_sources = int(request.form.get('numSources', 1))
         # Input validation
         if not file_name or not tabletype:
             return jsonify({
@@ -678,7 +696,10 @@ def copy_file():
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            src_dir = os.path.join(json_root_path, mode)
+            if is_multi_source:
+                src_dir = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
+            else:
+                src_dir = os.path.join(json_root_path, "single_sensor", mode)
         else:
             src_dir = path
 
@@ -736,7 +757,6 @@ def get_file_content():
     try:
         file_name = request.args.get('file')
         path = request.args.get('path') if request.args.get('path') else get_directory()
-
         if not file_name:
             return jsonify({
                 'status': 'error',
@@ -847,21 +867,20 @@ def export_data(mode="kinetics"):
                 # Write metadata
                 f.write(f"# Measurement: {measurement}\n")
                 f.write(f"# MeasUnit: {meas_unit}\n")
-                if meas_mode == "kinetics":
-                    f.write(f"# TimeUnit: {time_unit}\n")
+                f.write(f"# TimeUnit: {time_unit}\n")
                 f.write(f"# MeasMode: {meas_mode}\n") 
 
                 # Write headers
                 if meas_mode == "kinetics":
                     writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
                 else:
-                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'TimeUnit', 'BlankType'])
+                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
 
             # Write data
             if meas_mode == "kinetics":
                 writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
             else:
-                writer.writerow([concentration, value, time_point, time_unit, blankT])
+                writer.writerow([concentration, value, time_point, blankT])
 
         sort_csv_file(full_path, meas_mode)
 
@@ -883,8 +902,14 @@ def export_cal_coefs():
     cal_mode = data.get('cal_mode', "kinetics")
     cal_params = data.get('cal_params')
     thres_val = float(data.get('threshold_val', 0))
+    is_multi_source = data.get('isMultiSource', False)
+    num_sources = int(data.get('numSources', 1))
 
-    export_path = os.path.join(json_root_path, cal_mode)
+    if is_multi_source:
+        export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
+    else:
+        export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
+
     print("received coef_content:", coef_content)
     try: 
         export_path = os.getenv(export_path, export_path)

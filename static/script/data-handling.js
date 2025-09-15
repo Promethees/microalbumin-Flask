@@ -68,7 +68,8 @@ function copyFile(tableSelector = "#file-table") {
             filepath: filePath,
             filename: currentFile,
             mode: AppState.currentMeasurementMode,
-            tabletype: tableSelector
+            tabletype: tableSelector,
+            isMultiSource: AppState.multiSource,
         },
         success: function(response) {
             if (response.status === 'success') {
@@ -222,7 +223,9 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 $.post('/delete_file', { 
                     filename: fileName, 
                     mode: AppState.currentMeasurementMode, 
-                    tabletype: tableSelector 
+                    tabletype: tableSelector,
+                    isMultiSource: AppState.multiSource,
+                    numSources: AppState.numSources
                 }, handleResponse).fail(handleError);
             }
         };
@@ -727,7 +730,9 @@ function exportJSONCoef() {
                 file_name: $("#save-json-file").val(),
                 cal_mode: $("#cal-mode-select").val(),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
-                threshold_val: $("#threshold-value").val()
+                threshold_val: $("#threshold-value").val(),
+                isMultiSource: AppState.multiSource,
+                numSources: AppState.numSources
             }
             $.ajax({
                 url: '/export_cal_coefs',
