@@ -184,7 +184,13 @@ class HIDDataCollector:
             for key, value in self.metadata.items():
                 f.write(f"# {key.title()}: {value}\n")
             # Write main CSV header
-            f.write(line)  # Write the exact header received
+            if self.current_header_index == 0:
+                header = "Timestamp,Value,Type,Blanked\n"
+            elif self.current_header_index == 1:
+                header = "Timestamp,Value:1,Value:2\n"
+            elif self.current_header_index == 2:
+                header = "Timestamp,Value:1,Value:2,Value:3,Value:4\n"
+            f.write(header)
         self.log(f"New session started. Header written to {self.output_file}")
 
         # Save latest output path so Flask can find it
