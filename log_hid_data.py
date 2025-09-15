@@ -29,7 +29,7 @@ KEYCODE_MAP = {
     0x1E: '1', 0x1F: '2', 0x20: '3', 0x21: '4', 0x22: '5', 0x23: '6',
     0x24: '7', 0x25: '8', 0x26: '9', 0x27: '0',
     0x28: 'enter', 0x29: 'escape', 0x2A: 'backspace', 0x2B: 'tab',
-    0x2C: 'space', 0x36: ',', 0x37: '.', 0x33: ':'
+    0x2C: 'space', 0x36: ',', 0x37: '.', 0x33: ':', 0x2F: '/'
 }
 
 class HIDDataCollector:
@@ -42,10 +42,19 @@ class HIDDataCollector:
         self.buffer = ""
         self.metadata = {}
         self.metadata_pattern = r"^3 (MEASUREMENT|UNIT|CONCENTRATION):\s*([A-Za-z0-9]+)$"
-        self.main_header_pattern = r"^TIMESTAMP,VALUE,TYPE,BLANKED\n$"
-        self.data_pattern = r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$"
+        self.main_header_pattern = [
+            r"^TIMESTAMP,VALUE,TYPE,BLANKED\n$",
+            r"^TIMESTAMP,VALUE:1,VALUE:2\n$",
+            r"^TIMESTAMP,VALUE:1,VALUE:2,VALUE:3,VALUE:4\n$"
+        ]
+        self.data_pattern = [
+            r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$",
+            r"^\d+\.\d{1,2},\d+\.\d{1,3},\d+\.\d{1,3}\n$",
+            r"^\d+\.\d{1,2},\d+\.\d{1,3},\d+\.\d{1,3},\d+\.\d{1,3},\d+\.\d{1,3}\n$"
+        ]
         self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
+        self.current_header_index = None  # Track which header pattern is active
         # Initialize log file in /log directory
         self.log_dir = os.path.join(os.getcwd(), "log")
         os.makedirs(self.log_dir, exist_ok=True)
@@ -99,6 +108,7 @@ class HIDDataCollector:
                         self.session_started = False
                         self.buffer = ''
                         self.metadata = {}
+                        self.current_header_index = None
                     else:
                         self.log(f"Unexpected line: {line_with_newline}")
                 except Exception as e:
@@ -114,15 +124,25 @@ class HIDDataCollector:
         return isinstance(key, str) and (key == 'enter' or key == 'space' or key.isprintable() or key in '#:')
 
     def is_metadata(self, line):
+        """Check if the line matches the metadata pattern."""
         return bool(re.match(self.metadata_pattern, line))
 
     def is_main_header(self, line):
-        return bool(re.match(self.main_header_pattern, line))
+        """Check if the line matches any of the main header patterns."""
+        for i, pattern in enumerate(self.main_header_pattern):
+            if re.match(pattern, line):
+                self.current_header_index = i  # Store the matched header index
+                return True
+        return False
     
     def is_valid_data(self, line):
-        return bool(re.match(self.data_pattern, line))
+        """Check if the line matches the data pattern corresponding to the current header."""
+        if self.current_header_index is None:
+            return False
+        return bool(re.match(self.data_pattern[self.current_header_index], line))
     
     def is_end_session(self, line):
+        """Check if the line matches the session end pattern."""
         return bool(re.match(self.end_pattern, line))
 
     def handle_metadata(self, line):
@@ -130,6 +150,8 @@ class HIDDataCollector:
         match = re.match(self.metadata_pattern, line)
         if match:
             key, value = match.groups()
+            if value == "UWCM2":
+                value = "\u03BCW/cm\u00B2"  # Replace with proper micro symbol
             self.metadata[key] = value
             self.log(f"Received metadata: {key} = {value}")
 
@@ -146,7 +168,7 @@ class HIDDataCollector:
             for key, value in self.metadata.items():
                 f.write(f"# {key.title()}: {value}\n")
             # Write main CSV header
-            f.write("Timestamp,Value,Type,Blanked\n")
+            f.write(line)  # Write the exact header received
         self.log(f"New session started. Header written to {self.output_file}")
 
         # Save latest output path so Flask can find it
@@ -158,15 +180,26 @@ class HIDDataCollector:
         self.session_started = True
 
     def process_data(self, data):
+        """Process and log data lines, writing them to the output file."""
         try:
-            timestamp, value, type_tag, blanked = data.strip().split(',')
-            self.log(f"Received: Timestamp: {timestamp}s, Value: {value}, Type: {type_tag}, Blanked: {blanked}")
+            fields = data.strip().split(',')
+            timestamp = fields[0]
+            values = fields[1:-2] if self.current_header_index == 0 else fields[1:]
+            type_tag = fields[-2] if self.current_header_index == 0 else None
+            blanked = fields[-1] if self.current_header_index == 0 else None
+            log_message = f"Received: Timestamp: {timestamp}s, Values: {', '.join(values)}"
+            if type_tag:
+                log_message += f", Type: {type_tag}"
+            if blanked:
+                log_message += f", Blanked: {blanked}"
+            self.log(log_message)
             with open(self.output_file, "a") as f:
                 f.write(data)
         except ValueError as e:
             self.log(f"Error parsing data: {e}")
 
     def start(self):
+        """Start the HID data collection process."""
         self.log("Searching for PyBadge HID device...")
         device_info = self.find_pybadge()
         if not device_info:
@@ -198,6 +231,7 @@ class HIDDataCollector:
             self.log_file.close()
 
 def parse_arguments():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="HID Data Collector for PyBadge")
     parser.add_argument(
         "--base-dir",
