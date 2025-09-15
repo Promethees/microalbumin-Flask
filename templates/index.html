@@ -213,7 +213,25 @@
             </div>  
             <div class="section hidden" style="position: static;" id="options-section">
                 <h3>Options</h3>
-                <input type="checkbox" id="no-swal-checkbox" unchecked>Disable popups</input>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <label style="display: flex; align-items: center; gap: 6px;">
+                        <input type="checkbox" id="no-swal-checkbox">
+                        Disable popups
+                    </label>
+
+                    <label style="display: flex; align-items: center; gap: 6px;">
+                        <input type="checkbox" id="multi-source">
+                        Multiple sources
+                    </label>
+
+                    <div id="num-sources-section" class="hidden"> 
+                        <label for="num-sources">Number of sources:</label>
+                        <select id="num-sources">
+                        <option value="2">2</option>
+                        <option value="4">4</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
         <button id="shutdown-btn" style="

@@ -38,9 +38,22 @@ async function filterFiles(files) {
             try {
                 const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                 const data = await response.json();
-                const meas_headers = ["Timestamp","Value","Type","Blanked"];
-                const cal_headers_kinetics = ["Concentration","maxRate","Slope","Sat","Time To Sat","BlankType"];
-                const cal_headers_point = ["Concentration", "Value", "TimePoint", "BlankType"];
+                let meas_headers, cal_headers_kinetics, cal_headers_point;
+                if (!AppState.multiSource) {
+                    meas_headers = ["Timestamp","Value","Type","Blanked"];
+                    cal_headers_kinetics = ["Concentration","maxRate","Slope","Sat","Time To Sat","BlankType"];
+                    cal_headers_point = ["Concentration", "Value", "TimePoint", "BlankType"];
+                } else {
+                    if (AppState.numSources === 2) {
+                        meas_headers = ["Timestamp","Value@1","Value@2"];
+                        cal_headers_kinetics = ["Concentration","maxRate@1","maxRate@2","Slope@1","Slope@2","Sat@1","Sat@2","Time To Sat@1","Time To Sat@2"];
+                        cal_headers_point = ["Concentration", "Value@1", "Value@2", "TimePoint"];
+                    } else if (AppState.numSources === 4) {
+                        meas_headers = ["Timestamp","Value@1","Value@2","Value@3","Value@4"];
+                        cal_headers_kinetics = ["Concentration","maxRate@1","maxRate@2","maxRate@3","maxRate@4","Slope@1","Slope@2","Slope@3","Slope@4","Sat@1","Sat@2","Sat@3","Sat@4","Time To Sat@1","Time To Sat@2","Time To Sat@3","Time To Sat@4"];
+                        cal_headers_point = ["Concentration", "Value@1", "Value@2", "Value@3", "Value@4", "TimePoint"];
+                    }
+                }
                 if (data.headers) {
                     const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
                     if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {

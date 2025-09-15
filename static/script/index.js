@@ -37,6 +37,8 @@ const AppState = {
     metaData: null,
     lightDisplay: true,
     globalEstimatedValue: null,
+    multiSource: false,
+    numSources: 1,
 
     reset: function() {
         this.blankedChart = null;
@@ -54,7 +56,11 @@ const AppState = {
         this.responseData = null;
         this.metaData = null;
         this.globalEstimatedValue = null;
-        Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
+        this.multiSource = false;
+        this.numSources = 1;
+        if (this.chartInstances) {
+            Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
+        }
         terminateScript();
     }
 };
@@ -423,9 +429,13 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         console.log("AJAX error:", textStatus, errorThrown);
         $("#error-message").text("Error updating directory").show();
     });
-    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode}, function(response) {
-        updateJSONTable(response.files);
-    })
+    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, isMultiSource: AppState.multiSource, numSources: AppState.numSources}, 
+        function(response) {
+            updateJSONTable(response.files);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+            $("#error-message").text("Error fetching JSON files").show();
+        });
 }
 
 function drawMeasurementChart() {
