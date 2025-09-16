@@ -266,7 +266,9 @@ function updatePlot(
 
     destroyCharts();
     $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-    $("#analysis-info").text("");
+    $("#mix-analysis").text("");
+    $("#blank-analysis").text("");
+    $("#non-blank-analysis").text("");
 
     // Clean and sort data
     const selectElement = document.getElementById('regressed-quantity');
@@ -341,11 +343,14 @@ function updatePlot(
             }
         }
 
+        const blankLabels = labels.map(l => `${l} (Blanked)`);
+        const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
+
         $("#blanked-canvas, #non-blanked-canvas").show();
-        AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, `${measurementLabel} (Blanked) ${unitDisplay(unit)}`,
-            unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, forBlankType === "BLANKED");
-        AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, `${measurementLabel} (Non-Blanked) ${unitDisplay(unit)}`,
-            unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED");
+        AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
+            unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, forBlankType === "BLANKED", selectColor = 1);
+        AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
+            unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED", selectColor = 0);
 
         // Format analysis info for both charts
         const blankedAnalysisInfo = formatAnalysisInfo(analysis_blanked, conversionFactor, unit, `${measurementLabel} (Blanked)`);
@@ -364,8 +369,10 @@ function updatePlot(
                 blanked_string = getCalPointString(analysis_blanked);
                 non_blanked_string = getCalPointString(analysis_nonblanked);
             }
-            $("#analysis-info").html(
-                `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span><br>` +
+            $("#blank-analysis").html(
+                `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
+            );
+            $("#non-blank-analysis").html(
                 `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
             );
         }
@@ -580,15 +587,16 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
 
 // Modified to accept analysis info directly
 function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit) {
-    let html = '';
+    let html_blank = '';
+    let html_nonblank = '';
     if (blankedAnalysisInfo) {
-        html += formatAnalysisHtml(blankedAnalysisInfo, unit, timeUnit, 'rgb(255, 99, 132)', 'Blanked');
-        if (nonBlankedAnalysisInfo) html += '<br>';
+        html_blank += formatAnalysisHtml(blankedAnalysisInfo, unit, timeUnit, 'rgb(255, 99, 132)', 'Blanked');
     }
     if (nonBlankedAnalysisInfo) {
-        html += formatAnalysisHtml(nonBlankedAnalysisInfo, unit, timeUnit, 'rgb(75, 192, 192)', 'Non-Blanked');
+        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo, unit, timeUnit, 'rgb(75, 192, 192)', 'Non-Blanked');
     }
-    $("#analysis-info").html(html || '');
+    $("#blank-analysis").html(html_blank || '');
+    $("#non-blank-analysis").html(html_nonblank || '');
 }
 
 // Preserved as-is
@@ -611,9 +619,9 @@ function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) 
 // Modified to accept analysis info directly
 function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
     if (analysisInfo) {
-        $("#analysis-info").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
+        $("#mix-analysis").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
     } else {
-        $("#analysis-info").html('');
+        $("#mix-analysis").html('');
     }
 }
 

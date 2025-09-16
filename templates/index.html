@@ -458,11 +458,19 @@
                         {% endfor %}
                     </label>
                 </div>
-                <div id="analysis-info"></div>
                 <div id="chart-container" tabindex="-1">
-                    <canvas id="plot-canvas"></canvas>
-                    <canvas id="blanked-canvas" style="display: none;"></canvas>
-                    <canvas id="non-blanked-canvas" style="display: none;"></canvas>
+                    <div id="mixed-chart-section">
+                        <div id="mix-analysis"> </div>
+                        <canvas id="plot-canvas"></canvas>
+                    </div>
+                    <div id="blanked-chart-section" class="hidden">
+                        <div id="blank-analysis"> </div>
+                        <canvas id="blanked-canvas"></canvas>
+                    </div>
+                    <div id="non-blanked-chart-section" class="hidden">
+                        <div id="non-blank-analysis"> </div>
+                        <canvas id="non-blanked-canvas"></canvas>
+                    </div>
                 </div>
                 <div id="select-exp-blank-type-meas">
                     Select Blank type to export:

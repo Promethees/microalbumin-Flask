@@ -163,7 +163,9 @@ function deselectFile(tableSelector="#file-table") {
         destroyCharts();
         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
         AppState.currentFile = null;
-        $("#analysis-info").text("");
+        $("#mix-analysis").text("");
+        $("#blank-analysis").text("");
+        $("#non-blank-analysis").text("");
         updateFileDisplay(AppState.currentFile);
         $("#copy-file-btn").prop("disabled", true);
     } else if (tableSelector === "#json-table") {
@@ -454,7 +456,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
 
         } else {
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-            $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
+            $("#mix-analysis").html(`<span style="color: red;">No data available</span>`);
         }
     }).fail(function(xhr, status, error) {
         console.error("Failed to fetch data:", status, error, xhr.responseText);
@@ -586,6 +588,16 @@ function toggleMode() {
         $("#quantity-checkboxes").removeClass("hidden");
     } else {   
         $("#quantity-checkboxes").addClass("hidden");
+    }
+
+    if ($("#split-mode").is(":checked") && AppState.currentMeasurementMode !== "calibrate" && !AppState.multiSource) {
+        $("#mix-chart-section").addClass("hidden");
+        $("#blanked-chart-section").removeClass("hidden");
+        $("#non-blanked-chart-section").removeClass("hidden");
+    } else {
+        $("#mix-chart-section").removeClass("hidden");
+        $("#blanked-chart-section").addClass("hidden");
+        $("#non-blanked-chart-section").addClass("hidden");
     }
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {

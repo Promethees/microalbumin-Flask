@@ -39,6 +39,14 @@ const AppState = {
     globalEstimatedValue: null,
     multiSource: false,
     numSources: 1,
+    plotColors: [
+        'rgb(75, 192, 192)',
+        'rgb(255, 99, 132)',
+        'rgb(255, 205, 86)',
+        'rgb(54, 162, 235)',
+        'rgb(153, 102, 255)',
+        'rgb(255, 159, 64)'
+    ],
 
     reset: function() {
         this.blankedChart = null;
@@ -323,7 +331,6 @@ function kineticsModeBehaviour() {
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
     $("#concentration-reader-section").removeClass("hidden");
-    $("#analysis-info").removeClass("hidden");
     $("#full-display-section").removeClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
@@ -348,7 +355,6 @@ function pointModeBehaviour() {
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
     $("#concentration-reader-section").removeClass("hidden");
-    $("#analysis-info").removeClass("hidden");
     $("#full-display-section").removeClass("hidden");
     $("#quantity-checkboxes").addClass("hidden");
     $("#select-time-point").addClass("hidden");
@@ -374,7 +380,6 @@ function calModeBehaviour() {
     $("#full-display-section").addClass("hidden");
     $("#quantity-checkboxes").addClass("hidden");
     $("#select-regress-algo").removeClass("hidden");
-    $("#analysis-info").removeClass("hidden");
     $("#export-coef").removeClass("hidden");
     $("#log-hid-data").addClass("hidden");
     $("#select-exp-blank-type-meas").addClass("hidden");
