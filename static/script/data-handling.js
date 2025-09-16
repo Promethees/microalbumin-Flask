@@ -546,10 +546,38 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         }
     } else {
         const range = $("#range-value").val();
-        AppState.globalAnalysis = updatePlot(
-            AppState.responseData, AppState.metaData, range, unit, window_size, 
-            response.unit || "NONE", isSplitMode, isFullDisplay
-        );
+        const baseArgs = [
+            AppState.responseData,
+            AppState.metaData,
+            range,
+            unit,
+            window_size,
+            response.unit || "NONE",
+            isSplitMode,
+            isFullDisplay
+        ];
+
+        switch (AppState.numSources) {
+            case 1:
+                AppState.globalAnalysis = updatePlot(...baseArgs);
+                return;
+
+            default:
+                if (AppState.numSources > 1) {
+                    const values = Array.from(
+                        { length: AppState.numSources },
+                        (_, i) => `Value:${i + 1}`
+                    );
+
+                    AppState.globalAnalysis = updatePlot(
+                        ...baseArgs,
+                        null,
+                        "Timestamp",
+                        values
+                    );
+                }
+                break;
+        }
     }
 }
 

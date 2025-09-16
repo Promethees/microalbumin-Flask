@@ -43,18 +43,17 @@ class HIDDataCollector:
         self.metadata = {}
         self.metadata_pattern = r"^3 (MEASUREMENT|UNIT|CONCENTRATION):\s*([A-Za-z0-9]+)$"
         self.main_header_pattern = [
-            r"^TIMESTAMP,VALUE,TYPE,BLANKED\n$",
-            r"^TIMESTAMP,VALUE:1,VALUE:2\n$",
-            r"^TIMESTAMP,VALUE:1,VALUE:2,VALUE:3,VALUE:4\n$"
+            r"^TIMESTAMP,VALUE,TYPE,BLANKED\n$",  # Single value case
+            r"^TIMESTAMP,VALUE:\d+(?:,VALUE:\d+)*\n$"  # Generic case for VALUE:1, VALUE:2, ..., VALUE:n
         ]
         self.data_pattern = [
-            r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$",
-            r"^\d+\.\d{1,2},\d+\.\d{1,3},\d+\.\d{1,3}\n$",
-            r"^\d+\.\d{1,2},\d+\.\d{1,3},\d+\.\d{1,3},\d+\.\d{1,3},\d+\.\d{1,3}\n$"
+            r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$",  # Single value case
+            r"^\d+\.\d{1,2},\d+\.\d{1,3}(?:,\d+\.\d{1,3})*\n$"  # Generic case for n values
         ]
         self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
         self.current_header_index = None  # Track which header pattern is active
+        self.num_values = None  # Track number of VALUE fields
         # Initialize log file in /log directory
         self.log_dir = os.path.join(os.getcwd(), "log")
         os.makedirs(self.log_dir, exist_ok=True)
@@ -109,6 +108,7 @@ class HIDDataCollector:
                         self.buffer = ''
                         self.metadata = {}
                         self.current_header_index = None
+                        self.num_values = None
                     else:
                         self.log(f"Unexpected line: {line_with_newline}")
                 except Exception as e:
@@ -131,7 +131,13 @@ class HIDDataCollector:
         """Check if the line matches any of the main header patterns."""
         for i, pattern in enumerate(self.main_header_pattern):
             if re.match(pattern, line):
-                self.current_header_index = i  # Store the matched header index
+                self.current_header_index = i
+                if i == 1:  # Generic header case
+                    # Count the number of VALUE fields
+                    headers = line.strip().split(',')
+                    self.num_values = len(headers) - 1  # Subtract TIMESTAMP
+                else:
+                    self.num_values = 1  # Single value case
                 return True
         return False
     
@@ -167,13 +173,8 @@ class HIDDataCollector:
             # Write metadata as comments
             for key, value in self.metadata.items():
                 f.write(f"# {key.title()}: {value}\n")
-            # Write main CSV header
-            if self.current_header_index == 0:
-                header = "Timestamp,Value,Type,Blanked\n"
-            elif self.current_header_index == 1:
-                header = "Timestamp,Value:1,Value:2\n"
-            elif self.current_header_index == 2:
-                header = "Timestamp,Value:1,Value:2,Value:3,Value:4\n"
+            # Convert header to desired case
+            header = line.replace('TIMESTAMP', 'Timestamp').replace('VALUE', 'Value').replace('TYPE', 'Type').replace('BLANKED', 'Blanked')
             f.write(header)
         self.log(f"New session started. Header written to {self.output_file}")
 
@@ -190,14 +191,14 @@ class HIDDataCollector:
         try:
             fields = data.strip().split(',')
             timestamp = fields[0]
-            values = fields[1:-2] if self.current_header_index == 0 else fields[1:]
-            type_tag = fields[-2] if self.current_header_index == 0 else None
-            blanked = fields[-1] if self.current_header_index == 0 else None
-            log_message = f"Received: Timestamp: {timestamp}s, Values: {', '.join(values)}"
-            if type_tag:
-                log_message += f", Type: {type_tag}"
-            if blanked:
-                log_message += f", Blanked: {blanked}"
+            if self.current_header_index == 0:  # Single value case
+                values = [fields[1]]
+                type_tag = fields[2]
+                blanked = fields[3]
+                log_message = f"Received: Timestamp: {timestamp}s, Value: {values[0]}, Type: {type_tag}, Blanked: {blanked}"
+            else:  # Generic case
+                values = fields[1:]  # All fields after timestamp
+                log_message = f"Received: Timestamp: {timestamp}s, Values: {', '.join(values)}"
             self.log(log_message)
             with open(self.output_file, "a") as f:
                 f.write(data)
