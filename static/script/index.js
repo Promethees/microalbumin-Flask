@@ -271,6 +271,26 @@ $(document).ready(function() {
         } else {
             calModeBehaviour(); 
         }
+
+        if (AppState.currentMeasurementMode !== "calibrate") {
+        if (AppState.multiSource) {
+            $("#select-exp-blank-type-meas").addClass("hidden");
+            $("#select-sensor-to-export").removeClass("hidden");
+            const selectElement = document.getElementById('exp-json-sensor');
+            // Optional: Clear previous options except "ALL"
+            selectElement.innerHTML = '<option value="ALL">ALL</option>';
+            for (let i = 1; i <= AppState.numSources; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                selectElement.appendChild(option);
+            }
+        } else {
+            $("#select-exp-blank-type-meas").removeClass("hidden");
+            $("#select-sensor-to-export").addClass("hidden");
+            document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+        }
+    }
         
     });
 
@@ -339,6 +359,7 @@ function kineticsModeBehaviour() {
     $("#select-exp-blank-type-meas").removeClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
     $("#func-desc").addClass("hidden");
+    $("#sensor-options").removeClass("hidden");
 }
 
 function pointModeBehaviour() {
@@ -364,6 +385,7 @@ function pointModeBehaviour() {
     $("#select-exp-blank-type-meas").removeClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
     $("#func-desc").addClass("hidden");
+    $("#sensor-options").removeClass("hidden");
 }
 
 function calModeBehaviour() {
@@ -393,6 +415,10 @@ function calModeBehaviour() {
         }
     terminateScript(); 
     $("#selected-function").text($("#exp-json-regress-algo").val());
+    $("#sensor-options").addClass("hidden");
+    AppState.multiSource = false;
+    AppState.numSources = 1;
+    $("#multi-source").prop("checked", false);
 }
 
 function calKineticsBehaviour() {

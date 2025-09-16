@@ -590,15 +590,6 @@ function toggleMode() {
         $("#quantity-checkboxes").addClass("hidden");
     }
 
-    if ($("#split-mode").is(":checked") && AppState.currentMeasurementMode !== "calibrate" && !AppState.multiSource) {
-        $("#mix-chart-section").addClass("hidden");
-        $("#blanked-chart-section").removeClass("hidden");
-        $("#non-blanked-chart-section").removeClass("hidden");
-    } else {
-        $("#mix-chart-section").removeClass("hidden");
-        $("#blanked-chart-section").addClass("hidden");
-        $("#non-blanked-chart-section").addClass("hidden");
-    }
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {

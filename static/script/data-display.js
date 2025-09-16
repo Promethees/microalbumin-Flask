@@ -1,5 +1,4 @@
-// Generates the Chart.js chart and returns the chart object
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, isFullDisplay, forThisBlankType = false, selectColor = null) {
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, isFullDisplay, forThisBlankType = false, selectColor = null, index = null) {
     const canvas = document.getElementById(canvasId);
     const maxrate_chkbox = document.getElementById('maxrate');
     const slope_chkbox = document.getElementById('slope');
@@ -87,7 +86,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         const mainDataset = {
             label: label,
             data: yColumn,
-            borderColor: selectColor ? AppState.plotColors[selectColor % AppState.plotColors.length] : AppState.plotColors[i % AppState.plotColors.length],
+            borderColor: selectColor !== null ? AppState.plotColors[selectColor % AppState.plotColors.length] : AppState.plotColors[i % AppState.plotColors.length],
             tension: isSinglePoint ? 0 : 0.1,
             fill: false,
             pointRadius: pointRadius
@@ -131,20 +130,22 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
             scales: {
                 x: {
                     type: 'linear',
-                    title: { display: true, text: timeUnit ? `Time (${timeUnit})` : 'Concentration (ng/µL)',
-                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim() 
+                    title: { 
+                        display: true, 
+                        text: timeUnit ? `Time (${timeUnit})` : 'Concentration (ng/µL)',
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim() 
                     },
                     min: xMin,
                     max: xMax,
                     grid: {
-                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
                             getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-dark').trim()
-                        },
+                    },
                     ticks: {
                         stepSize: xStepSize,
                         color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
                         callback: function(value) {
                             return Number(value).toFixed(2);
                         }
@@ -152,20 +153,22 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                 },
                 y: {
                     type: 'linear',
-                    title: { display: true, text: unit !== "NONE" ? unit : '',
-                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim()
+                    title: { 
+                        display: true, 
+                        text: unit !== "NONE" ? unit : '',
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim()
                     },
                     min: yMin,
                     max: yMax,
                     grid: {
-                            color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
+                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
                             getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-dark').trim()
-                        },
+                    },
                     ticks: {
                         stepSize: yStepSize,
                         color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                                                    getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
+                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
                         callback: function(value) {
                             return Number(value).toFixed(3);
                         }
@@ -181,7 +184,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                 },
                 title: {
                     display: true,
-                    text: 'Display selected CSV Content',
+                    text: AppState.multiSource && index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
                     color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-title-light').trim() :
                         getComputedStyle(document.documentElement).getPropertyValue('--chart-title-dark').trim()
                 },
@@ -194,8 +197,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 borderWidth: 3,
                                 xMin: AppState.refCalPoint,
                                 xMax: AppState.refCalPoint,
-                                yMin: yMin, // Use updated yMin
-                                yMax: yMax, // Use updated yMax
+                                yMin: yMin,
+                                yMax: yMax,
                                 label: {
                                     display: true,
                                     content: 'RefCal',
@@ -257,6 +260,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         }
     });
 
+    // Store chart instance with a unique key
     AppState.chartInstances[canvasId] = chart;
 
     return chart;
@@ -292,7 +296,6 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
     };
 }
 
-// Updates the plot with data, supporting multiple Y-columns and bypassing blanked data when multiSource is true
 function updatePlot(
     data, metadata, range, timeUnit, window_size, unit, isSplitMode,
     isFullDisplay = false, forBlankType = null,
@@ -303,10 +306,51 @@ function updatePlot(
     const scrollPosition = chartContainer.scrollTop;
 
     destroyCharts();
-    $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-    $("#mix-analysis").text("");
-    $("#blank-analysis").text("");
-    $("#non-blank-analysis").text("");
+    $("#chart-container").empty(); // Clear existing chart sections
+
+    if (AppState.multiSource && isSplitMode) {
+        // Create a chart section for each source
+        for (let i = 0; i < AppState.numSources; i++) {
+            const sectionId = `source-chart-section-${i}`;
+            const analysisId = `source-analysis-${i}`;
+            const canvasId = `source-canvas-${i}`;
+            $("#chart-container").append(`
+                <div id="${sectionId}">
+                    <div id="${analysisId}"></div>
+                    <canvas id="${canvasId}"></canvas>
+                </div>
+            `);
+        }
+    } else {
+        const splitMode = $("#split-mode").is(":checked")
+            && AppState.currentMeasurementMode !== "calibrate"
+            && !AppState.multiSource;
+
+        if (splitMode) {
+            // Append only blanked + non-blanked sections
+            $("#chart-container").append(`
+                <div id="blanked-chart-section">
+                    <div id="blank-analysis"></div>
+                    <canvas id="blanked-canvas"></canvas>
+                </div>
+                <div id="non-blanked-chart-section">
+                    <div id="non-blank-analysis"></div>
+                    <canvas id="non-blanked-canvas"></canvas>
+                </div>
+            `);
+        } else {
+            // Append only mix section
+            $("#chart-container").append(`
+                <div id="mix-chart-section">
+                    <div id="mix-analysis"></div>
+                    <canvas id="plot-canvas"></canvas>
+                </div>
+            `);
+        }
+    }
+
+    // Restore scroll position
+    chartContainer.scrollTop = scrollPosition;
 
     // Clean and sort data
     const selectElement = document.getElementById('regressed-quantity');
@@ -380,117 +424,220 @@ function updatePlot(
         ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
         : [`${measurementLabel} ${unitDisplay(unit)}`];
 
-    // Skip split mode if multiSource is true
-    if (!AppState.multiSource && isSplitMode) {
-        const blankedData = filterBlankedData(filteredData, hasBlankType, true);
-        const nonBlankedData = filterBlankedData(filteredData, hasBlankType, false);
+    if (AppState.multiSource) {
+        if (isSplitMode) {
+            // Handle multiSource with isSplitMode=true: create a chart for each source
+            const charts = [];
+            const analyses = [];
+            
+            for (let i = 0; i < AppState.numSources; i++) {
+                const yColumn = YColumn[i];
+                const yValues = extractColumn(filteredData, yColumn);
+                const label = `${measurementLabel} ${yColumn} ${unitDisplay(unit)}`;
+                let analysis = null;
 
-        const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
-        const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y)) : [extractColumn(blankedData, YColumn)];
-        const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
-        const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y)) : [extractColumn(nonBlankedData, YColumn)];
+                if (AppState.currentMeasurementMode !== "calibrate") {
+                    analysis = calculateKineticsQuantities(XColumnVals, yValues, window_size);
+                } else {
+                    if (isCalKinetics) {
+                        analysis = calibrateKineticsAnalysis(rawData, XColumn, yColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
+                    } else if (isCalPoint) {
+                        analysis = calculateCoefAndRSquared(yValues, XColumnVals, regressAlgo);
+                    }
+                }
 
-        let analysis_blanked = null;
-        let analysis_nonblanked = null;
+                analyses.push(analysis);
 
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, window_size));
-            analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
-        } else {
-            if (isCalKinetics) {
-                analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
-                analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
+                const canvasId = `source-canvas-${i}`;
+                const analysisId = `source-analysis-${i}`;
+                const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], isFullDisplay, true, i, i);
+                charts.push(chart);
+
+                // Update analysis info display
+                const analysisInfo = formatAnalysisInfo(analysis, conversionFactor, unit, label);
+                if (AppState.currentMeasurementMode !== "calibrate") {
+                    $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
+                } else {
+                    let htmlString = "";
+                    if (isCalKinetics) {
+                        htmlString = getCalKineticsString([yColumn], [analysis], regressAlgo === "Michaelis-Menten");
+                    } else {
+                        htmlString = getCalPointString(analysis);
+                    }
+                    $("#" + analysisId).html(`<span style="color: ${AppState.plotColors[i % AppState.plotColors.length]};">Source ${i + 1}: ${htmlString}</span>`);
+                }
+            }
+
+            AppState.sourceCharts = charts;
+
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                return extractMultiSourceResultSummary(metadata, analyses);
             } else {
-                analysis_blanked = allBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allBlankedXColumn, regressAlgo));
-                analysis_nonblanked = allNonBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allNonBlankedXColumn, regressAlgo));
+                return {
+                    analysis: analyses,
+                    meas: metadata["Measurement"]
+                };
             }
-        }
-
-        const blankLabels = labels.map(l => `${l} (Blanked)`);
-        const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
-
-        $("#blanked-canvas, #non-blanked-canvas").show();
-        AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-            unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, forBlankType === "BLANKED", selectColor = 1);
-        AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-            unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED", selectColor = 0);
-
-        // Format analysis info for both charts
-        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
-        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
-
-        // Update analysis info display
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
         } else {
-            let blanked_string = "";
-            let non_blanked_string = "";
-            if (isCalKinetics) {
-                blanked_string = getCalKineticsString(calParams, analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-                non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-            } else if (isCalPoint) {
-                blanked_string = getCalPointString(analysis_blanked);
-                non_blanked_string = getCalPointString(analysis_nonblanked);
+            // Handle multiSource with isSplitMode=false: plot all sources in a single chart
+            let analyses = [];
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol), window_size));
+            } else {
+                if (isCalKinetics) {
+                    analyses = YColumn.map(yCol => calibrateKineticsAnalysis(rawData, XColumn, yCol, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo));
+                } else if (isCalPoint) {
+                    analyses = YColumn.map(yCol => calculateCoefAndRSquared(extractColumn(filteredData, yCol), XColumnVals, regressAlgo));
+                }
             }
-            $("#blank-analysis").html(
-                `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
-            );
-            $("#non-blank-analysis").html(
-                `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
-            );
-        }
 
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
-        } else {
-            const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
-            return {
-                analysis,
-                meas: metadata["Measurement"]
-            };
+            // Format analysis info for all sources
+            const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
+
+            // Update analysis info display
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                let html = '';
+                analysisInfo.forEach((info, i) => {
+                    html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+                    if (i < analysisInfo.length - 1) html += '<br/>';
+                });
+                $("#mix-analysis").html(html);
+            } else {
+                let htmlString = "";
+                if (isCalKinetics) {
+                    htmlString = getCalKineticsString(YColumn, analyses, regressAlgo === "Michaelis-Menten");
+                } else {
+                    htmlString = analyses.map(a => getCalPointString(a)).join('<br/>');
+                }
+                $("#mix-analysis").html(htmlString);
+            }
+
+            // Generate single chart with all Y-columns
+            $("#plot-canvas").show();
+            AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, isFullDisplay, true);
+
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                return extractMultiSourceResultSummary(metadata, analyses);
+            } else {
+                return {
+                    analysis: analyses,
+                    meas: metadata["Measurement"]
+                };
+            }
         }
     } else {
-        let mixAnalysis = null;
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            mixAnalysis = allYColumns.map(yCol => calculateKineticsQuantities(allXColumn, yCol, window_size));
-        } else {
-            if (isCalKinetics) {
-                mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
-            } else if (isCalPoint) {
-                const mixedX = extractColumn(allGroups.allMixedData, XColumn);
-                mixAnalysis = allYColumns.map(yCol => calculateCoefAndRSquared(yCol, mixedX, regressAlgo));
-            }
-        }
+        // Original non-multiSource logic
+        if (isSplitMode) {
+            const blankedData = filterBlankedData(filteredData, hasBlankType, true);
+            const nonBlankedData = filterBlankedData(filteredData, hasBlankType, false);
 
-        // Format analysis info before chart creation
-        const mixAnalysisInfo = Array.isArray(mixAnalysis) ? mixAnalysis.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i])) : [formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0])];
+            const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
+            const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y)) : [extractColumn(blankedData, YColumn)];
+            const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
+            const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y)) : [extractColumn(nonBlankedData, YColumn)];
 
-        // Update analysis info display
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
-        } else {
-            let htmlString = "";
-            if (isCalKinetics) {
-                htmlString = getCalKineticsString(calParams, mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            let analysis_blanked = null;
+            let analysis_nonblanked = null;
+
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, window_size));
+                analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
             } else {
-                htmlString = getCalPointString(mixAnalysis);
+                if (isCalKinetics) {
+                    analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
+                    analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
+                } else {
+                    analysis_blanked = allBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allBlankedXColumn, regressAlgo));
+                    analysis_nonblanked = allNonBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allNonBlankedXColumn, regressAlgo));
+                }
             }
-            $("#mix-analysis").html(htmlString);
-        }
 
-        // Generate chart
-        $("#plot-canvas").show();
-        const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
-        AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-            unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, AppState.multiSource ? true : forBlankType === "MIXED");
+            const blankLabels = labels.map(l => `${l} (Blanked)`);
+            const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
 
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            return extractSingleResultSummary(metadata, mixAnalysis);
+            $("#blanked-canvas, #non-blanked-canvas").show();
+            AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
+                unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, forBlankType === "BLANKED", selectColor = 1);
+            AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
+                unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED", selectColor = 0);
+
+            // Format analysis info for both charts
+            const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
+            const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
+
+            // Update analysis info display
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
+            } else {
+                let blanked_string = "";
+                let non_blanked_string = "";
+                if (isCalKinetics) {
+                    blanked_string = getCalKineticsString(calParams, analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+                    non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+                } else if (isCalPoint) {
+                    blanked_string = getCalPointString(analysis_blanked);
+                    non_blanked_string = getCalPointString(analysis_nonblanked);
+                }
+                $("#blank-analysis").html(
+                    `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
+                );
+                $("#non-blank-analysis").html(
+                    `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
+                );
+            }
+
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
+            } else {
+                const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
+                return {
+                    analysis,
+                    meas: metadata["Measurement"]
+                };
+            }
         } else {
-            return {
-                analysis: mixAnalysis,
-                meas: metadata["Measurement"]
-            };
+            let mixAnalysis = null;
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                mixAnalysis = allYColumns.map(yCol => calculateKineticsQuantities(allXColumn, yCol, window_size));
+            } else {
+                if (isCalKinetics) {
+                    mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
+                } else if (isCalPoint) {
+                    const mixedX = extractColumn(allGroups.allMixedData, XColumn);
+                    mixAnalysis = allYColumns.map(yCol => calculateCoefAndRSquared(yCol, mixedX, regressAlgo));
+                }
+            }
+
+            // Format analysis info before chart creation
+            const mixAnalysisInfo = Array.isArray(mixAnalysis) ? mixAnalysis.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i])) : [formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0])];
+
+            // Update analysis info display
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
+            } else {
+                let htmlString = "";
+                if (isCalKinetics) {
+                    htmlString = getCalKineticsString(calParams, mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+                } else {
+                    htmlString = getCalPointString(mixAnalysis);
+                }
+                $("#mix-analysis").html(htmlString);
+            }
+
+            // Generate chart
+            $("#plot-canvas").show();
+            const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
+            AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
+                unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, forBlankType === "MIXED");
+
+            if (AppState.currentMeasurementMode !== "calibrate") {
+                return extractSingleResultSummary(metadata, mixAnalysis);
+            } else {
+                return {
+                    analysis: mixAnalysis,
+                    meas: metadata["Measurement"]
+                };
+            }
         }
     }
 
@@ -499,8 +646,55 @@ function updatePlot(
     }, 0);
 }
 
+// New helper function for multiSource result summary
+function extractMultiSourceResultSummary(metadata, analyses) {
+    const summary = {
+        split: true,
+        sources: [],
+        meas: metadata["Measurement"],
+        meas_unit: metadata["Unit"]
+    };
 
-// Helper Functions
+    analyses.forEach((analysis, i) => {
+        summary.sources.push({
+            source: `Value:${i + 1}`,
+            maxrate: analysis.maxRate,
+            slope: analysis.slope,
+            sat: analysis.saturationValue,
+            time_to_sat: analysis.timeToSaturation
+        });
+    });
+
+    return summary;
+}
+
+// Modified destroyCharts to handle multiSource charts
+function destroyCharts() {
+    if (AppState.myChart) {
+        AppState.myChart.destroy();
+        AppState.myChart = null;
+    }
+    if (AppState.blankedChart) {
+        AppState.blankedChart.destroy();
+        AppState.blankedChart = null;
+    }
+    if (AppState.nonBlankedChart) {
+        AppState.nonBlankedChart.destroy();
+        AppState.nonBlankedChart = null;
+    }
+    if (AppState.sourceCharts) {
+        AppState.sourceCharts.forEach(chart => {
+            if (chart) chart.destroy();
+        });
+        AppState.sourceCharts = [];
+    }
+    // Clear all chart instances
+    Object.values(AppState.chartInstances).forEach(chart => {
+        if (chart) chart.destroy();
+    });
+    AppState.chartInstances = {};
+}
+
 function getCalKineticsString(calParams, analysis, isMM=false) {
     let htmlString = "";
     for (let i = 0; i < calParams.length; i++) {
@@ -552,12 +746,8 @@ function getCalPointString(analysis) {
 }
 
 function preprocessData(data, XColumn, YColumn) {
-    // Determine if YColumn is an array
     const isMultipleY = Array.isArray(YColumn);
-    
-    // Process data with original YColumn(s)
     if (isMultipleY) {
-        // For multiple Y columns, ensure XColumn and all YColumns are not "NONE"
         return data
             .filter(row => 
                 row[XColumn] !== "NONE" && 
@@ -565,7 +755,6 @@ function preprocessData(data, XColumn, YColumn) {
             )
             .sort((a, b) => a[XColumn] - b[XColumn]);
     } else {
-        // For single Y column, original logic
         return data
             .filter(row => 
                 row[XColumn] !== "NONE" && 
@@ -577,15 +766,13 @@ function preprocessData(data, XColumn, YColumn) {
 
 function preprocessDataCalParams(data, XColumn, YColumn, calParams) {
     if (calParams && Array.isArray(calParams) && calParams.includes(YColumn)) {
-        // Store results for each calParams element
         const results = calParams.map(param => {
             const filteredData = data
                 .filter(row => row[XColumn] !== "NONE" && row[param] !== "NONE")
                 .sort((a, b) => a[XColumn] - b[XColumn]);
             return { param, data: filteredData };
         });
-        
-        return results; // Return array of { param, data }
+        return results;
     }
 }
 
@@ -621,7 +808,6 @@ function unitDisplay(unit) {
 
 function filterByBlankType(data, hasBlankType) {
     if (!hasBlankType) return data;
-
     return data.filter(row =>
         row['BlankType'] === "BLANKED" || row['BlankType'] === "NON-BLANKED" || row['BlankType'] === "MIXED"
     );
@@ -647,10 +833,8 @@ function filterByTime(data, timeThreshold, hasBlankType, XColumn = "Timestamp") 
     );
 }
 
-// New helper to format analysis metrics into HTML
 function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = '') {
     if (!analysisInfo) return '';
-    // console.log("Formatting analysis info:", analysisInfo);
     const unitDisplay = unit !== "NONE" ? unit : '';
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
@@ -667,7 +851,6 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
     return html;
 }
 
-// Modified to accept analysis info directly
 function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit) {
     let html_blank = '';
     let html_nonblank = '';
@@ -681,8 +864,7 @@ function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo
     $("#non-blank-analysis").html(html_nonblank || '');
 }
 
-// Preserved as-is
-function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) {
+function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblanked) {
     return {
         split: true,
         maxrate_blanked: analysis_blanked.maxRate,
@@ -698,7 +880,6 @@ function extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked) 
     };
 }
 
-// Modified to accept analysis info directly
 function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
     if (analysisInfo) {
         $("#mix-analysis").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
@@ -707,7 +888,6 @@ function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
     }
 }
 
-// Preserved as-is
 function extractSingleResultSummary(metadata, mixAnalysis) {
     return {
         split: false,
@@ -720,55 +900,27 @@ function extractSingleResultSummary(metadata, mixAnalysis) {
     };
 }
 
-function destroyCharts() {
-    if (AppState.myChart) {
-        AppState.myChart.destroy();
-        AppState.myChart = null;
-    }
-    if (AppState.blankedChart) {
-        AppState.blankedChart.destroy();
-        AppState.blankedChart = null;
-    }
-    if (AppState.nonBlankedChart) {
-        AppState.nonBlankedChart.destroy();
-        AppState.nonBlankedChart = null;
-    }
-}
-
 function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeValue, calculateCoefAndRSquared, regressAlgo) {
-    // Get preprocessed data
     const dataMap = preprocessDataCalParams(data, XColumn, YColumn, calParams);
-    
-    // If dataMap is defined (i.e., YColumn is in calParams), process each param
     if (dataMap) {
         const results = dataMap.map(({ param, data }) => {
-            // Filter data for rows where BlankType === blankTypeValue and param is not "NONE"
             const filteredData = data.filter(row => row['BlankType'] === blankTypeValue && row[param] !== "NONE");
-            
-            // Extract XColumn and param values
             const xValues = filteredData.map(row => row[XColumn]);
             const yValues = filteredData.map(row => row[param]);
-            
-            // Call calculateCoefAndRSquared with extracted values
             const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
-            
-            return result ;
+            return result;
         });
-        
-        return results; // Return array of { param, result }
+        return results;
     }
-    // Fallback: Process with original YColumn
     const filteredData = data
         .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE" && row['BlankType'] === blankTypeValue)
         .sort((a, b) => a[XColumn] - b[XColumn]);
     const xValues = filteredData.map(row => row[XColumn]);
     const yValues = filteredData.map(row => row[YColumn]);
     const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
-    
-    return  result ;
+    return result;
 }
 
-// Helper function to derive data for regression line 
 function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
     let regressionData = [];
     let analysis = null;
@@ -781,7 +933,7 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
         analysis = analysisArray;
 
     if (AppState.currentMeasurementMode === "calibrate" && analysis && analysis.coefficients && numDiv > 0) {
-        const step = (xMax - xMin) / (numDiv - 1); // 100 points including start and end
+        const step = (xMax - xMin) / (numDiv - 1);
         const regressAlgo = $("#exp-json-regress-algo").val();
 
         for (let i = 0; i < numDiv; i++) {
@@ -790,57 +942,42 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
 
             switch (regressAlgo) {
                 case "linear": {
-                    // Original: x = a * y + b => y = (x - b) / a
                     const [ a, b ] = analysis.coefficients;
-                    y = a !== 0 ? (x - b) / a : 0; // Avoid division by zero
+                    y = a !== 0 ? (x - b) / a : 0;
                     break;
                 }
-
                 case "polynomial": {
-                    // Original: x = c_0 + c_1*y + c_2*y^2
-                    // Rewrite: c_2*y^2 + c_1*y + (c_0 - x) = 0
-                    // Solve for y using quadratic formula: y = (-c_1 ± √(c_1^2 - 4*c_2*(c_0 - x))) / (2*c_2)
-                    const [c_0, c_1, c_2] = analysis.coefficients; // Degree 2 polynomial: c_0 + c_1*y + c_2*y^2
+                    const [c_0, c_1, c_2] = analysis.coefficients;
                     if (c_2 === 0) {
-                        // Degenerate case: linear equation
-                        y = c_1 !== 0 ? (x - c_0) / c_1 : 0; // Avoid division by zero
+                        y = c_1 !== 0 ? (x - c_0) / c_1 : 0;
                     } else {
                         const discriminant = c_1 * c_1 - 4 * c_2 * (c_0 - x);
                         if (discriminant >= 0) {
-                            // Use the positive root (or adjust based on context)
                             y = (-c_1 + Math.sqrt(discriminant)) / (2 * c_2);
-                            // If negative root is needed, use: y = (-c_1 - Math.sqrt(discriminant)) / (2 * c_2)
                         } else {
-                            y = 0; // Handle invalid discriminant (no real roots)
+                            y = 0;
                         }
                     }
                     break;
                 }
-
                 case "logarithmic": {
-                    // Original: x = a * ln(y + b) + c => y = exp((x - c) / a) - b
                     const [ a, b, c ] = analysis.coefficients;
-                    y = a !== 0 ? Math.exp((x - c) / a) - b : 0; // Avoid division by zero
+                    y = a !== 0 ? Math.exp((x - c) / a) - b : 0;
                     break;
                 }
-
                 case "exponential": {
-                    // Original: x = a * exp(y * b) + c => y = ln((x - c) / a)/b
                     const [ a, b, c ] = analysis.coefficients;
-                    y = (a !== 0 && x > c && b != 0) ? Math.log((x - c) / a)/b : 0; // Ensure valid domain
+                    y = (a !== 0 && x > c && b != 0) ? Math.log((x - c) / a)/b : 0;
                     break;
                 }
-
-                case "Michaelis-Menten":
-                    // Original: x = (Km * y) / (Vmax - y) => y = (Vmax * x) / (Km + x)
+                case "Michaelis-Menten": {
                     const [ Vmax, Km ] = analysis.coefficients;
                     y = (Vmax * x)/ (Km + x);
                     break;
-
+                }
                 default:
                     y = 0;
             }
-
             regressionData.push({ x, y });
         }
     }
