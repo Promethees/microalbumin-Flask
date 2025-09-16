@@ -1,39 +1,55 @@
 // Generates the Chart.js chart and returns the chart object
-function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, conversionFactor, analysis, isFullDisplay, forThisBlankType = false) {
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, isFullDisplay, forThisBlankType = false, selectColor = null) {
     const canvas = document.getElementById(canvasId);
     const maxrate_chkbox = document.getElementById('maxrate');
     const slope_chkbox = document.getElementById('slope');
     const sat_chkbox = document.getElementById('sat');
-    // canvas.width = 100%;
-    // canvas.height = 280px;
-    const { x: processedX, y: processedY } = mapDuplicates(allXColumn, allYColumn);
+    const { x: processedX, y: dummyProcessedY } = mapDuplicates(allXColumn, allYColumnOrArray.length > 0 ? allYColumnOrArray[0] : allXColumn.map(() => 0)); // Use first Y or dummy for X processing
 
-    if (!canvas || processedX.length === 0 || processedY.length === 0) {
+    if (!canvas || processedX.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
     }
 
     const ctx = canvas.getContext('2d');
-    if (!ctx || processedX.length === 0 || processedY.length === 0) {
+    if (!ctx || processedX.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
     }
 
-    const { XColumn, YColumn } = averageDuplicates(processedX, processedY);
+    // Determine if multiple Y columns
+    const isMultipleY = Array.isArray(allYColumnOrArray[0]);
+    const allYColumns = isMultipleY ? allYColumnOrArray : [allYColumnOrArray];
+    const labels = Array.isArray(labelOrLabels) ? labelOrLabels : [labelOrLabels];
+    const analyses = Array.isArray(analysisOrArray) ? analysisOrArray : [analysisOrArray];
 
-    // Handle single data point edge case
-    const isSinglePoint = XColumn.length === 1 && YColumn.length === 1;
+    // Process each Y column
+    const processedYColumns = [];
+    const allYValues = [];
+    let xColumn; // Shared X after processing
+    allYColumns.forEach((yCol, i) => {
+        const { x: px, y: py } = mapDuplicates(allXColumn, yCol);
+        const { XColumn: xAfterAvg, YColumn: yAfterAvg } = averageDuplicates(px, py);
+        processedYColumns.push(yAfterAvg);
+        allYValues.push(...yAfterAvg);
+        if (i === 0) {
+            xColumn = xAfterAvg;
+        }
+    });
+
+    // Handle single data point edge case (global, since X shared)
+    const isSinglePoint = xColumn.length === 1;
     const chartType = isSinglePoint ? 'scatter' : 'line';
-    const xMin = isSinglePoint ? XColumn[0] - 1 : Math.min(...XColumn);
-    const xMax = isSinglePoint ? XColumn[0] + 1 : Math.max(...XColumn);
+    const xMin = isSinglePoint ? xColumn[0] - 1 : Math.min(...xColumn);
+    const xMax = isSinglePoint ? xColumn[0] + 1 : Math.max(...xColumn);
 
-    // Check if all Y values are equal
-    const allYEqual = YColumn.every(y => y === YColumn[0]);
+    // Check if all Y values across all datasets are equal
+    const allYEqual = allYValues.length > 0 && allYValues.every(y => y === allYValues[0]);
     let yMin, yMax, yStepSize;
 
     if (allYEqual) {
         // Case: All Y values are equal
-        const yValue = YColumn[0];
+        const yValue = allYValues[0];
         if (yValue === 0) {
             // If Y value is 0, set a small range around 0
             yMin = -0.1;
@@ -48,42 +64,67 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
     } else {
         // Original logic for non-equal Y values
         yMin = 0;
-        yMax = isSinglePoint ? YColumn[0] * 1.1 : Math.max(...YColumn) * 1.1;
-        yStepSize = isSinglePoint
-            ? Number(YColumn[0] / 10).toFixed(3) || 0.1
-            : Number((yMax - yMin) / 10).toFixed(3) || 0.1;
+        yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
+        yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
     }
 
     // Calculate xStepSize safely
     const xStepSize = isSinglePoint
         ? 0.5
-        : Number((xMax - xMin) / (XColumn.length - 1)).toFixed(2) || 1;
-        // Prepare regression line data if currentMeasurementMode is "calibrate" and analysis has coefficients
+        : Number((xMax - xMin) / (xColumn.length - 1)).toFixed(2) || 1;
 
-    let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
+    // Prepare datasets
+    const datasets = [];
+    allYColumns.forEach((_, i) => {
+        const yColumn = processedYColumns[i];
+        const label = labels[i];
+        const analysis = analyses[i];
 
-    let chart = new Chart(ctx, {
-        type: chartType,
-        data: {
-            labels: XColumn,
-            datasets: [{
-                label: label,
-                data: YColumn,
-                borderColor: canvasId === 'blanked-canvas' ? 'rgb(255, 99, 132)' : 'rgb(75, 192, 192)',
-                tension: isSinglePoint ? 0 : 0.1, // No tension for scatter
-                fill: false,
-                pointRadius: isSinglePoint || allYEqual ? 5 : 3 // Larger points for single or equal Y values
-                },
-                ...(regressionData.length > 0 ? [{
-                    label: 'Regression',
+        // Per-dataset all Y equal check for point radius
+        const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
+        const pointRadius = isSinglePoint || thisYAllEqual ? 5 : 3;
+
+        const mainDataset = {
+            label: label,
+            data: yColumn,
+            borderColor: selectColor ? AppState.plotColors[selectColor % AppState.plotColors.length] : AppState.plotColors[i % AppState.plotColors.length],
+            tension: isSinglePoint ? 0 : 0.1,
+            fill: false,
+            pointRadius: pointRadius
+        };
+
+        // Attach analysis data to the main dataset if provided
+        if (analysis) {
+            mainDataset.analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
+        }
+
+        datasets.push(mainDataset);
+
+        // Prepare regression line data if calibrate mode and analysis has coefficients
+        if (AppState.currentMeasurementMode === "calibrate" && analysis && analysis.coefficients) {
+            let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
+            if (regressionData.length > 0) {
+                datasets.push({
+                    label: `Regression (${label})`,
                     data: regressionData,
                     borderColor: 'rgba(0, 128, 0, 0.7)', // Green for regression line
                     tension: 0.1,
                     fill: false,
                     pointRadius: 0, // No points for regression line
                     borderWidth: 2
-                }] : [])
-            ]
+                });
+            }
+        }
+    });
+
+    // Use first analysis for annotations (or null if none)
+    const analysisForAnnotations = analyses.length > 0 ? analyses[0] : null;
+
+    let chart = new Chart(ctx, {
+        type: chartType,
+        data: {
+            labels: xColumn,
+            datasets: datasets
         },
         options: {
             animation: false,
@@ -162,15 +203,15 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && maxrate_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.startMaxRate && !isSinglePoint && {
+                        ...(isFullDisplay && maxrate_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.startMaxRate && !isSinglePoint && {
                             maxRateLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
                                 borderWidth: 3,
-                                xMin: parseFloat(analysis.startMaxRate * conversionFactor),
-                                xMax: parseFloat(analysis.endMaxRate * conversionFactor),
-                                yMin: parseFloat(analysis.yMaxRateStart),
-                                yMax: parseFloat(analysis.yMaxRateEnd),
+                                xMin: parseFloat(analysisForAnnotations.startMaxRate * conversionFactor),
+                                xMax: parseFloat(analysisForAnnotations.endMaxRate * conversionFactor),
+                                yMin: parseFloat(analysisForAnnotations.yMaxRateStart),
+                                yMax: parseFloat(analysisForAnnotations.yMaxRateEnd),
                                 label: {
                                     display: true,
                                     content: 'MaxRate',
@@ -178,15 +219,15 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && slope_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.linearXMin && !isSinglePoint && {
+                        ...(isFullDisplay && slope_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.linearXMin && !isSinglePoint && {
                             regressionLine: {
                                 type: 'line',
                                 borderColor: 'rgba(0, 0, 255, 0.5)',
                                 borderWidth: 3,
-                                xMin: parseFloat(analysis.linearXMin * conversionFactor),
-                                xMax: parseFloat(analysis.linearXMax * conversionFactor),
-                                yMin: parseFloat(analysis.linearYMin),
-                                yMax: parseFloat(analysis.linearYMax),
+                                xMin: parseFloat(analysisForAnnotations.linearXMin * conversionFactor),
+                                xMax: parseFloat(analysisForAnnotations.linearXMax * conversionFactor),
+                                yMin: parseFloat(analysisForAnnotations.linearYMin),
+                                yMax: parseFloat(analysisForAnnotations.linearYMax),
                                 label: {
                                     display: true,
                                     content: 'Linear',
@@ -194,15 +235,15 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
                                 }
                             }
                         }),
-                        ...(isFullDisplay && sat_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysis.saturationValue !== "--" && !isSinglePoint && {
+                        ...(isFullDisplay && sat_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.saturationValue !== "--" && !isSinglePoint && {
                             saturationLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 255, 0.5)',
                                 borderWidth: 3,
-                                xMin: parseFloat(analysis.timeStartSaturation * conversionFactor),
+                                xMin: parseFloat(analysisForAnnotations.timeStartSaturation * conversionFactor),
                                 xMax: xMax * 100,
-                                yMin: parseFloat(analysis.saturationValue),
-                                yMax: parseFloat(analysis.saturationValue),
+                                yMin: parseFloat(analysisForAnnotations.saturationValue),
+                                yMax: parseFloat(analysisForAnnotations.saturationValue),
                                 label: {
                                     display: true,
                                     content: 'Sat',
@@ -216,10 +257,6 @@ function generateChart(canvasId, allXColumn, allYColumn, label, unit, timeUnit, 
         }
     });
 
-    // Attach analysis data to the chart if provided
-    if (analysis) {
-        chart.data.datasets[0].analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
-    }
     AppState.chartInstances[canvasId] = chart;
 
     return chart;
@@ -255,6 +292,7 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
     };
 }
 
+// Updates the plot with data, supporting multiple Y-columns and bypassing blanked data when multiSource is true
 function updatePlot(
     data, metadata, range, timeUnit, window_size, unit, isSplitMode,
     isFullDisplay = false, forBlankType = null,
@@ -277,38 +315,58 @@ function updatePlot(
     data = preprocessData(data, XColumn, YColumn);
 
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
-    const hasBlankType = data.some(row => 'BlankType' in row);
-    const hasBlank = data.some(row => 'Blanked' in row);
+    
+    // Only check for blank columns if multiSource is false
+    const hasBlankType = !AppState.multiSource && data.some(row => 'BlankType' in row);
+    const hasBlank = !AppState.multiSource && data.some(row => 'Blanked' in row);
 
-    if (!hasBlankType && !hasBlank) {
+    if (!AppState.multiSource && !hasBlankType && !hasBlank) {
         console.warn("No Blank or BlankType column found in data");
         return;
     }
 
-    const allGroups = getDataGroups(data, hasBlankType, XColumn, YColumn);
-    const { allXColumn, allYColumn, allBlankedData, allNonBlankedData, allMixedData } = allGroups;
-    const allBlankedXColumn = extractColumn(allBlankedData, XColumn);
-    const allBlankedYColumn = extractColumn(allBlankedData, YColumn);
-    const allNonBlankedXColumn = extractColumn(allNonBlankedData, XColumn);
-    const allNonBlankedYColumn = extractColumn(allNonBlankedData, YColumn);
+    // If multiSource, treat all data as mixed; otherwise, use getDataGroups
+    const allGroups = AppState.multiSource 
+        ? {
+            allXColumn: extractColumn(data, XColumn),
+            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y)) : [extractColumn(data, YColumn)],
+            allMixedData: data
+        }
+        : getDataGroups(data, hasBlankType, XColumn, YColumn);
+    const allXColumn = allGroups.allXColumn;
+    const allYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y)) : [extractColumn(data, YColumn)];
+    
+    // Only define blanked/non-blanked data if multiSource is false
+    let allBlankedXColumn, allBlankedYColumns, allNonBlankedXColumn, allNonBlankedYColumns;
+    if (!AppState.multiSource) {
+        allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
+        allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y)) : [extractColumn(allGroups.allBlankedData, YColumn)];
+        allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
+        allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y)) : [extractColumn(allGroups.allNonBlankedData, YColumn)];
+    }
 
     let filteredData, XColumnVals, YColumnVals;
     if (AppState.currentMeasurementMode !== "calibrate") {
         if (isFullDisplay) range = Number.MAX_VALUE;
         const timeThreshold = Math.max(...allXColumn) - range * getTimeUnitMultiplier(timeUnit);
 
-        filteredData = filterByTime(data, timeThreshold, hasBlankType);
+        filteredData = AppState.multiSource 
+            ? data 
+            : filterByTime(data, timeThreshold, hasBlankType);
+        
         if (filteredData.length === 0) {
             console.warn("No data after filtering with threshold:", timeThreshold);
             return;
         }
 
         XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-        YColumnVals = extractColumn(filteredData, YColumn);
+        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y)) : [extractColumn(filteredData, YColumn)];
     } else {
-        filteredData = filterByBlankType(data, hasBlankType);
+        filteredData = AppState.multiSource 
+            ? data 
+            : filterByBlankType(data, hasBlankType);
         XColumnVals = extractColumn(filteredData, XColumn);
-        YColumnVals = extractColumn(filteredData, YColumn);
+        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y)) : [extractColumn(filteredData, YColumn)];
     }
 
     const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
@@ -318,28 +376,33 @@ function updatePlot(
     const isCalPoint = AppState.currentMeasurementMode === "calibrate" && calMode === "point";
     const regressAlgo = $("#exp-json-regress-algo").val();
 
-    if (isSplitMode) {
+    const labels = Array.isArray(YColumn) 
+        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
+        : [`${measurementLabel} ${unitDisplay(unit)}`];
+
+    // Skip split mode if multiSource is true
+    if (!AppState.multiSource && isSplitMode) {
         const blankedData = filterBlankedData(filteredData, hasBlankType, true);
         const nonBlankedData = filterBlankedData(filteredData, hasBlankType, false);
 
         const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
-        const blankedY = extractColumn(blankedData, YColumn);
+        const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y)) : [extractColumn(blankedData, YColumn)];
         const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
-        const nonBlankedY = extractColumn(nonBlankedData, YColumn);
+        const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y)) : [extractColumn(nonBlankedData, YColumn)];
 
         let analysis_blanked = null;
         let analysis_nonblanked = null;
 
         if (AppState.currentMeasurementMode !== "calibrate") {
-            analysis_blanked = calculateKineticsQuantities(allBlankedXColumn, allBlankedYColumn, window_size);
-            analysis_nonblanked = calculateKineticsQuantities(allNonBlankedXColumn, allNonBlankedYColumn, window_size);
+            analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, window_size));
+            analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
         } else {
             if (isCalKinetics) {
                 analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
                 analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
             } else {
-                analysis_blanked = calculateCoefAndRSquared(allBlankedYColumn, allBlankedXColumn, regressAlgo);
-                analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumn, allNonBlankedXColumn, regressAlgo);
+                analysis_blanked = allBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allBlankedXColumn, regressAlgo));
+                analysis_nonblanked = allNonBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allNonBlankedXColumn, regressAlgo));
             }
         }
 
@@ -353,8 +416,8 @@ function updatePlot(
             unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED", selectColor = 0);
 
         // Format analysis info for both charts
-        const blankedAnalysisInfo = formatAnalysisInfo(analysis_blanked, conversionFactor, unit, `${measurementLabel} (Blanked)`);
-        const nonBlankedAnalysisInfo = formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, `${measurementLabel} (Non-Blanked)`);
+        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
+        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
 
         // Update analysis info display
         if (AppState.currentMeasurementMode !== "calibrate") {
@@ -389,17 +452,18 @@ function updatePlot(
     } else {
         let mixAnalysis = null;
         if (AppState.currentMeasurementMode !== "calibrate") {
-            mixAnalysis = calculateKineticsQuantities(allXColumn, allYColumn, window_size);
+            mixAnalysis = allYColumns.map(yCol => calculateKineticsQuantities(allXColumn, yCol, window_size));
         } else {
             if (isCalKinetics) {
                 mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
             } else if (isCalPoint) {
-                mixAnalysis = calculateCoefAndRSquared(extractColumn(allMixedData, YColumn), extractColumn(allMixedData, XColumn), regressAlgo);
+                const mixedX = extractColumn(allGroups.allMixedData, XColumn);
+                mixAnalysis = allYColumns.map(yCol => calculateCoefAndRSquared(yCol, mixedX, regressAlgo));
             }
         }
 
         // Format analysis info before chart creation
-        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, conversionFactor, unit, measurementLabel);
+        const mixAnalysisInfo = Array.isArray(mixAnalysis) ? mixAnalysis.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i])) : [formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0])];
 
         // Update analysis info display
         if (AppState.currentMeasurementMode !== "calibrate") {
@@ -411,13 +475,14 @@ function updatePlot(
             } else {
                 htmlString = getCalPointString(mixAnalysis);
             }
-            $("#analysis-info").html(htmlString);
+            $("#mix-analysis").html(htmlString);
         }
 
         // Generate chart
         $("#plot-canvas").show();
-        AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, `${measurementLabel} ${unitDisplay(unit)}`,
-            unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, forBlankType === "MIXED");
+        const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
+        AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
+            unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, AppState.multiSource ? true : forBlankType === "MIXED");
 
         if (AppState.currentMeasurementMode !== "calibrate") {
             return extractSingleResultSummary(metadata, mixAnalysis);
@@ -487,10 +552,27 @@ function getCalPointString(analysis) {
 }
 
 function preprocessData(data, XColumn, YColumn) {
-    // Process data with original YColumn
-    return data
-        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
-        .sort((a, b) => a[XColumn] - b[XColumn]);
+    // Determine if YColumn is an array
+    const isMultipleY = Array.isArray(YColumn);
+    
+    // Process data with original YColumn(s)
+    if (isMultipleY) {
+        // For multiple Y columns, ensure XColumn and all YColumns are not "NONE"
+        return data
+            .filter(row => 
+                row[XColumn] !== "NONE" && 
+                YColumn.every(yCol => row[yCol] !== "NONE")
+            )
+            .sort((a, b) => a[XColumn] - b[XColumn]);
+    } else {
+        // For single Y column, original logic
+        return data
+            .filter(row => 
+                row[XColumn] !== "NONE" && 
+                row[YColumn] !== "NONE"
+            )
+            .sort((a, b) => a[XColumn] - b[XColumn]);
+    }
 }
 
 function preprocessDataCalParams(data, XColumn, YColumn, calParams) {

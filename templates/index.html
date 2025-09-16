@@ -442,8 +442,11 @@
                     </select>
                 </div>
                 <div id="mode-toggle">
-                    <label>
+                    <label id="split-mode-section">
                         <input type="checkbox" id="split-mode" onchange="toggleMode()"> Split by Blanked
+                    </label>
+                    <label id="split-sensor-section" class="hidden">
+                        <input type="checkbox" id="split-sensor" onchange="toggleMode()"> Split by Sensors
                     </label>
                     <label id="full-display-section">
                         <input type="checkbox" id="full-display" onchange="toggleMode()"> Full display: See all data and special lines</p>
@@ -486,6 +489,12 @@
                         <option value="MIXED">MIXED</option>
                         <option value="BLANKED">BLANKED</option>
                         <option value="NON-BLANKED">NON-BLANKED</option>
+                    </select>
+                </div>
+                <div id="select-sensor-to-export" class="hidden">
+                    Select Sensor to export:
+                    <select id="exp-json-sensor">
+                        <option value="ALL">ALL</option>
                     </select>
                 </div>
                 <div id="export-analysis">

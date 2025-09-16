@@ -386,7 +386,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 }
             }
 
-            const isSplitMode = $("#split-mode").is(":checked");
+            const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
             const isFullDisplay = $("#full-display").is(":checked");
             const displayRangeInput = document.getElementById('range-value');
             const fullDisplayCheckbox = document.getElementById('full-display');

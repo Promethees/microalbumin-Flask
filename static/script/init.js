@@ -50,13 +50,49 @@ document.getElementById('shutdown-btn').addEventListener('click', function() {
 
 document.getElementById('multi-source').addEventListener('change', function() {
     const numSourcesSelect = document.getElementById('num-sources-section');
+    const splitByBlanked = document.getElementById('split-mode-section');
+    const splitBySensor = document.getElementById('split-sensor-section');
+    const fullDisplay = document.getElementById('full-display-section');
+    deselectFile();
+    deselectFile("#json-table");
+    AppState.responseData = null;
+    AppState.globalAnalysis = null;
+    AppState.blankedChart = null;
+    AppState.nonBlankedChart = null;
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
+        splitByBlanked.classList.add('hidden');
+        splitBySensor.classList.remove('hidden');
+        fullDisplay.classList.add('hidden');
         AppState.multiSource = true;
+        AppState.numSources = parseInt(document.getElementById('num-sources').value);
     } else {
         numSourcesSelect.classList.add('hidden');
+        splitByBlanked.classList.remove('hidden');
+        splitBySensor.classList.add('hidden');
+        fullDisplay.classList.remove('hidden');
         AppState.multiSource = false;
         AppState.numSources = 1;
+    }
+
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        if (AppState.multiSource) {
+            $("#select-exp-blank-type-meas").addClass("hidden");
+            $("#select-sensor-to-export").removeClass("hidden");
+            const selectElement = document.getElementById('exp-json-sensor');
+            // Optional: Clear previous options except "ALL"
+            selectElement.innerHTML = '<option value="ALL">ALL</option>';
+            for (let i = 1; i <= AppState.numSources; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                selectElement.appendChild(option);
+            }
+        } else {
+            $("#select-exp-blank-type-meas").removeClass("hidden");
+            $("#select-sensor-to-export").addClass("hidden");
+            document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+        }
     }
 });
 
