@@ -803,7 +803,7 @@ function updatePlot(
             }
 
             if (AppState.currentMeasurementMode !== "calibrate") {
-                return extractSplitResultSummary(data, analysis_blanked, analysis_nonblanked);
+                return extractSplitResultSummary(metadata, analysis_blanked[0], analysis_nonblanked[0]);
             } else {
                 const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
                 return {
@@ -848,7 +848,7 @@ function updatePlot(
             }
 
             if (AppState.currentMeasurementMode !== "calibrate") {
-                return extractSingleResultSummary(metadata, mixAnalysis);
+                return extractSingleResultSummary(metadata, mixAnalysis[0]);
             } else {
                 return {
                     analysis: mixAnalysis,
