@@ -749,8 +749,8 @@ function updatePlot(
                     analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
                     analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
                 } else {
-                    analysis_blanked = allBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allBlankedXColumn, regressAlgo));
-                    analysis_nonblanked = allNonBlankedYColumns.map(yCol => calculateCoefAndRSquared(yCol, allNonBlankedXColumn, regressAlgo));
+                    analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo);
+                    analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo);
                 }
             }
 
