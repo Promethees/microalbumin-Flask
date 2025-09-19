@@ -359,13 +359,13 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             },
                             {
                                 header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*$/,
+                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 2). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             },
                             {
                                 header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*$/,
+                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             }
