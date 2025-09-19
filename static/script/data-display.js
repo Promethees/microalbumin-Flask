@@ -29,7 +29,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const isMultipleY = Array.isArray(allYColumnOrArray[0]);
     const allYColumns = isMultipleY ? allYColumnOrArray : [allYColumnOrArray];
     const labels = Array.isArray(labelOrLabels) ? labelOrLabels : [labelOrLabels];
-    const analyses = Array.isArray(analysisOrArray) ? analysisOrArray : [analysisOrArray];
+    const analyses = (Array.isArray(analysisOrArray) && AppState.currentMeasurementMode !== "calibrate") ? analysisOrArray : [analysisOrArray];
 
     // Process each Y column
     const processedYColumns = [];
@@ -109,19 +109,17 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         datasets.push(mainDataset);
 
         // Prepare regression line data if calibrate mode and analysis has coefficients
-        if (AppState.currentMeasurementMode === "calibrate" && analysis && analysis.coefficients) {
-            let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
-            if (regressionData.length > 0) {
-                datasets.push({
-                    label: `Regression (${label})`,
-                    data: regressionData,
-                    borderColor: 'rgba(0, 128, 0, 0.7)', // Green for regression line
-                    tension: 0.1,
-                    fill: false,
-                    pointRadius: 0, // No points for regression line
-                    borderWidth: 2
-                });
-            }
+        let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
+        if (regressionData.length > 0) {
+            datasets.push({
+                label: `Regression (${label})`,
+                data: regressionData,
+                borderColor: 'rgba(0, 128, 0, 0.7)', // Green for regression line
+                tension: 0.1,
+                fill: false,
+                pointRadius: 0, // No points for regression line
+                borderWidth: 2
+            });
         }
     });
 
@@ -698,6 +696,8 @@ function updatePlot(
             // Format analysis info for all sources
             const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
 
+            // Generate single chart with all Y-columns
+            renderCharts(XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
             // Update analysis info display
             if (AppState.currentMeasurementMode !== "calibrate") {
                 let html = '';
@@ -715,9 +715,6 @@ function updatePlot(
                 }
                 $("#plot-analysis").html(htmlString);
             }
-
-            // Generate single chart with all Y-columns
-            renderCharts(XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true)
             $("#plot-canvas").show();
             AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
 
@@ -816,6 +813,14 @@ function updatePlot(
             // Format analysis info before chart creation
             const mixAnalysisInfo = Array.isArray(mixAnalysis) ? mixAnalysis.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i])) : [formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0])];
 
+            // Generate chart
+            const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
+            renderCharts(XColumnVals, yValsForChart, labels,
+                unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
+            $("#plot-canvas").show();
+            AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
+                unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
+
             // Update analysis info display
             if (AppState.currentMeasurementMode !== "calibrate") {
                 updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
@@ -828,14 +833,6 @@ function updatePlot(
                 }
                 $("#plot-analysis").html(htmlString);
             }
-
-            // Generate chart
-            const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
-            renderCharts(XColumnVals, yValsForChart, labels,
-                unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
-            $("#plot-canvas").show();
-            AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-                unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 return extractSingleResultSummary(metadata, mixAnalysis);
