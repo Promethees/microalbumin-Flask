@@ -404,6 +404,9 @@ function createChartSection({
                 ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType, selectColor, index)}
             </label>
             <div id="${analysisId}"></div>
+            <div id="concentration-reader-section-source-${index}">
+                Concentration from source-${index + 1} sample is <input type="number" id="con-value-read-source-${index}" value="" min=0 style="width: 5em;"> </input> ng/µL
+            </div>
             <canvas id="${canvasId}"></canvas>
         </div>
     ` : 
@@ -703,6 +706,11 @@ function updatePlot(
                 let html = '';
                 analysisInfo.forEach((info, i) => {
                     html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+                    html += `
+                        <div id="concentration-reader-section-source-${i}">
+                            Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
+                        </div>
+                    `
                     if (i < analysisInfo.length - 1) html += '<br/>';
                 });
                 $("#plot-analysis").html(html);

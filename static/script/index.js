@@ -363,7 +363,8 @@ function kineticsModeBehaviour() {
     $("#set-exp-point-section").addClass("hidden");
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
-    $("#concentration-reader-section").removeClass("hidden");
+    if ($(!"#multi-source").is(":checked"))
+        $("#concentration-reader-section").removeClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");
@@ -387,7 +388,8 @@ function pointModeBehaviour() {
     $("#set-exp-point-section").removeClass("hidden");
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
-    $("#concentration-reader-section").removeClass("hidden");
+    if ($(!"#multi-source").is(":checked"))
+        $("#concentration-reader-section").removeClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");

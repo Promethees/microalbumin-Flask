@@ -64,12 +64,14 @@ document.getElementById('multi-source').addEventListener('change', function() {
         splitBySensor.classList.remove('hidden');
         AppState.multiSource = true;
         AppState.numSources = parseInt(document.getElementById('num-sources').value);
+        document.getElementById('concentration-reader-section').classList.add('hidden');
     } else {
         numSourcesSelect.classList.add('hidden');
         splitByBlanked.classList.remove('hidden');
         splitBySensor.classList.add('hidden');
         AppState.multiSource = false;
         AppState.numSources = 1;
+        document.getElementById('concentration-reader-section').classList.remove('hidden');
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {

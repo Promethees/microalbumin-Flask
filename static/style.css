@@ -451,7 +451,7 @@ body.dark option {
 #window-size-section,
 #select-quantity-section,
 #data-display-section,
-#concentration-reader-section,
+[id^="concentration-reader-section"],
 #point-json-exp-section,
 #cal-json-sel-section,
 #kinetics-lines,
@@ -819,7 +819,7 @@ body.dark #plot-analysis, #blanked-analysis, #non-blanked-analysis {
 #chart-container.blinking,
 #measurement-mode.blinking,
 #cal-mode-select.blinking,
-#con-value-read.blinking {
+[id^="con-value-read"].blinking {
     border: 2px solid #00ff00;
     --blink-color: #00ff00;
     animation: blink 1s infinite;
