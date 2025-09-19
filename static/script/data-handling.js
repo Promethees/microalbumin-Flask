@@ -16,8 +16,6 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $("#split-mode").prop("checked", false);
         $("#blanked-canvas, #non-blanked-canvas").hide();
         $("#plot-canvas").show();
-        $("#full-display").prop("checked", false);
-        $("#quantity-checkboxes").addClass("hidden");
         $("#range-value").val(1000);
         $("#range-value").prop("disabled", false);
         $('.quantity-checkbox').each(function() {
@@ -163,9 +161,9 @@ function deselectFile(tableSelector="#file-table") {
         destroyCharts();
         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
         AppState.currentFile = null;
-        $("#mix-analysis").text("");
-        $("#blank-analysis").text("");
-        $("#non-blank-analysis").text("");
+        $("#plot-analysis").text("");
+        $("#blank-analysised").text("");
+        $("#non-blank-analysised").text("");
         updateFileDisplay(AppState.currentFile);
         $("#copy-file-btn").prop("disabled", true);
     } else if (tableSelector === "#json-table") {
@@ -387,25 +385,15 @@ function fetchData(unit, window_size, filename, jsonFile) {
             }
 
             const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
-            const isFullDisplay = $("#full-display").is(":checked");
             const displayRangeInput = document.getElementById('range-value');
-            const fullDisplayCheckbox = document.getElementById('full-display');
             AppState.responseData = response.data; // Reset point data
             AppState.metaData = response.metadata; // Reset metadata
 
             // Move event listener outside the AJAX callback or nest it properly
             const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
-            if (fullDisplayCheckbox.checked) {
-                displayRangeInput.disabled = true;
-                displayRangeInput.placeholder = "Disabled by Full Display";
-                displayRangeInput.value = "";
-            } else {
-                displayRangeInput.disabled = false;
-                displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
-            }
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay);
+            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, true);
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input
@@ -456,7 +444,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
 
         } else {
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-            $("#mix-analysis").html(`<span style="color: red;">No data available</span>`);
+            $("#plot-analysis").html(`<span style="color: red;">No data available</span>`);
         }
     }).fail(function(xhr, status, error) {
         console.error("Failed to fetch data:", status, error, xhr.responseText);
@@ -519,7 +507,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         updateRefCalPoint(jsonFile);
         AppState.globalAnalysis = updatePlot(
             AppState.responseData, AppState.metaData, range, unit, window_size, 
-            response.unit || "NONE", isSplitMode, isFullDisplay, 
+            response.unit || "NONE", isSplitMode, true, 
             jsonFile["for_blank_type"]
         );
         processPointMode(response, jsonFile, derived_con_text);
@@ -584,11 +572,6 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
 }
 
 function toggleMode() {
-    if ($("#full-display").is(":checked") && AppState.currentMeasurementMode === "kinetics") {
-        $("#quantity-checkboxes").removeClass("hidden");
-    } else {   
-        $("#quantity-checkboxes").addClass("hidden");
-    }
 
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {

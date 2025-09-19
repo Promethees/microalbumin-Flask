@@ -1,8 +1,17 @@
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, isFullDisplay, forThisBlankType = false, selectColor = null, index = null) {
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
+    if (AppState.chartInstances[canvasId]) {
+        AppState.chartInstances[canvasId].destroy();
+    }
+    
     const canvas = document.getElementById(canvasId);
-    const maxrate_chkbox = document.getElementById('maxrate');
-    const slope_chkbox = document.getElementById('slope');
-    const sat_chkbox = document.getElementById('sat');
+
+    // Modify this according to the canvasID
+    const canvasString = canvasId.split("-canvas")[0];
+    const maxrate_chkbox = document.getElementById(`maxrate-${canvasString}`);
+    const slope_chkbox = document.getElementById(`slope-${canvasString}`);
+    const sat_chkbox = document.getElementById(`sat-${canvasString}`);
+    const fullDisplayCheckbox = document.getElementById(`full-display-${canvasString}`);
+    const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
     const { x: processedX, y: dummyProcessedY } = mapDuplicates(allXColumn, allYColumnOrArray.length > 0 ? allYColumnOrArray[0] : allXColumn.map(() => 0)); // Use first Y or dummy for X processing
 
     if (!canvas || processedX.length === 0) {
@@ -206,7 +215,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 }
                             }
                         }),
-                        ...(isFullDisplay && maxrate_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.startMaxRate && !isSinglePoint && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.startMaxRate && !isSinglePoint && maxrate_chkbox.checked && {
                             maxRateLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 0, 0.5)',
@@ -222,7 +231,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 }
                             }
                         }),
-                        ...(isFullDisplay && slope_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.linearXMin && !isSinglePoint && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.linearXMin && !isSinglePoint && slope_chkbox.checked && {
                             regressionLine: {
                                 type: 'line',
                                 borderColor: 'rgba(0, 0, 255, 0.5)',
@@ -238,7 +247,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 }
                             }
                         }),
-                        ...(isFullDisplay && sat_chkbox.checked && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.saturationValue !== "--" && !isSinglePoint && {
+                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.saturationValue !== "--" && !isSinglePoint && sat_chkbox.checked && {
                             saturationLine: {
                                 type: 'line',
                                 borderColor: 'rgba(255, 0, 255, 0.5)',
@@ -260,7 +269,6 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         }
     });
 
-    // Store chart instance with a unique key
     AppState.chartInstances[canvasId] = chart;
 
     return chart;
@@ -296,6 +304,252 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
     };
 }
 
+function checkboxHtmlWithID(
+  id,
+  canvasId,
+  allXColumn,
+  allYColumnOrArray,
+  labelOrLabels,
+  unit,
+  timeUnit,
+  conversionFactor,
+  analysisOrArray,
+  forThisBlankType,
+  selectColor,
+  index
+) {
+  return AppState.quantity_input.quantities
+    .filter(q => q !== "Time To Sat")
+    .map(q => `
+      <input type="checkbox" 
+          class="quantity-checkbox" 
+          value="${q}" 
+          id="${q.toLowerCase().replace(/\s+/g, '_')}-${id}" 
+          checked
+          data-analysis='${JSON.stringify(analysisOrArray)}'
+          onchange="handleCkboxChange(this, 
+              '${canvasId}', 
+              ${JSON.stringify(allXColumn)}, 
+              ${JSON.stringify(allYColumnOrArray)}, 
+              '${labelOrLabels}', 
+              '${unit}', 
+              '${timeUnit}', 
+              ${conversionFactor}, 
+              ${forThisBlankType}, 
+              ${JSON.stringify(selectColor)}, 
+              ${index}
+          )">
+      <span>${q}</span>
+    `)
+    .join("");
+}
+
+function handleCkboxChange(checkbox, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, forThisBlankType, selectColor, index) {
+  const analysisOrArray = JSON.parse(checkbox.dataset.analysis);
+  generateChart(
+    canvasId,
+    allXColumn,
+    allYColumnOrArray,
+    labelOrLabels,
+    unit,
+    timeUnit,
+    conversionFactor,
+    analysisOrArray,
+    forThisBlankType,
+    selectColor,
+    index
+  );
+}
+
+function createChartSection({
+    sectionId,
+    analysisId,
+    canvasId,
+    quantityId,
+    fullDisplayId,
+    allXColumn,
+    allYColumnOrArray,
+    labelOrLabels,
+    unit,
+    timeUnit,
+    conversionFactor,
+    analysisOrArray,
+    forThisBlankType,
+    selectColor,
+    index
+}) {
+    return AppState.currentMeasurementMode !== "calibrate" ? 
+    `
+        <div id="${sectionId}">
+            <label>
+                <input type="checkbox" id="${fullDisplayId}" 
+                    data-analysis='${JSON.stringify(analysisOrArray)}'
+                    onchange="handleFullDisplayChange(
+                        this,
+                        '${fullDisplayId}', 
+                        '${quantityId}', 
+                        '${canvasId}', 
+                        ${JSON.stringify(allXColumn)}, 
+                        ${JSON.stringify(allYColumnOrArray)}, 
+                        '${labelOrLabels}', 
+                        '${unit}', 
+                        '${timeUnit}', 
+                        ${conversionFactor}, 
+                        ${forThisBlankType}, 
+                        ${JSON.stringify(selectColor)}, 
+                        ${index}
+                    )"> 
+                Full display: See all data and special lines
+            </label>
+            <label id="quantity-checkboxes-${quantityId}" class="hidden">
+                <h3>Quantities to display on graphic</h3>
+                ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType, selectColor, index)}
+            </label>
+            <div id="${analysisId}"></div>
+            <canvas id="${canvasId}"></canvas>
+        </div>
+    ` : 
+    `
+        <div id="${sectionId}">
+            <div id="${analysisId}"></div>
+            <canvas id="${canvasId}"></canvas>
+        </div>
+    `;
+}
+
+function handleFullDisplayChange(checkbox, fullDisplayId, quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, forThisBlankType, selectColor, index) {
+    const fullDisplayCheckbox = document.getElementById(fullDisplayId);
+    const quantityContainer = document.getElementById(`quantity-checkboxes-${quantityId}`);
+    
+    if (!fullDisplayCheckbox || !quantityContainer) return;
+
+    // Toggle hidden class
+    if (fullDisplayCheckbox.checked) {
+        quantityContainer.classList.remove("hidden");
+    } else {
+        quantityContainer.classList.add("hidden");
+    }
+
+    // Call generateChart with updated state
+    handleCkboxChange(
+        checkbox,
+        canvasId,
+        allXColumn,
+        allYColumnOrArray,
+        labelOrLabels,
+        unit,
+        timeUnit,
+        conversionFactor,
+        forThisBlankType,
+        selectColor,
+        index
+    );
+}
+
+function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
+    const $container = $("#chart-container");
+
+    if (AppState.multiSource) {
+        if ($("#split-sensor").is(":checked")) {
+            // One section per source
+            $container.append(
+                createChartSection({
+                    sectionId: `source-chart-${index}-section`,
+                    analysisId: `source-${index}-analysis`,
+                    canvasId: `source-${index}-canvas`,
+                    quantityId: `source-${index}`,
+                    fullDisplayId: `full-display-source-${index}`,
+                    allXColumn: allXColumn,
+                    allYColumnOrArray: allYColumnOrArray,
+                    labelOrLabels: labelOrLabels,
+                    unit: unit,
+                    timeUnit: timeUnit,
+                    conversionFactor: conversionFactor,
+                    analysisOrArray: analysisOrArray,
+                    forThisBlankType: forThisBlankType,
+                    selectColor: selectColor,
+                    index: index
+                })
+            );
+        } else {
+            // Single mixed plot
+            $container.append(`
+                <label id="quantity-checkboxes-plot" class="hidden">
+                    <h3>Quantities to display on graphic</h3>
+                    ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType, selectColor, index)}
+                </label>
+                <div id="plot-chart-section">
+                    <div id="plot-analysis"></div>
+                    <canvas id="plot-canvas"></canvas>
+                </div>
+            `);
+        }
+    } else {
+        if ($("#split-mode").is(":checked")) {
+            // Blanked and non-blanked sections
+            $container.append(
+                createChartSection({
+                    sectionId: "blanked-chart-section",
+                    analysisId: "blanked-analysis",
+                    canvasId: "blanked-canvas",
+                    quantityId: "blanked",
+                    fullDisplayId: "full-display-blanked",
+                    allXColumn: allXColumn[0],
+                    allYColumnOrArray: allYColumnOrArray[0],
+                    labelOrLabels: labelOrLabels[0],
+                    unit: unit,
+                    timeUnit: timeUnit,
+                    conversionFactor: conversionFactor,
+                    analysisOrArray: analysisOrArray[0],
+                    forThisBlankType: forThisBlankType[0],
+                    selectColor: selectColor[0],
+                    index: index
+                })
+            );
+            $container.append(
+                createChartSection({
+                    sectionId: "non-blanked-chart-section",
+                    analysisId: "non-blanked-analysis",
+                    canvasId: "non-blanked-canvas",
+                    quantityId: "non-blanked",
+                    fullDisplayId: "full-display-non-blanked",
+                    allXColumn: allXColumn[1],
+                    allYColumnOrArray: allYColumnOrArray[1],
+                    labelOrLabels: labelOrLabels[1],
+                    unit: unit,
+                    timeUnit: timeUnit,
+                    conversionFactor: conversionFactor,
+                    analysisOrArray: analysisOrArray[1],
+                    forThisBlankType: forThisBlankType[1],
+                    selectColor: selectColor[1],
+                    index: index
+                })
+            );
+        } else {
+            // Single mixed plot
+            $container.append(
+                createChartSection({
+                    sectionId: "plot-chart-section",
+                    analysisId: "plot-analysis",
+                    canvasId: "plot-canvas",
+                    quantityId: "plot",
+                    fullDisplayId: "full-display-plot",
+                    allXColumn: allXColumn,
+                    allYColumnOrArray: allYColumnOrArray,
+                    labelOrLabels: labelOrLabels,
+                    unit: unit,
+                    timeUnit: timeUnit,
+                    conversionFactor: conversionFactor,
+                    analysisOrArray: analysisOrArray,
+                    forThisBlankType: forThisBlankType,
+                    selectColor: selectColor,
+                    index: index
+                })
+            );
+        }
+    }
+}
+
 function updatePlot(
     data, metadata, range, timeUnit, window_size, unit, isSplitMode,
     isFullDisplay = false, forBlankType = null,
@@ -307,47 +561,6 @@ function updatePlot(
 
     destroyCharts();
     $("#chart-container").empty(); // Clear existing chart sections
-
-    if (AppState.multiSource && isSplitMode) {
-        // Create a chart section for each source
-        for (let i = 0; i < AppState.numSources; i++) {
-            const sectionId = `source-chart-section-${i}`;
-            const analysisId = `source-analysis-${i}`;
-            const canvasId = `source-canvas-${i}`;
-            $("#chart-container").append(`
-                <div id="${sectionId}">
-                    <div id="${analysisId}"></div>
-                    <canvas id="${canvasId}"></canvas>
-                </div>
-            `);
-        }
-    } else {
-        const splitMode = $("#split-mode").is(":checked")
-            && AppState.currentMeasurementMode !== "calibrate"
-            && !AppState.multiSource;
-
-        if (splitMode) {
-            // Append only blanked + non-blanked sections
-            $("#chart-container").append(`
-                <div id="blanked-chart-section">
-                    <div id="blank-analysis"></div>
-                    <canvas id="blanked-canvas"></canvas>
-                </div>
-                <div id="non-blanked-chart-section">
-                    <div id="non-blank-analysis"></div>
-                    <canvas id="non-blanked-canvas"></canvas>
-                </div>
-            `);
-        } else {
-            // Append only mix section
-            $("#chart-container").append(`
-                <div id="mix-chart-section">
-                    <div id="mix-analysis"></div>
-                    <canvas id="plot-canvas"></canvas>
-                </div>
-            `);
-        }
-    }
 
     // Restore scroll position
     chartContainer.scrollTop = scrollPosition;
@@ -448,24 +661,15 @@ function updatePlot(
 
                 analyses.push(analysis);
 
-                const canvasId = `source-canvas-${i}`;
-                const analysisId = `source-analysis-${i}`;
-                const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], isFullDisplay, true, i, i);
+                const canvasId = `source-${i}-canvas`;
+                const analysisId = `source-${i}-analysis`;
+                renderCharts(XColumnVals, yValues, label, unit, timeUnit, conversionFactor, analysis, true, i, i);
+                const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], true, i, i);
                 charts.push(chart);
 
                 // Update analysis info display
                 const analysisInfo = formatAnalysisInfo(analysis, conversionFactor, unit, label);
-                if (AppState.currentMeasurementMode !== "calibrate") {
-                    $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
-                } else {
-                    let htmlString = "";
-                    if (isCalKinetics) {
-                        htmlString = getCalKineticsString([yColumn], [analysis], regressAlgo === "Michaelis-Menten");
-                    } else {
-                        htmlString = getCalPointString(analysis);
-                    }
-                    $("#" + analysisId).html(`<span style="color: ${AppState.plotColors[i % AppState.plotColors.length]};">Source ${i + 1}: ${htmlString}</span>`);
-                }
+                $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
             }
 
             AppState.sourceCharts = charts;
@@ -501,7 +705,7 @@ function updatePlot(
                     html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
                     if (i < analysisInfo.length - 1) html += '<br/>';
                 });
-                $("#mix-analysis").html(html);
+                $("#plot-analysis").html(html);
             } else {
                 let htmlString = "";
                 if (isCalKinetics) {
@@ -509,12 +713,13 @@ function updatePlot(
                 } else {
                     htmlString = analyses.map(a => getCalPointString(a)).join('<br/>');
                 }
-                $("#mix-analysis").html(htmlString);
+                $("#plot-analysis").html(htmlString);
             }
 
             // Generate single chart with all Y-columns
+            renderCharts(XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true)
             $("#plot-canvas").show();
-            AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, isFullDisplay, true);
+            AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 return extractMultiSourceResultSummary(metadata, analyses);
@@ -554,12 +759,12 @@ function updatePlot(
 
             const blankLabels = labels.map(l => `${l} (Blanked)`);
             const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
-
+            renderCharts([blankedX, nonBlankedX], [blankedY, nonBlankedY], [blankLabels, nonBlankLabels], unit, timeUnit, conversionFactor, [analysis_blanked, analysis_nonblanked], [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], [1, 0])
             $("#blanked-canvas, #non-blanked-canvas").show();
             AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-                unit, timeUnit, conversionFactor, analysis_blanked, isFullDisplay, forBlankType === "BLANKED", selectColor = 1);
+                unit, timeUnit, conversionFactor, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
             AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-                unit, timeUnit, conversionFactor, analysis_nonblanked, isFullDisplay, forBlankType === "NON-BLANKED", selectColor = 0);
+                unit, timeUnit, conversionFactor, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
 
             // Format analysis info for both charts
             const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
@@ -578,10 +783,10 @@ function updatePlot(
                     blanked_string = getCalPointString(analysis_blanked);
                     non_blanked_string = getCalPointString(analysis_nonblanked);
                 }
-                $("#blank-analysis").html(
+                $("#blanked-analysis").html(
                     `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
                 );
-                $("#non-blank-analysis").html(
+                $("#non-blanked-analysis").html(
                     `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
                 );
             }
@@ -621,14 +826,16 @@ function updatePlot(
                 } else {
                     htmlString = getCalPointString(mixAnalysis);
                 }
-                $("#mix-analysis").html(htmlString);
+                $("#plot-analysis").html(htmlString);
             }
 
             // Generate chart
-            $("#plot-canvas").show();
             const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
+            renderCharts(XColumnVals, yValsForChart, labels,
+                unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
+            $("#plot-canvas").show();
             AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-                unit, timeUnit, conversionFactor, mixAnalysis, isFullDisplay, forBlankType === "MIXED");
+                unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 return extractSingleResultSummary(metadata, mixAnalysis);
@@ -855,13 +1062,13 @@ function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo
     let html_blank = '';
     let html_nonblank = '';
     if (blankedAnalysisInfo) {
-        html_blank += formatAnalysisHtml(blankedAnalysisInfo, unit, timeUnit, 'rgb(255, 99, 132)', 'Blanked');
+        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], unit, timeUnit, 'rgb(255, 99, 132)', 'Blanked');
     }
     if (nonBlankedAnalysisInfo) {
-        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo, unit, timeUnit, 'rgb(75, 192, 192)', 'Non-Blanked');
+        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], unit, timeUnit, 'rgb(75, 192, 192)', 'Non-Blanked');
     }
-    $("#blank-analysis").html(html_blank || '');
-    $("#non-blank-analysis").html(html_nonblank || '');
+    $("#blanked-analysis").html(html_blank || '');
+    $("#non-blanked-analysis").html(html_nonblank || '');
 }
 
 function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblanked) {
@@ -882,9 +1089,9 @@ function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblank
 
 function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
     if (analysisInfo) {
-        $("#mix-analysis").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
+        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo[0], unit, timeUnit));
     } else {
-        $("#mix-analysis").html('');
+        $("#plot-analysis").html('');
     }
 }
 

@@ -47,6 +47,7 @@ const AppState = {
         'rgb(153, 102, 255)',
         'rgb(255, 159, 64)'
     ],
+    quantity_input: temp_quantity_input,
 
     reset: function() {
         this.blankedChart = null;
@@ -72,6 +73,18 @@ const AppState = {
         terminateScript();
     }
 };
+
+    // Set initial checkbox states and toggle quantity visibility based on passed isFullDisplay
+    const fullDisplayCheckboxes = document.querySelectorAll('input[id^="full-display-"]');
+    fullDisplayCheckboxes.forEach(cb => cb.checked = isFullDisplay);
+    const quantityLabels = document.querySelectorAll('label[id^="quantity-checkboxes-"]');
+    quantityLabels.forEach(ql => {
+        if (isFullDisplay) {
+            ql.classList.remove('hidden');
+        } else {
+            ql.classList.add('hidden');
+        }
+    });
 
 // Append to json_msg
 AppState.json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
@@ -351,7 +364,6 @@ function kineticsModeBehaviour() {
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
     $("#concentration-reader-section").removeClass("hidden");
-    $("#full-display-section").removeClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");
@@ -376,8 +388,6 @@ function pointModeBehaviour() {
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
     $("#concentration-reader-section").removeClass("hidden");
-    $("#full-display-section").removeClass("hidden");
-    $("#quantity-checkboxes").addClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");
@@ -400,7 +410,8 @@ function calModeBehaviour() {
     $("#range-display").addClass("hidden");
     $("#concentration-reader-section").addClass("hidden");
     $("#full-display-section").addClass("hidden");
-    $("#quantity-checkboxes").addClass("hidden");
+    $("#split-mode-section").removeClass("hidden");
+    $("#split-sensor-section").addClass("hidden");
     $("#select-regress-algo").removeClass("hidden");
     $("#export-coef").removeClass("hidden");
     $("#log-hid-data").addClass("hidden");

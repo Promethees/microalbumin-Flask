@@ -703,13 +703,13 @@ body.dark .display{
     white-space: pre-wrap;
 }
 
-body.light #mix-analysis, #blank-analysis, #non-blank-analysis {
+body.light #plot-analysis, #blanked-analysis, #non-blanked-analysis {
     margin-top: 10px;
     font-size: 0.9em;
     color: #333;
 }
 
-body.dark #mix-analysis, #blank-analysis, #non-blank-analysis {
+body.dark #plot-analysis, #blanked-analysis, #non-blanked-analysis {
     color: var(--text-color-dark);
 }
 

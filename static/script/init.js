@@ -52,7 +52,6 @@ document.getElementById('multi-source').addEventListener('change', function() {
     const numSourcesSelect = document.getElementById('num-sources-section');
     const splitByBlanked = document.getElementById('split-mode-section');
     const splitBySensor = document.getElementById('split-sensor-section');
-    const fullDisplay = document.getElementById('full-display-section');
     deselectFile();
     deselectFile("#json-table");
     AppState.responseData = null;
@@ -63,14 +62,12 @@ document.getElementById('multi-source').addEventListener('change', function() {
         numSourcesSelect.classList.remove('hidden');
         splitByBlanked.classList.add('hidden');
         splitBySensor.classList.remove('hidden');
-        fullDisplay.classList.add('hidden');
         AppState.multiSource = true;
         AppState.numSources = parseInt(document.getElementById('num-sources').value);
     } else {
         numSourcesSelect.classList.add('hidden');
         splitByBlanked.classList.remove('hidden');
         splitBySensor.classList.add('hidden');
-        fullDisplay.classList.remove('hidden');
         AppState.multiSource = false;
         AppState.numSources = 1;
     }
