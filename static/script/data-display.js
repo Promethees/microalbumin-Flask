@@ -805,8 +805,7 @@ function updatePlot(
                 if (isCalKinetics) {
                     mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
                 } else if (isCalPoint) {
-                    const mixedX = extractColumn(allGroups.allMixedData, XColumn);
-                    mixAnalysis = allYColumns.map(yCol => calculateCoefAndRSquared(yCol, mixedX, regressAlgo));
+                    mixAnalysis = calculateCoefAndRSquared(extractColumn(allGroups.allMixedData, YColumn), extractColumn(allGroups.allMixedData, XColumn), regressAlgo);
                 }
             }
 
