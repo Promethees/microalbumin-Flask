@@ -609,10 +609,29 @@ function exportData() {
         return; // Stop if validation fails
     }
     
-    if ($("#con-value-read").val() === "") {
-        alert("Please enter a concentration value before exporting data.");
-        blinkingItem('#con-value-read', 5000);
-        return;
+    if (AppState.multiSource) {
+        if ($("#exp-json-sensor").val() === "ALL") {
+            for (let i = 0; i < AppState.numSources; i++) {
+                if ($(`#con-value-read-source-${parseInt(i)}`).val() === "") {
+                    alert(`Please enter a concentration value for source-${parseInt(i) + 1}`);
+                    blinkingItem(`#con-value-read-source-${parseInt(i)}`, 5000);
+                    return;
+                }
+            }
+        } else {
+            const sourceIndex = $("#exp-json-sensor").val();
+            if ($(`#con-value-read-source-${parseInt(sourceIndex) - 1}`).val() === "") {
+                alert(`Please enter a concentration value for source-${parseInt(sourceIndex)}`);
+                blinkingItem(`#con-value-read-source-${parseInt(sourceIndex) - 1}`, 5000);
+                return;
+            }
+        }
+    } else {
+        if ($("#con-value-read").val() === "") {
+            alert("Please enter a concentration value before exporting data.");
+            blinkingItem('#con-value-read', 5000);
+            return;
+        }
     }
     AppState.processedExpPath = $("#same-dir-as-data").is(":checked")
     ? $("#directory").val().trim() || ""
@@ -624,48 +643,74 @@ function exportData() {
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
     // console.log("Global analysis data is ", AppState.globalAnalysis);
     if (AppState.currentMeasurementMode === "kinetics") {
-        switch ($("#exp-json-blank-type").val()) {
-            case "MIXED":
-                if (!$("#split-mode").is(":checked")) {
+        if (AppState.multiSource) {
+            if ($("#exp-json-sensor").val() === "ALL") {
+                for (let i = 0; i < AppState.numSources; i++) {
                     analysisData = {
-                        maxrate: AppState.globalAnalysis.maxrate * getTimeUnitMultiplier('minutes'),
-                        slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
-                        saturationValue: AppState.globalAnalysis.sat,
-                        timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
+                        maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
+                        slope: AppState.globalAnalysis.sources[i].slope * getTimeUnitMultiplier('minutes'),
+                        saturationValue: AppState.globalAnalysis.sources[i].sat,
+                        timeToSaturation: AppState.globalAnalysis.sources[i].time_to_sat / getTimeUnitMultiplier('minutes'),
                         measurement: AppState.globalAnalysis.meas,
                         measUnit: AppState.globalAnalysis.meas_unit
-                    };
+                    }
+                    sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
                 }
-                break;
+            } else {
+                const exportSensor = parseInt($("#exp-json-sensor").val()) - 1;
+                analysisData = {
+                    maxrate: AppState.globalAnalysis.sources[exportSensor].maxrate * getTimeUnitMultiplier('minutes'),
+                    slope: AppState.globalAnalysis.sources[exportSensor].slope * getTimeUnitMultiplier('minutes'),
+                    saturationValue: AppState.globalAnalysis.sources[exportSensor].sat,
+                    timeToSaturation: AppState.globalAnalysis.sources[exportSensor].time_to_sat / getTimeUnitMultiplier('minutes'),
+                    measurement: AppState.globalAnalysis.meas,
+                    measUnit: AppState.globalAnalysis.meas_unit
+                }
+                sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${exportSensor}`).val(), "MIXED");
+            }
+        } else {
+            switch ($("#exp-json-blank-type").val()) {
+                case "MIXED":
+                    if (!$("#split-mode").is(":checked")) {
+                        analysisData = {
+                            maxrate: AppState.globalAnalysis.maxrate * getTimeUnitMultiplier('minutes'),
+                            slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
+                            saturationValue: AppState.globalAnalysis.sat,
+                            timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        };
+                    }
+                    break;
 
-            case "BLANKED":
-                if ($("#split-mode").is(":checked")) {
-                    analysisData = {
-                        maxrate: AppState.globalAnalysis.maxrate_blanked * getTimeUnitMultiplier('minutes'),
-                        slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
-                        saturationValue: AppState.globalAnalysis.sat_blanked,
-                        timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
-                        measurement: AppState.globalAnalysis.meas,
-                        measUnit: AppState.globalAnalysis.meas_unit
-                    };
-                }
-                break;
+                case "BLANKED":
+                    if ($("#split-mode").is(":checked")) {
+                        analysisData = {
+                            maxrate: AppState.globalAnalysis.maxrate_blanked * getTimeUnitMultiplier('minutes'),
+                            slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
+                            saturationValue: AppState.globalAnalysis.sat_blanked,
+                            timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        };
+                    }
+                    break;
 
-            case "NON-BLANKED": 
-                if ($("#split-mode").is(":checked")) {
-                    analysisData = {
-                        maxrate: AppState.globalAnalysis.maxrate_non_blanked * getTimeUnitMultiplier('minutes'),
-                        slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
-                        saturationValue: AppState.globalAnalysis.sat_non_blanked,
-                        timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
-                        measurement: AppState.globalAnalysis.meas,
-                        measUnit: AppState.globalAnalysis.meas_unit
-                    };
-                }
-                break;
+                case "NON-BLANKED": 
+                    if ($("#split-mode").is(":checked")) {
+                        analysisData = {
+                            maxrate: AppState.globalAnalysis.maxrate_non_blanked * getTimeUnitMultiplier('minutes'),
+                            slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
+                            saturationValue: AppState.globalAnalysis.sat_non_blanked,
+                            timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        };
+                    }
+                    break;
+            }
+            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
         }
-        sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
-
     } else if (AppState.currentMeasurementMode === "point") {
         // Store current experiment values
         const currExpTimePoint = $("#exp-json-time-value").val();
