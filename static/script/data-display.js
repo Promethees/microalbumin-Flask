@@ -404,9 +404,15 @@ function createChartSection({
                 ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType, selectColor, index)}
             </label>
             <div id="${analysisId}"></div>
-            <div id="concentration-reader-section-source-${index}">
-                Concentration from source-${index + 1} sample is <input type="number" id="con-value-read-source-${index}" value="" min=0 style="width: 5em;"> </input> ng/µL
-            </div>
+            ${AppState.multiSource ? 
+                `
+                <div id="concentration-reader-section-source-${index}">
+                    Concentration from source-${index + 1} sample is 
+                    <input type="number" id="con-value-read-source-${index}" 
+                        value="" min=0 style="width: 5em;"> </input> ng/µL
+                </div>
+                `
+                : ``}
             <canvas id="${canvasId}"></canvas>
         </div>
     ` : 
