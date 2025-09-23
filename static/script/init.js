@@ -59,8 +59,8 @@ document.getElementById('multi-source').addEventListener('change', function() {
     AppState.blankedChart = null;
     AppState.nonBlankedChart = null;
     AppState.globalEstimatedValue = null;
-    document.getElementById('est-val-error').textContent = '';
-    document.getElementById('est-val-exp').textContent = '';
+    document.getElementById('est-val-error').innerHTML = '';
+    document.getElementById('est-val-exp').innerHTML = '';
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
@@ -161,21 +161,21 @@ function updatePointEstimate() {
     console.log("Estimated value is ", AppState.globalEstimatedValue);
 
     if (!AppState.globalEstimatedValue || (Array.isArray(AppState.globalEstimatedValue) && AppState.globalEstimatedValue.length === 0)) {
-        estValError.textContent = 'Error: Reference point is outside the range of the data or not set!';
-        estValExp.textContent = '';
+        estValError.innerHTML = '<span style="color:red">Error: Reference point is outside the range of the data or not set!</span>';
+        estValExp.innerHTML = '';
     } else {
-        estValError.textContent = '';
+        estValError.innerHTML = '';
         if (Array.isArray(AppState.globalEstimatedValue)) {
-            estValExp.textContent = `Estimated values at ${currExpTimePoint} minute are: ${
+            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${
                 AppState.globalEstimatedValue
-                    .map((v, i) => `[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}`)
+                    .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
                     .join(", ")
                 }`;
         } else {
             if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
-                estValExp.textContent = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}`;
+                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
             else 
-                estValExp.textContent = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
+                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
         }
     }
 }
