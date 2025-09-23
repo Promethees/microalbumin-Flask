@@ -134,6 +134,14 @@ expPoint.addEventListener('change', updatePointEstimate);
 const expSensor = document.getElementById('exp-json-sensor');
 expSensor.addEventListener('change', updatePointEstimate);
 
+function isNullOrArrayOfNull(value) {
+    if (value === null) return true; // case 1: value is null
+    if (Array.isArray(value)) {
+    return value.every(item => item === null); // case 2: all items null
+    }
+    return false; // anything else
+}
+
 function updatePointEstimate() {
     const estValError = document.getElementById('est-val-error');
     const estValExp = document.getElementById('est-val-exp');
@@ -160,7 +168,7 @@ function updatePointEstimate() {
 
     console.log("Estimated value is ", AppState.globalEstimatedValue);
 
-    if (!AppState.globalEstimatedValue || (Array.isArray(AppState.globalEstimatedValue) && AppState.globalEstimatedValue.length === 0)) {
+    if (isNullOrArrayOfNull(AppState.globalEstimatedValue)) {
         estValError.innerHTML = '<span style="color:red">Error: Reference point is outside the range of the data or not set!</span>';
         estValExp.innerHTML = '';
     } else {

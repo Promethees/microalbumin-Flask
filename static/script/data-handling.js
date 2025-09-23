@@ -714,7 +714,7 @@ function exportData() {
     } else if (AppState.currentMeasurementMode === "point") {
         // Store current experiment values
         const currExpTimePoint = $("#exp-json-time-value").val();
-        if (currExpTimePoint && AppState.globalEstimatedValue) { 
+        if (currExpTimePoint && !isNullOrArrayOfNull(AppState.globalEstimatedValue)) { 
             if (AppState.multiSource) {
                 if ($("#exp-json-sensor").val() === "ALL") {
                     for (let i = 0; i < AppState.numSources; i++) {
