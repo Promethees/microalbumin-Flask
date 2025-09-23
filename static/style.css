@@ -35,7 +35,7 @@ body {
 
 .section {
     margin-bottom: 20px;
-    width: 100% !important;
+    max-width: 100% !important;
 }
 
 .hidden {
@@ -310,9 +310,9 @@ body.dark option {
     display: block;
     position: fixed;
     top: 20px;
-    left: 20px;
-    max-width: 25vw;
-    min-width: 150px;
+    left: 1vw;
+    right: 0.5vw;
+    max-width: 23.5vw;
     box-sizing: border-box;
 }
 
@@ -618,6 +618,8 @@ body.dark #swal-edit-table tr.selected td {
 .dir-blocks div:hover {
     background-color: #f0f0f0;
     color: var(--text-color-light);
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 /* Chrome, Edge, Safari */
