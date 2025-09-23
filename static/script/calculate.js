@@ -134,7 +134,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     }
 
     let maxRate = 0;
-    let threshold = 0.05;
+    let threshold = 0;
     let startMaxRate = -1;
     let endMaxRate = -1;
     let yMaxRateStart = 0;
@@ -522,21 +522,20 @@ function michaelisMentenConcentrationRegression(rates, substrates) {
     }
 }
 
-function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 60) {
+function getEstimatedValue(data, timepoint, blankTypeOrSourceIndex = "MIXED", maxTolerance = 60) {
     if (!Array.isArray(data) || data.length === 0 || !timepoint) return null;
 
     // Sort data by timestamp
     data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
 
-    // Filter data based on blankType
-    const filteredData = data.filter(item => {
-        if (blankType === "MIXED") return true;
-        if (blankType === "BLANKED") return item["Blanked"] === true; // Changed from "Blank" to "Blanked"
-        if (blankType === "NON-BLANKED") return item["Blanked"] === false; // Changed from "Blank" to "Blanked"
-        return true; // Default to MIXED behavior
-    });
+    // Pick which key to use
+    let valueKey = "Value";
+    if (AppState.multiSource && typeof blankTypeOrSourceIndex === "number") {
+        valueKey = `Value:${blankTypeOrSourceIndex}`; // e.g. Value:1, Value:2
+    }
 
-    if (filteredData.length === 0) return null;
+    // No filtering for multiSource (your data doesn’t have "Blanked")
+    const filteredData = data;
 
     // Loop to find the two surrounding points
     for (let i = 0; i < filteredData.length - 1; i++) {
@@ -544,16 +543,16 @@ function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 
         const t2 = filteredData[i + 1]["Timestamp"];
 
         // Exact match
-        if (t1 === timepoint) return filteredData[i]["Value"];
-        if (t2 === timepoint) return filteredData[i + 1]["Value"];
+        if (t1 === timepoint) return filteredData[i][valueKey];
+        if (t2 === timepoint) return filteredData[i + 1][valueKey];
 
-        // Surrounding range for interpolation
+        // Interpolation between surrounding timestamps
         if (t1 < timepoint && timepoint < t2) {
             const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
             if (minDiff > maxTolerance) return null;
 
-            const v1 = filteredData[i]["Value"];
-            const v2 = filteredData[i + 1]["Value"];
+            const v1 = filteredData[i][valueKey];
+            const v2 = filteredData[i + 1][valueKey];
 
             const ratio = (timepoint - t1) / (t2 - t1);
             return v1 + ratio * (v2 - v1);
@@ -562,8 +561,8 @@ function getEstimatedValue(data, timepoint, blankType = "MIXED", maxTolerance = 
 
     // Check ends if out-of-bounds but within tolerance
     const first = filteredData[0], last = filteredData[filteredData.length - 1];
-    if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first["Value"];
-    if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last["Value"];
+    if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first[valueKey];
+    if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last[valueKey];
 
     return null;
 }

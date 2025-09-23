@@ -715,13 +715,36 @@ function exportData() {
         // Store current experiment values
         const currExpTimePoint = $("#exp-json-time-value").val();
         if (currExpTimePoint && AppState.globalEstimatedValue) { 
-            analysisData = {
-                estValue: AppState.globalEstimatedValue.toFixed(4),
-                timePoint: currExpTimePoint,
-                measurement: AppState.globalAnalysis.meas,
-                measUnit: AppState.globalAnalysis.meas_unit
-            } 
-            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
+            if (AppState.multiSource) {
+                if ($("#exp-json-sensor").val() === "ALL") {
+                    for (let i = 0; i < AppState.numSources; i++) {
+                            analysisData = {
+                            estValue: AppState.globalEstimatedValue[i].toFixed(4),
+                            timePoint: currExpTimePoint,
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        } 
+                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
+                    }
+                } else {
+                    const sourceIndex = parseInt($("#exp-json-sensor").val()) - 1;
+                    analysisData = {
+                        estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
+                        timePoint: currExpTimePoint,
+                        measurement: AppState.globalAnalysis.meas,
+                        measUnit: AppState.globalAnalysis.meas_unit
+                    } 
+                    sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${sourceIndex}`).val(), "MIXED");
+                }
+            } else {
+                analysisData = {
+                    estValue: AppState.globalEstimatedValue.toFixed(4),
+                    timePoint: currExpTimePoint,
+                    measurement: AppState.globalAnalysis.meas,
+                    measUnit: AppState.globalAnalysis.meas_unit
+                } 
+                sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
+            }
         } else {
             alert("Please set the reference time point to export data or ensure time point is within the recorded time range.");
         }
