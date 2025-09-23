@@ -302,9 +302,19 @@ function settingDerivedCon(jsonFile) {
     let derived_con_text = null;
     switch(jsonFile["for_blank_type"]) {
         case "MIXED":
-            if (!$("#split-mode").is(":checked")) {
-                derived_section = document.getElementById('derived-concentration-section');
-                derived_con_text = document.getElementById('der-con-value');
+            derived_section = [];
+            derived_con_text = [];
+            if (AppState.multiSource) {
+                for (let i = 0; i < AppState.numSources; i++) {
+                    derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
+                    derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
+                }
+            }
+            else { 
+                if (!$("#split-mode").is(":checked")) {
+                    derived_section = document.getElementById('derived-concentration-section');
+                    derived_con_text = document.getElementById('der-con-value');
+                }
             }
             break;
         case "BLANKED":
@@ -363,26 +373,6 @@ function fetchData(unit, window_size, filename, jsonFile) {
             let derivedConSettings = null;
             let derived_section = null;
             let derived_con_text = null;
-            if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
-                derivedConSettings = settingDerivedCon(jsonFile);
-                derived_section = derivedConSettings.derived_section;
-                derived_con_text = derivedConSettings.derived_con_text;
-                // console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
-                if (derived_section) {
-                    derived_section.classList.remove("hidden");
-                    if (AppState.currentMeasurementMode === "kinetics") {
-                        $("#select-quantity-section").removeClass("hidden");
-                    } else {
-                        $("#select-quantity-section").addClass("hidden");
-                    }
-                    blinkingItem(derived_con_text, null);
-                } else { // derived_section is null -> hide all
-                    $("#select-quantity-section").addClass("hidden");
-                    $("#derived-concentration-section").addClass("hidden");
-                    $("#blank-derived-concentration-section").addClass("hidden");
-                    $("#non-blank-derived-concentration-section").addClass("hidden");
-                }
-            }
 
             const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
             const displayRangeInput = document.getElementById('range-value');
@@ -394,6 +384,48 @@ function fetchData(unit, window_size, filename, jsonFile) {
 
             // Update plot based on current mode
             updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, true);
+            if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
+                derivedConSettings = settingDerivedCon(jsonFile);
+                derived_section = derivedConSettings.derived_section;
+                derived_con_text = derivedConSettings.derived_con_text;
+                console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
+                if (AppState.multiSource) {
+                    if (derived_section && Array.isArray(derived_section)) {
+                        derived_section.forEach(section => section.classList.remove("hidden"));
+                        if (AppState.currentMeasurementMode === "kinetics") {
+                            $("#select-quantity-section").removeClass("hidden");
+                        } else {
+                            $("#select-quantity-section").addClass("hidden");
+                        }
+                        derived_con_text.forEach(section => blinkingItem(section, null));
+                    }
+                    else {
+                        $("#select-quantity-section").addClass("hidden");
+                        derived_section.forEach(section => section.classList.add("hidden"));
+                    }
+                }
+                else {
+                    if (derived_section) {
+                        derived_section.classList.remove("hidden");
+                        if (AppState.currentMeasurementMode === "kinetics") {
+                            $("#select-quantity-section").removeClass("hidden");
+                        } else {
+                            $("#select-quantity-section").addClass("hidden");
+                        }
+                        if (AppState.currentMeasurementMode === "kinetics") {
+                            $("#select-quantity-section").removeClass("hidden");
+                        } else {
+                            $("#select-quantity-section").addClass("hidden");
+                        }
+                        blinkingItem(derived_con_text, null);
+                    } else { // derived_section is null -> hide all
+                        $("#select-quantity-section").addClass("hidden");
+                        $("#derived-concentration-section").addClass("hidden");
+                        $("#blank-derived-concentration-section").addClass("hidden");
+                        $("#non-blank-derived-concentration-section").addClass("hidden");
+                    }
+                }
+            }
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input
@@ -407,32 +439,61 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 if (AppState.currentMeasurementMode === "kinetics" && jsonFile) {
                     const conQuantityInput = document.getElementById('regressed-quantity').value;
                     const blankType = jsonFile["for_blank_type"];
-                    let value = null;
+                    let analysisExtraction = null;
                     
                     // Calculate value based on quantity and blank type
-                    switch(conQuantityInput) {
-                        case "maxrate":
-                            value = getKineticValue("maxrate", blankType) * 60;
+                    switch (conQuantityInput) {
+                        case "maxrate": {
+                            const val = getKineticValue("maxrate", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v) * 60)
+                                : (val !== null ? parseFloat(val) * 60 : null);
                             break;
-                        case "slope":
-                            value = getKineticValue("slope", blankType) * 60;
+                        }
+                        case "slope": {
+                            const val = getKineticValue("slope", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v) * 60)
+                                : (val !== null ? parseFloat(val) * 60 : null);
                             break;
-                        case "sat":
-                            value = getKineticValue("sat", blankType);
+                        }
+                        case "sat": {
+                            const val = getKineticValue("sat", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v))
+                                : (val !== null ? parseFloat(val) : null);
                             break;
-                        case "time_to_sat":
-                            value = getKineticValue("time_to_sat", blankType) / 60;
+                        }
+                        case "time_to_sat": {
+                            const val = getKineticValue("time_to_sat", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v) / 60)
+                                : (val !== null ? parseFloat(val) / 60 : null);
                             break;
+                        }
                     }
                     
-                    if (value !== null) {
+                    if (analysisExtraction !== null) {
                         const coef = jsonFile[conQuantityInput]["fit_coef"];
-                        try {
-                            calculated_con = computeFit(value, jsonFile["fit_type"], coef).toFixed(4);
-                            derived_con_text.innerHTML = `${calculated_con}`;
-                        } catch (error) {
-                            console.error("Error computing derived concentration:", error);
-                            derived_con_text.innerHTML = `<span style="color: red;">${error.message}</span>`;
+
+                        if (Array.isArray(analysisExtraction) && Array.isArray(derived_con_text)) {
+                            analysisExtraction.forEach((val, idx) => {
+                                try {
+                                    const calculated_con = computeFit(val, jsonFile["fit_type"], coef).toFixed(4);
+                                    derived_con_text[idx].innerHTML = `${calculated_con}`;
+                                } catch (error) {
+                                    console.error("Error computing derived concentration:", error);
+                                    derived_con_text[idx].innerHTML = `<span style="color: red;">${error.message}</span>`;
+                                }
+                            });
+                        } else {
+                            try {
+                                const calculated_con = computeFit(analysisExtraction, jsonFile["fit_type"], coef).toFixed(4);
+                                derived_con_text.innerHTML = `${calculated_con}`;
+                            } catch (error) {
+                                console.error("Error computing derived concentration:", error);
+                                derived_con_text.innerHTML = `<span style="color: red;">${error.message}</span>`;
+                            }
                         }
                     }
                 } 
@@ -451,10 +512,18 @@ function fetchData(unit, window_size, filename, jsonFile) {
     }); // Close $.get callback
 } // Close fetchData function
 
-function getKineticValue(property, blankType) {
+function getKineticValue(property, blankType, multi_source=AppState.multiSource) {
     const analysis = AppState.globalAnalysis;
     switch(blankType) {
-        case "MIXED": return analysis ? analysis[property] : null;
+        case "MIXED": 
+            if (multi_source) {
+                let values = [];
+                analysis.sources.forEach(source => {
+                    values.push(source[property]);
+                });
+                return values.length > 0 ? values : null;
+            }
+            return analysis ? analysis[property] : null;
         case "BLANKED": return analysis ? analysis[`${property}_blanked`] : null;
         case "NON-BLANKED": return analysis ? analysis[`${property}_non_blanked`] : null;
         default: return null;

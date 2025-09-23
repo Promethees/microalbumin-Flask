@@ -411,6 +411,9 @@ function createChartSection({
                     <input type="number" id="con-value-read-source-${index}" 
                         value="" min=0 style="width: 5em;"> </input> ng/µL
                 </div>
+                <div id="derived-concentration-section-source-${index}" class="hidden">
+                    Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
+                </div>
                 `
                 : ``}
             <canvas id="${canvasId}"></canvas>
@@ -715,6 +718,9 @@ function updatePlot(
                     html += `
                         <div id="concentration-reader-section-source-${i}">
                             Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
+                        </div>
+                        <div id="derived-concentration-section-source-${i}" class="hidden">
+                            Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
                         </div>
                     `
                     if (i < analysisInfo.length - 1) html += '<br/>';

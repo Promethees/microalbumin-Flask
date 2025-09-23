@@ -86,7 +86,8 @@ def index():
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
     file_list = get_file_list(directory)
-    cal_json_list = get_file_list(os.path.join(json_root_path, "single_sensor", "kinetics"), "*.json")
+    # cal_json_list = get_file_list(os.path.join(json_root_path, "single_sensor", "kinetics"), "*.json")
+    cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
     clear_logs()
     response = make_response(render_template('index.html', 
                          title="Easy Sensor Kit",
@@ -165,10 +166,11 @@ def get_json_cal():
     mode = request.args.get('mode')
     is_multi_sources = request.args.get('isMultiSource', 'false').lower() == 'true'
     num_sources = int(request.args.get('numSources', 1))
-    if is_multi_sources:
-        json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
-    else:
-        json_path = os.path.join(json_root_path, 'single_sensor', mode)
+    # if is_multi_sources:
+    #     json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
+    # else:
+    # json_path = os.path.join(json_root_path, 'single_sensor', mode)
+    json_path = os.path.join(json_root_path, mode)
     # print("The json path is ", json_path)
     if os.path.exists(json_path):
         json_files = get_file_list(json_path, "*.json")
@@ -184,10 +186,10 @@ def get_json_content():
     mode = request.args.get('mode')
     is_multi_source = request.args.get('isMultiSource', 'false').lower() == 'true'
     num_sources = int(request.args.get('numSources', 1))
-    if is_multi_source:
-        json_path = os.path.join(os.path.join(json_root_path, f"{num_sources}_sensors"), mode, selected_json)
-    else:
-        json_path = os.path.join(os.path.join(json_root_path, "single_sensor", mode), selected_json)
+    # if is_multi_source:
+    #     json_path = os.path.join(os.path.join(json_root_path, f"{num_sources}_sensors"), mode, selected_json)
+    # else:
+    json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
     print("print the json path ", json_path)
     if os.path.exists(json_path):
         with open(json_path, 'r') as f:
@@ -618,10 +620,11 @@ def delete_file():
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            if is_multi_source:
-                json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
-            else:
-                json_path = os.path.join(json_root_path, "single_sensor", mode)
+            # if is_multi_source:
+            #     json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
+            # else:
+            #     json_path = os.path.join(json_root_path, "single_sensor", mode)
+            json_path = os.path.join(json_root_path, mode)
             file_path = os.path.join(json_path, file_name)
             print(f"JSON file path is {file_path}")
         else:
@@ -703,10 +706,11 @@ def copy_file():
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            if is_multi_source:
-                src_dir = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
-            else:
-                src_dir = os.path.join(json_root_path, "single_sensor", mode)
+            # if is_multi_source:
+            #     src_dir = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
+            # else:
+            #     src_dir = os.path.join(json_root_path, "single_sensor", mode)
+            src_dir = os.path.join(json_root_path, mode)
         else:
             src_dir = path
 
@@ -912,11 +916,11 @@ def export_cal_coefs():
     is_multi_source = data.get('isMultiSource', False)
     num_sources = int(data.get('numSources', 1))
 
-    if is_multi_source:
-        export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
-    else:
-        export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
-
+    # if is_multi_source:
+    #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
+    # else:
+    #     export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
+    export_path = os.path.join(json_root_path, cal_mode)
     print("received coef_content:", coef_content)
     try: 
         export_path = os.getenv(export_path, export_path)

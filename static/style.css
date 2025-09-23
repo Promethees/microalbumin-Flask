@@ -827,13 +827,13 @@ body.dark #plot-analysis, #blanked-analysis, #non-blanked-analysis {
     animation: blink 1s infinite;
 }
 
-body.light .der-con-value.blinking {
+body.light [id^="der-con-value"].blinking, #blank-der-con-value.blinking, #non-blank-der-con-value.blinking {
     border: 2px solid darkviolet;
     --blink-color: darkviolet;
     animation: blink 1s infinite;
 }
 
-body.dark .der-con-value.blinking {
+body.dark [id^="der-con-value"].blinking, #blank-der-con-value.blinking, #non-blank-der-con-value.blinking {
     border: 2px solid #DA70D6;
     --blink-color: #DA70D6;
     animation: blink 1s infinite;
