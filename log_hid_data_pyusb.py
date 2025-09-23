@@ -17,7 +17,7 @@ PYBADGE_PID = 0x8034  # PyBadge Product ID
 # Byte 0: Modifier keys (ignored)
 # Byte 1: Reserved (0x00)
 # Bytes 2-7: Keycodes
-REPORT_LENGTH = 8
+REPORT_LENGTH = 9
 
 # Keycode mapping (shifted characters only, as per US keyboard layout)
 KEYCODE_MAP = {
@@ -66,7 +66,7 @@ class HIDDataCollector:
     def log(self, message):
         """Write a message to the log file with a timestamp."""
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(self.log_file_path, 'a') as f:
+        with open(self.log_file_path, 'a', encoding='utf-8') as f:
             f.write(f"[{timestamp}] {message}\n")
 
     def find_pybadge(self):
@@ -173,7 +173,7 @@ class HIDDataCollector:
         if match:
             key, value = match.groups()
             if value == "UWCM2":
-                value = "\u03BCW/cm\u00B2"  # Replace with proper micro symbol
+                value = "μW/cm²"  # Replace with proper micro symbol
             self.metadata[key] = value
             self.log(f"Received metadata: {key} = {value}")
 
@@ -185,7 +185,7 @@ class HIDDataCollector:
 
         self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)
         os.makedirs(self.base_dir, exist_ok=True)
-        with open(self.output_file, "w") as f:
+        with open(self.output_file, "w", encoding='utf-8') as f:
             # Write metadata as comments
             for key, value in self.metadata.items():
                 f.write(f"# {key.title()}: {value}\n")
@@ -197,7 +197,7 @@ class HIDDataCollector:
         # Save latest output path so Flask can find it
         latest_file_marker = os.path.join(self.log_dir, "current_output.txt")
         open(latest_file_marker, "w").close()
-        with open(latest_file_marker, "w") as marker:
+        with open(latest_file_marker, "w", encoding='utf-8') as marker:
             marker.write(self.output_file)
         
         self.session_started = True
@@ -216,7 +216,7 @@ class HIDDataCollector:
                 values = fields[1:]  # All fields after timestamp
                 log_message = f"Received: Timestamp: {timestamp}s, Values: {', '.join(values)}"
             self.log(log_message)
-            with open(self.output_file, "a") as f:
+            with open(self.output_file, "a", encoding='utf-8') as f:
                 f.write(data)
         except ValueError as e:
             self.log(f"Error parsing data: {e}")
