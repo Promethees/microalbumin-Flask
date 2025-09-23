@@ -368,6 +368,16 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                            },
+                            {
+                                header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
+                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*-?\d+(?:\.\d{1,3})?)*\s*$/,
+                                error: 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,...',
+                                meta: [
+                                    /^#\s*Measurement\s*:\s*.+$/,
+                                    /^#\s*Unit\s*:\s*.+$/,
+                                    /^#\s*Concentration\s*:\s*.+$/
+                                ]
                             }
                         ];
 
@@ -442,7 +452,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         new_filename: newFileName,
                         path: filePath,
                         content: content,
-                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp'
+                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp',
+                        multi_source: AppState.multiSource
                     }, function(response) {
                         if (response.status === 'success') {
                             let textMsg;

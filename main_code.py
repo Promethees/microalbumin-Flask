@@ -407,6 +407,7 @@ def edit_file():
         path = request.form.get('path') if request.form.get('path') else get_directory()
         content = request.form.get('content')
         calibrate_mode = request.form.get('calibrate_mode')
+        multi_source = request.form.get('multi_source', 'false').lower() == 'true'
 
         # Input validation
         if not file_name or not content:
@@ -468,15 +469,21 @@ def edit_file():
                 },
                 {
                     'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
                     'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
                     'header': r"^Concentration,Value,TimePoint,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
                     'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
+                },
+                {
+                    'header': r'^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$',
+                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*-?\d+(?:\.\d{1,3})?)*\s*$',
+                    'meta': ["Measurement", "Unit", "Concentration"],
+                    'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
                 }
             ]
 
@@ -549,7 +556,7 @@ def edit_file():
                     with open(new_file_path, 'w') as f:
                         f.write(content)
                     if calibrate_mode:
-                        sort_csv_file(new_file_path, calibrate_mode)
+                        sort_csv_file(new_file_path, calibrate_mode, multi_source)
                 f.close()
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
