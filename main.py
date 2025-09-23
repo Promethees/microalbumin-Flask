@@ -462,19 +462,19 @@ def edit_file():
             pattern_sets = [
                 {
                     'header': r"^Timestamp,Value,Type,Blanked$",
-                    'data': r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z]+,(TRUE|FALSE)$",
+                    'data': r"^\d+\.{0,1}\d{0,2},\-{0,1}\d+\.{0,1}\d{0,3},[A-Za-z]+,(TRUE|FALSE)$",
                     'meta': ["Measurement", "Unit", "Concentration"],
                     'error': 'Invalid format (Colorimeter data). Header must be: Timestamp,Measurement,Value,Type,Blanked. Metadata must include Measurement, Unit, and Concentration.'
                 },
                 {
                     'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
                     'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
                     'header': r"^Concentration,Value,TimePoint,BlankType$",
-                    'data': r"^(NONE|\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
                     'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
                 }

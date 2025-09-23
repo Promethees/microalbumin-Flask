@@ -353,19 +353,19 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             {
                                 // Pattern 1: Requires metadata
                                 header: /^\s*Timestamp\s*,\s*Value\s*,\s*Type\s*,\s*Blanked\s*$/,
-                                data: /^\s*\d+\.\d{1,2}\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*(TRUE|FALSE)\s*$/,
+                                data: /^\s*\d+\.{0,1}\d{0,2}\s*,\s*\-{0,1}\d+\.{0,1}\d{0,3}\s*,\s*[A-Za-z]+\s*,\s*(TRUE|FALSE)\s*$/,
                                 error: 'Invalid format (Pattern 1). Header must be: Timestamp,Value,Type,Blanked',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*Unit\s*:\s*.+$/, /^#\s*Concentration\s*:\s*.+$/]
                             },
                             {
                                 header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 2). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             },
                             {
                                 header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             }

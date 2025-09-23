@@ -462,7 +462,7 @@ def edit_file():
             pattern_sets = [
                 {
                     'header': r"^Timestamp,Value,Type,Blanked$",
-                    'data': r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z]+,(TRUE|FALSE)$",
+                    'data': r"^\d+\.{0,1}\d{0,2},\-{0,1}\d+\.{0,1}\d{0,3},[A-Za-z]+,(TRUE|FALSE)$",
                     'meta': ["Measurement", "Unit", "Concentration"],
                     'error': 'Invalid format (Colorimeter data). Header must be: Timestamp,Measurement,Value,Type,Blanked. Metadata must include Measurement, Unit, and Concentration.'
                 },
