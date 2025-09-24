@@ -120,6 +120,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     let localSlopes = [];
     let rSquaredValues = [];
     let intercepts = [];
+    window_size = Number(window_size);
 
     for (let i = 0; i <= XColumn.length - window_size; i++) {
         const x = XColumn.slice(i, i + window_size);
@@ -145,7 +146,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         if (rSquaredValues[i] >= 0.95 && localSlopes[i] > maxRate && adjustedLocal > threshold) {
             maxRate = localSlopes[i];
             startMaxRate = i;
-            endMaxRate = startMaxRate + Number(window_size) - 1;
+            endMaxRate = startMaxRate + window_size - 1;
             yMaxRateStart = maxRate * XColumn[startMaxRate] + intercepts[i];
             yMaxRateEnd = maxRate * XColumn[endMaxRate] + intercepts[i];
         }
