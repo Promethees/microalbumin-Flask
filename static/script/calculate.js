@@ -10,8 +10,8 @@ function computeRSquared(actual, predicted) {
 function calculateCoefAndRSquared(x, y, algo = "linear") {
     // Preprocess the data first
     const { x: processedX, y: processedY } = mapDuplicates(x, y);
-    x = x.map(num => parseFloat(num));
-    y = y.map(num => parseFloat(num));
+    x = processedX.map(num => parseFloat(num));
+    y = processedY.map(num => parseFloat(num));
     if (x.length !== y.length || x.length < 2) {
         return { slope: 0, rSquared: 0, coefficients: null };
     }
