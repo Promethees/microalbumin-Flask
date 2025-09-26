@@ -35,7 +35,7 @@ body {
 
 .section {
     margin-bottom: 20px;
-    width: 100% !important;
+    max-width: 100% !important;
 }
 
 .hidden {
@@ -310,9 +310,9 @@ body.dark option {
     display: block;
     position: fixed;
     top: 20px;
-    left: 20px;
-    max-width: 25vw;
-    min-width: 150px;
+    left: 1vw;
+    right: 0.5vw;
+    max-width: 23.5vw;
     box-sizing: border-box;
 }
 
@@ -451,7 +451,7 @@ body.dark option {
 #window-size-section,
 #select-quantity-section,
 #data-display-section,
-#concentration-reader-section,
+[id^="concentration-reader-section"],
 #point-json-exp-section,
 #cal-json-sel-section,
 #kinetics-lines,
@@ -618,6 +618,8 @@ body.dark #swal-edit-table tr.selected td {
 .dir-blocks div:hover {
     background-color: #f0f0f0;
     color: var(--text-color-light);
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 /* Chrome, Edge, Safari */
@@ -703,13 +705,13 @@ body.dark .display{
     white-space: pre-wrap;
 }
 
-body.light #analysis-info {
+body.light #plot-analysis, #blanked-analysis, #non-blanked-analysis {
     margin-top: 10px;
     font-size: 0.9em;
     color: #333;
 }
 
-body.dark #analysis-info {
+body.dark #plot-analysis, #blanked-analysis, #non-blanked-analysis {
     color: var(--text-color-dark);
 }
 
@@ -819,19 +821,19 @@ body.dark #analysis-info {
 #chart-container.blinking,
 #measurement-mode.blinking,
 #cal-mode-select.blinking,
-#con-value-read.blinking {
+[id^="con-value-read"].blinking {
     border: 2px solid #00ff00;
     --blink-color: #00ff00;
     animation: blink 1s infinite;
 }
 
-body.light .der-con-value.blinking {
+body.light [id^="der-con-value"].blinking, #blank-der-con-value.blinking, #non-blank-der-con-value.blinking {
     border: 2px solid darkviolet;
     --blink-color: darkviolet;
     animation: blink 1s infinite;
 }
 
-body.dark .der-con-value.blinking {
+body.dark [id^="der-con-value"].blinking, #blank-der-con-value.blinking, #non-blank-der-con-value.blinking {
     border: 2px solid #DA70D6;
     --blink-color: #DA70D6;
     animation: blink 1s infinite;

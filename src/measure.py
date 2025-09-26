@@ -1,7 +1,7 @@
 import pandas as pd
 import csv
 
-def sort_csv_file(file_path, meas_mode):
+def sort_csv_file(file_path, meas_mode, multi_source=False):
     """
     Sorts the data in the CSV file based on concentration and time_point (for point mode)
     while maintaining the original column order.
@@ -36,8 +36,11 @@ def sort_csv_file(file_path, meas_mode):
             # Sort by concentration (index 0), time_point (index 2), value (index 1) and blank type (index 3)
             sorted_rows = sorted(rows, key=lambda x: (float(x[0]), float(x[2]), float(x[1]), x[3]))
         else:
-            # Sort by timestamp (index 0) and blank type (index 3)
-            sorted_rows = sorted(rows, key=lambda x: (float(x[0]), x[3]))
+            if multi_source:
+                sorted_rows = sorted(rows, key=lambda x: (float(x[0])))
+            else:
+                # Sort by timestamp (index 0) and blank type (index 3)
+                sorted_rows = sorted(rows, key=lambda x: (float(x[0]), x[3]))
 
         # Write sorted data back to file
         with open(file_path, 'w', newline='') as f:

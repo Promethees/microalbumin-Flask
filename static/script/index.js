@@ -37,6 +37,17 @@ const AppState = {
     metaData: null,
     lightDisplay: true,
     globalEstimatedValue: null,
+    multiSource: false,
+    numSources: 1,
+    plotColors: [
+        'rgb(75, 192, 192)',
+        'rgb(255, 99, 132)',
+        'rgb(255, 205, 86)',
+        'rgb(54, 162, 235)',
+        'rgb(153, 102, 255)',
+        'rgb(255, 159, 64)'
+    ],
+    quantity_input: temp_quantity_input,
 
     reset: function() {
         this.blankedChart = null;
@@ -54,10 +65,26 @@ const AppState = {
         this.responseData = null;
         this.metaData = null;
         this.globalEstimatedValue = null;
-        Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
+        this.multiSource = false;
+        this.numSources = 1;
+        if (this.chartInstances) {
+            Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
+        }
         terminateScript();
     }
 };
+
+    // Set initial checkbox states and toggle quantity visibility based on passed isFullDisplay
+    const fullDisplayCheckboxes = document.querySelectorAll('input[id^="full-display-"]');
+    fullDisplayCheckboxes.forEach(cb => cb.checked = isFullDisplay);
+    const quantityLabels = document.querySelectorAll('label[id^="quantity-checkboxes-"]');
+    quantityLabels.forEach(ql => {
+        if (isFullDisplay) {
+            ql.classList.remove('hidden');
+        } else {
+            ql.classList.add('hidden');
+        }
+    });
 
 // Append to json_msg
 AppState.json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
@@ -257,6 +284,26 @@ $(document).ready(function() {
         } else {
             calModeBehaviour(); 
         }
+
+        if (AppState.currentMeasurementMode !== "calibrate") {
+        if (AppState.multiSource) {
+            $("#select-exp-blank-type-meas").addClass("hidden");
+            $("#select-sensor-to-export").removeClass("hidden");
+            const selectElement = document.getElementById('exp-json-sensor');
+            // Optional: Clear previous options except "ALL"
+            selectElement.innerHTML = '<option value="ALL">ALL</option>';
+            for (let i = 1; i <= AppState.numSources; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                selectElement.appendChild(option);
+            }
+        } else {
+            $("#select-exp-blank-type-meas").removeClass("hidden");
+            $("#select-sensor-to-export").addClass("hidden");
+            document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+        }
+    }
         
     });
 
@@ -316,9 +363,8 @@ function kineticsModeBehaviour() {
     $("#set-exp-point-section").addClass("hidden");
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
-    $("#concentration-reader-section").removeClass("hidden");
-    $("#analysis-info").removeClass("hidden");
-    $("#full-display-section").removeClass("hidden");
+    if (!AppState.multiSource)
+        $("#concentration-reader-section").removeClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");
@@ -326,6 +372,8 @@ function kineticsModeBehaviour() {
     $("#select-exp-blank-type-meas").removeClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
     $("#func-desc").addClass("hidden");
+    $("#sensor-options").removeClass("hidden");
+    $("#normalize-mode-section").removeClass("hidden");
 }
 
 function pointModeBehaviour() {
@@ -341,10 +389,8 @@ function pointModeBehaviour() {
     $("#set-exp-point-section").removeClass("hidden");
     $("#select-exp-blank-type").removeClass("hidden");
     $("#range-display").removeClass("hidden");
-    $("#concentration-reader-section").removeClass("hidden");
-    $("#analysis-info").removeClass("hidden");
-    $("#full-display-section").removeClass("hidden");
-    $("#quantity-checkboxes").addClass("hidden");
+    if (!AppState.multiSource)
+        $("#concentration-reader-section").removeClass("hidden");
     $("#select-time-point").addClass("hidden");
     $("#select-regress-algo").addClass("hidden");
     $("#export-coef").addClass("hidden");
@@ -352,6 +398,8 @@ function pointModeBehaviour() {
     $("#select-exp-blank-type-meas").removeClass("hidden");
     $("#select-exp-blank-type-cal").addClass("hidden");
     $("#func-desc").addClass("hidden");
+    $("#sensor-options").removeClass("hidden");
+    $("#normalize-mode-section").removeClass("hidden");
 }
 
 function calModeBehaviour() {
@@ -366,9 +414,9 @@ function calModeBehaviour() {
     $("#range-display").addClass("hidden");
     $("#concentration-reader-section").addClass("hidden");
     $("#full-display-section").addClass("hidden");
-    $("#quantity-checkboxes").addClass("hidden");
+    $("#split-mode-section").removeClass("hidden");
+    $("#split-sensor-section").addClass("hidden");
     $("#select-regress-algo").removeClass("hidden");
-    $("#analysis-info").removeClass("hidden");
     $("#export-coef").removeClass("hidden");
     $("#log-hid-data").addClass("hidden");
     $("#select-exp-blank-type-meas").addClass("hidden");
@@ -382,6 +430,12 @@ function calModeBehaviour() {
         }
     terminateScript(); 
     $("#selected-function").text($("#exp-json-regress-algo").val());
+    $("#sensor-options").addClass("hidden");
+    AppState.multiSource = false;
+    AppState.numSources = 1;
+    $("#multi-source").prop("checked", false);
+    $("#normalize-mode-section").addClass("hidden");
+    $("#normalize-mode").prop("checked", false);
 }
 
 function calKineticsBehaviour() {
@@ -423,9 +477,13 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         console.log("AJAX error:", textStatus, errorThrown);
         $("#error-message").text("Error updating directory").show();
     });
-    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode}, function(response) {
-        updateJSONTable(response.files);
-    })
+    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, isMultiSource: AppState.multiSource, numSources: AppState.numSources}, 
+        function(response) {
+            updateJSONTable(response.files);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+            $("#error-message").text("Error fetching JSON files").show();
+        });
 }
 
 function drawMeasurementChart() {

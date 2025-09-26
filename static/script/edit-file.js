@@ -271,8 +271,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }
             return html;
         }
-        // const filePath = tableSelector === '#file-table' ? $("#directory").val() : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
-        const filePath = tableSelector === '#file-table' ? $("#directory").val() : getNativePath(AppState.jsonPath, AppState.currentMeasurementMode);
+        const filePath = tableSelector === '#file-table' ? $("#directory").val() : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
+        // const filePath = tableSelector === '#file-table' ? $("#directory").val() : getNativePath(AppState.jsonPath, AppState.multiSource ? `${AppState.numSources}_sensors` : 'single_sensor', AppState.currentMeasurementMode);
         console.log("File Path is ", filePath);
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function(content) {
@@ -353,21 +353,31 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             {
                                 // Pattern 1: Requires metadata
                                 header: /^\s*Timestamp\s*,\s*Value\s*,\s*Type\s*,\s*Blanked\s*$/,
-                                data: /^\s*\d+\.\d{1,2}\s*,\s*\d+\.\d{1,3}\s*,\s*[A-Za-z]+\s*,\s*(TRUE|FALSE)\s*$/,
+                                data: /^\s*\d+\.{0,1}\d{0,2}\s*,\s*\-{0,1}\d+\.{0,1}\d{0,3}\s*,\s*[A-Za-z]+\s*,\s*(TRUE|FALSE)\s*$/,
                                 error: 'Invalid format (Pattern 1). Header must be: Timestamp,Value,Type,Blanked',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*Unit\s*:\s*.+$/, /^#\s*Concentration\s*:\s*.+$/]
                             },
                             {
                                 header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*[A-Za-z]+\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 2). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             },
                             {
                                 header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*BlankType\s*$/,
-                                data: /^\s*(NONE|\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*[A-Za-z]+\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
                                 error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                            },
+                            {
+                                header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
+                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*-?\d+(?:\.\d{1,3})?)*\s*$/,
+                                error: 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,...',
+                                meta: [
+                                    /^#\s*Measurement\s*:\s*.+$/,
+                                    /^#\s*Unit\s*:\s*.+$/,
+                                    /^#\s*Concentration\s*:\s*.+$/
+                                ]
                             }
                         ];
 
@@ -442,7 +452,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         new_filename: newFileName,
                         path: filePath,
                         content: content,
-                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp'
+                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp',
+                        multi_source: AppState.multiSource
                     }, function(response) {
                         if (response.status === 'success') {
                             let textMsg;

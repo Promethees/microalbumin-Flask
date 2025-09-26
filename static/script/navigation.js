@@ -38,9 +38,20 @@ async function filterFiles(files) {
             try {
                 const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
                 const data = await response.json();
-                const meas_headers = ["Timestamp","Value","Type","Blanked"];
-                const cal_headers_kinetics = ["Concentration","maxRate","Slope","Sat","Time To Sat","BlankType"];
-                const cal_headers_point = ["Concentration", "Value", "TimePoint", "BlankType"];
+                let meas_headers, cal_headers_kinetics, cal_headers_point;
+                cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat", "BlankType"];
+                cal_headers_point = ["Concentration", "Value", "TimePoint", "BlankType"];
+                
+                if (!AppState.multiSource) {
+                    meas_headers = ["Timestamp", "Value", "Type", "Blanked"];
+                } else {
+                    // Dynamically generate meas_headers based on numSources
+                    meas_headers = ["Timestamp"];
+                    for (let i = 1; i <= AppState.numSources; i++) {
+                        meas_headers.push(`Value:${i}`);
+                    }
+                }
+
                 if (data.headers) {
                     const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
                     if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {
@@ -50,8 +61,7 @@ async function filterFiles(files) {
                         let isCalHeader = false;
                         if (cal_type === "kinetics") {
                             isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_kinetics);
-                        }
-                        else {
+                        } else {
                             isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_point);
                         }
                         return isCalHeader;
@@ -117,7 +127,9 @@ function updateFileDisplay(curFile) {
 function fetchJSON(jsonFile, callback) {
     $.get('/get_json_content', {
         json_name: jsonFile,
-        mode: AppState.currentMeasurementMode
+        mode: AppState.currentMeasurementMode,
+        isMultiSource: AppState.multiSource,
+        numSources: AppState.numSources
     }, function(response) {
         callback(response.json, response.path);
     })

@@ -16,8 +16,6 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $("#split-mode").prop("checked", false);
         $("#blanked-canvas, #non-blanked-canvas").hide();
         $("#plot-canvas").show();
-        $("#full-display").prop("checked", false);
-        $("#quantity-checkboxes").addClass("hidden");
         $("#range-value").val(1000);
         $("#range-value").prop("disabled", false);
         $('.quantity-checkbox').each(function() {
@@ -68,7 +66,8 @@ function copyFile(tableSelector = "#file-table") {
             filepath: filePath,
             filename: currentFile,
             mode: AppState.currentMeasurementMode,
-            tabletype: tableSelector
+            tabletype: tableSelector,
+            isMultiSource: AppState.multiSource,
         },
         success: function(response) {
             if (response.status === 'success') {
@@ -162,7 +161,9 @@ function deselectFile(tableSelector="#file-table") {
         destroyCharts();
         $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
         AppState.currentFile = null;
-        $("#analysis-info").text("");
+        $("#plot-analysis").text("");
+        $("#blank-analysised").text("");
+        $("#non-blank-analysised").text("");
         updateFileDisplay(AppState.currentFile);
         $("#copy-file-btn").prop("disabled", true);
     } else if (tableSelector === "#json-table") {
@@ -222,7 +223,9 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 $.post('/delete_file', { 
                     filename: fileName, 
                     mode: AppState.currentMeasurementMode, 
-                    tabletype: tableSelector 
+                    tabletype: tableSelector,
+                    isMultiSource: AppState.multiSource,
+                    numSources: AppState.numSources
                 }, handleResponse).fail(handleError);
             }
         };
@@ -299,9 +302,19 @@ function settingDerivedCon(jsonFile) {
     let derived_con_text = null;
     switch(jsonFile["for_blank_type"]) {
         case "MIXED":
-            if (!$("#split-mode").is(":checked")) {
-                derived_section = document.getElementById('derived-concentration-section');
-                derived_con_text = document.getElementById('der-con-value');
+            derived_section = [];
+            derived_con_text = [];
+            if (AppState.multiSource) {
+                for (let i = 0; i < AppState.numSources; i++) {
+                    derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
+                    derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
+                }
+            }
+            else { 
+                if (!$("#split-mode").is(":checked")) {
+                    derived_section = document.getElementById('derived-concentration-section');
+                    derived_con_text = document.getElementById('der-con-value');
+                }
             }
             break;
         case "BLANKED":
@@ -360,47 +373,59 @@ function fetchData(unit, window_size, filename, jsonFile) {
             let derivedConSettings = null;
             let derived_section = null;
             let derived_con_text = null;
-            if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
-                derivedConSettings = settingDerivedCon(jsonFile);
-                derived_section = derivedConSettings.derived_section;
-                derived_con_text = derivedConSettings.derived_con_text;
-                // console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
-                if (derived_section) {
-                    derived_section.classList.remove("hidden");
-                    if (AppState.currentMeasurementMode === "kinetics") {
-                        $("#select-quantity-section").removeClass("hidden");
-                    } else {
-                        $("#select-quantity-section").addClass("hidden");
-                    }
-                    blinkingItem(derived_con_text, null);
-                } else { // derived_section is null -> hide all
-                    $("#select-quantity-section").addClass("hidden");
-                    $("#derived-concentration-section").addClass("hidden");
-                    $("#blank-derived-concentration-section").addClass("hidden");
-                    $("#non-blank-derived-concentration-section").addClass("hidden");
-                }
-            }
 
-            const isSplitMode = $("#split-mode").is(":checked");
-            const isFullDisplay = $("#full-display").is(":checked");
+            const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
             const displayRangeInput = document.getElementById('range-value');
-            const fullDisplayCheckbox = document.getElementById('full-display');
             AppState.responseData = response.data; // Reset point data
             AppState.metaData = response.metadata; // Reset metadata
 
             // Move event listener outside the AJAX callback or nest it properly
             const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
-            if (fullDisplayCheckbox.checked) {
-                displayRangeInput.disabled = true;
-                displayRangeInput.placeholder = "Disabled by Full Display";
-                displayRangeInput.value = "";
-            } else {
-                displayRangeInput.disabled = false;
-                displayRangeInput.value = originalValue || 1000; // Restore original or default to 1000
-            }
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay);
+            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, true);
+            if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
+                derivedConSettings = settingDerivedCon(jsonFile);
+                derived_section = derivedConSettings.derived_section;
+                derived_con_text = derivedConSettings.derived_con_text;
+                console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
+                if (AppState.multiSource) {
+                    if (derived_section && Array.isArray(derived_section)) {
+                        derived_section.forEach(section => section.classList.remove("hidden"));
+                        if (AppState.currentMeasurementMode === "kinetics") {
+                            $("#select-quantity-section").removeClass("hidden");
+                        } else {
+                            $("#select-quantity-section").addClass("hidden");
+                        }
+                        derived_con_text.forEach(section => blinkingItem(section, null));
+                    }
+                    else {
+                        $("#select-quantity-section").addClass("hidden");
+                        derived_section.forEach(section => section.classList.add("hidden"));
+                    }
+                }
+                else {
+                    if (derived_section) {
+                        derived_section.classList.remove("hidden");
+                        if (AppState.currentMeasurementMode === "kinetics") {
+                            $("#select-quantity-section").removeClass("hidden");
+                        } else {
+                            $("#select-quantity-section").addClass("hidden");
+                        }
+                        if (AppState.currentMeasurementMode === "kinetics") {
+                            $("#select-quantity-section").removeClass("hidden");
+                        } else {
+                            $("#select-quantity-section").addClass("hidden");
+                        }
+                        blinkingItem(derived_con_text, null);
+                    } else { // derived_section is null -> hide all
+                        $("#select-quantity-section").addClass("hidden");
+                        $("#derived-concentration-section").addClass("hidden");
+                        $("#blank-derived-concentration-section").addClass("hidden");
+                        $("#non-blank-derived-concentration-section").addClass("hidden");
+                    }
+                }
+            }
 
             if (AppState.currentMeasurementMode !== "calibrate") {
                 // Process concentration value input
@@ -414,32 +439,61 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 if (AppState.currentMeasurementMode === "kinetics" && jsonFile) {
                     const conQuantityInput = document.getElementById('regressed-quantity').value;
                     const blankType = jsonFile["for_blank_type"];
-                    let value = null;
+                    let analysisExtraction = null;
                     
                     // Calculate value based on quantity and blank type
-                    switch(conQuantityInput) {
-                        case "maxrate":
-                            value = getKineticValue("maxrate", blankType) * 60;
+                    switch (conQuantityInput) {
+                        case "maxrate": {
+                            const val = getKineticValue("maxrate", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v) * 60)
+                                : (val !== null ? parseFloat(val) * 60 : null);
                             break;
-                        case "slope":
-                            value = getKineticValue("slope", blankType) * 60;
+                        }
+                        case "slope": {
+                            const val = getKineticValue("slope", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v) * 60)
+                                : (val !== null ? parseFloat(val) * 60 : null);
                             break;
-                        case "sat":
-                            value = getKineticValue("sat", blankType);
+                        }
+                        case "sat": {
+                            const val = getKineticValue("sat", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v))
+                                : (val !== null ? parseFloat(val) : null);
                             break;
-                        case "time_to_sat":
-                            value = getKineticValue("time_to_sat", blankType) / 60;
+                        }
+                        case "time_to_sat": {
+                            const val = getKineticValue("time_to_sat", blankType);
+                            analysisExtraction = Array.isArray(val)
+                                ? val.map(v => parseFloat(v) / 60)
+                                : (val !== null ? parseFloat(val) / 60 : null);
                             break;
+                        }
                     }
                     
-                    if (value !== null) {
+                    if (analysisExtraction !== null) {
                         const coef = jsonFile[conQuantityInput]["fit_coef"];
-                        try {
-                            calculated_con = computeFit(value, jsonFile["fit_type"], coef).toFixed(4);
-                            derived_con_text.innerHTML = `${calculated_con}`;
-                        } catch (error) {
-                            console.error("Error computing derived concentration:", error);
-                            derived_con_text.innerHTML = `<span style="color: red;">${error.message}</span>`;
+
+                        if (Array.isArray(analysisExtraction) && Array.isArray(derived_con_text)) {
+                            analysisExtraction.forEach((val, idx) => {
+                                try {
+                                    const calculated_con = computeFit(val, jsonFile["fit_type"], coef).toFixed(4);
+                                    derived_con_text[idx].innerHTML = `${calculated_con}`;
+                                } catch (error) {
+                                    console.error("Error computing derived concentration:", error);
+                                    derived_con_text[idx].innerHTML = `<span style="color: red;">${error.message}</span>`;
+                                }
+                            });
+                        } else {
+                            try {
+                                const calculated_con = computeFit(analysisExtraction, jsonFile["fit_type"], coef).toFixed(4);
+                                derived_con_text.innerHTML = `${calculated_con}`;
+                            } catch (error) {
+                                console.error("Error computing derived concentration:", error);
+                                derived_con_text.innerHTML = `<span style="color: red;">${error.message}</span>`;
+                            }
                         }
                     }
                 } 
@@ -451,17 +505,25 @@ function fetchData(unit, window_size, filename, jsonFile) {
 
         } else {
             $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-            $("#analysis-info").html(`<span style="color: red;">No data available</span>`);
+            $("#plot-analysis").html(`<span style="color: red;">No data available</span>`);
         }
     }).fail(function(xhr, status, error) {
         console.error("Failed to fetch data:", status, error, xhr.responseText);
     }); // Close $.get callback
 } // Close fetchData function
 
-function getKineticValue(property, blankType) {
+function getKineticValue(property, blankType, multi_source=AppState.multiSource) {
     const analysis = AppState.globalAnalysis;
     switch(blankType) {
-        case "MIXED": return analysis ? analysis[property] : null;
+        case "MIXED": 
+            if (multi_source) {
+                let values = [];
+                analysis.sources.forEach(source => {
+                    values.push(source[property]);
+                });
+                return values.length > 0 ? values : null;
+            }
+            return analysis ? analysis[property] : null;
         case "BLANKED": return analysis ? analysis[`${property}_blanked`] : null;
         case "NON-BLANKED": return analysis ? analysis[`${property}_non_blanked`] : null;
         default: return null;
@@ -514,7 +576,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         updateRefCalPoint(jsonFile);
         AppState.globalAnalysis = updatePlot(
             AppState.responseData, AppState.metaData, range, unit, window_size, 
-            response.unit || "NONE", isSplitMode, isFullDisplay, 
+            response.unit || "NONE", isSplitMode, true, 
             jsonFile["for_blank_type"]
         );
         processPointMode(response, jsonFile, derived_con_text);
@@ -543,19 +605,43 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         }
     } else {
         const range = $("#range-value").val();
-        AppState.globalAnalysis = updatePlot(
-            AppState.responseData, AppState.metaData, range, unit, window_size, 
-            response.unit || "NONE", isSplitMode, isFullDisplay
-        );
+        const baseArgs = [
+            AppState.responseData,
+            AppState.metaData,
+            range,
+            unit,
+            window_size,
+            response.unit || "NONE",
+            isSplitMode,
+            isFullDisplay
+        ];
+
+        switch (AppState.numSources) {
+            case 1:
+                AppState.globalAnalysis = updatePlot(...baseArgs);
+                return;
+
+            default:
+                if (AppState.numSources > 1) {
+                    const values = Array.from(
+                        { length: AppState.numSources },
+                        (_, i) => `Value:${i + 1}`
+                    );
+
+                    AppState.globalAnalysis = updatePlot(
+                        ...baseArgs,
+                        null,
+                        "Timestamp",
+                        values
+                    );
+                }
+                break;
+        }
     }
 }
 
 function toggleMode() {
-    if ($("#full-display").is(":checked") && AppState.currentMeasurementMode === "kinetics") {
-        $("#quantity-checkboxes").removeClass("hidden");
-    } else {   
-        $("#quantity-checkboxes").addClass("hidden");
-    }
+
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
@@ -592,10 +678,29 @@ function exportData() {
         return; // Stop if validation fails
     }
     
-    if ($("#con-value-read").val() === "") {
-        alert("Please enter a concentration value before exporting data.");
-        blinkingItem('#con-value-read', 5000);
-        return;
+    if (AppState.multiSource) {
+        if ($("#exp-json-sensor").val() === "ALL") {
+            for (let i = 0; i < AppState.numSources; i++) {
+                if ($(`#con-value-read-source-${parseInt(i)}`).val() === "") {
+                    alert(`Please enter a concentration value for source-${parseInt(i) + 1}`);
+                    blinkingItem(`#con-value-read-source-${parseInt(i)}`, 5000);
+                    return;
+                }
+            }
+        } else {
+            const sourceIndex = $("#exp-json-sensor").val();
+            if ($(`#con-value-read-source-${parseInt(sourceIndex) - 1}`).val() === "") {
+                alert(`Please enter a concentration value for source-${parseInt(sourceIndex)}`);
+                blinkingItem(`#con-value-read-source-${parseInt(sourceIndex) - 1}`, 5000);
+                return;
+            }
+        }
+    } else {
+        if ($("#con-value-read").val() === "") {
+            alert("Please enter a concentration value before exporting data.");
+            blinkingItem('#con-value-read', 5000);
+            return;
+        }
     }
     AppState.processedExpPath = $("#same-dir-as-data").is(":checked")
     ? $("#directory").val().trim() || ""
@@ -607,59 +712,108 @@ function exportData() {
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
     // console.log("Global analysis data is ", AppState.globalAnalysis);
     if (AppState.currentMeasurementMode === "kinetics") {
-        switch ($("#exp-json-blank-type").val()) {
-            case "MIXED":
-                if (!$("#split-mode").is(":checked")) {
+        if (AppState.multiSource) {
+            if ($("#exp-json-sensor").val() === "ALL") {
+                for (let i = 0; i < AppState.numSources; i++) {
                     analysisData = {
-                        maxrate: AppState.globalAnalysis.maxrate * getTimeUnitMultiplier('minutes'),
-                        slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
-                        saturationValue: AppState.globalAnalysis.sat,
-                        timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
+                        maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
+                        slope: AppState.globalAnalysis.sources[i].slope * getTimeUnitMultiplier('minutes'),
+                        saturationValue: AppState.globalAnalysis.sources[i].sat,
+                        timeToSaturation: AppState.globalAnalysis.sources[i].time_to_sat / getTimeUnitMultiplier('minutes'),
                         measurement: AppState.globalAnalysis.meas,
                         measUnit: AppState.globalAnalysis.meas_unit
-                    };
+                    }
+                    sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
                 }
-                break;
+            } else {
+                const exportSensor = parseInt($("#exp-json-sensor").val()) - 1;
+                analysisData = {
+                    maxrate: AppState.globalAnalysis.sources[exportSensor].maxrate * getTimeUnitMultiplier('minutes'),
+                    slope: AppState.globalAnalysis.sources[exportSensor].slope * getTimeUnitMultiplier('minutes'),
+                    saturationValue: AppState.globalAnalysis.sources[exportSensor].sat,
+                    timeToSaturation: AppState.globalAnalysis.sources[exportSensor].time_to_sat / getTimeUnitMultiplier('minutes'),
+                    measurement: AppState.globalAnalysis.meas,
+                    measUnit: AppState.globalAnalysis.meas_unit
+                }
+                sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${exportSensor}`).val(), "MIXED");
+            }
+        } else {
+            switch ($("#exp-json-blank-type").val()) {
+                case "MIXED":
+                    if (!$("#split-mode").is(":checked")) {
+                        analysisData = {
+                            maxrate: AppState.globalAnalysis.maxrate * getTimeUnitMultiplier('minutes'),
+                            slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
+                            saturationValue: AppState.globalAnalysis.sat,
+                            timeToSaturation: AppState.globalAnalysis.time_to_sat / getTimeUnitMultiplier('minutes'),
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        };
+                    }
+                    break;
 
-            case "BLANKED":
-                if ($("#split-mode").is(":checked")) {
-                    analysisData = {
-                        maxrate: AppState.globalAnalysis.maxrate_blanked * getTimeUnitMultiplier('minutes'),
-                        slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
-                        saturationValue: AppState.globalAnalysis.sat_blanked,
-                        timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
-                        measurement: AppState.globalAnalysis.meas,
-                        measUnit: AppState.globalAnalysis.meas_unit
-                    };
-                }
-                break;
+                case "BLANKED":
+                    if ($("#split-mode").is(":checked")) {
+                        analysisData = {
+                            maxrate: AppState.globalAnalysis.maxrate_blanked * getTimeUnitMultiplier('minutes'),
+                            slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
+                            saturationValue: AppState.globalAnalysis.sat_blanked,
+                            timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked / getTimeUnitMultiplier('minutes'),
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        };
+                    }
+                    break;
 
-            case "NON-BLANKED": 
-                if ($("#split-mode").is(":checked")) {
-                    analysisData = {
-                        maxrate: AppState.globalAnalysis.maxrate_non_blanked * getTimeUnitMultiplier('minutes'),
-                        slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
-                        saturationValue: AppState.globalAnalysis.sat_non_blanked,
-                        timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
-                        measurement: AppState.globalAnalysis.meas,
-                        measUnit: AppState.globalAnalysis.meas_unit
-                    };
-                }
-                break;
+                case "NON-BLANKED": 
+                    if ($("#split-mode").is(":checked")) {
+                        analysisData = {
+                            maxrate: AppState.globalAnalysis.maxrate_non_blanked * getTimeUnitMultiplier('minutes'),
+                            slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
+                            saturationValue: AppState.globalAnalysis.sat_non_blanked,
+                            timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked / getTimeUnitMultiplier('minutes'),
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        };
+                    }
+                    break;
+            }
+            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
         }
-        sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
-
     } else if (AppState.currentMeasurementMode === "point") {
         // Store current experiment values
         const currExpTimePoint = $("#exp-json-time-value").val();
-        if (currExpTimePoint && AppState.globalEstimatedValue) { 
-            analysisData = {
-                estValue: AppState.globalEstimatedValue.toFixed(4),
-                timePoint: currExpTimePoint,
-                measurement: AppState.globalAnalysis.meas,
-                measUnit: AppState.globalAnalysis.meas_unit
-            } 
-            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
+        if (currExpTimePoint && !isNullOrArrayOfNull(AppState.globalEstimatedValue)) { 
+            if (AppState.multiSource) {
+                if ($("#exp-json-sensor").val() === "ALL") {
+                    for (let i = 0; i < AppState.numSources; i++) {
+                            analysisData = {
+                            estValue: AppState.globalEstimatedValue[i].toFixed(4),
+                            timePoint: currExpTimePoint,
+                            measurement: AppState.globalAnalysis.meas,
+                            measUnit: AppState.globalAnalysis.meas_unit
+                        } 
+                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
+                    }
+                } else {
+                    const sourceIndex = parseInt($("#exp-json-sensor").val()) - 1;
+                    analysisData = {
+                        estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
+                        timePoint: currExpTimePoint,
+                        measurement: AppState.globalAnalysis.meas,
+                        measUnit: AppState.globalAnalysis.meas_unit
+                    } 
+                    sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${sourceIndex}`).val(), "MIXED");
+                }
+            } else {
+                analysisData = {
+                    estValue: AppState.globalEstimatedValue.toFixed(4),
+                    timePoint: currExpTimePoint,
+                    measurement: AppState.globalAnalysis.meas,
+                    measUnit: AppState.globalAnalysis.meas_unit
+                } 
+                sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
+            }
         } else {
             alert("Please set the reference time point to export data or ensure time point is within the recorded time range.");
         }
@@ -727,7 +881,9 @@ function exportJSONCoef() {
                 file_name: $("#save-json-file").val(),
                 cal_mode: $("#cal-mode-select").val(),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
-                threshold_val: $("#threshold-value").val()
+                threshold_val: $("#threshold-value").val(),
+                isMultiSource: AppState.multiSource,
+                numSources: AppState.numSources
             }
             $.ajax({
                 url: '/export_cal_coefs',

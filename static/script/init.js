@@ -48,6 +48,62 @@ document.getElementById('shutdown-btn').addEventListener('click', function() {
     }
 });
 
+document.getElementById('multi-source').addEventListener('change', function() {
+    const numSourcesSelect = document.getElementById('num-sources-section');
+    const splitByBlanked = document.getElementById('split-mode-section');
+    const splitBySensor = document.getElementById('split-sensor-section');
+    deselectFile();
+    deselectFile("#json-table");
+    AppState.responseData = null;
+    AppState.globalAnalysis = null;
+    AppState.blankedChart = null;
+    AppState.nonBlankedChart = null;
+    AppState.globalEstimatedValue = null;
+    document.getElementById('est-val-error').innerHTML = '';
+    document.getElementById('est-val-exp').innerHTML = '';
+    document.getElementById('exp-json-time-value').value = '';
+    if (this.checked) {
+        numSourcesSelect.classList.remove('hidden');
+        splitByBlanked.classList.add('hidden');
+        splitBySensor.classList.remove('hidden');
+        AppState.multiSource = true;
+        AppState.numSources = parseInt(document.getElementById('num-sources').value);
+        document.getElementById('concentration-reader-section').classList.add('hidden');
+    } else {
+        numSourcesSelect.classList.add('hidden');
+        splitByBlanked.classList.remove('hidden');
+        splitBySensor.classList.add('hidden');
+        AppState.multiSource = false;
+        AppState.numSources = 1;
+        document.getElementById('concentration-reader-section').classList.remove('hidden');
+    }
+
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        if (AppState.multiSource) {
+            $("#select-exp-blank-type-meas").addClass("hidden");
+            $("#select-sensor-to-export").removeClass("hidden");
+            const selectElement = document.getElementById('exp-json-sensor');
+            // Optional: Clear previous options except "ALL"
+            selectElement.innerHTML = '<option value="ALL">ALL</option>';
+            for (let i = 1; i <= AppState.numSources; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                selectElement.appendChild(option);
+            }
+        } else {
+            $("#select-exp-blank-type-meas").removeClass("hidden");
+            $("#select-sensor-to-export").addClass("hidden");
+            document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+        }
+    }
+});
+
+document.getElementById('num-sources').addEventListener('change', function() {
+    AppState.numSources = parseInt(this.value);
+    console.log("Number of sources set to:", AppState.numSources);
+});
+
 const sameDirCheckbox = document.getElementById("same-dir-as-data");
 const saveDirInput = document.getElementById("save-dir");
 
@@ -74,24 +130,63 @@ saveDirInput.addEventListener('input', function() {
 });
 
 const expPoint = document.getElementById('exp-json-time-value');
-expPoint.addEventListener('change', function() {
+expPoint.addEventListener('change', updatePointEstimate);
+const expSensor = document.getElementById('exp-json-sensor');
+expSensor.addEventListener('change', updatePointEstimate);
+
+function isNullOrArrayOfNull(value) {
+    if (value === null) return true; // case 1: value is null
+    if (Array.isArray(value)) {
+    return value.every(item => item === null); // case 2: all items null
+    }
+    return false; // anything else
+}
+
+function updatePointEstimate() {
     const estValError = document.getElementById('est-val-error');
     const estValExp = document.getElementById('est-val-exp');
     const currExpBlankType = document.getElementById('exp-json-blank-type').value;
-    const currExpTimePoint = $("#exp-json-time-value").val();
-    AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, currExpBlankType);
-    console.log("Estimated value is ", AppState.globalEstimatedValue);
-    if (!AppState.globalEstimatedValue) {
-        estValError.textContent = 'Error: Reference point is outside the range of the data or not set!';
-        estValExp.textContent = '';
+    const currExpTimePoint = parseFloat($("#exp-json-time-value").val());
+
+    console.log("response Data is", AppState.responseData);
+
+    if (AppState.multiSource) {
+        if ($("#exp-json-sensor").val() === "ALL") {
+            AppState.globalEstimatedValue = [];
+            for (let i = 1; i <= AppState.numSources; i++) {
+                AppState.globalEstimatedValue.push(
+                    getEstimatedValue(AppState.responseData, currExpTimePoint * 60, i)
+                );
+            }
+        } else {
+            const sourceIndex = parseInt($("#exp-json-sensor").val());
+            AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
+        }
     } else {
-        estValError.textContent = '';
-        if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
-            estValExp.textContent = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}`;
-        else 
-            estValExp.textContent = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
+        AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, currExpBlankType);
     }
-});
+
+    console.log("Estimated value is ", AppState.globalEstimatedValue);
+
+    if (isNullOrArrayOfNull(AppState.globalEstimatedValue)) {
+        estValError.innerHTML = '<span style="color:red">Error: Reference point is outside the range of the data or not set!</span>';
+        estValExp.innerHTML = '';
+    } else {
+        estValError.innerHTML = '';
+        if (Array.isArray(AppState.globalEstimatedValue)) {
+            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${
+                AppState.globalEstimatedValue
+                    .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
+                    .join(", ")
+                }`;
+        } else {
+            if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
+                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
+            else 
+                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
+        }
+    }
+}
 
 function validateFileName(inputId) {
     const input = document.getElementById(inputId);
