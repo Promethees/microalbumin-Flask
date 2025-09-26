@@ -373,6 +373,7 @@ function kineticsModeBehaviour() {
     $("#select-exp-blank-type-cal").addClass("hidden");
     $("#func-desc").addClass("hidden");
     $("#sensor-options").removeClass("hidden");
+    $("#normalize-mode-section").removeClass("hidden");
 }
 
 function pointModeBehaviour() {
@@ -398,6 +399,7 @@ function pointModeBehaviour() {
     $("#select-exp-blank-type-cal").addClass("hidden");
     $("#func-desc").addClass("hidden");
     $("#sensor-options").removeClass("hidden");
+    $("#normalize-mode-section").removeClass("hidden");
 }
 
 function calModeBehaviour() {
@@ -432,6 +434,8 @@ function calModeBehaviour() {
     AppState.multiSource = false;
     AppState.numSources = 1;
     $("#multi-source").prop("checked", false);
+    $("#normalize-mode-section").addClass("hidden");
+    $("#normalize-mode").prop("checked", false);
 }
 
 function calKineticsBehaviour() {

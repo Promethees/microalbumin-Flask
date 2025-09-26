@@ -568,6 +568,7 @@ function updatePlot(
     // Save current scroll position
     const chartContainer = document.getElementById('chart-container');
     const scrollPosition = chartContainer.scrollTop;
+    const normalizeMode = document.getElementById('normalize-mode').checked;
 
     destroyCharts();
     $("#chart-container").empty(); // Clear existing chart sections
@@ -596,20 +597,20 @@ function updatePlot(
     const allGroups = AppState.multiSource 
         ? {
             allXColumn: extractColumn(data, XColumn),
-            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y)) : [extractColumn(data, YColumn)],
+            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)],
             allMixedData: data
         }
-        : getDataGroups(data, hasBlankType, XColumn, YColumn);
+        : getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode);
     const allXColumn = allGroups.allXColumn;
-    const allYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y)) : [extractColumn(data, YColumn)];
+    const allYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)];
     
     // Only define blanked/non-blanked data if multiSource is false
     let allBlankedXColumn, allBlankedYColumns, allNonBlankedXColumn, allNonBlankedYColumns;
     if (!AppState.multiSource) {
         allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
-        allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y)) : [extractColumn(allGroups.allBlankedData, YColumn)];
+        allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
         allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
-        allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y)) : [extractColumn(allGroups.allNonBlankedData, YColumn)];
+        allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allNonBlankedData, YColumn, normalizeMode)];
     }
 
     let filteredData, XColumnVals, YColumnVals;
@@ -627,13 +628,13 @@ function updatePlot(
         }
 
         XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y)) : [extractColumn(filteredData, YColumn)];
+        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
     } else {
         filteredData = AppState.multiSource 
             ? data 
             : filterByBlankType(data, hasBlankType);
         XColumnVals = extractColumn(filteredData, XColumn);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y)) : [extractColumn(filteredData, YColumn)];
+        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
     }
 
     const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
@@ -655,7 +656,7 @@ function updatePlot(
             
             for (let i = 0; i < AppState.numSources; i++) {
                 const yColumn = YColumn[i];
-                const yValues = extractColumn(filteredData, yColumn);
+                const yValues = extractColumn(filteredData, yColumn, normalizeMode);
                 const label = `${measurementLabel} ${yColumn} ${unitDisplay(unit)}`;
                 let analysis = null;
 
@@ -754,9 +755,9 @@ function updatePlot(
             const nonBlankedData = filterBlankedData(filteredData, hasBlankType, false);
 
             const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
-            const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y)) : [extractColumn(blankedData, YColumn)];
+            const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y, normalizeMode)) : [extractColumn(blankedData, YColumn, normalizeMode)];
             const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
-            const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y)) : [extractColumn(nonBlankedData, YColumn)];
+            const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y, normalizeMode)) : [extractColumn(nonBlankedData, YColumn, normalizeMode)];
 
             let analysis_blanked = null;
             let analysis_nonblanked = null;
@@ -999,18 +1000,20 @@ function preprocessDataCalParams(data, XColumn, YColumn, calParams) {
     }
 }
 
-function extractColumn(data, colName) {
-    return data.map(row => row[colName]);
+function extractColumn(data, colName, normalizeMode = false) {
+    const columnData = data.map(row => row[colName]);
+    const min = Math.min(...columnData);
+    return normalizeMode ? columnData.map(value => (value - min)) : columnData;
 }
 
 function extractAndConvert(data, colName, factor) {
     return data.map(row => Number((row[colName] * factor).toFixed(2)));
 }
 
-function getDataGroups(data, hasBlankType, XColumn, YColumn) {
+function getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode = false) {
     return {
         allXColumn: extractColumn(data, XColumn),
-        allYColumn: extractColumn(data, YColumn),
+        allYColumn: extractColumn(data, YColumn, normalizeMode),
         allBlankedData: filterBlankedData(data, hasBlankType, true),
         allNonBlankedData: filterBlankedData(data, hasBlankType, false),
         allMixedData: (!hasBlankType) ? data : data.filter(row => row["BlankType"] === "MIXED")
