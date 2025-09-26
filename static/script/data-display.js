@@ -71,8 +71,13 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         }
     } else {
         // Original logic for non-equal Y values
-        yMin = 0;
-        yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
+        if (labels[0].toLowerCase().includes("absorbance")) {
+            yMin = 0;
+            yMax = 0.6;      
+        } else {
+            yMin = 0;
+            yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
+        }
         yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
     }
 
