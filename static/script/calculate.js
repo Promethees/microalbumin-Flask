@@ -121,6 +121,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     let rSquaredValues = [];
     let intercepts = [];
     window_size = Number(window_size);
+    const rSquaredThreshold = getRSquaredThreshold(window_size, XColumn.length);
 
     for (let i = 0; i <= XColumn.length - window_size; i++) {
         const x = XColumn.slice(i, i + window_size);
@@ -143,7 +144,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
 
     for (let i = 0; i < localSlopes.length; i++) {
         const adjustedLocal = 3600 * localSlopes[i];
-        if (rSquaredValues[i] >= 0.95 && localSlopes[i] > maxRate && adjustedLocal > threshold) {
+        if (rSquaredValues[i] >= rSquaredThreshold && localSlopes[i] > maxRate && adjustedLocal > threshold) {
             maxRate = localSlopes[i];
             startMaxRate = i;
             endMaxRate = startMaxRate + window_size - 1;
@@ -224,6 +225,25 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         yMaxRateEnd,
         timeStartSaturation
     };
+}
+
+function getRSquaredThreshold(window_size, data_length) {
+    // Ensure valid inputs
+    if (window_size < 3 || window_size > data_length || data_length <= 0) {
+        return 0.9; // Return minimum threshold for invalid inputs
+    }
+
+    // Define start and end points
+    const minWindow = 3;
+    const maxRSquared = 0.97;
+    const minRSquared = 0.9;
+
+    // Linear decay from 0.97 at window_size=3 to 0.9 at window_size=data_length
+    const slope = (minRSquared - maxRSquared) / (data_length - minWindow);
+    const rSquared = maxRSquared + slope * (window_size - minWindow);
+
+    // Ensure result stays within bounds [0.9, 0.97]
+    return Math.max(minRSquared, Math.min(maxRSquared, rSquared));
 }
 
 // Linear regression: Returns slope and intercept
