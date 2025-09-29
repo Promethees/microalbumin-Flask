@@ -45,7 +45,9 @@ const AppState = {
         'rgb(255, 205, 86)',
         'rgb(54, 162, 235)',
         'rgb(153, 102, 255)',
-        'rgb(255, 159, 64)'
+        'rgba(242, 255, 64, 1)',
+        'rgba(228, 87, 246, 1)',
+        'rgba(100, 255, 218, 1)'
     ],
     quantity_input: temp_quantity_input,
 
