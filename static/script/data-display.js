@@ -690,26 +690,26 @@ function updatePlot(
 
             AppState.sourceCharts = charts;
 
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                return extractMultiSourceResultSummary(metadata, analyses);
-            } else {
-                return {
-                    analysis: analyses,
-                    meas: metadata["Measurement"]
-                };
-            }
+            // if (AppState.currentMeasurementMode !== "calibrate") {
+            return extractMultiSourceResultSummary(metadata, analyses);
+            // } else {
+            //     return {
+            //         analysis: analyses,
+            //         meas: metadata["Measurement"]
+            //     };
+            // }
         } else {
             // Handle multiSource with isSplitMode=false: plot all sources in a single chart
             let analyses = [];
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol), window_size));
-            } else {
-                if (isCalKinetics) {
-                    analyses = YColumn.map(yCol => calibrateKineticsAnalysis(rawData, XColumn, yCol, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo));
-                } else if (isCalPoint) {
-                    analyses = YColumn.map(yCol => calculateCoefAndRSquared(extractColumn(filteredData, yCol), XColumnVals, regressAlgo));
-                }
-            }
+            // if (AppState.currentMeasurementMode !== "calibrate") {
+            analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol, normalizeMode), window_size));
+            // } else {
+            //     if (isCalKinetics) {
+            //         analyses = YColumn.map(yCol => calibrateKineticsAnalysis(rawData, XColumn, yCol, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo));
+            //     } else if (isCalPoint) {
+            //         analyses = YColumn.map(yCol => calculateCoefAndRSquared(extractColumn(filteredData, yCol), XColumnVals, regressAlgo));
+            //     }
+            // }
 
             // Format analysis info for all sources
             const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
