@@ -622,6 +622,9 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         }
         switch (AppState.numSources) {
             case 1:
+                if (AppState.currentMeasurementMode === "point" && jsonFile) {
+                    baseArgs.push(jsonFile["for_blank_type"]);
+                }
                 AppState.globalAnalysis = updatePlot(...baseArgs);
                 if (AppState.currentMeasurementMode === "point" && jsonFile) {
                     processPointMode(response, jsonFile, document.getElementById('der-con-value'));
