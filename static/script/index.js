@@ -286,23 +286,7 @@ $(document).ready(function() {
         }
 
         if (AppState.currentMeasurementMode !== "calibrate") {
-        if (AppState.multiSource) {
-            $("#select-exp-blank-type-meas").addClass("hidden");
-            $("#select-sensor-to-export").removeClass("hidden");
-            const selectElement = document.getElementById('exp-json-sensor');
-            // Optional: Clear previous options except "ALL"
-            selectElement.innerHTML = '<option value="ALL">ALL</option>';
-            for (let i = 1; i <= AppState.numSources; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                selectElement.appendChild(option);
-            }
-        } else {
-            $("#select-exp-blank-type-meas").removeClass("hidden");
-            $("#select-sensor-to-export").addClass("hidden");
-            document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
-        }
+        updateMultiSourceExportOptions();
     }
         
     });
@@ -493,4 +477,24 @@ function drawMeasurementChart() {
     let window_size = $("#window-size").val();
     fetchData(unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
     $("#cal-time-unit").text(unit.slice(0, -1));
+}
+
+function updateMultiSourceExportOptions() {
+    if (AppState.multiSource) {
+        $("#select-exp-blank-type-meas").addClass("hidden");
+        $("#select-sensor-to-export").removeClass("hidden");
+        const selectElement = document.getElementById('exp-json-sensor');
+        // Optional: Clear previous options except "ALL"
+        selectElement.innerHTML = '<option value="ALL">ALL</option>';
+        for (let i = 1; i <= AppState.numSources; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            selectElement.appendChild(option);
+        }
+    } else {
+        $("#select-exp-blank-type-meas").removeClass("hidden");
+        $("#select-sensor-to-export").addClass("hidden");
+        document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+    }
 }
