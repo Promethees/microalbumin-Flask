@@ -121,6 +121,8 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     let rSquaredValues = [];
     let intercepts = [];
     window_size = Number(window_size);
+    if (window_size > XColumn.length)
+        window_size = XColumn.length;
     const rSquaredThreshold = getRSquaredThreshold(window_size, XColumn.length);
 
     for (let i = 0; i <= XColumn.length - window_size; i++) {
