@@ -685,6 +685,7 @@ body.dark #swal-edit-table tr.selected td {
     overflow-y: auto;
     height: 40%;
     position: relative;
+    max-height: 600px;
 }
 
 /* ==========================================================================
