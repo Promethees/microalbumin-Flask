@@ -465,6 +465,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         if (response.status === 'success') {
             $("#directory").val(response.path);
             $("#directory-top").val(response.path);
+            $("#save-dir").val(response.path);
             $("#error-message").hide();
             updateFileTable(response.files, deselect);
             if (deselect) {
