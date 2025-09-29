@@ -388,7 +388,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
                 derived_con_text = derivedConSettings.derived_con_text;
-                console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
+                // console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
                 if (AppState.multiSource) {
                     if (derived_section && Array.isArray(derived_section)) {
                         derived_section.forEach(section => section.classList.remove("hidden"));
@@ -544,13 +544,23 @@ function updateRefCalPoint(jsonFile) {
 
 function processPointMode(response, jsonFile, derived_con_text) {
     $("#point-json-exp-section").removeClass("hidden");
-    // Display estimated value
-    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier($("#time-unit").val()), jsonFile["for_blank_type"]).toFixed(4);
+    let blankTypeOrSourceIndex;
+
+    if (derived_con_text && derived_con_text.id.includes("source-")) {
+        blankTypeOrSourceIndex = parseInt(derived_con_text.id.split("source-")[1]) + 1;
+    } else {
+        blankTypeOrSourceIndex = jsonFile["for_blank_type"];
+    }
+    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier($("#time-unit").val()), blankTypeOrSourceIndex).toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
-        $("#add-json-section").text(`The estimated ${AppState.globalAnalysis.meas} value read from recorded data is ${estValueRead}${unitPrinted}.`);
+        if (derived_con_text && derived_con_text.id.includes("source-")) {
+            $("#add-json-section").append(`The estimated ${AppState.globalAnalysis.meas} value read from source-${blankTypeOrSourceIndex} is ${estValueRead}${unitPrinted}.<br/>`);
+        } else {
+            $("#add-json-section").append(`The estimated ${AppState.globalAnalysis.meas} value read from data is ${estValueRead}${unitPrinted}.`);
+        }
     } else {
-        $("#add-json-section").text("");
+        $("#add-json-section").append("");
     }
     try {
         calculated_con = computeFit(parseFloat(estValueRead), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
@@ -570,73 +580,119 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay, derived_con_text = document.getElementById('der-con-value')) {
-    if (AppState.currentMeasurementMode === "point" && jsonFile) {
-        const range = $("#range-value").val();
+function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay) {
+    const range = $("#range-value").val();
+    const defaultUnit = response.unit || "NONE";
+
+    const baseArgs = [
+        AppState.responseData,
+        AppState.metaData,
+        range,
+        unit,
+        window_size,
+        defaultUnit,
+        isSplitMode,
+        isFullDisplay
+    ];
+
+    const handleMultiSourcePlot = (extraArgs = []) => {
+        const values = Array.from({ length: AppState.numSources }, (_, i) => `Value:${i + 1}`);
+        return updatePlot(...baseArgs, ...extraArgs, "Timestamp", values);
+    };
+
+    const handlePointMode = () => {
+        if (!jsonFile) return;
+
         updateRefCalPoint(jsonFile);
-        AppState.globalAnalysis = updatePlot(
-            AppState.responseData, AppState.metaData, range, unit, window_size, 
-            response.unit || "NONE", isSplitMode, true, 
-            jsonFile["for_blank_type"]
-        );
-        processPointMode(response, jsonFile, derived_con_text);
-    } else if (AppState.currentMeasurementMode === "calibrate") {
-        const cal_type = $("#cal-mode-select").val();
-        if (cal_type === "kinetics") {
-            const quantity_obj = document.getElementById('regressed-quantity');
+        $("#add-json-section").text("");
+
+        if (AppState.numSources === 1) {
+            AppState.globalAnalysis = updatePlot(...baseArgs);
+            processPointMode(response, jsonFile, document.getElementById("der-con-value"));
+            return;
+        }
+
+        // Multi-source point mode
+        AppState.globalAnalysis = handleMultiSourcePlot([null]);
+
+        const { derived_con_text, derived_section } = settingDerivedCon(jsonFile);
+        if (Array.isArray(derived_section)) {
+            derived_section.forEach(section => section.classList.remove("hidden"));
+        }
+        if (Array.isArray(derived_con_text)) {
+            derived_con_text.forEach(textElem => processPointMode(response, jsonFile, textElem));
+        }
+    };
+
+    const handleCalibrationMode = () => {
+        const calType = $("#cal-mode-select").val();
+
+        if (calType === "kinetics") {
+            const quantityObj = document.getElementById("regressed-quantity");
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, null, null, null, 
-                AppState.metaData["MeasUnit"], isSplitMode, true, null, 
-                "Concentration", quantity_obj.selectedOptions[0].text
+                AppState.responseData,
+                AppState.metaData,
+                null,
+                null,
+                null,
+                AppState.metaData["MeasUnit"],
+                isSplitMode,
+                true,
+                null,
+                "Concentration",
+                quantityObj.selectedOptions[0].text
             );
-        } else if (cal_type === "point") {
-            const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
+            return;
+        }
+
+        if (calType === "point") {
+            const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, "TimePoint");
             console.log("Give me uniqueTimePoints ", uniqueTimePoints);
+
             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
             const timePoint = $("#regressed-time-point").val();
-            const processingData = AppState.responseData.filter(row => 
+
+            const filteredData = AppState.responseData.filter(row =>
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
+
             AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, null, null, null, 
-                AppState.metaData["MeasUnit"], isSplitMode, true, null, 
-                "Concentration", "Value"
+                filteredData,
+                AppState.metaData,
+                null,
+                null,
+                null,
+                AppState.metaData["MeasUnit"],
+                isSplitMode,
+                true,
+                null,
+                "Concentration",
+                "Value"
             );
         }
-    } else {
-        const range = $("#range-value").val();
-        const baseArgs = [
-            AppState.responseData,
-            AppState.metaData,
-            range,
-            unit,
-            window_size,
-            response.unit || "NONE",
-            isSplitMode,
-            isFullDisplay
-        ];
+    };
 
-        switch (AppState.numSources) {
-            case 1:
-                AppState.globalAnalysis = updatePlot(...baseArgs);
-                return;
-
-            default:
-                if (AppState.numSources > 1) {
-                    const values = Array.from(
-                        { length: AppState.numSources },
-                        (_, i) => `Value:${i + 1}`
-                    );
-
-                    AppState.globalAnalysis = updatePlot(
-                        ...baseArgs,
-                        null,
-                        "Timestamp",
-                        values
-                    );
-                }
-                break;
+    const handleKineticsMode = () => {
+        if (AppState.numSources === 1) {
+            AppState.globalAnalysis = updatePlot(...baseArgs);
+            return;
         }
+        if (AppState.numSources > 1) {
+            AppState.globalAnalysis = handleMultiSourcePlot([null]);
+        }
+    };
+
+    // --- Main execution ---
+    switch (AppState.currentMeasurementMode) {
+        case "point":
+            handlePointMode();
+            break;
+        case "calibrate":
+            handleCalibrationMode();
+            break;
+        case "kinetics":
+            handleKineticsMode();
+            break;
     }
 }
 

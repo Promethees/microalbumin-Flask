@@ -439,7 +439,7 @@ function handleFullDisplayChange(checkbox, fullDisplayId, quantityId, canvasId, 
     if (!fullDisplayCheckbox || !quantityContainer) return;
 
     // Toggle hidden class
-    if (fullDisplayCheckbox.checked) {
+    if (fullDisplayCheckbox.checked && AppState.currentMeasurementMode === "kinetics") {
         quantityContainer.classList.remove("hidden");
     } else {
         quantityContainer.classList.add("hidden");
