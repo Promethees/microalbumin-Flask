@@ -283,7 +283,7 @@ function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
     }
 
     let chartScaleConstant = 1;
-    let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(4) : "--";
+    let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(5) : "--";
     let adjustedLinearStart = analysis.linearXMin ? (parseFloat(analysis.linearXMin) * conversionFactor).toFixed(2) : "--";
     let adjustedLinearEnd = analysis.linearXMax ? (parseFloat(analysis.linearXMax) * conversionFactor).toFixed(2) : "--";
     let adjustedMaxRate = parseFloat(analysis.maxRate) / conversionFactor;
