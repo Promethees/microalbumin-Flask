@@ -607,15 +607,6 @@ function updatePlot(
         : getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode);
     const allXColumn = allGroups.allXColumn;
     const allYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)];
-    
-    // Only define blanked/non-blanked data if multiSource is false
-    let allBlankedXColumn, allBlankedYColumns, allNonBlankedXColumn, allNonBlankedYColumns;
-    if (!AppState.multiSource) {
-        allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
-        allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
-        allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
-        allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allNonBlankedData, YColumn, normalizeMode)];
-    }
 
     let filteredData, XColumnVals, YColumnVals;
     if (AppState.currentMeasurementMode === "calibrate") {
@@ -625,10 +616,6 @@ function updatePlot(
     }
 
     const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
-
-    const calMode = $("#cal-mode-select").val();
-    const isCalKinetics = AppState.currentMeasurementMode === "calibrate" && calMode === "kinetics";
-    const isCalPoint = AppState.currentMeasurementMode === "calibrate" && calMode === "point";
     const regressAlgo = $("#exp-json-regress-algo").val();
 
     const labels = Array.isArray(YColumn) 
@@ -652,82 +639,26 @@ function updatePlot(
         return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
     } else {
         // Original non-multiSource logic
-        if (isSplitMode) {
-            const fullDisplayCheckboxBlanked = document.getElementById('full-display-blanked');
-            const fullDisplayCheckboxNonBlanked = document.getElementById('full-display-non-blanked');
-            const isFullDisplayBlanked = fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : true;
-            const isFullDisplayNonBlanked = fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : true;
-            
-            const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, range, timeUnit, allGroups.allBlankedData, XColumn, YColumn);
-            const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, range, timeUnit, allGroups.allNonBlankedData, XColumn, YColumn);
-            
-            const blankedData = filterBlankedData(filteredDataBlanked, hasBlankType, true);
-            const nonBlankedData = filterBlankedData(filteredDataNonBlanked, hasBlankType, false);
-
-            const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
-            const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y, normalizeMode)) : [extractColumn(blankedData, YColumn, normalizeMode)];
-            const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
-            const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y, normalizeMode)) : [extractColumn(nonBlankedData, YColumn, normalizeMode)];
-
-            let analysis_blanked = null;
-            let analysis_nonblanked = null;
-
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, window_size));
-                analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
-            } else {
-                if (isCalKinetics) {
-                    analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
-                    analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
-                } else {
-                    analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo);
-                    analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo);
-                }
-            }
-
-            const blankLabels = labels.map(l => `${l} (Blanked)`);
-            const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
-            renderCharts([blankedX, nonBlankedX], [blankedY, nonBlankedY], [blankLabels, nonBlankLabels], unit, timeUnit, conversionFactor, [analysis_blanked, analysis_nonblanked], [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], [1, 0])
-            $("#blanked-canvas, #non-blanked-canvas").show();
-            AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-                unit, timeUnit, conversionFactor, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
-            AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-                unit, timeUnit, conversionFactor, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
-
-            // Format analysis info for both charts
-            const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
-            const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
-
-            // Update analysis info display
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
-            } else {
-                let blanked_string = "";
-                let non_blanked_string = "";
-                if (isCalKinetics) {
-                    blanked_string = getCalKineticsString(calParams, analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-                    non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-                } else if (isCalPoint) {
-                    blanked_string = getCalPointString(analysis_blanked);
-                    non_blanked_string = getCalPointString(analysis_nonblanked);
-                }
-                $("#blanked-analysis").html(
-                    `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
-                );
-                $("#non-blanked-analysis").html(
-                    `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
-                );
-            }
-
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                return extractSplitResultSummary(metadata, analysis_blanked[0], analysis_nonblanked[0]);
-            } else {
-                const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
-                return {
-                    analysis,
-                    meas: metadata["Measurement"]
-                };
-            }
+        if (isSplitMode) {  
+            const Args = [
+                allGroups,
+                XColumn,
+                YColumn,
+                range,
+                timeUnit,
+                window_size,
+                unit,
+                labels,
+                conversionFactor,
+                normalizeMode,
+                metadata,
+                rawData,
+                calParams,
+                forBlankType,
+                hasBlankType,
+                regressAlgo
+            ]
+            return splitBlankRoutine(...Args);
         } else {
             let mixAnalysis = null;
             if (AppState.currentMeasurementMode !== "calibrate") {
@@ -738,9 +669,9 @@ function updatePlot(
                 YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
                 mixAnalysis = allYColumns.map(yCol => calculateKineticsQuantities(allXColumn, yCol, window_size));
             } else {
-                if (isCalKinetics) {
+                if ($("#cal-mode-select").val() === "kinetics") {
                     mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
-                } else if (isCalPoint) {
+                } else if ($("#cal-mode-select").val() === "point") {
                     mixAnalysis = calculateCoefAndRSquared(extractColumn(allGroups.allMixedData, YColumn), extractColumn(allGroups.allMixedData, XColumn), regressAlgo);
                 }
             }
@@ -761,9 +692,9 @@ function updatePlot(
                 updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
             } else {
                 let htmlString = "";
-                if (isCalKinetics) {
+                if ($("#cal-mode-select").val() === "kinetics") {
                     htmlString = getCalKineticsString(calParams, mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-                } else {
+                } else if ($("#cal-mode-select").val() === "point") {
                     htmlString = getCalPointString(mixAnalysis);
                 }
                 $("#plot-analysis").html(htmlString);
@@ -855,6 +786,89 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
     } else {
         return {
             analysis: analyses,
+            meas: metadata["Measurement"]
+        };
+    }
+}
+
+function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, labels, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false, regressAlgo = "linear") {
+    const allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
+    const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
+    const allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
+    const allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allNonBlankedData, YColumn, normalizeMode)];
+    
+    const fullDisplayCheckboxBlanked = document.getElementById('full-display-blanked');
+    const fullDisplayCheckboxNonBlanked = document.getElementById('full-display-non-blanked');
+    const isFullDisplayBlanked = AppState.currentMeasurementMode === "calibrate" ? true : (fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : false);
+    const isFullDisplayNonBlanked = AppState.currentMeasurementMode === "calibrate" ? true : (fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : false);
+    
+    const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, range, timeUnit, allGroups.allBlankedData, XColumn, YColumn);
+    const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, range, timeUnit, allGroups.allNonBlankedData, XColumn, YColumn);
+    
+    const blankedData = filterBlankedData(filteredDataBlanked, hasBlankType, true);
+    const nonBlankedData = filterBlankedData(filteredDataNonBlanked, hasBlankType, false);
+
+    const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
+    const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y, normalizeMode)) : [extractColumn(blankedData, YColumn, normalizeMode)];
+    const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
+    const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y, normalizeMode)) : [extractColumn(nonBlankedData, YColumn, normalizeMode)];
+
+    let analysis_blanked = null;
+    let analysis_nonblanked = null;
+
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, window_size));
+        analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
+    } else {
+        if ($("#cal-mode-select").val() === "kinetics") {
+            analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared, regressAlgo);
+            analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared, regressAlgo);
+        } else if ($("#cal-mode-select").val() === "point") {
+            analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo);
+            analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo);
+        }
+    }
+
+    const blankLabels = labels.map(l => `${l} (Blanked)`);
+    const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
+    renderCharts([blankedX, nonBlankedX], [blankedY, nonBlankedY], [blankLabels, nonBlankLabels], unit, timeUnit, conversionFactor, [analysis_blanked, analysis_nonblanked], [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], [1, 0])
+    $("#blanked-canvas, #non-blanked-canvas").show();
+    AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
+        unit, timeUnit, conversionFactor, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
+    AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
+        unit, timeUnit, conversionFactor, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
+
+    // Format analysis info for both charts
+    const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
+    const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
+
+    // Update analysis info display
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
+    } else {
+        let blanked_string = "";
+        let non_blanked_string = "";
+        if ($("#cal-mode-select").val() === "kinetics") {
+            blanked_string = getCalKineticsString(calParams, analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+        } else if ($("#cal-mode-select").val() === "point") {
+            blanked_string = getCalPointString(analysis_blanked);
+            non_blanked_string = getCalPointString(analysis_nonblanked);
+        }
+        $("#blanked-analysis").html(
+            `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
+        );
+        $("#non-blanked-analysis").html(
+            `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
+        );
+    }
+
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        return extractSplitResultSummary(metadata, analysis_blanked[0], analysis_nonblanked[0]);
+    } else {
+        const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
+        return {
+            analysis,
             meas: metadata["Measurement"]
         };
     }
