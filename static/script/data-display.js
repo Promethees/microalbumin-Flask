@@ -636,61 +636,20 @@ function updatePlot(
         : [`${measurementLabel} ${unitDisplay(unit)}`];
 
     if (AppState.multiSource) {
-        if (isSplitMode) {
-            const Args = [
-                allGroups,
-                XColumn,
-                YColumn,
-                range,
-                timeUnit,
-                window_size,
-                unit,
-                measurementLabel,
-                conversionFactor,
-                normalizeMode,
-                metadata
-            ]
-            return splitMultiSourceRoutine(...Args);
-        } else {
-            let analyses = [];
-            filteredData = filteredByRangeValue(false, range, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
-            XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-            YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol, normalizeMode));
-            analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol, normalizeMode), window_size));
-
-            // Format analysis info for all sources
-            const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
-
-            // Generate single chart with all Y-columns
-            renderCharts(XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
-            // Update analysis info display
-            let html = '';
-            analysisInfo.forEach((info, i) => {
-                html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
-                html += `
-                    <div id="concentration-reader-section-source-${i}">
-                        Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
-                    </div>
-                    <div id="derived-concentration-section-source-${i}" class="hidden">
-                        Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
-                    </div>
-                `
-                if (i < analysisInfo.length - 1) html += '<br/>';
-            });
-            $("#plot-analysis").html(html);
-
-            $("#plot-canvas").show();
-            AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
-
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                return extractMultiSourceResultSummary(metadata, analyses);
-            } else {
-                return {
-                    analysis: analyses,
-                    meas: metadata["Measurement"]
-                };
-            }
-        }
+        const Args = [
+            allGroups,
+            XColumn,
+            YColumn,
+            range,
+            timeUnit,
+            window_size,
+            unit,
+            isSplitMode ? measurementLabel : labels,
+            conversionFactor,
+            normalizeMode,
+            metadata
+        ]
+        return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
     } else {
         // Original non-multiSource logic
         if (isSplitMode) {
@@ -859,6 +818,46 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
 
     return extractMultiSourceResultSummary(metadata, analyses);
 
+}
+
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, labels, conversionFactor, normalizeMode, metadata) {
+    const filteredData = filteredByRangeValue(false, range, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
+    const XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
+    const YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol, normalizeMode));
+    const analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol, normalizeMode), window_size));
+
+    // Format analysis info for all sources
+    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
+
+    // Generate single chart with all Y-columns
+    renderCharts(XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
+    // Update analysis info display
+    let html = '';
+    analysisInfo.forEach((info, i) => {
+        html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+        html += `
+            <div id="concentration-reader-section-source-${i}">
+                Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
+            </div>
+            <div id="derived-concentration-section-source-${i}" class="hidden">
+                Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
+            </div>
+        `
+        if (i < analysisInfo.length - 1) html += '<br/>';
+    });
+    $("#plot-analysis").html(html);
+
+    $("#plot-canvas").show();
+    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
+
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        return extractMultiSourceResultSummary(metadata, analyses);
+    } else {
+        return {
+            analysis: analyses,
+            meas: metadata["Measurement"]
+        };
+    }
 }
 
 function filteredByRangeValue(isFullDisplay, range, timeUnit, data, XColumn, YColumn) {
