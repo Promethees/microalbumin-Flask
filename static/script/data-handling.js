@@ -746,7 +746,11 @@ function exportData() {
                         measurement: AppState.globalAnalysis.meas,
                         measUnit: AppState.globalAnalysis.meas_unit
                     }
-                    sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
+                    if (i === 0) {
+                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
+                    } else {
+                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED", false);
+                    }
                 }
             } else {
                 const exportSensor = parseInt($("#exp-json-sensor").val()) - 1;
@@ -816,6 +820,11 @@ function exportData() {
                             measurement: AppState.globalAnalysis.meas,
                             measUnit: AppState.globalAnalysis.meas_unit
                         } 
+                        if (i === 0) {
+                            sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
+                        } else {
+                            sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED", false);
+                        }
                         sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
                     }
                 } else {
