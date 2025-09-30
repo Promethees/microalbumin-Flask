@@ -714,8 +714,8 @@ function updatePlot(
         if (isSplitMode) {
             const fullDisplayCheckboxBlanked = document.getElementById('full-display-blanked');
             const fullDisplayCheckboxNonBlanked = document.getElementById('full-display-non-blanked');
-            const isFullDisplayBlanked = fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : false;
-            const isFullDisplayNonBlanked = fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : false;
+            const isFullDisplayBlanked = fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : true;
+            const isFullDisplayNonBlanked = fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : true;
             
             const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, range, timeUnit, allGroups.allBlankedData, XColumn, YColumn);
             const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, range, timeUnit, allGroups.allNonBlankedData, XColumn, YColumn);
