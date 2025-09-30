@@ -825,7 +825,6 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
         XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, window_size);
-        // mixAnalysis = allYColumns.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, window_size));
     } else {
         filteredData = filterByBlankType(data, hasBlankType);
         XColumnVals = extractColumn(filteredData, XColumn);
@@ -862,7 +861,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        return extractSingleResultSummary(metadata, mixAnalysis[0]);
+        return extractSingleResultSummary(metadata, mixAnalysis);
     } else {
         return {
             analysis: mixAnalysis,
