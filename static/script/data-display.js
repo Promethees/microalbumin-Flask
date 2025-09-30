@@ -566,8 +566,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUn
 }
 
 function updatePlot(
-    data, metadata, range, timeUnit, window_size, unit, isSplitMode,
-    isFullDisplay = false, forBlankType = null,
+    data, metadata, range, timeUnit, window_size, unit, isSplitMode, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
     // Save current scroll position
@@ -619,25 +618,8 @@ function updatePlot(
     }
 
     let filteredData, XColumnVals, YColumnVals;
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        if (isFullDisplay) range = Number.MAX_VALUE;
-        const timeThreshold = Math.max(...allXColumn) - range * getTimeUnitMultiplier(timeUnit);
-
-        filteredData = AppState.multiSource 
-            ? data 
-            : filterByTime(data, timeThreshold, hasBlankType);
-        
-        if (filteredData.length === 0) {
-            console.warn("No data after filtering with threshold:", timeThreshold);
-            return;
-        }
-
-        XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
-    } else {
-        filteredData = AppState.multiSource 
-            ? data 
-            : filterByBlankType(data, hasBlankType);
+    if (AppState.currentMeasurementMode === "calibrate") {
+        filteredData = filterByBlankType(data, hasBlankType);
         XColumnVals = extractColumn(filteredData, XColumn);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
     }
@@ -661,19 +643,15 @@ function updatePlot(
             
             for (let i = 0; i < AppState.numSources; i++) {
                 const yColumn = YColumn[i];
+                const fullDisplayCheckbox = document.getElementById(`full-display-source-${i}`);
+                const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
+                filteredData = filteredByRangeValue(isFullDisplay, range, timeUnit, allGroups.allMixedData, XColumn, yColumn);
+                XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
                 const yValues = extractColumn(filteredData, yColumn, normalizeMode);
                 const label = `${measurementLabel} ${yColumn} ${unitDisplay(unit)}`;
                 let analysis = null;
 
-                if (AppState.currentMeasurementMode !== "calibrate") {
-                    analysis = calculateKineticsQuantities(XColumnVals, yValues, window_size);
-                } else {
-                    if (isCalKinetics) {
-                        analysis = calibrateKineticsAnalysis(rawData, XColumn, yColumn, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo);
-                    } else if (isCalPoint) {
-                        analysis = calculateCoefAndRSquared(yValues, XColumnVals, regressAlgo);
-                    }
-                }
+                analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], window_size);
 
                 analyses.push(analysis);
 
@@ -690,26 +668,13 @@ function updatePlot(
 
             AppState.sourceCharts = charts;
 
-            // if (AppState.currentMeasurementMode !== "calibrate") {
             return extractMultiSourceResultSummary(metadata, analyses);
-            // } else {
-            //     return {
-            //         analysis: analyses,
-            //         meas: metadata["Measurement"]
-            //     };
-            // }
         } else {
-            // Handle multiSource with isSplitMode=false: plot all sources in a single chart
             let analyses = [];
-            // if (AppState.currentMeasurementMode !== "calibrate") {
+            filteredData = filteredByRangeValue(false, range, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
+            XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
+            YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol, normalizeMode));
             analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol, normalizeMode), window_size));
-            // } else {
-            //     if (isCalKinetics) {
-            //         analyses = YColumn.map(yCol => calibrateKineticsAnalysis(rawData, XColumn, yCol, calParams, "MIXED", calculateCoefAndRSquared, regressAlgo));
-            //     } else if (isCalPoint) {
-            //         analyses = YColumn.map(yCol => calculateCoefAndRSquared(extractColumn(filteredData, yCol), XColumnVals, regressAlgo));
-            //     }
-            // }
 
             // Format analysis info for all sources
             const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
@@ -717,30 +682,21 @@ function updatePlot(
             // Generate single chart with all Y-columns
             renderCharts(XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
             // Update analysis info display
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                let html = '';
-                analysisInfo.forEach((info, i) => {
-                    html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
-                    html += `
-                        <div id="concentration-reader-section-source-${i}">
-                            Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
-                        </div>
-                        <div id="derived-concentration-section-source-${i}" class="hidden">
-                            Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
-                        </div>
-                    `
-                    if (i < analysisInfo.length - 1) html += '<br/>';
-                });
-                $("#plot-analysis").html(html);
-            } else {
-                let htmlString = "";
-                if (isCalKinetics) {
-                    htmlString = getCalKineticsString(YColumn, analyses, regressAlgo === "Michaelis-Menten");
-                } else {
-                    htmlString = analyses.map(a => getCalPointString(a)).join('<br/>');
-                }
-                $("#plot-analysis").html(htmlString);
-            }
+            let html = '';
+            analysisInfo.forEach((info, i) => {
+                html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+                html += `
+                    <div id="concentration-reader-section-source-${i}">
+                        Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
+                    </div>
+                    <div id="derived-concentration-section-source-${i}" class="hidden">
+                        Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
+                    </div>
+                `
+                if (i < analysisInfo.length - 1) html += '<br/>';
+            });
+            $("#plot-analysis").html(html);
+
             $("#plot-canvas").show();
             AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
 
@@ -756,8 +712,16 @@ function updatePlot(
     } else {
         // Original non-multiSource logic
         if (isSplitMode) {
-            const blankedData = filterBlankedData(filteredData, hasBlankType, true);
-            const nonBlankedData = filterBlankedData(filteredData, hasBlankType, false);
+            const fullDisplayCheckboxBlanked = document.getElementById('full-display-blanked');
+            const fullDisplayCheckboxNonBlanked = document.getElementById('full-display-non-blanked');
+            const isFullDisplayBlanked = fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : false;
+            const isFullDisplayNonBlanked = fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : false;
+            
+            const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, range, timeUnit, allGroups.allBlankedData, XColumn, YColumn);
+            const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, range, timeUnit, allGroups.allNonBlankedData, XColumn, YColumn);
+            
+            const blankedData = filterBlankedData(filteredDataBlanked, hasBlankType, true);
+            const nonBlankedData = filterBlankedData(filteredDataNonBlanked, hasBlankType, false);
 
             const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
             const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y, normalizeMode)) : [extractColumn(blankedData, YColumn, normalizeMode)];
@@ -826,6 +790,11 @@ function updatePlot(
         } else {
             let mixAnalysis = null;
             if (AppState.currentMeasurementMode !== "calibrate") {
+                const fullDisplayCheckbox = document.getElementById('full-display-plot');
+                const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
+                filteredData = filteredByRangeValue(isFullDisplay, range, timeUnit, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
+                XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
+                YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
                 mixAnalysis = allYColumns.map(yCol => calculateKineticsQuantities(allXColumn, yCol, window_size));
             } else {
                 if (isCalKinetics) {
@@ -873,6 +842,13 @@ function updatePlot(
     setTimeout(() => {
         chartContainer.scrollTop = scrollPosition;
     }, 0);
+}
+
+function filteredByRangeValue(isFullDisplay, range, timeUnit, data, XColumn, YColumn) {
+    if (isFullDisplay)
+        range = Number.MAX_VALUE;
+    const timeThreshold = Math.max(...data.map(row => row[XColumn])) - range * getTimeUnitMultiplier(timeUnit);
+    return data.filter(row => row[XColumn] >= timeThreshold && row[YColumn] !== "NONE");
 }
 
 // New helper function for multiSource result summary

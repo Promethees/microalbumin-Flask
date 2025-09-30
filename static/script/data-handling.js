@@ -383,7 +383,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
             const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, true);
+            updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode);
             if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
@@ -580,8 +580,8 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode, isFullDisplay) {
-    const range = $("#range-value").val();
+function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode) {
+    const range = parseFloat($("#range-value").val());
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,
@@ -590,7 +590,6 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
         window_size,
         response.unit || "NONE",
         isSplitMode,
-        isFullDisplay
     ];
     if (AppState.currentMeasurementMode === "calibrate") {
         const cal_type = $("#cal-mode-select").val();
@@ -598,7 +597,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
                 AppState.responseData, AppState.metaData, null, null, null, 
-                AppState.metaData["MeasUnit"], isSplitMode, true, null, 
+                AppState.metaData["MeasUnit"], isSplitMode, null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
@@ -611,7 +610,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMod
             );
             AppState.exp_json_content = updatePlot(
                 processingData, AppState.metaData, null, null, null, 
-                AppState.metaData["MeasUnit"], isSplitMode, true, null, 
+                AppState.metaData["MeasUnit"], isSplitMode, null, 
                 "Concentration", "Value"
             );
         }
