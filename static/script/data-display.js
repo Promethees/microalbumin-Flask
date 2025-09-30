@@ -637,38 +637,20 @@ function updatePlot(
 
     if (AppState.multiSource) {
         if (isSplitMode) {
-            // Handle multiSource with isSplitMode=true: create a chart for each source
-            const charts = [];
-            const analyses = [];
-            
-            for (let i = 0; i < AppState.numSources; i++) {
-                const yColumn = YColumn[i];
-                const fullDisplayCheckbox = document.getElementById(`full-display-source-${i}`);
-                const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
-                filteredData = filteredByRangeValue(isFullDisplay, range, timeUnit, allGroups.allMixedData, XColumn, yColumn);
-                XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-                const yValues = extractColumn(filteredData, yColumn, normalizeMode);
-                const label = `${measurementLabel} ${yColumn} ${unitDisplay(unit)}`;
-                let analysis = null;
-
-                analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], window_size);
-
-                analyses.push(analysis);
-
-                const canvasId = `source-${i}-canvas`;
-                const analysisId = `source-${i}-analysis`;
-                renderCharts(XColumnVals, yValues, label, unit, timeUnit, conversionFactor, analysis, true, i, i);
-                const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], true, i, i);
-                charts.push(chart);
-
-                // Update analysis info display
-                const analysisInfo = formatAnalysisInfo(analysis, conversionFactor, unit, label);
-                $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
-            }
-
-            AppState.sourceCharts = charts;
-
-            return extractMultiSourceResultSummary(metadata, analyses);
+            const Args = [
+                allGroups,
+                XColumn,
+                YColumn,
+                range,
+                timeUnit,
+                window_size,
+                unit,
+                measurementLabel,
+                conversionFactor,
+                normalizeMode,
+                metadata
+            ]
+            return splitMultiSourceRoutine(...Args);
         } else {
             let analyses = [];
             filteredData = filteredByRangeValue(false, range, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
@@ -842,6 +824,41 @@ function updatePlot(
     setTimeout(() => {
         chartContainer.scrollTop = scrollPosition;
     }, 0);
+}
+
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, measurementLabel, conversionFactor, normalizeMode, metadata) {
+    const charts = [];
+    const analyses = [];
+    
+    for (let i = 0; i < AppState.numSources; i++) {
+        const yColumn = YColumn[i];
+        const fullDisplayCheckbox = document.getElementById(`full-display-source-${i}`);
+        const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
+        filteredData = filteredByRangeValue(isFullDisplay, range, timeUnit, allGroups.allMixedData, XColumn, yColumn);
+        XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
+        const yValues = extractColumn(filteredData, yColumn, normalizeMode);
+        const label = `${measurementLabel} ${yColumn} ${unitDisplay(unit)}`;
+        let analysis = null;
+
+        analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], window_size);
+
+        analyses.push(analysis);
+
+        const canvasId = `source-${i}-canvas`;
+        const analysisId = `source-${i}-analysis`;
+        renderCharts(XColumnVals, yValues, label, unit, timeUnit, conversionFactor, analysis, true, i, i);
+        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], true, i, i);
+        charts.push(chart);
+
+        // Update analysis info display
+        const analysisInfo = formatAnalysisInfo(analysis, conversionFactor, unit, label);
+        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
+    }
+
+    AppState.sourceCharts = charts;
+
+    return extractMultiSourceResultSummary(metadata, analyses);
+
 }
 
 function filteredByRangeValue(isFullDisplay, range, timeUnit, data, XColumn, YColumn) {
