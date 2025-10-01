@@ -44,7 +44,9 @@ function clearStatusCheck() {
 }
 
 function resetUIAfterError() {
-    $("#base-dir").prop('disabled', false);
+    if (!$("#save-same-dir").is(":checked")) {
+        $("#base-dir").prop('disabled', false);
+    }
     $("#base-name").prop('disabled', false);
     $("#run-script-btn").prop('disabled', false);
     $("#run-script-btn").addClass('blinking');
@@ -60,7 +62,9 @@ function resetUIAfterError() {
 }
 
 function resetUIAfterCompletion() {
-    $("#base-dir").prop('disabled', false);
+    if (!$("#save-same-dir").is(":checked")) {
+        $("#base-dir").prop('disabled', false);
+    }
     $("#base-name").prop('disabled', false);
     $("#run-script-btn").prop('disabled', false);
     $("#run-script-btn").addClass('blinking');
@@ -178,7 +182,9 @@ function terminateScript() {
                 $("#run-script-btn").prop('disabled', false);
                 $("#run-script-btn").addClass('blinking');
                 $("#terminate-script-btn").prop('disabled', true);
-                $("#base-dir").prop('disabled', false);
+                if (!$("#save-same-dir").is(":checked")) {
+                    $("#base-dir").prop('disabled', false);
+                }
                 $("#base-name").prop('disabled', false);
                 $("#log-display").append("Script terminated.\n");
                 $("#inf-timeout").prop('disabled', false);
@@ -193,7 +199,9 @@ function terminateScript() {
                     $("#run-script-btn").prop('disabled', false);
                     $("#run-script-btn").addClass('blinking');
                     $("#terminate-script-btn").prop('disabled', true);
-                    $("#base-dir").prop('disabled', false);
+                    if (!$("#save-same-dir").is(":checked")) {
+                        $("#base-dir").prop('disabled', false);
+                    }
                     $("#base-name").prop('disabled', false);
                     $("#go-to-btn").prop('disabled', true);
                     $("#terminate-script-btn").removeClass('blinking');
@@ -215,7 +223,9 @@ function terminateScript() {
             $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);
             $("#terminate-script-btn").removeClass('blinking');
             $("#go-to-btn").removeClass('blinking');
-            $("#base-dir").prop('disabled', false);
+            if (!$("#save-same-dir").is(":checked")) {
+                $("#base-dir").prop('disabled', false);
+            }
             $("#base-name").prop('disabled', false);
             $("#inf-timeout").prop('disabled', false);
             $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
