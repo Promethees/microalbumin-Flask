@@ -300,10 +300,11 @@
                 <h2>Reading Colorimetric Data</h2>
                 <div>
                     <label id="base-dir-label" for="base-dir">Saving Directory: 
-                        <input type="text" id="base-dir" value="{{ directory | default('') }}">
+                        <input type="text" id="base-dir" value="{{ directory | default('') }}" disabled>
                     </label>
                     <span id="base-dir-error" class="error"></span>
                 </div>
+                <input type="checkbox" id="save-same-dir" checked>Save to same browsed directory</input>
                 <div>
                     <label for="base-name">Base Name: </label>
                     <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">

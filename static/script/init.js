@@ -109,6 +109,14 @@ document.getElementById('num-sources').addEventListener('change', function() {
     updateMultiSourceExportOptions();
 });
 
+const sameBaseDirCheckbox = document.getElementById("save-same-dir");
+const baseDirInput = document.getElementById("base-dir");
+
+sameBaseDirCheckbox.addEventListener("change", function() {
+    // Enable if unchecked, disable if checked
+    baseDirInput.disabled = this.checked;
+});
+
 const sameDirCheckbox = document.getElementById("same-dir-as-data");
 const saveDirInput = document.getElementById("save-dir");
 
