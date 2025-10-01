@@ -371,7 +371,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             },
                             {
                                 header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*-?\d+(?:\.\d{1,3})?)*\s*$/,
+                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$/,
                                 error: 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,...',
                                 meta: [
                                     /^#\s*Measurement\s*:\s*.+$/,

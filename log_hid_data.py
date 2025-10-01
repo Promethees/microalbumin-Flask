@@ -47,8 +47,8 @@ class HIDDataCollector:
             r"^TIMESTAMP,VALUE:\d+(?:,VALUE:\d+)*\n$"  # Generic case for VALUE:1, VALUE:2, ..., VALUE:n
         ]
         self.data_pattern = [
-            r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$",  # Single value case
-            r"^\d+\.\d{1,2},\d+\.\d{1,3}(?:,\d+\.\d{1,3})*\n$"  # Generic case for n values
+            r"^\d+\.\d{1,2},(\d+\.\d{1,3}|OVFL),[A-Za-z0-9]+,(TRUE|FALSE)\n$",  # Single value case
+            r"^\d+\.\d{1,2},(\d+\.\d{1,3}|OVFL)(?:,(\d+\.\d{1,3}|OVFL))*\n$"  # Generic case for n values
         ]
         self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
