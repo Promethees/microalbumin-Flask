@@ -826,7 +826,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, window_size);
     } else {
-        filteredData = filterByBlankType(data, hasBlankType);
+        filteredData = filterByBlankType(allGroups.allMixedData, hasBlankType);
         XColumnVals = extractColumn(filteredData, XColumn);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
         if ($("#cal-mode-select").val() === "kinetics") {
