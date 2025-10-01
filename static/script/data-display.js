@@ -982,14 +982,14 @@ function preprocessData(data, XColumn, YColumn) {
         return data
             .filter(row => 
                 row[XColumn] !== "NONE" && 
-                YColumn.every(yCol => row[yCol] !== "NONE" && row[ycol] !== null && row[ycol] !== "OVFL")
+                YColumn.every(yCol => (row[yCol] !== "NONE" && row[yCol] !== null && row[yCol] !== "OVFL"))
             )
             .sort((a, b) => a[XColumn] - b[XColumn]);
     } else {
         return data
             .filter(row => 
-                row[XColumn] !== "NONE" && 
-                row[YColumn] !== "NONE" && row[YColumn] !== null && row[YColumn] !== "OVFL"
+                (row[XColumn] !== "NONE" && 
+                row[YColumn] !== "NONE" && row[YColumn] !== null && row[YColumn] !== "OVFL")
             )
             .sort((a, b) => a[XColumn] - b[XColumn]);
     }
