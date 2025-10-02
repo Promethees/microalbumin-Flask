@@ -689,7 +689,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
 
         const canvasId = `source-${i}-canvas`;
         const analysisId = `source-${i}-analysis`;
-        renderCharts(XColumnVals, yValues, label, unit, timeUnit, conversionFactor, analysis, true, i, i);
+        renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, unit, timeUnit, conversionFactor, analysis, true, i, i);
         const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], true, i, i);
         charts.push(chart);
 
@@ -784,7 +784,15 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_
 
     const blankLabels = labels.map(l => `${l} (Blanked)`);
     const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
-    renderCharts([blankedX, nonBlankedX], [blankedY, nonBlankedY], [blankLabels, nonBlankLabels], unit, timeUnit, conversionFactor, [analysis_blanked, analysis_nonblanked], [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], [1, 0])
+    renderCharts([extractColumn(allGroups.allBlankedData, XColumn), extractColumn(allGroups.allNonBlankedData, XColumn)], 
+        [extractColumn(allGroups.allBlankedData, YColumn), extractColumn(allGroups.allNonBlankedData, YColumn)], 
+        [blankLabels, nonBlankLabels], 
+        unit, 
+        timeUnit, 
+        conversionFactor, 
+        [analysis_blanked, analysis_nonblanked], 
+        [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], 
+        [1, 0])
     $("#blanked-canvas, #non-blanked-canvas").show();
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
         unit, timeUnit, conversionFactor, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
@@ -854,7 +862,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
 
     // Generate chart
     const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
-    renderCharts(XColumnVals, yValsForChart, labels,
+    renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
     $("#plot-canvas").show();
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
