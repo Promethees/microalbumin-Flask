@@ -28,7 +28,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
             $("#json-display").text(`Current mode is \"${AppState.currentMeasurementMode}\".\nJSON file read from ${JSON_path}\n`);
             if (AppState.currentMeasurementMode === "kinetics") {
-                $("#json-display").append("Quantity value is either maxRate, Slope, Saturation, Time to Saturation, which ever is set by user.\n");
+                $("#json-display").append("Quantity value is either maxRate, Slope, Saturation, Reacting Time taken to Saturation, which ever is set by user.\n");
             } else if (AppState.currentMeasurementMode === "point") {
                  $("#json-display").append("Quantity value is the Absorbance value read from selected data file whose recorded time is the closest to the time set in this JSON.\n");
             }

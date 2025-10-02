@@ -115,7 +115,7 @@ This document provides instruction on deploying a web interface that helps visua
 		<img src="/images/meas.png" width="600">
 	</div>
 
-	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `maxRate`, `Slope` of `Linear` progression, `Sat`, and `Time to Saturation`.
+	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `maxRate`, `Slope` of `Linear` progression, `Sat`, and `Reacting Time taken to Saturation`.
 
 	<div align="center">
 		<img src="/images/calKinetics.png" width="600">
