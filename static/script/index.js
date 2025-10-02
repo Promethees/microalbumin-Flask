@@ -343,7 +343,8 @@ function kineticsModeBehaviour() {
     $("#cal-json-sel-section").removeClass("hidden");
     $("#kinetics-lines").removeClass("hidden");
     $("#cal-json-exp-section").addClass("hidden");
-    $("#range-value").val("1000").prop("disabled", false);
+    $("#range-value-start").val("1000").prop("disabled", false);
+    $("#range-value-end").val("1000").prop("disabled", false);
     $("#json-display").removeClass("hidden");
     $("#export-analysis").removeClass("hidden");
     $("#set-exp-point-section").addClass("hidden");
@@ -369,7 +370,8 @@ function pointModeBehaviour() {
     $("#cal-json-sel-section").removeClass("hidden");
     $("#kinetics-lines").addClass("hidden");
     $("#cal-json-exp-section").addClass("hidden");
-    $("#range-value").val("1000").prop("disabled", false);
+    $("#range-value-start").val("1000").prop("disabled", false);
+    $("#range-value-end").val("1000").prop("disabled", false);
     $("#json-display").removeClass("hidden");
     $("#export-analysis").removeClass("hidden");
     $("#set-exp-point-section").removeClass("hidden");

@@ -16,8 +16,10 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $("#split-mode").prop("checked", false);
         $("#blanked-canvas, #non-blanked-canvas").hide();
         $("#plot-canvas").show();
-        $("#range-value").val(1000);
-        $("#range-value").prop("disabled", false);
+        $("#range-value-start").val(0);
+        $("#range-value-end").val(1000);
+        $("#range-value-start").prop("disabled", false);
+        $("#range-value-end").prop("disabled", false);
         $('.quantity-checkbox').each(function() {
             $(this).prop("checked", true);
         });
@@ -375,12 +377,8 @@ function fetchData(unit, window_size, filename, jsonFile) {
             let derived_con_text = null;
 
             const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
-            const displayRangeInput = document.getElementById('range-value');
             AppState.responseData = response.data; // Reset point data
             AppState.metaData = response.metadata; // Reset metadata
-
-            // Move event listener outside the AJAX callback or nest it properly
-            const originalValue = displayRangeInput.value; // Fixed 'input' to 'value'
 
             // Update plot based on current mode
             updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode);
@@ -581,7 +579,10 @@ function handleCalibrationMode() {
 }
 
 function updatePlotBasedOnMode(response, jsonFile, unit, window_size, isSplitMode) {
-    const range = parseFloat($("#range-value").val());
+    const range = {
+        start: parseFloat($("#range-value-start").val()),
+        end: parseFloat($("#range-value-end").val())
+    };
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,

@@ -125,6 +125,9 @@ sameDirCheckbox.addEventListener("change", function() {
     saveDirInput.disabled = this.checked;
 });
 
+document.getElementById('range-value-start').addEventListener('input', validateRangeInput);
+document.getElementById('range-value-end').addEventListener('input', validateRangeInput);
+
 document.getElementById('base-name').addEventListener('input', function() {
     validateFileName('base-name');
 });
@@ -199,6 +202,42 @@ function updatePointEstimate() {
                 estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
         }
     }
+}
+
+function validateRangeInput() {
+    const startInput = document.getElementById('range-value-start');
+    const endInput = document.getElementById('range-value-end');
+    const errorElement = document.getElementById('range-value-error');
+
+    const startValue = parseFloat(startInput.value);
+    const endValue = parseFloat(endInput.value);
+    
+    // Reset state
+    errorElement.innerHTML = '';
+    startInput.classList.remove('invalid', 'valid');
+    endInput.classList.remove('invalid', 'valid');
+    if (isNaN(startValue) || isNaN(endValue)) {
+        errorElement.innerHTML = '<br/>Both values must be numbers<br/>';
+        startInput.classList.add('invalid');
+        endInput.classList.add('invalid');
+        return false;
+    }
+    if (startValue < 0 || endValue < 0) {
+        errorElement.innerHTML = '<br/>Values must be non-negative<br/>';
+        startInput.classList.add('invalid');
+        endInput.classList.add('invalid');
+        return false;
+    }
+    if (startValue >= endValue) {
+        errorElement.innerHTML = '<br/>Start value must be less than End value<br/>';
+        startInput.classList.add('invalid');
+        endInput.classList.add('invalid');
+        return false;
+    }
+    
+    startInput.classList.add('valid');
+    endInput.classList.add('valid');
+    return true;
 }
 
 function validateFileName(inputId) {
