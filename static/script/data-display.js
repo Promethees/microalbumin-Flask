@@ -72,7 +72,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         }
     } else {
         // Original logic for non-equal Y values
-        if (labels[0].toLowerCase().includes("absorbance")) {
+        if (labels[0].toLowerCase().includes("absorbance") && $("#split-sensor").is(":checked") && AppState.multiSource) {
             yMin = 0;
             yMax = 0.6;      
         } else {
@@ -869,10 +869,14 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
 }
 
 function filteredByRangeValue(isFullDisplay, range, timeUnit, data, XColumn, YColumn) {
-    if (isFullDisplay)
-        range = Number.MAX_VALUE;
-    const timeThreshold = Math.max(...data.map(row => row[XColumn])) - range * getTimeUnitMultiplier(timeUnit);
-    return data.filter(row => row[XColumn] >= timeThreshold && row[YColumn] !== "NONE");
+    if (isFullDisplay) {
+        range.start = 0;
+        range.end = Number.MAX_VALUE;
+    }
+    // const timeThreshold = Math.max(...data.map(row => row[XColumn])) - range * getTimeUnitMultiplier(timeUnit);
+    const timeThresholdStart = range.start * getTimeUnitMultiplier(timeUnit);
+    const timeThresholdEnd = range.end * getTimeUnitMultiplier(timeUnit);
+    return data.filter(row => row[XColumn] >= timeThresholdStart && row[XColumn] <= timeThresholdEnd && row[YColumn] !== "NONE");
 }
 
 // New helper function for multiSource result summary

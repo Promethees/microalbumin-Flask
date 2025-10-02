@@ -246,37 +246,37 @@ function validateFileName(inputId) {
     const fileName = input.value.trim();
     
     // Reset state
-    errorElement.textContent = '';
+    errorElement.innerHTML = '';
     input.classList.remove('invalid', 'valid');
     
     const illegalChars = /[\\/:*?"<>|\0]/g;
     if (illegalChars.test(fileName)) {
-        errorElement.textContent = 'File name cannot contain: \\ / : * ? " < > |';
+        errorElement.innerHTML = 'File name cannot contain: \\ / : * ? " < > |<br/>';
         input.classList.add('invalid');
         return false;
     }
     
     const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
     if (reservedNames.test(fileName)) {
-        errorElement.textContent = 'Reserved system name (CON, PRN, AUX, etc.)';
+        errorElement.innerHTML = 'Reserved system name (CON, PRN, AUX, etc.)<br/>';
         input.classList.add('invalid');
         return false;
     }
     
     if (fileName !== input.value) {
-        errorElement.textContent = 'No leading/trailing spaces';
+        errorElement.innerHTML = 'No leading/trailing spaces<br/>';
         input.classList.add('invalid');
         return false;
     }
     
     if (fileName.startsWith('.') || fileName.endsWith('.')) {
-        errorElement.textContent = 'Cannot start/end with period';
+        errorElement.innerHTML = 'Cannot start/end with period<br/>';
         input.classList.add('invalid');
         return false;
     }
     
     if (fileName.length > 255) {
-        errorElement.textContent = 'Max 255 characters';
+        errorElement.innerHTML = 'Max 255 characters<br/>';
         input.classList.add('invalid');
         return false;
     }
@@ -291,11 +291,11 @@ function validatePathName(inputId) {
     const path = input.value.trim();
     
     // Reset state
-    errorElement.textContent = '';
+    errorElement.innerHTML = '';
     input.classList.remove('invalid', 'valid');
     
     if (path === '') {
-        errorElement.textContent = 'Path cannot be empty';
+        errorElement.innerHTML = 'Path cannot be empty<br/>';
         input.classList.add('invalid');
         return false;
     }
@@ -306,7 +306,7 @@ function validatePathName(inputId) {
         // Windows path
         invalidChars = /[*?"<>|\0]/g;
         if (/:/.test(path) && !/^[a-zA-Z]:\\/.test(path)) {
-        errorElement.textContent = 'Windows paths must start with drive letter (e.g., C:\\)';
+        errorElement.innerHTML = 'Windows paths must start with drive letter (e.g., C:\\)<br/>';
         input.classList.add('invalid');
         return false;
         }
@@ -314,14 +314,14 @@ function validatePathName(inputId) {
         // Unix-like path
         invalidChars = /[\0]/g;
         if (!path.startsWith('/')) {
-        errorElement.textContent = 'Unix paths must start with /';
+        errorElement.innerHTML = 'Unix paths must start with /<br/>';
         input.classList.add('invalid');
         return false;
         }
     }
 
     if (invalidChars.test(path)) {
-        errorElement.textContent = `Path contains invalid characters`;
+        errorElement.innerHTML = `Path contains invalid characters<br/>`;
         input.classList.add('invalid');
         return false;
     }
@@ -329,21 +329,21 @@ function validatePathName(inputId) {
     // Check for reserved names in path components
     const reservedNames = /(^|\/|\\)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$|\\|\/)/i;
     if (reservedNames.test(path)) {
-        errorElement.textContent = 'Path contains reserved system names';
+        errorElement.innerHTML = 'Path contains reserved system names<br/>';
         input.classList.add('invalid');
         return false;
     }
 
     // Check for relative path components
     if (/\.\.($|[\\/])/.test(path)) {
-        errorElement.textContent = 'Relative paths (..) are not allowed';
+        errorElement.innerHTML = 'Relative paths (..) are not allowed<br/>';
         input.classList.add('invalid');
         return false;
     }
 
     // Check for trailing slash
     if (/[\\/]$/.test(path)) {
-        errorElement.textContent = 'Path should not end with a slash';
+        errorElement.innerHTML = 'Path should not end with a slash<br/>';
         input.classList.add('invalid');
         return false;
     }
@@ -361,7 +361,7 @@ function validateTimeoutInterval() {
     const errorElement = document.getElementById(`timeout-interval-error`);
     const timeout = document.getElementById(`timeout`);
     const interval = document.getElementById(`interval`);
-    errorElement.textContent = '';
+    errorElement.innerHTML = '';
 
     // Disable timeout input when Infinity is checked
     timeoutInput.disabled = infTimeout.checked;
@@ -390,7 +390,7 @@ function validateTimeoutInterval() {
             return true;
         }
         else {
-            errorElement.textContent = 'Interval value is less than zero!';
+            errorElement.innerHTML = 'Interval value is less than zero!<br/>';
             timeout.classList.add('invalid');
             interval.classList.add('invalid');
             return false;
@@ -399,7 +399,7 @@ function validateTimeoutInterval() {
 
     // Case 3: Only one input is provided
     if ((timeoutValue === '' && intervalValue !== '') || (timeoutValue !== '' && intervalValue === '')) {
-        errorElement.textContent = 'Please have both of these metrics values or give BOTH blank or check Infinite checkbox';
+        errorElement.innerHTML = 'Please have both of these metrics values or give BOTH blank or check Infinite checkbox<br/>';
         timeout.classList.add('invalid');
         interval.classList.add('invalid');
         return false;
@@ -411,14 +411,14 @@ function validateTimeoutInterval() {
 
     // Check if inputs are valid numbers and interval is less than timeout
     if (isNaN(timeoutSec) || isNaN(intervalSec) || timeoutSec <= 0 || intervalSec < 0) {
-        errorElement.textContent = 'Invalid inputs or Timeout/Interval value is less than 0';
+        errorElement.innerHTML = 'Invalid inputs or Timeout/Interval value is less than 0<br/>';
         timeout.classList.add('invalid');
         interval.classList.add('invalid');
         return false;
     }
 
     if (intervalSec >= timeoutSec) {
-        errorElement.textContent = 'Interval must be smaller than Timeout! Please adjust your values';
+        errorElement.innerHTML = 'Interval must be smaller than Timeout! Please adjust your values<br/>';
         timeout.classList.add('invalid');
         interval.classList.add('invalid');
         return false;

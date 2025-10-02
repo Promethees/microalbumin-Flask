@@ -455,9 +455,11 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
             $("#directory-top").val(response.path);
             if ($("#same-dir-as-data").is(":checked")) {
                 $("#save-dir").val(response.path);
+                validatePathName('save-dir');
             }
             if ($("#save-same-dir").is(":checked")) {
                 $("#base-dir").val(response.path);
+                validatePathName('base-dir');
             }
             $("#error-message").hide();
             updateFileTable(response.files, deselect);
