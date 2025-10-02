@@ -42,12 +42,12 @@ const AppState = {
     plotColors: [
         'rgb(75, 192, 192)',
         'rgb(255, 99, 132)',
-        'rgb(255, 205, 86)',
+        'rgba(190, 136, 9, 1)',
         'rgb(54, 162, 235)',
         'rgb(153, 102, 255)',
-        'rgba(242, 255, 64, 1)',
+        'rgba(139, 144, 75, 1)',
         'rgba(228, 87, 246, 1)',
-        'rgba(100, 255, 218, 1)'
+        'rgba(44, 136, 115, 1)'
     ],
     quantity_input: temp_quantity_input,
 
