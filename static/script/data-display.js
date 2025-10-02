@@ -13,7 +13,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const fullDisplayCheckbox = document.getElementById(`full-display-${canvasString}`);
     const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
     const { x: processedX, y: dummyProcessedY } = mapDuplicates(allXColumn, allYColumnOrArray.length > 0 ? allYColumnOrArray[0] : allXColumn.map(() => 0)); // Use first Y or dummy for X processing
-
+    
+    const fontSize = 8;
     if (!canvas || processedX.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
@@ -214,7 +215,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 label: {
                                     display: true,
                                     content: 'RefCal',
-                                    position: 'middle'
+                                    position: 'middle',
+                                    font: {
+                                        size: fontSize
+                                    }
                                 }
                             }
                         }),
@@ -230,7 +234,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 label: {
                                     display: true,
                                     content: 'MaxRate',
-                                    position: 'start'
+                                    position: 'start',
+                                    font: {
+                                        size: fontSize
+                                    }
                                 }
                             }
                         }),
@@ -246,7 +253,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 label: {
                                     display: true,
                                     content: 'Linear',
-                                    position: 'middle'
+                                    position: 'middle',
+                                    font: {
+                                        size: fontSize
+                                    }
                                 }
                             }
                         }),
@@ -262,7 +272,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                                 label: {
                                     display: true,
                                     content: 'Sat',
-                                    position: 'end'
+                                    position: 'end',
+                                    font: {
+                                        size: fontSize
+                                    }
                                 }
                             }
                         })
@@ -1079,7 +1092,7 @@ function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = 
         maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit.slice(0, -1)}, 
         maxRateEnd = ${analysisInfo.maxRateEnd} ${timeUnit.slice(0, -1)}, <br/>
         Saturation = ${displaySat}${unitDisplay}, 
-        Time to Saturation = ${displayTimeSat} ${timeUnit.slice(0, -1)}
+        Reacting Time taken to Saturation = ${displayTimeSat} ${timeUnit.slice(0, -1)}
     </span>`;
     return html;
 }
