@@ -1,265 +1,92 @@
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
-    if (AppState.chartInstances[canvasId]) {
-        AppState.chartInstances[canvasId].destroy();
-    }
-    $(`#${canvasId}`).show();
-    const canvas = document.getElementById(canvasId);
+function updatePlot(
+    data, metadata, range, timeUnit, window_size, unit, isSplitMode, forBlankType = null,
+    XColumn = "Timestamp", YColumn = "Value"
+) {
+    // Save current scroll position
+    const chartContainer = document.getElementById('chart-container');
+    const scrollPosition = chartContainer.scrollTop;
+    const normalizeMode = document.getElementById('normalize-mode').checked;
 
-    // Modify this according to the canvasID
-    const canvasString = canvasId.split("-canvas")[0];
-    const maxrate_chkbox = document.getElementById(`maxrate-${canvasString}`);
-    const slope_chkbox = document.getElementById(`slope-${canvasString}`);
-    const sat_chkbox = document.getElementById(`sat-${canvasString}`);
-    const fullDisplayCheckbox = document.getElementById(`full-display-${canvasString}`);
-    const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
-    const { x: processedX, y: dummyProcessedY } = mapDuplicates(allXColumn, allYColumnOrArray.length > 0 ? allYColumnOrArray[0] : allXColumn.map(() => 0)); // Use first Y or dummy for X processing
+    destroyCharts();
+    $("#chart-container").empty(); // Clear existing chart sections
+
+    // Restore scroll position
+    chartContainer.scrollTop = scrollPosition;
+
+    // Clean and sort data
+    const selectElement = document.getElementById('regressed-quantity');
+    const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
+    const rawData = data;
+    data = preprocessData(data, XColumn, YColumn);
+
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
-    const fontSize = 8;
-    if (!canvas || processedX.length === 0) {
-        $(`#${canvasId}`).hide();
-        return null;
+    
+    // Only check for blank columns if multiSource is false
+    const hasBlankType = !AppState.multiSource && data.some(row => 'BlankType' in row);
+    const hasBlank = !AppState.multiSource && data.some(row => 'Blanked' in row);
+
+    if (!AppState.multiSource && !hasBlankType && !hasBlank) {
+        console.warn("No Blank or BlankType column found in data");
+        return;
     }
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx || processedX.length === 0) {
-        $(`#${canvasId}`).hide();
-        return null;
+    // If multiSource, treat all data as mixed; otherwise, use getDataGroups
+    const allGroups = AppState.multiSource 
+        ? {
+            allXColumn: extractColumn(data, XColumn),
+            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)],
+            allMixedData: data
+        }
+        : getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode);
+
+    const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
+    const regressAlgo = $("#exp-json-regress-algo").val();
+
+    const labels = Array.isArray(YColumn) 
+        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
+        : [`${measurementLabel} ${unitDisplay(unit)}`];
+
+    if (AppState.multiSource) {
+        const Args = [
+            allGroups,
+            XColumn,
+            YColumn,
+            range,
+            timeUnit,
+            window_size,
+            unit,
+            isSplitMode ? measurementLabel : labels,
+            conversionFactor,
+            normalizeMode,
+            metadata
+        ]
+        return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
+    } else {
+        // Original non-multiSource logic
+        const Args = [
+            allGroups,
+            XColumn,
+            YColumn,
+            range,
+            timeUnit,
+            window_size,
+            unit,
+            labels,
+            conversionFactor,
+            normalizeMode,
+            metadata,
+            rawData,
+            calParams,
+            forBlankType,
+            hasBlankType,
+            regressAlgo
+        ]
+        return isSplitMode ? splitBlankRoutine(...Args) : defaultRoutine(...Args);
     }
 
-    // Determine if multiple Y columns
-    const isMultipleY = Array.isArray(allYColumnOrArray[0]);
-    const allYColumns = isMultipleY ? allYColumnOrArray : [allYColumnOrArray];
-    const labels = Array.isArray(labelOrLabels) ? labelOrLabels : [labelOrLabels];
-    const analyses = (Array.isArray(analysisOrArray) && AppState.currentMeasurementMode !== "calibrate") ? analysisOrArray : [analysisOrArray];
-
-    // Process each Y column
-    const processedYColumns = [];
-    const allYValues = [];
-    let xColumn; // Shared X after processing
-    allYColumns.forEach((yCol, i) => {
-        const { x: px, y: py } = mapDuplicates(allXColumn, yCol);
-        const { XColumn: xAfterAvg, YColumn: yAfterAvg } = averageDuplicates(px, py);
-        processedYColumns.push(yAfterAvg);
-        allYValues.push(...yAfterAvg);
-        if (i === 0) {
-            xColumn = xAfterAvg;
-        }
-    });
-
-    // Handle single data point edge case (global, since X shared)
-    const isSinglePoint = xColumn.length === 1;
-    const chartType = isSinglePoint ? 'scatter' : 'line';
-    const xMin = isSinglePoint ? xColumn[0] - 1 : Math.min(...xColumn);
-    const xMax = isSinglePoint ? xColumn[0] + 1 : Math.max(...xColumn);
-
-    const { yMin, yMax, yStepSize } = findYDimension(allYValues, labels[0]);
-
-    // Calculate xStepSize safely
-    const xStepSize = isSinglePoint
-        ? 0.5
-        : Number((xMax - xMin) / (xColumn.length - 1)).toFixed(4) || 1;
-
-    // Prepare datasets
-    const datasets = [];
-    allYColumns.forEach((_, i) => {
-        const yColumn = processedYColumns[i];
-        const label = labels[i];
-        const analysis = analyses[i];
-
-        // Per-dataset all Y equal check for point radius
-        const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
-        const pointRadius = isSinglePoint || thisYAllEqual ? 5 : 3;
-
-        const mainDataset = {
-            label: label,
-            data: yColumn,
-            borderColor: selectColor !== null ? AppState.plotColors[selectColor % AppState.plotColors.length] : AppState.plotColors[i % AppState.plotColors.length],
-            tension: isSinglePoint ? 0 : 0.1,
-            fill: false,
-            pointRadius: pointRadius
-        };
-
-        // Attach analysis data to the main dataset if provided
-        if (analysis) {
-            mainDataset.analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
-        }
-
-        datasets.push(mainDataset);
-
-        // Prepare regression line data if calibrate mode and analysis has coefficients
-        let regressionData = getRegressionData(xMax, xMin, analysis, 100);  
-        if (regressionData.length > 0) {
-            datasets.push({
-                label: `Regression (${label})`,
-                data: regressionData,
-                borderColor: 'rgba(0, 128, 0, 0.7)', // Green for regression line
-                tension: 0.1,
-                fill: false,
-                pointRadius: 0, // No points for regression line
-                borderWidth: 2
-            });
-        }
-    });
-
-    // Use first analysis for annotations (or null if none)
-    const analysisForAnnotations = analyses.length > 0 ? analyses[0] : null;
-
-    let chart = new Chart(ctx, {
-        type: chartType,
-        data: {
-            labels: xColumn,
-            datasets: datasets
-        },
-        options: {
-            animation: false,
-            scales: {
-                x: {
-                    type: 'linear',
-                    title: { 
-                        display: true, 
-                        text: timeUnit ? `Time (${timeUnit})` : 'Concentration (ng/µL)',
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim() 
-                    },
-                    min: xMin,
-                    max: xMax,
-                    grid: {
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-dark').trim()
-                    },
-                    ticks: {
-                        stepSize: xStepSize,
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
-                        callback: function(value) {
-                            return Number(value).toFixed(2);
-                        }
-                    }
-                },
-                y: {
-                    type: 'linear',
-                    title: { 
-                        display: true, 
-                        text: unit !== "NONE" ? unit : '',
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim()
-                    },
-                    min: yMin,
-                    max: yMax,
-                    grid: {
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-grid-dark').trim()
-                    },
-                    ticks: {
-                        stepSize: yStepSize,
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim(),
-                        callback: function(value) {
-                            return Number(value).toFixed(3);
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-label-light').trim() :
-                            getComputedStyle(document.documentElement).getPropertyValue('--chart-label-dark').trim()
-                    }
-                },
-                title: {
-                    display: true,
-                    text: AppState.multiSource && index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
-                    color: AppState.lightDisplay ? getComputedStyle(document.documentElement).getPropertyValue('--chart-title-light').trim() :
-                        getComputedStyle(document.documentElement).getPropertyValue('--chart-title-dark').trim()
-                },
-                annotation: {
-                    annotations: {
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "point" && forThisBlankType && {
-                            refCalLine: {
-                                type: 'line',
-                                borderColor: 'rgba(255, 0, 0, 0.5)',
-                                borderWidth: 3,
-                                xMin: AppState.refCalPoint,
-                                xMax: AppState.refCalPoint,
-                                yMin: yMin,
-                                yMax: yMax,
-                                label: {
-                                    display: true,
-                                    content: 'RefCal',
-                                    position: 'middle',
-                                    font: {
-                                        size: fontSize
-                                    }
-                                }
-                            }
-                        }),
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.startMaxRate && !isSinglePoint && maxrate_chkbox.checked && {
-                            maxRateLine: {
-                                type: 'line',
-                                borderColor: 'rgba(255, 0, 0, 0.5)',
-                                borderWidth: 3,
-                                xMin: parseFloat(analysisForAnnotations.startMaxRate * conversionFactor),
-                                xMax: parseFloat(analysisForAnnotations.endMaxRate * conversionFactor),
-                                yMin: parseFloat(analysisForAnnotations.yMaxRateStart),
-                                yMax: parseFloat(analysisForAnnotations.yMaxRateEnd),
-                                label: {
-                                    display: true,
-                                    content: 'MaxRate',
-                                    position: 'start',
-                                    font: {
-                                        size: fontSize
-                                    }
-                                }
-                            }
-                        }),
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.linearXMin && !isSinglePoint && slope_chkbox.checked && {
-                            regressionLine: {
-                                type: 'line',
-                                borderColor: 'rgba(0, 0, 255, 0.5)',
-                                borderWidth: 3,
-                                xMin: parseFloat(analysisForAnnotations.linearXMin * conversionFactor),
-                                xMax: parseFloat(analysisForAnnotations.linearXMax * conversionFactor),
-                                yMin: parseFloat(analysisForAnnotations.linearYMin),
-                                yMax: parseFloat(analysisForAnnotations.linearYMax),
-                                label: {
-                                    display: true,
-                                    content: 'Linear',
-                                    position: 'middle',
-                                    font: {
-                                        size: fontSize
-                                    }
-                                }
-                            }
-                        }),
-                        ...(isFullDisplay && AppState.currentMeasurementMode === "kinetics" && analysisForAnnotations?.saturationValue !== "--" && !isSinglePoint && sat_chkbox.checked && {
-                            saturationLine: {
-                                type: 'line',
-                                borderColor: 'rgba(255, 0, 255, 0.5)',
-                                borderWidth: 3,
-                                xMin: parseFloat(analysisForAnnotations.timeStartSaturation * conversionFactor),
-                                xMax: xMax * 100,
-                                yMin: parseFloat(analysisForAnnotations.saturationValue),
-                                yMax: parseFloat(analysisForAnnotations.saturationValue),
-                                label: {
-                                    display: true,
-                                    content: 'Sat',
-                                    position: 'end',
-                                    font: {
-                                        size: fontSize
-                                    }
-                                }
-                            }
-                        })
-                    }
-                }
-            }
-        }
-    });
-
-    AppState.chartInstances[canvasId] = chart;
-
-    return chart;
+    setTimeout(() => {
+        chartContainer.scrollTop = scrollPosition;
+    }, 0);
 }
 
 function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
@@ -529,97 +356,6 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
             );
         }
     }
-}
-
-function updatePlot(
-    data, metadata, range, timeUnit, window_size, unit, isSplitMode, forBlankType = null,
-    XColumn = "Timestamp", YColumn = "Value"
-) {
-    // Save current scroll position
-    const chartContainer = document.getElementById('chart-container');
-    const scrollPosition = chartContainer.scrollTop;
-    const normalizeMode = document.getElementById('normalize-mode').checked;
-
-    destroyCharts();
-    $("#chart-container").empty(); // Clear existing chart sections
-
-    // Restore scroll position
-    chartContainer.scrollTop = scrollPosition;
-
-    // Clean and sort data
-    const selectElement = document.getElementById('regressed-quantity');
-    const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
-    const rawData = data;
-    data = preprocessData(data, XColumn, YColumn);
-
-    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
-    
-    // Only check for blank columns if multiSource is false
-    const hasBlankType = !AppState.multiSource && data.some(row => 'BlankType' in row);
-    const hasBlank = !AppState.multiSource && data.some(row => 'Blanked' in row);
-
-    if (!AppState.multiSource && !hasBlankType && !hasBlank) {
-        console.warn("No Blank or BlankType column found in data");
-        return;
-    }
-
-    // If multiSource, treat all data as mixed; otherwise, use getDataGroups
-    const allGroups = AppState.multiSource 
-        ? {
-            allXColumn: extractColumn(data, XColumn),
-            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)],
-            allMixedData: data
-        }
-        : getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode);
-
-    const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
-    const regressAlgo = $("#exp-json-regress-algo").val();
-
-    const labels = Array.isArray(YColumn) 
-        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
-        : [`${measurementLabel} ${unitDisplay(unit)}`];
-
-    if (AppState.multiSource) {
-        const Args = [
-            allGroups,
-            XColumn,
-            YColumn,
-            range,
-            timeUnit,
-            window_size,
-            unit,
-            isSplitMode ? measurementLabel : labels,
-            conversionFactor,
-            normalizeMode,
-            metadata
-        ]
-        return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
-    } else {
-        // Original non-multiSource logic
-        const Args = [
-            allGroups,
-            XColumn,
-            YColumn,
-            range,
-            timeUnit,
-            window_size,
-            unit,
-            labels,
-            conversionFactor,
-            normalizeMode,
-            metadata,
-            rawData,
-            calParams,
-            forBlankType,
-            hasBlankType,
-            regressAlgo
-        ]
-        return isSplitMode ? splitBlankRoutine(...Args) : defaultRoutine(...Args);
-    }
-
-    setTimeout(() => {
-        chartContainer.scrollTop = scrollPosition;
-    }, 0);
 }
 
 function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, measurementLabel, conversionFactor, normalizeMode, metadata) {
