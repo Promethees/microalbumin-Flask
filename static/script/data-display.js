@@ -85,7 +85,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     // Calculate xStepSize safely
     const xStepSize = isSinglePoint
         ? 0.5
-        : Number((xMax - xMin) / (xColumn.length - 1)).toFixed(2) || 1;
+        : Number((xMax - xMin) / (xColumn.length - 1)).toFixed(4) || 1;
 
     // Prepare datasets
     const datasets = [];
@@ -362,6 +362,8 @@ function handleCkboxChange(canvasId, allXColumn, allYColumnOrArray, labelOrLabel
                                         ? allYColumnOrArray.map(yCol => yCol.map(value => (value - Math.min(...yCol)))) : 
                                         allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray)))) 
                                         : allYColumnOrArray;
+    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
+    allXColumn = allXColumn.map(x => x * factor);
     const analysis = calculateKineticsQuantities(allXColumn, allYColumnOrArray, parseInt($("#window-size").val())); //analysis in current unit
 
     generateChart(
@@ -1016,7 +1018,7 @@ function extractColumn(data, colName, normalizeMode = false) {
 }
 
 function extractAndConvert(data, colName, factor) {
-    return data.map(row => Number((row[colName] * factor).toFixed(2)));
+    return data.map(row => Number((row[colName] * factor)));
 }
 
 function getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode = false) {
