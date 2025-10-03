@@ -1,4 +1,4 @@
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, conversionFactor, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
     if (AppState.chartInstances[canvasId]) {
         AppState.chartInstances[canvasId].destroy();
     }
@@ -13,7 +13,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const fullDisplayCheckbox = document.getElementById(`full-display-${canvasString}`);
     const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
     const { x: processedX, y: dummyProcessedY } = mapDuplicates(allXColumn, allYColumnOrArray.length > 0 ? allYColumnOrArray[0] : allXColumn.map(() => 0)); // Use first Y or dummy for X processing
-    
+    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     const fontSize = 8;
     if (!canvas || processedX.length === 0) {
         $(`#${canvasId}`).hide();
@@ -326,7 +326,7 @@ function checkboxHtmlWithID(
     .join("");
 }
 
-function handleCkboxChange(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, forThisBlankType, selectColor, index) {
+function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, forThisBlankType, selectColor, index) {
     const timeUnit = $("#time-unit").val();
     const normalizeMode = document.getElementById('normalize-mode').checked;
 
@@ -335,17 +335,16 @@ function handleCkboxChange(canvasId, allXColumn, allYColumnOrArray, labelOrLabel
                                         allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray)))) 
                                         : allYColumnOrArray;
     const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
-    allXColumn = allXColumn.map(x => x * factor);
-    const analysis = calculateKineticsQuantities(allXColumn, allYColumnOrArray, parseInt($("#window-size").val())); //analysis in current unit
+    displayedAllXColumn = originalAllXColumn.map(x => x * factor);
+    const analysis = calculateKineticsQuantities(originalAllXColumn, allYColumnOrArray, parseInt($("#window-size").val())); //analysis in current unit
 
     generateChart(
     canvasId,
-    allXColumn,
+    displayedAllXColumn,
     allYColumnOrArray,
     labelOrLabels,
     unit,
     timeUnit,
-    conversionFactor = 1,
     analysis,
     forThisBlankType,
     selectColor,
@@ -644,7 +643,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
         const canvasId = `source-${i}-canvas`;
         const analysisId = `source-${i}-analysis`;
         renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, unit, true, i, i);
-        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, conversionFactor, [analysis], true, i, i);
+        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, [analysis], true, i, i);
         charts.push(chart);
 
         // Update analysis info display
@@ -685,7 +684,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
     });
     $("#plot-analysis").html(html);
 
-    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
+    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, analyses, true);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         return extractMultiSourceResultSummary(metadata, analyses);
@@ -744,9 +743,9 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_
         [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], 
         [1, 0])
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-        unit, timeUnit, conversionFactor, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
+        unit, timeUnit, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-        unit, timeUnit, conversionFactor, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
+        unit, timeUnit, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -810,7 +809,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         unit, forBlankType === "MIXED");
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-        unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
+        unit, timeUnit, mixAnalysis, forBlankType === "MIXED");
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
