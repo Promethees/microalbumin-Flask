@@ -792,7 +792,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
         const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
         filteredData = filteredByRangeValue(isFullDisplay, range, timeUnit, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
         XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
+        YColumnVals = extractColumn(filteredData, YColumn, normalizeMode);
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, window_size);
     } else {
         filteredData = filterByBlankType(allGroups.allMixedData, hasBlankType);
@@ -806,7 +806,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
     }
 
     // Generate chart
-    const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
+    const yValsForChart = YColumnVals;
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         unit, forBlankType === "MIXED");
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
