@@ -662,7 +662,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
     const filteredData = filteredByRangeValue(false, range, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
     const YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol, normalizeMode));
-    const analyses = YColumn.map(yCol => calculateKineticsQuantities(XColumnVals, extractColumn(filteredData, yCol, normalizeMode), window_size));
+    const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, window_size));
 
     // Format analysis info for all sources
     const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor = 1, unit, labels[i]));
