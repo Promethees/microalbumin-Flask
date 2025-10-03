@@ -748,12 +748,11 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
         unit, timeUnit, conversionFactor, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
 
-    // Format analysis info for both charts
-    const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
-    const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
-
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
+        // Format analysis info for both charts
+        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
+        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
         updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
     } else {
         let blanked_string = "";
@@ -806,9 +805,6 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
         }
     }
 
-    // Format analysis info before chart creation
-    const mixAnalysisInfo = Array.isArray(mixAnalysis) ? mixAnalysis.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i])) : [formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0])];
-
     // Generate chart
     const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
@@ -818,6 +814,8 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
+        // Format analysis info before chart creation
+        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0]);
         updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
     } else {
         let htmlString = "";
@@ -1093,7 +1091,7 @@ function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblank
 
 function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
     if (analysisInfo) {
-        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo[0], unit, timeUnit));
+        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
     } else {
         $("#plot-analysis").html('');
     }
