@@ -157,25 +157,40 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
     const timeUnit = $("#time-unit").val();
     const normalizeMode = document.getElementById('normalize-mode').checked;
 
-    allYColumnOrArray = normalizeMode ? (Array.isArray(allYColumnOrArray[0]) 
-                                        ? allYColumnOrArray.map(yCol => yCol.map(value => (value - Math.min(...yCol)))) : 
-                                        allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray)))) 
-                                        : allYColumnOrArray;
-    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
-    displayedAllXColumn = originalAllXColumn.map(x => x * factor);
-    const analysis = calculateKineticsQuantities(originalAllXColumn, allYColumnOrArray, parseInt($("#window-size").val())); //analysis in current unit
+    // Normalize Y values if normalizeMode is checked
+    allYColumnOrArray = normalizeMode ? (Array.isArray(allYColumnOrArray[0])
+        ? allYColumnOrArray.map(yCol => yCol.map(value => (value - Math.min(...yCol))))
+        : allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray))))
+        : allYColumnOrArray;
 
+    // Apply filtering only when fullDisplay checkbox is checked
+    let filteredX = originalAllXColumn;
+    let filteredY = allYColumnOrArray;
+    if (!getCheckboxes(canvasId).fullDisplay.checked) {
+        const startThreshold = parseFloat($("#range-value-start").val());
+        const endThreshold = parseFloat($("#range-value-end").val());
+        ({ filteredX, filteredY } = filterXYPairs(originalAllXColumn, allYColumnOrArray, startThreshold, endThreshold));
+    }
+
+    // Convert X values to the selected time unit
+    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
+    const displayedAllXColumn = filteredX.map(x => x * factor);
+
+    // Calculate kinetics quantities using filtered data
+    const analysis = calculateKineticsQuantities(filteredX, filteredY, parseInt($("#window-size").val()));
+
+    // Generate the chart with filtered and converted data
     generateChart(
-    canvasId,
-    displayedAllXColumn,
-    allYColumnOrArray,
-    labelOrLabels,
-    unit,
-    timeUnit,
-    analysis,
-    forThisBlankType,
-    selectColor,
-    index
+        canvasId,
+        displayedAllXColumn,
+        filteredY,
+        labelOrLabels,
+        unit,
+        timeUnit,
+        analysis,
+        forThisBlankType,
+        selectColor,
+        index
     );
 }
 

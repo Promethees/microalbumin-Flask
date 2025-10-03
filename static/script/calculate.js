@@ -704,3 +704,21 @@ function mapDuplicates(x, y) {
     
     return { x: processedX, y: processedY };
 }
+
+function filterXYPairs(XColumnVals, YColumnVals, startThreshold, endThreshold) {
+    if (XColumnVals.length !== YColumnVals.length) {
+        throw new Error("XColumn and YColumn must have the same size");
+    }
+
+    const filteredX = [];
+    const filteredY = [];
+
+    for (let i = 0; i < XColumnVals.length; i++) {
+        if (startThreshold <= XColumnVals[i] && XColumnVals[i] <= endThreshold) {
+            filteredX.push(XColumnVals[i]);
+            filteredY.push(YColumnVals[i]);
+        }
+    }
+
+    return { filteredX, filteredY };
+}
