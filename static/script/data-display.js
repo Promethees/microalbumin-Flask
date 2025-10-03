@@ -2,7 +2,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     if (AppState.chartInstances[canvasId]) {
         AppState.chartInstances[canvasId].destroy();
     }
-    
+    $(`#${canvasId}`).show();
     const canvas = document.getElementById(canvasId);
 
     // Modify this according to the canvasID
@@ -685,7 +685,6 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
     });
     $("#plot-analysis").html(html);
 
-    $("#plot-canvas").show();
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, conversionFactor, analyses, true);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -744,7 +743,6 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_
         unit, 
         [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], 
         [1, 0])
-    $("#blanked-canvas, #non-blanked-canvas").show();
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
         unit, timeUnit, conversionFactor, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
@@ -815,7 +813,6 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
     const yValsForChart = Array.isArray(YColumnVals) ? YColumnVals : [YColumnVals];
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         unit, forBlankType === "MIXED");
-    $("#plot-canvas").show();
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
         unit, timeUnit, conversionFactor, mixAnalysis, forBlankType === "MIXED");
 

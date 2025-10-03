@@ -15,7 +15,6 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $("#copy-file-btn").prop("disabled", false);
         $("#split-mode").prop("checked", false);
         $("#blanked-canvas, #non-blanked-canvas").hide();
-        $("#plot-canvas").show();
         $("#range-value-start").val(0);
         $("#range-value-end").val(1000);
         $("#range-value-start").prop("disabled", false);
