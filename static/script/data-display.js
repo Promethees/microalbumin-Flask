@@ -665,7 +665,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, window_size));
 
     // Format analysis info for all sources
-    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor = 1, unit, labels[i]));
+    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
 
     // Generate single chart with all Y-columns
     renderCharts(XColumnVals, YColumnVals, labels, unit, true);
