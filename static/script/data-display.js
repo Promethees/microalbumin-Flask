@@ -52,35 +52,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const xMin = isSinglePoint ? xColumn[0] - 1 : Math.min(...xColumn);
     const xMax = isSinglePoint ? xColumn[0] + 1 : Math.max(...xColumn);
 
-    // Check if all Y values across all datasets are equal
-    const allYEqual = allYValues.length > 0 && allYValues.every(y => y === allYValues[0]);
-    let yMin, yMax, yStepSize;
-
-    if (allYEqual) {
-        // Case: All Y values are equal
-        const yValue = allYValues[0];
-        if (yValue === 0) {
-            // If Y value is 0, set a small range around 0
-            yMin = -0.1;
-            yMax = 0.1;
-            yStepSize = 0.02; // Small step size for zero case
-        } else {
-            // For non-zero equal Y values, set range ±10% of the value
-            yMin = yValue * 0.9;
-            yMax = yValue * 1.1;
-            yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.01;
-        }
-    } else {
-        // Original logic for non-equal Y values
-        if (labels[0].toLowerCase().includes("absorbance") && $("#split-sensor").is(":checked") && AppState.multiSource) {
-            yMin = 0;
-            yMax = 0.6;      
-        } else {
-            yMin = 0;
-            yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
-        }
-        yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
-    }
+    const { yMin, yMax, yStepSize } = findYDimension(allYValues, labels[0]);
 
     // Calculate xStepSize safely
     const xStepSize = isSinglePoint
@@ -1220,3 +1192,41 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
     }
     return regressionData;
 }
+
+function findYDimension(allYValues, labels) {
+    const isSinglePoint = allYValues.length === 1;
+    // Check if all Y values across all datasets are equal
+    const allYEqual = allYValues.length > 0 && allYValues.every(y => y === allYValues[0]);
+    let yMin, yMax, yStepSize;
+
+    if (allYEqual) {
+        // Case: All Y values are equal
+        const yValue = allYValues[0];
+        if (yValue === 0) {
+            // If Y value is 0, set a small range around 0
+            yMin = -0.1;
+            yMax = 0.1;
+            yStepSize = 0.02; // Small step size for zero case
+        } else {
+            // For non-zero equal Y values, set range ±10% of the value
+            yMin = yValue * 0.9;
+            yMax = yValue * 1.1;
+            yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.01;
+        }
+    } else {
+        // Original logic for non-equal Y values
+        if (labels.toLowerCase().includes("absorbance") && $("#split-sensor").is(":checked") && AppState.multiSource) {
+            yMin = 0;
+            yMax = 0.6;      
+        } else {
+            yMin = 0;
+            yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
+        }
+        yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
+    }
+    return {
+        yMin: yMin,
+        yMax: yMax,
+        yStepSize: yStepSize
+    }
+} 
