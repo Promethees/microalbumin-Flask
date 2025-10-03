@@ -843,14 +843,19 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
 }
 
 function filteredByRangeValue(isFullDisplay, range, timeUnit, data, XColumn, YColumn) {
-    if (isFullDisplay) {
-        range.start = 0;
-        range.end = Number.MAX_VALUE;
+    if (AppState.currentMeasurementMode === "calibrate") {
+        return data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
     }
-    // const timeThreshold = Math.max(...data.map(row => row[XColumn])) - range * getTimeUnitMultiplier(timeUnit);
-    const timeThresholdStart = range.start * getTimeUnitMultiplier(timeUnit);
-    const timeThresholdEnd = range.end * getTimeUnitMultiplier(timeUnit);
-    return data.filter(row => row[XColumn] >= timeThresholdStart && row[XColumn] <= timeThresholdEnd && row[YColumn] !== "NONE");
+    else {
+        if (isFullDisplay) {
+            range.start = 0;
+            range.end = Number.MAX_VALUE;
+        }
+        // const timeThreshold = Math.max(...data.map(row => row[XColumn])) - range * getTimeUnitMultiplier(timeUnit);
+        const timeThresholdStart = range.start * getTimeUnitMultiplier(timeUnit);
+        const timeThresholdEnd = range.end * getTimeUnitMultiplier(timeUnit);
+        return data.filter(row => row[XColumn] >= timeThresholdStart && row[XColumn] <= timeThresholdEnd && row[YColumn] !== "NONE");
+    }
 }
 
 // New helper function for multiSource result summary
