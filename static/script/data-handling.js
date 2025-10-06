@@ -577,14 +577,9 @@ function handleCalibrationMode() {
 }
 
 function updatePlotBasedOnMode(response, jsonFile, unit, window_size) {
-    const range = {
-        start: parseFloat($("#range-value-start").val()),
-        end: parseFloat($("#range-value-end").val())
-    };
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,
-        range,
         unit,
         window_size,
         response.unit || "NONE",
@@ -594,7 +589,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size) {
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, null, null, null, 
+                AppState.responseData, AppState.metaData, null, null, 
                 AppState.metaData["MeasUnit"], null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
@@ -607,7 +602,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit, window_size) {
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, null, null, null, 
+                processingData, AppState.metaData, null, null, 
                 AppState.metaData["MeasUnit"], null, 
                 "Concentration", "Value"
             );
