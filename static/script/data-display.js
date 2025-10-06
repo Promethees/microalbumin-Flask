@@ -152,17 +152,17 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         : allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray))))
         : allYColumnOrArray;
 
+    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
+
     // Apply filtering only when fullDisplay checkbox is checked
     let filteredX = originalAllXColumn;
     let filteredY = allYColumnOrArray;
     if (!getCheckboxes(canvasId).fullDisplay.checked) {
-        const startThreshold = parseFloat($("#range-value-start").val());
-        const endThreshold = parseFloat($("#range-value-end").val());
+        const startThreshold = parseFloat($("#range-value-start").val()) / factor;
+        const endThreshold = parseFloat($("#range-value-end").val()) / factor;
         ({ filteredX, filteredY } = filterXYPairs(originalAllXColumn, allYColumnOrArray, startThreshold, endThreshold));
     }
 
-    // Convert X values to the selected time unit
-    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     const displayedAllXColumn = filteredX.map(x => x * factor);
 
     // Calculate kinetics quantities using filtered data
