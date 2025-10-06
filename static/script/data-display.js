@@ -1,5 +1,5 @@
 function updatePlot(
-    data, metadata, range, timeUnit, window_size, unit, isSplitMode, forBlankType = null,
+    data, metadata, range, timeUnit, window_size, unit, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
     // Save current scroll position
@@ -29,7 +29,8 @@ function updatePlot(
         console.warn("No Blank or BlankType column found in data");
         return;
     }
-
+    const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
+    
     // If multiSource, treat all data as mixed; otherwise, use getDataGroups
     const allGroups = AppState.multiSource 
         ? {
