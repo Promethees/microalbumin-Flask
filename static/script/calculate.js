@@ -7,7 +7,7 @@ function computeRSquared(actual, predicted) {
     return ssTotal === 0 ? 0 : 1 - ssResidual / ssTotal;
 }
 
-function calculateCoefAndRSquared(x, y, algo = "linear") {
+function calculateCoefAndRSquared(x, y, regressAlgo = "linear") {
     // Preprocess the data first
     const { x: processedX, y: processedY } = mapDuplicates(x, y);
     x = processedX.map(num => parseFloat(num));
@@ -21,7 +21,7 @@ function calculateCoefAndRSquared(x, y, algo = "linear") {
     let coefficients = null;
     let rSquared = 0;
 
-    switch (algo) {
+    switch (regressAlgo) {
         case "polynomial":
             try {
                 const degree = 2;
