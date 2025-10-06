@@ -39,12 +39,7 @@ function updatePlot(
         }
         : getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode);
 
-    const measurementLabel = determineMeasurementLabel(metadata, XColumn, YColumn);
     const regressAlgo = $("#exp-json-regress-algo").val();
-
-    const labels = Array.isArray(YColumn) 
-        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
-        : [`${measurementLabel} ${unitDisplay(unit)}`];
 
     if (AppState.multiSource) {
         const Args = [
@@ -55,7 +50,6 @@ function updatePlot(
             timeUnit,
             window_size,
             unit,
-            isSplitMode ? measurementLabel : labels,
             conversionFactor,
             normalizeMode,
             metadata
@@ -71,7 +65,6 @@ function updatePlot(
             timeUnit,
             window_size,
             unit,
-            labels,
             conversionFactor,
             normalizeMode,
             metadata,
@@ -373,7 +366,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, measurementLabel, conversionFactor, normalizeMode, metadata) {
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata) {
     const charts = [];
     const analyses = [];
     
@@ -384,7 +377,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
         const filteredData = filteredByRangeValue(isFullDisplay, range, timeUnit, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
         const yValues = extractColumn(filteredData, yColumn, normalizeMode);
-        const label = `${measurementLabel} ${yColumn} ${unitDisplay(unit)}`;
+        const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(unit)}`;
         let analysis = null;
 
         analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], window_size);
@@ -408,11 +401,12 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, labels, conversionFactor, normalizeMode, metadata) {
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata) {
     const filteredData = filteredByRangeValue(false, range, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
     const YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol, normalizeMode));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, window_size));
+    const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(unit)}`);
 
     // Format analysis info for all sources
     const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
@@ -447,7 +441,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, range, timeUnit, w
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, labels, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false, regressAlgo = "linear") {
+function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false, regressAlgo = "linear") {
     const allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
     const allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
@@ -484,9 +478,10 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_
             analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo);
         }
     }
-
+    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), unit);
     const blankLabels = labels.map(l => `${l} (Blanked)`);
     const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
+    
     renderCharts([extractColumn(allGroups.allBlankedData, XColumn), extractColumn(allGroups.allNonBlankedData, XColumn)], 
         [extractColumn(allGroups.allBlankedData, YColumn), extractColumn(allGroups.allNonBlankedData, YColumn)], 
         [blankLabels, nonBlankLabels], 
@@ -533,7 +528,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, labels, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false, regressAlgo = "linear") {
+function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false, regressAlgo = "linear") {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -557,6 +552,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, range, timeUnit, window_siz
 
     // Generate chart
     const yValsForChart = YColumnVals;
+    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), unit);
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         unit, forBlankType === "MIXED");
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
@@ -754,10 +750,10 @@ function getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode = fal
 }
 
 function determineMeasurementLabel(metadata, XColumn, YColumn) {
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        return 'Measurement' in metadata ? metadata['Measurement'] : 'Measurement';
-    } else {
+    if (AppState.currentMeasurementMode === "calibrate") {
         return 'MeasMode' in metadata ? `${YColumn} against ${XColumn}` : 'Correlation';
+    } else {
+        return 'Measurement' in metadata ? metadata['Measurement'] : 'Measurement';
     }
 }
 
@@ -980,3 +976,10 @@ function findYDimension(allYValues, labels) {
         yStepSize: yStepSize
     }
 } 
+
+function getLabelsFromYColumn(YColumn, measurementLabel, unit) {
+    const labels = Array.isArray(YColumn) 
+        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
+        : [`${measurementLabel} ${unitDisplay(unit)}`];
+    return labels;
+}

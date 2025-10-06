@@ -85,7 +85,7 @@ function createRegressionDataset(xMax, xMin, analysis, label) {
     };
 }
 
-function getChartScales(xColumn, allYValues, labels, timeUnit, unit) {
+function getChartScales(xColumn, allYValues, labels) {
     const isSinglePoint = xColumn.length === 1;
     const xMin = isSinglePoint ? xColumn[0] - 1 : Math.min(...xColumn);
     const xMax = isSinglePoint ? xColumn[0] + 1 : Math.max(...xColumn);
