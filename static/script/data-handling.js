@@ -136,7 +136,7 @@ function processDataDisplay(fileName, jsonFileContent=null) {
     let window_size = $("#window-size").val();
 
     // Proceed with fetching and displaying data
-    fetchData(unit, window_size, fileName, jsonFileContent);
+    fetchData(unit, fileName, jsonFileContent);
     updateFileDisplay(fileName);
 }
 
@@ -351,7 +351,7 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     return entries.sort((a, b) => Number(b) - Number(a));
 }
 
-function fetchData(unit, window_size, filename, jsonFile) {
+function fetchData(unit, filename, jsonFile) {
     const fullPath = $("#directory").val() + delimiter + filename;
     $.get('/get_data', {
         file: $("#directory").val() + delimiter + filename
@@ -647,7 +647,7 @@ function toggleMode() {
         if (AppState.currentMeasurementMode !== "calibrate") {
             validateWindowSize(parseInt($("#window-size").val()))
             drawMeasurementChart();
-        } else fetchData(null, null, AppState.currentFile, AppState.currentJSONcontent);
+        } else fetchData(null, AppState.currentFile, AppState.currentJSONcontent);
     }
     const select = document.getElementById("exp-json-regress-algo");
     const selected = select.value;

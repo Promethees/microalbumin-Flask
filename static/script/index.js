@@ -478,8 +478,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
 
 function drawMeasurementChart() {
     let unit = $("#time-unit").val();
-    let window_size = $("#window-size").val();
-    fetchData(unit, window_size, AppState.currentFile, AppState.currentJSONcontent);
+    fetchData(unit, AppState.currentFile, AppState.currentJSONcontent);
     $("#cal-time-unit").text(unit.slice(0, -1));
 }
 
