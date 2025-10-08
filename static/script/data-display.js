@@ -14,8 +14,6 @@ function updatePlot(
     chartContainer.scrollTop = scrollPosition;
 
     // Clean and sort data
-    const selectElement = document.getElementById('regressed-quantity');
-    const calParams = Array.from(selectElement.options).map(option => option.dataset.original);
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
 
@@ -58,7 +56,6 @@ function updatePlot(
             normalizeMode,
             metadata,
             rawData,
-            calParams,
             forBlankType,
         ]
         return isSplitMode ? splitBlankRoutine(...Args) : defaultRoutine(...Args);
@@ -428,7 +425,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, forBlankType = null) {
     const allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
     const allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
@@ -458,8 +455,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
         analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
     } else {
         if ($("#cal-mode-select").val() === "kinetics") {
-            analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED");
-            analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED");
+            analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "BLANKED");
+            analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "NON-BLANKED");
         } else if ($("#cal-mode-select").val() === "point") {
             analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
             analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
@@ -490,8 +487,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
         let blanked_string = "";
         let non_blanked_string = "";
         if ($("#cal-mode-select").val() === "kinetics") {
-            blanked_string = getCalKineticsString(calParams, analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-            non_blanked_string = getCalKineticsString(calParams, analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            blanked_string = getCalKineticsString(analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            non_blanked_string = getCalKineticsString(analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
         } else if ($("#cal-mode-select").val() === "point") {
             blanked_string = getCalPointString(analysis_blanked);
             non_blanked_string = getCalPointString(analysis_nonblanked);
@@ -515,7 +512,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null) {
+function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -531,7 +528,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
         XColumnVals = extractColumn(filteredData, XColumn);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
         if ($("#cal-mode-select").val() === "kinetics") {
-            mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED");
+            mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
         } else if ($("#cal-mode-select").val() === "point") {
             mixAnalysis = calculateCoefAndRSquared(extractColumn(allGroups.allMixedData, YColumn), extractColumn(allGroups.allMixedData, XColumn), regressAlgo = $("#exp-json-regress-algo").val());
         }
@@ -553,7 +550,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
     } else {
         let htmlString = "";
         if ($("#cal-mode-select").val() === "kinetics") {
-            htmlString = getCalKineticsString(calParams, mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            htmlString = getCalKineticsString(mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
         } else if ($("#cal-mode-select").val() === "point") {
             htmlString = getCalPointString(mixAnalysis);
         }
@@ -642,9 +639,9 @@ function destroyCharts() {
     AppState.chartInstances = {};
 }
 
-function getCalKineticsString(calParams, analysis, isMM=false) {
+function getCalKineticsString(analysis, isMM=false) {
     let htmlString = "";
-    for (let i = 0; i < calParams.length; i++) {
+    for (let i = 0; i < AppState.quantity_input.quantities.length; i++) {
         let coefString = "";
         if (analysis[i].coefficients) {
             if (!isMM) {
@@ -667,7 +664,7 @@ function getCalKineticsString(calParams, analysis, isMM=false) {
                 else coefString += "], ";  
             } 
         }    
-        htmlString += `${calParams[i]}: Coef:` + coefString;
+        htmlString += `${AppState.quantity_input.quantities[i]}: Coef:` + coefString;
         htmlString += "rSquared: ";
         htmlString += analysis[i].rSquared ? analysis[i].rSquared : "--,";
         htmlString += "<br/>";      
@@ -711,9 +708,9 @@ function preprocessData(data, XColumn, YColumn) {
     }
 }
 
-function preprocessDataCalParams(data, XColumn, YColumn, calParams) {
-    if (calParams && Array.isArray(calParams) && calParams.includes(YColumn)) {
-        const results = calParams.map(param => {
+function preprocessDataCalParams(data, XColumn, YColumn) {
+    if (AppState.quantity_input.quantities && Array.isArray(AppState.quantity_input.quantities) && AppState.quantity_input.quantities.includes(YColumn)) {
+        const results = AppState.quantity_input.quantities.map(param => {
             const filteredData = data
                 .filter(row => row[XColumn] !== "NONE" && row[param] !== "NONE")
                 .sort((a, b) => a[XColumn] - b[XColumn]);
@@ -855,8 +852,8 @@ function extractSingleResultSummary(metadata, mixAnalysis) {
     };
 }
 
-function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeValue) {
-    const dataMap = preprocessDataCalParams(data, XColumn, YColumn, calParams);
+function calibrateKineticsAnalysis(data, XColumn, YColumn, blankTypeValue) {
+    const dataMap = preprocessDataCalParams(data, XColumn, YColumn);
     const regressAlgo = $("#exp-json-regress-algo").val();
     if (dataMap) {
         const results = dataMap.map(({ param, data }) => {
