@@ -574,7 +574,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit) {
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, null, null, 
+                AppState.responseData, AppState.metaData, null, 
                 AppState.metaData["MeasUnit"], null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
@@ -587,7 +587,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit) {
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, null, null, 
+                processingData, AppState.metaData, null, 
                 AppState.metaData["MeasUnit"], null, 
                 "Concentration", "Value"
             );
@@ -617,7 +617,6 @@ function updatePlotBasedOnMode(response, jsonFile, unit) {
 
                     AppState.globalAnalysis = updatePlot(
                         ...baseArgs,
-                        null,
                         "Timestamp",
                         values
                     );
