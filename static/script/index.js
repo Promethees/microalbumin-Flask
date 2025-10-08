@@ -243,12 +243,6 @@ $(document).ready(function() {
                     drawMeasurementChart();
                 } else {
                     AppState.prevFile = AppState.currentFile;
-                    // If the file has changed, fetch data again
-                    // if (AppState.currentMeasurementMode === "calibrate") {
-                    //     fetchData(null, null, null, AppState.currentFile, null);
-                    // } else {
-                    //     drawMeasurementChart();
-                    // }
                 }
             }
             $("#data-display-section").removeClass("hidden");

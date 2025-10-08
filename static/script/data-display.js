@@ -1,5 +1,5 @@
 function updatePlot(
-    data, metadata, timeUnit, window_size, unit, forBlankType = null,
+    data, metadata, timeUnit, unit, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
     // Save current scroll position
@@ -33,7 +33,6 @@ function updatePlot(
             XColumn,
             YColumn,
             timeUnit,
-            window_size,
             unit,
             metadata
         ]
@@ -45,7 +44,6 @@ function updatePlot(
             XColumn,
             YColumn,
             timeUnit,
-            window_size,
             unit,
             metadata,
             rawData,
@@ -344,7 +342,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata) {
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata) {
     const charts = [];
     const analyses = [];
     
@@ -358,7 +356,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
         const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(unit)}`;
         let analysis = null;
 
-        analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], window_size);
+        analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], parseInt($("#window-size").val()));
 
         analyses.push(analysis);
 
@@ -379,11 +377,11 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata) {
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata) {
     const filteredData = filteredByRangeValue(false, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
-    const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, window_size));
+    const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, parseInt($("#window-size").val())));
     const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(unit)}`);
 
     // Format analysis info for all sources
@@ -419,7 +417,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata, rawData, forBlankType = null) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, rawData, forBlankType = null) {
     const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
     const allNonBlankedXColumn = extractColumnAndConvert(allGroups.allNonBlankedData, XColumn);
@@ -445,8 +443,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     let analysis_nonblanked = null;
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, window_size));
-        analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
+        analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, parseInt($("#window-size").val())));
+        analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, parseInt($("#window-size").val())));
     } else {
         if ($("#cal-mode-select").val() === "kinetics") {
             analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "BLANKED");
@@ -506,7 +504,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata, rawData, forBlankType = null) {
+function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, rawData, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -516,7 +514,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
         filteredData = filteredByRangeValue(isFullDisplay, timeUnit, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         YColumnVals = extractColumnAndNormalize(filteredData, YColumn);
-        mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, window_size);
+        mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, parseInt($("#window-size").val()));
     } else {
         filteredData = filterByBlankType(allGroups.allMixedData);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn);

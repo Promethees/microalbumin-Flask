@@ -135,20 +135,6 @@ function processDataDisplay(fileName, jsonFileContent=null) {
     let unit = $("#time-unit").val();
     let window_size = $("#window-size").val();
 
-    // Validate window size
-    if (window_size < 3) {
-        $("#wd-size-error").text("Window size must be greater than 3.").show();
-        return;
-    }
-
-    if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
-        $("#wd-size-error").text("Window size must be an integer.").show();
-        return;
-    }
-
-    // Clear error message if input is valid
-    $("#wd-size-error").hide();
-
     // Proceed with fetching and displaying data
     fetchData(unit, window_size, fileName, jsonFileContent);
     updateFileDisplay(fileName);
@@ -379,7 +365,7 @@ function fetchData(unit, window_size, filename, jsonFile) {
             AppState.metaData = response.metadata; // Reset metadata
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, unit, window_size);
+            updatePlotBasedOnMode(response, jsonFile, unit);
             if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
@@ -576,12 +562,11 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile, unit, window_size) {
+function updatePlotBasedOnMode(response, jsonFile, unit) {
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,
         unit,
-        window_size,
         response.unit || "NONE",
     ];
     if (AppState.currentMeasurementMode === "calibrate") {
@@ -660,6 +645,7 @@ function toggleMode() {
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
+            validateWindowSize(parseInt($("#window-size").val()))
             drawMeasurementChart();
         } else fetchData(null, null, AppState.currentFile, AppState.currentJSONcontent);
     }

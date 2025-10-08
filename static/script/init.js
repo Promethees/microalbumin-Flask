@@ -429,6 +429,22 @@ function validateTimeoutInterval() {
     return true;
 }
 
+function validateWindowSize(window_size) {
+    // Validate window size
+    if (window_size < 3) {
+        $("#wd-size-error").text("Window size must be greater than 3.").show();
+        return;
+    }
+
+    if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
+        $("#wd-size-error").text("Window size must be an integer.").show();
+        return;
+    }
+
+    // Clear error message if input is valid
+    $("#wd-size-error").hide();
+}
+
 // Event listener to toggle timeout input disabled state
 document.getElementById('inf-timeout').addEventListener('change', function() {
     document.getElementById('timeout').value = '';
