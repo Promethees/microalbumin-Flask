@@ -5,7 +5,6 @@ function updatePlot(
     // Save current scroll position
     const chartContainer = document.getElementById('chart-container');
     const scrollPosition = chartContainer.scrollTop;
-    const normalizeMode = document.getElementById('normalize-mode').checked;
 
     destroyCharts();
     $("#chart-container").empty(); // Clear existing chart sections
@@ -25,10 +24,10 @@ function updatePlot(
     const allGroups = AppState.multiSource 
         ? {
             allXColumn: extractColumn(data, XColumn),
-            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)],
+            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y)) : [extractColumn(data, YColumn)],
             allMixedData: data
         }
-        : getDataGroups(data, XColumn, YColumn, normalizeMode);
+        : getDataGroups(data, XColumn, YColumn);
 
     if (AppState.multiSource) {
         const Args = [
@@ -39,7 +38,6 @@ function updatePlot(
             window_size,
             unit,
             conversionFactor,
-            normalizeMode,
             metadata
         ]
         return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
@@ -53,7 +51,6 @@ function updatePlot(
             window_size,
             unit,
             conversionFactor,
-            normalizeMode,
             metadata,
             rawData,
             forBlankType,
@@ -350,7 +347,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata) {
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata) {
     const charts = [];
     const analyses = [];
     
@@ -360,7 +357,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
         const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
         const filteredData = filteredByRangeValue(isFullDisplay, timeUnit, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-        const yValues = extractColumn(filteredData, yColumn, normalizeMode);
+        const yValues = extractColumn(filteredData, yColumn);
         const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(unit)}`;
         let analysis = null;
 
@@ -385,10 +382,10 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata) {
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata) {
     const filteredData = filteredByRangeValue(false, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-    const YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol, normalizeMode));
+    const YColumnVals = YColumn.map(yCol => extractColumn(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, window_size));
     const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(unit)}`);
 
@@ -425,11 +422,11 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, forBlankType = null) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata, rawData, forBlankType = null) {
     const allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
-    const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
+    const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y)) : [extractColumn(allGroups.allBlankedData, YColumn)];
     const allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
-    const allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allNonBlankedData, YColumn, normalizeMode)];
+    const allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allNonBlankedData, y)) : [extractColumn(allGroups.allNonBlankedData, YColumn)];
     
     const fullDisplayCheckboxBlanked = document.getElementById('full-display-blanked');
     const fullDisplayCheckboxNonBlanked = document.getElementById('full-display-non-blanked');
@@ -443,9 +440,9 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     const nonBlankedData = filterBlankedData(filteredDataNonBlanked, false);
 
     const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
-    const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y, normalizeMode)) : [extractColumn(blankedData, YColumn, normalizeMode)];
+    const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y)) : [extractColumn(blankedData, YColumn)];
     const nonBlankedX = extractAndConvert(nonBlankedData, XColumn, conversionFactor);
-    const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y, normalizeMode)) : [extractColumn(nonBlankedData, YColumn, normalizeMode)];
+    const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(nonBlankedData, y)) : [extractColumn(nonBlankedData, YColumn)];
 
     let analysis_blanked = null;
     let analysis_nonblanked = null;
@@ -512,7 +509,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, forBlankType = null) {
+function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata, rawData, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -521,12 +518,12 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
         const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
         filteredData = filteredByRangeValue(isFullDisplay, timeUnit, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
         XColumnVals = extractAndConvert(filteredData, XColumn, conversionFactor);
-        YColumnVals = extractColumn(filteredData, YColumn, normalizeMode);
+        YColumnVals = extractColumn(filteredData, YColumn);
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, window_size);
     } else {
         filteredData = filterByBlankType(allGroups.allMixedData);
         XColumnVals = extractColumn(filteredData, XColumn);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
+        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y)) : [extractColumn(filteredData, YColumn)];
         if ($("#cal-mode-select").val() === "kinetics") {
             mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
         } else if ($("#cal-mode-select").val() === "point") {
@@ -720,10 +717,10 @@ function preprocessDataCalParams(data, XColumn, YColumn) {
     }
 }
 
-function extractColumn(data, colName, normalizeMode = false) {
+function extractColumn(data, colName) {
     const columnData = data.map(row => row[colName]);
     const min = Math.min(...columnData);
-    return normalizeMode ? columnData.map(value => (value - min)) : columnData;
+    return document.getElementById('normalize-mode').checked ? columnData.map(value => (value - min)) : columnData;
 }
 
 function extractAndConvert(data, colName, factor) {
@@ -743,10 +740,10 @@ function hasBlankType(data) {
     return hasBlankType;
 }
 
-function getDataGroups(data, XColumn, YColumn, normalizeMode = false) {
+function getDataGroups(data, XColumn, YColumn) {
     return {
         allXColumn: extractColumn(data, XColumn),
-        allYColumn: extractColumn(data, YColumn, normalizeMode),
+        allYColumn: extractColumn(data, YColumn),
         allBlankedData: filterBlankedData(data, true),
         allNonBlankedData: filterBlankedData(data, false),
         allMixedData: (!hasBlankType(data)) ? data : data.filter(row => row["BlankType"] === "MIXED")
