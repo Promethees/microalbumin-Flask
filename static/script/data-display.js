@@ -21,14 +21,6 @@ function updatePlot(
 
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     
-    // Only check for blank columns if multiSource is false
-    const hasBlankType = !AppState.multiSource && data.some(row => 'BlankType' in row);
-    const hasBlank = !AppState.multiSource && data.some(row => 'Blanked' in row);
-
-    if (!AppState.multiSource && !hasBlankType && !hasBlank) {
-        console.warn("No Blank or BlankType column found in data");
-        return;
-    }
     const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
 
     // If multiSource, treat all data as mixed; otherwise, use getDataGroups
@@ -38,7 +30,7 @@ function updatePlot(
             allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumn(data, y, normalizeMode)) : [extractColumn(data, YColumn, normalizeMode)],
             allMixedData: data
         }
-        : getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode);
+        : getDataGroups(data, XColumn, YColumn, normalizeMode);
 
     if (AppState.multiSource) {
         const Args = [
@@ -68,7 +60,6 @@ function updatePlot(
             rawData,
             calParams,
             forBlankType,
-            hasBlankType
         ]
         return isSplitMode ? splitBlankRoutine(...Args) : defaultRoutine(...Args);
     }
@@ -437,7 +428,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null) {
     const allBlankedXColumn = extractColumn(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(allGroups.allBlankedData, y, normalizeMode)) : [extractColumn(allGroups.allBlankedData, YColumn, normalizeMode)];
     const allNonBlankedXColumn = extractColumn(allGroups.allNonBlankedData, XColumn);
@@ -451,8 +442,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, timeUnit, allGroups.allBlankedData, XColumn, YColumn);
     const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, timeUnit, allGroups.allNonBlankedData, XColumn, YColumn);
     
-    const blankedData = filterBlankedData(filteredDataBlanked, hasBlankType, true);
-    const nonBlankedData = filterBlankedData(filteredDataNonBlanked, hasBlankType, false);
+    const blankedData = filterBlankedData(filteredDataBlanked, true);
+    const nonBlankedData = filterBlankedData(filteredDataNonBlanked, false);
 
     const blankedX = extractAndConvert(blankedData, XColumn, conversionFactor);
     const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(blankedData, y, normalizeMode)) : [extractColumn(blankedData, YColumn, normalizeMode)];
@@ -524,7 +515,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null, hasBlankType = false) {
+function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, normalizeMode, metadata, rawData, calParams, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -536,7 +527,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
         YColumnVals = extractColumn(filteredData, YColumn, normalizeMode);
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, window_size);
     } else {
-        filteredData = filterByBlankType(allGroups.allMixedData, hasBlankType);
+        filteredData = filterByBlankType(allGroups.allMixedData);
         XColumnVals = extractColumn(filteredData, XColumn);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
         if ($("#cal-mode-select").val() === "kinetics") {
@@ -742,13 +733,26 @@ function extractAndConvert(data, colName, factor) {
     return data.map(row => Number((row[colName] * factor)));
 }
 
-function getDataGroups(data, hasBlankType, XColumn, YColumn, normalizeMode = false) {
+function hasBlankType(data) {
+    // Only check for blank columns if multiSource is false
+    const hasBlankType = !AppState.multiSource && data.some(row => 'BlankType' in row);
+    const hasBlank = !AppState.multiSource && data.some(row => 'Blanked' in row);
+
+    if (!AppState.multiSource && !hasBlankType && !hasBlank) {
+        console.warn("No Blank or BlankType column found in data");
+        return;
+    }
+
+    return hasBlankType;
+}
+
+function getDataGroups(data, XColumn, YColumn, normalizeMode = false) {
     return {
         allXColumn: extractColumn(data, XColumn),
         allYColumn: extractColumn(data, YColumn, normalizeMode),
-        allBlankedData: filterBlankedData(data, hasBlankType, true),
-        allNonBlankedData: filterBlankedData(data, hasBlankType, false),
-        allMixedData: (!hasBlankType) ? data : data.filter(row => row["BlankType"] === "MIXED")
+        allBlankedData: filterBlankedData(data, true),
+        allNonBlankedData: filterBlankedData(data, false),
+        allMixedData: (!hasBlankType(data)) ? data : data.filter(row => row["BlankType"] === "MIXED")
     };
 }
 
@@ -764,15 +768,15 @@ function unitDisplay(unit) {
     return unit !== "NONE" ? `(${unit})` : "";
 }
 
-function filterByBlankType(data, hasBlankType) {
-    if (!hasBlankType) return data;
+function filterByBlankType(data) {
+    if (!hasBlankType(data)) return data;
     return data.filter(row =>
         row['BlankType'] === "BLANKED" || row['BlankType'] === "NON-BLANKED" || row['BlankType'] === "MIXED"
     );
 }
 
-function filterBlankedData(data, hasBlankType, isBlanked) {
-    if (hasBlankType) {
+function filterBlankedData(data, isBlanked) {
+    if (hasBlankType(data)) {
         return data.filter(row =>
             isBlanked ? row['BlankType'] === "BLANKED" : row['BlankType'] === "NON-BLANKED"
         );
@@ -782,13 +786,6 @@ function filterBlankedData(data, hasBlankType, isBlanked) {
                       : row['Blanked'] === false || row['Blanked'] === 0
         );
     }
-}
-
-function filterByTime(data, timeThreshold, hasBlankType, XColumn = "Timestamp") {
-    return data.filter(row =>
-        row[XColumn] >= timeThreshold &&
-        !hasBlankType
-    );
 }
 
 function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = '') {
