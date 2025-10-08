@@ -467,8 +467,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
         analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, window_size));
     } else {
         if ($("#cal-mode-select").val() === "kinetics") {
-            analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED", calculateCoefAndRSquared);
-            analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED", calculateCoefAndRSquared);
+            analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "BLANKED");
+            analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "NON-BLANKED");
         } else if ($("#cal-mode-select").val() === "point") {
             analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
             analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
@@ -540,7 +540,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
         XColumnVals = extractColumn(filteredData, XColumn);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumn(filteredData, y, normalizeMode)) : [extractColumn(filteredData, YColumn, normalizeMode)];
         if ($("#cal-mode-select").val() === "kinetics") {
-            mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED", calculateCoefAndRSquared);
+            mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, calParams, "MIXED");
         } else if ($("#cal-mode-select").val() === "point") {
             mixAnalysis = calculateCoefAndRSquared(extractColumn(allGroups.allMixedData, YColumn), extractColumn(allGroups.allMixedData, XColumn), regressAlgo = $("#exp-json-regress-algo").val());
         }
@@ -858,7 +858,7 @@ function extractSingleResultSummary(metadata, mixAnalysis) {
     };
 }
 
-function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeValue, calculateCoefAndRSquared) {
+function calibrateKineticsAnalysis(data, XColumn, YColumn, calParams, blankTypeValue) {
     const dataMap = preprocessDataCalParams(data, XColumn, YColumn, calParams);
     const regressAlgo = $("#exp-json-regress-algo").val();
     if (dataMap) {
