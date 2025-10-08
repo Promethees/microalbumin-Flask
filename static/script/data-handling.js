@@ -568,7 +568,7 @@ function updatePlotBasedOnMode(response, jsonFile) {
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, null, 
+                AppState.responseData, AppState.metaData, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
@@ -580,7 +580,7 @@ function updatePlotBasedOnMode(response, jsonFile) {
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, null, 
+                processingData, AppState.metaData, 
                 "Concentration", "Value"
             );
         }
@@ -591,9 +591,6 @@ function updatePlotBasedOnMode(response, jsonFile) {
         }
         switch (AppState.numSources) {
             case 1:
-                if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                    baseArgs.push(jsonFile["for_blank_type"]);
-                }
                 AppState.globalAnalysis = updatePlot(...baseArgs);
                 if (AppState.currentMeasurementMode === "point" && jsonFile) {
                     processPointMode(response, jsonFile, document.getElementById('der-con-value'));
@@ -609,7 +606,6 @@ function updatePlotBasedOnMode(response, jsonFile) {
 
                     AppState.globalAnalysis = updatePlot(
                         ...baseArgs,
-                        null,
                         "Timestamp",
                         values
                     );
