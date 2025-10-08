@@ -685,10 +685,10 @@ function mapDuplicates(x, y) {
         if (currentY === "NONE") continue;
         
         if (!xMap.has(currentX)) {
-            xMap.set(currentX, { sum: currentY, count: 1 });
+            xMap.set(currentX, { sum: parseFloat(currentY), count: 1 });
         } else {
             const entry = xMap.get(currentX);
-            entry.sum += currentY;
+            entry.sum += parseFloat(currentY);
             entry.count++;
         }
     }
