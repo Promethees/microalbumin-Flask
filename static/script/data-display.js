@@ -151,7 +151,6 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         labelOrLabels,
         unit,
         analysis,
-        forThisBlankType,
         selectColor,
         index
     );
@@ -359,7 +358,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
         const canvasId = `source-${i}-canvas`;
         const analysisId = `source-${i}-analysis`;
         renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, measUnit, true, i, i);
-        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], measUnit, [analysis], true, i, i);
+        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], measUnit, [analysis], i, i);
         charts.push(chart);
 
         // Update analysis info display
@@ -403,7 +402,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
     });
     $("#plot-analysis").html(html);
 
-    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses, true);
+    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         return extractMultiSourceResultSummary(metadata, analyses);
@@ -465,9 +464,9 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData, forBl
         [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], 
         [1, 0])
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-        measUnit, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
+        measUnit, analysis_blanked, selectColor = 1);
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-        measUnit, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
+        measUnit, analysis_nonblanked, selectColor = 0);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -533,7 +532,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData, forBlank
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         measUnit, forBlankType === "MIXED");
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-        measUnit, mixAnalysis, forBlankType === "MIXED");
+        measUnit, mixAnalysis);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {

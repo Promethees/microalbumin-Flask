@@ -609,6 +609,7 @@ function updatePlotBasedOnMode(response, jsonFile) {
 
                     AppState.globalAnalysis = updatePlot(
                         ...baseArgs,
+                        null,
                         "Timestamp",
                         values
                     );

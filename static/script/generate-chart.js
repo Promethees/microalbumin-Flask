@@ -170,7 +170,25 @@ function getTimeUnitValue(id = 'time-unit') {
   return null;
 }
 
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
+function checkForThisBlankType(canvasId, forBlankType) {
+  if (typeof canvasId !== 'string' || typeof forBlankType !== 'string') {
+    return false;
+  }
+
+  const blankPrefixes = ["blanked", "non-blanked"];
+  const canvasSuffix = "-canvas";
+
+  if (canvasId.endsWith(canvasSuffix)) {
+    const prefix = canvasId.slice(0, -canvasSuffix.length);
+    if (blankPrefixes.includes(prefix)) {
+      return forBlankType === prefix.toUpperCase();
+    }
+  }
+  
+  return forBlankType === "MIXED";
+}
+
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, selectColor = null, index = null) {
     const ctx = initializeChartCanvas(canvasId);
     if (!ctx) return null;
 
@@ -246,7 +264,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     color: getAxisStyle('title')
                 },
                 annotation: {
-                    annotations: createAnnotations(isFullDisplay, AppState.currentMeasurementMode, analyses[0], conversionFactor, xMax, yMin, yMax, checkboxes, forThisBlankType, allXColumn.length === 1)
+                    annotations: createAnnotations(isFullDisplay, AppState.currentMeasurementMode, analyses[0], conversionFactor, 
+                        xMax, yMin, yMax, checkboxes, checkForThisBlankType(canvasId, AppState.currentJSONcontent ? AppState.currentJSONcontent.for_blank_type : false), allXColumn.length === 1)
                 }
             }
         }
