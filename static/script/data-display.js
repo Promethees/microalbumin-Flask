@@ -804,10 +804,10 @@ function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo
     let html_blank = '';
     let html_nonblank = '';
     if (blankedAnalysisInfo) {
-        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], unit, getTimeUnitValue(), 'rgb(255, 99, 132)', 'Blanked');
+        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], unit, 'rgb(255, 99, 132)', 'Blanked');
     }
     if (nonBlankedAnalysisInfo) {
-        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], unit, getTimeUnitValue(), 'rgb(75, 192, 192)', 'Non-Blanked');
+        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], unit, 'rgb(75, 192, 192)', 'Non-Blanked');
     }
     $("#blanked-analysis").html(html_blank || '');
     $("#non-blanked-analysis").html(html_nonblank || '');
