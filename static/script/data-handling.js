@@ -382,7 +382,7 @@ function fetchData(filename, jsonFile) {
                     }
                 }
                 else {
-                    if (derived_section) {
+                    if (derived_section && derived_section.length !== 0) {
                         derived_section.classList.remove("hidden");
                         if (AppState.currentMeasurementMode === "kinetics") {
                             $("#select-quantity-section").removeClass("hidden");
