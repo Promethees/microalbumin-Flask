@@ -15,8 +15,6 @@ function updatePlot(
     // Clean and sort data
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
-
-    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
     
     const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
 
@@ -37,7 +35,6 @@ function updatePlot(
             timeUnit,
             window_size,
             unit,
-            conversionFactor,
             metadata
         ]
         return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
@@ -50,7 +47,6 @@ function updatePlot(
             timeUnit,
             window_size,
             unit,
-            conversionFactor,
             metadata,
             rawData,
             forBlankType,
@@ -63,10 +59,11 @@ function updatePlot(
     }, 0);
 }
 
-function formatAnalysisInfo(analysis, conversionFactor, unit, label) {
+function formatAnalysisInfo(analysis, unit, label) {
     if (!analysis) {
         return null;
     }
+    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier($("#time-unit").val());
 
     let chartScaleConstant = 1;
     let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(5) : "--";
@@ -347,7 +344,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata) {
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata) {
     const charts = [];
     const analyses = [];
     
@@ -372,7 +369,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
         charts.push(chart);
 
         // Update analysis info display
-        const analysisInfo = formatAnalysisInfo(analysis, conversionFactor, unit, label);
+        const analysisInfo = formatAnalysisInfo(analysis, unit, label);
         $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
     }
 
@@ -382,7 +379,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata) {
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata) {
     const filteredData = filteredByRangeValue(false, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
@@ -390,7 +387,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
     const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(unit)}`);
 
     // Format analysis info for all sources
-    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, labels[i]));
+    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, unit, labels[i]));
 
     // Generate single chart with all Y-columns
     renderCharts(XColumnVals, YColumnVals, labels, unit, true);
@@ -422,7 +419,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, window_s
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata, rawData, forBlankType = null) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata, rawData, forBlankType = null) {
     const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
     const allNonBlankedXColumn = extractColumnAndConvert(allGroups.allNonBlankedData, XColumn);
@@ -477,8 +474,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info for both charts
-        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, conversionFactor, unit, blankLabels[0])];
-        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, conversionFactor, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, conversionFactor, unit, nonBlankLabels[0])];
+        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, unit, blankLabels[0])];
+        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, unit, nonBlankLabels[0])];
         updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
     } else {
         let blanked_string = "";
@@ -509,7 +506,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, u
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, conversionFactor, metadata, rawData, forBlankType = null) {
+function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit, metadata, rawData, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -542,7 +539,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, window_size, unit
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info before chart creation
-        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, conversionFactor, unit, labels[0]);
+        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, unit, labels[0]);
         updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
     } else {
         let htmlString = "";
