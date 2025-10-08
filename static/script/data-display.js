@@ -123,7 +123,6 @@ function checkboxHtmlWithID(
 }
 
 function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, forThisBlankType, selectColor, index) {
-    const timeUnit = $("#time-unit").val();
     const normalizeMode = document.getElementById('normalize-mode').checked;
 
     // Normalize Y values if normalizeMode is checked
@@ -132,7 +131,7 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         : allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray))))
         : allYColumnOrArray;
 
-    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
+    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue());
 
     // Apply filtering only when fullDisplay checkbox is checked
     let filteredX = originalAllXColumn;
@@ -155,7 +154,6 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         filteredY,
         labelOrLabels,
         unit,
-        timeUnit,
         analysis,
         forThisBlankType,
         selectColor,
@@ -350,7 +348,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
         const yColumn = YColumn[i];
         const fullDisplayCheckbox = document.getElementById(`full-display-source-${i}`);
         const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
-        const filteredData = filteredByRangeValue(isFullDisplay, timeUnit, allGroups.allMixedData, XColumn, yColumn);
+        const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         const yValues = extractColumnAndNormalize(filteredData, yColumn);
         const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(unit)}`;
@@ -363,7 +361,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
         const canvasId = `source-${i}-canvas`;
         const analysisId = `source-${i}-analysis`;
         renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, unit, true, i, i);
-        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, timeUnit, [analysis], true, i, i);
+        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, [analysis], true, i, i);
         charts.push(chart);
 
         // Update analysis info display
@@ -378,7 +376,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
 }
 
 function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata) {
-    const filteredData = filteredByRangeValue(false, timeUnit, allGroups.allMixedData, XColumn, YColumn[0]);
+    const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, parseInt($("#window-size").val())));
@@ -405,7 +403,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
     });
     $("#plot-analysis").html(html);
 
-    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, timeUnit, analyses, true);
+    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, analyses, true);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         return extractMultiSourceResultSummary(metadata, analyses);
@@ -428,8 +426,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata
     const isFullDisplayBlanked = AppState.currentMeasurementMode === "calibrate" ? true : (fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : false);
     const isFullDisplayNonBlanked = AppState.currentMeasurementMode === "calibrate" ? true : (fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : false);
     
-    const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, timeUnit, allGroups.allBlankedData, XColumn, YColumn);
-    const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, timeUnit, allGroups.allNonBlankedData, XColumn, YColumn);
+    const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, allGroups.allBlankedData, XColumn, YColumn);
+    const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, allGroups.allNonBlankedData, XColumn, YColumn);
     
     const blankedData = filterBlankedData(filteredDataBlanked, true);
     const nonBlankedData = filterBlankedData(filteredDataNonBlanked, false);
@@ -465,9 +463,9 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata
         [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], 
         [1, 0])
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-        unit, timeUnit, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
+        unit, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-        unit, timeUnit, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
+        unit, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -511,7 +509,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, r
     if (AppState.currentMeasurementMode !== "calibrate") {
         const fullDisplayCheckbox = document.getElementById('full-display-plot');
         const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
-        filteredData = filteredByRangeValue(isFullDisplay, timeUnit, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
+        filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         YColumnVals = extractColumnAndNormalize(filteredData, YColumn);
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, parseInt($("#window-size").val()));
@@ -532,7 +530,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, r
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
         unit, forBlankType === "MIXED");
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-        unit, timeUnit, mixAnalysis, forBlankType === "MIXED");
+        unit, mixAnalysis, forBlankType === "MIXED");
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -559,14 +557,14 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, r
     }
 }
 
-function filteredByRangeValue(isFullDisplay, timeUnit, data, XColumn, YColumn) {
+function filteredByRangeValue(isFullDisplay, data, XColumn, YColumn) {
     if (AppState.currentMeasurementMode === "calibrate") {
         return data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
     }
     else {
         const range = getRangeStartEnd(isFullDisplay);
-        const timeThresholdStart = range.start * getTimeUnitMultiplier(timeUnit);
-        const timeThresholdEnd = range.end * getTimeUnitMultiplier(timeUnit);
+        const timeThresholdStart = range.start * getTimeUnitMultiplier(getTimeUnitValue());
+        const timeThresholdEnd = range.end * getTimeUnitMultiplier(getTimeUnitValue());
         return data.filter(row => row[XColumn] >= timeThresholdStart && row[XColumn] <= timeThresholdEnd && row[YColumn] !== "NONE");
     }
 }

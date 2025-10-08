@@ -162,7 +162,15 @@ function createAnnotations(isFullDisplay, measurementMode, analysis, conversionF
     return annotations;
 }
 
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, timeUnit, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
+function getTimeUnitValue(id = 'time-unit') {
+  const element = document.getElementById(id);
+  if (element && (element.style.display !== 'none' && element.style.visibility !== 'hidden')) {
+    return element.value;
+  }
+  return null;
+}
+
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, forThisBlankType = false, selectColor = null, index = null) {
     const ctx = initializeChartCanvas(canvasId);
     if (!ctx) return null;
 
@@ -174,7 +182,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         ? analysisOrArray 
         : [analysisOrArray];
 
-    const { xColumn, processedYColumns, allYValues, conversionFactor } = processData(allXColumn, allYColumnOrArray, timeUnit);
+    const { xColumn, processedYColumns, allYValues, conversionFactor } = processData(allXColumn, allYColumnOrArray, getTimeUnitValue());
     if (!xColumn || xColumn.length === 0) {
         $(`#${canvasId}`).hide();
         return null;
@@ -201,7 +209,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     type: 'linear',
                     title: { 
                         display: true, 
-                        text: timeUnit ? `Time (${timeUnit})` : 'Concentration (ng/µL)',
+                        text: getTimeUnitValue() ? `Time (${getTimeUnitValue()})` : 'Concentration (ng/µL)',
                         color: getAxisStyle('label')
                     },
                     min: xMin,

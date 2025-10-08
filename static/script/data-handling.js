@@ -133,7 +133,6 @@ function copyFile(tableSelector = "#file-table") {
 function processDataDisplay(fileName, jsonFileContent=null) {
     // Get user inputs
     let unit = $("#time-unit").val();
-    let window_size = $("#window-size").val();
 
     // Proceed with fetching and displaying data
     fetchData(unit, fileName, jsonFileContent);
