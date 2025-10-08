@@ -562,15 +562,13 @@ function updatePlotBasedOnMode(response, jsonFile) {
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,
-        response.unit || "NONE",
     ];
     if (AppState.currentMeasurementMode === "calibrate") {
         const cal_type = $("#cal-mode-select").val();
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, 
-                AppState.metaData["MeasUnit"], null, 
+                AppState.responseData, AppState.metaData, null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
@@ -582,8 +580,7 @@ function updatePlotBasedOnMode(response, jsonFile) {
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, 
-                AppState.metaData["MeasUnit"], null, 
+                processingData, AppState.metaData, null, 
                 "Concentration", "Value"
             );
         }

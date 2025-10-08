@@ -1,5 +1,5 @@
 function updatePlot(
-    data, metadata, unit, forBlankType = null,
+    data, metadata, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
     // Save current scroll position
@@ -32,7 +32,6 @@ function updatePlot(
             allGroups,
             XColumn,
             YColumn,
-            unit,
             metadata
         ]
         return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
@@ -42,7 +41,6 @@ function updatePlot(
             allGroups,
             XColumn,
             YColumn,
-            unit,
             metadata,
             rawData,
             forBlankType,
@@ -338,7 +336,9 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
+    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+
     const charts = [];
     const analyses = [];
     
@@ -349,7 +349,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
         const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         const yValues = extractColumnAndNormalize(filteredData, yColumn);
-        const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(unit)}`;
+        const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
         let analysis = null;
 
         analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], parseInt($("#window-size").val()));
@@ -358,13 +358,13 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
 
         const canvasId = `source-${i}-canvas`;
         const analysisId = `source-${i}-analysis`;
-        renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, unit, true, i, i);
-        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], unit, [analysis], true, i, i);
+        renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, measUnit, true, i, i);
+        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], measUnit, [analysis], true, i, i);
         charts.push(chart);
 
         // Update analysis info display
-        const analysisInfo = formatAnalysisInfo(analysis, unit, label);
-        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
+        const analysisInfo = formatAnalysisInfo(analysis, measUnit, label);
+        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, measUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
     }
 
     AppState.sourceCharts = charts;
@@ -373,22 +373,24 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
+    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+
     const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, parseInt($("#window-size").val())));
-    const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(unit)}`);
+    const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(measUnit)}`);
 
     // Format analysis info for all sources
-    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, unit, labels[i]));
+    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, measUnit, labels[i]));
 
     // Generate single chart with all Y-columns
-    renderCharts(XColumnVals, YColumnVals, labels, unit, true);
+    renderCharts(XColumnVals, YColumnVals, labels, measUnit, true);
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, unit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+        html += formatAnalysisHtml(info, measUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
@@ -401,7 +403,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
     });
     $("#plot-analysis").html(html);
 
-    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, unit, analyses, true);
+    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses, true);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         return extractMultiSourceResultSummary(metadata, analyses);
@@ -413,7 +415,9 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData, forBlankType = null) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData, forBlankType = null) {
+    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+    
     const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
     const allNonBlankedXColumn = extractColumnAndConvert(allGroups.allNonBlankedData, XColumn);
@@ -450,27 +454,27 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData,
             analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
         }
     }
-    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), unit);
+    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), measUnit);
     const blankLabels = labels.map(l => `${l} (Blanked)`);
     const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
     
     renderCharts([extractColumnAndConvert(allGroups.allBlankedData, XColumn), extractColumnAndConvert(allGroups.allNonBlankedData, XColumn)], 
         [extractColumnAndNormalize(allGroups.allBlankedData, YColumn), extractColumnAndNormalize(allGroups.allNonBlankedData, YColumn)], 
         [blankLabels, nonBlankLabels], 
-        unit, 
+        measUnit, 
         [forBlankType === "BLANKED", forBlankType === "NON-BLANKED"], 
         [1, 0])
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-        unit, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
+        measUnit, analysis_blanked, forBlankType === "BLANKED", selectColor = 1);
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-        unit, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
+        measUnit, analysis_nonblanked, forBlankType === "NON-BLANKED", selectColor = 0);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info for both charts
-        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, unit, blankLabels[0])];
-        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, unit, nonBlankLabels[0])];
-        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit);
+        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, measUnit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, measUnit, blankLabels[0])];
+        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, measUnit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, measUnit, nonBlankLabels[0])];
+        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, measUnit);
     } else {
         let blanked_string = "";
         let non_blanked_string = "";
@@ -500,9 +504,10 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData,
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData, forBlankType = null) {
+function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
+    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         const fullDisplayCheckbox = document.getElementById('full-display-plot');
@@ -524,17 +529,17 @@ function defaultRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData, fo
 
     // Generate chart
     const yValsForChart = YColumnVals;
-    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), unit);
+    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), measUnit);
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels,
-        unit, forBlankType === "MIXED");
+        measUnit, forBlankType === "MIXED");
     AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-        unit, mixAnalysis, forBlankType === "MIXED");
+        measUnit, mixAnalysis, forBlankType === "MIXED");
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info before chart creation
-        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, unit, labels[0]);
-        updateSingleModeAnalysisInfo(mixAnalysisInfo, unit);
+        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, measUnit, labels[0]);
+        updateSingleModeAnalysisInfo(mixAnalysisInfo, measUnit);
     } else {
         let htmlString = "";
         if ($("#cal-mode-select").val() === "kinetics") {
