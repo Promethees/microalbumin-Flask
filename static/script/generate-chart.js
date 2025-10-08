@@ -188,7 +188,7 @@ function checkForThisBlankType(canvasId, forBlankType) {
   return forBlankType === "MIXED";
 }
 
-function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, selectColor = null, index = null) {
+function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, index = null) {
     const ctx = initializeChartCanvas(canvasId);
     if (!ctx) return null;
 
@@ -209,7 +209,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const { isSinglePoint, xMin, xMax, xStepSize, yMin, yMax, yStepSize } = getChartScales(xColumn, allYValues, labels);
 
     const datasets = processedYColumns.map((yColumn, i) => {
-        const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor, i, isSinglePoint, conversionFactor, unit);
+        const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor = index, i, isSinglePoint, conversionFactor, unit);
         const regressionDataset = createRegressionDataset(xMax, xMin, analyses[i], labels[i]);
         return [dataset, ...(regressionDataset ? [regressionDataset] : [])];
     }).flat();

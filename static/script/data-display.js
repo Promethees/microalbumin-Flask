@@ -90,7 +90,6 @@ function checkboxHtmlWithID(
   allYColumnOrArray,
   labelOrLabels,
   unit,
-  selectColor,
   index
 ) {
   return AppState.quantity_input.quantities
@@ -107,7 +106,6 @@ function checkboxHtmlWithID(
               ${JSON.stringify(allYColumnOrArray)}, 
               '${labelOrLabels}', 
               '${unit}', 
-              ${JSON.stringify(selectColor)}, 
               ${index}
           )">
       <span>${q}</span>
@@ -115,7 +113,7 @@ function checkboxHtmlWithID(
     .join("");
 }
 
-function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, selectColor, index) {
+function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, index) {
     const normalizeMode = document.getElementById('normalize-mode').checked;
 
     // Normalize Y values if normalizeMode is checked
@@ -148,7 +146,6 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         labelOrLabels,
         unit,
         analysis,
-        selectColor,
         index
     );
 }
@@ -163,7 +160,6 @@ function createChartSection({
     allYColumnOrArray,
     labelOrLabels,
     unit,
-    selectColor,
     index
 }) {
     return AppState.currentMeasurementMode !== "calibrate" ? 
@@ -179,14 +175,13 @@ function createChartSection({
                         ${JSON.stringify(allYColumnOrArray)}, 
                         '${labelOrLabels}', 
                         '${unit}', 
-                        ${JSON.stringify(selectColor)}, 
                         ${index}
                     )"> 
                 Full display: See all data and special lines
             </label>
             <label id="quantity-checkboxes-${quantityId}" class="hidden">
                 <h3>Quantities to display on graphic</h3>
-                ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, selectColor, index)}
+                ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
             </label>
             <div id="${analysisId}"></div>
             ${AppState.multiSource ? 
@@ -212,7 +207,7 @@ function createChartSection({
     `;
 }
 
-function handleFullDisplayChange(fullDisplayId, quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, selectColor, index) {
+function handleFullDisplayChange(fullDisplayId, quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, index) {
     const fullDisplayCheckbox = document.getElementById(fullDisplayId);
     const quantityContainer = document.getElementById(`quantity-checkboxes-${quantityId}`);
     
@@ -232,12 +227,11 @@ function handleFullDisplayChange(fullDisplayId, quantityId, canvasId, allXColumn
         allYColumnOrArray,
         labelOrLabels,
         unit,
-        selectColor,
         index
     );
 }
 
-function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, selectColor = null, index = null) {
+function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index = null) {
     const $container = $("#chart-container");
 
     if (AppState.multiSource) {
@@ -254,7 +248,6 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, select
                     allYColumnOrArray: allYColumnOrArray,
                     labelOrLabels: labelOrLabels,
                     unit: unit,
-                    selectColor: selectColor,
                     index: index
                 })
             );
@@ -263,7 +256,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, select
             $container.append(`
                 <label id="quantity-checkboxes-plot" class="hidden">
                     <h3>Quantities to display on graphic</h3>
-                    ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, selectColor, index)}
+                    ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
                 </label>
                 <div id="plot-chart-section">
                     <div id="plot-analysis"></div>
@@ -285,7 +278,6 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, select
                     allYColumnOrArray: allYColumnOrArray[0],
                     labelOrLabels: labelOrLabels[0],
                     unit: unit,
-                    selectColor: selectColor[0],
                     index: index
                 })
             );
@@ -300,7 +292,6 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, select
                     allYColumnOrArray: allYColumnOrArray[1],
                     labelOrLabels: labelOrLabels[1],
                     unit: unit,
-                    selectColor: selectColor[1],
                     index: index
                 })
             );
@@ -317,7 +308,6 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, select
                     allYColumnOrArray: allYColumnOrArray,
                     labelOrLabels: labelOrLabels,
                     unit: unit,
-                    selectColor: selectColor,
                     index: index
                 })
             );
@@ -347,8 +337,8 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
 
         const canvasId = `source-${i}-canvas`;
         const analysisId = `source-${i}-analysis`;
-        renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, measUnit, i, i);
-        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], measUnit, [analysis], i, i);
+        renderCharts(allGroups.allXColumn, allGroups.allYColumn[i], label, measUnit, i);
+        const chart = generateChart(canvasId, XColumnVals, [yValues], [label], measUnit, [analysis], i);
         charts.push(chart);
 
         // Update analysis info display
@@ -453,9 +443,9 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
         measUnit, 
         [1, 0])
     AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-        measUnit, analysis_blanked, selectColor = 1);
+        measUnit, analysis_blanked, index = 1);
     AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-        measUnit, analysis_nonblanked, selectColor = 0);
+        measUnit, analysis_nonblanked, index = 0);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -516,11 +506,9 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     }
 
     // Generate chart
-    const yValsForChart = YColumnVals;
     const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), measUnit);
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels, measUnit);
-    AppState.myChart = generateChart('plot-canvas', XColumnVals, yValsForChart, labels,
-        measUnit, mixAnalysis);
+    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
 
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
