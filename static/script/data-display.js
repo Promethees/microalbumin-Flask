@@ -1,5 +1,5 @@
 function updatePlot(
-    data, metadata, timeUnit, unit, forBlankType = null,
+    data, metadata, unit, forBlankType = null,
     XColumn = "Timestamp", YColumn = "Value"
 ) {
     // Save current scroll position
@@ -32,7 +32,6 @@ function updatePlot(
             allGroups,
             XColumn,
             YColumn,
-            timeUnit,
             unit,
             metadata
         ]
@@ -43,7 +42,6 @@ function updatePlot(
             allGroups,
             XColumn,
             YColumn,
-            timeUnit,
             unit,
             metadata,
             rawData,
@@ -340,7 +338,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, forThi
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata) {
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
     const charts = [];
     const analyses = [];
     
@@ -366,7 +364,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
 
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, unit, label);
-        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
+        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, unit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
     }
 
     AppState.sourceCharts = charts;
@@ -375,7 +373,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata) {
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn, unit, metadata) {
     const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
@@ -390,7 +388,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, unit, timeUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+        html += formatAnalysisHtml(info, unit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
@@ -415,7 +413,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, timeUnit, unit, me
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, rawData, forBlankType = null) {
+function splitBlankRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData, forBlankType = null) {
     const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
     const allNonBlankedXColumn = extractColumnAndConvert(allGroups.allNonBlankedData, XColumn);
@@ -472,7 +470,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata
         // Format analysis info for both charts
         const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, unit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, unit, blankLabels[0])];
         const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, unit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, unit, nonBlankLabels[0])];
-        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit);
+        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit);
     } else {
         let blanked_string = "";
         let non_blanked_string = "";
@@ -502,7 +500,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, rawData, forBlankType = null) {
+function defaultRoutine(allGroups, XColumn, YColumn, unit, metadata, rawData, forBlankType = null) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
 
@@ -536,7 +534,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, timeUnit, unit, metadata, r
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info before chart creation
         const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, unit, labels[0]);
-        updateSingleModeAnalysisInfo(mixAnalysisInfo, unit, timeUnit);
+        updateSingleModeAnalysisInfo(mixAnalysisInfo, unit);
     } else {
         let htmlString = "";
         if ($("#cal-mode-select").val() === "kinetics") {
@@ -780,32 +778,32 @@ function filterBlankedData(data, isBlanked) {
     }
 }
 
-function formatAnalysisHtml(analysisInfo, unit, timeUnit, color = null, label = '') {
+function formatAnalysisHtml(analysisInfo, unit, color = null, label = '') {
     if (!analysisInfo) return '';
     const unitDisplay = unit !== "NONE" ? unit : '';
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
-        ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope}${unitDisplay}/${timeUnit.slice(0, -1)}, 
-        Linear start = ${analysisInfo.linearStart} ${timeUnit.slice(0, -1)},
-        Linear end = ${analysisInfo.linearEnd} ${timeUnit.slice(0, -1)}, <br/>
-        maxRate = ${analysisInfo.maxRate}${unitDisplay}/${timeUnit.slice(0, -1)}, 
-        maxRateStart = ${analysisInfo.maxRateStart} ${timeUnit.slice(0, -1)}, 
-        maxRateEnd = ${analysisInfo.maxRateEnd} ${timeUnit.slice(0, -1)}, <br/>
+        ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope}${unitDisplay}/${getTimeUnitValue().slice(0, -1)}, 
+        Linear start = ${analysisInfo.linearStart} ${getTimeUnitValue().slice(0, -1)},
+        Linear end = ${analysisInfo.linearEnd} ${getTimeUnitValue().slice(0, -1)}, <br/>
+        maxRate = ${analysisInfo.maxRate}${unitDisplay}/${getTimeUnitValue().slice(0, -1)}, 
+        maxRateStart = ${analysisInfo.maxRateStart} ${getTimeUnitValue().slice(0, -1)}, 
+        maxRateEnd = ${analysisInfo.maxRateEnd} ${getTimeUnitValue().slice(0, -1)}, <br/>
         Saturation = ${displaySat}${unitDisplay}, 
-        Reacting Time taken to Saturation = ${displayTimeSat} ${timeUnit.slice(0, -1)}
+        Reacting Time taken to Saturation = ${displayTimeSat} ${getTimeUnitValue().slice(0, -1)}
     </span>`;
     return html;
 }
 
-function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit, timeUnit) {
+function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit) {
     let html_blank = '';
     let html_nonblank = '';
     if (blankedAnalysisInfo) {
-        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], unit, timeUnit, 'rgb(255, 99, 132)', 'Blanked');
+        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], unit, getTimeUnitValue(), 'rgb(255, 99, 132)', 'Blanked');
     }
     if (nonBlankedAnalysisInfo) {
-        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], unit, timeUnit, 'rgb(75, 192, 192)', 'Non-Blanked');
+        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], unit, getTimeUnitValue(), 'rgb(75, 192, 192)', 'Non-Blanked');
     }
     $("#blanked-analysis").html(html_blank || '');
     $("#non-blanked-analysis").html(html_nonblank || '');
@@ -827,9 +825,9 @@ function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblank
     };
 }
 
-function updateSingleModeAnalysisInfo(analysisInfo, unit, timeUnit) {
+function updateSingleModeAnalysisInfo(analysisInfo, unit) {
     if (analysisInfo) {
-        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo, unit, timeUnit));
+        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo, unit));
     } else {
         $("#plot-analysis").html('');
     }

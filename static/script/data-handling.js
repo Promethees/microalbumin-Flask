@@ -131,11 +131,8 @@ function copyFile(tableSelector = "#file-table") {
 }
 
 function processDataDisplay(fileName, jsonFileContent=null) {
-    // Get user inputs
-    let unit = $("#time-unit").val();
-
     // Proceed with fetching and displaying data
-    fetchData(unit, fileName, jsonFileContent);
+    fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
 }
 
@@ -350,7 +347,7 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     return entries.sort((a, b) => Number(b) - Number(a));
 }
 
-function fetchData(unit, filename, jsonFile) {
+function fetchData(filename, jsonFile) {
     const fullPath = $("#directory").val() + delimiter + filename;
     $.get('/get_data', {
         file: $("#directory").val() + delimiter + filename
@@ -364,7 +361,7 @@ function fetchData(unit, filename, jsonFile) {
             AppState.metaData = response.metadata; // Reset metadata
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile, unit);
+            updatePlotBasedOnMode(response, jsonFile);
             if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
@@ -561,11 +558,10 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile, unit) {
+function updatePlotBasedOnMode(response, jsonFile) {
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,
-        unit,
         response.unit || "NONE",
     ];
     if (AppState.currentMeasurementMode === "calibrate") {
@@ -573,7 +569,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit) {
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, null, 
+                AppState.responseData, AppState.metaData, 
                 AppState.metaData["MeasUnit"], null, 
                 "Concentration", quantity_obj.selectedOptions[0].text
             );
@@ -586,7 +582,7 @@ function updatePlotBasedOnMode(response, jsonFile, unit) {
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, null, 
+                processingData, AppState.metaData, 
                 AppState.metaData["MeasUnit"], null, 
                 "Concentration", "Value"
             );
@@ -643,9 +639,9 @@ function toggleMode() {
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
-            validateWindowSize(parseInt($("#window-size").val()))
+            validateWindowSize(parseInt($("#window-size").val()));
             drawMeasurementChart();
-        } else fetchData(null, AppState.currentFile, AppState.currentJSONcontent);
+        } else fetchData(AppState.currentFile, AppState.currentJSONcontent);
     }
     const select = document.getElementById("exp-json-regress-algo");
     const selected = select.value;
