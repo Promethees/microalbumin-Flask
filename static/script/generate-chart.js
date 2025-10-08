@@ -180,7 +180,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
         return null;
     }
 
-    const { isSinglePoint, xMin, xMax, xStepSize, yMin, yMax, yStepSize } = getChartScales(xColumn, allYValues, labels, timeUnit, unit);
+    const { isSinglePoint, xMin, xMax, xStepSize, yMin, yMax, yStepSize } = getChartScales(xColumn, allYValues, labels);
 
     const datasets = processedYColumns.map((yColumn, i) => {
         const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor, i, isSinglePoint, conversionFactor, unit);
