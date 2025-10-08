@@ -348,7 +348,6 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
 }
 
 function fetchData(filename, jsonFile) {
-    const fullPath = $("#directory").val() + delimiter + filename;
     $.get('/get_data', {
         file: $("#directory").val() + delimiter + filename
     }, function(response) {
@@ -361,7 +360,7 @@ function fetchData(filename, jsonFile) {
             AppState.metaData = response.metadata; // Reset metadata
 
             // Update plot based on current mode
-            updatePlotBasedOnMode(response, jsonFile);
+            updatePlotBasedOnMode(jsonFile);
             if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
                 derivedConSettings = settingDerivedCon(jsonFile);
                 derived_section = derivedConSettings.derived_section;
@@ -520,7 +519,7 @@ function updateRefCalPoint(jsonFile) {
     calPoint.text(AppState.refCalPoint);
 }
 
-function processPointMode(response, jsonFile, derived_con_text) {
+function processPointMode(jsonFile, derived_con_text) {
     $("#point-json-exp-section").removeClass("hidden");
     let blankTypeOrSourceIndex;
 
@@ -558,7 +557,7 @@ function handleCalibrationMode() {
     $("#non-blank-derived-concentration-section").addClass("hidden");
 }
 
-function updatePlotBasedOnMode(response, jsonFile) {
+function updatePlotBasedOnMode(jsonFile) {
     const baseArgs = [
         AppState.responseData,
         AppState.metaData,
@@ -593,7 +592,7 @@ function updatePlotBasedOnMode(response, jsonFile) {
             case 1:
                 AppState.globalAnalysis = updatePlot(...baseArgs);
                 if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                    processPointMode(response, jsonFile, document.getElementById('der-con-value'));
+                    processPointMode(jsonFile, document.getElementById('der-con-value'));
                 }
                 return;
 
@@ -618,7 +617,7 @@ function updatePlotBasedOnMode(response, jsonFile) {
                         }
                         if (Array.isArray(derived_con_texts)) {
                             derived_con_texts.forEach((textElem) => {
-                                processPointMode(response, jsonFile, textElem);
+                                processPointMode(jsonFile, textElem);
                             });
                         }
                     }
