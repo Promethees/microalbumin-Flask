@@ -59,6 +59,7 @@ function resetUIAfterError() {
     $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
     $("#interval").prop('disabled', false);
     $("#interval-unit").prop('disabled', false);
+    $("#measurement-mode").prop('disabled', false);
 }
 
 function resetUIAfterCompletion() {
@@ -76,6 +77,7 @@ function resetUIAfterCompletion() {
     $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
     $("#interval").prop('disabled', false);
     $("#interval-unit").prop('disabled', false);
+    $("#measurement-mode").prop('disabled', false);
 }
 
 // Modified runScript function
@@ -110,6 +112,7 @@ function runScript() {
     $("#timeout-unit").prop('disabled', true);
     $("#interval").prop('disabled', true);
     $("#interval-unit").prop('disabled', true);
+    $("#measurement-mode").prop('disabled', true);
 
     const timeoutValue = timeoutInput.value.trim();
     const intervalValue = intervalInput.value.trim();
