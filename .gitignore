@@ -10,3 +10,7 @@ venv
 *.csv
 *.zip
 /data/*.csv
+*.csv
+*.txt
+*.json
+/log
