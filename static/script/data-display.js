@@ -338,7 +338,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, label);
-        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
+        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`), analysisId);
     }
 
     AppState.sourceCharts = charts;
@@ -753,20 +753,67 @@ function filterBlankedData(data, isBlanked) {
     }
 }
 
-function formatAnalysisHtml(analysisInfo, color = null, label = '') {
+function createToggleButton(showText = 'See the analysis', hideText = 'Hide the analysis', analysisId = "plot-analysis") {
+    const buttonId = analysisId.replace("analysis", "button");
+    return `
+    <div style="position: relative; display: inline-block;">
+        <button
+            id="${buttonId}"
+            onclick="
+            let contentDiv = this.parentElement.nextElementSibling.nextElementSibling;
+            this.innerHTML = this.innerHTML === '+' ? '-' : '+';
+            let tooltip = this.nextElementSibling;
+            tooltip.innerText = this.innerHTML === '-' ? '${hideText}' : '${showText}';
+            if (this.innerHTML === '-') {
+                contentDiv.style.maxHeight = contentDiv.scrollHeight + 'px';
+            } else {
+                contentDiv.style.maxHeight = '0px';
+            }
+        " style="cursor: pointer; background: #ccc; color: #000; border: none; font-weight: bold; padding: 0; margin: 0; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px;">+</button>
+        <span class="tooltip" style="position: absolute; top: 50%; left: 100%; margin-left: 5px; padding: 5px 10px; background: #333; color: #fff; border-radius: 4px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-50%) translateX(-10px); white-space: nowrap; pointer-events: none; z-index: 10;">${showText}</span>
+    </div>
+    <style>
+        button:hover + .tooltip {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+    </style>
+    `;
+}
+
+function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId = "plot-analysis") {
     if (!analysisInfo) return '';
     const unitDisplay = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
+    const timeUnit = getTimeUnitValue().slice(0, -1);
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
-        ${label ? `${label}: ` : ''}Slope = ${analysisInfo.slope}${unitDisplay}/${getTimeUnitValue().slice(0, -1)}, 
-        Linear start = ${analysisInfo.linearStart} ${getTimeUnitValue().slice(0, -1)},
-        Linear end = ${analysisInfo.linearEnd} ${getTimeUnitValue().slice(0, -1)}, <br/>
-        maxRate = ${analysisInfo.maxRate}${unitDisplay}/${getTimeUnitValue().slice(0, -1)}, 
-        maxRateStart = ${analysisInfo.maxRateStart} ${getTimeUnitValue().slice(0, -1)}, 
-        maxRateEnd = ${analysisInfo.maxRateEnd} ${getTimeUnitValue().slice(0, -1)}, <br/>
-        Saturation = ${displaySat}${unitDisplay}, 
-        Reacting Time taken to Saturation = ${displayTimeSat} ${getTimeUnitValue().slice(0, -1)}
+        ${label ? `${label}: ` : ''}
+        ${createToggleButton(analysisId)}
+        <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+            <table style="border-collapse: collapse;">
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Slope</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Linear start</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Linear end</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">maxRate</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">maxRateStart</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">maxRateEnd</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Saturation</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Reacting Time taken to Saturation</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.slope}${unitDisplay}/${timeUnit}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.linearStart} ${timeUnit}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.linearEnd} ${timeUnit}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.maxRate}${unitDisplay}/${timeUnit}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.maxRateStart} ${timeUnit}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.maxRateEnd} ${timeUnit}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${displaySat}${unitDisplay}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${displayTimeSat} ${timeUnit}</td>
+                </tr>
+            </table>
+        </div>
     </span>`;
     return html;
 }
