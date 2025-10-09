@@ -1,7 +1,4 @@
-function updatePlot(
-    data, metadata,
-    XColumn = "Timestamp", YColumn = "Value"
-) {
+function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     // Save current scroll position
     const chartContainer = document.getElementById('chart-container');
     const scrollPosition = chartContainer.scrollTop;
@@ -31,8 +28,7 @@ function updatePlot(
         const Args = [
             allGroups,
             XColumn,
-            YColumn,
-            metadata
+            YColumn
         ]
         return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
     } else {
@@ -41,8 +37,7 @@ function updatePlot(
             allGroups,
             XColumn,
             YColumn,
-            metadata,
-            rawData,
+            rawData
         ]
         return isSplitMode ? splitBlankRoutine(...Args) : defaultRoutine(...Args);
     }
@@ -315,8 +310,8 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
     }
 }
 
-function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
-    const measUnit = getMetaUnit(metadata);
+function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
+    const measUnit = getMetaUnit(AppState.metaData);
 
     const charts = [];
     const analyses = [];
@@ -328,7 +323,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
         const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         const yValues = extractColumnAndNormalize(filteredData, yColumn);
-        const label = `${metadata['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
+        const label = `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
         let analysis = null;
 
         analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], parseInt($("#window-size").val()));
@@ -348,18 +343,18 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
 
     AppState.sourceCharts = charts;
 
-    return extractMultiSourceResultSummary(metadata, analyses);
+    return extractMultiSourceResultSummary(AppState.metaData, analyses);
 
 }
 
-function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
-    const measUnit = getMetaUnit(metadata);
+function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
+    const measUnit = getMetaUnit(AppState.metaData);
 
     const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, parseInt($("#window-size").val())));
-    const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(measUnit)}`);
+    const labels = YColumn.map(y => `${AppState.metaData['Measurement']} ${y} ${unitDisplay(measUnit)}`);
 
     // Format analysis info for all sources
     const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, labels[i]));
@@ -385,17 +380,17 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        return extractMultiSourceResultSummary(metadata, analyses);
+        return extractMultiSourceResultSummary(AppState.metaData, analyses);
     } else {
         return {
             analysis: analyses,
-            meas: metadata["Measurement"]
+            meas: AppState.metaData["Measurement"]
         };
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
-    const measUnit = getMetaUnit(metadata);
+function splitBlankRoutine(allGroups, XColumn, YColumn, rawData) {
+    const measUnit = getMetaUnit(AppState.metaData);
     
     const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
@@ -433,7 +428,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
             analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
         }
     }
-    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), measUnit);
+    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(AppState.metaData, XColumn, YColumn), measUnit);
     const blankLabels = labels.map(l => `${l} (Blanked)`);
     const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
     
@@ -472,20 +467,20 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        return extractSplitResultSummary(metadata, analysis_blanked[0], analysis_nonblanked[0]);
+        return extractSplitResultSummary(AppState.metaData, analysis_blanked[0], analysis_nonblanked[0]);
     } else {
         const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
         return {
             analysis,
-            meas: metadata["Measurement"]
+            meas: AppState.metaData["Measurement"]
         };
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
+function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
-    const measUnit = getMetaUnit(metadata);
+    const measUnit = getMetaUnit(AppState.metaData);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         const fullDisplayCheckbox = document.getElementById('full-display-plot');
@@ -506,7 +501,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     }
 
     // Generate chart
-    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(metadata, XColumn, YColumn), measUnit);
+    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(AppState.metaData, XColumn, YColumn), measUnit);
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels, measUnit);
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
 
@@ -526,11 +521,11 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        return extractSingleResultSummary(metadata, mixAnalysis);
+        return extractSingleResultSummary(AppState.metaData, mixAnalysis);
     } else {
         return {
             analysis: mixAnalysis,
-            meas: metadata["Measurement"]
+            meas: AppState.metaData["Measurement"]
         };
     }
 }

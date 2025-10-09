@@ -558,17 +558,11 @@ function handleCalibrationMode() {
 }
 
 function updatePlotBasedOnMode(jsonFile) {
-    const baseArgs = [
-        AppState.responseData,
-        AppState.metaData,
-    ];
     if (AppState.currentMeasurementMode === "calibrate") {
         const cal_type = calDiv.getAttribute('data-value');
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
-            AppState.exp_json_content = updatePlot(
-                AppState.responseData, AppState.metaData, 
-                "Concentration", quantity_obj.selectedOptions[0].text
+            AppState.exp_json_content = updatePlot(AppState.responseData, "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
             const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
@@ -578,10 +572,7 @@ function updatePlotBasedOnMode(jsonFile) {
             const processingData = AppState.responseData.filter(row => 
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
-            AppState.exp_json_content = updatePlot(
-                processingData, AppState.metaData, 
-                "Concentration", "Value"
-            );
+            AppState.exp_json_content = updatePlot(processingData, "Concentration", "Value");
         }
     } else {
         if (AppState.currentMeasurementMode === "point" && jsonFile) {
@@ -590,7 +581,7 @@ function updatePlotBasedOnMode(jsonFile) {
         }
         switch (AppState.numSources) {
             case 1:
-                AppState.globalAnalysis = updatePlot(...baseArgs);
+                AppState.globalAnalysis = updatePlot(AppState.responseData);
                 if (AppState.currentMeasurementMode === "point" && jsonFile) {
                     processPointMode(jsonFile, document.getElementById('der-con-value'));
                 }
@@ -604,7 +595,7 @@ function updatePlotBasedOnMode(jsonFile) {
                     );
 
                     AppState.globalAnalysis = updatePlot(
-                        ...baseArgs,
+                        AppState.responseData,
                         "Timestamp",
                         values
                     );
