@@ -19,7 +19,7 @@ const AppState = {
     nonBlankedChart: null,
     myChart: null,
     scriptRunning: false,
-    currentMeasurementMode: "kinetics",
+    currentMeasurementMode: modeDiv.getAttribute('data-value'),
     currentFile: null,
     prevFile: null, 
     currentJSON: null,
@@ -260,44 +260,24 @@ $(document).ready(function() {
 
     }, 500);
 
-    // Initialize measurement method listener
-    $("#measurement-mode").on("change", function() {
-        const mode = $(this).val();
-        AppState.currentMeasurementMode = mode;
-        const currentDir = $("#directory").val();
-        if (currentDir) {
-            updateDirectory(currentDir, true);
-        }
-        AppState.currentJSON = null;
-        AppState.currentJSONcontent = null;
-        AppState.currentFile = null;
-        $("#json-display").text("");
-        
-        if (mode === "kinetics") {
-            kineticsModeBehaviour();
-        } else if (mode === "point") {
-            pointModeBehaviour();
-        } else {
-            calModeBehaviour(); 
-        }
-
-        if (AppState.currentMeasurementMode !== "calibrate") {
-        updateMultiSourceExportOptions();
-    }
-        
+    // Add click event to each button
+    modeButtons.forEach(mode => {
+        mode.addEventListener('click', () => {
+            selectButton(mode, modeButtons, modeDiv);
+            switchingModes(modeDiv.getAttribute('data-value'));
+        });
     });
 
     $("#cal-json-exp-section").on("change", function() {
         AppState.currentFile = null;
     });
 
-    $("#cal-mode-select").on("change", function() {
-        if ($("#cal-mode-select").val() === "kinetics") {
-            calKineticsBehaviour();
-        } else {
-            calPointBehaviour();
-        }
-    });
+    calButtons.forEach(cal => {
+        cal.addEventListener('click', () => {
+            selectButton(cal, calButtons, calDiv);
+            switchingCalModes(calDiv.getAttribute('data-value'));
+        })
+    })
 
     if (AppState.currentFile) {
         $("#data-display-section").removeClass("hidden");
@@ -317,7 +297,7 @@ $(document).ready(function() {
         <p>${desc.text}</p>
       `;
       MathJax.typeset();
-    if ($("#cal-mode-select").val() === "kinetics") {
+    if (calDiv.getAttribute('data-value') === "kinetics") {
         const sel_quant = document.querySelector("#regressed-quantity");
         document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
     } else {
@@ -405,7 +385,7 @@ function calModeBehaviour() {
     $("#select-exp-blank-type-cal").removeClass("hidden");
     $("#window-size-section").addClass("hidden");
     $("#func-desc").removeClass("hidden");
-    if ($("#cal-mode-select").val() === "kinetics") {
+    if (calDiv.getAttribute('data-value') === "kinetics") {
             calKineticsBehaviour();
         } else {
             calPointBehaviour();
@@ -439,7 +419,14 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     } else {
         if (AppState.currentMeasurementMode !== "calibrate") {
             //Change #cal-mode-select in the background before switching to calibrate mode
-            $("#cal-mode-select").val(`${AppState.currentMeasurementMode}`); 
+            calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
+            calButtons.forEach(button => {
+                if (button.getAttribute('data-mode') === AppState.currentMeasurementMode) {
+                    button.classList.add('selected');
+                } else {
+                    button.classList.remove('selected');
+                }
+            })
         }
     }
     // console.log("Updating directory to:", path);
@@ -499,4 +486,37 @@ function updateMultiSourceExportOptions() {
         $("#select-sensor-to-export").addClass("hidden");
         document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
     }
+}
+
+function switchingModes(mode) {
+    const currentDir = $("#directory").val();
+    AppState.currentMeasurementMode = mode;
+    if (currentDir) {
+        updateDirectory(currentDir, true);
+    }
+    AppState.currentJSON = null;
+    AppState.currentJSONcontent = null;
+    AppState.currentFile = null;
+    $("#json-display").text("");
+    
+    if (mode === "kinetics") {
+        kineticsModeBehaviour();
+    } else if (mode === "point") {
+        pointModeBehaviour();
+    } else {
+        calModeBehaviour(); 
+    }
+
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        updateMultiSourceExportOptions();
+    }
+};
+
+function switchingCalModes(mode) {
+    if (mode === "point") {
+        calPointBehaviour();
+    } else {
+        calKineticsBehaviour();
+    }
+    deselectFile();
 }

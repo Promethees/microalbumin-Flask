@@ -425,10 +425,10 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
         analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, parseInt($("#window-size").val())));
         analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, parseInt($("#window-size").val())));
     } else {
-        if ($("#cal-mode-select").val() === "kinetics") {
+        if (calDiv.getAttribute('data-value') === "kinetics") {
             analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "BLANKED");
             analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "NON-BLANKED");
-        } else if ($("#cal-mode-select").val() === "point") {
+        } else if (calDiv.getAttribute('data-value') === "point") {
             analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
             analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
         }
@@ -456,10 +456,10 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     } else {
         let blanked_string = "";
         let non_blanked_string = "";
-        if ($("#cal-mode-select").val() === "kinetics") {
+        if (calDiv.getAttribute('data-value') === "kinetics") {
             blanked_string = getCalKineticsString(analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
             non_blanked_string = getCalKineticsString(analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-        } else if ($("#cal-mode-select").val() === "point") {
+        } else if (calDiv.getAttribute('data-value') === "point") {
             blanked_string = getCalPointString(analysis_blanked);
             non_blanked_string = getCalPointString(analysis_nonblanked);
         }
@@ -498,9 +498,9 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
         filteredData = filterByBlankType(allGroups.allMixedData);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn);
         YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(filteredData, y)) : [extractColumnAndNormalize(filteredData, YColumn)];
-        if ($("#cal-mode-select").val() === "kinetics") {
+        if (calDiv.getAttribute('data-value') === "kinetics") {
             mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
-        } else if ($("#cal-mode-select").val() === "point") {
+        } else if (calDiv.getAttribute('data-value') === "point") {
             mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allMixedData, YColumn), extractColumnAndConvert(allGroups.allMixedData, XColumn), regressAlgo = $("#exp-json-regress-algo").val());
         }
     }
@@ -517,9 +517,9 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
         updateSingleModeAnalysisInfo(mixAnalysisInfo, measUnit);
     } else {
         let htmlString = "";
-        if ($("#cal-mode-select").val() === "kinetics") {
+        if (calDiv.getAttribute('data-value') === "kinetics") {
             htmlString = getCalKineticsString(mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-        } else if ($("#cal-mode-select").val() === "point") {
+        } else if (calDiv.getAttribute('data-value') === "point") {
             htmlString = getCalPointString(mixAnalysis);
         }
         $("#plot-analysis").html(htmlString);
@@ -850,7 +850,7 @@ function calibrateKineticsAnalysis(data, XColumn, YColumn, blankTypeValue) {
 function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
     let regressionData = [];
     let analysis = null;
-    if ($("#cal-mode-select").val() === "kinetics") {
+    if (calDiv.getAttribute('data-value') === "kinetics") {
         const selectElement = document.getElementById('regressed-quantity');
         const calParams = Array.from(selectElement.options).map(option => option.value);
         const currQuantity = selectElement.value;

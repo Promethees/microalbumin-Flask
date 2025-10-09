@@ -492,3 +492,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
         observer.observe(mainDirSection);
     });
+
+const modeDiv = document.getElementById('measurement-mode');
+const modeButtons = modeDiv.querySelectorAll('button[data-mode]');
+
+// Initialize by selecting the first button (or adjust logic as needed)
+if (modeButtons.length > 0) {
+    selectButton(modeButtons[0], modeButtons, modeDiv);
+}
+
+console.log("number of mode buttons are ", modeButtons.length);
+
+function selectButton(selectedButton, allButtons, div) {
+    div.setAttribute('data-value', selectedButton.getAttribute('data-mode'));
+    allButtons.forEach(button => {
+        button.classList.remove('selected');
+    });
+    selectedButton.classList.add('selected');
+}
+
+const calDiv = document.getElementById('cal-mode-select');
+const calButtons = calDiv.querySelectorAll('button[data-mode]');
+
+if (calButtons.length > 0) {
+    selectButton(calButtons[0], calButtons, calDiv);
+}
+
+console.log("number of cal buttons are ", calButtons.length);

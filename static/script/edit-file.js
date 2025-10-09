@@ -452,7 +452,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         new_filename: newFileName,
                         path: filePath,
                         content: content,
-                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? $("#cal-mode-select").val() : 'timestamp',
+                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp',
                         multi_source: AppState.multiSource
                     }, function(response) {
                         if (response.status === 'success') {

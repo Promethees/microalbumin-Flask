@@ -198,18 +198,18 @@
                     </div>
                 </div>
                 <h2>{{ mode_input.title }}</h2>
-                <select id="measurement-mode">
+                <div id="measurement-mode" class="button-group" data-value="">
                     {% for mode in mode_input.modes %}
-                    <option value="{{ mode }}">{{ mode }}</option>
+                    <button data-mode="{{ mode }}">{{ mode }}</button>
                     {% endfor %}
-                </select>
+                </div>
             </div>
             <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
                 <h3>Calibrating for:</h3>
-                <select id="cal-mode-select">
-                    <option value="kinetics">kinetics</option>
-                    <option value="point">point</option>
-                </select>
+                <div id="cal-mode-select" class="button-group" data-value="">
+                    <button data-mode="kinetics">kinetics</button>
+                    <button data-mode="point">point</button>
+                </div>
             </div>  
             <div class="section hidden" style="position: static;" id="options-section">
                 <h3>Options</h3>

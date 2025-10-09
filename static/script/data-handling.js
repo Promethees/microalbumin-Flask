@@ -549,7 +549,7 @@ function processPointMode(jsonFile, derived_con_text) {
 }
 
 function handleCalibrationMode() {
-    if ($("#cal-mode-select").val() === "kinetics") {
+    if (calDiv.getAttribute('data-value') === "kinetics") {
         $("#select-quantity-section").removeClass("hidden");
     }
     $("#derived-concentration-section").addClass("hidden");
@@ -563,7 +563,7 @@ function updatePlotBasedOnMode(jsonFile) {
         AppState.metaData,
     ];
     if (AppState.currentMeasurementMode === "calibrate") {
-        const cal_type = $("#cal-mode-select").val();
+        const cal_type = calDiv.getAttribute('data-value');
         if (cal_type === "kinetics") {
             const quantity_obj = document.getElementById('regressed-quantity');
             AppState.exp_json_content = updatePlot(
@@ -645,7 +645,7 @@ function toggleMode() {
         <p>${desc.text}</p>
       `;
       MathJax.typeset();
-    if ($("#cal-mode-select").val() === "kinetics") {
+    if (calDiv.getAttribute('data-value') === "kinetics") {
         const sel_quant = document.querySelector("#regressed-quantity");
         document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
     } else {
@@ -864,7 +864,7 @@ function exportJSONCoef() {
     }
     
     const selectElement = document.getElementById('regressed-quantity');
-    if ($("#cal-mode-select").val() === "point" && (!$("#regressed-time-point").val())){
+    if (calDiv.getAttribute('data-value') === "point" && (!$("#regressed-time-point").val())){
         alert("Please set time point to regress data from");
         return null;
     } else {
@@ -876,7 +876,7 @@ function exportJSONCoef() {
                 coef_content: AppState.exp_json_content.analysis,
                 time: $("#regressed-time-point").val(),
                 file_name: $("#save-json-file").val(),
-                cal_mode: $("#cal-mode-select").val(),
+                cal_mode: calDiv.getAttribute('data-value'),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
                 threshold_val: $("#threshold-value").val(),
                 isMultiSource: AppState.multiSource,

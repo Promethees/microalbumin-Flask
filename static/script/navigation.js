@@ -57,7 +57,7 @@ async function filterFiles(files) {
                     if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {
                         return isMeasHeader;
                     } else if (AppState.currentMeasurementMode === "calibrate") {
-                        const cal_type = $("#cal-mode-select").val();
+                        const cal_type = calDiv.getAttribute('data-value');
                         let isCalHeader = false;
                         if (cal_type === "kinetics") {
                             isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_kinetics);
