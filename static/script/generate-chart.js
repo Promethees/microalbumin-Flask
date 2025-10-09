@@ -48,7 +48,7 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
     return { xColumn, processedYColumns, allYValues, conversionFactor };
 }
 
-function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint, conversionFactor, unit) {
+function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint) {
     const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
     const pointRadius = isSinglePoint || thisYAllEqual ? 5 : 3;
     
@@ -64,7 +64,7 @@ function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint, 
     };
 
     if (analysis) {
-        dataset.analysis = formatAnalysisInfo(analysis, conversionFactor, unit, label);
+        dataset.analysis = formatAnalysisInfo(analysis, label);
     }
 
     return dataset;
@@ -209,7 +209,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const { isSinglePoint, xMin, xMax, xStepSize, yMin, yMax, yStepSize } = getChartScales(xColumn, allYValues, labels);
 
     const datasets = processedYColumns.map((yColumn, i) => {
-        const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor = index, i, isSinglePoint, conversionFactor, unit);
+        const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor = index, i, isSinglePoint);
         const regressionDataset = createRegressionDataset(xMax, xMin, analyses[i], labels[i]);
         return [dataset, ...(regressionDataset ? [regressionDataset] : [])];
     }).flat();

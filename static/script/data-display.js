@@ -52,7 +52,7 @@ function updatePlot(
     }, 0);
 }
 
-function formatAnalysisInfo(analysis, unit, label) {
+function formatAnalysisInfo(analysis, label) {
     if (!analysis) {
         return null;
     }
@@ -78,7 +78,7 @@ function formatAnalysisInfo(analysis, unit, label) {
         maxRate: adjustedMaxRate,
         maxRateStart: adjustedMaxRateStart,
         maxRateEnd: adjustedMaxRateEnd,
-        MeasUnit: unit,
+        MeasUnit: getMetaUnit(AppState.metaData),
         Meas: label
     };
 }
@@ -316,7 +316,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
 }
 
 function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
-    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+    const measUnit = getMetaUnit(metadata);
 
     const charts = [];
     const analyses = [];
@@ -342,8 +342,8 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
         charts.push(chart);
 
         // Update analysis info display
-        const analysisInfo = formatAnalysisInfo(analysis, measUnit, label);
-        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, measUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
+        const analysisInfo = formatAnalysisInfo(analysis, label);
+        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`));
     }
 
     AppState.sourceCharts = charts;
@@ -353,7 +353,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
 }
 
 function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
-    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+    const measUnit = getMetaUnit(metadata);
 
     const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
@@ -362,14 +362,14 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
     const labels = YColumn.map(y => `${metadata['Measurement']} ${y} ${unitDisplay(measUnit)}`);
 
     // Format analysis info for all sources
-    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, measUnit, labels[i]));
+    const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, labels[i]));
 
     // Generate single chart with all Y-columns
     renderCharts(XColumnVals, YColumnVals, labels, measUnit);
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, measUnit, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+        html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
@@ -395,7 +395,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn, metadata) {
 }
 
 function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
-    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+    const measUnit = getMetaUnit(metadata);
     
     const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
     const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
@@ -450,9 +450,9 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info for both charts
-        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, measUnit, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, measUnit, blankLabels[0])];
-        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, measUnit, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, measUnit, nonBlankLabels[0])];
-        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, measUnit);
+        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, blankLabels[0])];
+        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, nonBlankLabels[0])];
+        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo);
     } else {
         let blanked_string = "";
         let non_blanked_string = "";
@@ -485,7 +485,7 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
 function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
-    const measUnit = (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+    const measUnit = getMetaUnit(metadata);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         const fullDisplayCheckbox = document.getElementById('full-display-plot');
@@ -513,8 +513,8 @@ function defaultRoutine(allGroups, XColumn, YColumn, metadata, rawData) {
     // Update analysis info display
     if (AppState.currentMeasurementMode !== "calibrate") {
         // Format analysis info before chart creation
-        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, measUnit, labels[0]);
-        updateSingleModeAnalysisInfo(mixAnalysisInfo, measUnit);
+        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, labels[0]);
+        updateSingleModeAnalysisInfo(mixAnalysisInfo);
     } else {
         let htmlString = "";
         if (calDiv.getAttribute('data-value') === "kinetics") {
@@ -758,9 +758,9 @@ function filterBlankedData(data, isBlanked) {
     }
 }
 
-function formatAnalysisHtml(analysisInfo, unit, color = null, label = '') {
+function formatAnalysisHtml(analysisInfo, color = null, label = '') {
     if (!analysisInfo) return '';
-    const unitDisplay = unit !== "NONE" ? unit : '';
+    const unitDisplay = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
@@ -776,14 +776,14 @@ function formatAnalysisHtml(analysisInfo, unit, color = null, label = '') {
     return html;
 }
 
-function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo, unit) {
+function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo) {
     let html_blank = '';
     let html_nonblank = '';
     if (blankedAnalysisInfo) {
-        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], unit, 'rgb(255, 99, 132)', 'Blanked');
+        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], 'rgb(255, 99, 132)', 'Blanked');
     }
     if (nonBlankedAnalysisInfo) {
-        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], unit, 'rgb(75, 192, 192)', 'Non-Blanked');
+        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], 'rgb(75, 192, 192)', 'Non-Blanked');
     }
     $("#blanked-analysis").html(html_blank || '');
     $("#non-blanked-analysis").html(html_nonblank || '');
@@ -805,9 +805,9 @@ function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblank
     };
 }
 
-function updateSingleModeAnalysisInfo(analysisInfo, unit) {
+function updateSingleModeAnalysisInfo(analysisInfo) {
     if (analysisInfo) {
-        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo, unit));
+        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo));
     } else {
         $("#plot-analysis").html('');
     }
@@ -953,4 +953,8 @@ function getLabelsFromYColumn(YColumn, measurementLabel, unit) {
         ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
         : [`${measurementLabel} ${unitDisplay(unit)}`];
     return labels;
+}
+
+function getMetaUnit(metadata) {
+    return (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
 }
