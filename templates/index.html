@@ -542,7 +542,7 @@
                 if (!ref || !target) return;
 
                 const rect = ref.getBoundingClientRect();
-                const offsetTop = rect.bottom + rect.height + window.scrollY; // Get absolute top position relative to page
+                const offsetTop = rect.bottom + rect.height; // Get absolute top position relative to page
                 console.log('Offset top is ', offsetTop);
                 // Update CSS variable dynamically
                 target.style.setProperty('--dynamic-top', `${offsetTop}px`);
