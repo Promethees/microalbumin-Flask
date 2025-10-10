@@ -363,7 +363,6 @@ body.dark .button-group button.selected {
     position: fixed;
     top: 20px;
     left: 1vw;
-    right: 0.5vw;
     max-width: 23.5vw;
     box-sizing: border-box;
 }
@@ -377,6 +376,15 @@ body.dark .button-group button.selected {
 
 .top-left > *:not(.flex-group) {
     margin-left: 10px;
+}
+
+.top-right {
+    display: block;
+    position: fixed;
+    top: var(--dynamic-top, 0px);
+    right: 1vw;
+    max-width: 23.5vw !important;
+    box-sizing: border-box;
 }
 
 .title-place {
@@ -1119,6 +1127,14 @@ body.dark .swal2-container.swal2-backdrop-show {
 
     .top-left > *:not(.flex-group) {
         margin-left: 0px;
+    }
+
+    .top-right {
+        position: relative;
+        top: auto;
+        left: auto;
+        max-width: 100% !important;
+        margin-bottom: 0px;
     }
 
     #main-content {

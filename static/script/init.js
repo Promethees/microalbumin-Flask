@@ -501,8 +501,6 @@ if (modeButtons.length > 0) {
     selectButton(modeButtons[0], modeButtons, modeDiv);
 }
 
-console.log("number of mode buttons are ", modeButtons.length);
-
 function selectButton(selectedButton, allButtons, div) {
     div.setAttribute('data-value', selectedButton.getAttribute('data-mode'));
     allButtons.forEach(button => {
@@ -517,5 +515,3 @@ const calButtons = calDiv.querySelectorAll('button[data-mode]');
 if (calButtons.length > 0) {
     selectButton(calButtons[0], calButtons, calDiv);
 }
-
-console.log("number of cal buttons are ", calButtons.length);
