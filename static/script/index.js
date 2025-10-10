@@ -403,23 +403,22 @@ function calPointBehaviour() {
 }
 
 function updateDirectory(path, deselect, changeToCalibrate=false) {
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        //Change #cal-mode-select in the background before switching to calibrate mode
+        calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
+        calButtons.forEach(button => {
+            if (button.getAttribute('data-mode') === AppState.currentMeasurementMode) {
+                button.classList.add('selected');
+            } else {
+                button.classList.remove('selected');
+            }
+        })
+    }
     if(changeToCalibrate) {
-        $("#measurement-mode").val("calibrate");
+        selectButton(modeButtons[2], modeButtons, modeDiv);
         AppState.currentMeasurementMode = "calibrate";
         AppState.currentFile = null;
         calModeBehaviour();
-    } else {
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            //Change #cal-mode-select in the background before switching to calibrate mode
-            calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
-            calButtons.forEach(button => {
-                if (button.getAttribute('data-mode') === AppState.currentMeasurementMode) {
-                    button.classList.add('selected');
-                } else {
-                    button.classList.remove('selected');
-                }
-            })
-        }
     }
     // console.log("Updating directory to:", path);
     $.post('/browse', {path: path}, function(response) {
