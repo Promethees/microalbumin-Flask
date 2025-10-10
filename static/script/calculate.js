@@ -33,7 +33,8 @@ function calculateCoefAndRSquared(x, y, regressAlgo = "linear") {
                     coefficients.reduce((acc, c, i) => acc + c * Math.pow(xi, i), 0)
                 );
                 slope = polynomialRegressionSlope(x, y, degree);
-                rSquared = computeRSquared(x, predicted);
+                rSquared = computeRSquared(y, predicted);
+                coefficients.reverse();
             } catch (error) {
                 console.error("Error in polynomial regression:", error.message);
                 return { slope: 0, rSquared: 0, coefficients: null };
