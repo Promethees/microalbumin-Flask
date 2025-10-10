@@ -26,7 +26,6 @@ const AppState = {
     currentJSONcontent: null,
     refCalPoint: null,
     globalAnalysis: null,
-    json_msg: 'When fit_type: \n',
     prevDropdownEntries: null,
     exp_json_content: null,
     processedExpPath: getNativePath(rootPath, 'export_data'),
@@ -87,13 +86,6 @@ const AppState = {
             ql.classList.add('hidden');
         }
     });
-
-// Append to json_msg
-AppState.json_msg += '  + linear: concentration = quantity_json[0]*quantity_value + quantity_json[1]\n';
-AppState.json_msg += '  + polynomial: concentration = quantity_json[0]*quantity_value^2 + quantity_json[1]*quantity_value + quantity_json[2]\n';
-AppState.json_msg += '  + logarithmic: concentration = quantity_json[0]*loge(quantity_value + quantity_json[1]) + quantity_json[2]\n';
-AppState.json_msg += '  + exponential: concentration = quantity_json[0]*e^(quantity_value * quantity_json[1]) + quantity_json[2]\n';
-AppState.json_msg += '  + Michaelis-Menten: concentration = (quantity_json[0] * quantity_value) / (quantity_json[1] - quantity_value)\n';
 
 const input = document.getElementById("window-size");
 

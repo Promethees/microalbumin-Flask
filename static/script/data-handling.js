@@ -26,15 +26,90 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
         $("#copy-json-btn").prop("disabled", false);
-        fetchJSON(AppState.currentJSON, function(JSON_content, JSON_path) {
-            $("#json-display").text(`Current mode is \"${AppState.currentMeasurementMode}\".\nJSON file read from ${JSON_path}\n`);
-            if (AppState.currentMeasurementMode === "kinetics") {
-                $("#json-display").append("Quantity value is either maxRate, Slope, Saturation, Reacting Time taken to Saturation, which ever is set by user.\n");
-            } else if (AppState.currentMeasurementMode === "point") {
-                 $("#json-display").append("Quantity value is the Absorbance value read from selected data file whose recorded time is the closest to the time set in this JSON.\n");
-            }
-            $("#json-display").append(`${AppState.json_msg}`);
-            $("#json-display").append(JSON.stringify(JSON_content, null, 4));
+        $("#right-deselect-btn").removeClass("hidden");
+
+        fetchJSON(AppState.currentJSON, function (JSON_content, JSON_path) {
+            const display = $("#json-display").empty();
+
+            const fitType = JSON_content.fit_type || "N/A";
+            const measFor = JSON_content.for_meas || "N/A";
+            const blankType = JSON_content.for_blank_type || "N/A";
+            const mode = AppState.currentMeasurementMode || "N/A";
+
+            // --- Helpers ---
+            const isMenten = fitType.toLowerCase().includes("menten");
+
+            const labelCoefficients = (coefs) => {
+                if (!Array.isArray(coefs) || coefs.length === 0) return "—";
+                return isMenten
+                    ? `Km = ${coefs[0]}, Vmax = ${coefs[1]}`
+                    : coefs.map((v, i) => `${String.fromCharCode(97 + i)} = ${v}`).join(", ");
+            };
+
+            const formulas = {
+                linear: "\\( [S] = a q + b \\)",
+                polynomial: "\\( [S] = a q^2 + b q + c \\)",
+                logarithmic: "\\( [S] = a \\ln(q + b) + c \\)",
+                exponential: "\\( [S] = a e^{q b} + c \\)",
+                "michaelis-menten": "\\( [S] = \\dfrac{K_m q}{V_{max} - q} \\)"
+            };
+
+            const getFormula = (type) =>
+                formulas[type.toLowerCase()] || "No formula available for this fit type.";
+
+            // --- Build Tables ---
+            const buildCoefTable = (json) => {
+                let rows = "";
+                for (const [key, value] of Object.entries(json)) {
+                    if (["fit_type", "for_meas", "for_blank_type"].includes(key)) continue;
+                    rows += `
+                        <tr>
+                            <td>${key}</td>
+                            <td>${labelCoefficients(value?.fit_coef)}</td>
+                        </tr>`;
+                }
+                return `
+                    <h4 style="margin-bottom: 1px; margin-top: 0px;">Fitting Coefficients</h4>
+                    <table border="1" cellspacing="0" cellpadding="1" class="table"
+                        style="width:100%; text-align:left; margin-top: 0px; margin-bottom: 1px;">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th><th>Fit Coefficients</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>`;
+            };
+
+            const buildInfoTable = (info) => `
+                <h4 style="margin-bottom: 1px; margin-top: 0px;">Fit Information</h4>
+                <table border="1" cellspacing="0" cellpadding="1" class="table"
+                    style="width:100%; text-align:left; margin-top: 0px; margin-bottom: 0px;">
+                    <tbody>
+                        ${Object.entries(info)
+                            .map(
+                                ([key, value]) =>
+                                    `<tr><th style="width:30%;">${key}</th><td>${value}</td></tr>`
+                            )
+                            .join("")}
+                    </tbody>
+                </table>`;
+
+            // --- Combine and render ---
+            const infoData = {
+                "Current Mode": mode,
+                "Fit Type": fitType,
+                Formula: getFormula(fitType),
+                "[S]": "Substrate Concentration",
+                "q": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
+                "Measurement For": measFor,
+                "Blank Type": blankType
+            };
+
+            const html = buildCoefTable(JSON_content) + "<br>" + buildInfoTable(infoData);
+
+            display.html(html);
+            if (window.MathJax) MathJax.typesetPromise();
             AppState.currentJSONcontent = JSON_content;
             if (AppState.currentFile) 
                 processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
@@ -160,6 +235,7 @@ function deselectFile(tableSelector="#file-table") {
         $("#non-blank-derived-concentration-section").addClass("hidden");
         $("#point-json-exp-section").addClass("hidden");
         $("#copy-json-btn").prop("disabled", true);
+        $("#right-deselect-btn").addClass("hidden");
     }
 }
 
