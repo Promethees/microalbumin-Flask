@@ -638,6 +638,7 @@ function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics
     if (!analysis || !AppState.quantity_input.quantities) return '';
 
     const headers = isMM ? ['V_max', 'Km'] : ['a', 'b', 'c'];
+    const initHeight = document.getElementById('open-all-analysis').checked ? "auto" : "0px";
 
     return AppState.quantity_input.quantities.map((label, i) => {
         const coef = analysis[i]?.coefficients || null;
@@ -649,7 +650,7 @@ function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics
             <span>
                 ${label ? `${label}: ` : ''}
                 ${createToggleButton(analysisId, showText, hideText)}
-                <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+                <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
                     ${createTable(coef, rSquared, headers)}
                 </div>
             </span>
@@ -666,11 +667,12 @@ function getCalPointString(analysis, analysisId = "cal-point-analysis") {
     const rSquared = analysis.rSquared || null;
     const showText = 'See point analysis';
     const hideText = 'Hide point analysis';
+    const initHeight = document.getElementById('open-all-analysis').checked ? "auto" : "0px";
 
     return `
         <span>
             ${createToggleButton(analysisId, showText, hideText)}
-            <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+            <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
                 ${createTable(coef, rSquared, headers)}
             </div>
         </span>
@@ -781,10 +783,14 @@ function filterBlankedData(data, isBlanked) {
 
 function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
     const buttonId = analysisId.replace("analysis", "button");
+    const allOpen = document.getElementById('open-all-analysis').checked;
+    const initialSymbol = allOpen ? '-' : '+';
+    const initialTooltipText = allOpen ? hideText : showText;
     return `
     <div style="position: relative; display: inline-block;">
         <button
             id="${buttonId}"
+            title="${initialTooltipText}"
             onclick="
             let contentDiv = this.parentElement.nextElementSibling.nextElementSibling;
             this.innerHTML = this.innerHTML === '+' ? '-' : '+';
@@ -796,8 +802,8 @@ function createToggleButton(analysisId = "plot-analysis", showText = 'See the an
             } else {
                 contentDiv.style.maxHeight = '0px';
             }
-        " style="cursor: pointer; background: #ccc; color: #000; border: none; font-weight: bold; padding: 0; margin: 0; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px;">+</button>
-        <span class="tooltip" style="position: absolute; top: 50%; left: 100%; margin-left: 5px; padding: 5px 10px; background: #333; color: #fff; border-radius: 4px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-50%) translateX(-10px); white-space: nowrap; pointer-events: none; z-index: 10;">${showText}</span>
+        " style="cursor: pointer; background: #ccc; color: #000; border: none; font-weight: bold; padding: 0; margin: 0; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px;">${initialSymbol}</button>
+        <span class="tooltip" style="position: absolute; top: 50%; left: 100%; margin-left: 5px; padding: 5px 10px; background: #333; color: #fff; border-radius: 4px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-50%) translateX(-10px); white-space: nowrap; pointer-events: none; z-index: 10;">${initialTooltipText}</span>
     </div>
     <style>
         button:hover + .tooltip {
@@ -814,10 +820,11 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
     const timeUnit = getTimeUnitValue().slice(0, -1);
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
+    const initHeight = document.getElementById('open-all-analysis').checked ? "auto" : "0px";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}
         ${createToggleButton(analysisId=analysisId)}
-        <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+        <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
             <table style="border-collapse: collapse;">
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Slope</td>
