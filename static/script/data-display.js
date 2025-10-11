@@ -602,54 +602,80 @@ function destroyCharts() {
     AppState.chartInstances = {};
 }
 
-function getCalKineticsString(analysis, isMM=false) {
-    let htmlString = "";
-    for (let i = 0; i < AppState.quantity_input.quantities.length; i++) {
-        let coefString = "";
-        if (analysis[i].coefficients) {
-            if (!isMM) {
-                coefString += "[a = ";
-            } else {
-                coefString += "[V_max = ";
-            }
-            for (let j = 0; j < analysis[i].coefficients.length; j++) {
-                coefString += analysis[i].coefficients[j] ? Number(analysis[i].coefficients[j]).toFixed(5) : "--";
-                if (j < analysis[i].coefficients.length - 1) 
-                    if (!isMM) {
-                        if (j === 0) {
-                            coefString += ", b = ";
-                        } else {
-                            coefString += ", c = ";
-                        }
-                    } else {
-                        coefString += ", Km = ";
-                    }
-                else coefString += "], ";  
-            } 
-        }    
-        htmlString += `${AppState.quantity_input.quantities[i]}: Coef:` + coefString;
-        htmlString += "rSquared: ";
-        htmlString += analysis[i].rSquared ? analysis[i].rSquared : "--,";
-        htmlString += "<br/>";      
-    }
-    return htmlString;
+function formatCoefficient(value) {
+    return value ? Number(value).toFixed(5) : "--";
 }
 
-function getCalPointString(analysis) {
-    let htmlString = "Coef:";
-    if (analysis.coefficients) {
-        htmlString += "[";
-        for (let j = 0; j < analysis.coefficients.length; j++) {
-            htmlString += analysis.coefficients[j] ? Number(analysis.coefficients[j]).toFixed(5) : "--";
-            if (j < analysis.coefficients.length - 1) 
-                htmlString += ",";
-        }
-        htmlString += "], ";
-    } 
-    htmlString += "rSquared: ";
-    htmlString += analysis.rSquared ? analysis.rSquared : "--";
-    htmlString += "<br/>";
-    return htmlString;
+function createTableRow(coef, rSquared, expectedLength) {
+    // Pad coefficients to expected length with null if necessary
+    const paddedCoef = coef && coef.length ? coef : Array(expectedLength).fill(null);
+    const coefCells = paddedCoef.map(value => `
+        <td style="border: 1px solid #ddd; padding: 8px;">${formatCoefficient(value)}</td>
+    `).join('');
+    return `
+        <tr>
+            ${coefCells}
+            <td style="border: 1px solid #ddd; padding: 8px;">${formatCoefficient(rSquared)}</td>
+        </tr>
+    `;
+}
+
+function createTable(coef, rSquared, headers) {
+    return `
+        <table style="border-collapse: collapse;">
+            <tr>
+                ${headers.map(header => `
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">${header}</td>
+                `).join('')}
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">rSquared</td>
+            </tr>
+            ${createTableRow(coef, rSquared, headers.length)}
+        </table>
+    `;
+}
+
+function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics-analysis") {
+    if (!analysis || !AppState.quantity_input.quantities) return '';
+
+    const headers = isMM ? ['V_max', 'Km'] : ['a', 'b', 'c'];
+
+    return AppState.quantity_input.quantities.map((label, i) => {
+        const coef = analysis[i]?.coefficients || null;
+        const rSquared = analysis[i]?.rSquared || null;
+        const showText = 'See kinetics analysis';
+        const hideText = 'Hide kinetics analysis';
+
+        return `
+            <span>
+                ${label ? `${label}: ` : ''}
+                ${createToggleButton(analysisId, showText, hideText)}
+                <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+                    ${createTable(coef, rSquared, headers)}
+                </div>
+            </span>
+            <br/>
+        `;
+    }).join('');
+}
+
+function getCalPointString(analysis, analysisId = "cal-point-analysis") {
+    if (!analysis) return '';
+
+    const headers = ['a', 'b', 'c'];
+    const coef = analysis.coefficients || null;
+    const rSquared = analysis.rSquared || null;
+    const showText = 'See point analysis';
+    const hideText = 'Hide point analysis';
+
+    return `
+        <span>
+            ${createToggleButton(analysisId, showText, hideText)}
+            <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+                ${createTable(coef, rSquared, headers)}
+            </div>
+        </span>
+        <br/>
+    `;
 }
 
 function preprocessData(data, XColumn, YColumn) {
@@ -753,7 +779,7 @@ function filterBlankedData(data, isBlanked) {
     }
 }
 
-function createToggleButton(showText = 'See the analysis', hideText = 'Hide the analysis', analysisId = "plot-analysis") {
+function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
     const buttonId = analysisId.replace("analysis", "button");
     return `
     <div style="position: relative; display: inline-block;">
@@ -764,6 +790,7 @@ function createToggleButton(showText = 'See the analysis', hideText = 'Hide the 
             this.innerHTML = this.innerHTML === '+' ? '-' : '+';
             let tooltip = this.nextElementSibling;
             tooltip.innerText = this.innerHTML === '-' ? '${hideText}' : '${showText}';
+            this.title = this.innerHTML === '-' ? '${hideText}' : '${showText}';
             if (this.innerHTML === '-') {
                 contentDiv.style.maxHeight = contentDiv.scrollHeight + 'px';
             } else {
@@ -789,7 +816,7 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}
-        ${createToggleButton(analysisId)}
+        ${createToggleButton(analysisId=analysisId)}
         <div style="max-height: 0px; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
             <table style="border-collapse: collapse;">
                 <tr>
