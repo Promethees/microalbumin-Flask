@@ -915,7 +915,6 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
                     break;
                 }
                 case "polynomial": {
-                    const [c_0, c_1, c_2] = analysis.coefficients;
                     if (c_2 === 0) {
                         y = c_1 !== 0 ? (x - c_0) / c_1 : 0;
                     } else {
