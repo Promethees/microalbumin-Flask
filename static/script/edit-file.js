@@ -7,12 +7,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 icon: 'error',
                 confirmButtonText: 'OK'
             }).then(() => {
-                const terminateBtn = $('#terminate-script-btn');
-                if (terminateBtn.length) {
+                const terminateBtn = document.getElementById('#terminate-script-btn');
+                if (terminateBtn) {
                     terminateBtn.focus();
-                    terminateBtn.addClass('blinking');
+                    terminateBtn.classList.add('blinking');
                     setTimeout(() => {
-                        terminateBtn.removeClass('blinking');
+                        terminateBtn.classList.remove('blinking');
                     }, 5000);
                 }
             });
