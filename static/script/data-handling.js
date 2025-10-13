@@ -584,9 +584,9 @@ function processKineticsMode(jsonFile) {
 function calculateKineticValue(quantity, blankType) {
     const kineticCalculations = {
         maxrate: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(val) * 60,
-        slope: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(v) * 60,
-        sat: val => Array.isArray(val) ? val.map(v => parseFloat(v)) : parseFloat(v),
-        time_to_sat: val => Array.isArray(val) ? val.map(v => parseFloat(v) / 60) : parseFloat(v) / 60
+        slope: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(val) * 60,
+        sat: val => Array.isArray(val) ? val.map(v => parseFloat(v)) : parseFloat(val),
+        time_to_sat: val => Array.isArray(val) ? val.map(v => parseFloat(v) / 60) : parseFloat(val) / 60
     };
 
     const val = getKineticValue(quantity, blankType);
