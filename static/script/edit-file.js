@@ -271,7 +271,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }
             return html;
         }
-        const filePath = tableSelector === '#file-table' ? document.getElementById("directory").value : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
+        const filePath = tableSelector === '#file-table' ? document.getElementById("directory").value : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
         console.log("File Path is ", filePath);
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function(content) {

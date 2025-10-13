@@ -194,8 +194,8 @@ $(document).ready(function() {
     $.get('/get_parents', function(parentResponse) {
         console.log("Parent directory:", parentResponse.parent);
         let parentHtml = parentResponse.parent ? 
-            (parentResponse.parent.split(delimiter).pop() ? 
-                `<div onclick="updateDirectory('${parentResponse.parent}', true)" ondblclick="browseDirectory(true)">${parentResponse.parent.split(delimiter).pop()}</div>` : 
+            (parentResponse.parent.split(DELIMITER).pop() ? 
+                `<div onclick="updateDirectory('${parentResponse.parent}', true)" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` : 
                 '<div>No parent directory</div>') : 
             '<div>No parent directory</div>';
         document.getElementById("parent-dir").innerHTML = parentHtml;
@@ -206,7 +206,7 @@ $(document).ready(function() {
             // Update the child directories display
             let childHtml = sortedChildren.length > 0 ? 
                 sortedChildren.map(dir => 
-                    `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory(true)">${dir.split(delimiter).pop()}</div>`
+                    `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
                 ).join('') : 
                 '<div>No child directories</div>';
             document.getElementById("child-dirs").innerHTML = childHtml;

@@ -112,11 +112,11 @@
         async function pickDirectory(inputId) {
             try {
                 const pathDisplay = document.getElementById(inputId);
-                const delimiter = "{{ delimiter }}";
+                const DELIMITER = "{{ delimiter }}";
                 
                 // Normalize paths
-                let currentPath = await normalizePath(pathDisplay.value || '', delimiter.replace('\\\\', '\\'));
-                let basePath = await normalizePath('{{ directory | tojson }}' || '', delimiter.replace('\\\\', '\\'));
+                let currentPath = await normalizePath(pathDisplay.value || '', DELIMITER.replace('\\\\', '\\'));
+                let basePath = await normalizePath('{{ directory | tojson }}' || '', DELIMITER.replace('\\\\', '\\'));
                 
                 // Set default path if empty
                 if (!currentPath) {
@@ -124,7 +124,7 @@
                 }
 
                 // Split current path into segments
-                const pathSegments = currentPath ? currentPath.split(delimiter.replace('\\\\', '\\')).filter(segment => segment) : [];
+                const pathSegments = currentPath ? currentPath.split(DELIMITER.replace('\\\\', '\\')).filter(segment => segment) : [];
                 const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : null;
 
                 // Retrieve previous directory handle
@@ -134,23 +134,12 @@
                 // Open directory picker
                 const dirHandle = await window.showDirectoryPicker({ startIn: previousDirHandle || 'documents' });
                 const selectedDirName = dirHandle.name;
-                const baseDirName = basePath.split(delimiter.replace('\\\\', '\\')).filter(segment => segment).pop();
-
-                // Validate if selection is within basePath
-                // if (basePath && !currentPath.startsWith(basePath) && selectedDirName !== baseDirName) {
-                //     const proceed = confirm(
-                //         `The selected directory "${selectedDirName}" is not within the server directory "${basePath}". Proceed anyway?`
-                //     );
-                //     if (!proceed) {
-                //         console.warn(`User canceled selection of "${selectedDirName}" as it is outside "${basePath}".`);
-                //         return;
-                //     }
-                // }
+                const baseDirName = basePath.split(DELIMITER.replace('\\\\', '\\')).filter(segment => segment).pop();
 
                 // Construct full path
                 const matchIndex = pathSegments.indexOf(selectedDirName);
                 const { fullPath, shouldAppend } = constructFullPath(
-                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter.replace('\\\\', '\\'), previousDirHandle, baseDirName
+                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, DELIMITER.replace('\\\\', '\\'), previousDirHandle, baseDirName
                 );
 
                 // Verify path with server
@@ -552,7 +541,7 @@
             }
             // const rootPath = JSON.parse('{{ directory | tojson }}');
             const rootPath = {{ directory | tojson | safe}};
-            const delimiter = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+            const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
 
             function getNativePath(...paths) {
