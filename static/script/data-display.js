@@ -642,7 +642,7 @@ function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics
     if (!analysis || !AppState.quantity_input.quantities) return '';
 
     const headers = isMM ? ['V_max', 'Km'] : ['a', 'b', 'c'];
-    const initHeight = getBtnChecked("open-all-analysis") ? "auto" : "0px";
+    const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
 
     return AppState.quantity_input.quantities.map((label, i) => {
         const coef = analysis[i]?.coefficients || null;
@@ -654,7 +654,7 @@ function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics
             <span>
                 ${label ? `${label}: ` : ''}
                 ${createToggleButton(analysisId, showText, hideText)}
-                <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
+                <div style="max-height: auto; display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
                     ${createTable(coef, rSquared, headers)}
                 </div>
             </span>
@@ -671,12 +671,12 @@ function getCalPointString(analysis, analysisId = "cal-point-analysis") {
     const rSquared = analysis.rSquared || null;
     const showText = 'See point analysis';
     const hideText = 'Hide point analysis';
-    const initHeight = getBtnChecked("open-all-analysis") ? "auto" : "0px";
+    const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
 
     return `
         <span>
             ${createToggleButton(analysisId, showText, hideText)}
-            <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
+            <div style="max-height: auto; display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
                 ${createTable(coef, rSquared, headers)}
             </div>
         </span>
