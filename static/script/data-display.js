@@ -866,7 +866,7 @@ function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo
         html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], 'rgb(75, 192, 192)', 'Non-Blanked');
     }
     document.getElementById("blanked-analysis").innerHTML = html_blank || '';
-    document.getElementById("non-blanked-analysis").innerHTML = html_blank || '';
+    document.getElementById("non-blanked-analysis").innerHTML = html_nonblank || '';
 }
 
 function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblanked) {
