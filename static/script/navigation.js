@@ -158,7 +158,7 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
         .then(data => {
             if (data && data.exists) {
                 // Use server-provided directory (with trailing separator if needed)
-                const dirPath = data.dir_with_sep || data.dir || path;
+                const dirPath = data.dir || path || data.dir_with_sep;
                 const fileName = data.filename;
 
                 updateDirectory(dirPath, deselect, changeToCalibrate);
