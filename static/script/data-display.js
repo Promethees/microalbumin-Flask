@@ -650,7 +650,7 @@ function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics
             <span>
                 ${label ? `${label}: ` : ''}
                 ${createToggleButton(analysisId, showText, hideText)}
-                <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+                <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
                     ${createTable(coef, rSquared, headers)}
                 </div>
             </span>
@@ -672,7 +672,7 @@ function getCalPointString(analysis, analysisId = "cal-point-analysis") {
     return `
         <span>
             ${createToggleButton(analysisId, showText, hideText)}
-            <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+            <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
                 ${createTable(coef, rSquared, headers)}
             </div>
         </span>
@@ -783,7 +783,7 @@ function filterBlankedData(data, isBlanked) {
 
 function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
     const buttonId = analysisId.replace("analysis", "button");
-    const allOpen = document.getElementById('open-all-analysis').checked;
+    const allOpen = getBtnChecked("open-all-analysis");
     const initialSymbol = allOpen ? '-' : '+';
     const initialTooltipText = allOpen ? hideText : showText;
     return `
@@ -798,9 +798,9 @@ function createToggleButton(analysisId = "plot-analysis", showText = 'See the an
             tooltip.innerText = this.innerHTML === '-' ? '${hideText}' : '${showText}';
             this.title = this.innerHTML === '-' ? '${hideText}' : '${showText}';
             if (this.innerHTML === '-') {
-                contentDiv.style.maxHeight = contentDiv.scrollHeight + 'px';
+                contentDiv.style.display = 'block';
             } else {
-                contentDiv.style.maxHeight = '0px';
+                contentDiv.style.display = 'none';
             }
         " style="cursor: pointer; background: #ccc; color: #000; border: none; font-weight: bold; padding: 0; margin: 0; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px;">${initialSymbol}</button>
         <span class="tooltip" style="position: absolute; top: 50%; left: 100%; margin-left: 5px; padding: 5px 10px; background: #333; color: #fff; border-radius: 4px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-50%) translateX(-10px); white-space: nowrap; pointer-events: none; z-index: 10;">${initialTooltipText}</span>
@@ -820,11 +820,11 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
     const timeUnit = getTimeUnitValue().slice(0, -1);
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
-    const initHeight = document.getElementById('open-all-analysis').checked ? "auto" : "0px";
+    const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}
         ${createToggleButton(analysisId=analysisId)}
-        <div style="max-height: ${initHeight}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;">
+        <div style="display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto; scrollbar-width:thin;" class="scrollbar-style">
             <table style="border-collapse: collapse;">
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Slope</td>
@@ -837,14 +837,14 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
                     <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Reacting Time taken to Saturation</td>
                 </tr>
                 <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.slope}${unitDisplay}/${timeUnit}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.linearStart} ${timeUnit}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.linearEnd} ${timeUnit}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.maxRate}${unitDisplay}/${timeUnit}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.maxRateStart} ${timeUnit}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${analysisInfo.maxRateEnd} ${timeUnit}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${displaySat}${unitDisplay}</td>
-                    <td style="border: 1px solid #ddd; padding: 8px;">${displayTimeSat} ${timeUnit}</td>
+                    <td class="analysis-cell">${analysisInfo.slope}${unitDisplay}/${timeUnit}</td>
+                    <td class="analysis-cell">${analysisInfo.linearStart} ${timeUnit}</td>
+                    <td class="analysis-cell">${analysisInfo.linearEnd} ${timeUnit}</td>
+                    <td class="analysis-cell">${analysisInfo.maxRate}${unitDisplay}/${timeUnit}</td>
+                    <td class="analysis-cell">${analysisInfo.maxRateStart} ${timeUnit}</td>
+                    <td class="analysis-cell">${analysisInfo.maxRateEnd} ${timeUnit}</td>
+                    <td class="analysis-cell">${displaySat}${unitDisplay}</td>
+                    <td class="analysis-cell">${displayTimeSat} ${timeUnit}</td>
                 </tr>
             </table>
         </div>
