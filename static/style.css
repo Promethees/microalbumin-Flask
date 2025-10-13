@@ -626,6 +626,12 @@ body.dark #swal-edit-table tr.selected td {
     min-width: 80px;
 }
 
+.analysis-cell {
+    border: 1px solid #ddd; 
+    padding: 8px; 
+    text-align: left; 
+}
+
 /* ==========================================================================
    Scrollable Containers
    ========================================================================== */

@@ -610,12 +610,12 @@ function createTableRow(coef, rSquared, expectedLength) {
     // Pad coefficients to expected length with null if necessary
     const paddedCoef = coef && coef.length ? coef : Array(expectedLength).fill(null);
     const coefCells = paddedCoef.map(value => `
-        <td style="border: 1px solid #ddd; padding: 8px;">${formatCoefficient(value)}</td>
+        <td class="analysis-cell">${formatCoefficient(value)}</td>
     `).join('');
     return `
         <tr>
             ${coefCells}
-            <td style="border: 1px solid #ddd; padding: 8px;">${formatCoefficient(rSquared)}</td>
+            <td class="analysis-cell">${formatCoefficient(rSquared)}</td>
         </tr>
     `;
 }
@@ -625,9 +625,9 @@ function createTable(coef, rSquared, headers) {
         <table style="border-collapse: collapse;">
             <tr>
                 ${headers.map(header => `
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">${header}</td>
+                    <td style="font-weight: bold;" class="analysis-cell">${header}</td>
                 `).join('')}
-                <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">rSquared</td>
+                <td style="font-weight: bold;" class="analysis-cell">rSquared</td>
             </tr>
             ${createTableRow(coef, rSquared, headers.length)}
         </table>
@@ -827,14 +827,14 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
         <div style="display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto; scrollbar-width:thin;" class="scrollbar-style">
             <table style="border-collapse: collapse;">
                 <tr>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Slope</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Linear start</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Linear end</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">maxRate</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">maxRateStart</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">maxRateEnd</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Saturation</td>
-                    <td style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold;">Reacting Time taken to Saturation</td>
+                    <td style="font-weight: bold;" class="analysis-cell">Slope</td>
+                    <td style="font-weight: bold;" class="analysis-cell">Linear start</td>
+                    <td style="font-weight: bold;" class="analysis-cell">Linear end</td>
+                    <td style="font-weight: bold;" class="analysis-cell">maxRate</td>
+                    <td style="font-weight: bold;" class="analysis-cell">maxRateStart</td>
+                    <td style="font-weight: bold;" class="analysis-cell">maxRateEnd</td>
+                    <td style="font-weight: bold;" class="analysis-cell">Saturation</td>
+                    <td style="font-weight: bold;" class="analysis-cell">Reacting Time taken to Saturation</td>
                 </tr>
                 <tr>
                     <td class="analysis-cell">${analysisInfo.slope}${unitDisplay}/${timeUnit}</td>
