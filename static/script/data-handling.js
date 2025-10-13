@@ -1,42 +1,51 @@
-function selectFile(fileName, button, tableSelector = "#file-table") {   
-    // Temporarily disable the button to prevent multiple clicks
-    $(button).prop("disabled", true);
-    setTimeout(() => {
-        $(button).prop("disabled", false);
-    }, 1000); // Re-enable the button after 1 second
+function selectFile(fileName, button, tableSelector = "#file-table") {
+    // Disable the clicked button temporarily to prevent rapid clicks
+    button.disabled = true;
+    setTimeout(() => button.disabled = false, 1000);
 
     // Clear previous selection and highlight the current row
-    $(`${tableSelector} tr`).removeClass("selected");
-    $(button).closest("tr").addClass("selected");
+    const table = document.querySelector(tableSelector);
+    table.querySelectorAll("tr").forEach(row => row.classList.remove("selected"));
+    button.closest("tr").classList.add("selected");
 
     if (tableSelector === "#file-table") {
         AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
-        $("#copy-file-btn").prop("disabled", false);
-        $("#split-mode").prop("checked", false);
-        $("#blanked-canvas, #non-blanked-canvas").hide();
-        $("#range-value-start").val(0);
-        $("#range-value-end").val(1000);
-        $("#range-value-start").prop("disabled", false);
-        $("#range-value-end").prop("disabled", false);
-        $('.quantity-checkbox').each(function() {
-            $(this).prop("checked", true);
-        });
-        processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
-    } else if (tableSelector === "#json-table") {
-        AppState.currentJSON = fileName;
-        $("#copy-json-btn").prop("disabled", false);
-        $("#right-deselect-btn").removeClass("hidden");
 
-        fetchJSON(AppState.currentJSON, function (JSON_content, JSON_path) {
-            const display = $("#json-display").empty();
+        $id("copy-file-btn").disabled = false;
+        $id("split-mode").checked = false;
+
+        // Hide both canvases
+        ["blanked-canvas", "non-blanked-canvas"].forEach(id => {
+            const el = $id(id);
+            if (el) el.style.display = "none";
+        });
+
+        // Reset range values
+        $id("range-value-start").value = 0;
+        $id("range-value-end").value = 1000;
+        $id("range-value-start").disabled = false;
+        $id("range-value-end").disabled = false;
+
+        // Check all quantity-checkbox elements
+        document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
+
+        processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+    } 
+    else if (tableSelector === "#json-table") {
+        AppState.currentJSON = fileName;
+
+        $id("copy-json-btn").disabled = false;
+        $hidden(["right-deselect-btn"], false);
+
+        fetchJSON(AppState.currentJSON, (JSON_content, JSON_path) => {
+            const display = $id("json-display");
+            display.innerHTML = ""; // clear previous content
 
             const fitType = JSON_content.fit_type || "N/A";
             const measFor = JSON_content.for_meas || "N/A";
             const blankType = JSON_content.for_blank_type || "N/A";
             const mode = AppState.currentMeasurementMode || "N/A";
-
-            // --- Helpers ---
             const isMenten = fitType.toLowerCase().includes("menten");
 
             const labelCoefficients = (coefs) => {
@@ -53,71 +62,104 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 exponential: "\\( [S] = a e^{q b} + c \\)",
                 "michaelis-menten": "\\( [S] = \\dfrac{K_m q}{V_{max} - q} \\)"
             };
+            const getFormula = (type) => formulas[type.toLowerCase()] || "No formula available for this fit type.";
 
-            const getFormula = (type) =>
-                formulas[type.toLowerCase()] || "No formula available for this fit type.";
-
-            // --- Build Tables ---
+            // --- Build tables dynamically ---
             const buildCoefTable = (json) => {
-                let rows = "";
+                const table = document.createElement("table");
+                table.border = "1";
+                table.cellPadding = "1";
+                table.cellSpacing = "0";
+                table.className = "table";
+                table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 1px;";
+
+                const thead = document.createElement("thead");
+                thead.innerHTML = `
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Fit Coefficients</th>
+                    </tr>
+                `;
+                const tbody = document.createElement("tbody");
+
                 for (const [key, value] of Object.entries(json)) {
                     if (["fit_type", "for_meas", "for_blank_type"].includes(key)) continue;
-                    rows += `
-                        <tr>
-                            <td>${key}</td>
-                            <td>${labelCoefficients(value?.fit_coef)}</td>
-                        </tr>`;
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${key}</td>
+                        <td>${labelCoefficients(value?.fit_coef)}</td>
+                    `;
+                    tbody.appendChild(tr);
                 }
-                return `
-                    <h4 style="margin-bottom: 1px; margin-top: 0px;">Fitting Coefficients</h4>
-                    <table border="1" cellspacing="0" cellpadding="1" class="table"
-                        style="width:100%; text-align:left; margin-top: 0px; margin-bottom: 1px;">
-                        <thead>
-                            <tr>
-                                <th>Parameter</th><th>Fit Coefficients</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>`;
+
+                const heading = document.createElement("h4");
+                heading.textContent = "Fitting Coefficients";
+                heading.style.margin = "0px 0px 1px 0px";
+
+                table.appendChild(thead);
+                table.appendChild(tbody);
+
+                display.appendChild(heading);
+                display.appendChild(table);
             };
 
-            const buildInfoTable = (info) => `
-                <h4 style="margin-bottom: 1px; margin-top: 0px;">Fit Information</h4>
-                <table border="1" cellspacing="0" cellpadding="1" class="table"
-                    style="width:100%; text-align:left; margin-top: 0px; margin-bottom: 0px;">
-                    <tbody>
-                        ${Object.entries(info)
-                            .map(
-                                ([key, value]) =>
-                                    `<tr><th style="width:30%;">${key}</th><td>${value}</td></tr>`
-                            )
-                            .join("")}
-                    </tbody>
-                </table>`;
+            const buildInfoTable = (info) => {
+                const table = document.createElement("table");
+                table.border = "1";
+                table.cellPadding = "1";
+                table.cellSpacing = "0";
+                table.className = "table";
+                table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 0px;";
 
-            // --- Combine and render ---
+                const tbody = document.createElement("tbody");
+                for (const [key, value] of Object.entries(info)) {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `<th style="width:30%;">${key}</th><td>${value}</td>`;
+                    tbody.appendChild(tr);
+                }
+
+                const heading = document.createElement("h4");
+                heading.textContent = "Fit Information";
+                heading.style.margin = "0px 0px 1px 0px";
+
+                table.appendChild(tbody);
+
+                display.appendChild(heading);
+                display.appendChild(table);
+            };
+
+            // --- Build info data ---
             const infoData = {
                 "Current Mode": mode,
                 "Fit Type": fitType,
-                Formula: getFormula(fitType),
+                "Formula": getFormula(fitType),
                 "[S]": "Substrate Concentration",
                 "q": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
                 "Measurement For": measFor,
                 "Blank Type": blankType
             };
 
-            const html = buildCoefTable(JSON_content) + "<br>" + buildInfoTable(infoData);
+            // Render tables
+            buildCoefTable(JSON_content);
+            display.appendChild(document.createElement("br"));
+            buildInfoTable(infoData);
 
-            display.html(html);
+            // Render math if available
             if (window.MathJax) MathJax.typesetPromise();
+
+            // Update state
             AppState.currentJSONcontent = JSON_content;
-            if (AppState.currentFile) 
+
+            // Display data if file selected
+            if (AppState.currentFile) {
                 processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+            }
         });
-    }    
-    // Smoothly scroll to the bottom of the page
+    }
+
+    // Smoothly scroll to section and blink
     scrollWhenVisible("data-display-section", 1000);
-    blinkingItem('#chart-container', 3000);
+    blinkingItem("chart-container", 3000);
 }
 
 function copyFile(tableSelector = "#file-table") {
@@ -133,7 +175,7 @@ function copyFile(tableSelector = "#file-table") {
         return;
     }
 
-    const filePath = tableSelector === "#file-table" ? $("#directory").val() : currentFile;
+    const filePath = tableSelector === "#file-table" ? document.getElementById("directory").value : currentFile;
 
     $.ajax({
         url: '/copy_file',
@@ -147,10 +189,10 @@ function copyFile(tableSelector = "#file-table") {
         },
         success: function(response) {
             if (response.status === 'success') {
-                if ($("#no-swal-checkbox").is(":checked")) {
+                if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
-                        updateDirectory($("#directory").val());
+                        updateDirectory(document.getElementById("directory").value);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -165,7 +207,7 @@ function copyFile(tableSelector = "#file-table") {
                     showConfirmButton: false
                 }).then(() => {
                     if (tableSelector === "#file-table") {
-                        updateDirectory($("#directory").val());
+                        updateDirectory(document.getElementById("directory").value);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -212,30 +254,46 @@ function processDataDisplay(fileName, jsonFileContent=null) {
 }
 
 
-function deselectFile(tableSelector="#file-table") {
-    $(`${tableSelector} tr`).removeClass("selected");
+function deselectFile(tableSelector = "#file-table") {
+    // Remove "selected" class from all rows
+    document.querySelectorAll(`${tableSelector} tr`).forEach(tr => tr.classList.remove("selected"));
+
     if (tableSelector === "#file-table") {
         AppState.responseData = null;
         destroyCharts();
-        $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
+
+        // Hide canvases
+        ["plot-canvas", "blanked-canvas", "non-blanked-canvas"].forEach(id => {
+            const el = $id(id);
+            if (el) el.style.display = "none";
+        });
+
         AppState.currentFile = null;
-        $("#plot-analysis").text("");
-        $("#blank-analysised").text("");
-        $("#non-blank-analysised").text("");
+
+        // Clear analysis text fields
+        ["plot-analysis", "blanked-analysis", "non-blanked-analysis"].forEach(id => $text(id, ""));
+
         updateFileDisplay(AppState.currentFile);
-        $("#copy-file-btn").prop("disabled", true);
+        $disable(["copy-file-btn"], true);
+
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = null;
         AppState.currentJSONcontent = null;
-        $("#json-display").text("");
+
+        $text("json-display", "");
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
-        $("#select-quantity-section").addClass("hidden");
-        $("#derived-concentration-section").addClass("hidden");
-        $("#blank-derived-concentration-section").addClass("hidden");
-        $("#non-blank-derived-concentration-section").addClass("hidden");
-        $("#point-json-exp-section").addClass("hidden");
-        $("#copy-json-btn").prop("disabled", true);
-        $("#right-deselect-btn").addClass("hidden");
+
+        // Hide all JSON-related sections
+        [
+            "select-quantity-section",
+            "derived-concentration-section",
+            "blank-derived-concentration-section",
+            "non-blank-derived-concentration-section",
+            "point-json-exp-section"
+        ].forEach(id => $toggleClass(id, "hidden", true));
+
+        $disable(["copy-json-btn"], true);
+        $toggleClass("right-deselect-btn", "hidden", true);
     }
 }
 
@@ -249,12 +307,12 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 icon: 'error',
                 confirmButtonText: 'OK'
             }).then(() => {
-                blinkingItem('#terminate-script-btn', 5000);
+                blinkingItem('terminate-script-btn', 5000);
             });
             return;
         }
 
-        const skipConfirmation = $("#no-swal-checkbox").is(":checked");
+        const skipConfirmation = getBtnChecked("no-swal-checkbox");
 
         const proceedDelete = () => {
             // Remove the file from the table
@@ -269,7 +327,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
                 $.post('/delete_file', { 
                     filename: fileName, 
-                    path: $("#directory").val(), 
+                    path: document.getElementById("directory").value, 
                     tabletype: tableSelector 
                 }, handleResponse).fail(handleError);
             } else if (tableSelector === "#json-table") {
@@ -309,7 +367,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                     icon: 'error',
                     confirmButtonText: 'OK'
                 }).then(() => {
-                    blinkingItem('#terminate-script-btn', 5000);
+                    blinkingItem('terminate-script-btn', 5000);
                 });
             }
         };
@@ -331,7 +389,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 icon: 'error',
                 confirmButtonText: 'OK'
             }).then(() => {
-                blinkingItem('#terminate-script-btn', 5000);
+                blinkingItem('terminate-script-btn', 5000);
             });
         };
 
@@ -370,20 +428,20 @@ function settingDerivedCon(jsonFile) {
                 }
             }
             else { 
-                if (!$("#split-mode").is(":checked")) {
+                if (!getBtnChecked("split-mode")) {
                     derived_section = document.getElementById('derived-concentration-section');
                     derived_con_text = document.getElementById('der-con-value');
                 }
             }
             break;
         case "BLANKED":
-            if ($("#split-mode").is(":checked")) {
+            if (getBtnChecked("split-mode")) {
                 derived_section = document.getElementById('blank-derived-concentration-section');
                 derived_con_text = document.getElementById('blank-der-con-value');
             }
             break;
         case "NON-BLANKED":
-            if ($("#split-mode").is(":checked")) {
+            if (getBtnChecked("split-mode")) {
                 derived_section = document.getElementById('non-blank-derived-concentration-section');
                 derived_con_text = document.getElementById('non-blank-der-con-value');
             }
@@ -425,7 +483,7 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
 
 function fetchData(filename, jsonFile) {
     $.get('/get_data', {
-        file: $("#directory").val() + delimiter + filename
+        file: document.getElementById("directory").value + delimiter + filename
     }, function(response) {
         if (response.data && response.data.length > 0) {
             let derivedConSettings = null;
@@ -445,37 +503,25 @@ function fetchData(filename, jsonFile) {
                 if (AppState.multiSource) {
                     if (derived_section && Array.isArray(derived_section)) {
                         derived_section.forEach(section => section.classList.remove("hidden"));
-                        if (AppState.currentMeasurementMode === "kinetics") {
-                            $("#select-quantity-section").removeClass("hidden");
-                        } else {
-                            $("#select-quantity-section").addClass("hidden");
-                        }
+                        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
                         derived_con_text.forEach(section => blinkingItem(section, null));
                     }
                     else {
-                        $("#select-quantity-section").addClass("hidden");
+                        $hidden(["select-quantity-section"], true);
                         derived_section.forEach(section => section.classList.add("hidden"));
                     }
                 }
                 else {
                     if (derived_section && derived_section.length !== 0) {
                         derived_section.classList.remove("hidden");
-                        if (AppState.currentMeasurementMode === "kinetics") {
-                            $("#select-quantity-section").removeClass("hidden");
-                        } else {
-                            $("#select-quantity-section").addClass("hidden");
-                        }
-                        if (AppState.currentMeasurementMode === "kinetics") {
-                            $("#select-quantity-section").removeClass("hidden");
-                        } else {
-                            $("#select-quantity-section").addClass("hidden");
-                        }
+                        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
                         blinkingItem(derived_con_text, null);
                     } else { // derived_section is null -> hide all
-                        $("#select-quantity-section").addClass("hidden");
-                        $("#derived-concentration-section").addClass("hidden");
-                        $("#blank-derived-concentration-section").addClass("hidden");
-                        $("#non-blank-derived-concentration-section").addClass("hidden");
+                        $hidden(["select-quantity-section", 
+                                "derived-concentration-section",
+                                "blank-derived-concentration-section",
+                                "non-blank-derived-concentration-section"
+                                ])
                     }
                 }
             }
@@ -557,8 +603,8 @@ function fetchData(filename, jsonFile) {
             }
 
         } else {
-            $("#plot-canvas, #blanked-canvas, #non-blanked-canvas").hide();
-            $("#plot-analysis").html(`<span style="color: red;">No data available</span>`);
+            $hidden(["plot-canvas", "blanked-canvas", "non-blanked-canvas"]);
+            document.getElementById("plot-analysis").innerHTML = `<span style="color: red;">No data available</span>`;
         }
     }).fail(function(xhr, status, error) {
         console.error("Failed to fetch data:", status, error, xhr.responseText);
@@ -584,19 +630,17 @@ function getKineticValue(property, blankType, multi_source=AppState.multiSource)
 }
 
 function updateRefCalPoint(jsonFile) {
-    const calPoint = $("#cal-point");
-    const timeUnitSet = $("#time-unit").val();
     const jsonTimePoint = jsonFile["time"];
     const jsonTimeUnit = jsonFile["time-unit"];
     
     // Convert time units
-    const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(timeUnitSet);
+    const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(getTimeUnitValue());
     AppState.refCalPoint = jsonTimePoint * conversionFactor;
-    calPoint.text(AppState.refCalPoint);
+    document.getElementById("cal-point").textContent = AppState.refCalPoint;
 }
 
 function processPointMode(jsonFile, derived_con_text) {
-    $("#point-json-exp-section").removeClass("hidden");
+    $hidden(["point-json-exp-section"], false);
     let blankTypeOrSourceIndex;
 
     if (derived_con_text && derived_con_text.id.includes("source-")) {
@@ -604,16 +648,16 @@ function processPointMode(jsonFile, derived_con_text) {
     } else {
         blankTypeOrSourceIndex = jsonFile["for_blank_type"];
     }
-    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier($("#time-unit").val()), blankTypeOrSourceIndex).toFixed(4);
+    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue()), blankTypeOrSourceIndex).toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
         if (derived_con_text && derived_con_text.id.includes("source-")) {
-            $("#add-json-section").append(`The estimated ${AppState.globalAnalysis.meas} value read from source-${blankTypeOrSourceIndex} is ${estValueRead}${unitPrinted}.<br/>`);
+            $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from source-${blankTypeOrSourceIndex} is ${estValueRead}${unitPrinted}.<br/>`);
         } else {
-            $("#add-json-section").append(`The estimated ${AppState.globalAnalysis.meas} value read from data source is ${estValueRead}${unitPrinted}.`);
+            $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from data source is ${estValueRead}${unitPrinted}.`);
         }
     } else {
-        $("#add-json-section").append("");
+        $append("add-json-section", "");
     }
     try {
         calculated_con = computeFit(parseFloat(estValueRead), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
@@ -626,11 +670,9 @@ function processPointMode(jsonFile, derived_con_text) {
 
 function handleCalibrationMode() {
     if (calDiv.getAttribute('data-value') === "kinetics") {
-        $("#select-quantity-section").removeClass("hidden");
+        $hidden(["select-quantity-section"], false);
     }
-    $("#derived-concentration-section").addClass("hidden");
-    $("#blank-derived-concentration-section").addClass("hidden");
-    $("#non-blank-derived-concentration-section").addClass("hidden");
+    $hidden(["derived-concentration-section", "blank-derived-concentration-section", "non-blank-derived-concentration-section"]);
 }
 
 function updatePlotBasedOnMode(jsonFile) {
@@ -644,7 +686,7 @@ function updatePlotBasedOnMode(jsonFile) {
             const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
             console.log("Give me uniqueTimePoints ", uniqueTimePoints);
             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
-            const timePoint = $("#regressed-time-point").val();
+            const timePoint = document.getElementById("regressed-time-point").value;
             const processingData = AppState.responseData.filter(row => 
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
@@ -653,7 +695,7 @@ function updatePlotBasedOnMode(jsonFile) {
     } else {
         if (AppState.currentMeasurementMode === "point" && jsonFile) {
             updateRefCalPoint(jsonFile);
-            $("#add-json-section").text("");
+            document.getElementById("add-json-section").textContent = "";
         }
         switch (AppState.numSources) {
             case 1:
@@ -699,7 +741,7 @@ function toggleMode() {
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
-            validateWindowSize(parseInt($("#window-size").val()));
+            validateWindowSize(getValInt("window-size"));
             drawMeasurementChart();
         } else fetchData(AppState.currentFile, AppState.currentJSONcontent);
     }
@@ -734,41 +776,42 @@ function exportData() {
     }
     
     if (AppState.multiSource) {
-        if ($("#exp-json-sensor").val() === "ALL") {
+        if (document.getElementById("exp-json-sensor").value === "ALL") {
             for (let i = 0; i < AppState.numSources; i++) {
                 if ($(`#con-value-read-source-${parseInt(i)}`).val() === "") {
                     alert(`Please enter a concentration value for source-${parseInt(i) + 1}`);
-                    blinkingItem(`#con-value-read-source-${parseInt(i)}`, 5000);
+                    blinkingItem(`con-value-read-source-${parseInt(i)}`, 5000);
                     return;
                 }
             }
         } else {
-            const sourceIndex = $("#exp-json-sensor").val();
+            const sourceIndex = document.getElementById("exp-json-sensor").value;
             if ($(`#con-value-read-source-${parseInt(sourceIndex) - 1}`).val() === "") {
                 alert(`Please enter a concentration value for source-${parseInt(sourceIndex)}`);
-                blinkingItem(`#con-value-read-source-${parseInt(sourceIndex) - 1}`, 5000);
+                blinkingItem(`con-value-read-source-${parseInt(sourceIndex) - 1}`, 5000);
                 return;
             }
         }
     } else {
-        if ($("#con-value-read").val() === "") {
+        if (document.getElementById("con-value-read").value === "") {
             alert("Please enter a concentration value before exporting data.");
-            blinkingItem('#con-value-read', 5000);
+            blinkingItem('con-value-read', 5000);
             return;
         }
     }
-    AppState.processedExpPath = $("#same-dir-as-data").is(":checked")
-    ? $("#directory").val().trim() || ""
-    : $("#save-dir").val().trim() || "";
-    const saveFile = $("#save-file").val().trim() || "results";
-    const concentration = $("#con-value-read").val();
+    AppState.processedExpPath = getBtnChecked("same-dir-as-data")
+    ? (document.getElementById("directory").value.trim() || "")
+    : (document.getElementById("save-dir").value.trim() || "");
+
+    const saveFile = document.getElementById("save-file").value.trim() || "results";
+    const concentration = document.getElementById("con-value-read").value;
     let analysisData = null;
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
     // console.log("Global analysis data is ", AppState.globalAnalysis);
     if (AppState.currentMeasurementMode === "kinetics") {
         if (AppState.multiSource) {
-            if ($("#exp-json-sensor").val() === "ALL") {
+            if (document.getElementById("exp-json-sensor").value === "ALL") {
                 for (let i = 0; i < AppState.numSources; i++) {
                     analysisData = {
                         maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
@@ -778,14 +821,10 @@ function exportData() {
                         measurement: AppState.globalAnalysis.meas,
                         measUnit: AppState.globalAnalysis.meas_unit
                     }
-                    if (i === 0) {
-                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
-                    } else {
-                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED", false);
-                    }
+                    sendExportData(AppState.processedExpPath, saveFile, analysisData, document.getElementById(`con-value-read-source-${i}`).value, "MIXED", i === 0);
                 }
             } else {
-                const exportSensor = parseInt($("#exp-json-sensor").val()) - 1;
+                const exportSensor = getValInt("exp-json-sensor") - 1;
                 analysisData = {
                     maxrate: AppState.globalAnalysis.sources[exportSensor].maxrate * getTimeUnitMultiplier('minutes'),
                     slope: AppState.globalAnalysis.sources[exportSensor].slope * getTimeUnitMultiplier('minutes'),
@@ -794,12 +833,12 @@ function exportData() {
                     measurement: AppState.globalAnalysis.meas,
                     measUnit: AppState.globalAnalysis.meas_unit
                 }
-                sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${exportSensor}`).val(), "MIXED");
+                sendExportData(AppState.processedExpPath, saveFile, analysisData, document.getElementById(`con-value-read-source-${exportSensor}`).value, "MIXED");
             }
         } else {
-            switch ($("#exp-json-blank-type").val()) {
+            switch (document.getElementById("exp-json-blank-type").value) {
                 case "MIXED":
-                    if (!$("#split-mode").is(":checked")) {
+                    if (!getBtnChecked("split-mode")) {
                         analysisData = {
                             maxrate: AppState.globalAnalysis.maxrate * getTimeUnitMultiplier('minutes'),
                             slope: AppState.globalAnalysis.slope * getTimeUnitMultiplier('minutes'),
@@ -812,7 +851,7 @@ function exportData() {
                     break;
 
                 case "BLANKED":
-                    if ($("#split-mode").is(":checked")) {
+                    if (getBtnChecked("split-mode")) {
                         analysisData = {
                             maxrate: AppState.globalAnalysis.maxrate_blanked * getTimeUnitMultiplier('minutes'),
                             slope: AppState.globalAnalysis.slope_blanked * getTimeUnitMultiplier('minutes'),
@@ -825,7 +864,7 @@ function exportData() {
                     break;
 
                 case "NON-BLANKED": 
-                    if ($("#split-mode").is(":checked")) {
+                    if (getBtnChecked("split-mode")) {
                         analysisData = {
                             maxrate: AppState.globalAnalysis.maxrate_non_blanked * getTimeUnitMultiplier('minutes'),
                             slope: AppState.globalAnalysis.slope_non_blanked * getTimeUnitMultiplier('minutes'),
@@ -837,14 +876,14 @@ function exportData() {
                     }
                     break;
             }
-            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
+            sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, document.getElementById("exp-json-blank-type").value);
         }
     } else if (AppState.currentMeasurementMode === "point") {
         // Store current experiment values
-        const currExpTimePoint = $("#exp-json-time-value").val();
+        const currExpTimePoint = getValFloat("exp-json-time-value");
         if (currExpTimePoint && !isNullOrArrayOfNull(AppState.globalEstimatedValue)) { 
             if (AppState.multiSource) {
-                if ($("#exp-json-sensor").val() === "ALL") {
+                if (document.getElementById("exp-json-sensor") === "ALL") {
                     for (let i = 0; i < AppState.numSources; i++) {
                             analysisData = {
                             estValue: AppState.globalEstimatedValue[i].toFixed(4),
@@ -852,22 +891,17 @@ function exportData() {
                             measurement: AppState.globalAnalysis.meas,
                             measUnit: AppState.globalAnalysis.meas_unit
                         } 
-                        if (i === 0) {
-                            sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
-                        } else {
-                            sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED", false);
-                        }
-                        sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${i}`).val(), "MIXED");
+                        sendExportData(AppState.processedExpPath, saveFile, analysisData, document.getElementById(`con-value-read-source-${i}`), "MIXED", i === 0);
                     }
                 } else {
-                    const sourceIndex = parseInt($("#exp-json-sensor").val()) - 1;
+                    const sourceIndex = getValInt("exp-json-sensor") - 1;
                     analysisData = {
                         estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
                         timePoint: currExpTimePoint,
                         measurement: AppState.globalAnalysis.meas,
                         measUnit: AppState.globalAnalysis.meas_unit
                     } 
-                    sendExportData(AppState.processedExpPath, saveFile, analysisData, $(`#con-value-read-source-${sourceIndex}`).val(), "MIXED");
+                    sendExportData(AppState.processedExpPath, saveFile, analysisData, document.getElementById(`con-value-read-source-${sourceIndex}`).value, "MIXED");
                 }
             } else {
                 analysisData = {
@@ -876,7 +910,7 @@ function exportData() {
                     measurement: AppState.globalAnalysis.meas,
                     measUnit: AppState.globalAnalysis.meas_unit
                 } 
-                sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, $("#exp-json-blank-type").val());
+                sendExportData(AppState.processedExpPath, saveFile, analysisData, concentration, document.getElementById("exp-json-blank-type").value);
             }
         } else {
             alert("Please set the reference time point to export data or ensure time point is within the recorded time range.");
@@ -931,21 +965,21 @@ function exportJSONCoef() {
     }
     
     const selectElement = document.getElementById('regressed-quantity');
-    if (calDiv.getAttribute('data-value') === "point" && (!$("#regressed-time-point").val())){
+    if (calDiv.getAttribute('data-value') === "point" && (!$document.getElementById("regressed-time-point").value)){
         alert("Please set time point to regress data from");
         return null;
     } else {
         if (AppState.exp_json_content) {
             const data = {
-                fit_type: $("#exp-json-regress-algo").val(),
+                fit_type: document.getElementById("exp-json-regress-algo").value,
                 for_meas: AppState.exp_json_content.meas,
-                for_blank_type: $("#exp-json-blank-type").val(),
+                for_blank_type: document.getElementById("exp-json-blank-type").value,
                 coef_content: AppState.exp_json_content.analysis,
-                time: $("#regressed-time-point").val(),
-                file_name: $("#save-json-file").val(),
+                time: document.getElementById("regressed-time-point").value,
+                file_name: document.getElementById("save-json-file").value,
                 cal_mode: calDiv.getAttribute('data-value'),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
-                threshold_val: $("#threshold-value").val(),
+                threshold_val: getValFloat("threshold-value"),
                 isMultiSource: AppState.multiSource,
                 numSources: AppState.numSources
             }

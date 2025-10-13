@@ -271,8 +271,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }
             return html;
         }
-        const filePath = tableSelector === '#file-table' ? $("#directory").val() : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
-        // const filePath = tableSelector === '#file-table' ? $("#directory").val() : getNativePath(AppState.jsonPath, AppState.multiSource ? `${AppState.numSources}_sensors` : 'single_sensor', AppState.currentMeasurementMode);
+        const filePath = tableSelector === '#file-table' ? document.getElementById("directory").value : AppState.jsonPath + delimiter + AppState.currentMeasurementMode;
         console.log("File Path is ", filePath);
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function(content) {
@@ -473,10 +472,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 selectFile(newFileName, button, tableSelector);
                                 toggleMode();
                             }
-                            if ($("#no-swal-checkbox").is(":checked")) {
+                            if (getBtnChecked("no-swal-checkbox")) {
                                 console.log(textMsg);
                                 if (tableSelector === "#file-table") {
-                                    updateDirectory($("#directory").val());
+                                    updateDirectory(document.getElementById("directory").value);
                                 } else if (tableSelector === "#json-table") {
                                     updateJSONTable();
                                 }

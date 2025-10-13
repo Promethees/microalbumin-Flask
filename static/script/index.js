@@ -152,16 +152,16 @@ function clearCache() {
                 // Clear localStorage and sessionStorage
                 localStorage.clear();
                 sessionStorage.clear();
-                $("#log-display").append("Client-side cache cleared.\n");
+                $append("log-display", "Client-side cache cleared.\n");
                 // Optionally reload the page to ensure fresh content
                 window.location.reload(true); // true forces reload from server, bypassing cache
             } else {
-                $("#log-display").append(`Error clearing cache: ${response.message}\n`);
+                $append("log-display", `Error clearing cache: ${response.message}\n`);
             }
         },
         error: function(jqXHR, textStatus, errorThrown) {
             console.log("Clear cache AJAX error:", textStatus, errorThrown);
-            $("#log-display").append("Error: Failed to clear cache\n");
+            $append("log-display", "Error: Failed to clear cache\n");
         }
     });
 }
@@ -198,7 +198,7 @@ $(document).ready(function() {
                 `<div onclick="updateDirectory('${parentResponse.parent}', true)" ondblclick="browseDirectory(true)">${parentResponse.parent.split(delimiter).pop()}</div>` : 
                 '<div>No parent directory</div>') : 
             '<div>No parent directory</div>';
-        $("#parent-dir").html(parentHtml);
+        document.getElementById("parent-dir").innerHTML = parentHtml;
 
         $.get('/get_children', function(childResponse) {
             console.log("Child directories:", childResponse.children);
@@ -209,14 +209,14 @@ $(document).ready(function() {
                     `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory(true)">${dir.split(delimiter).pop()}</div>`
                 ).join('') : 
                 '<div>No child directories</div>';
-            $("#child-dirs").html(childHtml);
+            document.getElementById("child-dirs").innerHTML = childHtml;
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.log("Error fetching child directories:", textStatus, errorThrown);
-            $("#error-message").text("Error fetching child directories").show();
+            $showText("error-message", "Error fetching child directories");
         });
     }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("Error fetching parent directory:", textStatus, errorThrown);
-        $("#error-message").text("Error fetching parent directory").show();
+        $showText("error-message", "Error fetching parent directory");
     });
 
     // Poll logs every 2 seconds if script is running
@@ -230,7 +230,7 @@ $(document).ready(function() {
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function() {
         if (!serverAvailable) return;
-        const currentDir = $("#directory").val();
+        const currentDir = document.getElementById("directory").value;
         if (currentDir) {
             updateDirectory(currentDir, false);
         }
@@ -245,16 +245,16 @@ $(document).ready(function() {
                     AppState.prevFile = AppState.currentFile;
                 }
             }
-            $("#data-display-section").removeClass("hidden");
+            $hidden(["data-display-section"], false);
         } else {
-            $("#data-display-section").addClass("hidden");
+            $hidden(["data-display-section"]);
         }
 
         if (!AppState.currentJSON) {
-            // $("#select-quantity-section").addClass("hidden");
-            $("#derived-concentration-section").addClass("hidden");
-            $("#blank-derived-concentration-section").addClass("hidden");
-            $("#non-blank-derived-concentration-section").addClass("hidden");
+            $hidden(["derived-concentration-section",
+                "blank-derived-concentration-section",
+                "non-blank-derived-concentration-section"
+            ])
         }
 
 
@@ -268,7 +268,7 @@ $(document).ready(function() {
         });
     });
 
-    $("#cal-json-exp-section").on("change", function() {
+    document.getElementById("cal-json-exp-section").addEventListener("change", () => {
         AppState.currentFile = null;
     });
 
@@ -279,7 +279,7 @@ $(document).ready(function() {
         })
     })
 
-    document.getElementById('#data-display-section')
+    document.getElementById('data-display-section')
     .classList.toggle('hidden', !AppState.currentFile);
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
@@ -334,8 +334,8 @@ function kineticsModeBehaviour() {
         'normalize-mode-section'
     ];
 
-    addHidden.forEach(id => document.getElementById(id)?.classList.add('hidden'));
-    removeHidden.forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+    $hidden(addHidden, true);
+    $hidden(removeHidden, false)
 
     // Configure range inputs
     ['range-value-start', 'range-value-end'].forEach(id => {
@@ -379,9 +379,9 @@ function pointModeBehaviour() {
         'normalize-mode-section'
     ];
 
-    addHidden.forEach(id => document.getElementById(id)?.classList.add('hidden'));
-    removeHidden.forEach(id => document.getElementById(id)?.classList.remove('hidden'));
-
+    $hidden(addHidden, true);
+    $hidden(removeHidden, false);
+    
     // Configure range inputs
     ['range-value-start', 'range-value-end'].forEach(id => {
         const el = document.getElementById(id);
@@ -424,8 +424,8 @@ function calModeBehaviour() {
         'func-desc'
     ];
 
-    addHidden.forEach(id => document.getElementById(id)?.classList.add('hidden'));
-    removeHidden.forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+    $hidden(addHidden, true);
+    $hidden(removeHidden, false);
 
     // Configure range input
     const rangeValue = document.getElementById('range-value');
@@ -484,46 +484,46 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     // console.log("Updating directory to:", path);
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
-            $("#directory").val(response.path);
-            $("#directory-top").val(response.path);
-            if ($("#same-dir-as-data").is(":checked")) {
-                $("#save-dir").val(response.path);
+            document.getElementById("directory").value = response.path;
+            document.getElementById("directory-top").value = response.path;
+            if (getBtnChecked("same-dir-as-data")) {
+                document.getElementById("save-dir").value = response.path;
                 validatePathName('save-dir');
             }
-            if ($("#save-same-dir").is(":checked")) {
-                $("#base-dir").val(response.path);
+            if (getBtnChecked("save-same-dir")) {
+                document.getElementById("base-dir").value = response.path;
                 validatePathName('base-dir');
             }
-            $("#error-message").hide();
+            $hidden(["error-message"]);
             updateFileTable(response.files, deselect);
             if (deselect) {
                 deselectFile();
             }
         } else {
-            $("#error-message").text(response.message).show();
+            $showText("error-message", response.message);
         }
     }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("AJAX error:", textStatus, errorThrown);
-        $("#error-message").text("Error updating directory").show();
+        $showText("error-message", "Error updating directory")
     });
     $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, isMultiSource: AppState.multiSource, numSources: AppState.numSources}, 
         function(response) {
             updateJSONTable(response.files);
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
-            $("#error-message").text("Error fetching JSON files").show();
+            $showText("error-message", "Error fetching JSON files")
         });
 }
 
 function drawMeasurementChart() {
     fetchData(AppState.currentFile, AppState.currentJSONcontent);
-    $("#cal-time-unit").text(getTimeUnitValue().slice(0, -1));
+    document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1); 
 }
 
 function updateMultiSourceExportOptions() {
+    $hidden(["select-exp-blank-type-meas"], AppState.multiSource);
+    $hidden(["select-sensor-to-export"], !AppState.multiSource);
     if (AppState.multiSource) {
-        $("#select-exp-blank-type-meas").addClass("hidden");
-        $("#select-sensor-to-export").removeClass("hidden");
         const selectElement = document.getElementById('exp-json-sensor');
         // Optional: Clear previous options except "ALL"
         selectElement.innerHTML = '<option value="ALL">ALL</option>';
@@ -534,14 +534,12 @@ function updateMultiSourceExportOptions() {
             selectElement.appendChild(option);
         }
     } else {
-        $("#select-exp-blank-type-meas").removeClass("hidden");
-        $("#select-sensor-to-export").addClass("hidden");
         document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
     }
 }
 
 function switchingModes(mode) {
-    const currentDir = $("#directory").val();
+    const currentDir = document.getElementById("directory").value;
     AppState.currentMeasurementMode = mode;
     if (currentDir) {
         updateDirectory(currentDir, true);
@@ -549,7 +547,7 @@ function switchingModes(mode) {
     AppState.currentJSON = null;
     AppState.currentJSONcontent = null;
     AppState.currentFile = null;
-    $("#json-display").text("");
+    document.getElementById("json-display").textContent = "";
     
     if (mode === "kinetics") {
         kineticsModeBehaviour();

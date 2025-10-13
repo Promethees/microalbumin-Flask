@@ -602,11 +602,12 @@ function arraysEqual(arr1, arr2) {
 }
 
 function computeFit(value, fit_type, coef) {
+    const regressedQuantity = document.getElementById("regressed-quantity").value;
     if (coef[0] === 'NONE' || coef[0] === 'NaN') {
-        throw new Error(`Fit_type: ${fit_type} cannot be used to derive concentration from ${$("#regressed-quantity").val()}`);
+        throw new Error(`Fit_type: ${fit_type} cannot be used to derive concentration from ${regressedQuantity}`);
     }
     if (typeof value !== 'number' || isNaN(value)) {
-        throw new Error(`Quantity: ${$("#regressed-quantity").val()} is not available`);
+        throw new Error(`Quantity: ${regressedQuantity} is not available`);
     }
     switch (fit_type.toLowerCase()) {
         case "linear":

@@ -79,9 +79,9 @@ document.getElementById('multi-source').addEventListener('change', function() {
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
+        $hidden(["select-exp-blank-type-meas"], AppState.multiSource);
+        $hidden(["select-sensor-to-export"], !AppState.multiSource);
         if (AppState.multiSource) {
-            $("#select-exp-blank-type-meas").addClass("hidden");
-            $("#select-sensor-to-export").removeClass("hidden");
             const selectElement = document.getElementById('exp-json-sensor');
             // Optional: Clear previous options except "ALL"
             selectElement.innerHTML = '<option value="ALL">ALL</option>';
@@ -92,8 +92,6 @@ document.getElementById('multi-source').addEventListener('change', function() {
                 selectElement.appendChild(option);
             }
         } else {
-            $("#select-exp-blank-type-meas").removeClass("hidden");
-            $("#select-sensor-to-export").addClass("hidden");
             document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
         }
     }
@@ -102,7 +100,7 @@ document.getElementById('multi-source').addEventListener('change', function() {
 document.getElementById('num-sources').addEventListener('change', function() {
     AppState.numSources = parseInt(this.value);
     console.log("Number of sources set to:", AppState.numSources);
-    const currentDir = $("#directory").val();
+    const currentDir = document.getElementById("directory").value;
     if (currentDir) {
         updateDirectory(currentDir, true);
     }
@@ -162,12 +160,12 @@ function updatePointEstimate() {
     const estValError = document.getElementById('est-val-error');
     const estValExp = document.getElementById('est-val-exp');
     const currExpBlankType = document.getElementById('exp-json-blank-type').value;
-    const currExpTimePoint = parseFloat($("#exp-json-time-value").val());
+    const currExpTimePoint = getValFloat("exp-json-time-value");
 
     console.log("response Data is", AppState.responseData);
 
     if (AppState.multiSource) {
-        if ($("#exp-json-sensor").val() === "ALL") {
+        if (document.getElementById("exp-json-sensor").value === "ALL") {
             AppState.globalEstimatedValue = [];
             for (let i = 1; i <= AppState.numSources; i++) {
                 AppState.globalEstimatedValue.push(
@@ -175,7 +173,7 @@ function updatePointEstimate() {
                 );
             }
         } else {
-            const sourceIndex = parseInt($("#exp-json-sensor").val());
+            const sourceIndex = getValInt("exp-json-sensor");
             AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
         }
     } else {
@@ -432,17 +430,17 @@ function validateTimeoutInterval() {
 function validateWindowSize(window_size) {
     // Validate window size
     if (window_size < 3) {
-        $("#wd-size-error").text("Window size must be greater than 3.").show();
+        $showText("wd-size-error", "Window size must be greater than 3.");
         return;
     }
 
     if (!Number.isInteger(parseInt(window_size, 10)) || window_size === '' || isNaN(window_size)) {
-        $("#wd-size-error").text("Window size must be an integer.").show();
+        $showText("wd-size-error", "Window size must be an integer.");
         return;
     }
 
     // Clear error message if input is valid
-    $("#wd-size-error").hide();
+    $hidden(["wd-size-error"], false);
 }
 
 // Event listener to toggle timeout input disabled state

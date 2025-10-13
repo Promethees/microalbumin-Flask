@@ -2,6 +2,7 @@ let statusCheckInterval = null;
 const STATUS_CHECK_INTERVAL = 2000; // Check every 2 seconds
 
 function checkScriptStatus() {
+    const logDisplay = document.getElementById('log-display');
     return new Promise((resolve) => {
         $.ajax({
             url: '/check_status',
@@ -12,12 +13,12 @@ function checkScriptStatus() {
                     AppState.scriptRunning = false;
                     if (response.status !== 'success') {
                         if (response.status !== 'not_running') {
-                            $("#log-display").append(`Error: ${response.message}\n`);
+                            logDisplay.insertAdjacentText('beforeend', `Error: ${response.message}\n`);
                         }
                         else console.log("Script is not running");
                         resetUIAfterError();
                     } else {
-                        $("#log-display").append("Script completed successfully\n");
+                        logDisplay.insertAdjacentText('beforeend', 'Script completed successfully\n');
                         resetUIAfterCompletion();
                     }
                     resolve(false); // Script is not running
@@ -28,7 +29,7 @@ function checkScriptStatus() {
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.log("Status check error:", textStatus, errorThrown);
-                $("#log-display").append("Error checking script status\n");
+                logDisplay.insertAdjacentText('beforeend', 'Error checking script status\n');
                 AppState.scriptRunning = false;
                 resolve(false); // Assume not running on error
             }
@@ -43,276 +44,205 @@ function clearStatusCheck() {
     }
 }
 
-function resetUIAfterError() {
-    if (!$("#save-same-dir").is(":checked")) {
-        $("#base-dir").prop('disabled', false);
+function resetUI({ goToEnabled }) {
+    const saveSameDir = document.getElementById('save-same-dir');
+    const infTimeout = document.getElementById('inf-timeout');
+
+    if (!saveSameDir.checked) {
+    document.getElementById('base-dir').disabled = false;
     }
-    $("#base-name").prop('disabled', false);
-    $("#run-script-btn").prop('disabled', false);
-    $("#run-script-btn").addClass('blinking');
-    $("#terminate-script-btn").prop('disabled', true);
-    $("#go-to-btn").prop('disabled', true);
-    $("#terminate-script-btn").removeClass('blinking');
-    $("#go-to-btn").removeClass('blinking');
-    $("#inf-timeout").prop('disabled', false);
-    $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
-    $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
-    $("#interval").prop('disabled', false);
-    $("#interval-unit").prop('disabled', false);
-    modeButtons.forEach(button => button.disabled = false);
+
+    const baseEnabled = ['base-name', 'run-script-btn', 'inf-timeout', 'interval', 'interval-unit'];
+    baseEnabled.forEach(id => (document.getElementById(id).disabled = false));
+
+    document.getElementById('terminate-script-btn').disabled = true;
+    document.getElementById('go-to-btn').disabled = !goToEnabled;
+
+    document.getElementById('run-script-btn').classList.add('blinking');
+    document.getElementById('terminate-script-btn').classList.remove('blinking');
+    document.getElementById('go-to-btn').classList.toggle('blinking', false);
+
+    const timeoutDisabled = infTimeout.checked;
+    document.getElementById('timeout').disabled = timeoutDisabled;
+    document.getElementById('timeout-unit').disabled = timeoutDisabled;
+
+    modeButtons.forEach(button => (button.disabled = false));
+}
+
+function resetUIAfterError() {
+    resetUI({ goToEnabled: false });
 }
 
 function resetUIAfterCompletion() {
-    if (!$("#save-same-dir").is(":checked")) {
-        $("#base-dir").prop('disabled', false);
-    }
-    $("#base-name").prop('disabled', false);
-    $("#run-script-btn").prop('disabled', false);
-    $("#run-script-btn").addClass('blinking');
-    $("#terminate-script-btn").prop('disabled', true);
-    $("#go-to-btn").prop('disabled', false);
-    $("#go-to-btn").removeClass('blinking');
-    $("#inf-timeout").prop('disabled', false);
-    $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
-    $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
-    $("#interval").prop('disabled', false);
-    $("#interval-unit").prop('disabled', false);
-    modeButtons.forEach(button => button.disabled = false);
+    resetUI({ goToEnabled: true });     
 }
 
-// Modified runScript function
-function runScript() {
-    const isValidFileName = validateFileName("base-name");
-    const isValidPathName = validatePathName("base-dir");
-    const isValidTimeoutInterval = validateTimeoutInterval();
-    const timeoutInput = document.getElementById('timeout');
-    const timeoutUnit = document.getElementById('timeout-unit').value;
-    const intervalInput = document.getElementById('interval');
-    const intervalUnit = document.getElementById('interval-unit').value;
-    if (!isValidFileName || !isValidPathName || !isValidTimeoutInterval) {
-        return; // Stop if validation fails
-    }
+// Main script runner
+async function runScript() {
+    if (!validateFileName("base-name") || !validatePathName("base-dir") || !validateTimeoutInterval()) return;
 
-    AppState.processedHidPath = $("#base-dir").val();
-    const baseName = $("#base-name").val();
-    
-    // Clear any existing status checks
+    const baseDir = $id("base-dir").value.trim();
+    const baseName = $id("base-name").value.trim();
+    const timeoutEl = $id("timeout");
+    const intervalEl = $id("interval");
+    const infTimeout = $id("inf-timeout").checked;
+
+    AppState.processedHidPath = baseDir;
     clearStatusCheck();
 
-    // Blink the log display section
-    blinkingItem("#log-display", 3000);
-    
-    // Disable UI elements
-    $("#base-dir").prop('disabled', true);
-    $("#base-name").prop('disabled', true);
-    $("#run-script-btn").prop('disabled', true);
-    $("#run-script-btn").removeClass('blinking');
-    $("#inf-timeout").prop('disabled', true);
-    $("#timeout").prop('disabled', true);
-    $("#timeout-unit").prop('disabled', true);
-    $("#interval").prop('disabled', true);
-    $("#interval-unit").prop('disabled', true);
-    modeButtons.forEach(button => button.disabled = true);
+    blinkingItem("log-display", 3000);
 
-    const timeoutValue = timeoutInput.value.trim();
-    const intervalValue = intervalInput.value.trim();
-    
-    $.ajax({
-        url: '/run_script',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ 
-            base_dir: AppState.processedHidPath, 
-            base_name: baseName,
-            inf_checked: document.getElementById('inf-timeout').checked,
-            timeout_sec: timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier(timeoutUnit) : null,
-            interval_sec: intervalValue ?  parseFloat(intervalValue) * getTimeUnitMultiplier(intervalUnit): null}),
-        success: function(response) {
-            if (response.status === 'success') {
-                AppState.scriptRunning = true;
-                $("#terminate-script-btn").prop('disabled', false);
-                $("#go-to-btn").prop('disabled', false);
-                $("#go-to-btn").addClass('blinking');
-                $("#log-display").text("Script started...\n");
-                bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
-                
-                // Start periodic status checks
-                statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
-            } 
-            else if (response.status === 'device_not_found') {
-                handleDeviceNotFound(response);
-            } 
-            else {
-                handleOtherError(response);
-            }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            handleAjaxError(textStatus, errorThrown);
+    // Disable inputs
+    $disable(["base-dir", "base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit"]);
+    $toggleClass("run-script-btn", "blinking", false);
+    modeButtons.forEach(btn => btn.disabled = true);
+
+    const timeoutValue = timeoutEl.value.trim();
+    const intervalValue = intervalEl.value.trim();
+    const payload = {
+        base_dir: baseDir,
+        base_name: baseName,
+        inf_checked: infTimeout,
+        timeout_sec: timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier($id("timeout-unit").value) : null,
+        interval_sec: intervalValue ? parseFloat(intervalValue) * getTimeUnitMultiplier($id("interval-unit").value) : null
+    };
+
+    try {
+        const res = await fetch("/run_script", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const response = await res.json();
+
+        if (response.status === "success") {
+            AppState.scriptRunning = true;
+            $disable(["terminate-script-btn"], false);
+            $disable(["go-to-btn"], false);
+            $toggleClass("go-to-btn", "blinking", true);
+            $text("log-display", "Script started...\n");
+            bindButtonToString("#go-to-btn", baseDir, false);
+            statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
+        } else if (response.status === "device_not_found") {
+            handleDeviceNotFound(response);
+        } else {
+            handleOtherError(response);
         }
-    });
+    } catch (err) {
+        console.error("runScript error:", err);
+        handleAjaxError("Network error", err);
+    }
 }
 
-// Helper functions for error handling
+// --- Error handling helpers ---
 function handleDeviceNotFound(response) {
-    console.log("Device not found in response:", response);
+    console.warn("Device not found:", response);
     AppState.scriptRunning = false;
-    $("#log-display").text(`Error: ${response.message}\n`);
+    $text("log-display", `Error: ${response.message}\n`);
     resetUIAfterError();
 }
 
 function handleOtherError(response) {
-    $("#log-display").text(`Error: ${response.message}\n`);
+    $text("log-display", `Error: ${response.message}\n`);
     resetUIAfterError();
 }
 
 function handleAjaxError(textStatus, errorThrown) {
-    console.log("AJAX error:", textStatus, errorThrown);
-    $("#log-display").text(`Error: Failed to start script\n`);
-    $("#log-display").append(`Terminating the script\n`);
+    console.error("AJAX error:", textStatus, errorThrown);
+    $text("log-display", "Error: Failed to start script\n");
+    $append("log-display", "Terminating the script\n");
     AppState.scriptRunning = false;
     resetUIAfterError();
 }
 
-function terminateScript() {
-    $.ajax({
-        url: '/terminate_script',
-        type: 'POST',
-        contentType: 'application/json',
-        success: function(response) {
-            console.log("Terminate script response:", response);
-            if (response.status === 'success') {
-                AppState.scriptRunning = false;
-                $("#run-script-btn").prop('disabled', false);
-                $("#run-script-btn").addClass('blinking');
-                $("#terminate-script-btn").prop('disabled', true);
-                if (!$("#save-same-dir").is(":checked")) {
-                    $("#base-dir").prop('disabled', false);
-                }
-                $("#base-name").prop('disabled', false);
-                $("#log-display").append("Script terminated.\n");
-                $("#inf-timeout").prop('disabled', false);
-                $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
-                $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
-                $("#interval").prop('disabled', false);
-                $("#interval-unit").prop('disabled', false);
-            } else {
-                $("#log-display").append(`Error: ${response.message}\n`);
-                if (response.message.includes('No process running')) {
-                    AppState.scriptRunning = false;
-                    $("#run-script-btn").prop('disabled', false);
-                    $("#run-script-btn").addClass('blinking');
-                    $("#terminate-script-btn").prop('disabled', true);
-                    if (!$("#save-same-dir").is(":checked")) {
-                        $("#base-dir").prop('disabled', false);
-                    }
-                    $("#base-name").prop('disabled', false);
-                    $("#go-to-btn").prop('disabled', true);
-                    $("#terminate-script-btn").removeClass('blinking');
-                    $("#go-to-btn").removeClass('blinking');
-                    $("#inf-timeout").prop('disabled', false);
-                    $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
-                    $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
-                    $("#interval").prop('disabled', false);
-                    $("#interval-unit").prop('disabled', false);
-                }
-            }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error:", textStatus, errorThrown);
-            $("#log-display").append(`Error: Failed to terminate script, error: ${errorThrown}\n`);
-            AppState.scriptRunning = false;
-            $("#run-script-btn").prop('disabled', false);
-            $("#run-script-btn").addClass('blinking');
-            $("#terminate-script-btn", "#go-to-btn").prop('disabled', true);
-            $("#terminate-script-btn").removeClass('blinking');
-            $("#go-to-btn").removeClass('blinking');
-            if (!$("#save-same-dir").is(":checked")) {
-                $("#base-dir").prop('disabled', false);
-            }
-            $("#base-name").prop('disabled', false);
-            $("#inf-timeout").prop('disabled', false);
-            $("#timeout").prop('disabled', $("#inf-timeout").is(':checked'));
-            $("#timeout-unit").prop('disabled', $("#inf-timeout").is(':checked'));
-            $("#interval").prop('disabled', false);
-            $("#interval-unit").prop('disabled', false);
-        }
-    });
+// --- Terminate script ---
+async function terminateScript() {
     clearLogs();
-}
+    try {
+        const res = await fetch("/terminate_script", { method: "POST", headers: { "Content-Type": "application/json" } });
+        const response = await res.json();
 
-function fetchLogs() {
-    $.get('/get_logs', function(response) {
-        if (response.status === 'success') {
-            const logs = response.logs;
-            $("#log-display").text(logs);
-
-            // Check for specific termination patterns
-            if (/PyBadge not found/.test(logs)) {
-                showTerminationNotice("PyBadge not found. Please check the connection.", 'error');
-            }
-            else if (/Failed to find input endpoint/.test(logs)) {
-                showTerminationNotice("Failed to find input endpoint. Please verify USB connection.", 'error');
-            }
-            else if (/SESSION TIMEOUT/.test(logs)) {
-                showTerminationNotice("Session ended due to timeout.", 'info');
-            }
+        if (response.status === "success") {
+            handleScriptTermination("Script terminated.\n");
+        } else {
+            $append("log-display", `Error: ${response.message}\n`);
+            if (response.message.includes("No process running")) handleScriptTermination("", true);
         }
-    }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.log("AJAX error:", textStatus, errorThrown);
-        $("#log-display").append(`Error: Failed to fetch logs\n`);
-    });
-}
-
-// Helper function to show popup & terminate script
-function showTerminationNotice(message, iconType) {
-    // Call terminateScript immediately
-    terminateScript();
-    if (iconType === 'info') {
-        if ($("#notify-me").is(":checked")) {
-            const audio = new Audio('../static/done.mp3');
-            audio.play().catch(err => console.warn("Audio play blocked:", err));
-            // Show SweetAlert2 auto-close popup
-            Swal.fire({
-                title: 'Reading Stopped',
-                text: message,
-                icon: iconType,
-                showConfirmButton: false,
-                timer: 4000,
-                timerProgressBar: true,
-                background: '#f9f9f9',
-                color: '#333'
-            });
-        }
-    } else {
-        Swal.fire(
-            {
-                title: 'Error!',
-                text: message,
-                icon: iconType, 
-                showConfirmButton: false,
-                confirmButtonText: 'OK',
-                background: '#f9f9f9',
-                color: '#333'
-            }
-        )
+    } catch (err) {
+        console.error("terminateScript error:", err);
+        $append("log-display", `Error: Failed to terminate script, error: ${err}\n`);
+        handleScriptTermination("", true);
     }
 }
 
-function clearLogs() {
-    $.ajax({
-        url: '/clear_logs',
-        type: 'POST',
-        contentType: 'application/json',
-        success: function(response) {
-            if (response.status === 'success') {
-                $("#log-display").text("");
-            } else {
-                $("#log-display").append(`Error: Failed to clear logs - ${response.message}\n`);
-            }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error:", textStatus, errorThrown);
-            $("#log-display").append(`Error: Failed to clear logs - ${textStatus}\n`);
+function handleScriptTermination(message, noProcess = false) {
+    AppState.scriptRunning = false;
+    $append("log-display", message);
+    $disable(["run-script-btn"], false);
+    $toggleClass("run-script-btn", "blinking", true);
+    $disable(["terminate-script-btn", "go-to-btn"]);
+    ["terminate-script-btn", "go-to-btn"].forEach(id => $toggleClass(id, "blinking", false));
+    if (!document.getElementById("save-same-dir").checked) $id("base-dir").disabled = false;
+    ["base-name", "inf-timeout", "interval", "interval-unit"].forEach(id => $id(id).disabled = false);
+    const timeoutDisabled = $id("inf-timeout").checked;
+    $id("timeout").disabled = timeoutDisabled;
+    $id("timeout-unit").disabled = timeoutDisabled;
+}
+
+// --- Fetch logs ---
+async function fetchLogs() {
+    try {
+        const res = await fetch("/get_logs");
+        const response = await res.json();
+        if (response.status === "success") {
+            const logs = response.logs;
+            $text("log-display", logs);
+            if (/PyBadge not found/.test(logs)) showTerminationNotice("PyBadge not found. Please check the connection.", "error");
+            else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice("Failed to find input endpoint. Please verify USB connection.", "error");
+            else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice("Session ended due to timeout.", "info");
         }
-    });
+    } catch (err) {
+        console.error("fetchLogs error:", err);
+        $append("log-display", "Error: Failed to fetch logs\n");
+    }
+}
+
+// --- Clear logs ---
+async function clearLogs() {
+    try {
+        const res = await fetch("/clear_logs", { method: "POST", headers: { "Content-Type": "application/json" } });
+        const response = await res.json();
+        if (response.status === "success") {
+            $text("log-display", "");
+        } else {
+            $append("log-display", `Error: Failed to clear logs - ${response.message}\n`);
+        }
+    } catch (err) {
+        console.error("clearLogs error:", err);
+        $append("log-display", `Error: Failed to clear logs - ${err}\n`);
+    }
+}
+
+// --- Termination notice ---
+function showTerminationNotice(message, iconType) {
+    terminateScript();
+
+    const baseOpts = {
+        title: iconType === "info" ? "Reading Stopped" : "Error!",
+        text: message,
+        icon: iconType,
+        background: "#f9f9f9",
+        color: "#333",
+        showConfirmButton: iconType !== "info",
+        confirmButtonText: "OK",
+        timer: iconType === "info" ? 4000 : undefined,
+        timerProgressBar: iconType === "info"
+    };
+
+    if (iconType === "info" && $id("notify-me").checked) {
+        new Audio("../static/done.mp3").play().catch(err => console.warn("Audio play blocked:", err));
+        Swal.fire(baseOpts);
+    } else {
+        Swal.fire(baseOpts);
+    }
 }

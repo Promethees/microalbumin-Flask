@@ -162,14 +162,6 @@ function createAnnotations(isFullDisplay, measurementMode, analysis, conversionF
     return annotations;
 }
 
-function getTimeUnitValue(id = 'time-unit') {
-  const element = document.getElementById(id);
-  if (element && (element.style.display !== 'none' && element.style.visibility !== 'hidden')) {
-    return element.value;
-  }
-  return null;
-}
-
 function checkForThisBlankType(canvasId, forBlankType) {
   if (typeof canvasId !== 'string' || typeof forBlankType !== 'string') {
     return false;

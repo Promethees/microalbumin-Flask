@@ -6,7 +6,7 @@ function browseDirectory(blinkItem = false) {
                 `<div onclick="updateDirectory('${parentResponse.parent}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(delimiter).pop()}</div>` : 
                 '<div>No parent directory</div>'}` : 
             '<div>No parent directory</div>';
-        $("#parent-dir").html(parentHtml);
+        document.getElementById("parent-dir").innerHTML = parentHtml;
 
         $.get('/get_children', function(childResponse) {
             console.log("Child directories:", childResponse.children);
@@ -17,23 +17,23 @@ function browseDirectory(blinkItem = false) {
                     `<div onclick="updateDirectory('${dir}', 'true')" ondblclick="browseDirectory(true)">${dir.split(delimiter).pop()}</div>`
                 ).join('')}` : 
                 '<div>No child directories</div>';
-            $("#child-dirs").html(childHtml);
+            document.getElementById("child-dirs").innerHTML = childHtml;
         }).fail(function(jqXHR, textStatus, errorThrown) {
             console.log("Error fetching child directories:", textStatus, errorThrown);
-            $("#error-message").text("Error fetching child directories").show();
+            $showText("error-message", "Error fetching child directories");
         });
     }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("Error fetching parent directory:", textStatus, errorThrown);
-        $("#error-message").text("Error fetching parent directory").show();
+        $showText("error-message", "Error fetching parent directory");
     });
     if (blinkItem)
-        blinkingItem("#file-selection", 5000);
+        blinkingItem("file-selection", 5000);
 }
 
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
-            const filePath = $("#directory").val() + delimiter + fileName;
+            const filePath = document.getElementById("directory").value + delimiter + fileName;
 
             try {
                 const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
@@ -91,7 +91,7 @@ function updateJSONTable(files) {
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
     }
-    $("#json-table").html(html);
+    document.getElementById("json-table").innerHTML = html;
 }
 
 function updateFileTable(files, deselect) {
@@ -107,10 +107,10 @@ function updateFileTable(files, deselect) {
         } else {
             html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
         }
-        $("#file-table").html(html);
+        document.getElementById("file-table").innerHTML = html;
         if (deselect) {
             AppState.currentFile = null;
-            $("#file-table tr").removeClass("selected");
+            $toggleQueryClass("#file-table tr", "selected", false);
             updateFileDisplay(AppState.currentFile);
         }
     });  
@@ -119,9 +119,9 @@ function updateFileTable(files, deselect) {
 function updateFileDisplay(curFile) {
     const displayElement = document.getElementById('selected-file-display');
     if (curFile)
-        $("#selected-file-display").html(`Selected File: ${curFile}`);
+        displayElement.innerHTML = `Selected File: ${curFile}`;
     else
-        $("#selected-file-display").html(`No file selected`);
+        displayElement.innerHTML = `No file selected`;
 }
 
 function fetchJSON(jsonFile, callback) {
@@ -142,9 +142,9 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
         $(button).prop("disabled", false);
     }, 1000); // Re-enable the button after 1 second
     if (button.id === "go-to-exp-btn") {
-        blinkingItem("#cal-mode-select", 5000);
-        blinkingItem("#measurement-mode", 5000);
-        blinkingItem("#file-selection", 5000);
+        blinkingItem("cal-mode-select", 5000);
+        blinkingItem("measurement-mode", 5000);
+        blinkingItem("file-selection", 5000);
         updateDirectory(path, deselect, changeToCalibrate);
     } else {
         fetch('/api/current_output')
@@ -166,21 +166,19 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
                 // Wait for the table to refresh/populate, then select the row's button
                 setTimeout(() => {
                     // find a TD whose text exactly equals the filename
-                    const $cell = $("#file-table tr td").filter(function() {
-                        return $(this).text().trim() === fileName;
-                    }).first();
+                    const cells = document.querySelectorAll("#file-table tr td");
+                    const cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
 
-                    if ($cell.length) {
-                        const $row = $cell.closest("tr");
-                        // try to find a button in the row (change selector to match your table if needed)
-                        const $btn = $row.find("button").first();
+                    if (cell) {
+                        const row = cell.closest("tr");
+                        const btn = row.querySelector("button");
 
-                        if ($btn.length) {
-                            selectFile(fileName, $btn[0], "#file-table");
-                        } else {
-                            // fallback: pass the cell element so selectFile still finds the row to highlight
-                            selectFile(fileName, $cell[0], "#file-table");
-                        }
+                    if (btn) {
+                        selectFile(fileName, btn, "#file-table");
+                    } else {
+                        // fallback: pass the cell element so selectFile still finds the row to highlight
+                        selectFile(fileName, cell, "#file-table");
+                    }
                     } else {
                         console.warn(`File "${fileName}" not found in #file-table.`);
                     }
@@ -188,7 +186,7 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
             } else {
                 // no recorded path -> fallback to original behavior
                 updateDirectory(path, deselect, changeToCalibrate);
-                blinkingItem("#file-selection", 5000);
+                blinkingItem("file-selection", 5000);
             }
         })
         .catch(err => {
@@ -198,38 +196,45 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
     }
 }
 
-function blinkingItem(id, timeOut=5000) {
-    const element = $(id);
-    if (element.length) {
-        element.focus();
-        element.addClass('blinking');
-        if (timeOut) {
-            setTimeout(() => {
-                element.removeClass('blinking');
-            }, timeOut);
-        }
+function blinkingItem(id, timeOut = 5000) {
+    const element = document.getElementById(id);
+    if (!element) return;
+
+    element.focus();
+    element.classList.add('blinking');
+
+    if (timeOut) {
+        setTimeout(() => {
+            element.classList.remove('blinking');
+        }, timeOut);
     }
 }
 
-function scrollWhenVisible(elementId, duration) {
-    const $target = $("#" + elementId);
-    
-    // Function to check if element is visible
-    function isVisible($elem) {
-        return $elem.is(":visible") && $elem.css("display") !== "none";
-    }
-    
-    // If element is already visible, scroll immediately
-    if (isVisible($target)) {
-        $("html, body").animate({ scrollTop: $target.offset().top }, duration);
+function scrollWhenVisible(elementId, duration = 500) {
+    const target = document.getElementById(elementId);
+    if (!target) return;
+
+    // Helper to check if element is visible
+    const isVisible = el =>
+    el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
+
+    // Scroll smoothly to the element
+    const scrollToElement = () => {
+        const targetTop = target.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: targetTop, behavior: "smooth" });
+    };
+
+    // If visible, scroll immediately
+    if (isVisible(target)) {
+        scrollToElement();
         return;
     }
-    
-    // Poll for visibility every 100ms
-    const interval = setInterval(function() {
-        if (isVisible($target)) {
-            $("html, body").animate({ scrollTop: $target.offset().top }, duration);
-            clearInterval(interval); // Stop polling once visible
-        }
+
+    // Poll every 100ms until element becomes visible
+    const interval = setInterval(() => {
+    if (isVisible(target)) {
+        scrollToElement();
+        clearInterval(interval);
+    }
     }, 100);
 }

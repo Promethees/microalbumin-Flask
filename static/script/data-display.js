@@ -4,7 +4,9 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     const scrollPosition = chartContainer.scrollTop;
 
     destroyCharts();
-    $("#chart-container").empty(); // Clear existing chart sections
+    while (chartContainer.firstChild) {
+        chartContainer.removeChild(chartContainer.firstChild);
+    }
 
     // Restore scroll position
     chartContainer.scrollTop = scrollPosition;
@@ -13,7 +15,9 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
     
-    const isSplitMode = AppState.multiSource ? $("#split-sensor").is(":checked") : $("#split-mode").is(":checked");
+    const isSplitMode = AppState.multiSource
+        ? getBtnChecked("split-sensor")
+        : getBtnChecked("split-mode");
 
     // If multiSource, treat all data as mixed; otherwise, use getDataGroups
     const allGroups = AppState.multiSource 
@@ -51,7 +55,7 @@ function formatAnalysisInfo(analysis, label) {
     if (!analysis) {
         return null;
     }
-    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier($("#time-unit").val());
+    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue());
 
     let chartScaleConstant = 1;
     let adjustedSlope = analysis.slope ? (parseFloat(analysis.slope) / conversionFactor).toFixed(5) : "--";
@@ -109,10 +113,8 @@ function checkboxHtmlWithID(
 }
 
 function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, index) {
-    const normalizeMode = document.getElementById('normalize-mode').checked;
-
     // Normalize Y values if normalizeMode is checked
-    allYColumnOrArray = normalizeMode ? (Array.isArray(allYColumnOrArray[0])
+    allYColumnOrArray = getBtnChecked("normalize-mode") ? (Array.isArray(allYColumnOrArray[0])
         ? allYColumnOrArray.map(yCol => yCol.map(value => (value - Math.min(...yCol))))
         : allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray))))
         : allYColumnOrArray;
@@ -123,15 +125,15 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
     let filteredX = originalAllXColumn;
     let filteredY = allYColumnOrArray;
     if (!getCheckboxes(canvasId).fullDisplay.checked) {
-        const startThreshold = parseFloat($("#range-value-start").val()) / factor;
-        const endThreshold = parseFloat($("#range-value-end").val()) / factor;
+        const startThreshold = getValFloat("range-value-start") / factor;
+        const endThreshold = getValFloat("range-value-end") / factor;
         ({ filteredX, filteredY } = filterXYPairs(originalAllXColumn, allYColumnOrArray, startThreshold, endThreshold));
     }
 
     const displayedAllXColumn = filteredX.map(x => x * factor);
 
     // Calculate kinetics quantities using filtered data
-    const analysis = calculateKineticsQuantities(filteredX, filteredY, parseInt($("#window-size").val()));
+    const analysis = calculateKineticsQuantities(filteredX, filteredY, getValInt("window-size"));
 
     // Generate the chart with filtered and converted data
     generateChart(
@@ -227,28 +229,36 @@ function handleFullDisplayChange(fullDisplayId, quantityId, canvasId, allXColumn
 }
 
 function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index = null) {
-    const $container = $("#chart-container");
+    const container = document.getElementById("chart-container");
+
+    // Helper to append HTML or elements cleanly
+    const appendHTML = (html) => {
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html.trim();
+        while (tempDiv.firstChild) {
+            container.appendChild(tempDiv.firstChild);
+        }
+    };
 
     if (AppState.multiSource) {
-        if ($("#split-sensor").is(":checked")) {
+        if (getBtnChecked("split-sensor")) {
             // One section per source
-            $container.append(
-                createChartSection({
-                    sectionId: `source-chart-${index}-section`,
-                    analysisId: `source-${index}-analysis`,
-                    canvasId: `source-${index}-canvas`,
-                    quantityId: `source-${index}`,
-                    fullDisplayId: `full-display-source-${index}`,
-                    allXColumn: allXColumn,
-                    allYColumnOrArray: allYColumnOrArray,
-                    labelOrLabels: labelOrLabels,
-                    unit: unit,
-                    index: index
-                })
-            );
+            const section = createChartSection({
+                sectionId: `source-chart-${index}-section`,
+                analysisId: `source-${index}-analysis`,
+                canvasId: `source-${index}-canvas`,
+                quantityId: `source-${index}`,
+                fullDisplayId: `full-display-source-${index}`,
+                allXColumn: allXColumn,
+                allYColumnOrArray: allYColumnOrArray,
+                labelOrLabels: labelOrLabels,
+                unit: unit,
+                index: index
+            });
+            appendHTML(section);
         } else {
             // Single mixed plot
-            $container.append(`
+            const html = `
                 <label id="quantity-checkboxes-plot" class="hidden">
                     <h3>Quantities to display on graphic</h3>
                     ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
@@ -257,55 +267,55 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
                     <div id="plot-analysis"></div>
                     <canvas id="plot-canvas"></canvas>
                 </div>
-            `);
+            `;
+            appendHTML(html);
         }
     } else {
-        if ($("#split-mode").is(":checked")) {
+        if (getBtnChecked("split-mode")) {
             // Blanked and non-blanked sections
-            $container.append(
-                createChartSection({
-                    sectionId: "blanked-chart-section",
-                    analysisId: "blanked-analysis",
-                    canvasId: "blanked-canvas",
-                    quantityId: "blanked",
-                    fullDisplayId: "full-display-blanked",
-                    allXColumn: allXColumn[0],
-                    allYColumnOrArray: allYColumnOrArray[0],
-                    labelOrLabels: labelOrLabels[0],
-                    unit: unit,
-                    index: index
-                })
-            );
-            $container.append(
-                createChartSection({
-                    sectionId: "non-blanked-chart-section",
-                    analysisId: "non-blanked-analysis",
-                    canvasId: "non-blanked-canvas",
-                    quantityId: "non-blanked",
-                    fullDisplayId: "full-display-non-blanked",
-                    allXColumn: allXColumn[1],
-                    allYColumnOrArray: allYColumnOrArray[1],
-                    labelOrLabels: labelOrLabels[1],
-                    unit: unit,
-                    index: index
-                })
-            );
+            const blankedSection = createChartSection({
+                sectionId: "blanked-chart-section",
+                analysisId: "blanked-analysis",
+                canvasId: "blanked-canvas",
+                quantityId: "blanked",
+                fullDisplayId: "full-display-blanked",
+                allXColumn: allXColumn[0],
+                allYColumnOrArray: allYColumnOrArray[0],
+                labelOrLabels: labelOrLabels[0],
+                unit: unit,
+                index: index
+            });
+
+            const nonBlankedSection = createChartSection({
+                sectionId: "non-blanked-chart-section",
+                analysisId: "non-blanked-analysis",
+                canvasId: "non-blanked-canvas",
+                quantityId: "non-blanked",
+                fullDisplayId: "full-display-non-blanked",
+                allXColumn: allXColumn[1],
+                allYColumnOrArray: allYColumnOrArray[1],
+                labelOrLabels: labelOrLabels[1],
+                unit: unit,
+                index: index
+            });
+
+            appendHTML(blankedSection);
+            appendHTML(nonBlankedSection);
         } else {
             // Single mixed plot
-            $container.append(
-                createChartSection({
-                    sectionId: "plot-chart-section",
-                    analysisId: "plot-analysis",
-                    canvasId: "plot-canvas",
-                    quantityId: "plot",
-                    fullDisplayId: "full-display-plot",
-                    allXColumn: allXColumn,
-                    allYColumnOrArray: allYColumnOrArray,
-                    labelOrLabels: labelOrLabels,
-                    unit: unit,
-                    index: index
-                })
-            );
+            const plotSection = createChartSection({
+                sectionId: "plot-chart-section",
+                analysisId: "plot-analysis",
+                canvasId: "plot-canvas",
+                quantityId: "plot",
+                fullDisplayId: "full-display-plot",
+                allXColumn: allXColumn,
+                allYColumnOrArray: allYColumnOrArray,
+                labelOrLabels: labelOrLabels,
+                unit: unit,
+                index: index
+            });
+            appendHTML(plotSection);
         }
     }
 }
@@ -318,15 +328,14 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
     
     for (let i = 0; i < AppState.numSources; i++) {
         const yColumn = YColumn[i];
-        const fullDisplayCheckbox = document.getElementById(`full-display-source-${i}`);
-        const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
+        const isFullDisplay = getBtnChecked(`full-display-source-${i}`);
         const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         const yValues = extractColumnAndNormalize(filteredData, yColumn);
         const label = `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
         let analysis = null;
 
-        analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], parseInt($("#window-size").val()));
+        analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], getValInt("window-size"));
 
         analyses.push(analysis);
 
@@ -338,7 +347,10 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, label);
-        $("#" + analysisId).html(formatAnalysisHtml(analysisInfo, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`), analysisId);
+        document.getElementById(analysisId).innerHTML = formatAnalysisHtml(analysisInfo, 
+                                                                            AppState.plotColors[i % AppState.plotColors.length], 
+                                                                            `Source ${i + 1}`
+                                                                            );
     }
 
     AppState.sourceCharts = charts;
@@ -353,7 +365,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
-    const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, parseInt($("#window-size").val())));
+    const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, getValInt("window-size")));
     const labels = YColumn.map(y => `${AppState.metaData['Measurement']} ${y} ${unitDisplay(measUnit)}`);
 
     // Format analysis info for all sources
@@ -375,7 +387,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
         `
         if (i < analysisInfo.length - 1) html += '<br/>';
     });
-    $("#plot-analysis").html(html);
+    document.getElementById("plot-analysis").innerHTML = html;
 
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses);
 
@@ -397,10 +409,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, rawData) {
     const allNonBlankedXColumn = extractColumnAndConvert(allGroups.allNonBlankedData, XColumn);
     const allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allNonBlankedData, y)) : [extractColumnAndNormalize(allGroups.allNonBlankedData, YColumn)];
     
-    const fullDisplayCheckboxBlanked = document.getElementById('full-display-blanked');
-    const fullDisplayCheckboxNonBlanked = document.getElementById('full-display-non-blanked');
-    const isFullDisplayBlanked = AppState.currentMeasurementMode === "calibrate" ? true : (fullDisplayCheckboxBlanked ? fullDisplayCheckboxBlanked.checked : false);
-    const isFullDisplayNonBlanked = AppState.currentMeasurementMode === "calibrate" ? true : (fullDisplayCheckboxNonBlanked ? fullDisplayCheckboxNonBlanked.checked : false);
+    const isFullDisplayBlanked = AppState.currentMeasurementMode === "calibrate" ? true : getBtnChecked("full-display-blanked");
+    const isFullDisplayNonBlanked = AppState.currentMeasurementMode === "calibrate" ? true : getBtnChecked("full-display-non-blanked");
     
     const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, allGroups.allBlankedData, XColumn, YColumn);
     const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, allGroups.allNonBlankedData, XColumn, YColumn);
@@ -417,15 +427,15 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, rawData) {
     let analysis_nonblanked = null;
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, parseInt($("#window-size").val())));
-        analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, parseInt($("#window-size").val())));
+        analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, getValInt("window-size")));
+        analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, getValInt("window-size")));
     } else {
         if (calDiv.getAttribute('data-value') === "kinetics") {
             analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "BLANKED");
             analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "NON-BLANKED");
         } else if (calDiv.getAttribute('data-value') === "point") {
-            analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
-            analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = $("#exp-json-regress-algo").val());
+            analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo = document.getElementById("exp-json-regress-algo").value);
+            analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = document.getElementById("exp-json-regress-algo").value);
         }
     }
     const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(AppState.metaData, XColumn, YColumn), measUnit);
@@ -452,24 +462,20 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, rawData) {
         let blanked_string = "";
         let non_blanked_string = "";
         if (calDiv.getAttribute('data-value') === "kinetics") {
-            blanked_string = getCalKineticsString(analysis_blanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
-            non_blanked_string = getCalKineticsString(analysis_nonblanked, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            blanked_string = getCalKineticsString(analysis_blanked, document.getElementById("exp-json-regress-algo").value === "Michaelis-Menten");
+            non_blanked_string = getCalKineticsString(analysis_nonblanked, document.getElementById("exp-json-regress-algo").value === "Michaelis-Menten");
         } else if (calDiv.getAttribute('data-value') === "point") {
             blanked_string = getCalPointString(analysis_blanked);
             non_blanked_string = getCalPointString(analysis_nonblanked);
         }
-        $("#blanked-analysis").html(
-            `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`
-        );
-        $("#non-blanked-analysis").html(
-            `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`
-        );
+        document.getElementById("blanked-analysis").innerHTML = `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`;
+        document.getElementById("non-blanked-analysis").innerHTML = `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`;
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         return extractSplitResultSummary(AppState.metaData, analysis_blanked[0], analysis_nonblanked[0]);
     } else {
-        const analysis = $("#exp-json-blank-type").val() === "BLANKED" ? analysis_blanked : analysis_nonblanked;
+        const analysis = document.getElementById("exp-json-blank-type").value === "BLANKED" ? analysis_blanked : analysis_nonblanked;
         return {
             analysis,
             meas: AppState.metaData["Measurement"]
@@ -483,12 +489,10 @@ function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     const measUnit = getMetaUnit(AppState.metaData);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        const fullDisplayCheckbox = document.getElementById('full-display-plot');
-        const isFullDisplay = fullDisplayCheckbox ? fullDisplayCheckbox.checked : false;
-        filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
+        filteredData = filteredByRangeValue(getBtnChecked("full-display-plot"), allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         YColumnVals = extractColumnAndNormalize(filteredData, YColumn);
-        mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, parseInt($("#window-size").val()));
+        mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, getValInt("window-size"));
     } else {
         filteredData = filterByBlankType(allGroups.allMixedData);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn);
@@ -496,7 +500,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
         if (calDiv.getAttribute('data-value') === "kinetics") {
             mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
         } else if (calDiv.getAttribute('data-value') === "point") {
-            mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allMixedData, YColumn), extractColumnAndConvert(allGroups.allMixedData, XColumn), regressAlgo = $("#exp-json-regress-algo").val());
+            mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allMixedData, YColumn), extractColumnAndConvert(allGroups.allMixedData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
         }
     }
 
@@ -513,11 +517,11 @@ function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     } else {
         let htmlString = "";
         if (calDiv.getAttribute('data-value') === "kinetics") {
-            htmlString = getCalKineticsString(mixAnalysis, $("#exp-json-regress-algo").val() === "Michaelis-Menten");
+            htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value=== "Michaelis-Menten");
         } else if (calDiv.getAttribute('data-value') === "point") {
             htmlString = getCalPointString(mixAnalysis);
         }
-        $("#plot-analysis").html(htmlString);
+        document.getElementById("plot-analysis").innerHTML = htmlString;
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -547,8 +551,8 @@ function getRangeStartEnd(isFullDisplay) {
         return { start: 0, end: Number.MAX_VALUE };
     } else {
         return {
-            start: parseFloat($("#range-value-start").val()),
-            end: parseFloat($("#range-value-end").val())
+            start: getValFloat("range-value-start"),
+            end: getValFloat("range-value-end")
         };
     }
 }
@@ -638,7 +642,7 @@ function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics
     if (!analysis || !AppState.quantity_input.quantities) return '';
 
     const headers = isMM ? ['V_max', 'Km'] : ['a', 'b', 'c'];
-    const initHeight = document.getElementById('open-all-analysis').checked ? "auto" : "0px";
+    const initHeight = getBtnChecked("open-all-analysis") ? "auto" : "0px";
 
     return AppState.quantity_input.quantities.map((label, i) => {
         const coef = analysis[i]?.coefficients || null;
@@ -667,7 +671,7 @@ function getCalPointString(analysis, analysisId = "cal-point-analysis") {
     const rSquared = analysis.rSquared || null;
     const showText = 'See point analysis';
     const hideText = 'Hide point analysis';
-    const initHeight = document.getElementById('open-all-analysis').checked ? "auto" : "0px";
+    const initHeight = getBtnChecked("open-all-analysis") ? "auto" : "0px";
 
     return `
         <span>
@@ -720,7 +724,7 @@ function extractColumnAndNormalize(data, colName) {
 }
 
 function extractColumnAndConvert(data, colName, convert = false) {
-    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier($("#time-unit").val());
+    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue());
     return data.map(row => {
         return convert ? Number((row[colName] * factor)) : Number(row[colName]);
     });
@@ -861,8 +865,8 @@ function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo
     if (nonBlankedAnalysisInfo) {
         html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], 'rgb(75, 192, 192)', 'Non-Blanked');
     }
-    $("#blanked-analysis").html(html_blank || '');
-    $("#non-blanked-analysis").html(html_nonblank || '');
+    document.getElementById("blanked-analysis").innerHTML = html_blank || '';
+    document.getElementById("non-blanked-analysis").innerHTML = html_blank || '';
 }
 
 function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblanked) {
@@ -882,11 +886,7 @@ function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblank
 }
 
 function updateSingleModeAnalysisInfo(analysisInfo) {
-    if (analysisInfo) {
-        $("#plot-analysis").html(formatAnalysisHtml(analysisInfo));
-    } else {
-        $("#plot-analysis").html('');
-    }
+    document.getElementById("plot-analysis").innerHTML = analysisInfo ? formatAnalysisHtml(analysisInfo) : '';
 }
 
 function extractSingleResultSummary(metadata, mixAnalysis) {
@@ -903,7 +903,7 @@ function extractSingleResultSummary(metadata, mixAnalysis) {
 
 function calibrateKineticsAnalysis(data, XColumn, YColumn, blankTypeValue) {
     const dataMap = preprocessDataCalParams(data, XColumn, YColumn);
-    const regressAlgo = $("#exp-json-regress-algo").val();
+    const regressAlgo = document.getElementById("exp-json-regress-algo").value;
     if (dataMap) {
         const results = dataMap.map(({ param, data }) => {
             const filteredData = data.filter(row => row['BlankType'] === blankTypeValue && row[param] !== "NONE");
@@ -936,7 +936,7 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
 
     if (AppState.currentMeasurementMode === "calibrate" && analysis && analysis.coefficients && numDiv > 0) {
         const step = (xMax - xMin) / (numDiv - 1);
-        const regressAlgo = $("#exp-json-regress-algo").val();
+        const regressAlgo = document.getElementById("exp-json-regress-algo").value;
 
         for (let i = 0; i < numDiv; i++) {
             const x = xMin + i * step;
@@ -1008,7 +1008,7 @@ function findYDimension(allYValues, labels) {
         }
     } else {
         // Original logic for non-equal Y values
-        if (labels.toLowerCase().includes("absorbance") && $("#split-sensor").is(":checked") && AppState.multiSource) {
+        if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-sensor") && AppState.multiSource) {
             yMin = 0;
             yMax = 0.6;      
         } else {
