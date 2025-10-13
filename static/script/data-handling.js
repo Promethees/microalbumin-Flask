@@ -481,135 +481,165 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
     return entries.sort((a, b) => Number(b) - Number(a));
 }
 
-function fetchData(filename, jsonFile) {
-    $.get('/get_data', {
-        file: document.getElementById("directory").value + delimiter + filename
-    }, function(response) {
-        if (response.data && response.data.length > 0) {
-            let derivedConSettings = null;
-            let derived_section = null;
-            let derived_con_text = null;
+const fetchData = async (filename, jsonFile) => {
+    try {
+        const response = await fetchDataFromServer(filename);
+        return processResponse(response, jsonFile);
+    } catch (error) {
+        handleFetchError(error);
+        return null;
+    }
+};
 
-            AppState.responseData = response.data; // Reset point data
-            AppState.metaData = response.metadata; // Reset metadata
+const fetchDataFromServer = async (filename) => {
+    const directory = document.getElementById("directory").value;
+    return await $.get('/get_data', {
+        file: `${directory}${DELIMITER}${filename}`
+    });
+};
 
-            // Update plot based on current mode
-            updatePlotBasedOnMode(jsonFile);
-            if (jsonFile && AppState.currentMeasurementMode !== "calibrate") {
-                derivedConSettings = settingDerivedCon(jsonFile);
-                derived_section = derivedConSettings.derived_section;
-                derived_con_text = derivedConSettings.derived_con_text;
-                console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
-                if (AppState.multiSource) {
-                    if (derived_section && Array.isArray(derived_section)) {
-                        derived_section.forEach(section => section.classList.remove("hidden"));
-                        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
-                        derived_con_text.forEach(section => blinkingItem(section, null));
-                    }
-                    else {
-                        $hidden(["select-quantity-section"], true);
-                        derived_section.forEach(section => section.classList.add("hidden"));
-                    }
-                }
-                else {
-                    if (derived_section && derived_section.length !== 0) {
-                        derived_section.classList.remove("hidden");
-                        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
-                        blinkingItem(derived_con_text, null);
-                    } else { // derived_section is null -> hide all
-                        $hidden(["select-quantity-section", 
-                                "derived-concentration-section",
-                                "blank-derived-concentration-section",
-                                "non-blank-derived-concentration-section"
-                                ])
-                    }
-                }
-            }
+function processResponse (response, jsonFile) {
+    if (!response.data || response.data.length === 0) {
+        handleEmptyData();
+        return null;
+    }
 
-            if (AppState.currentMeasurementMode !== "calibrate") {
-                // Process concentration value input
-                const conValueInput = document.getElementById('con-value-read');
-                const conValueFromFile = AppState.metaData["Concentration"] || "NONE";
+    // Store response data
+    AppState.responseData = response.data;
+    AppState.metaData = response.metadata;
 
-                conValueInput.disabled = conValueFromFile.toLowerCase() !== "none";
-                conValueInput.value = conValueFromFile !== "NONE" ? conValueFromFile : "";
-                
-                // Handle kinetics mode
-                if (AppState.currentMeasurementMode === "kinetics" && jsonFile) {
-                    const conQuantityInput = document.getElementById('regressed-quantity').value;
-                    const blankType = jsonFile["for_blank_type"];
-                    let analysisExtraction = null;
-                    
-                    // Calculate value based on quantity and blank type
-                    switch (conQuantityInput) {
-                        case "maxrate": {
-                            const val = getKineticValue("maxrate", blankType);
-                            analysisExtraction = Array.isArray(val)
-                                ? val.map(v => parseFloat(v) * 60)
-                                : (val !== null ? parseFloat(val) * 60 : null);
-                            break;
-                        }
-                        case "slope": {
-                            const val = getKineticValue("slope", blankType);
-                            analysisExtraction = Array.isArray(val)
-                                ? val.map(v => parseFloat(v) * 60)
-                                : (val !== null ? parseFloat(val) * 60 : null);
-                            break;
-                        }
-                        case "sat": {
-                            const val = getKineticValue("sat", blankType);
-                            analysisExtraction = Array.isArray(val)
-                                ? val.map(v => parseFloat(v))
-                                : (val !== null ? parseFloat(val) : null);
-                            break;
-                        }
-                        case "time_to_sat": {
-                            const val = getKineticValue("time_to_sat", blankType);
-                            analysisExtraction = Array.isArray(val)
-                                ? val.map(v => parseFloat(v) / 60)
-                                : (val !== null ? parseFloat(val) / 60 : null);
-                            break;
-                        }
-                    }
-                    
-                    if (analysisExtraction !== null) {
-                        const coef = jsonFile[conQuantityInput]["fit_coef"];
+    // Update plot
+    updatePlotBasedOnMode(jsonFile);
 
-                        if (Array.isArray(analysisExtraction) && Array.isArray(derived_con_text)) {
-                            analysisExtraction.forEach((val, idx) => {
-                                try {
-                                    const calculated_con = computeFit(val, jsonFile["fit_type"], coef).toFixed(4);
-                                    derived_con_text[idx].innerHTML = `${calculated_con}`;
-                                } catch (error) {
-                                    console.error("Error computing derived concentration:", error);
-                                    derived_con_text[idx].innerHTML = `<span style="color: red;">${error.message}</span>`;
-                                }
-                            });
-                        } else {
-                            try {
-                                const calculated_con = computeFit(analysisExtraction, jsonFile["fit_type"], coef).toFixed(4);
-                                derived_con_text.innerHTML = `${calculated_con}`;
-                            } catch (error) {
-                                console.error("Error computing derived concentration:", error);
-                                derived_con_text.innerHTML = `<span style="color: red;">${error.message}</span>`;
-                            }
-                        }
-                    }
-                } 
-            } 
-            // Handle calibration mode
-            else {
-                handleCalibrationMode();
-            }
+    // Process based on measurement mode
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        if (jsonFile)
+            handleNonCalibrationMode(jsonFile);
+    } else {
+        handleCalibrationMode();
+    }
 
-        } else {
-            $hidden(["plot-canvas", "blanked-canvas", "non-blanked-canvas"]);
-            document.getElementById("plot-analysis").innerHTML = `<span style="color: red;">No data available</span>`;
-        }
-    }).fail(function(xhr, status, error) {
-        console.error("Failed to fetch data:", status, error, xhr.responseText);
-    }); // Close $.get callback
-} // Close fetchData function
+    return response;
+};
+
+function handleNonCalibrationMode(jsonFile) {
+    toggleConValueTextbox();
+    
+    const derivedSettings = settingDerivedCon(jsonFile);
+    if (derivedSettings) {
+        updateDerivedSections(derivedSettings);
+    }
+
+    if (AppState.currentMeasurementMode === "kinetics" && jsonFile) {
+        processKineticsMode(jsonFile);
+    }
+};
+
+function updateDerivedSections ({ derived_section, derived_con_text }) {
+    console.log("Derived section:", derived_section, "Derived concentration text:", derived_con_text);
+
+    if (AppState.multiSource) {
+        handleMultiSource(derived_section, derived_con_text);
+    } else {
+        handleSingleSource(derived_section, derived_con_text);
+    }
+};
+
+function handleMultiSource(derived_section, derived_con_text) {
+    if (Array.isArray(derived_section)) {
+        derived_section.forEach(section => section.classList.remove("hidden"));
+        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
+        derived_con_text.forEach(section => section.classList.add("blinking"));
+    } else {
+        $hidden(["select-quantity-section"], true);
+        derived_section.forEach(section => section.classList.add("hidden"));
+    }
+};
+
+function handleSingleSource(derived_section, derived_con_text) {
+    if (derived_section) {
+        derived_section.classList.remove("hidden");
+        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
+        derived_con_text.classList.add("blinking");
+    } else {
+        $hidden([
+            "select-quantity-section",
+            "derived-concentration-section",
+            "blank-derived-concentration-section",
+            "non-blank-derived-concentration-section"
+        ]);
+    }
+};
+
+function processKineticsMode(jsonFile) {
+    const conQuantityInput = document.getElementById('regressed-quantity').value;
+    const blankType = jsonFile["for_blank_type"];
+    const analysisExtraction = calculateKineticValue(conQuantityInput, blankType);
+
+    if (analysisExtraction !== null) {
+        updateConcentrationDisplay(analysisExtraction, jsonFile, conQuantityInput);
+    }
+};
+
+function calculateKineticValue(quantity, blankType) {
+    const kineticCalculations = {
+        maxrate: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(val) * 60,
+        slope: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(v) * 60,
+        sat: val => Array.isArray(val) ? val.map(v => parseFloat(v)) : parseFloat(v),
+        time_to_sat: val => Array.isArray(val) ? val.map(v => parseFloat(v) / 60) : parseFloat(v) / 60
+    };
+
+    const val = getKineticValue(quantity, blankType);
+    return val !== null && kineticCalculations[quantity] 
+        ? kineticCalculations[quantity](val) 
+        : null;
+};
+
+function updateConcentrationDisplay(analysisExtraction, jsonFile, conQuantityInput) {
+    const { derived_con_text } = settingDerivedCon(jsonFile);
+    const coef = jsonFile[conQuantityInput]["fit_coef"];
+    const fitType = jsonFile["fit_type"];
+
+    if (Array.isArray(analysisExtraction) && Array.isArray(derived_con_text)) {
+        analysisExtraction.forEach((val, idx) => {
+            updateSingleConcentration(derived_con_text[idx], val, fitType, coef);
+        });
+    } else {
+        updateSingleConcentration(derived_con_text, analysisExtraction, fitType, coef);
+    }
+};
+
+function updateSingleConcentration(element, value, fitType, coef) {
+    try {
+        const calculatedCon = computeFit(value, fitType, coef).toFixed(4);
+        element.innerHTML = `${calculatedCon}`;
+    } catch (error) {
+        console.error("Error computing derived concentration:", error);
+        element.innerHTML = `<span style="color: red;">${error.message}</span>`;
+    }
+};
+
+function handleEmptyData() {
+    $hidden(["plot-canvas", "blanked-canvas", "non-blanked-canvas"]);
+    document.getElementById("plot-analysis").innerHTML = 
+        `<span style="color: red;">No data available</span>`;
+};
+
+function handleFetchError(error) {
+    console.error("Failed to fetch data:", error);
+};
+
+function toggleConValueTextbox() {
+    if (!AppState.multiSource) {
+        // Process concentration value input
+        const conValueInput = document.getElementById('con-value-read');
+        const conValueFromFile = AppState.metaData["Concentration"] || "NONE";
+
+        conValueInput.disabled = conValueFromFile.toLowerCase() !== "none";
+        conValueInput.value = conValueFromFile !== "NONE" ? conValueFromFile : "";
+    } 
+    return; 
+}
 
 function getKineticValue(property, blankType, multi_source=AppState.multiSource) {
     const analysis = AppState.globalAnalysis;
