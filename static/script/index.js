@@ -337,15 +337,6 @@ function kineticsModeBehaviour() {
     $hidden(addHidden, true);
     $hidden(removeHidden, false)
 
-    // Configure range inputs
-    ['range-value-start', 'range-value-end'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.value = '1000';
-            el.disabled = false;
-        }
-    });
-
     // Conditional visibility
     if (!AppState.multiSource)
         document.getElementById('concentration-reader-section')?.classList.remove('hidden');
@@ -381,15 +372,6 @@ function pointModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-    
-    // Configure range inputs
-    ['range-value-start', 'range-value-end'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.value = '1000';
-            el.disabled = false;
-        }
-    });
 
     if (!AppState.multiSource)
         document.getElementById('concentration-reader-section')?.classList.remove('hidden');
@@ -440,10 +422,6 @@ function calModeBehaviour() {
     else calPointBehaviour();
 
     terminateScript();
-
-    // Update UI and state
-    document.getElementById('selected-function').textContent =
-        document.getElementById('exp-json-regress-algo')?.value || '';
 
     AppState.multiSource = false;
     AppState.numSources = 1;
