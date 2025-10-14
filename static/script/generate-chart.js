@@ -194,7 +194,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
 
     const { xColumn, processedYColumns, allYValues, conversionFactor } = processData(allXColumn, allYColumnOrArray, getTimeUnitValue());
     if (!xColumn || xColumn.length === 0) {
-        $(`#${canvasId}`).hide();
+        document.getElementById(canvasId).style.display = 'none';
         return null;
     }
 
