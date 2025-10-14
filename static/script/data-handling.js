@@ -486,15 +486,26 @@ const fetchData = async (filename, jsonFile) => {
         const response = await fetchDataFromServer(filename);
         return processResponse(response, jsonFile);
     } catch (error) {
-        handleFetchError(error);
+        handleFetchError(error, filename);
         return null;
     }
 };
 
 const fetchDataFromServer = async (filename) => {
     const directory = document.getElementById("directory").value;
+    
     return await $.get('/get_data', {
         file: `${directory}${DELIMITER}${filename}`
+    }).fail((xhr, status, errorThrown) => {
+        // Create a custom error object with all the details
+        const enhancedError = new Error(`Fetch failed for ${filename}`);
+        enhancedError.xhr = xhr;
+        enhancedError.status = status;
+        enhancedError.errorThrown = errorThrown;
+        enhancedError.filename = filename;
+        enhancedError.directory = directory;
+        
+        throw enhancedError;
     });
 };
 
@@ -619,13 +630,55 @@ function updateSingleConcentration(element, value, fitType, coef) {
 
 function handleEmptyData() {
     $hidden(["plot-canvas", "blanked-canvas", "non-blanked-canvas"]);
-    document.getElementById("plot-analysis").innerHTML = 
-        `<span style="color: red;">No data available</span>`;
+    const plotAnalysis = document.getElementById("plot-analysis");
+    if (plotAnalysis )
+        plotAnalysis.innerHTML = 
+            `<span style="color: red;">No data available</span>`;
 };
 
 function handleFetchError(error) {
-    console.error("Failed to fetch data:", error);
-};
+    console.group('🚨 Fetch Error Details');
+    console.error("Failed to fetch data:", error.message);
+    
+    if (error.xhr) {
+        console.log("📡 XHR Object:", error.xhr);
+        console.log("📊 Status:", error.status);
+        console.log("❌ Error Thrown:", error.errorThrown);
+        
+        // Log response text if available
+        if (error.xhr.responseText) {
+            console.log("📄 Response Text:", error.xhr.responseText);
+        }
+        
+        // Log response headers if available
+        if (error.xhr.getAllResponseHeaders) {
+            console.log("📋 Response Headers:", error.xhr.getAllResponseHeaders());
+        }
+        
+        // Log status code and text
+        console.log("🔢 Status Code:", error.xhr.status);
+        console.log("📝 Status Text:", error.xhr.statusText);
+    }
+    
+    if (error.filename) {
+        console.log("📁 Requested Filename:", error.filename);
+    }
+    
+    if (error.directory) {
+        console.log("📂 Directory:", error.directory);
+    }
+    
+    console.groupEnd();
+    
+    // You can also add more specific error handling based on status
+    if (error.status === 'error' && error.errorThrown) {
+        console.warn("⚠️ Possible network or server error:", error.errorThrown);
+    } else if (error.xhr && error.xhr.status >= 400 && error.xhr.status < 500) {
+        console.warn("⚠️ Client error (4xx):", error.xhr.status);
+    } else if (error.xhr && error.xhr.status >= 500) {
+        console.error("💥 Server error (5xx):", error.xhr.status);
+    }
+}
 
 function toggleConValueTextbox() {
     if (!AppState.multiSource) {
