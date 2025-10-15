@@ -213,6 +213,9 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
             datasets
         },
         options: {
+            responsive: true,  // Ensure responsive behavior
+            maintainAspectRatio: true,  // Maintain the aspect ratio
+            aspectRatio: 1.5,  // 1:1.5 ratio (width:height = 1.5:1, so y is 2/3 of x)
             animation: false,
             scales: {
                 x: {
