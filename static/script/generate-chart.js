@@ -202,7 +202,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
 
     const datasets = processedYColumns.map((yColumn, i) => {
         const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor = index, i, isSinglePoint);
-        const regressionDataset = createRegressionDataset(xMax, xMin, analyses[i], labels[i]);
+        const regressionDataset = (AppState.currentMeasurementMode === "calibrate") ? createRegressionDataset(xMax, xMin, analyses[i], labels[i]) : null;
         return [dataset, ...(regressionDataset ? [regressionDataset] : [])];
     }).flat();
 

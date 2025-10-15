@@ -11,6 +11,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
     if (tableSelector === "#file-table") {
         AppState.prevFile = AppState.currentFile;
         AppState.currentFile = fileName;
+        clearConcentrationValues();
 
         $id("copy-file-btn").disabled = false;
         $id("split-mode").checked = false;

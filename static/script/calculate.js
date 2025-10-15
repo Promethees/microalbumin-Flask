@@ -708,19 +708,35 @@ function mapDuplicates(x, y) {
 }
 
 function filterXYPairs(XColumnVals, YColumnVals, startThreshold, endThreshold) {
-    if (XColumnVals.length !== YColumnVals.length) {
-        throw new Error("XColumn and YColumn must have the same size");
+    const isMultiY = Array.isArray(YColumnVals[0]);
+
+    // Ensure X/Y sizes match
+    if (isMultiY) {
+        YColumnVals.forEach(y => checkSize(XColumnVals, y));
+    } else {
+        checkSize(XColumnVals, YColumnVals);
     }
 
-    const filteredX = [];
-    const filteredY = [];
+    // Determine indices that satisfy the threshold range
+    const validIndices = XColumnVals
+        .map((x, i) => (x >= startThreshold && x <= endThreshold ? i : -1))
+        .filter(i => i !== -1);
 
-    for (let i = 0; i < XColumnVals.length; i++) {
-        if (startThreshold <= XColumnVals[i] && XColumnVals[i] <= endThreshold) {
-            filteredX.push(XColumnVals[i]);
-            filteredY.push(YColumnVals[i]);
-        }
-    }
+    // Filter X based on those indices
+    const filteredX = validIndices.map(i => XColumnVals[i]);
+
+    // Filter Y — handle both single and multiple Y columns
+    const filteredY = isMultiY
+        ? YColumnVals.map(y => validIndices.map(i => y[i]))
+        : validIndices.map(i => YColumnVals[i]);
 
     return { filteredX, filteredY };
+}
+
+function checkSize(XColumn, YColumn) {
+    if (XColumn.length !== YColumn.length) {
+        throw new Error(
+            `X and Y columns must have the same length. Got X: ${XColumn.length}, Y: ${YColumn.length}`
+        );
+    }
 }

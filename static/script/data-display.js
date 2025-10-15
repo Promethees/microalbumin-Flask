@@ -112,6 +112,36 @@ function checkboxHtmlWithID(
     .join("");
 }
 
+function handleConValueReadChange(canvasId, allXColumn, allYColumnOrArray, index, unit) {
+    const input = document.getElementById(`con-value-read-source-${index}`);
+    const value = input ? input.value : '';
+    // Save to localStorage for persistence
+    if (value !== '') {
+        localStorage.setItem(`con-value-read-source-${index}`, value);
+    } else {
+        // Optionally remove from localStorage if empty
+        localStorage.removeItem(`con-value-read-source-${index}`);
+    }
+
+    // Call getLabel with the current value at change time
+    const label = getLabel(`Value:${index + 1}`, unit);
+    
+    // Call the original handler with the dynamically generated label
+    handleCkboxChange(canvasId, allXColumn, allYColumnOrArray, label, unit, index);
+}
+
+// Helper function to save value on blur (user leaves the field)
+function saveConcentrationValue(index) {
+    const input = document.getElementById(`con-value-read-source-${index}`);
+    const value = input ? input.value : '';
+    
+    if (value !== '') {
+        localStorage.setItem(`con-value-read-source-${index}`, value);
+    } else {
+        localStorage.removeItem(`con-value-read-source-${index}`);
+    }
+}
+
 function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, index) {
     // Normalize Y values if normalizeMode is checked
     allYColumnOrArray = getBtnChecked("normalize-mode") ? (Array.isArray(allYColumnOrArray[0])
@@ -124,7 +154,7 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
     // Apply filtering only when fullDisplay checkbox is checked
     let filteredX = originalAllXColumn;
     let filteredY = allYColumnOrArray;
-    if (!getCheckboxes(canvasId).fullDisplay.checked) {
+    if (!getBtnChecked(getCheckboxes(canvasId).fullDisplay)) {
         const startThreshold = getValFloat("range-value-start") / factor;
         const endThreshold = getValFloat("range-value-end") / factor;
         ({ filteredX, filteredY } = filterXYPairs(originalAllXColumn, allYColumnOrArray, startThreshold, endThreshold));
@@ -133,7 +163,9 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
     const displayedAllXColumn = filteredX.map(x => x * factor);
 
     // Calculate kinetics quantities using filtered data
-    const analysis = calculateKineticsQuantities(filteredX, filteredY, getValInt("window-size"));
+    const analysis = Array.isArray(filteredY[0]) ?
+        filteredY.map(y => calculateKineticsQuantities(filteredX, y, getValInt("window-size"))) :
+        calculateKineticsQuantities(filteredX, filteredY, getValInt("window-size"));
 
     // Generate the chart with filtered and converted data
     generateChart(
@@ -159,6 +191,19 @@ function createChartSection({
     unit,
     index
 }) {
+    // Get previous value from localStorage if it exists
+    const previousValueKey = `con-value-read-source-${index}`;
+    const previousValue = localStorage.getItem(previousValueKey) || '';
+
+    // Store parameters needed for dynamic label generation
+    window[`chartParams_${index}`] = {
+        canvasId,
+        allXColumn: JSON.stringify(allXColumn),
+        allYColumnOrArray: JSON.stringify(allYColumnOrArray),
+        unit,
+        index
+    };
+
     return AppState.currentMeasurementMode !== "calibrate" ? 
     `
         <div id="${sectionId}">
@@ -186,7 +231,15 @@ function createChartSection({
                 <div id="concentration-reader-section-source-${index}">
                     Concentration from source-${index + 1} sample is 
                     <input type="number" id="con-value-read-source-${index}" 
-                        value="" min=0 style="width: 5em;"> </input> ng/µL
+                        value="${previousValue}"
+                        onchange="handleConValueReadChange('${canvasId}', 
+                            ${JSON.stringify(allXColumn)}, 
+                            ${JSON.stringify(allYColumnOrArray)},
+                            ${index},
+                            '${unit}')" 
+                        onblur="saveConcentrationValue(${index})"
+                        value="${previousValue}" 
+                        min=0 style="width: 5em;"> </input> ng/µL
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
@@ -332,7 +385,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, yColumn);
         const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         const yValues = extractColumnAndNormalize(filteredData, yColumn);
-        const label = `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
+        const label = getLabel(`Value:${i + 1}`, measUnit);
         let analysis = null;
 
         analysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn[i], getValInt("window-size"));
@@ -366,7 +419,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, getValInt("window-size")));
-    const labels = YColumn.map(y => `${AppState.metaData['Measurement']} ${y} ${unitDisplay(measUnit)}`);
+    const labels = YColumn.map(y => getLabel(y, measUnit));
 
     // Format analysis info for all sources
     const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, labels[i]));
@@ -389,6 +442,8 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     });
     document.getElementById("plot-analysis").innerHTML = html;
 
+    addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUnit);
+
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
@@ -398,6 +453,79 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
             analysis: analyses,
             meas: AppState.metaData["Measurement"]
         };
+    }
+}
+
+function getLabel(yColumn, measUnit) {
+    // Extract n from "Value:n" format
+    const match = yColumn.match(/Value:(\d+)/);
+    if (!match) {
+        throw new Error(`Invalid yColumn format: ${yColumn}. Expected format "Value:n"`);
+    }
+    const n = parseInt(match[1], 10);
+    const elementId = `con-value-read-source-${n - 1}`;
+
+    // let conValueRead = document.getElementById(elementId)?.value;
+    
+    // conValueRead = conValueRead ? 
+    const conValueRead = localStorage.getItem(elementId);
+
+    return conValueRead 
+        ? `${AppState.metaData['Measurement']} at ${conValueRead} ng/µL ${unitDisplay(measUnit)}`
+        : `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
+}
+
+function addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUnit) {
+    for (let i = 0; i < AppState.numSources; i++) {
+        // Capture YColumn as it is *now*
+        const capturedY = [...YColumn];
+
+        // Get the input element
+        const inputElement = document.getElementById(`con-value-read-source-${i}`);
+        if (!inputElement) continue;
+
+        // Set initial value from localStorage if not already set
+        const storageKey = `con-value-read-source-${i}`;
+        const storedValue = localStorage.getItem(storageKey);
+        if (storedValue !== null && inputElement.value === '') {
+            inputElement.value = storedValue;
+        }
+
+        // Attach the change listener
+        inputElement.addEventListener("change", function () {
+            const value = this.value;
+            const storageKey = `con-value-read-source-${i}`;
+            
+            // Save to localStorage
+            if (value !== '') {
+                localStorage.setItem(storageKey, value);
+            } else {
+                localStorage.removeItem(storageKey);
+            }
+            
+            // Generate labels and handle change
+            const yLabels = capturedY.map(y => getLabel(y, measUnit));
+            handleCkboxChange(
+                "plot-canvas",
+                XColumnVals,
+                YColumnVals,
+                yLabels,
+                measUnit,
+                null
+            );
+        });
+
+        // Also save on blur to catch manual edits that don't trigger change
+        inputElement.addEventListener("blur", function () {
+            const value = this.value;
+            const storageKey = `con-value-read-source-${i}`;
+            
+            if (value !== '') {
+                localStorage.setItem(storageKey, value);
+            } else {
+                localStorage.removeItem(storageKey);
+            }
+        });
     }
 }
 
@@ -1033,4 +1161,11 @@ function getLabelsFromYColumn(YColumn, measurementLabel, unit) {
 
 function getMetaUnit(metadata) {
     return (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+}
+
+// Clear all concentration values for this session
+function clearConcentrationValues() {
+    for (let i = 0; i < AppState.numSources; i++) { // Adjust based on max sources
+        localStorage.removeItem(`con-value-read-source-${i}`);
+    }
 }
