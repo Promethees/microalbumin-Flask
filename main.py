@@ -170,13 +170,6 @@ def api_current_output():
 def edit_file():
     global process
     try:
-        # Check if script is running
-        if process and process.poll() is None:
-            return jsonify({
-                'status': 'error',
-                'message': 'Cannot edit files while the data collection process is running'
-            }), HTTPStatus.LOCKED
-
         # Extract request data
         file_name = request.form.get('filename')
         new_file_name = request.form.get('new_filename', file_name)  # Default to original name if not provided
@@ -321,19 +314,17 @@ def edit_file():
 
         # Write the new content
         try:
-            lock_path = new_file_path + '.lock'
-            with FileLock(lock_path):
-                if new_file_name.endswith('.json'):
-                    # Pretty print JSON with indentation
-                    parsed_json = json.loads(content)
-                    with open(new_file_path, 'w') as f:
-                        json.dump(parsed_json, f, indent=2)
-                else:
-                    with open(new_file_path, 'w') as f:
-                        f.write(content)
-                    if calibrate_mode:
-                        sort_csv_file(new_file_path, calibrate_mode, multi_source)
-                f.close()
+            if new_file_name.endswith('.json'):
+                # Pretty print JSON with indentation
+                parsed_json = json.loads(content)
+                with open(new_file_path, 'w') as f:
+                    json.dump(parsed_json, f, indent=2)
+            else:
+                with open(new_file_path, 'w') as f:
+                    f.write(content)
+                if calibrate_mode:
+                    sort_csv_file(new_file_path, calibrate_mode, multi_source)
+            f.close()
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
             return jsonify({
@@ -366,19 +357,10 @@ def edit_file():
 @app.route('/delete_file', methods=['POST'])
 def delete_file():
     try:
-        # Check if script is running
-        if process and process.poll() is None:
-            return jsonify({
-                'status': 'error',
-                'message': 'Cannot delete files while the data collection process is running'
-            }), HTTPStatus.LOCKED
-
         file_name = request.form.get('filename')
         tabletype = request.form.get('tabletype')
         mode = request.form.get('mode')
         path = request.form.get('path') if request.form.get('path') else get_directory()
-        is_multi_source = request.form.get('isMultiSource', 'false').lower() == 'true'
-        num_sources = int(request.form.get('numSources', 1))
 
         # Input validation
         if not file_name or not tabletype:
@@ -394,10 +376,6 @@ def delete_file():
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            # if is_multi_source:
-            #     json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
-            # else:
-            #     json_path = os.path.join(json_root_path, "single_sensor", mode)
             json_path = os.path.join(json_root_path, mode)
             file_path = os.path.join(json_path, file_name)
             print(f"JSON file path is {file_path}")
@@ -453,19 +431,11 @@ def delete_file():
 @app.route('/copy_file', methods=['POST'])
 def copy_file():
     try:
-        # Prevent copy during running process
-        if process and process.poll() is None:
-            return jsonify({
-                'status': 'error',
-                'message': 'Cannot copy files while the data collection process is running'
-            }), HTTPStatus.LOCKED
-
         file_name = request.form.get('filename')
         mode = request.form.get('mode')
         tabletype = request.form.get('tabletype')
         path = request.form.get('path') if request.form.get('path') else get_directory()
-        is_multi_source = request.form.get('isMultiSource', 'false').lower() == 'true'
-        num_sources = int(request.form.get('numSources', 1))
+
         # Input validation
         if not file_name or not tabletype:
             return jsonify({
@@ -480,10 +450,7 @@ def copy_file():
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            # if is_multi_source:
-            #     src_dir = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
-            # else:
-            #     src_dir = os.path.join(json_root_path, "single_sensor", mode)
+
             src_dir = os.path.join(json_root_path, mode)
         else:
             src_dir = path

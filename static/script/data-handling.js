@@ -299,120 +299,105 @@ function deselectFile(tableSelector = "#file-table") {
 }
 
 function deleteFile(fileName, button, tableSelector = "#file-table") {
-    // Check if script is running
-    checkScriptStatus().then((isRunning) => {
-        if (isRunning || AppState.scriptRunning) {
-            Swal.fire({
-                title: 'Error!',
-                text: 'Cannot delete files while the data collection process is running. Stop the process and try again.',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                blinkingItem('terminate-script-btn', 5000);
-            });
-            return;
+    const skipConfirmation = getBtnChecked("no-swal-checkbox");
+
+    const proceedDelete = () => {
+        // Remove the file from the table
+        $(button).closest("tr").remove();
+        console.log("Deleting file:", fileName, "from table:", tableSelector);
+
+        // Update the AppState
+        if (tableSelector === "#file-table") {
+            if (AppState.currentFile === fileName) {
+                deselectFile(tableSelector);
+            }
+
+            $.post('/delete_file', { 
+                filename: fileName, 
+                path: csvPath, 
+                tabletype: tableSelector 
+            }, handleResponse).fail(handleError);
+        } else if (tableSelector === "#json-table") {
+            if (AppState.currentJSON === fileName) {
+                deselectFile(tableSelector);
+            }
+
+            console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
+
+            $.post('/delete_file', { 
+                filename: fileName, 
+                mode: AppState.currentMeasurementMode, 
+                tabletype: tableSelector,
+                isMultiSource: AppState.multiSource,
+                numSources: AppState.numSources
+            }, handleResponse).fail(handleError);
         }
+    };
 
-        const skipConfirmation = getBtnChecked("no-swal-checkbox");
-
-        const proceedDelete = () => {
-            // Remove the file from the table
-            $(button).closest("tr").remove();
-            console.log("Deleting file:", fileName, "from table:", tableSelector);
-
-            // Update the AppState
-            if (tableSelector === "#file-table") {
-                if (AppState.currentFile === fileName) {
-                    deselectFile(tableSelector);
-                }
-
-                $.post('/delete_file', { 
-                    filename: fileName, 
-                    path: csvPath, 
-                    tabletype: tableSelector 
-                }, handleResponse).fail(handleError);
-            } else if (tableSelector === "#json-table") {
-                if (AppState.currentJSON === fileName) {
-                    deselectFile(tableSelector);
-                }
-
-                console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
-
-                $.post('/delete_file', { 
-                    filename: fileName, 
-                    mode: AppState.currentMeasurementMode, 
-                    tabletype: tableSelector,
-                    isMultiSource: AppState.multiSource,
-                    numSources: AppState.numSources
-                }, handleResponse).fail(handleError);
-            }
-        };
-
-        const handleResponse = (response) => {
-            if (response.status === 'success') {
-                if (skipConfirmation) {
-                    console.log("File deleted successfully:", response.message);
-                    return; // Exit if no popup is needed   
-                }
-                Swal.fire({
-                    title: 'Deleted!',
-                    text: response.message,
-                    icon: 'success',
-                    timer: 2000,
-                showConfirmButton: false
-                });
-            } else {
-                Swal.fire({
-                    title: 'Error!',
-                    text: response.message,
-                    icon: 'error',
-                    confirmButtonText: 'OK'
-                }).then(() => {
-                    blinkingItem('terminate-script-btn', 5000);
-                });
-            }
-        };
-
-        const handleError = (jqXHR) => {
-            let errorMessage = 'An unexpected error occurred while deleting the file';
-            if (jqXHR.status === 400) {
-                errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
-            } else if (jqXHR.status === 403) {
-                errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
-            } else if (jqXHR.status === 404) {
-                errorMessage = jqXHR.responseJSON?.message || 'File not found';
-            } else if (jqXHR.status === 423) {
-                errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+    const handleResponse = (response) => {
+        if (response.status === 'success') {
+            if (skipConfirmation) {
+                console.log("File deleted successfully:", response.message);
+                return; // Exit if no popup is needed   
             }
             Swal.fire({
-                title: 'Error!',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                blinkingItem('terminate-script-btn', 5000);
+                title: 'Deleted!',
+                text: response.message,
+                icon: 'success',
+                timer: 2000,
+            showConfirmButton: false
             });
-        };
-
-        if (skipConfirmation) {
-            proceedDelete();
         } else {
-            // Show confirmation dialog using SweetAlert2
             Swal.fire({
-                title: 'Are you sure?',
-                text: `Do you want to delete ${fileName}? This action cannot be undone.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    proceedDelete();
-                }
+                title: 'Error!',
+                text: response.message,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                blinkingItem('terminate-script-btn', 5000);
             });
         }
-    });
+    };
+
+    const handleError = (jqXHR) => {
+        let errorMessage = 'An unexpected error occurred while deleting the file';
+        if (jqXHR.status === 400) {
+            errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
+        } else if (jqXHR.status === 403) {
+            errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
+        } else if (jqXHR.status === 404) {
+            errorMessage = jqXHR.responseJSON?.message || 'File not found';
+        } else if (jqXHR.status === 423) {
+            errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
+        }
+        Swal.fire({
+            title: 'Error!',
+            text: errorMessage,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        }).then(() => {
+            blinkingItem('terminate-script-btn', 5000);
+        });
+    };
+
+    if (skipConfirmation) {
+        proceedDelete();
+    } else {
+        // Show confirmation dialog using SweetAlert2
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you want to delete ${fileName}? This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                proceedDelete();
+            }
+        });
+    }
 }
 
 function settingDerivedCon(jsonFile) {
