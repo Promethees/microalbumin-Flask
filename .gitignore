@@ -14,3 +14,4 @@ venv
 *.txt
 *.json
 /log
+.vercel
