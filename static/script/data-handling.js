@@ -319,6 +319,93 @@ function uploadFile(tableSelector = "#file-table") {
     fileInput.click(); // Trigger file chooser dialog
 }
 
+function downloadFile(tableSelector = "#file-table") {
+    const currentFile = tableSelector === "#file-table" ? AppState.currentFile : AppState.currentJSON;
+
+    if (!currentFile) {
+        Swal.fire({
+            title: 'Error!',
+            text: 'No file selected to download.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    const filePath = tableSelector === "#file-table" ? csvPath : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
+
+    Swal.fire({
+        title: 'Preparing Download...',
+        text: `Fetching ${currentFile} from server.`,
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    $.ajax({
+        url: '/get_file_content',
+        method: 'GET',
+        data: { file: currentFile, path: filePath },
+        success: function(response) {
+            Swal.close();
+
+            if (response.status === 'success' && response.content) {
+                const content = response.content;
+                const isJSON = currentFile.toLowerCase().endsWith(".json");
+
+                // Create blob and trigger download
+                const blob = new Blob([content], {
+                    type: isJSON ? 'application/json' : 'text/csv'
+                });
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = currentFile;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                Swal.fire({
+                    title: 'Success!',
+                    text: `${currentFile} fetched successfully. Preparing for download`,
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: response.message || 'Failed to retrieve file content.',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            Swal.close();
+
+            let message;
+            if (xhr.status === 404) {
+                message = 'File not found on server.';
+            } else if (xhr.status === 403) {
+                message = 'Permission denied to access the file.';
+            } else if (xhr.status === 400) {
+                message = 'Invalid request. Please check file path or name.';
+            } else {
+                message = xhr.responseJSON?.message || 'Unexpected error occurred while fetching the file.';
+            }
+
+            Swal.fire({
+                title: 'Error!',
+                text: message,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    });
+}
+
 function processDataDisplay(fileName, jsonFileContent=null) {
     // Proceed with fetching and displaying data
     fetchData(fileName, jsonFileContent);
