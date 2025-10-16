@@ -470,6 +470,7 @@ function switchingModes(mode) {
     AppState.currentJSONcontent = null;
     AppState.currentFile = null;
     document.getElementById("json-display").textContent = "";
+    $hidden(["right-deselect-btn"]);
     
     if (mode === "kinetics") {
         kineticsModeBehaviour();
