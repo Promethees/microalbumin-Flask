@@ -31,8 +31,6 @@ from config import Config
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
 os_name = platform.system().lower()
 if "window" in os_name:
     delimiter = "\\\\";
