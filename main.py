@@ -17,6 +17,7 @@ import re
 from filelock import FileLock
 import shutil
 from pathlib import Path
+from werkzeug.utils import secure_filename
 
 sys.path.append('src')
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
@@ -497,7 +498,68 @@ def copy_file():
             'status': 'error',
             'message': 'An unexpected error occurred while copying the file'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
-         
+
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
+    try:
+        uploaded_file = request.files.get('file')
+        mode = request.form.get('mode')
+        tabletype = request.form.get('tabletype')
+
+        if not uploaded_file or not tabletype:
+            return jsonify({
+                'status': 'error',
+                'message': 'File and tabletype are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        filename = secure_filename(uploaded_file.filename)
+
+        # Determine destination directory
+        if tabletype == '#json-table':
+            if not mode:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Mode is required for JSON uploads'
+                }), HTTPStatus.BAD_REQUEST
+            dst_dir = os.path.join(json_root_path, mode)
+        else:
+            dst_dir = csv_path
+
+        os.makedirs(dst_dir, exist_ok=True)
+
+        dst_path = os.path.join(dst_dir, filename)
+
+        # === ✅ Duplicate filename check ===
+        if os.path.exists(dst_path):
+            # Automatically rename
+            base, ext = os.path.splitext(filename)
+            dst_path = get_next_filename(ext, dst_dir, base)
+            message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
+        else:
+            message_suffix = ''
+
+        # Save file
+        uploaded_file.save(dst_path)
+
+        return jsonify({
+            'status': 'success',
+            'message': f'File "{filename}" uploaded successfully{message_suffix}.',
+            'filename': os.path.basename(dst_path)
+        }), HTTPStatus.OK
+
+    except PermissionError as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Permission denied: {str(e)}'
+        }), HTTPStatus.FORBIDDEN
+
+    except Exception as e:
+        print(f"Unexpected error in upload_file: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while uploading the file.'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+       
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')

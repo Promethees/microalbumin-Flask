@@ -14,6 +14,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         clearConcentrationValues();
 
         $id("copy-file-btn").disabled = false;
+        $id("download-file-btn").disabled = false;
         $id("split-mode").checked = false;
 
         // Hide both canvases
@@ -37,6 +38,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         AppState.currentJSON = fileName;
 
         $id("copy-json-btn").disabled = false;
+        $id("download-json-btn").disabled = false;
         $hidden(["right-deselect-btn", "json-display"], false);
 
         fetchJSON(AppState.currentJSON, (JSON_content, JSON_path) => {
@@ -248,6 +250,75 @@ function copyFile(tableSelector = "#file-table") {
     });
 }
 
+function uploadFile(tableSelector = "#file-table") {
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = tableSelector === "#json-table" ? ".json" : ".csv";
+
+    fileInput.onchange = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("mode", AppState.currentMeasurementMode || "");
+        formData.append("tabletype", tableSelector);
+        formData.append("isMultiSource", AppState.multiSource || false);
+
+        Swal.fire({
+            title: 'Uploading...',
+            text: `Please wait while uploading ${file.name}`,
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        $.ajax({
+            url: "/upload_file",
+            method: "POST",
+            data: formData,
+            processData: false,  // important for FormData
+            contentType: false,  // important for FormData
+            success: function(response) {
+                Swal.close();
+
+                if (response.status === "success") {
+                    Swal.fire({
+                        title: "Success!",
+                        text: response.message,
+                        icon: "success",
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        if (tableSelector === "#file-table") {
+                            updateDirectory(csvPath);
+                        } else if (tableSelector === "#json-table") {
+                            updateJSONTable();
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        title: "Error!",
+                        text: response.message || "An unknown error occurred while uploading the file.",
+                        icon: "error",
+                        confirmButtonText: "OK"
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                Swal.close();
+                Swal.fire({
+                    title: "Upload Failed",
+                    text: xhr.responseJSON?.message || error,
+                    icon: "error",
+                    confirmButtonText: "OK"
+                });
+            }
+        });
+    };
+
+    fileInput.click(); // Trigger file chooser dialog
+}
+
 function processDataDisplay(fileName, jsonFileContent=null) {
     // Proceed with fetching and displaying data
     fetchData(fileName, jsonFileContent);
@@ -275,7 +346,7 @@ function deselectFile(tableSelector = "#file-table") {
         ["plot-analysis", "blanked-analysis", "non-blanked-analysis"].forEach(id => $text(id, ""));
 
         updateFileDisplay(AppState.currentFile);
-        $disable(["copy-file-btn"], true);
+        $disable(["copy-file-btn", "download-file-btn"], true);
 
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = null;
@@ -293,7 +364,7 @@ function deselectFile(tableSelector = "#file-table") {
             "point-json-exp-section"
         ].forEach(id => $toggleClass(id, "hidden", true));
 
-        $disable(["copy-json-btn"], true);
+        $disable(["copy-json-btn", "download-json-btn"], true);
         $toggleClass("right-deselect-btn", "hidden", true);
     }
 }
