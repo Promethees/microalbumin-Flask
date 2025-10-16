@@ -36,7 +36,7 @@ const AppState = {
     globalAnalysis: null,
     prevDropdownEntries: null,
     exp_json_content: null,
-    processedExpPath: getNativePath(uploadPath),
+    processedExpPath: getNativePath(csvPath),
     jsonPath: getNativePath(rootPath, 'json'),
     chartInstances: {},
     responseData: null,
@@ -193,7 +193,7 @@ $(document).ready(function() {
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function() {
         if (!serverAvailable) return;
-        updateDirectory(uploadPath, false);
+        updateDirectory(csvPath, false);
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
@@ -465,7 +465,7 @@ function updateMultiSourceExportOptions() {
 
 function switchingModes(mode) {
     AppState.currentMeasurementMode = mode;
-    updateDirectory(uploadPath, true);
+    updateDirectory(csvPath, true);
     AppState.currentJSON = null;
     AppState.currentJSONcontent = null;
     AppState.currentFile = null;

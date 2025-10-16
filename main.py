@@ -45,7 +45,7 @@ else:
     delimiter = "/";
 
 json_root_path = os.path.join(os.getcwd(), "json")
-upload_path = os.path.join(os.getcwd(), "uploads")
+csv_path = os.path.join(os.getcwd(), "csv")
 # Configuration - Set this to False for development, True for production
 PRODUCTION_MODE = True  # Change this based on your environment
 
@@ -53,16 +53,6 @@ PRODUCTION_MODE = True  # Change this based on your environment
 @app.route('/ping')
 def ping():
     return jsonify({'status': 'success'})
-
-@app.route('/clear_logs', methods=['POST'])
-def clear_logs():
-    global log_file
-    try:
-        with open(log_file, 'w') as f:
-            f.write("")  # Clear the file
-        return jsonify({'status': 'success'})
-    except Exception as e:
-        return jsonify({'status': 'failure', 'message': str(e)}), 500
 
 @app.route('/clear_cache', methods=['POST'])
 def clear_cache():
@@ -85,13 +75,12 @@ def index():
     range_input = get_range_input()
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
-    file_list = get_file_list(upload_path)
+    file_list = get_file_list(csv_path)
     cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
-    clear_logs()
     response = make_response(render_template('index.html', 
                          title="Easy Sensor Kit",
                          directory= os.path.abspath(os.getcwd()),
-                         upload_path = upload_path,
+                         csv_path = csv_path,
                          range_input=range_input,
                          mode_input=mode_input,
                          quantity_input=quantity_input,

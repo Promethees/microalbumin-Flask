@@ -276,7 +276,7 @@
             }
             alignTopWithReference();
             const rootPath = {{ directory | tojson | safe}};
-            const uploadPath = {{ upload_path | tojson | safe }}
+            const csvPath = {{ csv_path | tojson | safe }}
             const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
 

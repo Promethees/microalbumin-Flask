@@ -176,7 +176,7 @@ function copyFile(tableSelector = "#file-table") {
         return;
     }
 
-    const filePath = tableSelector === "#file-table" ? uploadPath : currentFile;
+    const filePath = tableSelector === "#file-table" ? csvPath : currentFile;
 
     $.ajax({
         url: '/copy_file',
@@ -193,7 +193,7 @@ function copyFile(tableSelector = "#file-table") {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
-                        updateDirectory(uploadPath);
+                        updateDirectory(csvPath);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -208,7 +208,7 @@ function copyFile(tableSelector = "#file-table") {
                     showConfirmButton: false
                 }).then(() => {
                     if (tableSelector === "#file-table") {
-                        updateDirectory(uploadPath);
+                        updateDirectory(csvPath);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -328,7 +328,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
                 $.post('/delete_file', { 
                     filename: fileName, 
-                    path: uploadPath, 
+                    path: csvPath, 
                     tabletype: tableSelector 
                 }, handleResponse).fail(handleError);
             } else if (tableSelector === "#json-table") {
@@ -494,7 +494,7 @@ const fetchData = async (filename, jsonFile) => {
 
 const fetchDataFromServer = async (filename) => {    
     return await $.get('/get_data', {
-        file: `${uploadPath}${DELIMITER}${filename}`
+        file: `${csvPath}${DELIMITER}${filename}`
     }).fail((xhr, status, errorThrown) => {
         // Create a custom error object with all the details
         const enhancedError = new Error(`Fetch failed for ${filename}`);
@@ -502,7 +502,7 @@ const fetchDataFromServer = async (filename) => {
         enhancedError.status = status;
         enhancedError.errorThrown = errorThrown;
         enhancedError.filename = filename;
-        enhancedError.directory = uploadPath;
+        enhancedError.directory = csvPath;
         
         throw enhancedError;
     });
@@ -860,7 +860,7 @@ function exportData() {
     const saveFile = document.getElementById("save-file").value.trim() || "results";
 
     // Bind button to export path
-    bindButtonToString("#go-to-exp-btn", processedExpPath);
+    bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
 
     // Export data based on measurement mode
     const analysisData = generateAnalysisData();
@@ -868,7 +868,7 @@ function exportData() {
         return;
     }
 
-    sendExportDataToSources(processedExpPath, saveFile, analysisData);
+    sendExportDataToSources(AppState.processedExpPath, saveFile, analysisData);
 }
 
 // Validate concentration values based on source mode

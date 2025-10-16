@@ -71,7 +71,7 @@ document.getElementById('multi-source').addEventListener('change', function() {
 document.getElementById('num-sources').addEventListener('change', function() {
     AppState.numSources = parseInt(this.value);
     console.log("Number of sources set to:", AppState.numSources);
-    updateDirectory(uploadPath, true);
+    updateDirectory(csvPath, true);
     updateMultiSourceExportOptions();
 });
 
