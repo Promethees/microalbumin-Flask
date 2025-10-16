@@ -154,7 +154,7 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
     // Apply filtering only when fullDisplay checkbox is checked
     let filteredX = originalAllXColumn;
     let filteredY = allYColumnOrArray;
-    if (!getBtnChecked(getCheckboxes(canvasId).fullDisplay)) {
+    if (!getCheckboxes(canvasId).fullDisplay || !getCheckboxes(canvasId).fullDisplay.checked) {
         const startThreshold = getValFloat("range-value-start") / factor;
         const endThreshold = getValFloat("range-value-end") / factor;
         ({ filteredX, filteredY } = filterXYPairs(originalAllXColumn, allYColumnOrArray, startThreshold, endThreshold));
