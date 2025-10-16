@@ -719,7 +719,7 @@ body.dark #swal-edit-table tr.selected td {
 /* ==========================================================================
    Buttons & Controls
    ========================================================================== */
-#deselect-btn, #copy-file-btn, #copy-json-btn {
+.utility-btn {
     margin-top: 5px;
     padding: 5px 10px;
 }

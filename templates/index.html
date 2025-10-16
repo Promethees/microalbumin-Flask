@@ -350,11 +350,11 @@
                         {% endif %}
                     </table> 
                 </div>
-                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
-                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled>Copy</button>
+                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;" class="utility-btn">Deselect</button>
+                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled class="utility-btn">Copy</button>
                 <div class="top-right" id="top-right">
                     <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"class="hidden scrollbar-style"></div>
-                    <button id="right-deselect-btn" class="hidden" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
+                    <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
                 </div>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
@@ -376,8 +376,8 @@
                         {% endif %}
                     </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;">Deselect</button>
-                <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled>Copy</button>
+                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;" class="utility-btn">Deselect</button>
+                <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled class="utility-btn">Copy</button>
             </div>
             <div class="section" id="data-display-section">
                 <h2>Data Display</h2>
