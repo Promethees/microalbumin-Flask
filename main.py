@@ -4,34 +4,28 @@ import sys
 import argparse
 import threading
 import time
-import signal  
 import platform
-import subprocess
-import atexit
 import csv
 import pandas as pd
 import json
 from http import HTTPStatus
 from datetime import datetime
 import re
-from filelock import FileLock
 import shutil
 from pathlib import Path
 from werkzeug.utils import secure_filename
 
 sys.path.append('src')
-from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
+from file_path import get_directory, browse_directory
 from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
 from quantity import get_quantity_input
 from file import get_file_list, get_dynamic_data
 from get_next_filename import get_next_filename
-from script_monitor import check_log_for_errors
-from export_data import check_row_exist, check_metadata_consistency
+from export_data import check_metadata_consistency
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
-from browser_mgt import open_browser, cleanup, ensure_host_mapping
-from send_command import connect_to_device, send_command_and_wait_ack
+from browser_mgt import open_browser
 from config import Config
 
 app = Flask(__name__, static_folder='static')
