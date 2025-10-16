@@ -52,7 +52,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
             const labelCoefficients = (coefs) => {
                 if (!Array.isArray(coefs) || coefs.length === 0) return "—";
                 return isMenten
-                    ? `Km = ${coefs[0]}, Vmax = ${coefs[1]}`
+                    ? `Vmax = ${coefs[0]}, Km = ${coefs[1]}`
                     : coefs.map((v, i) => `${String.fromCharCode(97 + i)} = ${v}`).join(", ");
             };
 
