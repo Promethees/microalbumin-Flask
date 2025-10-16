@@ -19,34 +19,6 @@ document.getElementById('toggleContainer').addEventListener('click', function() 
     }
 });
 
-document.getElementById('shutdown-btn').addEventListener('click', function() {
-    terminateScript();
-    const confirmationMessage = "{{ production_mode }}" === "True"
-        ? 'WARNING: Production mode. This will terminate the server process and close the terminal. Continue?'
-        : 'Are you sure you want to shutdown the server?';
-    
-    if (confirm(confirmationMessage)) {
-        // Determine the current mode
-        fetch('/shutdown', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ mode: AppState.lightDisplay ? 'light' : 'dark' }) // Send mode to server
-        })
-        .then(response => response.text())
-        .then(html => {
-            document.open();
-            document.write(html);
-            document.close();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            window.location.href = '/goodbye';
-        });
-    }
-});
-
 document.getElementById('multi-source').addEventListener('change', function() {
     const numSourcesSelect = document.getElementById('num-sources-section');
     const splitByBlanked = document.getElementById('split-mode-section');
@@ -99,47 +71,18 @@ document.getElementById('multi-source').addEventListener('change', function() {
 document.getElementById('num-sources').addEventListener('change', function() {
     AppState.numSources = parseInt(this.value);
     console.log("Number of sources set to:", AppState.numSources);
-    const currentDir = document.getElementById("directory").value;
-    if (currentDir) {
-        updateDirectory(currentDir, true);
-    }
+    updateDirectory(uploadPath, true);
     updateMultiSourceExportOptions();
-});
-
-const sameBaseDirCheckbox = document.getElementById("save-same-dir");
-const baseDirInput = document.getElementById("base-dir");
-
-sameBaseDirCheckbox.addEventListener("change", function() {
-    // Enable if unchecked, disable if checked
-    baseDirInput.disabled = this.checked;
-});
-
-const sameDirCheckbox = document.getElementById("same-dir-as-data");
-const saveDirInput = document.getElementById("save-dir");
-
-sameDirCheckbox.addEventListener("change", function() {
-    // Enable if unchecked, disable if checked
-    saveDirInput.disabled = this.checked;
 });
 
 document.getElementById('range-value-start').addEventListener('input', validateRangeInput);
 document.getElementById('range-value-end').addEventListener('input', validateRangeInput);
 
-document.getElementById('base-name').addEventListener('input', function() {
-    validateFileName('base-name');
-});
 document.getElementById('save-file').addEventListener('input', function() {
     validateFileName('save-file');
 });
 document.getElementById('save-json-file').addEventListener('input', function() {
     validateFileName('save-json-file');
-});
-
-document.getElementById('base-dir').addEventListener('input', function() {
-    validatePathName('base-dir');
-});
-saveDirInput.addEventListener('input', function() {
-    validatePathName('save-dir');
 });
 
 const expPoint = document.getElementById('exp-json-time-value');
@@ -349,83 +292,6 @@ function validatePathName(inputId) {
     return true;
     }
 
-function validateTimeoutInterval() {
-    const infTimeout = document.getElementById('inf-timeout');
-    const timeoutInput = document.getElementById('timeout');
-    const timeoutUnit = document.getElementById('timeout-unit').value;
-    const intervalInput = document.getElementById('interval');
-    const intervalUnit = document.getElementById('interval-unit').value;
-    const errorElement = document.getElementById(`timeout-interval-error`);
-    const timeout = document.getElementById(`timeout`);
-    const interval = document.getElementById(`interval`);
-    errorElement.innerHTML = '';
-
-    // Disable timeout input when Infinity is checked
-    timeoutInput.disabled = infTimeout.checked;
-
-    // Get input values
-    const timeoutValue = timeoutInput.value.trim();
-    const intervalValue = intervalInput.value.trim();
-
-    // Remove outer edge
-    timeout.classList.remove('invalid', 'valid');
-    interval.classList.remove('invalid', 'valid');
-
-    // Validation logic
-    // Case 1: Both inputs are empty
-    if (timeoutValue === '' && intervalValue === '') {
-        timeout.classList.add('valid');
-        interval.classList.add('valid');
-        return true;
-    }
-
-    // Case 2: Infinity is checked
-    if (infTimeout.checked) {
-        if (intervalValue === '' || parseFloat(intervalValue) >= 0) {
-            timeout.classList.add('valid');
-            interval.classList.add('valid');
-            return true;
-        }
-        else {
-            errorElement.innerHTML = 'Interval value is less than zero!<br/>';
-            timeout.classList.add('invalid');
-            interval.classList.add('invalid');
-            return false;
-        }
-    }
-
-    // Case 3: Only one input is provided
-    if ((timeoutValue === '' && intervalValue !== '') || (timeoutValue !== '' && intervalValue === '')) {
-        errorElement.innerHTML = 'Please have both of these metrics values or give BOTH blank or check Infinite checkbox<br/>';
-        timeout.classList.add('invalid');
-        interval.classList.add('invalid');
-        return false;
-    }
-
-    // Case 4: Both inputs provided, compare converted values
-    const timeoutSec = parseFloat(timeoutValue) * getTimeUnitMultiplier(timeoutUnit);
-    const intervalSec = parseFloat(intervalValue) * getTimeUnitMultiplier(intervalUnit);
-
-    // Check if inputs are valid numbers and interval is less than timeout
-    if (isNaN(timeoutSec) || isNaN(intervalSec) || timeoutSec <= 0 || intervalSec < 0) {
-        errorElement.innerHTML = 'Invalid inputs or Timeout/Interval value is less than 0<br/>';
-        timeout.classList.add('invalid');
-        interval.classList.add('invalid');
-        return false;
-    }
-
-    if (intervalSec >= timeoutSec) {
-        errorElement.innerHTML = 'Interval must be smaller than Timeout! Please adjust your values<br/>';
-        timeout.classList.add('invalid');
-        interval.classList.add('invalid');
-        return false;
-    }
-    
-    timeout.classList.add('valid');
-    interval.classList.add('valid');
-    return true;
-}
-
 function validateWindowSize(window_size) {
     // Validate window size
     if (window_size < 3) {
@@ -441,54 +307,6 @@ function validateWindowSize(window_size) {
     // Clear error message if input is valid
     $hidden(["wd-size-error"], false);
 }
-
-// Event listener to toggle timeout input disabled state
-document.getElementById('inf-timeout').addEventListener('change', function() {
-    document.getElementById('timeout').value = '';
-    document.getElementById('timeout').disabled = this.checked;
-    document.getElementById('timeout-unit').disabled = this.checked;                
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-        const mainDirSection = document.querySelector("#main-content .section"); // Main Directory section
-        const topLeftDirSection = document.querySelector("#top-left-dir-section");  // Top-left Directory section
-
-        const mainDirInput = document.getElementById("directory");
-        const topDirInput = document.getElementById("directory-top");
-
-        const parentDirMain = document.getElementById("parent-dir");
-        const childDirMain = document.getElementById("child-dirs");
-        const parentDirTop = document.getElementById("parent-dir-top");
-        const childDirTop = document.getElementById("child-dirs-top");
-
-        // Hide top-left on load
-        topLeftDirSection.style.display = "none";
-
-        // Keep inputs synced both ways
-        mainDirInput.addEventListener("input", () => {
-            topDirInput.value = mainDirInput.value;
-        });
-        topDirInput.addEventListener("input", () => {
-            mainDirInput.value = topDirInput.value;
-        });
-
-        // Observer to toggle top-left visibility
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Main visible → hide top-left
-                    topLeftDirSection.style.display = "none";
-                } else {
-                    // Main scrolled away → show top-left
-                    topLeftDirSection.style.display = "block";
-                    parentDirTop.innerHTML = parentDirMain.innerHTML;
-                    childDirTop.innerHTML = childDirMain.innerHTML;
-                }
-            });
-        }, { threshold: 0 });
-
-        observer.observe(mainDirSection);
-    });
 
 const modeDiv = document.getElementById('measurement-mode');
 const modeButtons = modeDiv.querySelectorAll('button[data-mode]');

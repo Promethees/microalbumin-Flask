@@ -33,7 +33,7 @@ function browseDirectory(blinkItem = false) {
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
-            const filePath = document.getElementById("directory").value + DELIMITER + fileName;
+            const filePath = uploadPath + DELIMITER + fileName;
 
             try {
                 const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));

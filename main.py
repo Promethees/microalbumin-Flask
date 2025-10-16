@@ -31,12 +31,12 @@ from export_data import check_row_exist, check_metadata_consistency
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from browser_mgt import open_browser, cleanup, ensure_host_mapping
 from send_command import connect_to_device, send_command_and_wait_ack
+from config import Config
 
 app = Flask(__name__, static_folder='static')
-process = None
-monitor_thread = None
-log_file = "log/script_logs.txt"
-args = None
+app.config.from_object(Config)
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 os_name = platform.system().lower()
 if "window" in os_name:
@@ -45,6 +45,7 @@ else:
     delimiter = "/";
 
 json_root_path = os.path.join(os.getcwd(), "json")
+upload_path = os.path.join(os.getcwd(), "uploads")
 # Configuration - Set this to False for development, True for production
 PRODUCTION_MODE = True  # Change this based on your environment
 
@@ -81,17 +82,16 @@ def clear_cache():
 
 @app.route('/')
 def index():
-    directory = get_directory()
     range_input = get_range_input()
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
-    file_list = get_file_list(directory)
-    # cal_json_list = get_file_list(os.path.join(json_root_path, "single_sensor", "kinetics"), "*.json")
+    file_list = get_file_list(upload_path)
     cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
     clear_logs()
     response = make_response(render_template('index.html', 
                          title="Easy Sensor Kit",
-                         directory= os.path.abspath(directory),
+                         directory= os.path.abspath(os.getcwd()),
+                         upload_path = upload_path,
                          range_input=range_input,
                          mode_input=mode_input,
                          quantity_input=quantity_input,
@@ -99,37 +99,7 @@ def index():
                          cal_json_list=cal_json_list,
                          delimiter=delimiter,
                          production_mode= PRODUCTION_MODE))
-    # response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
-
-def delayed_termination():
-    """Wait a moment before terminating to allow the response to complete"""
-    time.sleep(5)  # Give the browser time to load the goodbye page
-    if PRODUCTION_MODE:
-        # In production, we need to kill the entire process group
-        if platform.system() == 'Windows':
-            os.kill(os.getpid(), signal.SIGTERM)
-        else:
-            os.killpg(os.getpgid(os.getpid()), signal.SIGTERM)
-    else:
-        # In development, use the Werkzeug shutdown mechanism
-        func = request.environ.get('werkzeug.server.shutdown')
-        if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
-        func()
-
-@app.route('/shutdown', methods=['POST'])
-def shutdown():
-    # Start termination after a short delay
-    threading.Thread(target=delayed_termination).start()
-    data = request.get_json()
-    mode = data.get('mode', 'light')
-    # Redirect to goodbye page immediately
-    return render_template('goodbye.html', production_mode=PRODUCTION_MODE, mode=mode)
-
-# @app.route('/goodbye')
-# def goodbye():
-#     return render_template('goodbye.html', production_mode=PRODUCTION_MODE)
 
 @app.route('/browse', methods=['POST'])
 def browse():
@@ -139,37 +109,9 @@ def browse():
         return jsonify({'status': 'success', 'path': new_path, 'files': file_list})
     return jsonify({'status': 'error', 'message': 'Invalid directory'})
 
-@app.route('/browse_export', methods=['GET'])
-def browse_export():
-    # Get the path from the query parameter
-    path = request.args.get('path')
-    if not path:
-        return jsonify({'exists': False, 'error': 'No path provided'}), 400
-    # Check if the path exists on the server
-    exists = os.path.exists(path)
-    return jsonify({'exists': exists})
-
-@app.route('/get_parents', methods=['GET'])
-def get_parents():
-    current_dir = get_directory()
-    parent_dir = get_parent_directory(current_dir)
-    return jsonify({'parent': parent_dir})
-
-@app.route('/get_children', methods=['GET'])
-def get_children():
-    current_dir = get_directory()
-    child_dirs = get_child_directories(current_dir)
-    return jsonify({'children': child_dirs})
-
 @app.route('/get_json_cal', methods=['GET'])
 def get_json_cal():
     mode = request.args.get('mode')
-    is_multi_sources = request.args.get('isMultiSource', 'false').lower() == 'true'
-    num_sources = int(request.args.get('numSources', 1))
-    # if is_multi_sources:
-    #     json_path = os.path.join(json_root_path, f"{num_sources}_sensors", mode)
-    # else:
-    # json_path = os.path.join(json_root_path, 'single_sensor', mode)
     json_path = os.path.join(json_root_path, mode)
     # print("The json path is ", json_path)
     if os.path.exists(json_path):
@@ -184,11 +126,6 @@ def get_json_cal():
 def get_json_content():
     selected_json = request.args.get('json_name')
     mode = request.args.get('mode')
-    is_multi_source = request.args.get('isMultiSource', 'false').lower() == 'true'
-    num_sources = int(request.args.get('numSources', 1))
-    # if is_multi_source:
-    #     json_path = os.path.join(os.path.join(json_root_path, f"{num_sources}_sensors"), mode, selected_json)
-    # else:
     json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
     print("print the json path ", json_path)
     if os.path.exists(json_path):
@@ -239,159 +176,7 @@ def api_current_output():
     except Exception as e:
         return jsonify({"exists": False, "message": str(e)}), 500
 
-# Region 3: USED by hid-logging.js
-@app.route('/run_script', methods=['POST'])
-def run_script():
-    global process, monitor_thread
-    
-    os_name = platform.system().lower()
-    
-    if process and process.poll() is None:
-        return jsonify({'status': 'failure', 'message': 'A script is already running'})
-    
-    if not request.is_json:
-        return jsonify({'status': 'failure', 'message': 'Request must be JSON'}), 400
-    
-    data = request.get_json()
-    base_dir = data.get('base_dir', 'data')
-    base_name = data.get('base_name', 'colorimeter_data')
-    timeout_sec = data.get('timeout_sec')
-    interval_sec = data.get('interval_sec')
-    print("Interval seconds is ", interval_sec)
-    try:
-        pybadge = connect_to_device()
-        print(f"Connected to PyBadge at {pybadge.port}")
-        
-        # Prepare commands and their respective acks
-        commands = [
-            "1\n",
-            f"TIMEOUT:{float(timeout_sec) if timeout_sec is not None else -1}\n",
-            f"INTERVAL:{float(interval_sec) if interval_sec is not None else -1}\n"
-        ]
-        expected_acks = ["ACK_START", "ACK_TIMEOUT", "ACK_INTERVAL"]
-        error_acks = ["ERR_START", "ERR_TIMEOUT", "ERR_INTERVAL"]
-        
-        # Send all commands and wait for acks
-        success, error_msg = send_command_and_wait_ack(pybadge, commands, expected_acks, error_acks)
-        if not success:
-            pybadge.close()
-            return jsonify({'status': 'failure', 'message': error_msg})
-        
-        if "window" in os_name:
-            venv_python = os.path.join('venv', 'Scripts', 'python.exe')
-            cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
-        else:
-            cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
-        
-        with open(log_file, 'a') as f:
-            process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)    
-            try:
-                process.wait(timeout=1)
-                error = check_log_for_errors(log_file)
-                if error:
-                    process = None
-                    clear_logs()
-                    if error == "device_not_found":
-                        print("Device not found in log, returning error")
-                        return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected. Please connect the device and try again.'})
-                    elif error == "input_endpoint_error":
-                        return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint. Please check the device connection.'})
-                return jsonify({'status': 'success', 'message': 'Script is still running'})
-            except subprocess.TimeoutExpired:
-                return jsonify({'status': 'success', 'message': 'Script is still running'})
-                
-    except Exception as e:
-        process = None
-        if 'pybadge' in locals():
-            pybadge.close()
-        return jsonify({'status': 'failure', 'message': f'Failed to start script: {str(e)}'})
-
-@app.route('/check_status', methods=['GET'])
-def check_status():
-    """Endpoint to check process status and detect runtime errors"""
-    global process
-    
-    if process is None:
-        return jsonify({'status': 'not_running', 'message': 'No process running'})
-    
-    # First check for errors in log
-    error = check_log_for_errors(log_file)
-    if error:
-        process = None
-        clear_logs()
-        if error == "device_not_found":
-            return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected during runtime.'})
-        elif error == "input_endpoint_error":
-            return jsonify({'status': 'failure', 'message': 'Input endpoint error detected during runtime.'})
-    
-    # Then check process status
-    if process.poll() is None:
-        return jsonify({'status': 'running', 'message': 'Script is running'})
-    else:
-        # Process has finished - check one final time for errors
-        error = check_log_for_errors(log_file)
-        process = None
-        if error:
-            if error == "device_not_found":
-                return jsonify({'status': 'device_not_found', 'message': 'PyBadge device was not found.'})
-            elif error == "input_endpoint_error":
-                return jsonify({'status': 'failure', 'message': 'Failed to find input endpoint.'})
-        return jsonify({'status': 'success', 'message': 'Script still running, waiting for device to send next report'})
-    
-@app.route('/terminate_script', methods=['POST'])
-def terminate_script():
-    global process
-    
-    if process is None or process.poll() is not None:
-        return jsonify({'status': 'failure', 'message': 'No process running'})
-
-    try:
-        pybadge = connect_to_device()
-        print(f"Connected to PyBadge at {pybadge.port}")
-
-        # Send stop command using helper function
-        success, error_msg = send_command_and_wait_ack(pybadge, ["0\n"], ["ACK_STOP"], ["ERR_STOP"])
-        pybadge.close()  # Close serial connection after sending stop command
-        if not success:
-            return jsonify({'status': 'failure', 'message': error_msg})
-        
-        # Terminate the running process
-        os_name = platform.system().lower()
-        if "window" in os_name:
-            process.terminate()
-            try:
-                process.wait(timeout=3)
-                process = None
-                return jsonify({'status': 'success'})
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process = None
-                return jsonify({'status': 'success'})
-        else:
-            try:
-                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                process.wait(timeout=3)
-                process = None
-                return jsonify({'status': 'success'})
-            except subprocess.TimeoutExpired:
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                process = None
-                return jsonify({'status': 'success'})
-                
-    except Exception as e:
-        if 'pybadge' in locals():
-            pybadge.close()
-        return jsonify({'status': 'failure', 'message': f'Error terminating process: {str(e)}'})
-
-@app.route('/get_logs', methods=['GET'])
-def get_logs():
-    if os.path.exists(log_file):
-        with open(log_file, 'r') as f:
-            logs = f.read()
-        return jsonify({'status': 'success', 'logs': logs})
-    return jsonify({'status': 'success', 'logs': 'No logs available'})
-
-# Region 4: USED by data_handling.js
+# Region 3: USED by edit_file.js
 @app.route('/edit_file', methods=['POST'])
 def edit_file():
     global process
@@ -792,14 +577,6 @@ def get_file_content():
                 'message': result['error']
             }), HTTPStatus.NOT_FOUND
 
-        # Check if the subprocess is running
-        if process and process.poll() is None:
-            if path.startswith(os.path.abspath(os.path.join(os.getcwd(), 'data'))):
-                return jsonify({
-                    'status': 'error',
-                    'message': f'File {file_name} may be in use by the data collection process'
-                }), HTTPStatus.LOCKED
-
         # Ensure the file is either CSV or JSON
         if not (file_name.lower().endswith('.csv') or file_name.lower().endswith('.json')):
             return jsonify({
@@ -913,13 +690,6 @@ def export_cal_coefs():
     cal_mode = data.get('cal_mode', "kinetics")
     cal_params = data.get('cal_params')
     thres_val = float(data.get('threshold_val', 0))
-    is_multi_source = data.get('isMultiSource', False)
-    num_sources = int(data.get('numSources', 1))
-
-    # if is_multi_source:
-    #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
-    # else:
-    #     export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
     export_path = os.path.join(json_root_path, cal_mode)
     print("received coef_content:", coef_content)
     try: 
@@ -944,7 +714,7 @@ def export_cal_coefs():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
-    parser.add_argument('--port', type=int, default=5099, help='Port to run the Flask app on (default: 5099)')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5099)')
     parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
     args = parser.parse_args()
 
@@ -952,14 +722,9 @@ if __name__ == '__main__':
     port = args.port
     alias = args.alias or host
 
-    if alias and alias != '127.0.0.1':
-        ensure_host_mapping(alias)
-
     # Launch browser with alias
     browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
     browser_thread.start()
-
-    atexit.register(cleanup, process, log_file, args)
 
     try:
         app.run(debug=True, host=host, port=port)

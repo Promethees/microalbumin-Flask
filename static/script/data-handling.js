@@ -37,7 +37,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         AppState.currentJSON = fileName;
 
         $id("copy-json-btn").disabled = false;
-        $hidden(["right-deselect-btn"], false);
+        $hidden(["right-deselect-btn", "json-display"], false);
 
         fetchJSON(AppState.currentJSON, (JSON_content, JSON_path) => {
             const display = $id("json-display");
@@ -176,7 +176,7 @@ function copyFile(tableSelector = "#file-table") {
         return;
     }
 
-    const filePath = tableSelector === "#file-table" ? document.getElementById("directory").value : currentFile;
+    const filePath = tableSelector === "#file-table" ? uploadPath : currentFile;
 
     $.ajax({
         url: '/copy_file',
@@ -193,7 +193,7 @@ function copyFile(tableSelector = "#file-table") {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
-                        updateDirectory(document.getElementById("directory").value);
+                        updateDirectory(uploadPath);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -208,7 +208,7 @@ function copyFile(tableSelector = "#file-table") {
                     showConfirmButton: false
                 }).then(() => {
                     if (tableSelector === "#file-table") {
-                        updateDirectory(document.getElementById("directory").value);
+                        updateDirectory(uploadPath);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -328,7 +328,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
                 $.post('/delete_file', { 
                     filename: fileName, 
-                    path: document.getElementById("directory").value, 
+                    path: uploadPath, 
                     tabletype: tableSelector 
                 }, handleResponse).fail(handleError);
             } else if (tableSelector === "#json-table") {
@@ -492,11 +492,9 @@ const fetchData = async (filename, jsonFile) => {
     }
 };
 
-const fetchDataFromServer = async (filename) => {
-    const directory = document.getElementById("directory").value;
-    
+const fetchDataFromServer = async (filename) => {    
     return await $.get('/get_data', {
-        file: `${directory}${DELIMITER}${filename}`
+        file: `${uploadPath}${DELIMITER}${filename}`
     }).fail((xhr, status, errorThrown) => {
         // Create a custom error object with all the details
         const enhancedError = new Error(`Fetch failed for ${filename}`);
@@ -504,7 +502,7 @@ const fetchDataFromServer = async (filename) => {
         enhancedError.status = status;
         enhancedError.errorThrown = errorThrown;
         enhancedError.filename = filename;
-        enhancedError.directory = directory;
+        enhancedError.directory = uploadPath;
         
         throw enhancedError;
     });
@@ -851,7 +849,7 @@ function toggleMode() {
 
 function exportData() {
     // Validate file name and path
-    if (!validateFileName("save-file") || !validatePathName("save-dir")) {
+    if (!validateFileName("save-file")) {
         return;
     }
 
@@ -859,11 +857,6 @@ function exportData() {
     if (!validateConcentration()) {
         return;
     }
-
-    // Set export path
-    const processedExpPath = getBtnChecked("same-dir-as-data")
-        ? (document.getElementById("directory").value.trim() || "")
-        : (document.getElementById("save-dir").value.trim() || "");
     const saveFile = document.getElementById("save-file").value.trim() || "results";
 
     // Bind button to export path

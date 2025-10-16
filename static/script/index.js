@@ -36,8 +36,7 @@ const AppState = {
     globalAnalysis: null,
     prevDropdownEntries: null,
     exp_json_content: null,
-    processedExpPath: getNativePath(rootPath, 'export_data'),
-    processedHidPath: getNativePath(rootPath, 'data'),
+    processedExpPath: getNativePath(uploadPath),
     jsonPath: getNativePath(rootPath, 'json'),
     chartInstances: {},
     responseData: null,
@@ -79,7 +78,6 @@ const AppState = {
         if (this.chartInstances) {
             Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         }
-        terminateScript();
     }
 };
 
@@ -191,49 +189,11 @@ $(document).ready(function() {
     serverCheckInterval = setInterval(checkServerStatus, 5000);
 
     initDefaultState();
-    $.get('/get_parents', function(parentResponse) {
-        console.log("Parent directory:", parentResponse.parent);
-        let parentHtml = parentResponse.parent ? 
-            (parentResponse.parent.split(DELIMITER).pop() ? 
-                `<div onclick="updateDirectory('${parentResponse.parent}', true)" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` : 
-                '<div>No parent directory</div>') : 
-            '<div>No parent directory</div>';
-        document.getElementById("parent-dir").innerHTML = parentHtml;
-
-        $.get('/get_children', function(childResponse) {
-            console.log("Child directories:", childResponse.children);
-            const sortedChildren = childResponse.children.sort((a, b) => a.localeCompare(b));
-            // Update the child directories display
-            let childHtml = sortedChildren.length > 0 ? 
-                sortedChildren.map(dir => 
-                    `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
-                ).join('') : 
-                '<div>No child directories</div>';
-            document.getElementById("child-dirs").innerHTML = childHtml;
-        }).fail(function(jqXHR, textStatus, errorThrown) {
-            console.log("Error fetching child directories:", textStatus, errorThrown);
-            $showText("error-message", "Error fetching child directories");
-        });
-    }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.log("Error fetching parent directory:", textStatus, errorThrown);
-        $showText("error-message", "Error fetching parent directory");
-    });
-
-    // Poll logs every 2 seconds if script is running
-    logInterval = setInterval(function() {
-        if (!serverAvailable) return;
-        if (AppState.scriptRunning) {
-            fetchLogs();
-        }
-    }, 2000);
 
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function() {
         if (!serverAvailable) return;
-        const currentDir = document.getElementById("directory").value;
-        if (currentDir) {
-            updateDirectory(currentDir, false);
-        }
+        updateDirectory(uploadPath, false);
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
@@ -284,7 +244,6 @@ $(document).ready(function() {
     .classList.toggle('hidden', !AppState.currentFile);
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-    bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
 
     const select = document.getElementById("exp-json-regress-algo");
     const selected = select.value;
@@ -422,8 +381,6 @@ function calModeBehaviour() {
     if (calDiv.getAttribute('data-value') === 'kinetics') calKineticsBehaviour();
     else calPointBehaviour();
 
-    terminateScript();
-
     AppState.multiSource = false;
     AppState.numSources = 1;
 
@@ -463,17 +420,6 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
     // console.log("Updating directory to:", path);
     $.post('/browse', {path: path}, function(response) {
         if (response.status === 'success') {
-            document.getElementById("directory").value = response.path;
-            document.getElementById("directory-top").value = response.path;
-            if (getBtnChecked("same-dir-as-data")) {
-                document.getElementById("save-dir").value = response.path;
-                validatePathName('save-dir');
-            }
-            if (getBtnChecked("save-same-dir")) {
-                document.getElementById("base-dir").value = response.path;
-                validatePathName('base-dir');
-            }
-            $hidden(["error-message"]);
             updateFileTable(response.files, deselect);
             if (deselect) {
                 deselectFile();
@@ -518,11 +464,8 @@ function updateMultiSourceExportOptions() {
 }
 
 function switchingModes(mode) {
-    const currentDir = document.getElementById("directory").value;
     AppState.currentMeasurementMode = mode;
-    if (currentDir) {
-        updateDirectory(currentDir, true);
-    }
+    updateDirectory(uploadPath, true);
     AppState.currentJSON = null;
     AppState.currentJSONcontent = null;
     AppState.currentFile = null;

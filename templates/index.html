@@ -13,161 +13,14 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>
-        // Predefine window[inputId + 'Handle'] for the input field
-        window['base-dirHandle'] = null;
-        window['save-dirHandle'] = null;
-
-        // Initialize by enforcing selection of the main.py directory
-        async function init() {
-            try {
-                // Show main content and hide prompt
-                document.getElementById('init-prompt').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
-                document.getElementById('title').classList.remove('hidden');
-                document.getElementById('logo').classList.remove('hidden');
-                document.getElementById('meas-mode-section').classList.remove('hidden');
-                document.getElementById('options-section').classList.remove('hidden');
-            } catch (err) {
-                console.error('Initialization selection canceled or failed:', err);
-                // Show error message and allow retry
-                errorMessage.textContent = `Unexpected Error happened, please check if server is still running.`;
-                errorMessage.style.display = 'block';
-                initButton.disabled = false; // Re-enable button for retry
-            }
-            finally {
-                // Ensure the button is re-enabled if user cancels the selection
-                const initButton = document.getElementById('init-button');
-                alignTopWithReference();
-                window.addEventListener('load', alignTopWithReference);
-                window.addEventListener('scroll', alignTopWithReference);
-                document.getElementById('json-display').classList.remove('hidden');
-                if (initButton) {
-                    initButton.disabled = false;
-                }
-            }
-        }
-
-        async function normalizePath(path, delimiter) {
-            // Normalize path by replacing double backslashes and removing trailing delimiters
-            return path.replace(/\\\\/g, '\\').replace(/[\\\/]+$/, '');
-        }
-
-        function getPathPrefix(path) {
-            // Extract drive letter or root prefix (e.g., 'C:\' or '/')
-            const driveLetterMatch = path.match(/^([a-zA-Z]:[\\\/]?|\/)/);
-            return driveLetterMatch ? driveLetterMatch[1] : '';
-        }
-
-        function constructFullPath(currentPath, basePath, selectedDirName, pathSegments, matchIndex, delimiter, previousDirHandle, baseDirName) {
-            let fullPath;
-            let shouldAppend = true;
-
-            if (matchIndex !== -1) {
-                // If the selected folder is already in the path, retract to it
-                fullPath = pathSegments.slice(0, matchIndex + 1).join(delimiter);
-                shouldAppend = false;
-                console.log(`Retracting path to existing segment: ${fullPath}`);
-            } else if (previousDirHandle && previousDirHandle.name === selectedDirName) {
-                // If the same folder as previous is selected, keep the current path
-                fullPath = currentPath;
-                shouldAppend = false;
-                console.log(`Same folder selected, keeping path: ${fullPath}`);
-            } else if (selectedDirName === baseDirName) {
-                // If the basePath directory is selected, set path to basePath
-                fullPath = basePath;
-                shouldAppend = false;
-                console.log(`Selected base directory, setting path to: ${fullPath}`);
-            } else {
-                // Append the new directory name
-                fullPath = currentPath ? `${currentPath}${delimiter}${selectedDirName}` : selectedDirName;
-            }
-
-            // Preserve drive letter or root prefix
-            const prefix = getPathPrefix(currentPath || basePath);
-            if (prefix && !fullPath.startsWith(prefix)) {
-                fullPath = `${prefix}${fullPath}`;
-            }
-
-            return { fullPath, shouldAppend };
-        }
-
-        async function verifyPathWithServer(fullPath) {
-            try {
-                const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
-                const result = await response.json();
-                if (!result.exists) {
-                    alert(`Please only select Directories existing in the current path or immediate subdirectories of the displayed path only!`);
-                    console.warn(`Path "${fullPath}" does not exist on the server.`);
-                    return false;
-                }
-                return true;
-            } catch (fetchErr) {
-                console.error('Failed to verify path with server:', fetchErr);
-                alert('Failed to verify the selected path with the server. Please try again.');
-                return false;
-            }
-        }
-
-        async function pickDirectory(inputId) {
-            try {
-                const pathDisplay = document.getElementById(inputId);
-                const DELIMITER = "{{ delimiter }}";
-                
-                // Normalize paths
-                let currentPath = await normalizePath(pathDisplay.value || '', DELIMITER.replace('\\\\', '\\'));
-                let basePath = await normalizePath('{{ directory | tojson }}' || '', DELIMITER.replace('\\\\', '\\'));
-                
-                // Set default path if empty
-                if (!currentPath) {
-                    currentPath = basePath;
-                }
-
-                // Split current path into segments
-                const pathSegments = currentPath ? currentPath.split(DELIMITER.replace('\\\\', '\\')).filter(segment => segment) : [];
-                const lastSegment = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : null;
-
-                // Retrieve previous directory handle
-                const storedDirHandle = window[inputId + 'Handle'] || null;
-                const previousDirHandle = storedDirHandle && lastSegment && storedDirHandle.name === lastSegment ? storedDirHandle : null;
-
-                // Open directory picker
-                const dirHandle = await window.showDirectoryPicker({ startIn: previousDirHandle || 'documents' });
-                const selectedDirName = dirHandle.name;
-                const baseDirName = basePath.split(DELIMITER.replace('\\\\', '\\')).filter(segment => segment).pop();
-
-                // Construct full path
-                const matchIndex = pathSegments.indexOf(selectedDirName);
-                const { fullPath, shouldAppend } = constructFullPath(
-                    currentPath, basePath, selectedDirName, pathSegments, matchIndex, DELIMITER.replace('\\\\', '\\'), previousDirHandle, baseDirName
-                );
-
-                // Verify path with server
-                if (!(await verifyPathWithServer(fullPath))) {
-                    return;
-                }
-
-                // Update input field and store directory handle
-                pathDisplay.value = fullPath;
-                window[inputId + 'Handle'] = dirHandle;
-
-                // Warn if no base path
-                if (!basePath) {
-                    console.warn('No base path provided by server; using directory name or retracted path.');
-                }
-            } catch (err) {
-                console.error('Directory selection canceled or failed:', err);
-            }
-        }
-    </script>
 </head>
 <body class="light">
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
-                <img src="../static/ht-noname.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo" class="hidden" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+                <img src="../static/ht-noname.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
                 
-                <div id="title" class="title-place hidden">
+                <div id="title" class="title-place">
                     <h1 id="htbio"><span style="color: #ff4444;">HT</span>Biotec</h1>
                     <h1><span style="color: #3498db;">Easy</span> Sensor Kit</h1>
                 </div>
@@ -176,20 +29,7 @@
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
             </div>
-            <div class="section hidden" style="position: static;" id="meas-mode-section">
-                <div class="section" id="top-left-dir-section">
-                    <h2>Directory</h2>
-                    <div style="display: block; justify-content: space-between; align-items: center;">
-                        <input type="text" id="directory-top" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
-                        <button onclick="browseDirectory()">Browse Path</button>
-                    </div>
-                    <div id="dir-suggestions-top">
-                        <h3>Go back</h3>
-                        <div id="parent-dir-top" class="dir-blocks scrollbar-style"></div>
-                        <h3>Go forward</h3>
-                        <div id="child-dirs-top" class="dir-blocks scrollbar-style"></div>
-                    </div>
-                </div>
+            <div class="section" style="position: static;" id="meas-mode-section">
                 <h2>{{ mode_input.title }}</h2>
                 <div id="measurement-mode" class="button-group" data-value="">
                     {% for mode in mode_input.modes %}
@@ -197,14 +37,14 @@
                     {% endfor %}
                 </div>
             </div>
-            <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
+            <div class="section" style="position: static;" id="cal-json-exp-section"> 
                 <h3>Calibrating for:</h3>
                 <div id="cal-mode-select" class="button-group" data-value="">
                     <button data-mode="kinetics">kinetics</button>
                     <button data-mode="point">point</button>
                 </div>
             </div>  
-            <div class="section hidden" style="position: static;" id="options-section">
+            <div class="section" style="position: static;" id="options-section">
                 <h3>Options</h3>
                 <div style="display: flex; flex-direction: column; gap: 6px;">
                     <label style="display: flex; align-items: center; gap: 6px;">
@@ -229,108 +69,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <button id="shutdown-btn" style="
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 9999;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        ">Shutdown Server</button>
-        <!-- Initial prompt shown on page load -->
-        <div id="init-prompt" style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; padding: 0rem; border-radius: 10px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 100%;">
-            <!-- Company Logo -->
-            <img src="../static/ht-logo.jpeg" alt="Company Logo" style="height: 400px; margin-bottom: 1rem;">
-            
-            <!-- Software Name with Styling -->
-            <h1 style="color: #2c3e50; font-size: 2.2rem; margin-bottom: 0.5rem; font-weight: 600;">
-                <span style="color: #3498db;">Easy </span>Sensor Kit
-            </h1>
-            
-            <p style="color: #7f8c8d; margin-bottom: 2rem; font-size: 1.1rem;">
-                Welcome to the EasySensor Kit Software!<br>
-                The best low-cost solution for your colorimetric measurements.
-            </p>
-            
-            <!-- <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;"> -->
-                <!-- <p id="prompt-message">
-                    Please select the directory containing <code>main.py</code> to get started.<br>
-                    <small style="color: #95a5a6;">(expected: {{ directory }})</small>
-                </p> -->
-                
-                <!-- <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    Get Started
-                </button>
-                
-                <p id="error-message" class="error" style="display: none; color: #e74c3c; margin-top: 1rem;"></p>
-            </div> -->
-            <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                Get Started
-            </button>
-        </div>            
-        <div id="main-content" class="hidden">
-            <div class="section">
-                <h2>Directory</h2>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <input type="text" id="directory" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
-                    <button onclick="browseDirectory()" style="width: 15%;">Browse Path</button>
-                </div>
-                <div id="dir-suggestions">
-                    <h3>Go back</h3>
-                    <div id="parent-dir" class="dir-blocks scrollbar-style"></div>
-                    <h3>Go forward</h3>
-                    <div id="child-dirs" class="dir-blocks scrollbar-style"></div>
-                </div>
-                <div id="error-message"></div>
-            </div>
-            <div class="section script-controls" id="log-hid-data">
-                <h2>Reading Colorimetric Data</h2>
-                <div>
-                    <label id="base-dir-label" for="base-dir">Saving Directory: 
-                        <input type="text" id="base-dir" value="{{ directory | default('') }}" disabled>
-                    </label>
-                    <span id="base-dir-error" class="error"></span>
-                </div>
-                <input type="checkbox" id="save-same-dir" checked>Save to same browsed directory</input>
-                <div>
-                    <label for="base-name">Base Name: </label>
-                    <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
-                    <span id="base-name-error" class="error"></span>
-                </div>
-                <div>
-                    <label>Timeout: </label>
-                    <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input> 
-                    <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
-                    <select id="timeout-unit">
-                        {% for unit in range_input.units %}
-                        <option value="{{ unit }}">{{ unit }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label>Interval: </label>
-                    <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
-                    <select id="interval-unit">
-                        {% for unit in range_input.units %}
-                        <option value="{{ unit }}">{{ unit }}</option>
-                        {% endfor %}
-                    </select>
-                </div> 
-                <span id="timeout-interval-error" class="error"></span>  
-                <input type="checkbox" id="notify-me">Notify me when Done</input>
-                <br/>
-                <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
-                <button id="terminate-script-btn" onclick="terminateScript()"  disabled>Stop reading</button>
-                <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                <button id="go-to-btn" onclick="browseSavingLocation(`$(#base-dir).val()` , true, false, this)" disabled>View live data</button>
-                <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
-            </div>
+        </div>    
+        <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>
                 <div id="file-table-container" class="scrollbar-style">
@@ -357,6 +97,7 @@
                     <button id="right-deselect-btn" class="hidden" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
                 </div>
             </div>
+            <div id="error-message"></div>
             <div class="section" id="file-selection" tabindex="-1">
                 <h2 >File Selection</h2>
                 <div id="file-table-container" class="scrollbar-style">
@@ -493,13 +234,7 @@
                             <span id="est-val-error" class="error"></span>
                             <span id="est-val-exp"></span>
                         </div>
-                        <label id="save-dir-label" for="save-dir">Saving Directory: 
-                        <input type="text" id="save-dir" value="{{ directory | default('') }}" disabled>
-                        <!-- <button onclick="pickDirectory('save-dir')">Select Directory</button> -->
-                        </label>
-                        <span id="save-dir-error" class="error"></span>
                     </div>
-                    <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data file</input>
                     <div>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
@@ -528,19 +263,20 @@
     </div>
         <script >
             // Get top-left height as reference to reflect in top-right
-            function alignTopWithReference(refId = 'shutdown-btn', targetId='top-right') {
+            function alignTopWithReference(refId = 'meas-mode-section', targetId='top-right') {
                 const ref = document.getElementById(refId);
                 const target = document.getElementById(targetId);
                 if (!ref || !target) return;
 
                 const rect = ref.getBoundingClientRect();
-                const offsetTop = rect.bottom + rect.height; // Get absolute top position relative to page
+                const offsetTop = rect.top; // Get absolute top position relative to page
                 console.log('Offset top is ', offsetTop);
                 // Update CSS variable dynamically
                 target.style.setProperty('--dynamic-top', `${offsetTop}px`);
             }
-            // const rootPath = JSON.parse('{{ directory | tojson }}');
+            alignTopWithReference();
             const rootPath = {{ directory | tojson | safe}};
+            const uploadPath = {{ upload_path | tojson | safe }}
             const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
 
@@ -552,7 +288,6 @@
         </script>
         <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
         <script src="{{ url_for('static', filename='script/init.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}"></script>
         <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
         <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
