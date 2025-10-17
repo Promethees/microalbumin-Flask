@@ -419,6 +419,7 @@ function updateDirectory(deselect, changeToCalibrate=false) {
     }
     // console.log("Updating directory to:", path);
     $.get('/get_csv', {request: true}, function(response) {
+        console.log("give me response files ", response.files);
         updateFileTable(response.files, deselect);
     }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("AJAX error:", textStatus, errorThrown);
