@@ -218,7 +218,7 @@ $(document).ready(function() {
         }
 
 
-    }, 500);
+    }, 2000);
 
     // Add click event to each button
     modeButtons.forEach(mode => {
