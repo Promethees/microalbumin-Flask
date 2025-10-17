@@ -1,42 +1,10 @@
-function browseDirectory(blinkItem = false) {
-    $.get('/get_parents', function(parentResponse) {
-        console.log("Parent directory:", parentResponse.parent);
-        let parentHtml = parentResponse.parent ? 
-            `${parentResponse.parent.split(DELIMITER).pop() ? 
-                `<div onclick="updateDirectory('${parentResponse.parent}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` : 
-                '<div>No parent directory</div>'}` : 
-            '<div>No parent directory</div>';
-        document.getElementById("parent-dir").innerHTML = parentHtml;
-
-        $.get('/get_children', function(childResponse) {
-            console.log("Child directories:", childResponse.children);
-            const sortedChildren = childResponse.children.sort((a, b) => a.localeCompare(b));
-            // Update the child directories display
-            let childHtml = sortedChildren.length > 0 ? 
-                `${sortedChildren.map(dir => 
-                    `<div onclick="updateDirectory('${dir}', 'true')" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
-                ).join('')}` : 
-                '<div>No child directories</div>';
-            document.getElementById("child-dirs").innerHTML = childHtml;
-        }).fail(function(jqXHR, textStatus, errorThrown) {
-            console.log("Error fetching child directories:", textStatus, errorThrown);
-            $showText("error-message", "Error fetching child directories");
-        });
-    }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.log("Error fetching parent directory:", textStatus, errorThrown);
-        $showText("error-message", "Error fetching parent directory");
-    });
-    if (blinkItem)
-        blinkingItem("file-selection", 5000);
-}
-
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
             const filePath = csvPath + DELIMITER + fileName;
 
             try {
-                const response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
+                const response = await fetch('/get_headers?file=' + encodeURIComponent(fileName));
                 const data = await response.json();
                 let meas_headers, cal_headers_kinetics, cal_headers_point;
                 cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat", "BlankType"];
@@ -97,23 +65,24 @@ function updateJSONTable(files) {
 function updateFileTable(files, deselect) {
 
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
-
-    filterFiles(files).then((filteredFiles) => {
-        if (filteredFiles && filteredFiles.length > 0) {
-            filteredFiles.forEach(file => {
-                const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
-                html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">✅ Select</button></td><td><button onclick="deleteFile('${file}', this)">❌ Delete</button></td><td><button onclick="editFile('${file}', this)">✏️ Edit</button></td></tr>`;
-            });
-        } else {
-            html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
-        }
-        document.getElementById("file-table").innerHTML = html;
-        if (deselect) {
-            AppState.currentFile = null;
-            $toggleQueryClass("#file-table tr", "selected", false);
-            updateFileDisplay(AppState.currentFile);
-        }
-    });  
+    if (files) {
+        filterFiles(files).then((filteredFiles) => {
+            if (filteredFiles && filteredFiles.length > 0) {
+                filteredFiles.forEach(file => {
+                    const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
+                    html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">✅ Select</button></td><td><button onclick="deleteFile('${file}', this)">❌ Delete</button></td><td><button onclick="editFile('${file}', this)">✏️ Edit</button></td></tr>`;
+                });
+            } else {
+                html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
+            }
+            document.getElementById("file-table").innerHTML = html;
+            if (deselect) {
+                AppState.currentFile = null;
+                $toggleQueryClass("#file-table tr", "selected", false);
+                updateFileDisplay(AppState.currentFile);
+            }
+        });  
+    }
 }
 
 function updateFileDisplay(curFile) {
@@ -131,7 +100,7 @@ function fetchJSON(jsonFile, callback) {
         isMultiSource: AppState.multiSource,
         numSources: AppState.numSources
     }, function(response) {
-        callback(response.json, response.path);
+        callback(response.json);
     })
 }
 
@@ -145,7 +114,7 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
         blinkingItem("cal-mode-select", 5000);
         blinkingItem("measurement-mode", 5000);
         blinkingItem("file-selection", 5000);
-        updateDirectory(path, deselect, changeToCalibrate);
+        updateDirectory(deselect, changeToCalibrate);
     } else {
         fetch('/api/current_output')
         .then(response => {
@@ -158,10 +127,9 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
         .then(data => {
             if (data && data.exists) {
                 // Use server-provided directory (with trailing separator if needed)
-                const dirPath = data.dir || path || data.dir_with_sep;
                 const fileName = data.filename;
 
-                updateDirectory(dirPath, deselect, changeToCalibrate);
+                updateDirectory(deselect, changeToCalibrate);
 
                 // Wait for the table to refresh/populate, then select the row's button
                 setTimeout(() => {
@@ -185,13 +153,13 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
                 }, 500); // adjust delay if your table takes longer to populate
             } else {
                 // no recorded path -> fallback to original behavior
-                updateDirectory(path, deselect, changeToCalibrate);
+                updateDirectory(deselect, changeToCalibrate);
                 blinkingItem("file-selection", 5000);
             }
         })
         .catch(err => {
             console.error("Error fetching current_output:", err);
-            updateDirectory(path, deselect, changeToCalibrate);
+            updateDirectory(deselect, changeToCalibrate);
         });
     }
 }

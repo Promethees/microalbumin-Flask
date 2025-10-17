@@ -251,10 +251,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         }
         return html;
     }
-    const filePath = tableSelector === '#file-table' ? csvPath : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
-    console.log("File Path is ", filePath);
+    const fileType = tableSelector === '#file-table' ? "csv" : "json";
     // Fetch CSV content
-    $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function(content) {
+    $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&type=${encodeURIComponent(fileType)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}`, function(content) {
         Swal.fire({
             title: `Edit ${fileName}`,
             width: '800px',
@@ -429,10 +428,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 $.post('/edit_file', {
                     filename: fileName,
                     new_filename: newFileName,
-                    path: filePath,
+                    type: fileType,
                     content: content,
                     calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp',
-                    multi_source: AppState.multiSource
+                    multi_source: AppState.multiSource,
+                    mode: AppState.currentMeasurementMode
                 }, function(response) {
                     if (response.status === 'success') {
                         let textMsg;
@@ -455,7 +455,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         if (getBtnChecked("no-swal-checkbox")) {
                             console.log(textMsg);
                             if (tableSelector === "#file-table") {
-                                updateDirectory(csvPath);
+                                updateFileTable();
                             } else if (tableSelector === "#json-table") {
                                 updateJSONTable();
                             }

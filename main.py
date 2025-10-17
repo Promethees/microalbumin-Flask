@@ -1,44 +1,49 @@
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify, make_response, session
 import os
 import sys
 import argparse
 import threading
 import time
-import platform
 import csv
 import pandas as pd
+from io import StringIO
 import json
 from http import HTTPStatus
 from datetime import datetime
 import re
-import shutil
 from pathlib import Path
 from werkzeug.utils import secure_filename
+import uuid
 
 sys.path.append('src')
-from file_path import get_directory, browse_directory
 from range import get_range_input
 from mode import get_mode_input
-from measure import sort_csv_file
 from quantity import get_quantity_input
-from file import get_file_list, get_dynamic_data
 from get_next_filename import get_next_filename
-from export_data import check_metadata_consistency
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from browser_mgt import open_browser
 from config import Config
 
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
+app.secret_key = 'easy-sensor-kit'  # Required for session to work
 
-os_name = platform.system().lower()
-if "window" in os_name:
-    delimiter = "\\\\";
-else:
-    delimiter = "/";
+# Global in-memory storage for user data
+USER_DATA = {}
 
-json_root_path = os.path.join(os.getcwd(), "json")
-csv_path = os.path.join(os.getcwd(), "csv")
+def get_user_id():
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+    return session['user_id']
+
+def get_user_data():
+    uid = get_user_id()
+    if uid not in USER_DATA:
+        USER_DATA[uid] = {'csv': {}, 'json': {}}
+    return USER_DATA[uid]
+
+delimiter = "/";
+
 # Configuration - Set this to False for development, True for production
 PRODUCTION_MODE = True  # Change this based on your environment
 
@@ -68,12 +73,13 @@ def index():
     range_input = get_range_input()
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
-    file_list = get_file_list(csv_path)
-    cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
+    user_data = get_user_data()
+    file_list = list(user_data['csv'].keys())
+    cal_json_list = list(user_data['json'].get('kinetics', {}).keys())
     response = make_response(render_template('index.html', 
                          title="Easy Sensor Kit",
-                         directory= os.path.abspath(os.getcwd()),
-                         csv_path = csv_path,
+                         directory= '/',
+                         csv_path = '/csv',
                          range_input=range_input,
                          mode_input=mode_input,
                          quantity_input=quantity_input,
@@ -83,93 +89,60 @@ def index():
                          production_mode= PRODUCTION_MODE))
     return response
 
-@app.route('/browse', methods=['POST'])
-def browse():
-    new_path = request.form['path']
-    if browse_directory(new_path):
-        file_list = get_file_list(get_directory())
-        return jsonify({'status': 'success', 'path': new_path, 'files': file_list})
-    return jsonify({'status': 'error', 'message': 'Invalid directory'})
+@app.route('/get_csv', methods=['GET'])
+def get_csv():
+    user_data = get_user_data()
+    # Virtual directory, return csv files
+    file_list = list(user_data['csv'].keys())
+    return jsonify({'status': 'success', 'files': file_list})
 
 @app.route('/get_json_cal', methods=['GET'])
 def get_json_cal():
     mode = request.args.get('mode')
-    json_path = os.path.join(json_root_path, mode)
-    # print("The json path is ", json_path)
-    if os.path.exists(json_path):
-        json_files = get_file_list(json_path, "*.json")
-        print("The json files are ", json_files)
-
-        return jsonify({'status': 'success', 'files': json_files})
-    return jsonify({'status': 'error', 'message': "Invalid directory"})
+    user_data = get_user_data()
+    if mode not in user_data['json']:
+        user_data['json'][mode] = {}
+    json_files = list(user_data['json'][mode].keys())
+    return jsonify({'status': 'success', 'files': json_files})
 
 # Region 2: USED by navigation.js
 @app.route('/get_json_content', methods=['GET'])
 def get_json_content():
     selected_json = request.args.get('json_name')
     mode = request.args.get('mode')
-    json_path = os.path.join(os.path.join(json_root_path, mode), selected_json)
-    print("print the json path ", json_path)
-    if os.path.exists(json_path):
-        with open(json_path, 'r') as f:
-            data = json.load(f)
-        print("print the json data", data)
-        return jsonify({'status': 'success', 'json': data, 'path': json_path})
+    user_data = get_user_data()
+    content = user_data['json'].get(mode, {}).get(selected_json, None)
+    if content:
+        try:
+            data = json.loads(content)
+            return jsonify({'status': 'success', 'json': data})
+        except json.JSONDecodeError:
+            return jsonify({'status': 'error', 'message': 'Error in reading the json file'})
     return jsonify({'status': 'error', 'message': 'Error in reading the json file'})
 
 @app.route('/get_headers', methods=['GET'])
 def get_csv_headers():
     read_file = request.args.get('file')
-    if os.path.exists(read_file):
-        df = pd.read_csv(read_file, nrows=0, comment = "#")  # Read only the header row, ignore comment lines
+    content = get_user_data()['csv'].get(read_file, None)
+    if content:
+        df = pd.read_csv(StringIO(content), nrows=0, comment = "#")  # Read only the header row, ignore comment lines
         return jsonify({'headers': df.columns.tolist()}) 
     return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
 
 @app.route("/api/current_output", methods=["GET"])
 def api_current_output():
-    try:
-        # adjust this to the actual location of the "log" folder if needed
-        marker_path = os.path.join(os.getcwd(), "log", "current_output.txt")
-
-        if not os.path.isfile(marker_path):
-            return jsonify({"exists": False, "message": "marker not found"}), 404
-
-        with open(marker_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-
-        if not content:
-            return jsonify({"exists": False, "message": "marker empty"}), 204
-
-        # normalize path (handles Windows backslashes and POSIX slashes)
-        full_path = os.path.normpath(content)
-        dirpath, filename = os.path.split(full_path)
-
-        # include a directory string that ends with the OS-specific separator
-        dir_with_sep = dirpath + (os.sep if dirpath else "")
-
-        return jsonify({
-            "exists": True,
-            "full_path": full_path,
-            "dir": dirpath,
-            "dir_with_sep": dir_with_sep,
-            "filename": filename
-        }), 200
-
-    except Exception as e:
-        return jsonify({"exists": False, "message": str(e)}), 500
+    return jsonify({"exists": False, "message": "Not supported in multiuser mode"}), 404
 
 # Region 3: USED by edit_file.js
 @app.route('/edit_file', methods=['POST'])
 def edit_file():
-    global process
     try:
         # Extract request data
         file_name = request.form.get('filename')
         new_file_name = request.form.get('new_filename', file_name)  # Default to original name if not provided
-        path = request.form.get('path') if request.form.get('path') else get_directory()
+        type = request.form.get('type')
         content = request.form.get('content')
         calibrate_mode = request.form.get('calibrate_mode')
-        multi_source = request.form.get('multi_source', 'false').lower() == 'true'
 
         # Input validation
         if not file_name or not content:
@@ -186,36 +159,15 @@ def edit_file():
             }), HTTPStatus.BAD_REQUEST
 
         # Construct file paths
-        file_path = os.path.join(path, file_name)
-        new_file_path = os.path.join(path, new_file_name)
-        print(f"Editing file: {file_path} to {new_file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        print(f"Editing file: {file_name} to {new_file_name} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
-        # Validate file path to prevent directory traversal
-        if '..' in os.path.normpath(file_path) or '..' in os.path.normpath(new_file_path):
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid file path'
-            }), HTTPStatus.BAD_REQUEST
-
-        # Check if original file exists
-        if not os.path.exists(file_path):
-            return jsonify({
-                'status': 'error',
-                'message': f'File {file_name} not found'
-            }), HTTPStatus.NOT_FOUND
-
-        # Check if new file name already exists (unless it's the same file)
-        if file_name != new_file_name and os.path.exists(new_file_path):
-            return jsonify({
-                'status': 'error',
-                'message': f'File {new_file_name} already exists'
-            }), HTTPStatus.CONFLICT
+        is_json = new_file_name.endswith('.json')
 
         # Validate content based on file extension
-        if new_file_name.endswith('.json'):
+        if is_json:
             try:
                 # Validate JSON format
-                json.loads(content)
+                parsed_json = json.loads(content)
             except json.JSONDecodeError as e:
                 return jsonify({
                     'status': 'error',
@@ -305,41 +257,68 @@ def edit_file():
                         'message': f'Invalid data in row {i} for the detected format.'
                     }), HTTPStatus.BAD_REQUEST
 
-        # Write the new content
-        try:
-            if new_file_name.endswith('.json'):
-                # Pretty print JSON with indentation
-                parsed_json = json.loads(content)
-                with open(new_file_path, 'w') as f:
-                    json.dump(parsed_json, f, indent=2)
-            else:
-                with open(new_file_path, 'w') as f:
-                    f.write(content)
-                if calibrate_mode:
-                    sort_csv_file(new_file_path, calibrate_mode, multi_source)
-            f.close()
-            if file_name != new_file_name:
-                os.remove(file_path)  # Remove old file if renamed
-            return jsonify({
-                'status': 'success',
-                'message': f'File {file_name} updated successfully' + (f' and renamed to {new_file_name}' if file_name != new_file_name else '')
-            }), HTTPStatus.OK
-        except PermissionError as e:
+        # Write the new content in memory
+        user_data = get_user_data()
+        if type == "json":
+            mode = request.form.get('mode')
+            if mode not in user_data['json']:
+                user_data['json'][mode] = {}
+            store = user_data['json'][mode]
+        else:
+            store = user_data['csv']
+
+        if file_name not in store:
             return jsonify({
                 'status': 'error',
-                'message': f'Permission denied while writing {new_file_name}: {str(e)}'
-            }), HTTPStatus.FORBIDDEN
-        except OSError as e:
-            if e.errno == 16:  # EBUSY: Resource busy
-                return jsonify({
-                    'status': 'error',
-                    'message': f'File {new_file_name} is currently in use by another process'
-                }), HTTPStatus.LOCKED
+                'message': f'File {file_name} not found'
+            }), HTTPStatus.NOT_FOUND
+
+        if file_name != new_file_name and new_file_name in store:
+            return jsonify({
+                'status': 'error',
+                'message': f'File {new_file_name} already exists'
+            }), HTTPStatus.CONFLICT
+
+        try:
+            if is_json:
+                # Pretty print JSON with indentation
+                parsed_json = json.loads(content)
+                store[new_file_name] = json.dumps(parsed_json, indent=2)
             else:
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Failed to write {new_file_name}: {str(e)}'
-                }), HTTPStatus.INTERNAL_SERVER_ERROR
+                store[new_file_name] = content
+            if file_name != new_file_name:
+                del store[file_name]
+            message = f'File {file_name} updated successfully' + (f' and renamed to {new_file_name}' if file_name != new_file_name else '')
+
+            # Handle sorting if applicable
+            if calibrate_mode and not is_json:
+                content = store[new_file_name]
+                lines = content.split('\n')
+                metadata = [l for l in lines if l.startswith('#')]
+                data_lines = [l for l in lines if not l.startswith('#') and l.strip()]
+                if data_lines:
+                    header = data_lines[0]
+                    rows = data_lines[1:]
+                    parsed_rows = [r.split(',') for r in rows if r]
+                    def key_func(row):
+                        try:
+                            return float(row[0]) if row[0] != 'NONE' else float('inf')
+                        except:
+                            return float('inf')
+                    parsed_rows.sort(key=key_func)
+                    new_rows = [','.join(r) for r in parsed_rows]
+                    new_content = '\n'.join(metadata + [header] + new_rows) + '\n'
+                    store[new_file_name] = new_content
+
+            return jsonify({
+                'status': 'success',
+                'message': message
+            }), HTTPStatus.OK
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'Failed to write {new_file_name}: {str(e)}'
+            }), HTTPStatus.INTERNAL_SERVER_ERROR
     except Exception as e:
         print(f"Unexpected error in edit_file: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
         return jsonify({
@@ -353,7 +332,6 @@ def delete_file():
         file_name = request.form.get('filename')
         tabletype = request.form.get('tabletype')
         mode = request.form.get('mode')
-        path = request.form.get('path') if request.form.get('path') else get_directory()
 
         # Input validation
         if not file_name or not tabletype:
@@ -362,57 +340,37 @@ def delete_file():
                 'message': 'Filename and tabletype are required'
             }), HTTPStatus.BAD_REQUEST
 
-        # Construct file path based on tabletype
+        user_data = get_user_data()
+
         if tabletype == '#json-table':
             if not mode:
                 return jsonify({
                     'status': 'error',
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
-            json_path = os.path.join(json_root_path, mode)
-            file_path = os.path.join(json_path, file_name)
-            print(f"JSON file path is {file_path}")
-        else:
-            file_path = os.path.join(path, file_name)
-            print(f"CSV file path is {file_path}")
-
-        # Validate file path to prevent directory traversal
-        if '..' in os.path.normpath(file_path):
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid file path'
-            }), HTTPStatus.BAD_REQUEST
-
-        # Check if file exists
-        if not os.path.exists(file_path):
-            return jsonify({
-                'status': 'error',
-                'message': f'File {file_name} not found'
-            }), HTTPStatus.NOT_FOUND
-
-        # Attempt to delete the file
-        try:
-            os.remove(file_path)
-            return jsonify({
-                'status': 'success',
-                'message': f'File {file_name} deleted successfully'
-            }), HTTPStatus.OK
-        except PermissionError as e:
-            return jsonify({
-                'status': 'error',
-                'message': f'Permission denied while deleting {file_name}: {str(e)}'
-            }), HTTPStatus.FORBIDDEN
-        except OSError as e:
-            if e.errno == 16:  # EBUSY: Resource busy
+            if mode in user_data['json'] and file_name in user_data['json'][mode]:
+                del user_data['json'][mode][file_name]
                 return jsonify({
-                    'status': 'error',
-                    'message': f'File {file_name} is currently in use by another process'
-                }), HTTPStatus.LOCKED
+                    'status': 'success',
+                    'message': f'File {file_name} deleted successfully'
+                }), HTTPStatus.OK
             else:
                 return jsonify({
                     'status': 'error',
-                    'message': f'Failed to delete {file_name}: {str(e)}'
-                }), HTTPStatus.INTERNAL_SERVER_ERROR
+                    'message': f'File {file_name} not found'
+                }), HTTPStatus.NOT_FOUND
+        else:
+            if file_name in user_data['csv']:
+                del user_data['csv'][file_name]
+                return jsonify({
+                    'status': 'success',
+                    'message': f'File {file_name} deleted successfully'
+                }), HTTPStatus.OK
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'File {file_name} not found'
+                }), HTTPStatus.NOT_FOUND
 
     except Exception as e:
         print(f"Unexpected error in delete_file: {str(e)}")
@@ -427,7 +385,6 @@ def copy_file():
         file_name = request.form.get('filename')
         mode = request.form.get('mode')
         tabletype = request.form.get('tabletype')
-        path = request.form.get('path') if request.form.get('path') else get_directory()
 
         # Input validation
         if not file_name or not tabletype:
@@ -436,7 +393,8 @@ def copy_file():
                 'message': 'Filename and tabletype are required'
             }), HTTPStatus.BAD_REQUEST
 
-        # Construct source file path
+        user_data = get_user_data()
+
         if tabletype == '#json-table':
             if not mode:
                 return jsonify({
@@ -444,45 +402,39 @@ def copy_file():
                     'message': 'Mode is required for JSON table type'
                 }), HTTPStatus.BAD_REQUEST
 
-            src_dir = os.path.join(json_root_path, mode)
-        else:
-            src_dir = path
+            content = user_data['json'].get(mode, {}).get(file_name, None)
+            if content is None:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Source file {file_name} not found'
+                }), HTTPStatus.NOT_FOUND
 
-        src_path = os.path.join(src_dir, file_name)
-
-        # Validate file path
-        if '..' in os.path.normpath(src_path):
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid file path'
-            }), HTTPStatus.BAD_REQUEST
-
-        if not os.path.exists(src_path):
-            return jsonify({
-                'status': 'error',
-                'message': f'Source file {file_name} not found'
-            }), HTTPStatus.NOT_FOUND
-
-        # Generate new filename using helper
-        dst_path = get_next_filename(".json", src_dir, Path(file_name).stem) if tabletype == '#json-table' else get_next_filename(".csv", src_dir, Path(file_name).stem)
-
-        try:
-            shutil.copy2(src_path, dst_path)  # preserve metadata
+            base, ext = os.path.splitext(file_name)
+            files = list(user_data['json'].get(mode, {}).keys())
+            dst_name = get_next_filename(ext, files, base)
+            user_data['json'][mode][dst_name] = content
             return jsonify({
                 'status': 'success',
-                'message': f'File copied to {dst_path}',
-                'new_filename': dst_path
+                'message': f'File copied to {dst_name}',
+                'new_filename': dst_name
             }), HTTPStatus.OK
-        except PermissionError as e:
+        else:
+            content = user_data['csv'].get(file_name, None)
+            if content is None:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Source file {file_name} not found'
+                }), HTTPStatus.NOT_FOUND
+
+            base, ext = os.path.splitext(file_name)
+            files = list(user_data['csv'].keys())
+            dst_name = get_next_filename(ext, files, base)
+            user_data['csv'][dst_name] = content
             return jsonify({
-                'status': 'error',
-                'message': f'Permission denied while copying {file_name}: {str(e)}'
-            }), HTTPStatus.FORBIDDEN
-        except OSError as e:
-            return jsonify({
-                'status': 'error',
-                'message': f'Failed to copy {file_name}: {str(e)}'
-            }), HTTPStatus.INTERNAL_SERVER_ERROR
+                'status': 'success',
+                'message': f'File copied to {dst_name}',
+                'new_filename': dst_name
+            }), HTTPStatus.OK
 
     except Exception as e:
         print(f"Unexpected error in copy_file: {str(e)}")
@@ -505,45 +457,40 @@ def upload_file():
             }), HTTPStatus.BAD_REQUEST
 
         filename = secure_filename(uploaded_file.filename)
+        content = uploaded_file.read().decode('utf-8')
 
-        # Determine destination directory
+        user_data = get_user_data()
+        message_suffix = ''
+
         if tabletype == '#json-table':
             if not mode:
                 return jsonify({
                     'status': 'error',
                     'message': 'Mode is required for JSON uploads'
                 }), HTTPStatus.BAD_REQUEST
-            dst_dir = os.path.join(json_root_path, mode)
+            if mode not in user_data['json']:
+                user_data['json'][mode] = {}
+            store = user_data['json'][mode]
+            if filename in store:
+                base, ext = os.path.splitext(filename)
+                files = list(store.keys())
+                filename = get_next_filename(ext, files, base)
+                message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
+            store[filename] = content
         else:
-            dst_dir = csv_path
-
-        os.makedirs(dst_dir, exist_ok=True)
-
-        dst_path = os.path.join(dst_dir, filename)
-
-        # === ✅ Duplicate filename check ===
-        if os.path.exists(dst_path):
-            # Automatically rename
-            base, ext = os.path.splitext(filename)
-            dst_path = get_next_filename(ext, dst_dir, base)
-            message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
-        else:
-            message_suffix = ''
-
-        # Save file
-        uploaded_file.save(dst_path)
+            store = user_data['csv']
+            if filename in store:
+                base, ext = os.path.splitext(filename)
+                files = list(store.keys())
+                filename = get_next_filename(ext, files, base)
+                message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
+            store[filename] = content
 
         return jsonify({
             'status': 'success',
             'message': f'File "{filename}" uploaded successfully{message_suffix}.',
-            'filename': os.path.basename(dst_path)
+            'filename': filename
         }), HTTPStatus.OK
-
-    except PermissionError as e:
-        return jsonify({
-            'status': 'error',
-            'message': f'Permission denied: {str(e)}'
-        }), HTTPStatus.FORBIDDEN
 
     except Exception as e:
         print(f"Unexpected error in upload_file: {e}")
@@ -555,37 +502,89 @@ def upload_file():
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
-    data = get_dynamic_data(selected_file)
-    return jsonify(data)
+    user_data = get_user_data()
+    content = user_data['csv'].get(selected_file, None)
+    if not content:
+        return jsonify({'data': [], 'error': 'File not found', 'unit': "NONE", 'metadata': {}})
+
+    try:
+        if selected_file.lower().endswith('.csv'):
+            metadata = {}
+            data = []
+
+            # Split content into lines
+            lines = content.splitlines()
+
+            # Separate metadata and CSV data
+            data_lines = []
+            for line in lines:
+                if line.strip().startswith("#"):
+                    if ":" in line:
+                        key, value = line[1:].split(":", 1)
+                        metadata[key.strip()] = value.strip()
+                elif line.strip():
+                    data_lines.append(line)
+
+            # Parse the CSV part into a DataFrame
+            if data_lines:
+                df = pd.read_csv(StringIO("\n".join(data_lines)))
+                data = df.to_dict('records')
+            else:
+                data = []
+
+            # Unit resolution priority: check metadata keys
+            unit = "NONE"
+            for possible_name in ['Unit', 'MeasUnit']:
+                if possible_name in metadata:
+                    unit = metadata[possible_name]
+                    break
+
+            return jsonify({
+                'data': data,
+                'unit': unit,
+                'error': None,
+                'metadata': metadata
+            })
+
+        elif selected_file.lower().endswith('.json'):
+            json_data = json.loads(content)
+            
+            data = json_data if isinstance(json_data, list) else [json_data]
+            
+            # Attempt to find a unit field in JSON data
+            unit = "NONE"
+            if data and isinstance(data[0], dict):
+                for possible_name in ['Unit', 'MeasUnit', 'unit', 'measUnit']:
+                    if possible_name in data[0]:
+                        unit = data[0][possible_name]
+                        break
+
+            return jsonify({
+                'data': data,
+                'unit': unit,
+                'error': None,
+                'metadata': {}  # JSON files don't have metadata in this context
+            })
+        else:
+            return jsonify({'data': [], 'error': 'Unsupported file type', 'unit': "NONE", 'metadata': {}})
+
+    except json.JSONDecodeError as e:
+        return jsonify({'data': [], 'error': f'Invalid JSON format: {str(e)}', 'unit': "NONE", 'metadata': {}})
+    except Exception as e:
+        return jsonify({'data': [], 'error': f'Error processing file: {str(e)}', 'unit': "NONE", 'metadata': {}})
 
 @app.route('/get_file_content', methods=['GET'])
 def get_file_content():
     try:
         file_name = request.args.get('file')
-        path = request.args.get('path') if request.args.get('path') else get_directory()
+        type = request.args.get('type') 
         if not file_name:
             return jsonify({
                 'status': 'error',
                 'message': 'Filename is required'
             }), HTTPStatus.BAD_REQUEST
 
-        file_path = os.path.join(path, file_name)
-        print(f"Fetching raw content for editing from file: {file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
-
-        # Validate file path to prevent directory traversal
-        if '..' in os.path.normpath(file_path):
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid file path'
-            }), HTTPStatus.BAD_REQUEST
-
-        # Check if file exists (reuse get_dynamic_data for existence check)
-        result = get_dynamic_data(file_path)
-        if 'error' in result and result['error']:
-            return jsonify({
-                'status': 'error',
-                'message': result['error']
-            }), HTTPStatus.NOT_FOUND
+        print(f"Fetching raw content for editing from file: {file_name} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
         # Ensure the file is either CSV or JSON
         if not (file_name.lower().endswith('.csv') or file_name.lower().endswith('.json')):
@@ -594,30 +593,34 @@ def get_file_content():
                 'message': 'Only CSV and JSON files are supported'
             }), HTTPStatus.BAD_REQUEST
 
-        # Read raw content
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
+        user_data = get_user_data()
+        content = None
+        if type == 'json':
+            mode = request.args.get('mode')
+            content = user_data[type][mode].get(file_name, None)
+        else:
+            content = user_data[type].get(file_name, None)
 
-            # For JSON files, validate the content
-            if file_name.lower().endswith('.json'):
-                try:
-                    json.loads(content)
-                except json.JSONDecodeError as e:
-                    return jsonify({
-                        'status': 'error',
-                        'message': f'Invalid JSON file format: {str(e)}'
-                    }), HTTPStatus.BAD_REQUEST
-
-            return jsonify({
-                'status': 'success',
-                'content': content
-            })
-        except PermissionError as e:
+        if content is None:
             return jsonify({
                 'status': 'error',
-                'message': f'Permission denied while accessing {file_name}: {str(e)}'
-            }), HTTPStatus.FORBIDDEN
+                'message': 'File not found'
+            }), HTTPStatus.NOT_FOUND
+
+        # For JSON files, validate the content
+        if file_name.lower().endswith('.json'):
+            try:
+                json.loads(content)
+            except json.JSONDecodeError as e:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Invalid JSON file format: {str(e)}'
+                }), HTTPStatus.BAD_REQUEST
+
+        return jsonify({
+            'status': 'success',
+            'content': content
+        })
     except Exception as e:
         print(f"Unexpected error in get_file_content: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
         return jsonify({
@@ -629,7 +632,6 @@ def get_file_content():
 def export_data(mode="kinetics"):
     data = request.get_json()
     file_name = data.get('save_file', 'result')
-    save_dir = data.get('save_dir')
     measurement = data.get('meas')
     maxrate = data.get('maxrate', 'NONE')
     slope = data.get('slope', 'NONE')
@@ -645,44 +647,70 @@ def export_data(mode="kinetics"):
     time_point = data.get('timePoint')
 
     try:
-        export_path = os.path.abspath(os.path.expanduser(save_dir))
-        os.makedirs(export_path, exist_ok=True)
-        full_path = os.path.join(export_path, file_name + "_" + meas_mode + ".csv")
-
-        file_exists = os.path.isfile(full_path)
+        full_name = file_name + "_" + meas_mode + ".csv"
+        user_data = get_user_data()
+        content = user_data['csv'].get(full_name, None)
+        file_exists = content is not None
 
         # ✅ Check metadata consistency if file already exists
         if file_exists:
-            check_metadata_consistency(full_path, measurement, meas_unit, time_unit, meas_mode)
+            lines = content.split('\n')
+            meta_dict = {}
+            for line in lines:
+                if line.startswith('# '):
+                    if ':' in line:
+                        key, val = line[2:].split(':', 1)
+                        meta_dict[key.strip()] = val.strip()
+            if (meta_dict.get('Measurement') != measurement or
+                meta_dict.get('MeasUnit') != meas_unit or
+                meta_dict.get('TimeUnit') != time_unit or
+                meta_dict.get('MeasMode') != meas_mode):
+                return jsonify({"status": "error", "message": "Metadata inconsistency"})
 
         if not newFile:
             time.sleep(1)
 
-        with open(full_path, "a", newline='') as f:
-            writer = csv.writer(f)
+        output = StringIO()
+        writer = csv.writer(output)
 
-            if not file_exists and newFile:
-                # Write metadata
-                f.write(f"# Measurement: {measurement}\n")
-                f.write(f"# MeasUnit: {meas_unit}\n")
-                f.write(f"# TimeUnit: {time_unit}\n")
-                f.write(f"# MeasMode: {meas_mode}\n") 
+        if not file_exists and newFile:
+            # Write metadata
+            output.write(f"# Measurement: {measurement}\n")
+            output.write(f"# MeasUnit: {meas_unit}\n")
+            output.write(f"# TimeUnit: {time_unit}\n")
+            output.write(f"# MeasMode: {meas_mode}\n") 
 
-                # Write headers
-                if meas_mode == "kinetics":
-                    writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
-                else:
-                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
-
-            # Write data
+            # Write headers
             if meas_mode == "kinetics":
-                writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
+                writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
             else:
-                writer.writerow([concentration, value, time_point, blankT])
+                writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
+        elif file_exists:
+            output.write(content.rstrip('\n') + '\n')
 
-        sort_csv_file(full_path, meas_mode)
+        # Write data
+        if meas_mode == "kinetics":
+            writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
+        else:
+            writer.writerow([concentration, value, time_point, blankT])
 
-        return jsonify({"status": "success", "message": f"Data exported at {full_path}"})
+        new_content = output.getvalue()
+
+        # Sort the CSV content by Concentration
+        lines = new_content.split('\n')
+        metadata = [l for l in lines if l.startswith('#')]
+        data_lines = [l for l in lines if not l.startswith('#') and l.strip()]
+        if data_lines:
+            header = data_lines[0]
+            rows = data_lines[1:]
+            parsed_rows = [r.split(',') for r in rows if r]
+            parsed_rows.sort(key=lambda row: float(row[0]) if row[0] != 'NONE' else float('inf'))
+            new_rows = [','.join(r) for r in parsed_rows]
+            new_content = '\n'.join(metadata + [header] + new_rows) + '\n'
+
+        user_data['csv'][full_name] = new_content
+
+        return jsonify({"status": "success", "message": f"Data exported at {full_name}"})
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
@@ -700,25 +728,22 @@ def export_cal_coefs():
     cal_mode = data.get('cal_mode', "kinetics")
     cal_params = data.get('cal_params')
     thres_val = float(data.get('threshold_val', 0))
-    export_path = os.path.join(json_root_path, cal_mode)
     print("received coef_content:", coef_content)
     try: 
-        export_path = os.getenv(export_path, export_path)
-        export_path = os.path.abspath(os.path.expanduser(export_path))
-        print(f"export path is {export_path}")
-        # Ensure directory exists
-        os.makedirs(export_path, exist_ok=True)
-
-        full_path = get_next_filename(".json", export_path, file_name)
+        user_data = get_user_data()
+        if cal_mode not in user_data['json']:
+            user_data['json'][cal_mode] = {}
+        files = list(user_data['json'][cal_mode].keys())
+        full_name = get_next_filename(".json", files, file_name)
 
         json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val))
         json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
 
         if (cal_mode == "point"):
             json_content.update({"time": time, "time-unit": time_unit})
-        with open(full_path, "w") as f:
-            json.dump(json_content, f, cls=CustomEncoder, indent=4)
-        return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
+        content = json.dumps(json_content, cls=CustomEncoder, indent=4)
+        user_data['json'][cal_mode][full_name] = content
+        return jsonify({"status": "success", "message": f"Data exported to {full_name}"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 

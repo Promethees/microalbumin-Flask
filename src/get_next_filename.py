@@ -1,16 +1,13 @@
-import os
-import glob
-import re
-# Generic helper function to get_next_filename
+import re 
 
-def get_next_filename(fileType, base_dir, base_name):
-        pattern = os.path.join(base_dir, f"{base_name}_*[0-9]{fileType}")
-        existing_files = glob.glob(pattern)
-        number_pattern = re.compile(rf"{base_name}_(\d+){fileType}$")
-        numbers = []
-        for file in existing_files:
-            match = number_pattern.search(os.path.basename(file))
-            if match:
-                numbers.append(int(match.group(1)))
-        next_number = max(numbers, default=-1) + 1
-        return os.path.join(base_dir, f"{base_name}_{next_number}{fileType}")
+# Helper function for getting next filename (since original is imported, but adapted here)
+def get_next_filename(ext, files, base):
+    pattern = re.compile(r'^' + re.escape(base) + r'_(\d{3})' + re.escape(ext) + '$')
+    max_num = 0
+    for f in files:
+        match = pattern.match(f)
+        if match:
+            num = int(match.group(1))
+            max_num = max(max_num, num)
+    next_num = max_num + 1
+    return f"{base}_{next_num:03d}{ext}"

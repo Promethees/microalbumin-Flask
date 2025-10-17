@@ -41,7 +41,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $id("download-json-btn").disabled = false;
         $hidden(["right-deselect-btn", "json-display"], false);
 
-        fetchJSON(AppState.currentJSON, (JSON_content, JSON_path) => {
+        fetchJSON(AppState.currentJSON, (JSON_content) => {
             const display = $id("json-display");
             display.innerHTML = ""; // clear previous content
 
@@ -195,7 +195,7 @@ function copyFile(tableSelector = "#file-table") {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
-                        updateDirectory(csvPath);
+                        updateFileTable();
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -210,7 +210,7 @@ function copyFile(tableSelector = "#file-table") {
                     showConfirmButton: false
                 }).then(() => {
                     if (tableSelector === "#file-table") {
-                        updateDirectory(csvPath);
+                        updateFileTable();
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -290,7 +290,7 @@ function uploadFile(tableSelector = "#file-table") {
                         showConfirmButton: false
                     }).then(() => {
                         if (tableSelector === "#file-table") {
-                            updateDirectory(csvPath);
+                            updateFileTable();
                         } else if (tableSelector === "#json-table") {
                             updateJSONTable();
                         }
@@ -332,7 +332,7 @@ function downloadFile(tableSelector = "#file-table") {
         return;
     }
 
-    const filePath = tableSelector === "#file-table" ? csvPath : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
+    const filePath = tableSelector === "#file-table" ? "csv" : "json"
 
     Swal.fire({
         title: 'Preparing Download...',
@@ -344,7 +344,7 @@ function downloadFile(tableSelector = "#file-table") {
     $.ajax({
         url: '/get_file_content',
         method: 'GET',
-        data: { file: currentFile, path: filePath },
+        data: { file: currentFile, type: fileType, mode: AppState.currentMeasurementMode},
         success: function(response) {
             Swal.close();
 
@@ -472,7 +472,6 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
             $.post('/delete_file', { 
                 filename: fileName, 
-                path: csvPath, 
                 tabletype: tableSelector 
             }, handleResponse).fail(handleError);
         } else if (tableSelector === "#json-table") {
@@ -637,7 +636,7 @@ const fetchData = async (filename, jsonFile) => {
 
 const fetchDataFromServer = async (filename) => {    
     return await $.get('/get_data', {
-        file: `${csvPath}${DELIMITER}${filename}`
+        file: `${filename}`
     }).fail((xhr, status, errorThrown) => {
         // Create a custom error object with all the details
         const enhancedError = new Error(`Fetch failed for ${filename}`);

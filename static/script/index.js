@@ -137,7 +137,7 @@ input.addEventListener("keydown", function (e) {
 function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=AppState.processedExpPath, changeToCalibrate=true) {
     $(buttonId).off('click').on('click', function() {
         console.log(`${buttonId} clicked, using path:`, pathStr);
-        updateDirectory(pathStr, true, changeToCalibrate);
+        updateDirectory(true, changeToCalibrate);
     });
 }
 
@@ -193,7 +193,7 @@ $(document).ready(function() {
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function() {
         if (!serverAvailable) return;
-        updateDirectory(csvPath, false);
+        updateDirectory(false);
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
@@ -399,7 +399,7 @@ function calPointBehaviour() {
     document.getElementById('select-time-point')?.classList.remove('hidden');
 }
 
-function updateDirectory(path, deselect, changeToCalibrate=false) {
+function updateDirectory(deselect, changeToCalibrate=false) {
     if (AppState.currentMeasurementMode !== "calibrate") {
         //Change #cal-mode-select in the background before switching to calibrate mode
         calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
@@ -418,18 +418,11 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         calModeBehaviour();
     }
     // console.log("Updating directory to:", path);
-    $.post('/browse', {path: path}, function(response) {
-        if (response.status === 'success') {
-            updateFileTable(response.files, deselect);
-            if (deselect) {
-                deselectFile();
-            }
-        } else {
-            $showText("error-message", response.message);
-        }
+    $.get('/get_csv', {request: true}, function(response) {
+        updateFileTable(response.files, deselect);
     }).fail(function(jqXHR, textStatus, errorThrown) {
         console.log("AJAX error:", textStatus, errorThrown);
-        $showText("error-message", "Error updating directory")
+        $showText("error-message", "Error fetching CSV files")
     });
     $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, isMultiSource: AppState.multiSource, numSources: AppState.numSources}, 
         function(response) {
@@ -465,7 +458,7 @@ function updateMultiSourceExportOptions() {
 
 function switchingModes(mode) {
     AppState.currentMeasurementMode = mode;
-    updateDirectory(csvPath, true);
+    updateDirectory(true);
     AppState.currentJSON = null;
     AppState.currentJSONcontent = null;
     AppState.currentFile = null;
