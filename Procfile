@@ -1,1 +1,1 @@
-web: gunicorn main:app
+web: gunicorn -k eventlet --workers 1 main:app
