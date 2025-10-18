@@ -28,7 +28,7 @@ from config import Config
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 app.secret_key = 'easy-sensor-kit'  # Required for session to work
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', engineio_logger=True, logger=True)
 
 # Global in-memory storage for user data
 USER_DATA = {}
@@ -763,7 +763,7 @@ def export_cal_coefs():
 
 if __name__ == '__main__':
     import eventlet
-    
+
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
     parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5099)')
     parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
