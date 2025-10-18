@@ -353,7 +353,8 @@ function calModeBehaviour() {
         'select-exp-blank-type-meas',
         'window-size-section',
         'sensor-options',
-        'normalize-mode-section'
+        'normalize-mode-section',
+        'select-sensor-to-export'
     ];
 
     const removeHidden = [
