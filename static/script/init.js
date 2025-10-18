@@ -331,7 +331,6 @@ if (calButtons.length > 0) {
     selectButton(calButtons[0], calButtons, calDiv);
 }
 
-import io from 'socket.io-client';
 const socket = io('https://microalbumin-flask.vercel.app/', {
     transports: ['websocket', 'polling'] // Allow fallback to polling
 });
