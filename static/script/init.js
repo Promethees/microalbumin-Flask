@@ -23,8 +23,7 @@ document.getElementById('multi-source').addEventListener('change', function() {
     const numSourcesSelect = document.getElementById('num-sources-section');
     const splitByBlanked = document.getElementById('split-mode-section');
     const splitBySensor = document.getElementById('split-sensor-section');
-    deselectFile();
-    deselectFile("#json-table");
+    updateDirectory(true);
     AppState.responseData = null;
     AppState.globalAnalysis = null;
     AppState.blankedChart = null;

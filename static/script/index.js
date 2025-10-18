@@ -485,5 +485,5 @@ function switchingCalModes(mode) {
     } else {
         calKineticsBehaviour();
     }
-    deselectFile();
+    updateDirectory(true);
 }
