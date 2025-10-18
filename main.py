@@ -761,24 +761,34 @@ def export_cal_coefs():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+# if __name__ == '__main__':
+#     import eventlet
+
+#     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
+#     parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5099)')
+#     parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
+#     args = parser.parse_args()
+
+#     host = '127.0.0.1'
+#     port = args.port
+#     alias = args.alias or host
+
+#     # Launch browser with alias
+#     browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
+#     browser_thread.start()
+
+#     try:
+#         socketio.run(app, debug=True, host=host, port=port)
+#     except Exception as e:
+#         print(f"Failed to start Flask server: {e}")
+#         sys.exit(1)
 if __name__ == '__main__':
     import eventlet
-
-    parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
-    parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5099)')
-    parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
-    args = parser.parse_args()
-
-    host = '127.0.0.1'
-    port = args.port
-    alias = args.alias or host
-
-    # Launch browser with alias
-    browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
-    browser_thread.start()
-
+    import os
+    port = int(os.environ.get('PORT', 5000))  # Use Heroku's PORT or default to 5000
+    host = '0.0.0.0'  # Listen on all interfaces
     try:
-        socketio.run(app, debug=True, host=host, port=port)
+        socketio.run(app, debug=False, host=host, port=port)  # Disable debug for production
     except Exception as e:
         print(f"Failed to start Flask server: {e}")
         sys.exit(1)
