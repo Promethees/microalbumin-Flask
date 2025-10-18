@@ -331,9 +331,7 @@ if (calButtons.length > 0) {
     selectButton(calButtons[0], calButtons, calDiv);
 }
 
-const socket = io('https://microalbumin-flask.vercel.app/', {
-    transports: ['websocket', 'polling'] // Allow fallback to polling
-});
+const socket = io();
 
 socket.on('update_csv', function() {
     $.get('/get_csv', {request: true}, function(response) {
