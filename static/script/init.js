@@ -330,3 +330,27 @@ const calButtons = calDiv.querySelectorAll('button[data-mode]');
 if (calButtons.length > 0) {
     selectButton(calButtons[0], calButtons, calDiv);
 }
+
+const socket = io();
+
+socket.on('update_csv', function() {
+    $.get('/get_csv', {request: true}, function(response) {
+        console.log("give me response files ", response.files);
+        updateFileTable(response.files, deselect=false);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("AJAX error:", textStatus, errorThrown);
+        $showText("error-message", "Error fetching CSV files")
+    });
+});
+
+socket.on('update_json', function(data) {
+    if (data.mode === AppState.currentMeasurementMode) {
+        $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, isMultiSource: AppState.multiSource, numSources: AppState.numSources}, 
+            function(response) {
+                updateJSONTable(response.files, deselect=false);
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+                $showText("error-message", "Error fetching JSON files")
+            });
+    }
+});

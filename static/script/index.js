@@ -193,7 +193,7 @@ $(document).ready(function() {
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function() {
         if (!serverAvailable) return;
-        updateDirectory(false);
+        // updateDirectory(false);
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
@@ -218,7 +218,7 @@ $(document).ready(function() {
         }
 
 
-    }, 2000);
+    }, 500);
 
     // Add click event to each button
     modeButtons.forEach(mode => {

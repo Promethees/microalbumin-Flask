@@ -11,9 +11,10 @@ import json
 from http import HTTPStatus
 from datetime import datetime
 import re
-from pathlib import Path
 from werkzeug.utils import secure_filename
 import uuid
+from flask_socketio import SocketIO
+import eventlet
 
 sys.path.append('src')
 from range import get_range_input
@@ -27,6 +28,7 @@ from config import Config
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 app.secret_key = 'easy-sensor-kit'  # Required for session to work
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Global in-memory storage for user data
 USER_DATA = {}
@@ -310,6 +312,12 @@ def edit_file():
                     new_content = '\n'.join(metadata + [header] + new_rows) + '\n'
                     store[new_file_name] = new_content
 
+            # Emit update after changes
+            if type == "json":
+                socketio.emit('update_json', {'mode': mode})
+            else:
+                socketio.emit('update_csv')
+
             return jsonify({
                 'status': 'success',
                 'message': message
@@ -350,6 +358,7 @@ def delete_file():
                 }), HTTPStatus.BAD_REQUEST
             if mode in user_data['json'] and file_name in user_data['json'][mode]:
                 del user_data['json'][mode][file_name]
+                socketio.emit('update_json', {'mode': mode})
                 return jsonify({
                     'status': 'success',
                     'message': f'File {file_name} deleted successfully'
@@ -362,6 +371,7 @@ def delete_file():
         else:
             if file_name in user_data['csv']:
                 del user_data['csv'][file_name]
+                socketio.emit('update_csv')
                 return jsonify({
                     'status': 'success',
                     'message': f'File {file_name} deleted successfully'
@@ -413,6 +423,7 @@ def copy_file():
             files = list(user_data['json'].get(mode, {}).keys())
             dst_name = get_next_filename(ext, files, base)
             user_data['json'][mode][dst_name] = content
+            socketio.emit('update_json', {'mode': mode})
             return jsonify({
                 'status': 'success',
                 'message': f'File copied to {dst_name}',
@@ -430,6 +441,7 @@ def copy_file():
             files = list(user_data['csv'].keys())
             dst_name = get_next_filename(ext, files, base)
             user_data['csv'][dst_name] = content
+            socketio.emit('update_csv')
             return jsonify({
                 'status': 'success',
                 'message': f'File copied to {dst_name}',
@@ -477,6 +489,7 @@ def upload_file():
                 filename = get_next_filename(ext, files, base)
                 message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
             store[filename] = content
+            socketio.emit('update_json', {'mode': mode})
         else:
             store = user_data['csv']
             if filename in store:
@@ -485,6 +498,7 @@ def upload_file():
                 filename = get_next_filename(ext, files, base)
                 message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
             store[filename] = content
+            socketio.emit('update_csv')
 
         return jsonify({
             'status': 'success',
@@ -748,6 +762,8 @@ def export_cal_coefs():
         return jsonify({"status": "error", "message": str(e)})
 
 if __name__ == '__main__':
+    import eventlet
+    
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
     parser.add_argument('--port', type=int, default=5000, help='Port to run the Flask app on (default: 5099)')
     parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
@@ -762,7 +778,7 @@ if __name__ == '__main__':
     browser_thread.start()
 
     try:
-        app.run(debug=True, host=host, port=port)
+        socketio.run(app, debug=True, host=host, port=port)
     except Exception as e:
         print(f"Failed to start Flask server: {e}")
         sys.exit(1)
