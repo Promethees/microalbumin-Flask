@@ -290,6 +290,19 @@
                 const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
                 return isWindows ? joined.replace(/\//g, '\\') : joined;
             }
+            $.get('/get_csv', {request: true}, function(response) {
+                updateFileTable(response.files, true);
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error:", textStatus, errorThrown);
+                $showText("error-message", "Error fetching CSV files")
+            });
+            $.get('/get_json_cal', {mode: "kinetics", isMultiSource: false, numSources: 1}, 
+                function(response) {
+                    updateJSONTable(response.files);
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+                    $showText("error-message", "Error fetching JSON files")
+                });
         </script>
         <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
         <script src="{{ url_for('static', filename='script/init.js') }}"></script>
