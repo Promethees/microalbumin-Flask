@@ -27,8 +27,8 @@ from quantity import get_quantity_input
 from file import get_file_list, get_dynamic_data
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
-from export_data import check_row_exist, check_metadata_consistency
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
+from export_data import is_metadata_consistent, write_metadata, write_headers, extract_single_entry
 from browser_mgt import open_browser, cleanup, ensure_host_mapping
 from send_command import connect_to_device, send_command_and_wait_ack
 
@@ -839,23 +839,19 @@ def get_file_content():
         }), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @app.route('/export_data', methods=['POST'])
-def export_data(mode="kinetics"):
+def export_data():
     data = request.get_json()
+    entries = data.get('entries')  # If present, batch mode
+    is_batch = bool(entries)
+
+    # Extract common fields
     file_name = data.get('save_file', 'result')
     save_dir = data.get('save_dir')
-    measurement = data.get('meas')
-    maxrate = data.get('maxrate', 'NONE')
-    slope = data.get('slope', 'NONE')
-    sat = data.get('sat', 'NONE')
-    concentration = data.get('con')
-    time_to_sat = data.get('timeSat', 'NONE')
+    measurement = data.get('meas', 'NONE')
     meas_unit = data.get('measUnit', 'NONE')
-    blankT = data.get('blanked')
-    newFile = data.get('newFile')
     meas_mode = data.get('measMode')
+    newFile = data.get('newFile', True)
     time_unit = "minute" if meas_mode == "point" else "minutes"
-    value = data.get('estValue', 'NONE')
-    time_point = data.get('timePoint')
 
     try:
         export_path = os.path.abspath(os.path.expanduser(save_dir))
@@ -864,34 +860,32 @@ def export_data(mode="kinetics"):
 
         file_exists = os.path.isfile(full_path)
 
-        # ✅ Check metadata consistency if file already exists
+        # Check metadata consistency if file exists
         if file_exists:
-            check_metadata_consistency(full_path, measurement, meas_unit, time_unit, meas_mode)
-
-        if not newFile:
-            time.sleep(1)
+            meta_dict = get_dynamic_data(full_path)['metadata']
+            if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):
+                return jsonify({"status": "error", "message": "Metadata inconsistency"})
 
         with open(full_path, "a", newline='') as f:
             writer = csv.writer(f)
 
+            # Write metadata and headers if new file
             if not file_exists and newFile:
-                # Write metadata
-                f.write(f"# Measurement: {measurement}\n")
-                f.write(f"# MeasUnit: {meas_unit}\n")
-                f.write(f"# TimeUnit: {time_unit}\n")
-                f.write(f"# MeasMode: {meas_mode}\n") 
+                write_metadata(f, measurement, meas_unit, time_unit, meas_mode)
+                write_headers(writer, meas_mode)
+            # elif file_exists:
+            #     f.write(content.rstrip('\n') + '\n')
 
-                # Write headers
-                if meas_mode == "kinetics":
-                    writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
-                else:
-                    writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
-
-            # Write data
-            if meas_mode == "kinetics":
-                writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
+            # Prepare entries (handle single as list of one)
+            if is_batch:
+                entries = [extract_single_entry(entry, meas_mode) for entry in entries]
             else:
-                writer.writerow([concentration, value, time_point, blankT])
+                entries = [extract_single_entry(data, meas_mode)]
+
+            print("Entries are ", entries)
+            # Append all entries
+            for entry in entries:
+                writer.writerow(entry)
 
         sort_csv_file(full_path, meas_mode)
 

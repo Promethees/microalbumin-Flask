@@ -1,8 +1,4 @@
 from threading import Lock
-from io import StringIO
-import csv
-
-user_csv_lock = Lock()  # Global lock for CSV access
 
 # Helper: Parse metadata from content
 def parse_metadata(content):
