@@ -31,6 +31,7 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column; /* allows reordering */
+    min-height: 95vh;
 }
 
 .section {
@@ -505,6 +506,7 @@ body.dark .button-group button.selected {
     width: 100%;
     margin: 0 auto;   /* center it */
     box-sizing: border-box;
+    flex: 1 0 auto;
 }
 
 /* Default Section Visibility */
