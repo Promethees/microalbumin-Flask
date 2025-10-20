@@ -72,6 +72,7 @@ document.getElementById('num-sources').addEventListener('change', function() {
     console.log("Number of sources set to:", AppState.numSources);
     updateDirectory(true);
     updateMultiSourceExportOptions();
+    deselectFile();
 });
 
 document.getElementById('range-value-start').addEventListener('input', validateRangeInput);

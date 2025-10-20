@@ -226,6 +226,8 @@ $(document).ready(function() {
             selectButton(mode, modeButtons, modeDiv);
             switchingModes(modeDiv.getAttribute('data-value'));
             $hidden(["num-sources-section"]);
+            deselectFile();
+            deselectFile("#json-table");
         });
     });
 
@@ -237,6 +239,7 @@ $(document).ready(function() {
         cal.addEventListener('click', () => {
             selectButton(cal, calButtons, calDiv);
             switchingCalModes(calDiv.getAttribute('data-value'));
+            deselectFile();
         })
     })
 
