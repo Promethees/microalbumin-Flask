@@ -65,7 +65,6 @@ def sort_csv_content(content):
         return content
     header = data_lines[0]
     rows = data_lines[1:]
-    print("Echo the rows ", rows)
     parsed_rows = [r.split(',') for r in rows if r]
     parsed_rows.sort(key=lambda row: float(row[0]) if row[0] != 'NONE' else float('inf'))
     new_rows = [','.join(r) for r in parsed_rows]
