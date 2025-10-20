@@ -332,7 +332,7 @@ function downloadFile(tableSelector = "#file-table") {
         return;
     }
 
-    const filePath = tableSelector === "#file-table" ? "csv" : "json"
+    const fileType = tableSelector === "#file-table" ? "csv" : "json";
 
     Swal.fire({
         title: 'Preparing Download...',
