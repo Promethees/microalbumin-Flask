@@ -22,6 +22,7 @@ from mode import get_mode_input
 from quantity import get_quantity_input
 from get_next_filename import get_next_filename
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
+from export_data import parse_metadata, is_metadata_consistent, write_metadata, write_headers, extract_single_entry, sort_csv_content, user_csv_lock
 from browser_mgt import open_browser
 from config import Config
 
@@ -643,86 +644,60 @@ def get_file_content():
         }), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @app.route('/export_data', methods=['POST'])
-def export_data(mode="kinetics"):
+def export_data():
     data = request.get_json()
+    entries = data.get('entries')  # If present, batch mode
+    is_batch = bool(entries)
+    user_data = get_user_data()
+
+    # Extract common fields
     file_name = data.get('save_file', 'result')
-    measurement = data.get('meas')
-    maxrate = data.get('maxrate', 'NONE')
-    slope = data.get('slope', 'NONE')
-    sat = data.get('sat', 'NONE')
-    concentration = data.get('con')
-    time_to_sat = data.get('timeSat', 'NONE')
+    measurement = data.get('meas', 'NONE')
     meas_unit = data.get('measUnit', 'NONE')
-    blankT = data.get('blanked')
-    newFile = data.get('newFile')
     meas_mode = data.get('measMode')
+    newFile = data.get('newFile', True)
     time_unit = "minute" if meas_mode == "point" else "minutes"
-    value = data.get('estValue', 'NONE')
-    time_point = data.get('timePoint')
+
+    full_name = f"{file_name}_{meas_mode}.csv"
 
     try:
-        full_name = file_name + "_" + meas_mode + ".csv"
-        user_data = get_user_data()
-        content = user_data['csv'].get(full_name, None)
-        file_exists = content is not None
+        with user_csv_lock:
+            content = user_data['csv'].get(full_name, None)
+            file_exists = content is not None
 
-        # ✅ Check metadata consistency if file already exists
-        if file_exists:
-            lines = content.split('\n')
-            meta_dict = {}
-            for line in lines:
-                if line.startswith('# '):
-                    if ':' in line:
-                        key, val = line[2:].split(':', 1)
-                        meta_dict[key.strip()] = val.strip()
-            if (meta_dict.get('Measurement') != measurement or
-                meta_dict.get('MeasUnit') != meas_unit or
-                meta_dict.get('TimeUnit') != time_unit or
-                meta_dict.get('MeasMode') != meas_mode):
-                return jsonify({"status": "error", "message": "Metadata inconsistency"})
+            # Check metadata consistency if file exists
+            if file_exists:
+                meta_dict = parse_metadata(content)
+                if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):
+                    return jsonify({"status": "error", "message": "Metadata inconsistency"})
 
-        if not newFile:
-            time.sleep(1)
+            output = StringIO()
+            writer = csv.writer(output)
 
-        output = StringIO()
-        writer = csv.writer(output)
+            # Write metadata and headers if new file
+            if not file_exists and newFile:
+                write_metadata(output, measurement, meas_unit, time_unit, meas_mode)
+                write_headers(writer, meas_mode)
+            elif file_exists:
+                output.write(content.rstrip('\n') + '\n')
 
-        if not file_exists and newFile:
-            # Write metadata
-            output.write(f"# Measurement: {measurement}\n")
-            output.write(f"# MeasUnit: {meas_unit}\n")
-            output.write(f"# TimeUnit: {time_unit}\n")
-            output.write(f"# MeasMode: {meas_mode}\n") 
-
-            # Write headers
-            if meas_mode == "kinetics":
-                writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
+            # Prepare entries (handle single as list of one)
+            if is_batch:
+                entries = [extract_single_entry(entry, meas_mode) for entry in entries]
             else:
-                writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
-        elif file_exists:
-            output.write(content.rstrip('\n') + '\n')
+                entries = [extract_single_entry(data, meas_mode)]
 
-        # Write data
-        if meas_mode == "kinetics":
-            writer.writerow([concentration, maxrate, slope, sat, time_to_sat, blankT])
-        else:
-            writer.writerow([concentration, value, time_point, blankT])
+            print("Entries are ", entries)
+            # Append all entries
+            for entry in entries:
+                writer.writerow(entry)
 
-        new_content = output.getvalue()
+            new_content = output.getvalue()
 
-        # Sort the CSV content by Concentration
-        lines = new_content.split('\n')
-        metadata = [l for l in lines if l.startswith('#')]
-        data_lines = [l for l in lines if not l.startswith('#') and l.strip()]
-        if data_lines:
-            header = data_lines[0]
-            rows = data_lines[1:]
-            parsed_rows = [r.split(',') for r in rows if r]
-            parsed_rows.sort(key=lambda row: float(row[0]) if row[0] != 'NONE' else float('inf'))
-            new_rows = [','.join(r) for r in parsed_rows]
-            new_content = '\n'.join(metadata + [header] + new_rows) + '\n'
+            # Sort by Concentration
+            new_content = sort_csv_content(new_content)
 
-        user_data['csv'][full_name] = new_content
+            user_data['csv'][full_name] = new_content
 
         return jsonify({"status": "success", "message": f"Data exported at {full_name}"})
 
