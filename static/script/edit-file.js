@@ -455,9 +455,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         if (getBtnChecked("no-swal-checkbox")) {
                             console.log(textMsg);
                             if (tableSelector === "#file-table") {
-                                updateFileTable();
+                                updateFileTable(response.files);
                             } else if (tableSelector === "#json-table") {
-                                updateJSONTable();
+                                updateJSONTable(response.files);
                             }
                             return; // Exit if no popup is needed
                         }

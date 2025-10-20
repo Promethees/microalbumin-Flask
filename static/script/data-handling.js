@@ -195,9 +195,9 @@ function copyFile(tableSelector = "#file-table") {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
-                        updateFileTable();
+                        updateFileTable(response.files);
                     } else if (tableSelector === "#json-table") {
-                        updateJSONTable();
+                        updateJSONTable(response.files);
                     }
                     return; // Exit if no popup is needed
                 }
@@ -210,9 +210,9 @@ function copyFile(tableSelector = "#file-table") {
                     showConfirmButton: false
                 }).then(() => {
                     if (tableSelector === "#file-table") {
-                        updateFileTable();
+                        updateFileTable(response.files);
                     } else if (tableSelector === "#json-table") {
-                        updateJSONTable();
+                        updateJSONTable(response.files);
                     }
                 });
             } else {
@@ -288,13 +288,7 @@ function uploadFile(tableSelector = "#file-table") {
                         icon: "success",
                         timer: 2000,
                         showConfirmButton: false
-                    }).then(() => {
-                        if (tableSelector === "#file-table") {
-                            updateFileTable();
-                        } else if (tableSelector === "#json-table") {
-                            updateJSONTable();
-                        }
-                    });
+                    })
                 } else {
                     Swal.fire({
                         title: "Error!",
