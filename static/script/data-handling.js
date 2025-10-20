@@ -137,7 +137,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 "Fit Type": fitType,
                 "Formula": getFormula(fitType),
                 "[S]": "Initial Substrate Concentration",
-                "q": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
+                "q (per minute)": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
                 "Measurement For": measFor,
                 "Blank Type": blankType
             };
