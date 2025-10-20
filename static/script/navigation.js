@@ -62,7 +62,7 @@ function updateJSONTable(files) {
     document.getElementById("json-table").innerHTML = html;
 }
 
-function updateFileTable(files, deselect) {
+function updateFileTable(files, deselect=false) {
 
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
     if (files) {
