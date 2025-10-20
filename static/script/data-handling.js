@@ -1157,24 +1157,89 @@ function generatePointData() {
 }
 
 // Send export data to sources
+// Send export data to sources
 function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
     const blankType = document.getElementById("exp-json-blank-type").value;
+    const commonData = {
+        save_dir: processedExpPath,
+        save_file: saveFile,
+        measMode: AppState.currentMeasurementMode,
+        meas: analysisData[0]?.measurement || "NONE",  // Assume same for all; fallback to "NONE"
+        measUnit: analysisData[0]?.measUnit || "NONE"  // Assume same for all; fallback to "NONE"
+    };
+
+    let payload;
+    let isBatch = false;
+
     if (AppState.multiSource) {
         const sensorValue = document.getElementById("exp-json-sensor").value;
         if (sensorValue === "ALL") {
-            analysisData.forEach((data, i) => {
-                const concentration = document.getElementById(`con-value-read-source-${i}`).value;
-                sendExportData(processedExpPath, saveFile, data, concentration, "MIXED", i === 0);
-            });
+            isBatch = true;
+            const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`, "MIXED"));
+            if (entries.length === 0) {
+                alert("No analysis data available to export.");
+                return;
+            }
+            payload = { ...commonData, newFile: true, entries };
         } else {
             const sourceIndex = getValInt("exp-json-sensor") - 1;
-            const concentration = document.getElementById(`con-value-read-source-${sourceIndex}`).value;
-            sendExportData(processedExpPath, saveFile, analysisData[0], concentration, "MIXED");
+            const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`, "MIXED");
+            if (!entry) {
+                alert("No analysis data available to export.");
+                return;
+            }
+            payload = { ...commonData, ...entry, blanked: "MIXED", newFile: true };
         }
     } else {
-        const concentration = document.getElementById("con-value-read").value;
-        sendExportData(processedExpPath, saveFile, analysisData[0], concentration, blankType);
+        const entry = prepareExportEntry(analysisData[0], "con-value-read", blankType);
+        if (!entry) {
+            alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+            return;
+        }
+        payload = { ...commonData, ...entry, blanked: blankType, newFile: true };
     }
+
+    sendExportPayload(payload, isBatch);
+}
+
+// Helper to prepare a single export entry
+function prepareExportEntry(analysisData, conInputId, blankedType) {
+    if (!analysisData) return null;
+
+    const concentration = document.getElementById(conInputId)?.value || "NONE";
+
+    return {
+        maxrate: (analysisData.maxrate === "--" || !analysisData.maxrate) ? "NONE" : analysisData.maxrate,
+        slope: (analysisData.slope === "--" || !analysisData.slope) ? "NONE" : analysisData.slope,
+        sat: (analysisData.saturationValue === "--" || !analysisData.saturationValue) ? "NONE" : analysisData.saturationValue,
+        timeSat: (analysisData.timeToSaturation === "--" || !analysisData.timeToSaturation) ? "NONE" : analysisData.timeToSaturation,
+        con: concentration,
+        estValue: analysisData.estValue ? analysisData.estValue : "NONE",
+        timePoint: analysisData.timePoint || "NONE",
+        blanked: blankedType
+    };
+}
+
+// Helper to send the payload (single or batch)
+function sendExportPayload(payload, isBatch) {
+    console.log(`Sending ${isBatch ? 'batch' : 'single'} export data:`, payload);
+    $.ajax({
+        url: '/export_data',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function(response) {
+            if (response.status === 'success') {
+                alert(`Success: ${response.message}!`);
+            } else {
+                alert(`Error: ${response.message}`);
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.log("AJAX error:", textStatus, errorThrown);
+            alert("Error exporting data");
+        }
+    });
 }
 
 function sendExportData(saveDir, saveFile, analysisData, concentration, blankedType, newFile=true) {
