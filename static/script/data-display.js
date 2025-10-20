@@ -590,8 +590,8 @@ function splitBlankRoutine(allGroups, XColumn, YColumn, rawData) {
         let blanked_string = "";
         let non_blanked_string = "";
         if (calDiv.getAttribute('data-value') === "kinetics") {
-            blanked_string = getCalKineticsString(analysis_blanked, document.getElementById("exp-json-regress-algo").value === "Michaelis-Menten");
-            non_blanked_string = getCalKineticsString(analysis_nonblanked, document.getElementById("exp-json-regress-algo").value === "Michaelis-Menten");
+            blanked_string = getCalKineticsString(analysis_blanked, document.getElementById("exp-json-regress-algo").value);
+            non_blanked_string = getCalKineticsString(analysis_nonblanked, document.getElementById("exp-json-regress-algo").value);
         } else if (calDiv.getAttribute('data-value') === "point") {
             blanked_string = getCalPointString(analysis_blanked);
             non_blanked_string = getCalPointString(analysis_nonblanked);
@@ -645,7 +645,7 @@ function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     } else {
         let htmlString = "";
         if (calDiv.getAttribute('data-value') === "kinetics") {
-            htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value=== "Michaelis-Menten");
+            htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
         } else if (calDiv.getAttribute('data-value') === "point") {
             htmlString = getCalPointString(mixAnalysis);
         }
@@ -766,10 +766,20 @@ function createTable(coef, rSquared, headers) {
     `;
 }
 
-function getCalKineticsString(analysis, isMM = false, analysisId = "cal-kinetics-analysis") {
+function getCalKineticsString(analysis, fitType, analysisId = "cal-kinetics-analysis") {
     if (!analysis || !AppState.quantity_input.quantities) return '';
-
-    const headers = isMM ? ['V_max', 'Km'] : ['a', 'b', 'c'];
+    let headers
+    switch(fitType) {
+        case "Michaelis-Menten":
+            headers = ['V_max', 'Km'];
+            break;
+        case "linear":
+            headers = ['a', 'b'];
+            break;
+        default:
+            headers = ['a', 'b', 'c'];
+            break;
+    }
     const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
 
     return AppState.quantity_input.quantities.map((label, i) => {
