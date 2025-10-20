@@ -1,20 +1,15 @@
 from flask import Flask, render_template, request, jsonify, make_response, session
 import os
 import sys
-import argparse
-import threading
-import time
 import csv
 import pandas as pd
 from io import StringIO
 import json
 from http import HTTPStatus
-from datetime import datetime
 import re
 from werkzeug.utils import secure_filename
 import uuid
 from flask_socketio import SocketIO
-import eventlet
 
 sys.path.append('src')
 from range import get_range_input
@@ -23,7 +18,6 @@ from quantity import get_quantity_input
 from get_next_filename import get_next_filename
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from export_data import parse_metadata, is_metadata_consistent, write_metadata, write_headers, extract_single_entry, sort_csv_content, user_csv_lock
-from browser_mgt import open_browser
 from config import Config
 
 app = Flask(__name__, static_folder='static')
@@ -162,7 +156,7 @@ def edit_file():
             }), HTTPStatus.BAD_REQUEST
 
         # Construct file paths
-        print(f"Editing file: {file_name} to {new_file_name} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        # print(f"Editing file: {file_name} to {new_file_name} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
         is_json = new_file_name.endswith('.json')
 
@@ -329,7 +323,7 @@ def edit_file():
                 'message': f'Failed to write {new_file_name}: {str(e)}'
             }), HTTPStatus.INTERNAL_SERVER_ERROR
     except Exception as e:
-        print(f"Unexpected error in edit_file: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        # print(f"Unexpected error in edit_file: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while saving the file'
@@ -384,7 +378,7 @@ def delete_file():
                 }), HTTPStatus.NOT_FOUND
 
     except Exception as e:
-        print(f"Unexpected error in delete_file: {str(e)}")
+        # print(f"Unexpected error in delete_file: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while deleting the file'
@@ -450,7 +444,7 @@ def copy_file():
             }), HTTPStatus.OK
 
     except Exception as e:
-        print(f"Unexpected error in copy_file: {str(e)}")
+        # print(f"Unexpected error in copy_file: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while copying the file'
@@ -508,7 +502,7 @@ def upload_file():
         }), HTTPStatus.OK
 
     except Exception as e:
-        print(f"Unexpected error in upload_file: {e}")
+        # print(f"Unexpected error in upload_file: {e}")
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while uploading the file.'
@@ -599,7 +593,7 @@ def get_file_content():
                 'message': 'Filename is required'
             }), HTTPStatus.BAD_REQUEST
 
-        print(f"Fetching raw content for editing from file: {file_name} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        # print(f"Fetching raw content for editing from file: {file_name} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
         # Ensure the file is either CSV or JSON
         if not (file_name.lower().endswith('.csv') or file_name.lower().endswith('.json')):
@@ -637,7 +631,7 @@ def get_file_content():
             'content': content
         })
     except Exception as e:
-        print(f"Unexpected error in get_file_content: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
+        # print(f"Unexpected error in get_file_content: {str(e)} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while fetching file content'
@@ -687,7 +681,6 @@ def export_data():
             else:
                 entries = [extract_single_entry(data, meas_mode)]
 
-            print("Entries are ", entries)
             # Append all entries
             for entry in entries:
                 writer.writerow(entry)
