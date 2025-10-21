@@ -225,7 +225,9 @@ $(document).ready(function() {
         mode.addEventListener('click', () => {
             selectButton(mode, modeButtons, modeDiv);
             switchingModes(modeDiv.getAttribute('data-value'));
-            $hidden(["num-sources-section"]);
+            if (modeDiv.getAttribute('data-value') === "calibrate") {
+                $hidden(["num-sources-section"]);
+            }
             deselectFile();
             deselectFile("#json-table");
         });
