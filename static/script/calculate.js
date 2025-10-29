@@ -160,7 +160,7 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
     let linearEndIdx = -1;
     if (maxRate !== 0) {
         for (let i = 0; i < localSlopes.length; i++) {
-            if (localSlopes[i] >= 0.7 * maxRate) {
+            if (localSlopes[i] >= 0.8 * maxRate && rSquaredValues[i] >= rSquaredThreshold) {
                 if (linearStartIdx === -1) linearStartIdx = i;
                 linearEndIdx = i;
             }
