@@ -20,13 +20,79 @@ const OBFUSCATOR_OPTIONS = {
   controlFlowFlatteningThreshold: 0.75,
   deadCodeInjection: true,
   deadCodeInjectionThreshold: 0.4,
-  renameGlobals: true,
+  renameGlobals: false,
+  reservedNames: getReservedNamesFromHTML(),
   stringArray: true,
   stringArrayThreshold: 1,
   transformObjectKeys: true,
   unicodeEscapeSequence: true,
   selfDefending: true,
 };
+
+function getReservedNamesFromHTML() {
+  const templatesDir = path.join(__dirname, 'templates');
+  if (!fs.existsSync(templatesDir)) {
+    console.warn('templates/ folder not found — skipping auto-reserved names');
+    return [];
+  }
+
+  // Get all .html files
+  const htmlFiles = fs.readdirSync(templatesDir)
+    .filter(f => f.endsWith('.html'))
+    .map(f => path.join(templatesDir, f));
+
+  if (htmlFiles.length === 0) {
+    console.warn('No .html files found in templates/');
+    return [];
+  }
+
+  const reserved = new Set();
+
+  htmlFiles.forEach(htmlPath => {
+    const filename = path.basename(htmlPath);
+    const html = fs.readFileSync(htmlPath, 'utf8');
+
+    console.log(`Scanning ${filename} for public functions...`);
+
+    // 1. onclick="startMeasurement()"
+    html.replace(/onclick=["']([^"')]+)["']/g, (_, fn) => {
+      const name = fn.split('(')[0].trim();
+      if (name && !name.startsWith('window.') && !name.includes('.')) {
+        reserved.add(name);
+      }
+    });
+
+    // 2. data-action="resetKit"
+    html.replace(/data-action=["']([^"']+)["']/g, (_, action) => {
+      reserved.add(action);
+    });
+
+    // 3. Inline <script> blocks: initSensor(), updateDisplay(42)
+    html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (_, script) => {
+      script.replace(/\b([a-zA-Z_$][\w$]*)\s*\(/g, (match, name) => {
+        // Skip internal names (start with _), object methods, or built-ins
+        if (
+          name &&
+          !name.startsWith('_') &&
+          !name.includes('.') &&
+          !['console', 'alert', 'confirm', 'prompt', 'setTimeout', 'setInterval'].includes(name)
+        ) {
+          reserved.add(name);
+        }
+        return match;
+      });
+    });
+  });
+
+  const list = Array.from(reserved).sort();
+  if (list.length > 0) {
+    console.log(`Reserved public functions: ${list.join(', ')}`);
+  } else {
+    console.log('No public functions detected.');
+  }
+
+  return list;
+}
 
 // ---------- 1. COPY ALL NON-JS/CSS FILES ----------
 function copyStaticAssets() {
