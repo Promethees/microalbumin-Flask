@@ -20,7 +20,7 @@ from export_cal_json import processJSONCoef, extractAnalysisCoefficients, Custom
 from export_data import parse_metadata, is_metadata_consistent, write_metadata, write_headers, extract_single_entry, sort_csv_content, user_csv_lock
 from config import Config
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='static/dist')
 app.config.from_object(Config)
 app.secret_key = 'easy-sensor-kit'  # Required for session to work
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', engineio_logger=True, logger=True)

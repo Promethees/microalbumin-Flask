@@ -1,0 +1,32 @@
+{
+  "name": "microalbumin-flask",
+  "version": "1.0.0",
+  "description": "* Click on `Code`, in the DropDown, select `Download Zip`.  * Or clone with `Github Desktop`, `ssh`, `https` <img src=\"/images/CloneRepo.png\" width=\"300\"> * In the path you save at, <span style=\"color:red; font-weight: bold;\">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)",
+  "main": "build.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node build.js",
+    "start": "gunicorn main:app",
+    "heroku-postbuild": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://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@github.com/Promethees/microalbumin-Flask.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Promethees/microalbumin-Flask/issues"
+  },
+  "homepage": "https://github.com/Promethees/microalbumin-Flask#readme",
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "javascript-obfuscator": "^4.1.1",
+    "terser": "^5.44.0"
+  }
+}
