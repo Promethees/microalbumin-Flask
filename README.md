@@ -1,65 +1,7 @@
 # Easy Sensor Kit Web application
 
 ## Setup and Usage
-### Get this source code: 
-* Click on `Code`, in the DropDown, select `Download Zip`. 
-* Or clone with `Github Desktop`, `ssh`, `https`
-<img src="/images/CloneRepo.png" width="300">
-* In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
-
-### Installation:
-* On Mac:
-	- Using installer:
-		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
-		+ After the download is done, reenable with `sudo spctl --master-enable`
-		+ Download the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
-		+ Open the `EasySensorKit.dmg`
-		+ From it, run `install-tools-clone-repo`, then `install-venv` to install dependencies and virtual environment. 
-		+ Key in your device password to proceed when prompted 
-		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
-		+ Use `run` to start the Application when all of the above steps are finished
-		+ Use `uninstall` to uninstall the application. 
-
-	- Using batch scripts:
-		+ Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
-		+ Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
-		+ Double click `setup-3-run.command` to run the application
-		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
-* On Windows:
-	- Install `libusbK` driver for the PyBadge:
-		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
-		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
-		<div align="center"> 
-			<img src="/images/zadig_all_devices.PNG" width="600">
-		</div>
-
-		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
-		+ Install `libusbK 3.1.0.0` to the `Pybadge`
-		<div align="center">
-			<img src="/images/libusbK.PNG" width="600">
-		</div>
-
-		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
-		<div align="center">
-			<img src="/images/run.PNG" width="600">
-		</div>
-
-		+ Make sure that it is listed under `libusbK USB Devices` 
-		<div align="center">
-			<img src="/images/DevManager.PNG" width="600">
-		</div>
-
-	- Using Installer: 
-		+ Download the [![Latest release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
-		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
-		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
-		+ After the installation, you can use `EasySensor Kit` icon on the Desktop to start the app
-		+ For `Uninstallation`, navigate to the local fodler in which you save the Program Files, use `Uninstall.exe` to uninstall
-		
-	- Using batch scripts:
-		+ Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
-		+ Repeat with `startwindow-2-pyenv.bat` -> `startwindow-3-python.bat` -> `startwindow-4-venv-run.bat`. Run ***ONE BY ONE!***
-		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
+The web-based software is available at [http://www.easysensorkit.cbbiotec.vn/](http://www.easysensorkit.cbbiotec.vn/)
 
 ## Overview
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
@@ -77,7 +19,7 @@ This document provides instruction on deploying a web interface that helps visua
 	<img src="/images/browse.png" width="600">
 </div>
 
-* ***Set measurement Modes*** The Applicatiob has 3 modes: `kinetics`, `point`, `calibrate`
+* ***Set measurement Modes*** The Application has 3 modes: `kinetics`, `point`, `calibrate`
 
 * ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
@@ -98,6 +40,16 @@ This document provides instruction on deploying a web interface that helps visua
 <div align="center">
 	<img src="/images/fileselection.png" width="600">
 </div>
+
+* ***Upload data*** Data can only be uploaded align with the following formats to be processed properly.
+
+	- Format for [`Kinetics JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/kinetics/exp_kinetics.json)
+
+	- Format for [`Points JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/kinetics/exp_point.json)
+
+	- Format for [`Single Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/single.csv)
+
+	- Format for [`Multiple Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/multi.csv)
 
 * ***Data Display***:
 	- `Display Range` Modification in display range changes the displayed data and respective unit displayed on the plot. 
