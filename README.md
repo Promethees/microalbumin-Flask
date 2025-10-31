@@ -82,13 +82,12 @@ This document provides instruction on deploying a web interface that helps visua
 * ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
 * ***Log HID*** Get data being sent from the ***PyBadge*** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
-	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
 <div align="center">
 	<img src="/images/logHID.png" width="600">
 </div>
 
-* ***Standard curves*** Choose standard curve you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard curve json to understand the calculation methods.
+* ***Standard curves*** Choose standard curve you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard curve json to understand the calculation methods. The information of selected file shall be displayed on the right portion of the interface.
 
 <div align="center">
 	<img src="/images/standardJSON.png" width="600">
@@ -157,49 +156,74 @@ This document provides instruction on deploying a web interface that helps visua
 
 	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
+* `Multiple sources analysis` Allows users to perform data analysis for multiple measuring sources. Controller is placed on the top-left of the interface
+
+	- Multi source control panel dropdown. Uncheck to enter single source mode
+	<div align="center">
+		<img src="/images/multi-meas-control.png" width="600">
+	</div>
+
+	- Typical multiple source display
+	<div align="center">
+		<img src="/images/multi-meas-display.png" width="600">
+	</div>
+
+	- You can either export all data analysis from these sources or select specific one to export
+	<div align="center">
+		<img src="/images/exp-multi.png" width="600">
+	</div>
+
 ## Directory Structure
 ```
 microalbumin-Flask/
-├── src/
-│   ├── browser_mgt.py		# Manages browser behavior
-│   ├── export_cal_json.py	# Handle JSON for calibration
-│   ├── export_data.py		# Handle export data format
-│   ├── file_path.py		# Manages directory navigation
-│   ├── file.py			# Handles file listing
-│   ├── get_next_filename.py	# Process file name to generate the next
-│   ├── measure.py		# Processes CSV data for plotting
-│   ├── mode.py			# Includes measurement modes used in the project
-│   ├── quantity.py		# Includes quantities for standard curve regression
-│   ├── range.py		# Defines range input parameters
-│   └── script_monitor.py	# turns off Run Script if HID device is off
-├── templates/
-│   └── index.html		# Frontend template with Chart.js integration
-├── static/
-│	├── script/  
-│	│	├── index.js		# To be executed first, entry point of the script, 
-│	│	│			defining AppState global variables 
-│	│	├── calculate.js	# Functions handling numbers, calculations
-│	│	├── data-display.js	# Functions responsible for data display: updatePlot, 
-│	│	│			generateChart
-│	│	├── data-handling.js	# Functions relating with selecting, exporting, 
-│	│	│			fetching data
-│	│	├── hid-logging.js	# Functions interacting with with Colorimeter's 
-│	│	│			HID interface
-│	│	└── navigation.js	# Functions responsible for browsing, updating 
-│	│				correct states
-│	└── style.css 
-├── main.py		# Flask app entry point
-├── log_hid_data.py	# Python script to log data read from the colorimeter from HID
-├── README.md		# Project documentation
-├── setup-1-install-pyenv.command	# Script to start the app on MacOS
-├── setup-2-install-venv.command	# Script to start the app on MacOS
-├── setup-3-run.command		# Script to start the app on MacOS
-├── startwindow-1-git.bat	# Script to start the app on Windows
-├── startwindow-2-pyenv.bat	# Script to start the app on Windows
-├── startwindow-3-python.bat	# Script to start the app on Windows
-├── startwindow-4-venv-run.bat	# Script to start the app on Windows
-├── requirements-win.txt	# Dependencies needed to download on Windows
-└── requirements.txt		# Dependencies needed to download
+|-- README.md
+|-- generate-tree.sh
+|-- log_hid_data.py
+|-- log_hid_data_pyusb.py
+|-- main.py
+|-- main_code.py
+|-- requirements-win.txt
+|-- requirements.txt
+|-- setup-1-install-pyenv.command
+|-- setup-2-install-venv.command
+|-- setup-3-run.command
+|-- src
+|   |-- browser_mgt.py
+|   |-- export_cal_json.py
+|   |-- export_data.py
+|   |-- file.py
+|   |-- file_path.py
+|   |-- get_next_filename.py
+|   |-- measure.py
+|   |-- mode.py
+|   |-- quantity.py
+|   |-- range.py
+|   |-- script_monitor.py
+|   `-- send_command.py
+|-- startwindow-1-git.bat
+|-- startwindow-2-pyenv.bat
+|-- startwindow-3-python.bat
+|-- startwindow-4-venv-run.bat
+|-- static
+|   |-- done.mp3
+|   |-- ht-logo.jpeg
+|   |-- ht-noname.png
+|   |-- ht.ico
+|   |-- script
+|   |   |-- calculate.js
+|   |   |-- data-display.js
+|   |   |-- data-handling.js
+|   |   |-- edit-file.js
+|   |   |-- generate-chart.js
+|   |   |-- hid-logging.js
+|   |   |-- index.js
+|   |   |-- init.js
+|   |   |-- navigation.js
+|   |   `-- short-hands.js
+|   `-- style.css
+`-- templates
+    |-- goodbye.html
+    `-- index.html
 ```
 
 ## Notes
