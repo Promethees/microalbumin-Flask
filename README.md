@@ -1,7 +1,7 @@
 # Easy Sensor Kit Web application
 
 ## Setup and Usage
-The web-based software is available at [http://www.easysensorkit.cbbiotec.vn/](http://www.easysensorkit.cbbiotec.vn/)
+The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](https://www.easysensorkit.cbbiotec.vn/)
 
 ## Overview
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
@@ -43,9 +43,9 @@ This document provides instruction on deploying a web interface that helps visua
 
 * ***Upload data*** Data can only be uploaded align with the following formats to be processed properly.
 
-	- Format for [`Kinetics JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/kinetics/exp_kinetics.json)
+	- Format for [`Kinetics JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/exp_kinetics.json)
 
-	- Format for [`Points JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/kinetics/exp_point.json)
+	- Format for [`Points JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/exp_point.json)
 
 	- Format for [`Single Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/single.csv)
 
