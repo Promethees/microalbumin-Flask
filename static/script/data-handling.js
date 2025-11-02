@@ -75,10 +75,15 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 1px;";
 
                 const thead = document.createElement("thead");
-                thead.innerHTML = `
+                thead.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
                     <tr>
                         <th>Parameter</th>
                         <th>Fit Coefficients</th>
+                    </tr>
+                ` : `
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Values</th>
                     </tr>
                 `;
                 const tbody = document.createElement("tbody");
@@ -86,9 +91,15 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 for (const [key, value] of Object.entries(json)) {
                     if (["fit_type", "for_meas", "for_blank_type"].includes(key)) continue;
                     const tr = document.createElement("tr");
-                    tr.innerHTML = `
+                    tr.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
                         <td>${key}</td>
                         <td>${labelCoefficients(value?.fit_coef)}</td>
+                    ` : key === "fit_coef" ? `
+                        <td>${key}</td>
+                        <td>${labelCoefficients(value)}</td>
+                    ` : `
+                        <td>${key}</td>
+                        <td>${value}</td>
                     `;
                     tbody.appendChild(tr);
                 }
