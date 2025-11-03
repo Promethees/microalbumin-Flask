@@ -131,7 +131,7 @@ function fetchJSON(jsonFile, callback) {
         isMultiSource: AppState.multiSource,
         numSources: AppState.numSources
     }, function(response) {
-        callback(response.json, response.path);
+        callback(response.json);
     })
 }
 

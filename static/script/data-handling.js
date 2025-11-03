@@ -39,7 +39,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $id("copy-json-btn").disabled = false;
         $hidden(["right-deselect-btn"], false);
 
-        fetchJSON(AppState.currentJSON, (JSON_content, JSON_path) => {
+        fetchJSON(AppState.currentJSON, (JSON_content) => {
             const display = $id("json-display");
             display.innerHTML = ""; // clear previous content
 
