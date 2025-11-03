@@ -166,18 +166,18 @@ async function terminateScript() {
             handleScriptTermination("Script terminated.\n");
         } else {
             $append("log-display", `Error: ${response.message}\n`);
-            if (response.message.includes("No process running")) handleScriptTermination("", true);
+            if (response.message.includes("No process running")) handleScriptTermination("");
         }
     } catch (err) {
         console.error("terminateScript error:", err);
         $append("log-display", `Error: Failed to terminate script, error: ${err}\n`);
-        handleScriptTermination("", true);
+        handleScriptTermination("");
     }
 }
 
-function handleScriptTermination(message, noProcess = false) {
+function handleScriptTermination(message) {
     AppState.scriptRunning = false;
-    $append("log-display", message);
+    $text("log-display", message);
     $disable(["run-script-btn"], false);
     $toggleClass("run-script-btn", "blinking", true);
     $disable(["terminate-script-btn", "go-to-btn"]);
