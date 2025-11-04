@@ -3,50 +3,73 @@ async function filterFiles(files) {
         files.map(async (fileName) => {
             const filePath = csvPath + DELIMITER + fileName;
 
+            let response;
             try {
-                const response = await fetch('/get_headers?file=' + encodeURIComponent(fileName));
-                const data = await response.json();
-                let meas_headers, cal_headers_kinetics, cal_headers_point;
-                cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat", "BlankType"];
-                cal_headers_point = ["Concentration", "Value", "TimePoint", "BlankType"];
-                
-                if (!AppState.multiSource) {
-                    meas_headers = ["Timestamp", "Value", "Type", "Blanked"];
-                } else {
-                    // Dynamically generate meas_headers based on numSources
-                    meas_headers = ["Timestamp"];
-                    for (let i = 1; i <= AppState.numSources; i++) {
-                        meas_headers.push(`Value:${i}`);
-                    }
-                }
-
-                if (data.headers) {
-                    const isMeasHeader = JSON.stringify(data.headers) === JSON.stringify(meas_headers);
-                    if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {
-                        return isMeasHeader;
-                    } else if (AppState.currentMeasurementMode === "calibrate") {
-                        const cal_type = calDiv.getAttribute('data-value');
-                        let isCalHeader = false;
-                        if (cal_type === "kinetics") {
-                            isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_kinetics);
-                        } else {
-                            isCalHeader = JSON.stringify(data.headers) === JSON.stringify(cal_headers_point);
-                        }
-                        return isCalHeader;
-                    }
-                }
-                return false; // on error or no headers
-            } catch (error) {
-                console.error("Failed to fetch headers for", fileName, error);
+                response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
+            } catch (networkErr) {
+                console.warn(`Network error for ${fileName}:`, networkErr);
                 return false;
             }
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonErr) {
+                console.warn(`Invalid JSON for ${fileName}:`, jsonErr);
+                return false;
+            }
+
+            if (!response.ok) {
+                const friendlyMsg = data.error ?? `Server error ${response.status}`;
+                console.info(`Header check failed (${response.status}) for ${fileName}: ${friendlyMsg}`);
+                return { error: friendlyMsg };
+            }
+
+            const meas_headers = buildMeasHeaders();    
+            const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat", "BlankType"];
+            const cal_headers_point    = ["Concentration", "Value", "TimePoint", "BlankType"];
+
+            if (!data.headers) {
+                return false;  
+            }
+
+            const isMeasHeader = arraysEqual(data.headers, meas_headers);
+
+            if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {
+                return isMeasHeader;
+            }
+
+            if (AppState.currentMeasurementMode === "calibrate") {
+                const cal_type = calDiv.getAttribute('data-value');
+                const expected = cal_type === "kinetics" ? cal_headers_kinetics : cal_headers_point;
+                return arraysEqual(data.headers, expected);
+            }
+
+            return false;
         })
     );
 
-    // Now filter files based on the results
-    const filteredFiles = files.filter((_, idx) => checks[idx]);
+    const filteredFiles = files.filter((_, idx) => {
+        const result = checks[idx];
+        return result === true;         
+    });
 
     return filteredFiles;
+} 
+
+function buildMeasHeaders() {
+    if (!AppState.multiSource) {
+        return ["Timestamp", "Value", "Type", "Blanked"];
+    }
+    const headers = ["Timestamp"];
+    for (let i = 1; i <= AppState.numSources; i++) {
+        headers.push(`Value:${i}`);
+    }
+    return headers;
+}
+
+function arraysEqual(a, b) {
+    return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function updateJSONTable(files) {

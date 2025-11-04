@@ -120,11 +120,38 @@ def get_json_content():
 @app.route('/get_headers', methods=['GET'])
 def get_csv_headers():
     read_file = request.args.get('file')
-    content = get_user_data()['csv'].get(read_file, None)
-    if content:
-        df = pd.read_csv(StringIO(content), nrows=0, comment = "#")  # Read only the header row, ignore comment lines
-        return jsonify({'headers': df.columns.tolist()}) 
-    return jsonify({'headers': [], 'error': "Invalid csv file or file path is wrong"})
+    
+    # Basic validation
+    if not read_file:
+        return jsonify({'headers': [], 'error': 'No file path provided'}), 400
+    
+    if not os.path.exists(read_file):
+        return jsonify({'headers': [], 'error': 'File not found'}), 404
+    
+    if not os.path.isfile(read_file):
+        return jsonify({'headers': [], 'error': 'Path is not a file'}), 400
+
+    try:
+        # Attempt to read only headers, skip comment lines starting with #
+        df = pd.read_csv(read_file, nrows=0, comment='#')
+        headers = df.columns.tolist()
+        return jsonify({'headers': headers})
+    
+    except pd.errors.EmptyDataError:
+        return jsonify({'headers': [], 'error': 'CSV file is empty'}), 200
+    
+    except pd.errors.ParserError as e:
+        return jsonify({'headers': [], 'error': f'Invalid CSV format: {str(e)}'}), 200
+    
+    except PermissionError:
+        return jsonify({'headers': [], 'error': 'Permission denied: Cannot read the file'}), 403
+    
+    except OSError as e:
+        return jsonify({'headers': [], 'error': f'File system error: {str(e)}'}), 500
+    
+    except Exception as e:
+        # Catch any unexpected errors (log this in production)
+        return jsonify({'headers': [], 'error': 'An unexpected error occurred while reading the file'}), 500
 
 @app.route("/api/current_output", methods=["GET"])
 def api_current_output():
