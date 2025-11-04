@@ -96,7 +96,7 @@ function updateFileTable(files, deselect=false) {
                     html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">✅ Select</button></td><td><button onclick="deleteFile('${file}', this)">❌ Delete</button></td><td><button onclick="editFile('${file}', this)">✏️ Edit</button></td></tr>`;
                 });
             } else {
-                html += '<tr><td colspan="3">No CSV files uploaded.</td></tr>';
+                html += '<tr><td colspan="3">No CSV files is available.</td></tr>';
             }
             document.getElementById("file-table").innerHTML = html;
             if (deselect) {
