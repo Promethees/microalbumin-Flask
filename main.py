@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response, session
+from flask import Flask, render_template, request, jsonify, make_response
 import os
 import sys
 import csv
@@ -8,10 +8,10 @@ import json
 from http import HTTPStatus
 import re
 from werkzeug.utils import secure_filename
-import uuid
 from flask_socketio import SocketIO
 
 sys.path.append('src')
+from user_data import init_user_data, get_user_data
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
@@ -25,21 +25,7 @@ app.config.from_object(Config)
 app.secret_key = 'easy-sensor-kit'  # Required for session to work
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', engineio_logger=True, logger=True)
 
-# Global in-memory storage for user data
-USER_DATA = {}
-
-def get_user_id():
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())
-    return session['user_id']
-
-def get_user_data():
-    uid = get_user_id()
-    if uid not in USER_DATA:
-        USER_DATA[uid] = {'csv': {}, 'json': {}}
-    return USER_DATA[uid]
-
-delimiter = "/";
+delimiter = "/"
 
 # Configuration - Set this to False for development, True for production
 PRODUCTION_MODE = True  # Change this based on your environment
@@ -67,10 +53,11 @@ def clear_cache():
 
 @app.route('/')
 def index():
+    # Initialize user data storage
     range_input = get_range_input()
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
-    user_data = get_user_data()
+    user_data = init_user_data()
     file_list = list(user_data['csv'].keys())
     cal_json_list = list(user_data['json'].get('kinetics', {}).keys())
     response = make_response(render_template('index.html', 
