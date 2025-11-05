@@ -1,11 +1,9 @@
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
-            const filePath = csvPath + DELIMITER + fileName;
-
             let response;
             try {
-                response = await fetch('/get_headers?file=' + encodeURIComponent(filePath));
+                response = await fetch('/get_headers?file=' + encodeURIComponent(fileName));
             } catch (networkErr) {
                 console.warn(`Network error for ${fileName}:`, networkErr);
                 return false;

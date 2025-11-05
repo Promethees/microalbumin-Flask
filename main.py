@@ -120,20 +120,15 @@ def get_json_content():
 @app.route('/get_headers', methods=['GET'])
 def get_csv_headers():
     read_file = request.args.get('file')
-    
+    content = get_user_data()['csv'].get(read_file, None)
+
     # Basic validation
-    if not read_file:
-        return jsonify({'headers': [], 'error': 'No file path provided'}), 400
-    
-    if not os.path.exists(read_file):
-        return jsonify({'headers': [], 'error': 'File not found'}), 404
-    
-    if not os.path.isfile(read_file):
-        return jsonify({'headers': [], 'error': 'Path is not a file'}), 400
+    if not content:
+        return jsonify({'headers': [], 'error': 'File does not exist'}), 404
 
     try:
         # Attempt to read only headers, skip comment lines starting with #
-        df = pd.read_csv(read_file, nrows=0, comment='#')
+        df = pd.read_csv(StringIO(content), nrows=0, comment='#')
         headers = df.columns.tolist()
         return jsonify({'headers': headers})
     
