@@ -1,29 +1,29 @@
 {
-    "maxrate": {
-        "fit_coef": [
-            0.13883139819586646,
-            872.7686547317951
-        ]
-    },
-    "slope": {
-        "fit_coef": [
-            0.6108322226930951,
-            5864.085150293013
-        ]
-    },
-    "sat": {
-        "fit_coef": [
-            0.6864551530495293,
-            221.13850176205835
-        ]
-    },
-    "time_to_sat": {
-        "fit_coef": [
-            "NONE",
-            "NONE"
-        ]
-    },
-    "fit_type": "Michaelis-Menten",
-    "for_meas": "ABSORBANCE",
-    "for_blank_type": "MIXED"
+  "maxrate": {
+    "fit_coef": {
+      "VMax": 0.13883139819586646,
+      "Km": 872.7686547317951
+    }
+  },
+  "slope": {
+    "fit_coef": {
+      "VMax": 0.6108322226930951,
+      "Km": 5864.085150293013
+    }
+  },
+  "sat": {
+    "fit_coef": {
+      "VMax": 0.6864551530495293,
+      "Km": 221.13850176205835
+    }
+  },
+  "time_to_sat": {
+    "fit_coef": {
+      "VMax": "NONE",
+      "Km": "NONE"
+    }
+  },
+  "fit_type": "Michaelis-Menten",
+  "for_meas": "ABSORBANCE",
+  "for_blank_type": "MIXED"
 }
