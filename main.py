@@ -725,8 +725,6 @@ def export_cal_coefs():
     #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
     # else:
     #     export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
-    export_path = os.path.join(json_root_path, cal_mode)
-    print("received coef_content:", coef_content)
     try: 
         user_data = get_user_data()
         if cal_mode not in user_data['json']:
