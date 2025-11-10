@@ -49,14 +49,17 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
             const measFor = JSON_content.for_meas || "N/A";
             const blankType = JSON_content.for_blank_type || "N/A";
             const mode = AppState.currentMeasurementMode || "N/A";
-            const isMenten = fitType.toLowerCase().includes("menten");
 
             const labelCoefficients = (coefs) => {
-                if (!Array.isArray(coefs) || coefs.length === 0) return "—";
-                return isMenten
-                    ? `Vmax = ${coefs[0]}, Km = ${coefs[1]}`
-                    : coefs.map((v, i) => `${String.fromCharCode(97 + i)} = ${v}`).join(", ");
-            };
+                if (coefs && typeof coefs === 'object' && !Array.isArray(coefs)) {
+                    return Object.entries(coefs)
+                        .filter(([key]) => key !== '__proto__' && key !== 'constructor' && key !== 'prototype') // safety
+                        .map(([k, v]) => `${k} = ${v}`)
+                        .join(', ');
+                }
+
+                return '—';
+            }
 
             const formulas = {
                 linear: "\\( [S] = a q + b \\)",
@@ -1310,7 +1313,8 @@ function exportJSONCoef() {
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
                 threshold_val: getValFloat("threshold-value"),
                 isMultiSource: AppState.multiSource,
-                numSources: AppState.numSources
+                numSources: AppState.numSources,
+                regress_algo: document.getElementById("exp-json-regress-algo").value
             }
             $.ajax({
                 url: '/export_cal_coefs',
