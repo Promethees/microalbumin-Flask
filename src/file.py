@@ -4,6 +4,7 @@ import os
 import json
 import pandas as pd
 import io
+from collections import MutableMapping, Sequence
 
 def get_file_list(directory, fileType="*.csv"):
     try:
@@ -87,3 +88,22 @@ def get_dynamic_data(file_path):
         return {'data': [], 'error': f'Invalid JSON format: {str(e)}', 'unit': "NONE"}
     except Exception as e:
         return {'data': [], 'error': f'Error processing file: {str(e)}', 'unit': "NONE"}
+    
+def replace_empty(obj):
+    """
+    Recursively replace empty values with "NONE".
+    Empty means:
+        - ''  (empty string)
+        - []  (empty list)
+        - {}  (empty dict)
+        - None
+    """
+    if isinstance(obj, MutableMapping):               # dict-like
+        return {k: replace_empty(v) for k, v in obj.items()}
+    elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+        return [replace_empty(v) for v in obj]        # list / tuple / etc.
+    else:
+        # leaf value
+        if obj in ('', [], {}, None):
+            return "NONE"
+        return obj

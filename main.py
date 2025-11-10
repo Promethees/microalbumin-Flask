@@ -24,7 +24,7 @@ from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
 from quantity import get_quantity_input
-from file import get_file_list, get_dynamic_data
+from file import get_file_list, get_dynamic_data, replace_empty
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
@@ -578,10 +578,15 @@ def edit_file():
             lock_path = new_file_path + '.lock'
             with FileLock(lock_path):
                 if new_file_name.endswith('.json'):
-                    # Pretty print JSON with indentation
+                    # Load the original content
                     parsed_json = json.loads(content)
-                    with open(new_file_path, 'w') as f:
-                        json.dump(parsed_json, f, indent=2)
+
+                    # Replace all empty values with "NONE"
+                    cleaned_json = replace_empty(parsed_json)
+
+                    # Pretty-print to the new file
+                    with open(new_file_path, 'w', encoding='utf-8') as f:
+                        json.dump(cleaned_json, f, indent=2, ensure_ascii=False)
                 else:
                     with open(new_file_path, 'w') as f:
                         f.write(content)

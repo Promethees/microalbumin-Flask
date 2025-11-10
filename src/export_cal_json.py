@@ -39,12 +39,11 @@ def processJSONCoef(
         raise ValueError("coefficients must be a list")
 
     def sanitize(v: Any) -> Union[float, str]:
-        return v if v is not None else "NONE"
+        return v if (v and v is not None) else "NONE"
 
     def build_coef_dict(coef_list: List[Any]) -> Dict[str, Any]:
         if len(coef_list) < 2:
             raise ValueError("Each coefficient set must have at least 2 values")
-
         sanitized = [sanitize(v) for v in coef_list]
 
         if is_menten:
