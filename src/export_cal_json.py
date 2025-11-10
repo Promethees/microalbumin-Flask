@@ -1,7 +1,7 @@
 import json
 from typing import List, Dict, Union, Any
 import datetime
-
+from collections.abc import MutableMapping, Sequence
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):
@@ -39,12 +39,11 @@ def processJSONCoef(
         raise ValueError("coefficients must be a list")
 
     def sanitize(v: Any) -> Union[float, str]:
-        return v if v is not None else "NONE"
+        return v if (v and v is not None) else "NONE"
 
     def build_coef_dict(coef_list: List[Any]) -> Dict[str, Any]:
         if len(coef_list) < 2:
             raise ValueError("Each coefficient set must have at least 2 values")
-
         sanitized = [sanitize(v) for v in coef_list]
 
         if is_menten:
@@ -116,3 +115,22 @@ def extractAnalysisCoefficients(
     
     else:
         raise Exception("Input must be a slope object or array of slope objects")
+    
+def replace_empty(obj):
+    """
+    Recursively replace empty values with "NONE".
+    Empty means:
+        - ''  (empty string)
+        - []  (empty list)
+        - {}  (empty dict)
+        - None
+    """
+    if isinstance(obj, MutableMapping):               # dict-like
+        return {k: replace_empty(v) for k, v in obj.items()}
+    elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+        return [replace_empty(v) for v in obj]        # list / tuple / etc.
+    else:
+        # leaf value
+        if obj in ('', [], {}, None):
+            return "NONE"
+        return obj

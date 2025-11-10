@@ -16,11 +16,11 @@ from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
 from get_next_filename import get_next_filename
-from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
+from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder, replace_empty
 from export_data import parse_metadata, is_metadata_consistent, write_metadata, write_headers, extract_single_entry, sort_csv_content, user_csv_lock
 from config import Config
 
-app = Flask(__name__, static_folder='static/dist')
+app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 app.secret_key = 'easy-sensor-kit'  # Required for session to work
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', engineio_logger=True, logger=True)
@@ -289,7 +289,8 @@ def edit_file():
             if is_json:
                 # Pretty print JSON with indentation
                 parsed_json = json.loads(content)
-                store[new_file_name] = json.dumps(parsed_json, indent=2)
+                cleaned_json = replace_empty(parsed_json)
+                store[new_file_name] = json.dumps(cleaned_json, indent=2)
             else:
                 store[new_file_name] = content
             if file_name != new_file_name:
@@ -768,7 +769,7 @@ def export_cal_coefs():
 if __name__ == '__main__':
     import eventlet
     import os
-    port = int(os.environ.get('PORT', 5000))  # Use Heroku's PORT or default to 5000
+    port = int(os.environ.get('PORT', 5003))  # Use Heroku's PORT or default to 5000
     host = '0.0.0.0'  # Listen on all interfaces
     try:
         socketio.run(app, debug=False, host=host, port=port)  # Disable debug for production

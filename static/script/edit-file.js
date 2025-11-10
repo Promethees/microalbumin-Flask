@@ -1,10 +1,107 @@
 function editFile(fileName, button, tableSelector = "#file-table") {
+    /* --------------------------------------------------------------
+   JSON → Graphic UI helpers
+   -------------------------------------------------------------- */
+    function buildGraphicUI(jsonObj, pathPrefix = 'root') {
+        const isArray = Array.isArray(jsonObj);
+        let html = '';
+
+        if (isArray) {
+            jsonObj.forEach((item, idx) => {
+                const itemPath = `${pathPrefix}[${idx}]`;
+                html += `
+                    <fieldset class="json-array-item" style="margin-bottom:12px; border:1px solid #ddd; border-radius:6px;">
+                        <div class="json-section">${buildGraphicUI(item, itemPath)}</div>
+                        <button type="button" class="json-delete-item btn-small" data-path="${itemPath}"
+                                style="margin:4px 0 0 4px; background:#c33; color:#fff; border:none; padding:2px 6px; border-radius:3px;">
+                            Delete
+                        </button>
+                    </fieldset>`;
+            });
+            // Add-item button for arrays
+            html += `
+                <button type="button" class="json-add-array-item btn-small" data-path="${pathPrefix}"
+                        style="margin-top:8px; background:#28a745; color:#fff; border:none; padding:4px 8px; border-radius:3px;">
+                    + Add Item
+                </button>`;
+        } else if (jsonObj !== null && typeof jsonObj === 'object') {
+            // Object → field list
+            const entries = Object.entries(jsonObj);
+            if (entries.length === 0) {
+                html += '<p style="color:#888; font-style:italic; margin:8px 0;">(empty object)</p>';
+            }
+            entries.forEach(([key, val]) => {
+                const fullPath = `${pathPrefix}.${key}`;
+                const label = key;
+                const isObj = val !== null && typeof val === 'object';
+
+                html += `
+                    <div class="json-field" style="margin-bottom:12px; display:flex; align-items:flex-start; gap:8px;">
+                        <label style="min-width:140px; font-weight:600; margin-top:6px;">${label}</label>
+                        <div style="flex:1;">`;
+
+                if (isObj) {
+                    // Nested collapsible section
+                    html += `
+                        <fieldset style="border:1px solid #ddd; border-radius:4px; padding:8px; margin:0;">
+                            <legend style="cursor:pointer; padding:0 4px; font-size:0.9em; user-select:none;"
+                                    onclick="toggleCollapse(this)">
+                                Collapse [−] 
+                            </legend>
+                            <div class="json-section">${buildGraphicUI(val, fullPath)}</div>
+                        </fieldset>`;
+                } else {
+                    // Primitive
+                    const inputType = typeof val === 'number' ? 'number' :
+                                    typeof val === 'boolean' ? 'checkbox' : 'text';
+                    const valueAttr = typeof val === 'boolean' ? (val ? 'checked' : '') :
+                                    `value="${escapeHtml(String(val))}"`;
+
+                    if (inputType === 'checkbox') {
+                        html += `
+                            <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+                                <input type="checkbox" class="json-input" data-path="${fullPath}" ${valueAttr}>
+                                <span>${val ? 'true' : 'false'}</span>
+                            </label>`;
+                    } else if (inputType === 'number') {
+                        html += `
+                            <input type="${inputType}" class="json-input" data-path="${fullPath}" ${valueAttr}
+                                style="width:90%; padding:4px; font-family:monospace;">`;
+                    } else {
+                        // Text / fallback – use textarea for multi-line
+                        const isMultiline = String(val).includes('\n');
+                        if (isMultiline) {
+                            html += `
+                                <textarea class="json-input" data-path="${fullPath}"
+                                        style="width:90%; min-height:60px; font-family:monospace; padding:4px;">${escapeHtml(String(val))}</textarea>`;
+                        } else {
+                            html += `
+                                <input type="text" class="json-input" data-path="${fullPath}" ${valueAttr}
+                                    style="width:90%; padding:4px; font-family:monospace;">`;
+                        }
+                    }
+                }
+                html += `</div></div>`;
+            });
+        } else {
+            // Primitive root (rare)
+            html += `<p><em></em> ${escapeHtml(String(jsonObj))}</p>`;
+        }
+        return html;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
     const row = $(button).closest("tr");
     const deleteBtn = row.find("button:contains('Delete')");
     deleteBtn.prop('disabled', true).addClass('disabled').attr('aria-disabled', 'true');
 
-    let editMode = tableSelector === '#file-table' ? 'table' : 'text'; // Force text mode for non-#file-table
-    let originalContent = ''; // Store original content for reference
+    let editMode = tableSelector === '#file-table' ? 'table' : 'graphic'; // Default mode depend on selected table
 
     const nonEditableColumns = ['Unit', 'Type', 'Blanked', 'Concentration', 'BlankType'];
     const nonEditableMetadata = ['TimeUnit', 'MeasMode'];
@@ -130,18 +227,29 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
         }
     }
-    
-    function renderContent(content) {
-        originalContent = content.content; // Store the original content
-        let html = '';
+        
+        function renderContent(content) {
+            let html = '';
+            if (tableSelector === '#json-table' && editMode === 'graphic') {
+                let parsed;
+                try { parsed = JSON.parse(content.content); } catch (e) {
+                    return `<p style="color:red;">Invalid JSON: ${e.message}</p>`;
+                }
 
-        if (editMode === 'text') {
-            html = `
-                <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
-                <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px; font-family: monospace;">${content.content}</textarea>
-            `;
-        } else {
-            const lines = content.content.trim().split('\n');
+                return `
+                    <input type="text" id="swal-input-filename" class="swal2-input"
+                        value="${fileName}" placeholder="Enter new filename">
+                    <div class="json-graphic-container" style="margin-top:12px; max-height:500px; overflow-y:auto;">
+                        ${buildGraphicUI(parsed)}
+                    </div>`;
+            }
+            if (editMode === 'text') {
+                html = `
+                    <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
+                    <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px; font-family: monospace;">${content.content}</textarea>
+                `;
+            } else {
+                const lines = content.content.trim().split('\n');
 
             // Separate metadata (lines starting with "#") and data lines
             const metadata = {};
@@ -254,11 +362,125 @@ function editFile(fileName, button, tableSelector = "#file-table") {
     const fileType = tableSelector === '#file-table' ? "csv" : "json";
     // Fetch CSV content
     $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&type=${encodeURIComponent(fileType)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}`, function(content) {
+        let originalContent = content.content; // ← raw string
+        let workingJSON = null; // ← **one-time parse**
+
+        const rebuildContent = () => {
+            if (workingJSON !== null)
+                originalContent = JSON.stringify(workingJSON, null, 2);
+        };
+
+        function setValueByPath(path, value) {
+            if (workingJSON === null) {
+                console.error("setValueByPath called on a non-JSON file");
+                return;
+            }
+            const parts = path
+                .replace(/\[(\d+)\]/g, ".$1")
+                .split(".")
+                .filter(Boolean)
+                .slice(1);               // remove leading "root"
+            const last = parts.pop();
+            let cur = workingJSON;
+
+            for (const part of parts) {
+                // auto-create missing objects / arrays
+                cur[part] = cur[part] ?? (isNaN(part) ? {} : []);
+                cur = cur[part];
+            }
+            cur[last] = value;
+            rebuildContent();          // keep the displayed string in sync
+        }
+
+        function getValueByPath(path) {
+            if (workingJSON === null) return undefined;
+            let cur = workingJSON;
+            const parts = path
+                .replace(/\[(\d+)\]/g, ".$1")
+                .split(".")
+                .filter(Boolean);
+            for (const part of parts) {
+                if (cur === undefined || cur === null) return undefined;
+                cur = cur[part];
+            }
+            return cur;
+        }
+
+        function bindDynamicButtons() {
+            // ---- Add field (object) ----
+            document.querySelectorAll('.json-add-field').forEach(btn => {
+                btn.onclick = () => {
+                    const path = btn.dataset.path;
+                    const keyInp = btn.parentElement.querySelector('.json-new-key');
+                    const valInp = btn.parentElement.querySelector('.json-new-value');
+                    const key = keyInp.value.trim();
+                    const raw = valInp.value.trim();
+                    if (!key) return Swal.showValidationMessage('Key is required');
+                    let val;
+                    try { val = raw === '' ? null : JSON.parse(raw); }
+                    catch { val = raw; }
+                    setValueByPath(path + '.' + key, val);
+                    keyInp.value = ''; valInp.value = '';
+                    refreshGraphicUI();
+                };
+            });
+
+            // ---- Add array item ----
+            document.querySelectorAll('.json-add-array-item').forEach(btn => {
+                btn.onclick = () => {
+                    const path = btn.dataset.path;
+                    const arr = getValueByPath(path) || [];
+                    arr.push(null); // placeholder
+                    setValueByPath(path, arr);
+                    refreshGraphicUI();
+                };
+            });
+
+            // ---- Delete array item ----
+            document.querySelectorAll('.json-delete-item').forEach(btn => {
+                btn.onclick = () => {
+                    const path = btn.dataset.path;
+                    const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+                    const idx = parseInt(parts.pop());
+                    const parentPath = parts.join('.');
+                    const arr = getValueByPath(parentPath);
+                    if (Array.isArray(arr)) {
+                        arr.splice(idx, 1);
+                        setValueByPath(parentPath, arr);
+                        refreshGraphicUI();
+                    }
+                };
+            });
+        }
+
+        function refreshGraphicUI() {
+            const container = document.querySelector('.json-graphic-container');
+            if (!container) return;
+            let parsed;
+            try { parsed = JSON.parse(originalContent); } catch (_) { return; }
+            container.innerHTML = buildSettingsUI(parsed);
+            bindDynamicButtons();
+        }
+
+        // On time workingJSON parser, only for json-table
+        if (tableSelector === "#json-table") {
+            try {
+                workingJSON = JSON.parse(originalContent);
+            } catch (e) {
+                Swal.fire({
+                title: "Invalid JSON",
+                text: `The file contains malformed JSON: ${e.message}`,
+                icon: "error",
+                });
+                return;
+            }
+        }
+
         Swal.fire({
             title: `Edit ${fileName}`,
             width: '800px',
             html: renderContent(content),
-            footer: tableSelector === '#file-table' ? '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode</button>' : '',
+            footer:  '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
             focusConfirm: false,
             showCancelButton: true,
             confirmButtonText: 'Save Changes',
@@ -266,15 +488,30 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             confirmButtonColor: '#50C878',
             cancelButtonColor: '#d33',
             didOpen: () => {
+                // -----------------------------------------------------------------
+                //  CSS for the graphic UI
+                // -----------------------------------------------------------------
+                if (!document.getElementById('json-graphic-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'json-graphic-styles';
+                    style.textContent = `
+                        .json-graphic-container fieldset.collapsed > .json-section { display:none; }
+                        .json-graphic-container .json-input { font-size:0.9rem; }
+                        .json-graphic-container .btn-small { font-size:0.8rem; cursor:pointer; }
+                        .light .json-graphic-container .json-field:hover { background:#f8f9fa; }
+                        .dark .json-graphic-container .json-field:hover { background:#343a40; }
+                    `;
+                    document.head.appendChild(style);
+                }
                 const toggleButton = document.getElementById('toggle-mode');
                 if (editMode === 'table') {
                     setupTableEvents();
                 }
                 
-                if (toggleButton && tableSelector === '#file-table') {
+                if (toggleButton) {
                     toggleButton.addEventListener('click', () => {
-                        editMode = editMode === 'text' ? 'table' : 'text';
-                        toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? 'Table' : 'Text') + ' Mode';
+                        editMode = editMode === 'text' ? (tableSelector === '#file-table' ? 'table' : 'graphic') : 'text';
+                        toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
                         Swal.getHtmlContainer().innerHTML = renderContent({content: originalContent});
                         if (editMode === 'table') {
                             // Need a small delay to allow DOM to update
@@ -287,24 +524,24 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 const newFileName = document.getElementById('swal-input-filename').value;
                 let content;
 
-                if (editMode === 'text') {
-                    content = document.getElementById('swal-input-content').value;
-                } else {
-                    // --- Collect metadata lines ---
-                    const metaTable = document.getElementById('swal-metadata-table');
-                    let metaLines = [];
-                    if (metaTable) {
-                        const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
-                        metaLines = metaRows.map(row => {
-                            const cells = row.querySelectorAll('td');
-                            if (cells.length === 2) {
-                                const key = cells[0].textContent.trim();
-                                const value = cells[1].textContent.trim();
-                                return `# ${key}: ${value}`;
-                            }
-                            return null;
-                        }).filter(Boolean);
-                    }
+                    if (editMode === 'text') {
+                        content = document.getElementById('swal-input-content').value;
+                    } else if (editMode === 'table'){
+                        // --- Collect metadata lines ---
+                        const metaTable = document.getElementById('swal-metadata-table');
+                        let metaLines = [];
+                        if (metaTable) {
+                            const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
+                            metaLines = metaRows.map(row => {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length === 2) {
+                                    const key = cells[0].textContent.trim();
+                                    const value = cells[1].textContent.trim();
+                                    return `# ${key}: ${value}`;
+                                }
+                                return null;
+                            }).filter(Boolean);
+                        }
 
                     // --- Collect main data table ---
                     const table = document.getElementById('swal-edit-table');
@@ -400,22 +637,69 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         }
                     }
 
-                    // ✅ Data validation
-                    for (let i = 1; i < dataLines.length; i++) {
-                        const normalizedLine = dataLines[i].replace(/\s*,\s*/g, ',');
-                        if (!matchedPattern.data.test(dataLines[i]) && !matchedPattern.data.test(normalizedLine)) {
-                            Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
-                            return false;
+                        // ✅ Data validation
+                        for (let i = 1; i < dataLines.length; i++) {
+                            const normalizedLine = dataLines[i].replace(/\s*,\s*/g, ',');
+                            if (!matchedPattern.data.test(dataLines[i]) && !matchedPattern.data.test(normalizedLine)) {
+                                Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
+                                return false;
+                            }
+                        }
+                    } else if (tableSelector === '#json-table') {
+                        if (editMode === 'text') {
+                            try {
+                                JSON.parse(content);
+                            } catch (e) {
+                                Swal.showValidationMessage(`Invalid JSON format: ${e.message}`);
+                                return false;
+                            }
+                        } else {
+                            // Graphic mode: collect from inputs
+                            const inputs = document.querySelectorAll('.json-input');
+                            let err = null;
+
+                            inputs.forEach(el => {
+                                if (err) return;
+                                const path = el.dataset.path;
+                                if (!path) return;
+
+                                let val;
+                                try {
+                                    if (el.type === 'checkbox') val = el.checked;
+                                    else if (el.tagName === 'TEXTAREA') val = el.value;
+                                    else if (el.type === 'number') {
+                                        const n = el.value.trim();
+                                        val = n === '' ? null : Number(n);
+                                        if (n !== '' && isNaN(val)) throw new Error('not a number');
+                                    } else {
+                                        val = el.value;
+                                    }
+
+                                    // Smart parsing
+                                    if (typeof val === 'string') {
+                                        const t = val.trim();
+                                        if (t === 'null') val = null;
+                                        else if (t === 'true') val = true;
+                                        else if (t === 'false') val = false;
+                                        else if (/^[-+]?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(t)) val = Number(t);
+                                        else if (t.startsWith('{') || t.startsWith('[')) {
+                                            try { val = JSON.parse(t); } catch (_) {}
+                                        }
+                                    }
+
+                                    setValueByPath(path, val);  // now safe!
+                                } catch (e) {
+                                    err = `Path "${path}": ${e.message}`;
+                                }
+                            });
+
+                            if (err) {
+                                Swal.showValidationMessage(err);
+                                return false;
+                            }
+                            content = originalContent;  // final string
                         }
                     }
-                } else if (tableSelector === '#json-table' && editMode === 'text') {
-                    try {
-                        JSON.parse(content);
-                    } catch (e) {
-                        Swal.showValidationMessage(`Invalid JSON format: ${e.message}`);
-                        return false;
-                    }
-                }
 
                 return { newFileName, content };
             }
@@ -499,25 +783,15 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 });
             }
         });
-    }).fail(function(jqXHR) {
-        let errorMessage = 'Failed to load file content';
-        if (jqXHR.responseJSON?.message) {
-            errorMessage = jqXHR.responseJSON.message;
-        } else if (jqXHR.status === 404) {
-            errorMessage = 'File not found';
-        } else if (jqXHR.status === 403) {
-            errorMessage = 'Permission denied';
-        } else if (jqXHR.status === 423) {
-            errorMessage = 'File is in use by the data collection process';
-        }
-        
-        Swal.fire({
-            title: 'Error!',
-            text: errorMessage,
-            icon: 'error',
-            confirmButtonText: 'OK'
-        }).then(() => {
-            deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
-        });
-    });
+    })
+}
+
+function toggleCollapse(legend) {
+    const fieldset = legend.parentElement;
+    const isCollapsed = fieldset.classList.toggle('collapsed');
+
+    // Update label and icon based on state
+    const labelText = isCollapsed ? 'Expand [+]' : 'Collapse [−]';
+
+    legend.firstChild.nodeValue = labelText + ' ';
 }
