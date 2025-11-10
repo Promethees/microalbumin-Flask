@@ -935,9 +935,7 @@ def export_cal_coefs():
     cal_mode = data.get('cal_mode', "kinetics")
     cal_params = data.get('cal_params')
     thres_val = float(data.get('threshold_val', 0))
-    is_multi_source = data.get('isMultiSource', False)
-    num_sources = int(data.get('numSources', 1))
-
+    regress_algo = data.get('regress_algo', 'linear')
     # if is_multi_source:
     #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
     # else:
@@ -953,7 +951,7 @@ def export_cal_coefs():
 
         full_path = get_next_filename(".json", export_path, file_name)
 
-        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val))
+        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val, regress_algo), regress_algo)
         json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
 
         if (cal_mode == "point"):

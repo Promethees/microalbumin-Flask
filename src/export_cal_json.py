@@ -12,61 +12,72 @@ class CustomEncoder(json.JSONEncoder):
             return obj.__dict__  # Handle custom classes
         return super().default(obj) 
 
-def processJSONCoef(cal_params: List[str], coefficients: Union[List[float], List[List[float]]]) -> Dict[str, Any]:
+def processJSONCoef(
+    cal_params: List[str],
+    coefficients: Union[List[float], List[List[float]]],
+    is_menten: bool
+) -> Dict[str, Any]:
     """
-    Process analysis parameters and coefficients into a structured JSON object.
-    
-    Args:
-        cal_params: List of parameter names (e.g., ["maxRate", "slope", "sat", "Time To Sat"])
-        coefficients: Either:
-            - A 1D array [v, v] → Returns {"fit_coef": [v, v]}
-            - A 2D array [[v, v], [v, v], ...] → Returns {param1: {"fit_coef": [v, v]}, ...}
-    
-    Returns:
-        A JSON-compatible dictionary with "NONE" replacing None values.
-    
-    Raises:
-        Exception: If inputs are invalid.
-    """
-    # Validate inputs
-    if not isinstance(cal_params, list):
-        raise Exception("cal_params must be a list")
-    if not isinstance(coefficients, list):
-        raise Exception("coefficients must be a list")
+    Process coefficients into a JSON-compatible structure where `fit_coef` is a **dict**.
 
-    def sanitize_value(v: Any) -> Union[float, str]:
-        """Replace None with 'NONE' to avoid JSON issues."""
+    - 1D coefficients → {"fit_coef": {"VMax": ..., "Km": ..., "c": ...}}  (if is_menten)
+    - 2D coefficients → {param: {"fit_coef": {"a": ..., "b": ..., ...}}, ...}
+
+    Args:
+        cal_params: List of parameter names (used only in 2D case)
+        coefficients: [v1, v2, ...] or [[v1, v2, ...], ...]
+        is_menten: If True, first two keys are "VMax" and "Km"
+
+    Returns:
+        dict with `fit_coef` as a **dictionary object** (not JSON string)
+    """
+    print("Cal params: ", cal_params)
+    print("Coefficients: ", coefficients)
+    if not isinstance(cal_params, list):
+        raise ValueError("cal_params must be a list")
+    if not isinstance(coefficients, list):
+        raise ValueError("coefficients must be a list")
+
+    def sanitize(v: Any) -> Union[float, str]:
         return v if v is not None else "NONE"
 
-    # Case 1: coefficients is 1D (e.g., [v, v])
-    if all(not isinstance(x, list) for x in coefficients):
-        if len(coefficients) < 2:
-            raise Exception("1D coefficients must have at least 2 values")
-        
-        sanitized_coef = [sanitize_value(v) for v in coefficients]
-        return {"fit_coef": sanitized_coef}
+    def build_coef_dict(coef_list: List[Any]) -> Dict[str, Any]:
+        if len(coef_list) < 2:
+            raise ValueError("Each coefficient set must have at least 2 values")
 
-    # Case 2: coefficients is 2D (e.g., [[v, v], [v, v], ...])
-    elif all(isinstance(x, list) for x in coefficients):
+        sanitized = [sanitize(v) for v in coef_list]
+
+        if is_menten:
+            keys = ["VMax", "Km"] + [chr(ord('c') + i) for i in range(len(sanitized) - 2)]
+        else:
+            keys = [chr(ord('a') + i) for i in range(len(sanitized))]
+
+        return dict(zip(keys, sanitized))
+
+    # Case 1: 1D coefficients
+    if all(not isinstance(x, list) for x in coefficients):
+        return {"fit_coef": build_coef_dict(coefficients)}
+
+    # Case 2: 2D coefficients
+    if all(isinstance(x, list) for x in coefficients):
         if len(cal_params) != len(coefficients):
-            raise Exception("For 2D coefficients, cal_params and coefficients must have the same length")
-        
-        result = {}
+            raise ValueError("cal_params and coefficients must have same length in 2D mode")
+
+        result: Dict[str, Any] = {}
         for param, coef in zip(cal_params, coefficients):
-            if len(coef) < 2:
-                raise Exception(f"Each coefficient must be a list of at least 2 values (got {len(coef)})")
-            
-            processed_key = param.lower().replace(" ", "_")
-            sanitized_coef = [sanitize_value(v) for v in coef]
-            result[processed_key] = {"fit_coef": sanitized_coef}
+            if not isinstance(coef, list) or len(coef) < 2:
+                raise ValueError(f"Coefficient for '{param}' must be list with >=2 values")
+
+            key = param.lower().replace(" ", "_")
+            result[key] = {"fit_coef": build_coef_dict(coef)}
         return result
 
-    else:
-        raise Exception("coefficients must be either [v, v] or [[v, v], [v, v], ...]")
+    raise ValueError("coefficients must be 1D list or 2D list of lists")
 
 def extractAnalysisCoefficients(
     data: Union[List[Dict[str, Any]], Dict[str, Any]], 
-    threshold: float = 0.0  # Default threshold (adjust as needed)
+    threshold: float = 0.0,  # Default threshold (adjust as needed),
+    regress_algo: str = 'linear'
 ) -> Union[List[Any], List[List[Any]]]:
     """
     Extracts coefficients, setting them to null if rSquared < threshold.
@@ -74,7 +85,8 @@ def extractAnalysisCoefficients(
     Args:
         data: Single slope object or array of slope objects.
         threshold: Minimum rSquared value to keep coefficients.
-    
+        regress_algo: Regression algorithm to use.
+
     Returns:
         - Single object: Coefficients array (with null if filtered).
         - Array: List of coefficients arrays (with null if filtered).
@@ -88,8 +100,10 @@ def extractAnalysisCoefficients(
                 r_squared = float(r_squared)
             except ValueError:
                 r_squared = None  # Treat invalid strings as None
-        if r_squared is None or (isinstance(r_squared, (float, int)) and r_squared < threshold):
-            return [None] * len(entry.get("coefficients", []))
+        if r_squared is None or (isinstance(r_squared, (float, int)) and r_squared < threshold) or entry["coefficients"] is None:
+            if regress_algo == 'polynomial':
+                return [None] * 3
+            return [None] * 2
         return entry["coefficients"]
     
     # Case 1: Single object

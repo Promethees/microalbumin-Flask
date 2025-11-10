@@ -612,30 +612,30 @@ function computeFit(value, fit_type, coef) {
     switch (fit_type.toLowerCase()) {
         case "linear":
             // Expect coef = [a, b]
-            if (coef.length !== 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
-            return coef[0] * value + coef[1];
+            if (Object.keys(coef).length !== 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
+            return coef["a"] * value + coef["b"];
 
         case "polynomial":
             // Expect coef = [a, b, c]
-            if (coef.length !== 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
-            return coef[0] * Math.pow(value, 2) + coef[1] * value + coef[2];
+            if (Object.keys(coef).length !== 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
+            return coef["a"] * Math.pow(value, 2) + coef["b"] * value + coef["c"];
 
         case "logarithmic":
             // Expect coef = [a, b, c]
-            if (coef.length !== 3) throw new Error("Logarithmic fit requires 3 coefficients: [a, b, c]");
+            if (Object.keys(coef).length !== 3) throw new Error("Logarithmic fit requires 3 coefficients: [a, b, c]");
             if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
-            return coef[0] * Math.log(value + coef[1]) + coef[2];
+            return coef["a"] * Math.log(value + coef["b"]) + coef["c"];
 
         case "exponential":
             // Expect coef = [a, b, c]
-            if (coef.length !== 3) throw new Error("Exponential fit requires 3 coefficients: [a, b, c]");
-            return coef[0] * Math.exp(value * coef[1]) + coef[2];
+            if (Object.keys(coef).length !== 3) throw new Error("Exponential fit requires 3 coefficients: [a, b, c]");
+            return coef["a"] * Math.exp(value * coef["b"]) + coef["c"];
 
         case "michaelis-menten":
             // Expect coef = [Vmax, Km]
-            if (coef.length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
-            if (value >= coef[0] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value}/minute must be < Vmax: ${coef[0]} and >= 0`);
-            return (coef[1] * value) / (coef[0] - value);
+            if (Object.keys(coef).length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
+            if (value >= coef["VMax"] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value}/minute must be < Vmax: ${coef["VMax"]} and >= 0`);
+            return (coef["Km"] * value) / (coef["VMax"] - value);
 
         default:
             throw new Error("Unknown fit type: " + fit_type);
