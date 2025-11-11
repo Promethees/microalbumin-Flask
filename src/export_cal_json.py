@@ -15,7 +15,7 @@ class CustomEncoder(json.JSONEncoder):
 def processJSONCoef(
     cal_params: List[str],
     coefficients: Union[List[float], List[List[float]]],
-    is_menten: bool
+    regress_algo: str
 ) -> Dict[str, Any]:
     """
     Process coefficients into a JSON-compatible structure where `fit_coef` is a **dict**.
@@ -26,7 +26,7 @@ def processJSONCoef(
     Args:
         cal_params: List of parameter names (used only in 2D case)
         coefficients: [v1, v2, ...] or [[v1, v2, ...], ...]
-        is_menten: If True, first two keys are "VMax" and "Km"
+        regress_algo: If regress_algo is "michaelis-menten", first two keys are "VMax" and "Km"
 
     Returns:
         dict with `fit_coef` as a **dictionary object** (not JSON string)
@@ -46,7 +46,7 @@ def processJSONCoef(
             raise ValueError("Each coefficient set must have at least 2 values")
         sanitized = [sanitize(v) for v in coef_list]
 
-        if is_menten:
+        if regress_algo == "michaelis-menten":
             keys = ["VMax", "Km"] + [chr(ord('c') + i) for i in range(len(sanitized) - 2)]
         else:
             keys = [chr(ord('a') + i) for i in range(len(sanitized))]
@@ -100,7 +100,7 @@ def extractAnalysisCoefficients(
             except ValueError:
                 r_squared = None  # Treat invalid strings as None
         if r_squared is None or (isinstance(r_squared, (float, int)) and r_squared < threshold) or entry["coefficients"] is None:
-            if regress_algo == 'polynomial':
+            if regress_algo in ['polynomial', 'exponential', 'logarithmic']:
                 return [None] * 3
             return [None] * 2
         return entry["coefficients"]
