@@ -1,5 +1,4 @@
 import os
-import platform
 
 # This will point to the directory where main.py is located
 current_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

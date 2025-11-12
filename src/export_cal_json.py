@@ -2,6 +2,8 @@ import json
 from typing import List, Dict, Union, Any
 import datetime
 from collections.abc import MutableMapping, Sequence
+from decimal import Decimal
+
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):
