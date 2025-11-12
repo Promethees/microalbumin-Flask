@@ -295,7 +295,11 @@ function uploadFile(tableSelector = "#file-table") {
             success: function(response) {
                 Swal.close();
 
-                if (response.status === "success" && !getBtnChecked("no-swal-checkbox")) {
+                if (response.status === "success") {
+                    if (getBtnChecked("no-swal-checkbox")) {
+                        console.log("File uploaded successfully:", response.message);
+                        return; // Exit if no popup is needed
+                    }
                     Swal.fire({
                         title: "Success!",
                         text: response.message,
