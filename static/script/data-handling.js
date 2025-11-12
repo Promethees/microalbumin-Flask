@@ -295,7 +295,7 @@ function uploadFile(tableSelector = "#file-table") {
             success: function(response) {
                 Swal.close();
 
-                if (response.status === "success") {
+                if (response.status === "success" && !getBtnChecked("no-swal-checkbox")) {
                     Swal.fire({
                         title: "Success!",
                         text: response.message,
