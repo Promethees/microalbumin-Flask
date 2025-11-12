@@ -1,4 +1,3 @@
-import pandas as pd
 import csv
 
 def sort_csv_file(file_path, meas_mode, multi_source=False):

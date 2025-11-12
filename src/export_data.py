@@ -1,5 +1,3 @@
-from threading import Lock
-
 # Helper: Parse metadata from content
 def parse_metadata(content):
     meta_dict = {}
