@@ -1,4 +1,4 @@
-# Easy Sensor Kit Web application
+# Easy OKAPI Web application
 
 ## Setup and Usage
 The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](https://www.easysensorkit.cbbiotec.vn/)

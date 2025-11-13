@@ -61,7 +61,7 @@ def index():
     file_list = list(user_data['csv'].keys())
     cal_json_list = list(user_data['json'].get('kinetics', {}).keys())
     response = make_response(render_template('index.html', 
-                         title="Easy Sensor Kit",
+                         title="Easy OKAPI",
                          directory= '/',
                          csv_path = '/csv',
                          range_input=range_input,
