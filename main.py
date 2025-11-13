@@ -90,7 +90,7 @@ def index():
     cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
     clear_logs()
     response = make_response(render_template('index.html', 
-                         title="Easy Sensor Kit",
+                         title="Easy OKAPI",
                          directory= os.path.abspath(directory),
                          range_input=range_input,
                          mode_input=mode_input,

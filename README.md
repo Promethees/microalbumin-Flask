@@ -1,4 +1,4 @@
-# Easy Sensor Kit Web application
+# Easy OKAPI Web application
 
 ## Setup and Usage
 ### Get this source code: 
@@ -53,7 +53,7 @@
 		+ Download the [![Latest release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
-		+ After the installation, you can use `EasySensor Kit` icon on the Desktop to start the app
+		+ After the installation, you can use `Easy OKAPI` icon on the Desktop to start the app
 		+ For `Uninstallation`, navigate to the local fodler in which you save the Program Files, use `Uninstall.exe` to uninstall
 		
 	- Using batch scripts:
