@@ -24,7 +24,7 @@ from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
 from quantity import get_quantity_input
-from file import get_file_list, get_dynamic_data
+from file import get_file_list, get_dynamic_data, replace_empty
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
@@ -90,7 +90,7 @@ def index():
     cal_json_list = get_file_list(os.path.join(json_root_path, "kinetics"), "*.json")
     clear_logs()
     response = make_response(render_template('index.html', 
-                         title="Easy Sensor Kit",
+                         title="Easy OKAPI",
                          directory= os.path.abspath(directory),
                          range_input=range_input,
                          mode_input=mode_input,
@@ -578,10 +578,15 @@ def edit_file():
             lock_path = new_file_path + '.lock'
             with FileLock(lock_path):
                 if new_file_name.endswith('.json'):
-                    # Pretty print JSON with indentation
+                    # Load the original content
                     parsed_json = json.loads(content)
-                    with open(new_file_path, 'w') as f:
-                        json.dump(parsed_json, f, indent=2)
+
+                    # Replace all empty values with "NONE"
+                    cleaned_json = replace_empty(parsed_json)
+
+                    # Pretty-print to the new file
+                    with open(new_file_path, 'w', encoding='utf-8') as f:
+                        json.dump(cleaned_json, f, indent=2, ensure_ascii=False)
                 else:
                     with open(new_file_path, 'w') as f:
                         f.write(content)
@@ -935,9 +940,7 @@ def export_cal_coefs():
     cal_mode = data.get('cal_mode', "kinetics")
     cal_params = data.get('cal_params')
     thres_val = float(data.get('threshold_val', 0))
-    is_multi_source = data.get('isMultiSource', False)
-    num_sources = int(data.get('numSources', 1))
-
+    regress_algo = data.get('regress_algo', 'linear')
     # if is_multi_source:
     #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
     # else:
@@ -953,7 +956,7 @@ def export_cal_coefs():
 
         full_path = get_next_filename(".json", export_path, file_name)
 
-        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val))
+        json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val, regress_algo), regress_algo)
         json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
 
         if (cal_mode == "point"):
