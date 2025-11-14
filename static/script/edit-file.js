@@ -65,19 +65,15 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             </label>`;
                     } else if (inputType === 'number') {
                         html += `
-                            <input type="${inputType}" class="json-input" data-path="${fullPath}" ${valueAttr}
-                                style="width:90%; padding:4px; font-family:monospace;">`;
+                            <input type="${inputType}" class="json-input" data-path="${fullPath}" ${valueAttr}>`;
                     } else {
                         // Text / fallback – use textarea for multi-line
                         const isMultiline = String(val).includes('\n');
                         if (isMultiline) {
                             html += `
-                                <textarea class="json-input" data-path="${fullPath}"
-                                        style="width:90%; min-height:60px; font-family:monospace; padding:4px;">${escapeHtml(String(val))}</textarea>`;
+                                <textarea class="json-input" data-path="${fullPath}">${escapeHtml(String(val))}</textarea>`;
                         } else {
-                            html += `
-                                <input type="text" class="json-input" data-path="${fullPath}" ${valueAttr}
-                                    style="width:90%; padding:4px; font-family:monospace;">`;
+                            html += generateInputHtml(key, val, fullPath, valueAttr);
                         }
                     }
                 }
@@ -88,6 +84,59 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             html += `<p><em></em> ${escapeHtml(String(jsonObj))}</p>`;
         }
         return html;
+    }
+
+    function generateInputHtml(key, value, fullPath, valueAttr) {
+        // -----------------------------------------------------------------
+        // 1. Helper to extract the raw value from valueAttr (e.g. "linear")
+        // -----------------------------------------------------------------
+        const getValueFromAttr = () => {
+            const m = valueAttr.match(/value=["']([^"']+)["']/);
+            return m ? m[1] : null;
+        };
+
+        // -----------------------------------------------------------------
+        // 2. Multi-select definitions
+        // -----------------------------------------------------------------
+        const configs = {
+            fit_type: {
+                options: ["linear", "polynomial", "logarithmic", "exponential", "Michaelis-Menten"]
+            },
+            for_blank_type: {
+                options: ["BLANKED", "MIXED", "NON-BLANKED"]
+            }
+        };
+
+        // -----------------------------------------------------------------
+        // 3. Is this a special multi-select key?
+        // -----------------------------------------------------------------
+        if (configs[key]) {
+            const cfg = configs[key];
+            const rawAttrVal = getValueFromAttr();                // e.g. "linear"
+            const currentArray = Array.isArray(value) ? value : (value ? [value] : []);
+
+            // Ensure the value from valueAttr is part of the selection set
+            if (rawAttrVal && !currentArray.includes(rawAttrVal)) {
+                currentArray.push(rawAttrVal);
+            }
+
+            // Build the option list – include any "foreign" value as an extra option
+            const allOptions = [...new Set([...cfg.options, ...currentArray])];
+
+            let html = `<select class="json-input" data-path="${fullPath}">`;
+            for (const opt of allOptions) {
+                const selected = currentArray.includes(opt) ? "selected" : "";
+                html += `<option value="${opt}" ${selected}>${opt}</option>`;
+            }
+            html += `</select>`;
+            return html;
+        }
+
+        // -----------------------------------------------------------------
+        // 4. Fallback – original text input
+        // -----------------------------------------------------------------
+        return `
+            <input type="text" class="json-input" data-path="${fullPath}" ${valueAttr}>`;
     }
 
     function escapeHtml(text) {
