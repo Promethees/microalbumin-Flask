@@ -412,11 +412,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
     // Fetch CSV content
     $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&type=${encodeURIComponent(fileType)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}`, function(content) {
         let originalContent = content.content; // ← raw string
+            let finalContent = null; // ← final string to save
         let workingJSON = null; // ← **one-time parse**
 
         const rebuildContent = () => {
             if (workingJSON !== null)
-                originalContent = JSON.stringify(workingJSON, null, 2);
+                finalContent = JSON.stringify(workingJSON, null, 2);
         };
 
         function setValueByPath(path, value) {
@@ -502,14 +503,201 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
         }
 
-        function refreshGraphicUI() {
-            const container = document.querySelector('.json-graphic-container');
-            if (!container) return;
-            let parsed;
-            try { parsed = JSON.parse(originalContent); } catch (_) { return; }
-            container.innerHTML = buildSettingsUI(parsed);
-            bindDynamicButtons();
-        }
+            function refreshGraphicUI() {
+                const container = document.querySelector('.json-graphic-container');
+                if (!container) return;
+                let parsed;
+                try { parsed = JSON.parse(originalContent); } catch (_) { return; }
+                container.innerHTML = buildSettingsUI(parsed);
+                bindDynamicButtons();
+                syncFitCoefLabels(document.querySelector('.swal2-popup'));
+            }
+            /* --------------------------------------------------------------
+            SINGLE FIT_TYPE → MULTIPLE FIT_COEF blocks (grouped)
+            Remembers original fit_type + coefficient values
+            -------------------------------------------------------------- */
+            function syncFitCoefLabels(container) {
+                const fitTypeSelect = container.querySelector('select[data-path$=".fit_type"]');
+                if (!fitTypeSelect) return;
+
+                const allCoefInputs = Array.from(
+                    container.querySelectorAll('.json-input[data-path*="fit_coef"]')
+                );
+                if (allCoefInputs.length === 0) return;
+
+                // -----------------------------------------------------------------
+                // 1. Group inputs + fields by fit_coef base path
+                // -----------------------------------------------------------------
+                const groups = new Map();  // base → {fields: [], inputs: []}
+                allCoefInputs.forEach(inp => {
+                    const oldPath = inp.dataset.path;
+                    const base = oldPath.replace(/\.[^.]+$/, '');
+                    if (!groups.has(base)) groups.set(base, {fields: [], inputs: []});
+                    const group = groups.get(base);
+                    const field = inp.closest('.json-field');
+                    if (field && !group.fields.includes(field)) group.fields.push(field);
+                    group.inputs.push(inp);
+                });
+
+                // -----------------------------------------------------------------
+                // 2. Mapping: fit_type → [label1, label2, (label3)]
+                // -----------------------------------------------------------------
+                const labelMap = {
+                    linear:          ['a', 'b'],
+                    'Michaelis-Menten': ['VMax', 'Km'],
+                    default:         ['a', 'b', 'c']
+                };
+
+                // -----------------------------------------------------------------
+                // 3. FIRST-TIME: Remember original state
+                // -----------------------------------------------------------------
+                if (!fitTypeSelect.dataset.originalType) {
+                    fitTypeSelect.dataset.originalType = fitTypeSelect.value;
+
+                    // Store original coefficient values: path → original value
+                    window._originalCoefValues = window._originalCoefValues || new Map();
+                    allCoefInputs.forEach(inp => {
+                        const path = inp.dataset.path;
+                        const value = inp.tagName === 'TEXTAREA' ? inp.value :
+                                    inp.type === 'checkbox' ? inp.checked :
+                                    inp.value;
+                        window._originalCoefValues.set(path, value);
+                    });
+                }
+
+                // -----------------------------------------------------------------
+                // 4. Helper: restore original values for a given fit_type
+                // -----------------------------------------------------------------
+                function restoreOriginalForType(type) {
+                    const labels = labelMap[type] || labelMap.default;
+                    for (const [base, group] of groups) {
+                        labels.forEach((label, j) => {
+                            const key = label;
+                            const originalPath = `${base}.${key}`;
+                            const input = group.inputs[j];
+                            if (!input) return;
+
+                            const originalValue = window._originalCoefValues.get(originalPath);
+                            if (originalValue !== undefined) {
+                                if (input.type === 'checkbox') {
+                                    input.checked = originalValue;
+                                } else if (input.tagName === 'TEXTAREA') {
+                                    input.value = originalValue;
+                                } else {
+                                    input.value = originalValue;
+                                    input.type = typeof originalValue === 'number' ? 'number' : 'text';
+                                }
+                                // Also restore in live JSON
+                                setValueByPath(input.dataset.path, originalValue);
+                            }
+                        });
+                    }
+                }
+
+                // -----------------------------------------------------------------
+                // 5. Core update routine
+                // -----------------------------------------------------------------
+                function updateAllBlocks(tupleChanged = false, isRestore = false) {
+                    const selected = fitTypeSelect.value.trim();
+                    const labels   = labelMap[selected] || labelMap.default;
+                    const originalType = fitTypeSelect.dataset.originalType;
+
+                    for (const [base, group] of groups) {
+                        // ---- Grow group if needed (e.g. 2 → 3) ----
+                        while (group.inputs.length < labels.length) {
+                            const lastIndex = group.fields.length - 1;
+                            const clonedField = group.fields[lastIndex].cloneNode(true);
+                            const clonedInput = clonedField.querySelector('.json-input');
+
+                            // New field: blank or 'NONE' if tuple changed
+                            clonedInput.value = tupleChanged ? 'NONE' : '';
+                            clonedInput.type = 'text';
+
+                            const parentSection = group.fields[0].parentNode;
+                            parentSection.appendChild(clonedField);
+
+                            group.fields.push(clonedField);
+                            group.inputs.push(clonedInput);
+                        }
+
+                        // ---- Update visible fields ----
+                        labels.forEach((label, j) => {
+                            const field = group.fields[j];
+                            const input = group.inputs[j];
+                            const newKey = label;
+                            const newPath = `${base}.${newKey}`;
+
+                            field.style.display = 'flex';
+                            const labelEl = field.querySelector('label');
+                            if (labelEl) labelEl.textContent = label;
+
+                            input.dataset.path = newPath;
+
+                            // Restore original value if switching back AND not reset
+                            if (isRestore && selected === originalType) {
+                                const originalValue = window._originalCoefValues.get(newPath);
+                                if (originalValue !== undefined) {
+                                    if (input.type === 'checkbox') input.checked = originalValue;
+                                    else if (input.tagName === 'TEXTAREA') input.value = originalValue;
+                                    else {
+                                        input.value = originalValue;
+                                        input.type = typeof originalValue === 'number' ? 'number' : 'text';
+                                    }
+                                    setValueByPath(newPath, originalValue);
+                                    return;
+                                }
+                            }
+
+                            // Reset if tuple changed
+                            if (tupleChanged && !isRestore) {
+                                input.type = 'text';
+                                input.value = 'NONE';
+                                setValueByPath(newPath, 'NONE');
+                            }
+                        });
+
+                        // ---- Hide extras ----
+                        for (let j = labels.length; j < group.fields.length; j++) {
+                            group.fields[j].style.display = 'none';
+                            if (tupleChanged && !isRestore) {
+                                const input = group.inputs[j];
+                                input.type = 'text';
+                                input.value = 'NONE';
+                                setValueByPath(input.dataset.path, 'NONE');
+                            }
+                        }
+                    }
+                }
+
+                // -----------------------------------------------------------------
+                // 6. Initial render
+                // -----------------------------------------------------------------
+                fitTypeSelect.dataset.prev = fitTypeSelect.value;
+                updateAllBlocks(false, false);
+
+                // -----------------------------------------------------------------
+                // 7. Change handler
+                // -----------------------------------------------------------------
+                fitTypeSelect.addEventListener('change', () => {
+                    const oldTuple = labelMap[fitTypeSelect.dataset.prev || 'linear'] || labelMap.default;
+                    const newTuple = labelMap[fitTypeSelect.value] || labelMap.default;
+                    const tupleChanged = oldTuple.length !== newTuple.length ||
+                                        oldTuple.some((v, i) => v !== newTuple[i]);
+
+                    const originalType = fitTypeSelect.dataset.originalType;
+                    const isRestore = fitTypeSelect.value === originalType && fitTypeSelect.dataset.prev !== originalType;
+
+                    fitTypeSelect.dataset.prev = fitTypeSelect.value;
+
+                    if (isRestore) {
+                        // Switching back to original type → restore values
+                        restoreOriginalForType(fitTypeSelect.value);
+                        updateAllBlocks(false, true);  // just relabel/hide/show
+                    } else {
+                        updateAllBlocks(tupleChanged, false);
+                    }
+                });
+            }
 
         // On time workingJSON parser, only for json-table
         if (tableSelector === "#json-table") {
@@ -555,6 +743,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 const toggleButton = document.getElementById('toggle-mode');
                 if (editMode === 'table') {
                     setupTableEvents();
+                    } else if (editMode === 'graphic') {
+                        syncFitCoefLabels(Swal.getPopup());
                 }
                 
                 if (toggleButton) {
@@ -565,6 +755,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         if (editMode === 'table') {
                             // Need a small delay to allow DOM to update
                             setTimeout(setupTableEvents, 50);
+                            } else if (editMode === 'graphic') {
+                                syncFitCoefLabels(Swal.getPopup());
                         }
                     });
                 }
@@ -702,7 +894,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 Swal.showValidationMessage(`Invalid JSON format: ${e.message}`);
                                 return false;
                             }
-                        } else {
+                        } else {                            
                             // Graphic mode: collect from inputs
                             const inputs = document.querySelectorAll('.json-input');
                             let err = null;
@@ -746,7 +938,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 Swal.showValidationMessage(err);
                                 return false;
                             }
-                            content = originalContent;  // final string
+                            content = (editMode === "graphic" && finalContent) ? finalContent : originalContent;  // final string
                         }
                     }
 
