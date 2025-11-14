@@ -222,12 +222,6 @@ function copyFile(tableSelector = "#file-table") {
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false
-                }).then(() => {
-                    if (tableSelector === "#file-table") {
-                        updateFileTable(response.files);
-                    } else if (tableSelector === "#json-table") {
-                        updateJSONTable(response.files);
-                    }
                 });
             } else {
                 // Handle expected error responses from backend
