@@ -504,32 +504,32 @@ function mmFunction(params, rates) {
 }
 
 // Residual function for optimization
-function residual(params, rates, substrates) {
+function residual(params, rates, substance) {
     const predicted = mmFunction(params, rates);
-    return predicted.map((pred, i) => pred === Infinity ? Infinity : pred - substrates[i]);
+    return predicted.map((pred, i) => pred === Infinity ? Infinity : pred - substance[i]);
 }
 
 // Derive Vmax, Km coefficients for Michaelis-Menten concentration regression
-function michaelisMentenConcentrationRegression(rates, substrates) {
+function michaelisMentenConcentrationRegression(rates, substance) {
     // Input validation
-    if (!Array.isArray(rates) || !Array.isArray(substrates) || rates.length !== substrates.length || rates.length === 0) {
-        return { error: "Invalid input: rates and substrates must be arrays of equal length and non-empty" };
+    if (!Array.isArray(rates) || !Array.isArray(substance) || rates.length !== substance.length || rates.length === 0) {
+        return { error: "Invalid input: rates and substance must be arrays of equal length and non-empty" };
     }
-    if (rates.some(v => !Number.isFinite(v)) || substrates.some(s => !Number.isFinite(s) || s < 0)) {
-        return { error: "Invalid input: rates and substrates must contain finite, non-negative numbers" };
+    if (rates.some(v => !Number.isFinite(v)) || substance.some(s => !Number.isFinite(s) || s < 0)) {
+        return { error: "Invalid input: rates and substance must contain finite, non-negative numbers" };
     }
 
     // Initial guess for parameters [Vmax, Km]
     const VmaxGuess = Math.max(...rates) * 1.1; // Slightly overestimate Vmax
     const halfMaxRateIndex = rates.findIndex(v => v >= VmaxGuess / 2);
-    const KmGuess = halfMaxRateIndex !== -1 ? substrates[halfMaxRateIndex] : substrates[Math.floor(substrates.length / 2)];
+    const KmGuess = halfMaxRateIndex !== -1 ? substance[halfMaxRateIndex] : substance[Math.floor(substance.length / 2)];
 
     const initialParams = [VmaxGuess, KmGuess];
 
     try {
         // Perform Levenberg-Marquardt optimization (assuming numeric.levmar exists)
         const result = numeric.uncmin(
-            params => numeric.norm2(residual(params, rates, substrates)),
+            params => numeric.norm2(residual(params, rates, substance)),
             initialParams
         );
 
