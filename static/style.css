@@ -42,6 +42,21 @@ body {
     display: none !important;
 }
 
+.okapi-line {
+    /* Enables Flexbox on the <h1> element */
+    display: flex; 
+    /* Centers items vertically within the h1's line */
+    align-items: center; 
+    /* Ensures the image doesn't wrap to the next line if the h1 is narrow */
+    white-space: nowrap;
+}
+
+.okapi-img {
+    height: 30px;
+    width: 30px;
+    margin-left: 3px; 
+}
+
 #base-dir-label, #save-dir-label {
     display: flex;              /* make label a flexbox */
     align-items: center;        /* align text + input vertically */
@@ -362,7 +377,7 @@ body.dark .button-group button.selected {
     display: block;
     position: fixed;
     top: 20px;
-    left: 1vw;
+    left: 1.3vw;
     max-width: 23.5vw;
     box-sizing: border-box;
 }
@@ -421,7 +436,7 @@ body.dark .button-group button.selected {
     height: 30px;
     background-color: #ccc;
     border-radius: 15px;
-    margin-left: 25px;
+    margin-left: 20px;
     position: static;
     cursor: pointer;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
