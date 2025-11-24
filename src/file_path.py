@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 # This will point to the directory where main.py is located
 current_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -35,15 +36,15 @@ def get_parent_directory(path, levels=1):
 
 def get_child_directories(path):
     """
-    Returns a list of full paths to all immediate subdirectories of the given path.
+    Returns list of visible (non-hidden) subdirectory paths with double backslashes.
     """
-    if not os.path.isdir(path):
+    path = Path(path).resolve()
+    
+    if not path.is_dir():
         raise ValueError(f"'{path}' is not a valid directory.")
 
-    # Convert each child directory path to use double backslashes
-    path = os.path.abspath(path)
     return [
-        os.path.join(path, name).replace('\\', '\\\\')
-        for name in os.listdir(path)
-        if os.path.isdir(os.path.join(path, name))
+        str(p).replace('\\', '\\\\')
+        for p in path.iterdir()
+        if p.is_dir() and not (p.name.startswith('.') or p.name.startswith('_'))
     ]
