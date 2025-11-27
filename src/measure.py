@@ -29,11 +29,11 @@ def sort_csv_file(file_path, meas_mode, multi_source=False):
         if meas_mode == "kinetics":
             print("Sorting in kinetics mode")
             # Sort by concentration (index 0), maxrate (index 1), slope (index 2), sat (index 3), time_to_sat (index 4), blank type (index 5)
-            sorted_rows = sorted(rows, key=lambda x: (float(x[0]), float(x[1]), float(x[2]), x[3], x[4], x[5]))
+            sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[1]), _safe_float(x[2]), _safe_float(x[3]), _safe_float(x[4]), x[5]))
             # sorted_rows = sorted(rows, key=lambda x: (x[1]))
         elif meas_mode == "point":
             # Sort by concentration (index 0), time_point (index 2), value (index 1) and blank type (index 3)
-            sorted_rows = sorted(rows, key=lambda x: (float(x[0]), float(x[2]), float(x[1]), x[3]))
+            sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[2]), _safe_float(x[1]), x[3]))
         else:
             if multi_source:
                 sorted_rows = sorted(rows, key=lambda x: (float(x[0])))
@@ -54,3 +54,12 @@ def sort_csv_file(file_path, meas_mode, multi_source=False):
     except Exception as e:
         print(f"Error sorting CSV file: {str(e)}")
         raise
+
+def _safe_float(val, default=0.0):
+    """Convert to float, return default if impossible (e.g. empty string or non-numeric text)."""
+    if val is None:
+        return default
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
