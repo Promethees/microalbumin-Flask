@@ -393,6 +393,25 @@ body.dark .button-group button.selected {
     margin-left: 10px;
 }
 
+#top-left-scrollable {
+    max-height: calc(100vh - 140px) !important;   /* 150px ≈ logo + title + margins + shutdown button */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 6px;
+    scrollbar-width: thin;
+}
+
+#top-left-scrollable::-webkit-scrollbar {
+    width: 3px;
+}
+#top-left-scrollable::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.3);
+    border-radius: 3px;
+}
+.dark #top-left-scrollable::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.4);
+}
+
 .top-right {
     display: block;
     position: fixed;

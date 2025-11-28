@@ -179,55 +179,57 @@
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
             </div>
-            <div class="section hidden" style="position: static;" id="meas-mode-section">
-                <div class="section" id="top-left-dir-section">
-                    <h2>Directory</h2>
-                    <div style="display: block; justify-content: space-between; align-items: center;">
-                        <input type="text" id="directory-top" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
-                        <button onclick="browseDirectory()">Browse Path</button>
+            <div id="top-left-scrollable">
+                <div class="section hidden" style="position: static;" id="meas-mode-section">
+                    <div class="section" id="top-left-dir-section">
+                        <h2>Directory</h2>
+                        <div style="display: block; justify-content: space-between; align-items: center;">
+                            <input type="text" id="directory-top" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
+                            <button onclick="browseDirectory()">Browse Path</button>
+                        </div>
+                        <div id="dir-suggestions-top">
+                            <h3>Go back</h3>
+                            <div id="parent-dir-top" class="dir-blocks scrollbar-style"></div>
+                            <h3>Go forward</h3>
+                            <div id="child-dirs-top" class="dir-blocks scrollbar-style"></div>
+                        </div>
                     </div>
-                    <div id="dir-suggestions-top">
-                        <h3>Go back</h3>
-                        <div id="parent-dir-top" class="dir-blocks scrollbar-style"></div>
-                        <h3>Go forward</h3>
-                        <div id="child-dirs-top" class="dir-blocks scrollbar-style"></div>
+                    <h2>{{ mode_input.title }}</h2>
+                    <div id="measurement-mode" class="button-group" data-value="">
+                        {% for mode in mode_input.modes %}
+                        <button data-mode="{{ mode }}">{{ mode }}</button>
+                        {% endfor %}
                     </div>
                 </div>
-                <h2>{{ mode_input.title }}</h2>
-                <div id="measurement-mode" class="button-group" data-value="">
-                    {% for mode in mode_input.modes %}
-                    <button data-mode="{{ mode }}">{{ mode }}</button>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
-                <h3>Calibrating for:</h3>
-                <div id="cal-mode-select" class="button-group" data-value="">
-                    <button data-mode="kinetics">kinetics</button>
-                    <button data-mode="point">point</button>
-                </div>
-            </div>  
-            <div class="section hidden" style="position: static;" id="options-section">
-                <h3>Options</h3>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" id="no-swal-checkbox">
-                        Disable popups
-                    </label>
-
-                    <div id="sensor-options">
+                <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
+                    <h3>Calibrating for:</h3>
+                    <div id="cal-mode-select" class="button-group" data-value="">
+                        <button data-mode="kinetics">kinetics</button>
+                        <button data-mode="point">point</button>
+                    </div>
+                </div>  
+                <div class="section hidden" style="position: static;" id="options-section">
+                    <h3>Options</h3>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
-                            <input type="checkbox" id="multi-source">
-                            Multiple sources
+                            <input type="checkbox" id="no-swal-checkbox">
+                            Disable popups
                         </label>
 
-                        <div id="num-sources-section" class="hidden"> 
-                            <label for="num-sources">Number of sources:</label>
-                            <select id="num-sources">
-                            <option value="2">2</option>
-                            <option value="4">4</option>
-                            <option value="8">8</option>
-                            </select>
+                        <div id="sensor-options">
+                            <label style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="multi-source">
+                                Multiple sources
+                            </label>
+
+                            <div id="num-sources-section" class="hidden"> 
+                                <label for="num-sources">Number of sources:</label>
+                                <select id="num-sources">
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                                <option value="8">8</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
