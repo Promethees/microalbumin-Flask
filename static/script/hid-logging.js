@@ -242,7 +242,8 @@ function showTerminationNotice(message, iconType) {
     if (iconType === "info" && $id("notify-me").checked) {
         new Audio("../static/done.mp3").play().catch(err => console.warn("Audio play blocked:", err));
         Swal.fire(baseOpts);
-    } else {
-        Swal.fire(baseOpts);
-    }
+    } 
+    // else {
+    //     Swal.fire(baseOpts);
+    // }
 }
