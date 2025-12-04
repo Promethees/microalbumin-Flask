@@ -504,19 +504,19 @@ function mmFunction(params, rates) {
 }
 
 // Residual function for optimization
-function residual(params, rates, substance) {
+function residual(params, rates, analyte) {
     const predicted = mmFunction(params, rates);
-    return predicted.map((pred, i) => pred === Infinity ? Infinity : pred - substance[i]);
+    return predicted.map((pred, i) => pred === Infinity ? Infinity : pred - analyte[i]);
 }
 
 // Derive Vmax, Km coefficients for Michaelis-Menten concentration regression
-function michaelisMentenConcentrationRegression(rates, substance) {
+function michaelisMentenConcentrationRegression(rates, analyte) {
     // Input validation
-    if (!Array.isArray(rates) || !Array.isArray(substance) || rates.length !== substance.length || rates.length === 0) {
-        return { error: "Invalid input: rates and substance must be arrays of equal length and non-empty" };
+    if (!Array.isArray(rates) || !Array.isArray(analyte) || rates.length !== analyte.length || rates.length === 0) {
+        return { error: "Invalid input: rates and analyte must be arrays of equal length and non-empty" };
     }
-    if (rates.some(v => !Number.isFinite(v)) || substance.some(s => !Number.isFinite(s) || s < 0)) {
-        return { error: "Invalid input: rates and substance must contain finite, non-negative numbers" };
+    if (rates.some(v => !Number.isFinite(v)) || analyte.some(s => !Number.isFinite(s) || s < 0)) {
+        return { error: "Invalid input: rates and analyte must contain finite, non-negative numbers" };
     }
 
     // Initial guess for parameters [Vmax, Km]
@@ -529,7 +529,7 @@ function michaelisMentenConcentrationRegression(rates, substance) {
     try {
         // Perform Levenberg-Marquardt optimization (assuming numeric.levmar exists)
         const result = numeric.uncmin(
-            params => numeric.norm2(residual(params, rates, substance)),
+            params => numeric.norm2(residual(params, rates, analyte)),
             initialParams
         );
 
