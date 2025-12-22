@@ -398,18 +398,7 @@ body.dark .button-group button.selected {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding-right: 6px;
-    scrollbar-width: thin;
-}
-
-#top-left-scrollable::-webkit-scrollbar {
-    width: 3px;
-}
-#top-left-scrollable::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.3);
-    border-radius: 3px;
-}
-.dark #top-left-scrollable::-webkit-scrollbar-thumb {
-    background-color: rgba(255,255,255,0.4);
+    scrollbar-width: none;
 }
 
 .top-right {
