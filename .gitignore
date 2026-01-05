@@ -7,12 +7,15 @@ venv
 /installer-mac/*.dmg
 .python-version
 *.lock
-*.csv
 *.zip
-/data/*.csv
-*.csv
 *.txt
 *.json
 /log
 vercel
 node_modules
+# Ignore all .csv files everywhere
+*.csv
+
+# Exception: Do not ignore .csv files inside sample_data (or its subfolders)
+!sample_data/*.csv
+!sample_data/**/*.csv
