@@ -881,7 +881,7 @@ function exportData() {
     const saveFile = document.getElementById("save-file").value.trim() || "results";
 
     // Bind button to export path
-    bindButtonToString("#go-to-exp-btn", processedExpPath);
+    // bindButtonToString("#go-to-exp-btn", processedExpPath);
 
     // Export data based on measurement mode
     const analysisData = generateAnalysisData();

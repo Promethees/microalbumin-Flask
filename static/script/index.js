@@ -288,8 +288,8 @@ $(document).ready(function() {
     document.getElementById('data-display-section')
     .classList.toggle('hidden', !AppState.currentFile);
 
-    bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-    bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
+    // bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
+    // bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
 
     const select = document.getElementById("exp-json-regress-algo");
     const selected = select.value;

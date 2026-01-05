@@ -158,7 +158,7 @@ function fetchJSON(jsonFile, callback) {
     })
 }
 
-function browseSavingLocation(path, deselect, changeToCalibrate=false, button = null) {
+function browseSavingLocation(changeToCalibrate=false, button = null, path="") {
     // Temporarily disable the button to prevent multiple clicks
     $(button).prop("disabled", true);
     setTimeout(() => {
@@ -168,7 +168,8 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
         blinkingItem("cal-mode-select", 5000);
         blinkingItem("measurement-mode", 5000);
         blinkingItem("file-selection", 5000);
-        updateDirectory(path, deselect, changeToCalibrate);
+        const dirPath = document.getElementById("save-dir").value;
+        updateDirectory(dirPath, true, changeToCalibrate);
     } else {
         fetch('/api/current_output')
         .then(response => {
@@ -181,10 +182,10 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
         .then(data => {
             if (data && data.exists) {
                 // Use server-provided directory (with trailing separator if needed)
-                const dirPath = data.dir || path || data.dir_with_sep;
+                const dirPath = data.dir || data.dir_with_sep;
                 const fileName = data.filename;
 
-                updateDirectory(dirPath, deselect, changeToCalibrate);
+                updateDirectory(dirPath, true, changeToCalibrate);
 
                 // Wait for the table to refresh/populate, then select the row's button
                 setTimeout(() => {
@@ -208,13 +209,13 @@ function browseSavingLocation(path, deselect, changeToCalibrate=false, button = 
                 }, 500); // adjust delay if your table takes longer to populate
             } else {
                 // no recorded path -> fallback to original behavior
-                updateDirectory(path, deselect, changeToCalibrate);
+                updateDirectory(path, true, changeToCalibrate);
                 blinkingItem("file-selection", 5000);
             }
         })
         .catch(err => {
             console.error("Error fetching current_output:", err);
-            updateDirectory(path, deselect, changeToCalibrate);
+            updateDirectory(path, true, changeToCalibrate);
         });
     }
 }
