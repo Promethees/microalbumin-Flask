@@ -970,7 +970,7 @@ def export_cal_coefs():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
     parser.add_argument('--port', type=int, default=5099, help='Port to run the Flask app on (default: 5099)')
-    parser.add_argument('--alias', type=str, default='easysensor-kit.com', help='Optional domain alias (e.g., mydomain.com)')
+    parser.add_argument('--alias', type=str, default='easyokapi.com', help='Optional domain alias (e.g., mydomain.com)')
     args = parser.parse_args()
 
     host = '127.0.0.1'
