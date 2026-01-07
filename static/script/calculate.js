@@ -522,7 +522,7 @@ function michaelisMentenConcentrationRegression(rates, analyte) {
     // Initial guess for parameters [Vmax, Km]
     const VmaxGuess = Math.max(...rates) * 1.1; // Slightly overestimate Vmax
     const halfMaxRateIndex = rates.findIndex(v => v >= VmaxGuess / 2);
-    const KmGuess = halfMaxRateIndex !== -1 ? substance[halfMaxRateIndex] : substance[Math.floor(substance.length / 2)];
+    const KmGuess = halfMaxRateIndex !== -1 ? analyte[halfMaxRateIndex] : analyte[Math.floor(analyte.length / 2)];
 
     const initialParams = [VmaxGuess, KmGuess];
 
