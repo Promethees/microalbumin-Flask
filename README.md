@@ -3,6 +3,22 @@
 ## Setup and Usage
 The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](https://www.easysensorkit.cbbiotec.vn/)
 
+### Run it locally 
+	- Install `pyenv` with `Python 3.12.11` using `setup-install-pyenv.command`
+	- Set local python version as `3.12.11` using `pyenv local 3.12.11`
+	- Install dependencies using `pip3 install -r requirements.txt`
+	- Install `gunicorn` with `pip3 install gunicorn`
+	- Start the app with `gunicorn main:app --bind 0.0.0.0:5000`
+	- Open browser, access the software via address of `http://0.0.0.0:5000` or `http://localhost:5000`
+
+### Online deployment
+	- Make changes, then use `npm run build` to obfuscate your latest code
+	- Commit locally using `git commit -m "Your message"`
+	- Push to deployment using `git push online:main`
+
+### Update package.json with latest versions
+	- Use `npm init -y && npm pkg set scripts.build="node build.js" scripts.start="gunicorn main:app" && npm install --save-dev javascript-obfuscator terser clean-css`
+
 ## Overview
 This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
 
