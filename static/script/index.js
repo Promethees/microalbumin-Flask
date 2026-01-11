@@ -4,13 +4,10 @@ function initDefaultState() {
         'cal-json-exp-section',
         'select-quantity-section',
         'derived-concentration-section',
-        'blank-derived-concentration-section',
-        'non-blank-derived-concentration-section',
         'set-exp-point-section',
         'select-regress-algo',
         'select-time-point',
-        'export-coef',
-        'select-exp-blank-type-cal'
+        'export-coef'
     ].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
@@ -23,8 +20,6 @@ function initDefaultState() {
 }
 
 const AppState = {
-    blankedChart: null,
-    nonBlankedChart: null,
     myChart: null,
     scriptRunning: false,
     currentMeasurementMode: modeDiv.getAttribute('data-value'),
@@ -58,8 +53,6 @@ const AppState = {
     quantity_input: temp_quantity_input,
 
     reset: function() {
-        this.blankedChart = null;
-        this.nonBlankedChart = null;
         this.myChart = null;
         this.scriptRunning = false;
         this.currentMeasurementMode = "kinetics";
@@ -211,10 +204,7 @@ $(document).ready(function() {
         }
 
         if (!AppState.currentJSON) {
-            $hidden(["derived-concentration-section",
-                "blank-derived-concentration-section",
-                "non-blank-derived-concentration-section"
-            ])
+            $hidden(["derived-concentration-section"]);
         }
 
 
@@ -281,7 +271,6 @@ function kineticsModeBehaviour() {
         'select-time-point',
         'select-regress-algo',
         'export-coef',
-        'select-exp-blank-type-cal',
         'func-desc'
     ];
 
@@ -291,10 +280,8 @@ function kineticsModeBehaviour() {
         'kinetics-lines',
         'json-display',
         'export-analysis',
-        'select-exp-blank-type',
         'range-display',
         'log-hid-data',
-        'select-exp-blank-type-meas',
         'sensor-options',
         'normalize-mode-section'
     ];
@@ -318,7 +305,6 @@ function pointModeBehaviour() {
         'select-time-point',
         'select-regress-algo',
         'export-coef',
-        'select-exp-blank-type-cal',
         'func-desc'
     ];
 
@@ -327,10 +313,8 @@ function pointModeBehaviour() {
         'json-display',
         'export-analysis',
         'set-exp-point-section',
-        'select-exp-blank-type',
         'range-display',
         'log-hid-data',
-        'select-exp-blank-type-meas',
         'sensor-options',
         'normalize-mode-section'
     ];
@@ -355,7 +339,6 @@ function calModeBehaviour() {
         'full-display-section',
         'split-sensor-section',
         'log-hid-data',
-        'select-exp-blank-type-meas',
         'window-size-section',
         'sensor-options',
         'normalize-mode-section',
@@ -364,11 +347,9 @@ function calModeBehaviour() {
 
     const removeHidden = [
         'cal-json-exp-section',
-        'select-exp-blank-type',
         'split-mode-section',
         'select-regress-algo',
         'export-coef',
-        'select-exp-blank-type-cal',
         'func-desc'
     ];
 

@@ -182,22 +182,16 @@ def edit_file():
         else:  # CSV validation
             pattern_sets = [
                 {
-                    'header': r"^Timestamp,Value,Type,Blanked$",
-                    'data': r"^\d+\.{0,1}\d{0,2},(\-{0,1}\d+\.{0,1}\d{0,3}|OVFL),[A-Za-z]+,(TRUE|FALSE)$",
-                    'meta': ["Measurement", "Unit", "Concentration"],
-                    'error': 'Invalid format (Colorimeter data). Header must be: Timestamp,Measurement,Value,Type,Blanked. Metadata must include Measurement, Unit, and Concentration.'
+                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
+                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+                    'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
-                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat,BlankType$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'header': r"^Concentration,Value,TimePoint$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
-                },
-                {
-                    'header': r"^Concentration,Value,TimePoint,BlankType$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
-                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
+                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
                 },
                 {
                     'header': r'^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$',
@@ -712,7 +706,6 @@ def export_cal_coefs():
     data = request.get_json()
     fit_type = data.get('fit_type')
     for_meas = data.get('for_meas')
-    for_blank_type = data.get('for_blank_type')
     coef_content = data.get('coef_content')
     time = data.get('time')
     time_unit = "minute"
@@ -733,7 +726,7 @@ def export_cal_coefs():
         full_name = get_next_filename(".json", files, file_name)
 
         json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val, regress_algo), regress_algo)
-        json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
+        json_content.update({"fit_type": fit_type, "for_meas": for_meas})
 
         if (cal_mode == "point"):
             json_content.update({"time": time, "time-unit": time_unit})

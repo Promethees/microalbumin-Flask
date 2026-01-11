@@ -21,27 +21,22 @@ document.getElementById('toggleContainer').addEventListener('click', function() 
 
 document.getElementById('multi-source').addEventListener('change', function() {
     const numSourcesSelect = document.getElementById('num-sources-section');
-    const splitByBlanked = document.getElementById('split-mode-section');
     const splitBySensor = document.getElementById('split-sensor-section');
     updateDirectory(true);
     AppState.responseData = null;
     AppState.globalAnalysis = null;
-    AppState.blankedChart = null;
-    AppState.nonBlankedChart = null;
     AppState.globalEstimatedValue = null;
     document.getElementById('est-val-error').innerHTML = '';
     document.getElementById('est-val-exp').innerHTML = '';
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
-        splitByBlanked.classList.add('hidden');
         splitBySensor.classList.remove('hidden');
         AppState.multiSource = true;
         AppState.numSources = parseInt(document.getElementById('num-sources').value);
         document.getElementById('concentration-reader-section').classList.add('hidden');
     } else {
         numSourcesSelect.classList.add('hidden');
-        splitByBlanked.classList.remove('hidden');
         splitBySensor.classList.add('hidden');
         AppState.multiSource = false;
         AppState.numSources = 1;
@@ -101,7 +96,6 @@ function isNullOrArrayOfNull(value) {
 function updatePointEstimate() {
     const estValError = document.getElementById('est-val-error');
     const estValExp = document.getElementById('est-val-exp');
-    const currExpBlankType = document.getElementById('exp-json-blank-type').value;
     const currExpTimePoint = getValFloat("exp-json-time-value");
 
     console.log("response Data is", AppState.responseData);
@@ -119,7 +113,8 @@ function updatePointEstimate() {
             AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
         }
     } else {
-        AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, currExpBlankType);
+        const sourceIndex = getValInt("exp-json-sensor");
+        AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
     }
 
     console.log("Estimated value is ", AppState.globalEstimatedValue);

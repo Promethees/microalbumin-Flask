@@ -47,7 +47,6 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
 
             const fitType = JSON_content.fit_type || "N/A";
             const measFor = JSON_content.for_meas || "N/A";
-            const blankType = JSON_content.for_blank_type || "N/A";
             const mode = AppState.currentMeasurementMode || "N/A";
 
             const labelCoefficients = (coefs) => {
@@ -94,7 +93,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 const tbody = document.createElement("tbody");
 
                 for (const [key, value] of Object.entries(json)) {
-                    if (["fit_type", "for_meas", "for_blank_type"].includes(key)) continue;
+                    if (["fit_type", "for_meas"].includes(key)) continue;
                     const tr = document.createElement("tr");
                     tr.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
                         <td>${key}</td>
@@ -152,8 +151,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
                 "Formula": getFormula(fitType),
                 "[S]": "Initial Substance Concentration",
                 "q (per minute)": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
-                "Measurement For": measFor,
-                "Blank Type": blankType
+                "Measurement For": measFor
             };
 
             // Render tables
@@ -427,16 +425,14 @@ function deselectFile(tableSelector = "#file-table") {
         AppState.responseData = null;
         destroyCharts();
 
-        // Hide canvases
-        ["plot-canvas", "blanked-canvas", "non-blanked-canvas"].forEach(id => {
-            const el = $id(id);
-            if (el) el.style.display = "none";
-        });
+        // Hide canvas
+        if ($id("plot-canvas"))
+            $id("plot-canvas").style.display = "none";
 
         AppState.currentFile = null;
 
         // Clear analysis text fields
-        ["plot-analysis", "blanked-analysis", "non-blanked-analysis"].forEach(id => $text(id, ""));
+        $text("plot-analysis", "");
 
         updateFileDisplay(AppState.currentFile);
         $disable(["copy-file-btn", "download-file-btn"], true);
@@ -452,8 +448,6 @@ function deselectFile(tableSelector = "#file-table") {
         [
             "select-quantity-section",
             "derived-concentration-section",
-            "blank-derived-concentration-section",
-            "non-blank-derived-concentration-section",
             "point-json-exp-section"
         ].forEach(id => $toggleClass(id, "hidden", true));
 
@@ -729,15 +723,14 @@ function handleSingleSource(derived_section, derived_con_text) {
 
 function processKineticsMode(jsonFile) {
     const conQuantityInput = document.getElementById('regressed-quantity').value;
-    const blankType = jsonFile["for_blank_type"];
-    const analysisExtraction = calculateKineticValue(conQuantityInput, blankType);
+    const analysisExtraction = calculateKineticValue(conQuantityInput);
 
     if (analysisExtraction !== null) {
         updateConcentrationDisplay(analysisExtraction, jsonFile, conQuantityInput);
     }
 };
 
-function calculateKineticValue(quantity, blankType) {
+function calculateKineticValue(quantity) {
     const kineticCalculations = {
         maxrate: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(val) * 60,
         slope: val => Array.isArray(val) ? val.map(v => parseFloat(v) * 60) : parseFloat(val) * 60,
@@ -745,7 +738,7 @@ function calculateKineticValue(quantity, blankType) {
         time_to_sat: val => Array.isArray(val) ? val.map(v => parseFloat(v) / 60) : parseFloat(val) / 60
     };
 
-    const val = getKineticValue(quantity, blankType);
+    const val = getKineticValue(quantity);
     return val !== null && kineticCalculations[quantity] 
         ? kineticCalculations[quantity](val) 
         : null;
@@ -776,7 +769,7 @@ function updateSingleConcentration(element, value, fitType, coef) {
 };
 
 function handleEmptyData() {
-    $hidden(["plot-canvas", "blanked-canvas", "non-blanked-canvas"]);
+    $hidden(["plot-canvas"]);
     const plotAnalysis = document.getElementById("plot-analysis");
     if (plotAnalysis )
         plotAnalysis.innerHTML = 
@@ -869,18 +862,16 @@ function updateRefCalPoint(jsonFile) {
 
 function processPointMode(jsonFile, derived_con_text) {
     $hidden(["point-json-exp-section"], false);
-    let blankTypeOrSourceIndex;
+    let sourceIndex;
 
     if (derived_con_text && derived_con_text.id.includes("source-")) {
-        blankTypeOrSourceIndex = parseInt(derived_con_text.id.split("source-")[1]) + 1;
-    } else {
-        blankTypeOrSourceIndex = jsonFile["for_blank_type"];
+        sourceIndex = parseInt(derived_con_text.id.split("source-")[1]) + 1;
     }
-    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue()), blankTypeOrSourceIndex).toFixed(4);
+    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue()), sourceIndex).toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
         if (derived_con_text && derived_con_text.id.includes("source-")) {
-            $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from source-${blankTypeOrSourceIndex} is ${estValueRead}${unitPrinted}.<br/>`);
+            $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from source-${sourceIndex} is ${estValueRead}${unitPrinted}.<br/>`);
         } else {
             $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from data source is ${estValueRead}${unitPrinted}.`);
         }
@@ -900,7 +891,7 @@ function handleCalibrationMode() {
     if (calDiv.getAttribute('data-value') === "kinetics") {
         $hidden(["select-quantity-section"], false);
     }
-    $hidden(["derived-concentration-section", "blank-derived-concentration-section", "non-blank-derived-concentration-section"]);
+    $hidden(["derived-concentration-section"]);
 }
 
 function updatePlotBasedOnMode(jsonFile) {
@@ -1165,7 +1156,6 @@ function generatePointData() {
 // Send export data to sources
 // Send export data to sources
 function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
-    const blankType = document.getElementById("exp-json-blank-type").value;
     const commonData = {
         save_dir: processedExpPath,
         save_file: saveFile,
@@ -1199,17 +1189,17 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
     } else {
         const entry = prepareExportEntry(analysisData[0], "con-value-read", blankType);
         if (!entry) {
-            alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+            alert("No analysis data available to export.");
             return;
         }
-        payload = { ...commonData, ...entry, blanked: blankType, newFile: true };
+        payload = { ...commonData, ...entry, newFile: true };
     }
 
     sendExportPayload(payload, isBatch);
 }
 
 // Helper to prepare a single export entry
-function prepareExportEntry(analysisData, conInputId, blankedType) {
+function prepareExportEntry(analysisData, conInputId) {
     if (!analysisData) return null;
 
     const concentration = document.getElementById(conInputId)?.value || "NONE";
@@ -1221,8 +1211,7 @@ function prepareExportEntry(analysisData, conInputId, blankedType) {
         timeSat: (analysisData.timeToSaturation === "--" || !analysisData.timeToSaturation) ? "NONE" : analysisData.timeToSaturation,
         con: concentration,
         estValue: analysisData.estValue ? analysisData.estValue : "NONE",
-        timePoint: analysisData.timePoint || "NONE",
-        blanked: blankedType
+        timePoint: analysisData.timePoint || "NONE"
     };
 }
 
@@ -1248,7 +1237,7 @@ function sendExportPayload(payload, isBatch) {
     });
 }
 
-function sendExportData(saveDir, saveFile, analysisData, concentration, blankedType, newFile=true) {
+function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=true) {
     console.log("analysisData is ", analysisData);
     if (analysisData) {
         const data = {
@@ -1260,7 +1249,6 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, blankedT
             timeSat: (analysisData.timeToSaturation === "--" || !analysisData.timeToSaturation) ? "NONE" : analysisData.timeToSaturation,
             con: concentration,
             measUnit: analysisData.measUnit, 
-            blanked: blankedType,
             newFile: newFile,
             measMode: AppState.currentMeasurementMode,
             meas: analysisData.measurement,
@@ -1285,7 +1273,7 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, blankedT
             }
         });
     } else {
-        alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+        alert("Error! No analysis data available to export.");
     }
 }
 
@@ -1303,7 +1291,6 @@ function exportJSONCoef() {
             const data = {
                 fit_type: document.getElementById("exp-json-regress-algo").value,
                 for_meas: AppState.exp_json_content.meas,
-                for_blank_type: document.getElementById("exp-json-blank-type").value,
                 coef_content: AppState.exp_json_content.analysis,
                 time: document.getElementById("regressed-time-point").value,
                 file_name: document.getElementById("save-json-file").value,
@@ -1332,7 +1319,7 @@ function exportJSONCoef() {
                 }
             });
         } else {
-            alert("No analysis data available to export. If you'd like to export Blank/NonBlank in kinetics mode, must enable Split mode, and vice versa!");
+            alert("Error! No analysis data available to export.");
         }
     }
 }

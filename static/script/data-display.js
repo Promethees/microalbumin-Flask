@@ -382,7 +382,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
     for (let i = 0; i < AppState.numSources; i++) {
         const yColumn = YColumn[i];
         const isFullDisplay = getBtnChecked(`full-display-source-${i}`);
-        const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allMixedData, XColumn, yColumn);
+        const filteredData = filteredByRangeValue(isFullDisplay, allGroups.allData, XColumn, yColumn);
         const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         const yValues = extractColumnAndNormalize(filteredData, yColumn);
         const label = getLabel(`Value:${i + 1}`, measUnit);
@@ -415,7 +415,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     const measUnit = getMetaUnit(AppState.metaData);
 
-    const filteredData = filteredByRangeValue(false, allGroups.allMixedData, XColumn, YColumn[0]);
+    const filteredData = filteredByRangeValue(false, allGroups.allData, XColumn, YColumn[0]);
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, getValInt("window-size")));
@@ -617,18 +617,17 @@ function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     const measUnit = getMetaUnit(AppState.metaData);
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        filteredData = filteredByRangeValue(getBtnChecked("full-display-plot"), allGroups.allMixedData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
+        filteredData = filteredByRangeValue(getBtnChecked("full-display-plot"), allGroups.allData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
         XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
         YColumnVals = extractColumnAndNormalize(filteredData, YColumn);
         mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, getValInt("window-size"));
     } else {
-        filteredData = filterByBlankType(allGroups.allMixedData);
-        XColumnVals = extractColumnAndConvert(filteredData, XColumn);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(filteredData, y)) : [extractColumnAndNormalize(filteredData, YColumn)];
+        XColumnVals = extractColumnAndConvert(allGroups.allData, XColumn);
+        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allData, y)) : [extractColumnAndNormalize(allGroups.allData, YColumn)];
         if (calDiv.getAttribute('data-value') === "kinetics") {
             mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
         } else if (calDiv.getAttribute('data-value') === "point") {
-            mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allMixedData, YColumn), extractColumnAndConvert(allGroups.allMixedData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
+            mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allData, YColumn), extractColumnAndConvert(allGroups.allData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
         }
     }
 
@@ -885,9 +884,7 @@ function getDataGroups(data, XColumn, YColumn) {
     return {
         allXColumn: extractColumnAndConvert(data, XColumn),
         allYColumn: extractColumnAndNormalize(data, YColumn),
-        allBlankedData: filterBlankedData(data, true),
-        allNonBlankedData: filterBlankedData(data, false),
-        allMixedData: (!hasBlankType(data)) ? data : data.filter(row => row["BlankType"] === "MIXED")
+        allData: data
     };
 }
 
@@ -1039,21 +1036,20 @@ function extractSingleResultSummary(metadata, mixAnalysis) {
     };
 }
 
-function calibrateKineticsAnalysis(data, XColumn, YColumn, blankTypeValue) {
+function calibrateKineticsAnalysis(data, XColumn, YColumn) {
     const dataMap = preprocessDataCalParams(data, XColumn, YColumn);
     const regressAlgo = document.getElementById("exp-json-regress-algo").value;
     if (dataMap) {
         const results = dataMap.map(({ param, data }) => {
-            const filteredData = data.filter(row => row['BlankType'] === blankTypeValue && row[param] !== "NONE");
-            const xValues = filteredData.map(row => row[XColumn]);
-            const yValues = filteredData.map(row => row[param]);
+            const xValues = data.map(row => row[XColumn]);
+            const yValues = data.map(row => row[param]);
             const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
             return result;
         });
         return results;
     }
     const filteredData = data
-        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE" && row['BlankType'] === blankTypeValue)
+        .filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE")
         .sort((a, b) => a[XColumn] - b[XColumn]);
     const xValues = filteredData.map(row => row[XColumn]);
     const yValues = filteredData.map(row => row[YColumn]);

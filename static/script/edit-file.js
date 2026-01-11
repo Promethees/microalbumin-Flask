@@ -101,9 +101,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         const configs = {
             fit_type: {
                 options: ["linear", "polynomial", "logarithmic", "exponential", "Michaelis-Menten"]
-            },
-            for_blank_type: {
-                options: ["BLANKED", "MIXED", "NON-BLANKED"]
             }
         };
 
@@ -152,7 +149,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
     let editMode = tableSelector === '#file-table' ? 'table' : 'graphic'; // Default mode depend on selected table
 
-    const nonEditableColumns = ['Unit', 'Type', 'Blanked', 'Concentration', 'BlankType'];
+    const nonEditableColumns = ['Unit', 'Type', 'Concentration'];
     const nonEditableMetadata = ['TimeUnit', 'MeasMode'];
 
     function setupTableEvents() {
@@ -201,10 +198,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 // Get reference values from first existing row (if available)
                 const referenceValues = {};
                 const defaultValues = {'Timestamp': '0.00', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
-                                        'Type': 'NONE', 'Blanked': 'FALSE', 'Concentration': 'NONE', 
+                                        'Type': 'NONE', 'Concentration': 'NONE', 
                                         'Value': '0.00', 'maxRate': '0.00', 'Slope': '0.00',
                                         'Sat': '0.00', 'Time To Sat': '0.00', 'MeasUnit': 'NONE',
-                                        'TimeUnit': 'minutes', 'BlankType': 'NONE', 'MeasMode': 'kinetics',
+                                        'TimeUnit': 'minutes', 'MeasMode': 'kinetics',
                                         'TimePoint': '0'};
                 if (tbody.children.length > 0) {
                     const firstRow = tbody.children[0];
@@ -807,28 +804,22 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 if (tableSelector === '#file-table') {
                     const patternSets = [
                         {
-                            // Pattern 1: Requires metadata
-                            header: /^\s*Timestamp\s*,\s*Value\s*,\s*Type\s*,\s*Blanked\s*$/,
-                            data: /^\s*\d+\.{0,1}\d{0,2}\s*,\s*\-{0,1}\d+\.{0,1}\d{0,3}\s*,\s*[A-Za-z]+\s*,\s*(TRUE|FALSE)\s*$/,
-                            error: 'Invalid format (Pattern 1). Header must be: Timestamp,Value,Type,Blanked',
-                            meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*Unit\s*:\s*.+$/, /^#\s*Concentration\s*:\s*.+$/]
-                        },
-                        {
-                            header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*,\s*BlankType\s*$/,
-                            data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
-                            error: 'Invalid format (Pattern 2). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType',
+                            // File pattern with metadata and headers
+                            header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*$/,
+                            data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
+                            error: 'Invalid format (Pattern 1). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat',
                             meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                         },
                         {
-                            header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*,\s*BlankType\s*$/,
-                            data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(MIXED|BLANKED|NON-BLANKED)\s*$/,
-                            error: 'Invalid format (Pattern 3). Header must be: Concentration,Value,TimePoint,BlankType',
+                            header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*$/,
+                            data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                            error: 'Invalid format (Pattern 2). Header must be: Concentration,Value,TimePoint',
                             meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                         },
                         {
                             header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
                             data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$/,
-                            error: 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,...',
+                            error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
                             meta: [
                                 /^#\s*Measurement\s*:\s*.+$/,
                                 /^#\s*Unit\s*:\s*.+$/,
