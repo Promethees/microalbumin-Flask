@@ -57,15 +57,14 @@ async function filterFiles(files) {
                 return { error: friendlyMsg };
             }
 
-            const meas_headers = buildMeasHeaders();    
-            const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat", "BlankType"];
-            const cal_headers_point    = ["Concentration", "Value", "TimePoint", "BlankType"];
+            const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat"];
+            const cal_headers_point    = ["Concentration", "Value", "TimePoint"];
 
             if (!data.headers) {
                 return false;  
             }
 
-            const isMeasHeader = arraysEqual(data.headers, meas_headers);
+            const isMeasHeader = checkMeasHeader(data.headers);
 
             if (AppState.currentMeasurementMode === "kinetics" || AppState.currentMeasurementMode === "point") {
                 return isMeasHeader;
@@ -90,14 +89,22 @@ async function filterFiles(files) {
 } 
 
 function buildMeasHeaders() {
-    if (!AppState.multiSource) {
-        return ["Timestamp", "Value", "Type", "Blanked"];
-    }
     const headers = ["Timestamp"];
     for (let i = 1; i <= AppState.numSources; i++) {
         headers.push(`Value:${i}`);
     }
     return headers;
+}
+
+function checkMeasHeader(headers) {
+    if (getBtnChecked("filter-source")) {
+        const expectedHeaders = buildMeasHeaders();
+        return arraysEqual(headers, expectedHeaders);
+    } else {
+        const meas_headers = /^\s*Timestamp\s*Value:\d+(?:\s*Value:\d+)*\s*$/;
+        const headerString = headers.join('');
+        return meas_headers.test(headerString);
+    }
 }
 
 function arraysEqual(a, b) {

@@ -25,29 +25,26 @@ def write_metadata(output, measurement, meas_unit, time_unit, meas_mode):
 # Helper: Write headers
 def write_headers(writer, meas_mode):
     if meas_mode == "kinetics":
-        writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat', 'BlankType'])
+        writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat'])
     else:
-        writer.writerow(['Concentration', 'Value', 'TimePoint', 'BlankType'])
+        writer.writerow(['Concentration', 'Value', 'TimePoint'])
 
 # Helper: Extract single entry from data
 def extract_single_entry(data, meas_mode):
     concentration = data.get('con', 'NONE')
-    blankT = data.get('blanked', 'NONE')
     if meas_mode == "kinetics":
         return [
             concentration,
             data.get('maxrate', 'NONE'),
             data.get('slope', 'NONE'),
             data.get('sat', 'NONE'),
-            data.get('timeSat', 'NONE'),
-            blankT
+            data.get('timeSat', 'NONE')
         ]
     else:
         return [
             concentration,
             data.get('estValue', 'NONE'),
-            data.get('timePoint', 'NONE'),
-            blankT
+            data.get('timePoint', 'NONE')
         ]
 
 # Helper: Sort CSV content by Concentration

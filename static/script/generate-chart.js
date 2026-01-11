@@ -101,11 +101,11 @@ function getAxisStyle(colorProperty) {
         : getComputedStyle(document.documentElement).getPropertyValue(`--chart-${colorProperty}-dark`).trim();
 }
 
-function createAnnotations(isFullDisplay, measurementMode, analysis, conversionFactor, xMax, yMin, yMax, checkboxes, forThisBlankType, isSinglePoint) {
+function createAnnotations(isFullDisplay, measurementMode, analysis, conversionFactor, xMax, yMin, yMax, checkboxes, isSinglePoint) {
     const fontSize = 8;
     const annotations = {};
     
-    if (isFullDisplay && measurementMode === "point" && forThisBlankType && AppState.refCalPoint) {
+    if (isFullDisplay && measurementMode === "point" && AppState.refCalPoint) {
         annotations.refCalLine = {
             type: 'line',
             borderColor: 'rgba(255, 0, 0, 0.5)',
@@ -260,7 +260,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                 },
                 annotation: {
                     annotations: createAnnotations(isFullDisplay, AppState.currentMeasurementMode, analyses[0], conversionFactor, 
-                        xMax, yMin, yMax, checkboxes, checkForThisBlankType(canvasId, AppState.currentJSONcontent ? AppState.currentJSONcontent.for_blank_type : false), allXColumn.length === 1)
+                        xMax, yMin, yMax, checkboxes, allXColumn.length === 1)
                 }
             }
         }

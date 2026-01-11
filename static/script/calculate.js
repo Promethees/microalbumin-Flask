@@ -546,37 +546,31 @@ function michaelisMentenConcentrationRegression(rates, analyte) {
     }
 }
 
-function getEstimatedValue(data, timepoint, blankTypeOrSourceIndex = "MIXED", maxTolerance = 60) {
+function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
     if (!Array.isArray(data) || data.length === 0 || !timepoint) return null;
 
     // Sort data by timestamp
     data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
 
     // Pick which key to use
-    let valueKey = "Value";
-    if (AppState.multiSource && typeof blankTypeOrSourceIndex === "number") {
-        valueKey = `Value:${blankTypeOrSourceIndex}`; // e.g. Value:1, Value:2
-    }
-
-    // No filtering for multiSource (your data doesn’t have "Blanked")
-    const filteredData = data;
+    let valueKey = `Value:${sourceIndex}`; // e.g. Value:1, Value:2
 
     // Loop to find the two surrounding points
-    for (let i = 0; i < filteredData.length - 1; i++) {
-        const t1 = filteredData[i]["Timestamp"];
-        const t2 = filteredData[i + 1]["Timestamp"];
+    for (let i = 0; i < data.length - 1; i++) {
+        const t1 = data[i]["Timestamp"];
+        const t2 = data[i + 1]["Timestamp"];
 
         // Exact match
-        if (t1 === timepoint) return filteredData[i][valueKey];
-        if (t2 === timepoint) return filteredData[i + 1][valueKey];
+        if (t1 === timepoint) return data[i][valueKey];
+        if (t2 === timepoint) return data[i + 1][valueKey];
 
         // Interpolation between surrounding timestamps
         if (t1 < timepoint && timepoint < t2) {
             const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
             if (minDiff > maxTolerance) return null;
 
-            const v1 = filteredData[i][valueKey];
-            const v2 = filteredData[i + 1][valueKey];
+            const v1 = data[i][valueKey];
+            const v2 = data[i + 1][valueKey];
 
             const ratio = (timepoint - t1) / (t2 - t1);
             return v1 + ratio * (v2 - v1);
@@ -584,7 +578,7 @@ function getEstimatedValue(data, timepoint, blankTypeOrSourceIndex = "MIXED", ma
     }
 
     // Check ends if out-of-bounds but within tolerance
-    const first = filteredData[0], last = filteredData[filteredData.length - 1];
+    const first = data[0], last = data[data.length - 1];
     if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first[valueKey];
     if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last[valueKey];
 
