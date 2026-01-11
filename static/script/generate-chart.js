@@ -162,24 +162,6 @@ function createAnnotations(isFullDisplay, measurementMode, analysis, conversionF
     return annotations;
 }
 
-function checkForThisBlankType(canvasId, forBlankType) {
-  if (typeof canvasId !== 'string' || typeof forBlankType !== 'string') {
-    return false;
-  }
-
-  const blankPrefixes = ["blanked", "non-blanked"];
-  const canvasSuffix = "-canvas";
-
-  if (canvasId.endsWith(canvasSuffix)) {
-    const prefix = canvasId.slice(0, -canvasSuffix.length);
-    if (blankPrefixes.includes(prefix)) {
-      return forBlankType === prefix.toUpperCase();
-    }
-  }
-  
-  return forBlankType === "MIXED";
-}
-
 function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, index = null) {
     const ctx = initializeChartCanvas(canvasId);
     if (!ctx) return null;

@@ -293,83 +293,34 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         }
     };
 
-    if (AppState.multiSource) {
-        if (getBtnChecked("split-sensor")) {
-            // One section per source
-            const section = createChartSection({
-                sectionId: `source-chart-${index}-section`,
-                analysisId: `source-${index}-analysis`,
-                canvasId: `source-${index}-canvas`,
-                quantityId: `source-${index}`,
-                fullDisplayId: `full-display-source-${index}`,
-                allXColumn: allXColumn,
-                allYColumnOrArray: allYColumnOrArray,
-                labelOrLabels: labelOrLabels,
-                unit: unit,
-                index: index
-            });
-            appendHTML(section);
-        } else {
-            // Single mixed plot
-            const html = `
-                <label id="quantity-checkboxes-plot" class="hidden">
-                    <h3>Quantities to display on graphic</h3>
-                    ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
-                </label>
-                <div id="plot-chart-section">
-                    <div id="plot-analysis"></div>
-                    <canvas id="plot-canvas"></canvas>
-                </div>
-            `;
-            appendHTML(html);
-        }
+    if (getBtnChecked("split-sensor")) {
+        // One section per source
+        const section = createChartSection({
+            sectionId: `source-chart-${index}-section`,
+            analysisId: `source-${index}-analysis`,
+            canvasId: `source-${index}-canvas`,
+            quantityId: `source-${index}`,
+            fullDisplayId: `full-display-source-${index}`,
+            allXColumn: allXColumn,
+            allYColumnOrArray: allYColumnOrArray,
+            labelOrLabels: labelOrLabels,
+            unit: unit,
+            index: index
+        });
+        appendHTML(section);
     } else {
-        if (getBtnChecked("split-mode")) {
-            // Blanked and non-blanked sections
-            const blankedSection = createChartSection({
-                sectionId: "blanked-chart-section",
-                analysisId: "blanked-analysis",
-                canvasId: "blanked-canvas",
-                quantityId: "blanked",
-                fullDisplayId: "full-display-blanked",
-                allXColumn: allXColumn[0],
-                allYColumnOrArray: allYColumnOrArray[0],
-                labelOrLabels: labelOrLabels[0],
-                unit: unit,
-                index: index
-            });
-
-            const nonBlankedSection = createChartSection({
-                sectionId: "non-blanked-chart-section",
-                analysisId: "non-blanked-analysis",
-                canvasId: "non-blanked-canvas",
-                quantityId: "non-blanked",
-                fullDisplayId: "full-display-non-blanked",
-                allXColumn: allXColumn[1],
-                allYColumnOrArray: allYColumnOrArray[1],
-                labelOrLabels: labelOrLabels[1],
-                unit: unit,
-                index: index
-            });
-
-            appendHTML(blankedSection);
-            appendHTML(nonBlankedSection);
-        } else {
-            // Single mixed plot
-            const plotSection = createChartSection({
-                sectionId: "plot-chart-section",
-                analysisId: "plot-analysis",
-                canvasId: "plot-canvas",
-                quantityId: "plot",
-                fullDisplayId: "full-display-plot",
-                allXColumn: allXColumn,
-                allYColumnOrArray: allYColumnOrArray,
-                labelOrLabels: labelOrLabels,
-                unit: unit,
-                index: index
-            });
-            appendHTML(plotSection);
-        }
+        // Single mixed plot
+        const html = `
+            <label id="quantity-checkboxes-plot" class="hidden">
+                <h3>Quantities to display on graphic</h3>
+                ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
+            </label>
+            <div id="plot-chart-section">
+                <div id="plot-analysis"></div>
+                <canvas id="plot-canvas"></canvas>
+            </div>
+        `;
+        appendHTML(html);
     }
 }
 
@@ -529,88 +480,6 @@ function addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUni
     }
 }
 
-function splitBlankRoutine(allGroups, XColumn, YColumn, rawData) {
-    const measUnit = getMetaUnit(AppState.metaData);
-    
-    const allBlankedXColumn = extractColumnAndConvert(allGroups.allBlankedData, XColumn);
-    const allBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allBlankedData, y)) : [extractColumnAndNormalize(allGroups.allBlankedData, YColumn)];
-    const allNonBlankedXColumn = extractColumnAndConvert(allGroups.allNonBlankedData, XColumn);
-    const allNonBlankedYColumns = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allNonBlankedData, y)) : [extractColumnAndNormalize(allGroups.allNonBlankedData, YColumn)];
-    
-    const isFullDisplayBlanked = AppState.currentMeasurementMode === "calibrate" ? true : getBtnChecked("full-display-blanked");
-    const isFullDisplayNonBlanked = AppState.currentMeasurementMode === "calibrate" ? true : getBtnChecked("full-display-non-blanked");
-    
-    const filteredDataBlanked = filteredByRangeValue(isFullDisplayBlanked, allGroups.allBlankedData, XColumn, YColumn);
-    const filteredDataNonBlanked = filteredByRangeValue(isFullDisplayNonBlanked, allGroups.allNonBlankedData, XColumn, YColumn);
-    
-    const blankedData = filterBlankedData(filteredDataBlanked, true);
-    const nonBlankedData = filterBlankedData(filteredDataNonBlanked, false);
-
-    const blankedX = extractColumnAndConvert(blankedData, XColumn, true);
-    const blankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(blankedData, y)) : [extractColumnAndNormalize(blankedData, YColumn)];
-    const nonBlankedX = extractColumnAndConvert(nonBlankedData, XColumn, true);
-    const nonBlankedY = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(nonBlankedData, y)) : [extractColumnAndNormalize(nonBlankedData, YColumn)];
-
-    let analysis_blanked = null;
-    let analysis_nonblanked = null;
-
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        analysis_blanked = allBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allBlankedXColumn, yCol, getValInt("window-size")));
-        analysis_nonblanked = allNonBlankedYColumns.map((yCol, i) => calculateKineticsQuantities(allNonBlankedXColumn, yCol, getValInt("window-size")));
-    } else {
-        if (calDiv.getAttribute('data-value') === "kinetics") {
-            analysis_blanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "BLANKED");
-            analysis_nonblanked = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "NON-BLANKED");
-        } else if (calDiv.getAttribute('data-value') === "point") {
-            analysis_blanked = calculateCoefAndRSquared(allBlankedYColumns[0], allBlankedXColumn, regressAlgo = document.getElementById("exp-json-regress-algo").value);
-            analysis_nonblanked = calculateCoefAndRSquared(allNonBlankedYColumns[0], allNonBlankedXColumn, regressAlgo = document.getElementById("exp-json-regress-algo").value);
-        }
-    }
-    const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(AppState.metaData, XColumn, YColumn), measUnit);
-    const blankLabels = labels.map(l => `${l} (Blanked)`);
-    const nonBlankLabels = labels.map(l => `${l} (Non-Blanked)`);
-    
-    renderCharts([extractColumnAndConvert(allGroups.allBlankedData, XColumn), extractColumnAndConvert(allGroups.allNonBlankedData, XColumn)], 
-        [extractColumnAndNormalize(allGroups.allBlankedData, YColumn), extractColumnAndNormalize(allGroups.allNonBlankedData, YColumn)], 
-        [blankLabels, nonBlankLabels], 
-        measUnit, 
-        [1, 0])
-    AppState.blankedChart = generateChart('blanked-canvas', blankedX, blankedY, blankLabels,
-        measUnit, analysis_blanked, index = 1);
-    AppState.nonBlankedChart = generateChart('non-blanked-canvas', nonBlankedX, nonBlankedY, nonBlankLabels,
-        measUnit, analysis_nonblanked, index = 0);
-
-    // Update analysis info display
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        // Format analysis info for both charts
-        const blankedAnalysisInfo = Array.isArray(analysis_blanked) ? analysis_blanked.map((a, i) => formatAnalysisInfo(a, blankLabels[i])) : [formatAnalysisInfo(analysis_blanked, blankLabels[0])];
-        const nonBlankedAnalysisInfo = Array.isArray(analysis_nonblanked) ? analysis_nonblanked.map((a, i) => formatAnalysisInfo(a, nonBlankLabels[i])) : [formatAnalysisInfo(analysis_nonblanked, nonBlankLabels[0])];
-        updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo);
-    } else {
-        let blanked_string = "";
-        let non_blanked_string = "";
-        if (calDiv.getAttribute('data-value') === "kinetics") {
-            blanked_string = getCalKineticsString(analysis_blanked, document.getElementById("exp-json-regress-algo").value);
-            non_blanked_string = getCalKineticsString(analysis_nonblanked, document.getElementById("exp-json-regress-algo").value);
-        } else if (calDiv.getAttribute('data-value') === "point") {
-            blanked_string = getCalPointString(analysis_blanked);
-            non_blanked_string = getCalPointString(analysis_nonblanked);
-        }
-        document.getElementById("blanked-analysis").innerHTML = `<span style="color: rgb(255, 99, 132);">Blanked: ${blanked_string}</span>`;
-        document.getElementById("non-blanked-analysis").innerHTML = `<span style="color: rgb(75, 192, 192);">Non-Blanked: ${non_blanked_string}</span>`;
-    }
-
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        return extractSplitResultSummary(AppState.metaData, analysis_blanked[0], analysis_nonblanked[0]);
-    } else {
-        const analysis = document.getElementById("exp-json-blank-type").value === "BLANKED" ? analysis_blanked : analysis_nonblanked;
-        return {
-            analysis,
-            meas: AppState.metaData["Measurement"]
-        };
-    }
-}
-
 function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     let mixAnalysis = null;
     let filteredData, XColumnVals, YColumnVals;
@@ -711,14 +580,6 @@ function destroyCharts() {
     if (AppState.myChart) {
         AppState.myChart.destroy();
         AppState.myChart = null;
-    }
-    if (AppState.blankedChart) {
-        AppState.blankedChart.destroy();
-        AppState.blankedChart = null;
-    }
-    if (AppState.nonBlankedChart) {
-        AppState.nonBlankedChart.destroy();
-        AppState.nonBlankedChart = null;
     }
     if (AppState.sourceCharts) {
         AppState.sourceCharts.forEach(chart => {
@@ -867,19 +728,6 @@ function extractColumnAndConvert(data, colName, convert = false) {
     });
 }
 
-function hasBlankType(data) {
-    // Only check for blank columns if multiSource is false
-    const hasBlankType = !AppState.multiSource && data.some(row => 'BlankType' in row);
-    const hasBlank = !AppState.multiSource && data.some(row => 'Blanked' in row);
-
-    if (!AppState.multiSource && !hasBlankType && !hasBlank) {
-        console.warn("No Blank or BlankType column found in data");
-        return;
-    }
-
-    return hasBlankType;
-}
-
 function getDataGroups(data, XColumn, YColumn) {
     return {
         allXColumn: extractColumnAndConvert(data, XColumn),
@@ -898,26 +746,6 @@ function determineMeasurementLabel(metadata, XColumn, YColumn) {
 
 function unitDisplay(unit) {
     return unit !== "NONE" ? `(${unit})` : "";
-}
-
-function filterByBlankType(data) {
-    if (!hasBlankType(data)) return data;
-    return data.filter(row =>
-        row['BlankType'] === "BLANKED" || row['BlankType'] === "NON-BLANKED" || row['BlankType'] === "MIXED"
-    );
-}
-
-function filterBlankedData(data, isBlanked) {
-    if (hasBlankType(data)) {
-        return data.filter(row =>
-            isBlanked ? row['BlankType'] === "BLANKED" : row['BlankType'] === "NON-BLANKED"
-        );
-    } else {
-        return data.filter(row =>
-            isBlanked ? row['Blanked'] === true || row['Blanked'] === 1
-                      : row['Blanked'] === false || row['Blanked'] === 0
-        );
-    }
 }
 
 function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
@@ -989,35 +817,6 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
         </div>
     </span>`;
     return html;
-}
-
-function updateSplitModeAnalysisInfo(blankedAnalysisInfo, nonBlankedAnalysisInfo) {
-    let html_blank = '';
-    let html_nonblank = '';
-    if (blankedAnalysisInfo) {
-        html_blank += formatAnalysisHtml(blankedAnalysisInfo[0], 'rgb(255, 99, 132)', 'Blanked');
-    }
-    if (nonBlankedAnalysisInfo) {
-        html_nonblank += formatAnalysisHtml(nonBlankedAnalysisInfo[0], 'rgb(75, 192, 192)', 'Non-Blanked');
-    }
-    document.getElementById("blanked-analysis").innerHTML = html_blank || '';
-    document.getElementById("non-blanked-analysis").innerHTML = html_nonblank || '';
-}
-
-function extractSplitResultSummary(metadata, analysis_blanked, analysis_nonblanked) {
-    return {
-        split: true,
-        maxrate_blanked: analysis_blanked.maxRate,
-        slope_blanked: analysis_blanked.slope,
-        sat_blanked: analysis_blanked.saturationValue,
-        time_to_sat_blanked: analysis_blanked.timeToSaturation,
-        maxrate_non_blanked: analysis_nonblanked.maxRate,
-        slope_non_blanked: analysis_nonblanked.slope,
-        sat_non_blanked: analysis_nonblanked.saturationValue,
-        time_to_sat_non_blanked: analysis_nonblanked.timeToSaturation,
-        meas: metadata["Measurement"],
-        meas_unit: metadata["Unit"]
-    };
 }
 
 function updateSingleModeAnalysisInfo(analysisInfo) {
