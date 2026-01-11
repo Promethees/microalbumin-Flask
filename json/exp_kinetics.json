@@ -28,6 +28,5 @@
     }
   },
   "fit_type": "exponential",
-  "for_meas": "ABSORBANCE",
-  "for_blank_type": "MIXED"
+  "for_meas": "ABSORBANCE"
 }
