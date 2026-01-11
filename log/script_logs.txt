@@ -1,0 +1,1 @@
+[2026-01-12 09:21:04] Server shutting down, notifying clients to clear cache
