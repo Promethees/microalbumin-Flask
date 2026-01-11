@@ -8,7 +8,7 @@ The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](
 	- Set local python version as `3.12.11` using `pyenv local 3.12.11`
 	- Install dependencies using `pip3 install -r requirements.txt`
 	- Install `gunicorn` with `pip3 install gunicorn`
-	- Start the app with `gunicorn main:app --bind 0.0.0.0:5000`
+	- Start the app locally with `gunicorn -k eventlet -w 1 main:app --bind 0.0.0.0:5000`
 	- Open browser, access the software via address of `http://0.0.0.0:5000` or `http://localhost:5000`
 
 ### Online deployment
