@@ -540,12 +540,8 @@ body.dark .button-group button.selected {
 #kinetics-lines,
 #cal-json-exp-section,
 #derived-concentration-section,
-#blank-derived-concentration-section,
-#non-blank-derived-concentration-section,
 #export-analysis,
 #set-exp-point-section,
-#select-exp-blank-type-meas,
-#select-exp-blank-type-cal,
 #range-display,
 #full-display-section,
 #select-time-point,
@@ -758,9 +754,7 @@ body.dark #swal-edit-table tr.selected td {
 /* ==========================================================================
    Charts & Canvas Elements
    ========================================================================== */
-#plot-canvas,
-#blanked-canvas,
-#non-blanked-canvas {
+#plot-canvas {
     width: 100%;
     height: 280px;
 }
@@ -792,13 +786,13 @@ body.dark .display{
     white-space: pre-wrap;
 }
 
-body.light #plot-analysis, #blanked-analysis, #non-blanked-analysis {
+body.light #plot-analysis {
     margin-top: 10px;
     font-size: 0.9em;
     color: #333;
 }
 
-body.dark #plot-analysis, #blanked-analysis, #non-blanked-analysis {
+body.dark #plot-analysis {
     color: var(--text-color-dark);
 }
 
@@ -914,13 +908,13 @@ body.dark #plot-analysis, #blanked-analysis, #non-blanked-analysis {
     animation: blink 1s infinite;
 }
 
-body.light [id^="der-con-value"].blinking, #blank-der-con-value.blinking, #non-blank-der-con-value.blinking {
+body.light .der-con-value.blinking {
     border: 2px solid darkviolet;
     --blink-color: darkviolet;
     animation: blink 1s infinite;
 }
 
-body.dark [id^="der-con-value"].blinking, #blank-der-con-value.blinking, #non-blank-der-con-value.blinking {
+body.dark .der-con-value.blinking {
     border: 2px solid #DA70D6;
     --blink-color: #DA70D6;
     animation: blink 1s infinite;
