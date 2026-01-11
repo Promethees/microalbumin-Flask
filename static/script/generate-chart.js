@@ -237,7 +237,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                 legend: { labels: { color: getAxisStyle('label') } },
                 title: {
                     display: true,
-                    text: AppState.multiSource && index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
+                    text: index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
                     color: getAxisStyle('title')
                 },
                 annotation: {

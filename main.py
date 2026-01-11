@@ -511,7 +511,31 @@ def upload_file():
             'status': 'error',
             'message': 'An unexpected error occurred while uploading the file.'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
-       
+
+@app.route('/get_num_sources', methods=['GET'])
+def get_num_sources():
+    csv_data = get_user_data()['csv']
+    num_sources = set()
+
+    for filename, content in csv_data.items():
+        if not filename.lower().endswith('.csv'):
+            continue
+        try:
+            lines = (
+                line for line in content.splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            )
+
+            df = pd.read_csv(StringIO("\n".join(lines)))
+            count = sum(col.startswith('Value:') for col in df.columns)
+            num_sources.add(count)
+
+        except Exception:
+            # optionally log the error
+            continue
+
+    return jsonify({'num_sources': sorted(list(num_sources)), 'csv_data': csv_data})
+
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
@@ -556,7 +580,8 @@ def get_data():
                 'data': data,
                 'unit': unit,
                 'error': None,
-                'metadata': metadata
+                'metadata': metadata,
+                'num_sources': len([col for col in df.columns if col.startswith('Value:')]) if 'Value:' in ''.join(df.columns) else 1
             })
 
         elif selected_file.lower().endswith('.json'):
@@ -576,7 +601,8 @@ def get_data():
                 'data': data,
                 'unit': unit,
                 'error': None,
-                'metadata': {}  # JSON files don't have metadata in this context
+                'metadata': {},  # JSON files don't have metadata in this context
+                'all_data': user_data['csv']
             })
         else:
             return jsonify({'data': [], 'error': 'Unsupported file type', 'unit': "NONE", 'metadata': {}})

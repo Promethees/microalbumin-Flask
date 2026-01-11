@@ -947,7 +947,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     type: fileType,
                     content: content,
                     calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp',
-                    multi_source: AppState.multiSource,
                     mode: AppState.currentMeasurementMode
                 }, function(response) {
                     if (response.status === 'success') {

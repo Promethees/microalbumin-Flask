@@ -125,7 +125,6 @@ function fetchJSON(jsonFile, callback) {
     $.get('/get_json_content', {
         json_name: jsonFile,
         mode: AppState.currentMeasurementMode,
-        isMultiSource: AppState.multiSource,
         numSources: AppState.numSources
     }, function(response) {
         callback(response.json);

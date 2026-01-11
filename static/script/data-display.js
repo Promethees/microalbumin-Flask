@@ -15,36 +15,20 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
     
-    const isSplitMode = AppState.multiSource
-        ? getBtnChecked("split-sensor")
-        : getBtnChecked("split-mode");
+    const isSplitMode = getBtnChecked("split-sensor");
 
-    // If multiSource, treat all data as mixed; otherwise, use getDataGroups
-    const allGroups = AppState.multiSource 
-        ? {
+    const allGroups = {
             allXColumn: extractColumnAndConvert(data, XColumn),
             allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(data, y)) : [extractColumnAndNormalize(data, YColumn)],
-            allMixedData: data
-        }
-        : getDataGroups(data, XColumn, YColumn);
+            allData: data
+        };
 
-    if (AppState.multiSource) {
-        const Args = [
-            allGroups,
-            XColumn,
-            YColumn
-        ]
-        return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
-    } else {
-        // Original non-multiSource logic
-        const Args = [
-            allGroups,
-            XColumn,
-            YColumn,
-            rawData
-        ]
-        return isSplitMode ? splitBlankRoutine(...Args) : defaultRoutine(...Args);
-    }
+    const Args = [
+        allGroups,
+        XColumn,
+        YColumn
+    ]
+    return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
 
     setTimeout(() => {
         chartContainer.scrollTop = scrollPosition;
@@ -226,8 +210,7 @@ function createChartSection({
                 ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
             </label>
             <div id="${analysisId}"></div>
-            ${AppState.multiSource ? 
-                `
+            ${`
                 <div id="concentration-reader-section-source-${index}">
                     Concentration from source-${index + 1} sample is 
                     <input type="number" id="con-value-read-source-${index}" 
@@ -244,8 +227,7 @@ function createChartSection({
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
                 </div>
-                `
-                : ``}
+                `}
             <canvas id="${canvasId}"></canvas>
         </div>
     ` : 
@@ -941,7 +923,7 @@ function findYDimension(allYValues, labels) {
         }
     } else {
         // Original logic for non-equal Y values
-        if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-sensor") && AppState.multiSource) {
+        if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-sensor")) {
             yMin = 0;
             yMax = 0.6;      
         } else {
