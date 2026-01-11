@@ -336,11 +336,7 @@ function kineticsModeBehaviour() {
     ];
 
     $hidden(addHidden, true);
-    $hidden(removeHidden, false)
-
-    // Conditional visibility
-    if (!AppState.multiSource)
-        document.getElementById('concentration-reader-section')?.classList.remove('hidden');
+    $hidden(removeHidden, false);
 }
 
 
@@ -370,9 +366,6 @@ function pointModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-
-    if (!AppState.multiSource)
-        document.getElementById('concentration-reader-section')?.classList.remove('hidden');
 }
 
 
@@ -417,10 +410,9 @@ function calModeBehaviour() {
 
     terminateScript();
 
-    AppState.multiSource = false;
     AppState.numSources = 1;
 
-    document.getElementById('multi-source').checked = false;
+    document.getElementById('filter-source').checked = false;
     document.getElementById('normalize-mode').checked = false;
 }
 
@@ -478,7 +470,7 @@ function updateDirectory(path, deselect, changeToCalibrate=false) {
         console.log("AJAX error:", textStatus, errorThrown);
         $showText("error-message", "Error updating directory")
     });
-    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, isMultiSource: AppState.multiSource, numSources: AppState.numSources}, 
+    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, numSources: AppState.numSources}, 
         function(response) {
             updateJSONTable(response.files);
         }).fail(function(jqXHR, textStatus, errorThrown) {
@@ -493,20 +485,14 @@ function drawMeasurementChart() {
 }
 
 function updateMultiSourceExportOptions() {
-    $hidden(["select-exp-blank-type-meas"], AppState.multiSource);
-    $hidden(["select-sensor-to-export"], !AppState.multiSource);
-    if (AppState.multiSource) {
-        const selectElement = document.getElementById('exp-json-sensor');
-        // Optional: Clear previous options except "ALL"
-        selectElement.innerHTML = '<option value="ALL">ALL</option>';
-        for (let i = 1; i <= AppState.numSources; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            selectElement.appendChild(option);
-        }
-    } else {
-        document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+    const selectElement = document.getElementById('exp-json-sensor');
+    // Optional: Clear previous options except "ALL"
+    selectElement.innerHTML = '<option value="ALL">ALL</option>';
+    for (let i = 1; i <= AppState.numSources; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = i;
+        selectElement.appendChild(option);
     }
 }
 

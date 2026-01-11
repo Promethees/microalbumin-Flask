@@ -48,3 +48,21 @@ def get_child_directories(path):
         for p in path.iterdir()
         if p.is_dir() and not (p.name.startswith('.') or p.name.startswith('_'))
     ]
+
+def is_multi_value_timeseries_csv_header(header_line: str) -> bool:
+    """
+    Checks if the header matches the pattern used for raw multi-sensor/time-series data:
+    Timestamp,Value:1,Value:2,Value:3,... (with possible extra spaces)
+    
+    Returns True if this is the kind of file we want to count sources from.
+    """
+    cleaned = re.sub(r'\s+', '', header_line.strip())
+    if not cleaned.startswith('Timestamp,'):
+        return False
+    
+    parts = cleaned.split(',')
+    if len(parts) < 2:
+        return False
+    
+    value_parts = parts[1:]  # everything after Timestamp
+    return all(part.startswith('Value:') for part in value_parts)

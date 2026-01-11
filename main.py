@@ -17,9 +17,10 @@ import re
 from filelock import FileLock
 import shutil
 from pathlib import Path
+from io import StringIO
 
 sys.path.append('src')
-from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
+from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories, is_multi_value_timeseries_csv_header
 from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
@@ -504,7 +505,7 @@ def edit_file():
                     'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
                 },
                 {
-                    'header': r'^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$',
+                    'header_test': is_multi_value_timeseries_csv_header,
                     'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$',
                     'meta': ["Measurement", "Unit", "Concentration"],
                     'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
@@ -532,16 +533,22 @@ def edit_file():
             header_line = data_lines[0].replace(" ", "")
             matched_pattern = None
             for pattern in pattern_sets:
+                if 'header_test' in pattern:
+                    if pattern['header_test'](header_line):
+                        matched_pattern = pattern
+                        break
                 if re.match(pattern['header'], header_line):
                     matched_pattern = pattern
                     break
 
             if not matched_pattern:
-                valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
                 return jsonify({
                     'status': 'error',
-                    'message': f'Invalid CSV header. Must match one of: {valid_headers}'
-                }), HTTPStatus.BAD_REQUEST
+                    'message': 'Invalid CSV header. Supported formats:\n'
+                            '1. Concentration,maxRate,Slope,Sat,TimeToSat\n'
+                            '2. Concentration,Value,TimePoint\n'
+                            '3. Timestamp,Value:1,Value:2,...\n'
+                }), 400
 
             # --- Validate metadata for this pattern ---
             required_meta = matched_pattern.get("meta", [])
@@ -783,7 +790,45 @@ def copy_file():
             'status': 'error',
             'message': 'An unexpected error occurred while copying the file'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
-         
+
+@app.route('/get_num_sources', methods=['GET'])
+def get_num_sources():
+    directory = get_directory()
+    possible_counts = set()
+
+    for filename in os.listdir(directory):
+        if not filename.lower().endswith('.csv'):
+            continue
+
+        full_path = os.path.join(directory, filename)
+        if not os.path.isfile(full_path):
+            continue
+
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+
+                    # This is the first real data line → probably header
+                    if is_multi_value_timeseries_csv_header(line):
+                        columns = [c.strip() for c in line.split(',')]
+                        value_count = sum(1 for c in columns[1:] if c.startswith('Value:'))
+                        if value_count > 0:
+                            possible_counts.add(value_count)
+                    break  # We only care about the header
+
+        except Exception:
+            continue  # skip broken files silently
+
+    return jsonify({
+        'status': 'success',
+        'possible_num_sources': sorted(list(possible_counts)),
+        'found_files': len(possible_counts) > 0,
+        'directory': directory
+    })
+
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')

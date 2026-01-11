@@ -190,8 +190,7 @@ function copyFile(tableSelector = "#file-table") {
             filepath: filePath,
             filename: currentFile,
             mode: AppState.currentMeasurementMode,
-            tabletype: tableSelector,
-            isMultiSource: AppState.multiSource,
+            tabletype: tableSelector
         },
         success: function(response) {
             if (response.status === 'success') {
@@ -339,15 +338,14 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
                 console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
 
-                $.post('/delete_file', { 
-                    filename: fileName, 
-                    mode: AppState.currentMeasurementMode, 
-                    tabletype: tableSelector,
-                    isMultiSource: AppState.multiSource,
-                    numSources: AppState.numSources
-                }, handleResponse).fail(handleError);
-            }
-        };
+            $.post('/delete_file', { 
+                filename: fileName, 
+                mode: AppState.currentMeasurementMode, 
+                tabletype: tableSelector,
+                numSources: AppState.numSources
+            }, handleResponse).fail(handleError);
+        }
+    };
 
         const handleResponse = (response) => {
             if (response.status === 'success') {
@@ -496,6 +494,7 @@ function processResponse (response, jsonFile) {
     // Store response data
     AppState.responseData = response.data;
     AppState.metaData = response.metadata;
+    AppState.numSources = response.num_sources || 1;
 
     // Update plot
     updatePlotBasedOnMode(jsonFile);
@@ -511,10 +510,8 @@ function processResponse (response, jsonFile) {
     return response;
 };
 
-function handleNonCalibrationMode(jsonFile) {
-    toggleConValueTextbox();
-    
-    const derivedSettings = settingDerivedCon(jsonFile);
+function handleNonCalibrationMode(jsonFile) {    
+    const derivedSettings = settingDerivedCon();
     if (derivedSettings) {
         updateDerivedSections(derivedSettings);
     }
@@ -524,15 +521,7 @@ function handleNonCalibrationMode(jsonFile) {
     }
 };
 
-function updateDerivedSections ({ derived_section, derived_con_text }) {
-    if (AppState.multiSource) {
-        handleMultiSource(derived_section, derived_con_text);
-    } else {
-        handleSingleSource(derived_section, derived_con_text);
-    }
-};
-
-function handleMultiSource(derived_section, derived_con_text) {
+function updateDerivedSections({ derived_section, derived_con_text }) {
     if (Array.isArray(derived_section)) {
         derived_section.forEach(section => section.classList.remove("hidden"));
         $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
@@ -567,7 +556,7 @@ function calculateKineticValue(quantity) {
 };
 
 function updateConcentrationDisplay(analysisExtraction, jsonFile, conQuantityInput) {
-    const { derived_con_text } = settingDerivedCon(jsonFile);
+    const { derived_con_text } = settingDerivedCon();
     const coef = jsonFile[conQuantityInput]["fit_coef"];
     const fitType = jsonFile["fit_type"];
 
@@ -717,42 +706,31 @@ function updatePlotBasedOnMode(jsonFile) {
             updateRefCalPoint(jsonFile);
             document.getElementById("add-json-section").textContent = "";
         }
-        switch (AppState.numSources) {
-            case 1:
-                AppState.globalAnalysis = updatePlot(AppState.responseData);
-                if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                    processPointMode(jsonFile, document.getElementById('der-con-value'));
-                }
-                return;
+        
+        const values = Array.from(
+            { length: AppState.numSources },
+            (_, i) => `Value:${i + 1}`
+        );
 
-            default: 
-                if (AppState.numSources > 1) {
-                    const values = Array.from(
-                        { length: AppState.numSources },
-                        (_, i) => `Value:${i + 1}`
-                    );
+        AppState.globalAnalysis = updatePlot(
+            AppState.responseData,
+            "Timestamp",
+            values
+        );
 
-                    AppState.globalAnalysis = updatePlot(
-                        AppState.responseData,
-                        "Timestamp",
-                        values
-                    );
-
-                    if (AppState.currentMeasurementMode === "point" && jsonFile) {
-                        const derived_con_texts = settingDerivedCon(jsonFile).derived_con_text;
-                        const derived_con_section = settingDerivedCon(jsonFile).derived_section;
-                        if (derived_con_section && Array.isArray(derived_con_section)) {
-                            derived_con_section.forEach(section => section.classList.remove("hidden"));
-                        }
-                        if (Array.isArray(derived_con_texts)) {
-                            derived_con_texts.forEach((textElem) => {
-                                processPointMode(jsonFile, textElem);
-                            });
-                        }
-                    }
-                }
-
+        if (AppState.currentMeasurementMode === "point" && jsonFile) {
+            const derived_con_texts = settingDerivedCon().derived_con_text;
+            const derived_con_section = settingDerivedCon().derived_section;
+            if (derived_con_section && Array.isArray(derived_con_section)) {
+                derived_con_section.forEach(section => section.classList.remove("hidden"));
             }
+            if (Array.isArray(derived_con_texts)) {
+                derived_con_texts.forEach((textElem) => {
+                    processPointMode(jsonFile, textElem);
+                });
+            }
+        }
+
     }
 }
 
@@ -818,35 +796,25 @@ function exportData() {
 
 // Validate concentration values based on source mode
 function validateConcentration() {
-    if (AppState.multiSource) {
-        const sensorValue = document.getElementById("exp-json-sensor").value;
-        if (sensorValue === "ALL") {
-            for (let i = 0; i < AppState.numSources; i++) {
-                const inputId = `con-value-read-source-${i}`;
-                if (!document.getElementById(inputId).value) {
-                    alert(`Please enter a concentration value for source-${i + 1}`);
-                    blinkingItem(inputId, 5000);
-                    return false;
-                }
-            }
-        } else {
-            const sourceIndex = getValInt("exp-json-sensor") - 1;
-            const inputId = `con-value-read-source-${sourceIndex}`;
+    const sensorValue = document.getElementById("exp-json-sensor").value;
+    if (sensorValue === "ALL") {
+        for (let i = 0; i < AppState.numSources; i++) {
+            const inputId = `con-value-read-source-${i}`;
             if (!document.getElementById(inputId).value) {
-                alert(`Please enter a concentration value for source-${sourceIndex + 1}`);
+                alert(`Please enter a concentration value for source-${i + 1}`);
                 blinkingItem(inputId, 5000);
                 return false;
             }
         }
     } else {
-        const inputId = "con-value-read";
+        const sourceIndex = getValInt("exp-json-sensor") - 1;
+        const inputId = `con-value-read-source-${sourceIndex}`;
         if (!document.getElementById(inputId).value) {
-            alert("Please enter a concentration value before exporting data.");
+            alert(`Please enter a concentration value for source-${sourceIndex + 1}`);
             blinkingItem(inputId, 5000);
             return false;
         }
     }
-    return true;
 }
 
 // Generate analysis data based on measurement mode
@@ -863,28 +831,16 @@ function generateAnalysisData() {
 
 // Generate kinetics mode data
 function generateKineticsData() {
-    if (AppState.multiSource) {
-        const sensorValue = document.getElementById("exp-json-sensor").value;
-        if (sensorValue === "ALL") {
-            return Array.from({ length: AppState.numSources }, (_, i) => ({
-                maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
-                slope: AppState.globalAnalysis.sources[i].slope * getTimeUnitMultiplier('minutes'),
-                saturationValue: AppState.globalAnalysis.sources[i].sat,
-                timeToSaturation: AppState.globalAnalysis.sources[i].time_to_sat / getTimeUnitMultiplier('minutes'),
-                measurement: AppState.globalAnalysis.meas,
-                measUnit: AppState.globalAnalysis.meas_unit
-            }));
-        } else {
-            const exportSensor = getValInt("exp-json-sensor") - 1;
-            return [{
-                maxrate: AppState.globalAnalysis.sources[exportSensor].maxrate * getTimeUnitMultiplier('minutes'),
-                slope: AppState.globalAnalysis.sources[exportSensor].slope * getTimeUnitMultiplier('minutes'),
-                saturationValue: AppState.globalAnalysis.sources[exportSensor].sat,
-                timeToSaturation: AppState.globalAnalysis.sources[exportSensor].time_to_sat / getTimeUnitMultiplier('minutes'),
-                measurement: AppState.globalAnalysis.meas,
-                measUnit: AppState.globalAnalysis.meas_unit
-            }];
-        }
+    const sensorValue = document.getElementById("exp-json-sensor").value;
+    if (sensorValue === "ALL") {
+        return Array.from({ length: AppState.numSources }, (_, i) => ({
+            maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
+            slope: AppState.globalAnalysis.sources[i].slope * getTimeUnitMultiplier('minutes'),
+            saturationValue: AppState.globalAnalysis.sources[i].sat,
+            timeToSaturation: AppState.globalAnalysis.sources[i].time_to_sat / getTimeUnitMultiplier('minutes'),
+            measurement: AppState.globalAnalysis.meas,
+            measUnit: AppState.globalAnalysis.meas_unit
+        }));
     } else {
         const exportSensor = getValInt("exp-json-sensor") - 1;
         return [{
@@ -906,27 +862,18 @@ function generatePointData() {
         return null;
     }
 
-    if (AppState.multiSource) {
-        const sensorValue = document.getElementById("exp-json-sensor").value;
-        if (sensorValue === "ALL") {
-            return Array.from({ length: AppState.numSources }, (_, i) => ({
-                estValue: AppState.globalEstimatedValue[i].toFixed(4),
-                timePoint: currExpTimePoint,
-                measurement: AppState.globalAnalysis.meas,
-                measUnit: AppState.globalAnalysis.meas_unit
-            }));
-        } else {
-            const sourceIndex = getValInt("exp-json-sensor") - 1;
-            return [{
-                estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
-                timePoint: currExpTimePoint,
-                measurement: AppState.globalAnalysis.meas,
-                measUnit: AppState.globalAnalysis.meas_unit
-            }];
-        }
+    const sensorValue = document.getElementById("exp-json-sensor").value;
+    if (sensorValue === "ALL") {
+        return Array.from({ length: AppState.numSources }, (_, i) => ({
+            estValue: AppState.globalEstimatedValue[i].toFixed(4),
+            timePoint: currExpTimePoint,
+            measurement: AppState.globalAnalysis.meas,
+            measUnit: AppState.globalAnalysis.meas_unit
+        }));
     } else {
+        const sourceIndex = getValInt("exp-json-sensor") - 1;
         return [{
-            estValue: AppState.globalEstimatedValue.toFixed(4),
+            estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
             timePoint: currExpTimePoint,
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
@@ -948,27 +895,18 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
     let payload;
     let isBatch = false;
 
-    if (AppState.multiSource) {
-        const sensorValue = document.getElementById("exp-json-sensor").value;
-        if (sensorValue === "ALL") {
-            isBatch = true;
-            const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`, "MIXED"));
-            if (entries.length === 0) {
-                alert("No analysis data available to export.");
-                return;
-            }
-            payload = { ...commonData, newFile: true, entries };
-        } else {
-            const sourceIndex = getValInt("exp-json-sensor") - 1;
-            const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`, "MIXED");
-            if (!entry) {
-                alert("No analysis data available to export.");
-                return;
-            }
-            payload = { ...commonData, ...entry, blanked: "MIXED", newFile: true };
+    const sensorValue = document.getElementById("exp-json-sensor").value;
+    if (sensorValue === "ALL") {
+        isBatch = true;
+        const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`, "MIXED"));
+        if (entries.length === 0) {
+            alert("No analysis data available to export.");
+            return;
         }
+        payload = { ...commonData, newFile: true, entries };
     } else {
-        const entry = prepareExportEntry(analysisData[0], "con-value-read", blankType);
+        const sourceIndex = getValInt("exp-json-sensor") - 1;
+        const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`, "MIXED");
         if (!entry) {
             alert("No analysis data available to export.");
             return;
@@ -1078,7 +1016,6 @@ function exportJSONCoef() {
                 cal_mode: calDiv.getAttribute('data-value'),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
                 threshold_val: getValFloat("threshold-value"),
-                isMultiSource: AppState.multiSource,
                 numSources: AppState.numSources,
                 regress_algo: document.getElementById("exp-json-regress-algo").value
             }

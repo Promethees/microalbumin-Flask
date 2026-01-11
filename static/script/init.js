@@ -47,9 +47,8 @@ document.getElementById('shutdown-btn').addEventListener('click', function() {
     }
 });
 
-document.getElementById('multi-source').addEventListener('change', function() {
+document.getElementById('filter-source').addEventListener('change', function() {
     const numSourcesSelect = document.getElementById('num-sources-section');
-    const splitBySensor = document.getElementById('split-sensor-section');
     deselectFile();
     deselectFile("#json-table");
     AppState.responseData = null;
@@ -60,33 +59,27 @@ document.getElementById('multi-source').addEventListener('change', function() {
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
-        splitBySensor.classList.remove('hidden');
-        AppState.multiSource = true;
-        AppState.numSources = parseInt(document.getElementById('num-sources').value);
-        document.getElementById('concentration-reader-section').classList.add('hidden');
+        $.get('/get_num_sources', { request: true }, function (response) {
+            const select = document.getElementById('num-sources');
+            select.innerHTML = ''; // clear existing options (optional)
+            response.num_sources.forEach(num => {
+                select.add(new Option(num, num));
+            });
+            AppState.numSources = response.num_sources[0] || 1;
+        });
     } else {
         numSourcesSelect.classList.add('hidden');
-        splitBySensor.classList.add('hidden');
-        AppState.multiSource = false;
-        AppState.numSources = 1;
-        document.getElementById('concentration-reader-section').classList.remove('hidden');
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        $hidden(["select-exp-blank-type-meas"], AppState.multiSource);
-        $hidden(["select-sensor-to-export"], !AppState.multiSource);
-        if (AppState.multiSource) {
-            const selectElement = document.getElementById('exp-json-sensor');
-            // Optional: Clear previous options except "ALL"
-            selectElement.innerHTML = '<option value="ALL">ALL</option>';
-            for (let i = 1; i <= AppState.numSources; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                selectElement.appendChild(option);
-            }
-        } else {
-            document.getElementById('exp-json-sensor').innerHTML = '<option value="ALL">ALL</option>';
+        const selectElement = document.getElementById('exp-json-sensor');
+        // Optional: Clear previous options except "ALL"
+        selectElement.innerHTML = '<option value="ALL">ALL</option>';
+        for (let i = 1; i <= AppState.numSources; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            selectElement.appendChild(option);
         }
     }
 });
@@ -158,17 +151,12 @@ function updatePointEstimate() {
 
     console.log("response Data is", AppState.responseData);
 
-    if (AppState.multiSource) {
-        if (document.getElementById("exp-json-sensor").value === "ALL") {
-            AppState.globalEstimatedValue = [];
-            for (let i = 1; i <= AppState.numSources; i++) {
-                AppState.globalEstimatedValue.push(
-                    getEstimatedValue(AppState.responseData, currExpTimePoint * 60, i)
-                );
-            }
-        } else {
-            const sourceIndex = getValInt("exp-json-sensor");
-            AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
+    if (document.getElementById("exp-json-sensor").value === "ALL") {
+        AppState.globalEstimatedValue = [];
+        for (let i = 1; i <= AppState.numSources; i++) {
+            AppState.globalEstimatedValue.push(
+                getEstimatedValue(AppState.responseData, currExpTimePoint * 60, i)
+            );
         }
     } else {
         const sourceIndex = getValInt("exp-json-sensor");
