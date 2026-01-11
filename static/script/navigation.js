@@ -131,7 +131,7 @@ function fetchJSON(jsonFile, callback) {
     })
 }
 
-function browseSavingLocation(path, deselect, changeToCalibrate=false, button = null) {
+function browseSavingLocation(deselect, changeToCalibrate=false, button = null) {
     // Temporarily disable the button to prevent multiple clicks
     $(button).prop("disabled", true);
     setTimeout(() => {
