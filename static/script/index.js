@@ -335,7 +335,6 @@ function calModeBehaviour() {
         'json-display',
         'export-analysis',
         'range-display',
-        'concentration-reader-section',
         'full-display-section',
         'split-sensor-section',
         'log-hid-data',
@@ -347,7 +346,6 @@ function calModeBehaviour() {
 
     const removeHidden = [
         'cal-json-exp-section',
-        'split-mode-section',
         'select-regress-algo',
         'export-coef',
         'func-desc'

@@ -15,13 +15,6 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
 
         $id("copy-file-btn").disabled = false;
         $id("download-file-btn").disabled = false;
-        $id("split-mode").checked = false;
-
-        // Hide both canvases
-        ["blanked-canvas", "non-blanked-canvas"].forEach(id => {
-            const el = $id(id);
-            if (el) el.style.display = "none";
-        });
 
         // Reset range values
         $id("range-value-start").value = 0;
@@ -557,39 +550,15 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
     }
 }
 
-function settingDerivedCon(jsonFile) {
+function settingDerivedCon() {
     let derived_section = null;
     let derived_con_text = null;
-    switch(jsonFile["for_blank_type"]) {
-        case "MIXED":
-            derived_section = [];
-            derived_con_text = [];
-            if (AppState.multiSource) {
-                for (let i = 0; i < AppState.numSources; i++) {
-                    derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
-                    derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
-                }
-            }
-            else { 
-                if (!getBtnChecked("split-mode")) {
-                    derived_section = document.getElementById('derived-concentration-section');
-                    derived_con_text = document.getElementById('der-con-value');
-                }
-            }
-            break;
-        case "BLANKED":
-            if (getBtnChecked("split-mode")) {
-                derived_section = document.getElementById('blank-derived-concentration-section');
-                derived_con_text = document.getElementById('blank-der-con-value');
-            }
-            break;
-        case "NON-BLANKED":
-            if (getBtnChecked("split-mode")) {
-                derived_section = document.getElementById('non-blank-derived-concentration-section');
-                derived_con_text = document.getElementById('non-blank-der-con-value');
-            }
-            break;
-    }
+    derived_section = [];
+    derived_con_text = [];
+        for (let i = 0; i < AppState.numSources; i++) {
+            derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
+            derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
+        }
     return {
         derived_section: derived_section,
         derived_con_text: derived_con_text
@@ -706,21 +675,6 @@ function handleMultiSource(derived_section, derived_con_text) {
     }
 };
 
-function handleSingleSource(derived_section, derived_con_text) {
-    if (derived_section) {
-        derived_section.classList.remove("hidden");
-        $hidden(["select-quantity-section"], AppState.currentMeasurementMode !== "kinetics");
-        derived_con_text.classList.add("blinking");
-    } else {
-        $hidden([
-            "select-quantity-section",
-            "derived-concentration-section",
-            "blank-derived-concentration-section",
-            "non-blank-derived-concentration-section"
-        ]);
-    }
-};
-
 function processKineticsMode(jsonFile) {
     const conQuantityInput = document.getElementById('regressed-quantity').value;
     const analysisExtraction = calculateKineticValue(conQuantityInput);
@@ -820,34 +774,13 @@ function handleFetchError(error) {
     }
 }
 
-function toggleConValueTextbox() {
-    if (!AppState.multiSource) {
-        // Process concentration value input
-        const conValueInput = document.getElementById('con-value-read');
-        const conValueFromFile = AppState.metaData["Concentration"] || "NONE";
-
-        conValueInput.disabled = conValueFromFile.toLowerCase() !== "none";
-        conValueInput.value = conValueFromFile !== "NONE" ? conValueFromFile : "";
-    } 
-    return; 
-}
-
-function getKineticValue(property, blankType, multi_source=AppState.multiSource) {
+function getKineticValue(property) {
     const analysis = AppState.globalAnalysis;
-    switch(blankType) {
-        case "MIXED": 
-            if (multi_source) {
-                let values = [];
-                analysis.sources.forEach(source => {
-                    values.push(source[property]);
-                });
-                return values.length > 0 ? values : null;
-            }
-            return analysis ? analysis[property] : null;
-        case "BLANKED": return analysis ? analysis[`${property}_blanked`] : null;
-        case "NON-BLANKED": return analysis ? analysis[`${property}_non_blanked`] : null;
-        default: return null;
-    }
+    let values = [];
+    analysis.sources.forEach(source => {
+        values.push(source[property]);
+    });
+    return values.length > 0 ? values : null;
 }
 
 function updateRefCalPoint(jsonFile) {
@@ -1080,37 +1013,12 @@ function generateKineticsData() {
             }];
         }
     } else {
-        const blankType = document.getElementById("exp-json-blank-type").value;
-        const splitMode = getBtnChecked("split-mode");
-        const dataMap = {
-            "MIXED": !splitMode && {
-                maxrate: AppState.globalAnalysis.maxrate,
-                slope: AppState.globalAnalysis.slope,
-                saturationValue: AppState.globalAnalysis.sat,
-                timeToSaturation: AppState.globalAnalysis.time_to_sat
-            },
-            "BLANKED": splitMode && {
-                maxrate: AppState.globalAnalysis.maxrate_blanked,
-                slope: AppState.globalAnalysis.slope_blanked,
-                saturationValue: AppState.globalAnalysis.sat_blanked,
-                timeToSaturation: AppState.globalAnalysis.time_to_sat_blanked
-            },
-            "NON-BLANKED": splitMode && {
-                maxrate: AppState.globalAnalysis.maxrate_non_blanked,
-                slope: AppState.globalAnalysis.slope_non_blanked,
-                saturationValue: AppState.globalAnalysis.sat_non_blanked,
-                timeToSaturation: AppState.globalAnalysis.time_to_sat_non_blanked
-            }
-        };
-
-        const data = dataMap[blankType];
-        if (!data) return null;
-
+        const exportSensor = getValInt("exp-json-sensor") - 1;
         return [{
-            ...data,
-            maxrate: data.maxrate * getTimeUnitMultiplier('minutes'),
-            slope: data.slope * getTimeUnitMultiplier('minutes'),
-            timeToSaturation: data.time_to_saturation / getTimeUnitMultiplier('minutes'),
+            maxrate: AppState.globalAnalysis.sources[exportSensor].maxrate * getTimeUnitMultiplier('minutes'),
+            slope: AppState.globalAnalysis.sources[exportSensor].slope * getTimeUnitMultiplier('minutes'),
+            saturationValue: AppState.globalAnalysis.sources[exportSensor].sat,
+            timeToSaturation: AppState.globalAnalysis.sources[exportSensor].time_to_sat / getTimeUnitMultiplier('minutes'),
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
         }];
