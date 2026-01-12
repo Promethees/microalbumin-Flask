@@ -23,13 +23,17 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
             allData: data
         };
 
-    const Args = [
+    let Args = [
         allGroups,
         XColumn,
         YColumn
     ]
-    return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
-
+    if (AppState.currentMeasurementMode === "calibrate") {
+        Args.push(rawData);
+        return calibrateRoutine(...Args);
+    } else {
+        return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
+    }
     setTimeout(() => {
         chartContainer.scrollTop = scrollPosition;
     }, 0);
@@ -462,24 +466,18 @@ function addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUni
     }
 }
 
-function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
+function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     let mixAnalysis = null;
-    let filteredData, XColumnVals, YColumnVals;
+    let XColumnVals, YColumnVals;
     const measUnit = getMetaUnit(AppState.metaData);
 
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        filteredData = filteredByRangeValue(getBtnChecked("full-display-plot"), allGroups.allData, XColumn, Array.isArray(YColumn) ? YColumn[0] : YColumn);
-        XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
-        YColumnVals = extractColumnAndNormalize(filteredData, YColumn);
-        mixAnalysis = calculateKineticsQuantities(allGroups.allXColumn, allGroups.allYColumn, getValInt("window-size"));
-    } else {
-        XColumnVals = extractColumnAndConvert(allGroups.allData, XColumn);
-        YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allData, y)) : [extractColumnAndNormalize(allGroups.allData, YColumn)];
-        if (calDiv.getAttribute('data-value') === "kinetics") {
-            mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
-        } else if (calDiv.getAttribute('data-value') === "point") {
-            mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allData, YColumn), extractColumnAndConvert(allGroups.allData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
-        }
+
+    XColumnVals = extractColumnAndConvert(allGroups.allData, XColumn);
+    YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allData, y)) : [extractColumnAndNormalize(allGroups.allData, YColumn)];
+    if (calDiv.getAttribute('data-value') === "kinetics") {
+        mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
+    } else if (calDiv.getAttribute('data-value') === "point") {
+        mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allData, YColumn), extractColumnAndConvert(allGroups.allData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
     }
 
     // Generate chart
@@ -488,28 +486,18 @@ function defaultRoutine(allGroups, XColumn, YColumn, rawData) {
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
 
     // Update analysis info display
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        // Format analysis info before chart creation
-        const mixAnalysisInfo = formatAnalysisInfo(mixAnalysis, labels[0]);
-        updateSingleModeAnalysisInfo(mixAnalysisInfo);
-    } else {
-        let htmlString = "";
-        if (calDiv.getAttribute('data-value') === "kinetics") {
-            htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
-        } else if (calDiv.getAttribute('data-value') === "point") {
-            htmlString = getCalPointString(mixAnalysis);
-        }
-        document.getElementById("plot-analysis").innerHTML = htmlString;
+    let htmlString = "";
+    if (calDiv.getAttribute('data-value') === "kinetics") {
+        htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
+    } else if (calDiv.getAttribute('data-value') === "point") {
+        htmlString = getCalPointString(mixAnalysis);
     }
+    document.getElementById("plot-analysis").innerHTML = htmlString;
 
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        return extractSingleResultSummary(AppState.metaData, mixAnalysis);
-    } else {
-        return {
-            analysis: mixAnalysis,
-            meas: AppState.metaData["Measurement"]
-        };
-    }
+    return {
+        analysis: mixAnalysis,
+        meas: AppState.metaData["Measurement"]
+    };
 }
 
 function filteredByRangeValue(isFullDisplay, data, XColumn, YColumn) {
