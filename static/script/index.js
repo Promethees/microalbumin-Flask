@@ -332,7 +332,8 @@ function kineticsModeBehaviour() {
         'range-display',
         'log-hid-data',
         'sensor-options',
-        'normalize-mode-section'
+        'normalize-mode-section',
+        'select-sensor-to-export',
     ];
 
     $hidden(addHidden, true);
@@ -361,7 +362,8 @@ function pointModeBehaviour() {
         'range-display',
         'log-hid-data',
         'sensor-options',
-        'normalize-mode-section'
+        'normalize-mode-section',
+        'select-sensor-to-export'
     ];
 
     $hidden(addHidden, true);
@@ -383,7 +385,9 @@ function calModeBehaviour() {
         'window-size-section',
         'sensor-options',
         'normalize-mode-section',
-        'select-sensor-to-export'
+        'select-sensor-to-export',
+        'sensor-options',
+        'num-sources-section'
     ];
 
     const removeHidden = [
