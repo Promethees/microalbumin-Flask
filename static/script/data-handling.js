@@ -833,6 +833,7 @@ function updatePlotBasedOnMode(jsonFile) {
             AppState.exp_json_content = updatePlot(processingData, "Concentration", "Value");
         }
     } else {
+        updateMultiSourceExportOptions();
         if (AppState.currentMeasurementMode === "point" && jsonFile) {
             updateRefCalPoint(jsonFile);
             document.getElementById("add-json-section").textContent = "";
@@ -941,6 +942,7 @@ function validateConcentration() {
             return false;
         }
     }
+    return true;
 }
 
 // Generate analysis data based on measurement mode
