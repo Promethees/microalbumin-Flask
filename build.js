@@ -24,7 +24,7 @@ const OBFUSCATOR_OPTIONS = {
   reservedNames: getReservedNamesFromHTML(),
   stringArray: true,
   stringArrayThreshold: 1,
-  transformObjectKeys: true,
+  transformObjectKeys: false,
   unicodeEscapeSequence: true,
   selfDefending: true,
 };
