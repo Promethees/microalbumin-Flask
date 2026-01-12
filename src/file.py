@@ -59,7 +59,8 @@ def get_dynamic_data(file_path):
                 'data': data,
                 'unit': unit,
                 'error': None,
-                'metadata': metadata
+                'metadata': metadata,
+                'num_sources': len([col for col in df.columns if col.startswith('Value:')]) if 'Value:' in ''.join(df.columns) else 1
             }
 
         elif file_path.lower().endswith('.json'):
