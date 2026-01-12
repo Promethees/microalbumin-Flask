@@ -19,7 +19,7 @@ import shutil
 from pathlib import Path
 
 sys.path.append('code\src')
-from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
+from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories, is_multi_value_timeseries_csv_header
 from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
@@ -437,7 +437,6 @@ def edit_file():
         path = request.form.get('path') if request.form.get('path') else get_directory()
         content = request.form.get('content')
         calibrate_mode = request.form.get('calibrate_mode')
-        multi_source = request.form.get('multi_source', 'false').lower() == 'true'
 
         # Input validation
         if not file_name or not content:
@@ -492,25 +491,19 @@ def edit_file():
         else:  # CSV validation
             pattern_sets = [
                 {
-                    'header': r"^Timestamp,Value,Type,Blanked$",
-                    'data': r"^\d+\.{0,1}\d{0,2},(\-{0,1}\d+\.{0,1}\d{0,3}|OVFL),[A-Za-z]+,(TRUE|FALSE)$",
-                    'meta': ["Measurement", "Unit", "Concentration"],
-                    'error': 'Invalid format (Colorimeter data). Header must be: Timestamp,Measurement,Value,Type,Blanked. Metadata must include Measurement, Unit, and Concentration.'
-                },
-                {
-                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat,BlankType$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
+                    'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
                 },
                 {
-                    'header': r"^Concentration,Value,TimePoint,BlankType$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*),(MIXED|BLANKED|NON-BLANKED)$",
+                    'header': r"^Concentration,Value,TimePoint$",
+                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint,BlankType. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
+                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
                 },
                 {
-                    'header': r'^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$',
+                    'header_test': is_multi_value_timeseries_csv_header,
                     'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$',
                     'meta': ["Measurement", "Unit", "Concentration"],
                     'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
@@ -538,16 +531,22 @@ def edit_file():
             header_line = data_lines[0].replace(" ", "")
             matched_pattern = None
             for pattern in pattern_sets:
-                if re.match(pattern['header'], header_line):
+                if 'header_test' in pattern:
+                    if pattern['header_test'](header_line):
+                        matched_pattern = pattern
+                        break
+                if 'header' in pattern and re.match(pattern['header'], header_line):
                     matched_pattern = pattern
                     break
 
             if not matched_pattern:
-                valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
                 return jsonify({
                     'status': 'error',
-                    'message': f'Invalid CSV header. Must match one of: {valid_headers}'
-                }), HTTPStatus.BAD_REQUEST
+                    'message': 'Invalid CSV header. Supported formats:\n'
+                            '1. Concentration,maxRate,Slope,Sat,TimeToSat\n'
+                            '2. Concentration,Value,TimePoint\n'
+                            '3. Timestamp,Value:1,Value:2,...\n'
+                }), 400
 
             # --- Validate metadata for this pattern ---
             required_meta = matched_pattern.get("meta", [])
@@ -591,7 +590,7 @@ def edit_file():
                     with open(new_file_path, 'w') as f:
                         f.write(content)
                     if calibrate_mode:
-                        sort_csv_file(new_file_path, calibrate_mode, multi_source)
+                        sort_csv_file(new_file_path, calibrate_mode)
                 f.close()
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
@@ -789,7 +788,43 @@ def copy_file():
             'status': 'error',
             'message': 'An unexpected error occurred while copying the file'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
-         
+
+@app.route('/get_num_sources', methods=['GET'])
+def get_num_sources():
+    directory = request.args.get('path') if request.args.get('path') else get_directory()
+    possible_counts = set()
+
+    for filename in os.listdir(directory):
+        if not filename.lower().endswith('.csv'):
+            continue
+
+        full_path = os.path.join(directory, filename)
+        if not os.path.isfile(full_path):
+            continue
+
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+
+                    # This is the first real data line → probably header
+                    if is_multi_value_timeseries_csv_header(line):
+                        columns = [c.strip() for c in line.split(',')]
+                        value_count = sum(1 for c in columns[1:] if c.startswith('Value:'))
+                        if value_count > 0:
+                            possible_counts.add(value_count)
+                    break  # We only care about the header
+
+        except Exception:
+            continue  # skip broken files silently
+
+    return jsonify({
+        'status': 'success',
+        'num_sources': sorted(list(possible_counts))
+    })
+
 @app.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
@@ -932,7 +967,6 @@ def export_cal_coefs():
     data = request.get_json()
     fit_type = data.get('fit_type')
     for_meas = data.get('for_meas')
-    for_blank_type = data.get('for_blank_type')
     coef_content = data.get('coef_content')
     time = data.get('time')
     time_unit = "minute"
@@ -957,7 +991,7 @@ def export_cal_coefs():
         full_path = get_next_filename(".json", export_path, file_name)
 
         json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val, regress_algo), regress_algo)
-        json_content.update({"fit_type": fit_type, "for_meas": for_meas, "for_blank_type": for_blank_type})
+        json_content.update({"fit_type": fit_type, "for_meas": for_meas})
 
         if (cal_mode == "point"):
             json_content.update({"time": time, "time-unit": time_unit})
