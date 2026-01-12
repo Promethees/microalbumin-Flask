@@ -1004,7 +1004,7 @@ function exportJSONCoef() {
     }
     
     const selectElement = document.getElementById('regressed-quantity');
-    if (calDiv.getAttribute('data-value') === "point" && (!$document.getElementById("regressed-time-point").value)){
+    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)){
         alert("Please set time point to regress data from");
         return null;
     } else {
