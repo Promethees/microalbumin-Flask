@@ -59,7 +59,7 @@ document.getElementById('filter-source').addEventListener('change', function() {
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
-        $.get('/get_num_sources', { request: true }, function (response) {
+        $.get('/get_num_sources?path=' + document.getElementById("directory").value, { request: true }, function (response) {
             const select = document.getElementById('num-sources');
             select.innerHTML = ''; // clear existing options (optional)
             response.num_sources.forEach(num => {

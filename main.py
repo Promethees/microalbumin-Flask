@@ -438,7 +438,6 @@ def edit_file():
         path = request.form.get('path') if request.form.get('path') else get_directory()
         content = request.form.get('content')
         calibrate_mode = request.form.get('calibrate_mode')
-        multi_source = request.form.get('multi_source', 'false').lower() == 'true'
 
         # Input validation
         if not file_name or not content:
@@ -537,7 +536,7 @@ def edit_file():
                     if pattern['header_test'](header_line):
                         matched_pattern = pattern
                         break
-                if re.match(pattern['header'], header_line):
+                if 'header' in pattern and re.match(pattern['header'], header_line):
                     matched_pattern = pattern
                     break
 
@@ -592,7 +591,7 @@ def edit_file():
                     with open(new_file_path, 'w') as f:
                         f.write(content)
                     if calibrate_mode:
-                        sort_csv_file(new_file_path, calibrate_mode, multi_source)
+                        sort_csv_file(new_file_path, calibrate_mode)
                 f.close()
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
@@ -793,7 +792,7 @@ def copy_file():
 
 @app.route('/get_num_sources', methods=['GET'])
 def get_num_sources():
-    directory = get_directory()
+    directory = request.args.get('path') if request.args.get('path') else get_directory()
     possible_counts = set()
 
     for filename in os.listdir(directory):
@@ -824,9 +823,7 @@ def get_num_sources():
 
     return jsonify({
         'status': 'success',
-        'possible_num_sources': sorted(list(possible_counts)),
-        'found_files': len(possible_counts) > 0,
-        'directory': directory
+        'num_sources': sorted(list(possible_counts))
     })
 
 @app.route('/get_data', methods=['GET'])
