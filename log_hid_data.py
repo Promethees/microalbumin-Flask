@@ -166,7 +166,7 @@ class HIDDataCollector:
             for key, value in self.metadata.items():
                 f.write(f"# {key.title()}: {value}\n")
             # Convert header to desired case
-            header = line.replace('TIMESTAMP', 'Timestamp').replace('VALUE:', 'Value ')
+            header = line.replace('TIMESTAMP', 'Timestamp').replace('VALUE', 'Value')
             f.write(header)
         self.log(f"New session started. Header written to {self.output_file}")
 
