@@ -14,7 +14,7 @@ import json
 from http import HTTPStatus
 from datetime import datetime
 import re
-from filelock import FileLock
+from filelock import FileLock, Timeout
 import shutil
 from pathlib import Path
 
@@ -575,7 +575,7 @@ def edit_file():
         # Write the new content
         try:
             lock_path = new_file_path + '.lock'
-            lock = FileLock(lock_path, timeout=10)
+            lock = FileLock(lock_path, timeout=0)
 
             try:
                 lock.acquire()
@@ -603,6 +603,11 @@ def edit_file():
                             os.unlink(lock_path)
                         except:
                             pass
+            except Timeout:
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Another save is in progress or previous save crashed'
+                    }), 423   # 423 = Locked
             finally:
                 lock.release()
                 
