@@ -14,7 +14,7 @@ import json
 from http import HTTPStatus
 from datetime import datetime
 import re
-from filelock import FileLock
+from filelock import FileLock, Timeout
 import shutil
 from pathlib import Path
 
@@ -575,23 +575,42 @@ def edit_file():
         # Write the new content
         try:
             lock_path = new_file_path + '.lock'
-            with FileLock(lock_path):
-                if new_file_name.endswith('.json'):
-                    # Load the original content
-                    parsed_json = json.loads(content)
+            lock = FileLock(lock_path, timeout=0)
 
-                    # Replace all empty values with "NONE"
-                    cleaned_json = replace_empty(parsed_json)
+            try:
+                lock.acquire()
+                try:
+                    if new_file_name.endswith('.json'):
+                        # Load the original content
+                        parsed_json = json.loads(content)
 
-                    # Pretty-print to the new file
-                    with open(new_file_path, 'w', encoding='utf-8') as f:
-                        json.dump(cleaned_json, f, indent=2, ensure_ascii=False)
-                else:
-                    with open(new_file_path, 'w') as f:
-                        f.write(content)
-                    if calibrate_mode:
-                        sort_csv_file(new_file_path, calibrate_mode)
-                f.close()
+                        # Replace all empty values with "NONE"
+                        cleaned_json = replace_empty(parsed_json)
+
+                        # Pretty-print to the new file
+                        with open(new_file_path, 'w', encoding='utf-8') as f:
+                            json.dump(cleaned_json, f, indent=2, ensure_ascii=False)
+                    else:
+                        with open(new_file_path, 'w') as f:
+                            f.write(content)
+                        if calibrate_mode:
+                            sort_csv_file(new_file_path, calibrate_mode)
+                    f.close()
+                finally:
+                    # Force cleanup even if exception
+                    if os.path.exists(lock_path):
+                        try:
+                            os.unlink(lock_path)
+                        except:
+                            pass
+            except Timeout:
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Another save is in progress or previous save crashed'
+                    }), 423   # 423 = Locked
+            finally:
+                lock.release()
+                
             if file_name != new_file_name:
                 os.remove(file_path)  # Remove old file if renamed
             return jsonify({
