@@ -41,15 +41,9 @@ class HIDDataCollector:
         self.running = True
         self.buffer = ""
         self.metadata = {}
-        self.metadata_pattern = r"^3 (MEASUREMENT|UNIT|CONCENTRATION):\s*([A-Za-z0-9]+)$"
-        self.main_header_pattern = [
-            r"^TIMESTAMP,VALUE,TYPE,BLANKED\n$",  # Single value case
-            r"^TIMESTAMP,VALUE:\d+(?:,VALUE:\d+)*\n$"  # Generic case for VALUE:1, VALUE:2, ..., VALUE:n
-        ]
-        self.data_pattern = [
-            r"^\d+\.\d{1,2},\d+\.\d{1,3},[A-Za-z0-9]+,(TRUE|FALSE)\n$",  # Single value case
-            r"^\d+\.\d{1,2},\d+\.\d{1,3}(?:,\d+\.\d{1,3})*\n$"  # Generic case for n values
-        ]
+        self.metadata_pattern = r"^3 (MEASUREMENT|UNIT|CONCENTRATION):\s*([A-Za-z0-9μ]+)$"
+        self.header_pattern = r"^TIMESTAMP,VALUE:\d+(?:,VALUE:\d+)*\n$"
+        self.data_pattern = r"^\d+\.\d{1,2},(?:\d+\.\d{1,3}|OVFL)(?:,(?:\d+\.\d{1,3}|OVFL))*\n$"
         self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
         self.current_header_index = None  # Track which header pattern is active
@@ -57,11 +51,12 @@ class HIDDataCollector:
         self.device = None
         self.endpoint = None
         self.interface = None
-        # Initialize log file in /log directory
+
+        # Logging setup
         self.log_dir = os.path.join(os.getcwd(), "log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.log_file_path = os.path.join(self.log_dir, "script_logs.txt")
-        self.log_file = open(self.log_file_path, 'a')
+        self.log_file = open(self.log_file_path, 'a', encoding='utf-8')
 
     def log(self, message):
         """Write a message to the log file with a timestamp."""
@@ -73,7 +68,9 @@ class HIDDataCollector:
         """Find the PyBadge USB device by VID and PID."""
         device = usb.core.find(idVendor=PYBADGE_VID, idProduct=PYBADGE_PID)
         if device is None:
+            self.log("PyBadge not found.")
             return None
+        self.log("PyBadge found.")
         return device
 
     def find_input_endpoint(self):
@@ -123,7 +120,6 @@ class HIDDataCollector:
                         self.session_started = False
                         self.buffer = ''
                         self.metadata = {}
-                        self.current_header_index = None
                         self.num_values = None
                     else:
                         self.log(f"Unexpected line: {line_with_newline}")
@@ -144,25 +140,22 @@ class HIDDataCollector:
         return bool(re.match(self.metadata_pattern, line))
 
     def is_main_header(self, line):
-        """Check if the line matches any of the main header patterns."""
-        for i, pattern in enumerate(self.main_header_pattern):
-            if re.match(pattern, line):
-                self.current_header_index = i
-                if i == 1:  # Generic header case
-                    # Count the number of VALUE fields
-                    headers = line.strip().split(',')
-                    self.num_values = len(headers) - 1  # Subtract TIMESTAMP
-                else:
-                    self.num_values = 1  # Single value case
-                return True
+        """Check if the line matches the main header pattern."""
+        if re.match(self.header_pattern, line.strip()):
+            headers = line.strip().split(',')
+            self.num_values = len(headers) - 1  # exclude TIMESTAMP
+            return True
         return False
-    
+
     def is_valid_data(self, line):
-        """Check if the line matches the data pattern corresponding to the current header."""
-        if self.current_header_index is None:
+        """Check if data lines are corresponding to the headers"""
+        if self.num_values is None:
             return False
-        return bool(re.match(self.data_pattern[self.current_header_index], line))
-    
+        if not re.match(self.data_pattern, line.strip()):
+            return False
+        values = line.strip().split(',')
+        return len(values) == self.num_values + 1  # +1 for timestamp
+
     def is_end_session(self, line):
         """Check if the line matches the session end pattern."""
         return bool(re.match(self.end_pattern, line))
@@ -190,7 +183,7 @@ class HIDDataCollector:
             for key, value in self.metadata.items():
                 f.write(f"# {key.title()}: {value}\n")
             # Convert header to desired case
-            header = line.replace('TIMESTAMP', 'Timestamp').replace('VALUE', 'Value').replace('TYPE', 'Type').replace('BLANKED', 'Blanked')
+            header = line.replace('TIMESTAMP', 'Timestamp').replace('VALUE', 'Value')
             f.write(header)
         self.log(f"New session started. Header written to {self.output_file}")
 
@@ -199,7 +192,7 @@ class HIDDataCollector:
         open(latest_file_marker, "w").close()
         with open(latest_file_marker, "w", encoding='utf-8') as marker:
             marker.write(self.output_file)
-        
+
         self.session_started = True
 
     def process_data(self, data):
@@ -207,14 +200,8 @@ class HIDDataCollector:
         try:
             fields = data.strip().split(',')
             timestamp = fields[0]
-            if self.current_header_index == 0:  # Single value case
-                values = [fields[1]]
-                type_tag = fields[2]
-                blanked = fields[3]
-                log_message = f"Received: Timestamp: {timestamp}s, Value: {values[0]}, Type: {type_tag}, Blanked: {blanked}"
-            else:  # Generic case
-                values = fields[1:]  # All fields after timestamp
-                log_message = f"Received: Timestamp: {timestamp}s, Values: {', '.join(values)}"
+            values = fields[1:]  # All fields after timestamp
+            log_message = f"Received: Timestamp: {timestamp}s, Values: {', '.join(values)}"
             self.log(log_message)
             with open(self.output_file, "a", encoding='utf-8') as f:
                 f.write(data)
