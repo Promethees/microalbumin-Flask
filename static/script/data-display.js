@@ -912,10 +912,10 @@ function findYDimension(allYValues, labels) {
     } else {
         // Original logic for non-equal Y values
         if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-sensor")) {
-            yMin = 0;
+            yMin = Math.min(Math.min(...allYValues), 0);
             yMax = 0.6;      
         } else {
-            yMin = 0;
+            yMin = Math.min(Math.min(...allYValues), 0);
             yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
         }
         yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
