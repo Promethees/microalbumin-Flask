@@ -528,7 +528,8 @@ def get_num_sources():
 
             df = pd.read_csv(StringIO("\n".join(lines)))
             count = sum(col.startswith('Value:') for col in df.columns)
-            num_sources.add(count)
+            if count > 0:
+                num_sources.add(count)
 
         except Exception:
             # optionally log the error
