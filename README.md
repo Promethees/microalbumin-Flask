@@ -68,13 +68,6 @@ This document provides instruction on deploying a web interface that helps visua
 	- Format for [`Multiple Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/multi.csv)
 
 * ***Data Display***:
-	- `Display Range` Modification in display range changes the displayed data and respective unit displayed on the plot. 
-	- `Split by Blanked` Seperate data points into 2 plots, ***Blanked*** and ***Non-Blanked***, which is set by value of column ['Blanked'] in the browsed csv.
-
-	<div align="center">
-		<img src="/images/blank.png" width="600">
-	</div>
-
 	- `Full Display` Enable, Disable graphics of `maxRate` (maximum reaction velocity throughout the process), `Linear` (average speed along reaction stage), `Sat` (Measured value at saturating point when no longer reactions happening) lines. When it is checked and a csv file is being browsed, all data of that file will be shown and `Display Range` value should be disabled.
 	- In `kinetics` and `point` measurement modes, displayed data should show Measurement values (i.e Absorbance agains Time) 
 
@@ -95,7 +88,7 @@ This document provides instruction on deploying a web interface that helps visua
 	</div>
 
 
-* `Display Range` Filter data by time range and unit (seconds, minutes, hours). Only latest `<time><unit>` data points will be displayed. Disabled in `calibrate` mode
+* `Display Range` Modifications in display range change the displayed data and respective unit displayed on the plot. 
 
 <div align="center">
 	<img src="/images/displayrange.png" width="600">
@@ -109,9 +102,6 @@ This document provides instruction on deploying a web interface that helps visua
 
 * `Export Analysis` 
 	- Become ***Export coefficients for standard curve*** in `calibrate` mode
-	- For both `kinetics` and `point` modes:
-			+ Set `Display Unit` to `minutes` to ensure consistency among exported readings
-			+ When setting export of analysis for Blank Type `MIXED`, display graphic must be in non Split mode. In the opposite way, whenever Blank Type is either `BLANKED` or `NON-BLANKED`, Split mode is needed (also applied in `calibrate` mode)
 	- For `point` mode, key in the time point, the system will export with corresponding approximated measurement value at that time point for you. 
 	<div align="center">
 		<img src="/images/exportA.png" width="600">
@@ -124,14 +114,14 @@ This document provides instruction on deploying a web interface that helps visua
 
 	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
 
-* `Multiple sources analysis` Allows users to perform data analysis for multiple measuring sources. Controller is placed on the top-left of the interface
+* `Filter number of sources` Allows users to filter csv data files based on number of data sources available.
 
-	- Multi source control panel dropdown. Uncheck to enter single source mode
+	- Filter source control panel dropdown. Uncheck to disable the filter
 	<div align="center">
-		<img src="/images/multi-meas-control.png" width="600">
+		<img src="/images/filter-control.png" width="600">
 	</div>
 
-	- Typical multiple source display
+	- Typical multiple sources display
 	<div align="center">
 		<img src="/images/multi-meas-display.png" width="600">
 	</div>
