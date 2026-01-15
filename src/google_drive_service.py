@@ -16,6 +16,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 
+from cryptography.fernet import Fernet, InvalidToken  # NEW: For decryption
+
 from user_data import (
     get_user_data, get_drive_credentials, set_drive_credentials,
     get_drive_folder, set_drive_folder, set_drive_preference
@@ -55,18 +57,36 @@ def get_drive_service(user_id: str = None):
         return None
 
 
+def load_encrypted_credentials() -> Dict:
+    """
+    Load and decrypt credentials from encrypted file.
+    Raises exceptions on failure for security/logging.
+    """
+    if not Config.GOOGLE_ENCRYPTION_KEY:
+        raise ValueError("GOOGLE_ENCRYPTION_KEY not set in environment")
+
+    if not os.path.exists(Config.GOOGLE_CREDENTIALS_FILE):
+        raise FileNotFoundError(f"Encrypted credentials file not found: {Config.GOOGLE_CREDENTIALS_FILE}")
+
+    with open(Config.GOOGLE_CREDENTIALS_FILE, 'rb') as f:
+        encrypted_data = f.read()
+
+    try:
+        fernet = Fernet(Config.GOOGLE_ENCRYPTION_KEY.encode())  # Key must be bytes
+        decrypted_data = fernet.decrypt(encrypted_data)
+        return json.loads(decrypted_data.decode('utf-8'))
+    except (InvalidToken, ValueError) as e:
+        raise ValueError(f"Failed to decrypt credentials: Invalid key or corrupted file ({str(e)})")
+
+
 def create_oauth_flow(redirect_uri: str = None) -> Flow:
-    """Create OAuth 2.0 flow for authentication."""
+    """Create OAuth 2.0 flow for authentication using decrypted credentials."""
     redirect_uri = redirect_uri or Config.GOOGLE_REDIRECT_URI
     
-    if not os.path.exists(Config.GOOGLE_CLIENT_SECRETS_FILE):
-        raise FileNotFoundError(
-            f"Client secrets file not found: {Config.GOOGLE_CLIENT_SECRETS_FILE}. "
-            "Please download credentials.json from Google Cloud Console."
-        )
+    client_config = load_encrypted_credentials()
     
-    flow = Flow.from_client_secrets_file(
-        Config.GOOGLE_CLIENT_SECRETS_FILE,
+    flow = Flow.from_client_config(
+        client_config,
         scopes=Config.GOOGLE_SCOPES,
         redirect_uri=redirect_uri
     )
