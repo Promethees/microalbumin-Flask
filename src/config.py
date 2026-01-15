@@ -14,3 +14,8 @@ class Config:
     CLEANUP_DELAY = 300  # 5 minutes in seconds
     WARNING_THRESHOLD = 60  # Warn 1 minute before cleanup
     ALLOWED_EXTENSIONS = {'txt', 'docx', 'html', 'md', 'rtf'}
+    
+    # Google Drive API
+    GOOGLE_CLIENT_SECRETS_FILE = 'credentials.json'
+    GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
+    GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')

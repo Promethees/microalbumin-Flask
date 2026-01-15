@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,27 +9,31 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cbb.ico') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
 </head>
+
 <body class="light">
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
-                <img src="{{ url_for('static', filename='cbb.png') }}" style="height: 70px; width: 60px; cursor: pointer;" id="logo" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
-                
+                <img src="{{ url_for('static', filename='cbb.png') }}"
+                    style="height: 70px; width: 60px; cursor: pointer;" id="logo"
+                    onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+
                 <div id="title" class="title-place">
                     <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
                     <h1 class="okapi-line" style="font-size: 20px;">
-                        <span style="color: #3498db;">Easy</span> OKAPI 
+                        <span style="color: #3498db;">Easy</span> OKAPI
                         <img src="{{ url_for('static', filename='okapi.png') }}" alt="Okapi Logo" class="okapi-img">
                     </h1>
                 </div>
-                
+
                 <div class="toggle-container" id="toggleContainer">
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
@@ -41,13 +46,13 @@
                     {% endfor %}
                 </div>
             </div>
-            <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
+            <div class="section hidden" style="position: static;" id="cal-json-exp-section">
                 <h3>Calibrating for:</h3>
                 <div id="cal-mode-select" class="button-group" data-value="">
                     <button data-mode="kinetics">kinetics</button>
                     <button data-mode="point">point</button>
                 </div>
-            </div>  
+            </div>
             <div class="section" style="position: static;" id="options-section">
                 <h3>Options</h3>
                 <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -62,7 +67,7 @@
                             Filter by number of sources
                         </label>
 
-                        <div id="num-sources-section" class="hidden"> 
+                        <div id="num-sources-section" class="hidden">
                             <label for="num-sources">Number of sources:</label>
                             <select id="num-sources">
                             </select>
@@ -70,67 +75,171 @@
                     </div>
                 </div>
             </div>
-        </div>    
+            <div class="section" style="position: static;" id="drive-section">
+                <h3>☁️ Google Drive Storage</h3>
+
+                <!-- Mode Indicator -->
+                <div id="drive-mode-indicator" style="margin-bottom: 10px;">
+                    <span id="drive-mode-badge" class="badge-guest"
+                        style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">Guest
+                        Mode</span>
+                    <span id="drive-mode-description" style="margin-left: 8px; font-size: 0.9em; color: #cccccc;">Data
+                        will not be saved</span>
+                </div>
+
+                <!-- Connect/Disconnect Controls -->
+                <div id="drive-connection-controls" style="margin-bottom: 15px;">
+                    <button id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
+                        style="padding: 8px 16px;">
+                        🔗 Connect Google Drive
+                    </button>
+                    <button id="drive-disconnect-btn" onclick="disconnectGoogleDrive()" class="hidden danger-btn"
+                        style="padding: 8px 16px;">
+                        🔌 Disconnect Drive
+                    </button>
+                </div>
+
+                <!-- Folder Selection (shown when connected) -->
+                <div id="drive-folder-section" class="hidden">
+                    <h4 style="margin-top: 15px;">Select Storage Folder</h4>
+                    <div class="folder-selection-group" style="margin-bottom: 10px;">
+                        <label style="margin-right: 15px;">
+                            <input type="radio" name="folder-choice" value="existing" checked
+                                onchange="toggleFolderChoice()">
+                            Use existing folder
+                        </label>
+                        <label>
+                            <input type="radio" name="folder-choice" value="new" onchange="toggleFolderChoice()">
+                            Create new folder
+                        </label>
+                    </div>
+
+                    <!-- Existing folder dropdown -->
+                    <div id="existing-folder-select" style="margin-bottom: 10px;">
+                        <select id="drive-folder-dropdown" onchange="selectDriveFolder()"
+                            style="width: 70%; margin-right: 5px;">
+                            <option value="">Loading folders...</option>
+                        </select>
+                        <button onclick="refreshFolderList()" class="icon-btn" style="padding: 6px 12px;">🔄</button>
+                    </div>
+
+                    <!-- New folder creation -->
+                    <div id="new-folder-create" class="hidden" style="margin-bottom: 10px;">
+                        <input type="text" id="new-folder-name" placeholder="Easy OKAPI Data"
+                            style="width: 60%; margin-right: 5px;" />
+                        <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;">Create
+                            Folder</button>
+                    </div>
+
+                    <div id="selected-folder-display" class="hidden"
+                        style="margin-top: 10px; padding: 8px; background: #ecf0f1; border-radius: 4px;">
+                        📁 <strong id="current-folder-name"></strong>
+                    </div>
+                </div>
+
+                <!-- Sync Controls (shown when folder selected) -->
+                <div id="drive-sync-section" class="hidden">
+                    <h4 style="margin-top: 15px;">Sync Settings</h4>
+                    <label class="checkbox-label" style="display: block; margin-bottom: 10px;">
+                        <input type="checkbox" id="auto-sync-checkbox" onchange="updateAutoSyncPreference()">
+                        Auto-sync when closing browser
+                    </label>
+
+                    <div class="sync-buttons" style="margin-bottom: 10px;">
+                        <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px; margin-right: 8px;">
+                            ⬆️ Push to Drive
+                        </button>
+                        <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;">
+                            ⬇️ Pull from Drive
+                        </button>
+                    </div>
+
+                    <div id="last-sync-info" class="sync-info hidden" style="font-size: 0.85em; color: #7f8c8d;">
+                        Last synced: <span id="last-sync-time">Never</span>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>
                 <div id="file-table-container" class="scrollbar-style">
                     <table id="json-table" class="table">
-                        <tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>
+                        <tr>
+                            <th>Calibrated JSON</th>
+                            <th colspan="3">Action</th>
+                        </tr>
                         {% if cal_json_list %}
-                            {% for file in cal_json_list %}
-                            <tr>
-                                <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
-                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
-                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
-                            </tr>
-                            {% endfor %}
+                        {% for file in cal_json_list %}
+                        <tr>
+                            <td>{{ file }}</td>
+                            <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
+                            <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
+                            <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
+                        </tr>
+                        {% endfor %}
                         {% else %}
-                            <tr><td colspan="3">No Calibrated JSON is available.</td></tr>
+                        <tr>
+                            <td colspan="3">No Calibrated JSON is available.</td>
+                        </tr>
                         {% endif %}
-                    </table> 
+                    </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;" class="utility-btn">Deselect</button>
-                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled class="utility-btn">Copy</button>
-                <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;" class="utility-btn">Upload</button>
-                <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;" disabled class="utility-btn">Download</button>
+                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
+                    class="utility-btn">Deselect</button>
+                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
+                    class="utility-btn">Copy</button>
+                <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;"
+                    class="utility-btn">Upload</button>
+                <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;" disabled
+                    class="utility-btn">Download</button>
                 <div class="top-right" id="top-right">
-                    <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"class="hidden scrollbar-style"></div>
-                    <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
+                    <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
+                        class="hidden scrollbar-style"></div>
+                    <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
+                        style="cursor: pointer;">Deselect</button>
                 </div>
             </div>
             <div id="error-message"></div>
             <div class="section" id="file-selection" tabindex="-1">
-                <h2 >File Selection</h2>
+                <h2>File Selection</h2>
                 <div id="file-table-container" class="scrollbar-style">
                     <table id="file-table" class="table">
-                        <tr><th>File Name</th><th colspan="3">Action</th></tr>
+                        <tr>
+                            <th>File Name</th>
+                            <th colspan="3">Action</th>
+                        </tr>
                         {% if file_list %}
-                            {% for file in file_list %}
-                            <tr>
-                                <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
-                                <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
-                                <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
-                            </tr>
-                            {% endfor %}
+                        {% for file in file_list %}
+                        <tr>
+                            <td>{{ file }}</td>
+                            <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
+                            <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
+                            <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
+                        </tr>
+                        {% endfor %}
                         {% else %}
-                            <tr><td colspan="3">No CSV files is available.</td></tr>
+                        <tr>
+                            <td colspan="3">No CSV files is available.</td>
+                        </tr>
                         {% endif %}
                     </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;" class="utility-btn">Deselect</button>
-                <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled class="utility-btn">Copy</button>
-                <button id="upload-file-btn" onclick="uploadFile()" style="cursor: pointer;" class="utility-btn">Upload</button>
-                <button id="download-file-btn" onclick="downloadFile()" style="cursor: pointer;" disabled class="utility-btn">Download</button>
+                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;"
+                    class="utility-btn">Deselect</button>
+                <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
+                    class="utility-btn">Copy</button>
+                <button id="upload-file-btn" onclick="uploadFile()" style="cursor: pointer;"
+                    class="utility-btn">Upload</button>
+                <button id="download-file-btn" onclick="downloadFile()" style="cursor: pointer;" disabled
+                    class="utility-btn">Download</button>
             </div>
             <div class="section hidden" id="data-display-section">
                 <h2>Data Display</h2>
                 <!-- Display selected file name -->
                 <div id="selected-file-display">No file selected</div>
                 <div class="section" id="point-json-exp-section">
-                    Reference point is at <span type="number" id="cal-point"></span> 
+                    Reference point is at <span type="number" id="cal-point"></span>
                     <span id="cal-time-unit" style="font-weight: bold;">second</span>
                     </br>
                     <span id="add-json-section"></span>
@@ -144,8 +253,8 @@
                     Select quantity to derive concentration from
                     <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
-                            {% set transformed = quantity.lower().replace(' ', '_') %}
-                            <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
+                        {% set transformed = quantity.lower().replace(' ', '_') %}
+                        <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -155,7 +264,7 @@
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
-                <div id="select-regress-algo"> 
+                <div id="select-regress-algo">
                     Select Regress Algo to export:
                     <select id="exp-json-regress-algo" onchange="toggleMode()">
                         <option value="polynomial">polynomial</option>
@@ -169,9 +278,11 @@
                 <div class="section" id="range-display">
                     <h3>{{ range_input.title }}</h3>
                     From
-                    <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0" onchange="toggleMode()" style="width: 5em;">
+                    <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
+                        onchange="toggleMode()" style="width: 5em;">
                     To
-                    <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0" onchange="toggleMode()" style="width: 5em;">
+                    <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
+                        onchange="toggleMode()" style="width: 5em;">
                     <select id="time-unit" onchange="toggleMode()">
                         {% for unit in range_input.units %}
                         <option value="{{ unit }}">{{ unit }}</option>
@@ -184,7 +295,8 @@
                         <input type="checkbox" id="split-sensor" onchange="toggleMode()"> Split by Sensors
                     </label>
                     <label id="normalize-mode-section">
-                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove Blank)
+                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove
+                        Blank)
                     </label>
                     <label id="open-all-analysis-section">
                         <input type="checkbox" id="open-all-analysis" onchange="toggleMode()"> Expand all Analyses
@@ -203,32 +315,40 @@
                     <div>
                         <h3>Export analysis</h3>
                         <div class="section" id="set-exp-point-section">
-                            Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
-                            <br/>
+                            Set reference point to export: <input type="number" id="exp-json-time-value"
+                                style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
+                            <br />
                             <span id="est-val-error" class="error"></span>
                             <span id="est-val-exp"></span>
                         </div>
                     </div>
                     <div>
                         <label for="save-file">File Name: </label>
-                        <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
+                        <input type="text" id="save-file"
+                            placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
                         <span id="save-file-error" class="error"></span>
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)">Browse Saving Location</button>
-                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data will automatically convert the kinetics quantities to per <span style="font-weight: bold;">"minutes"!</span></p>
-                </div>  
+                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)">Browse Saving
+                        Location</button>
+                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
+                        Exporting data will automatically convert the kinetics quantities to per <span
+                            style="font-weight: bold;">"minutes"!</span></p>
+                </div>
                 <div id="export-coef">
                     <h3>Export coefficients for standard curve</h3>
                     <div>
                         <label for="save-file">File Name: </label>
-                        <input type="text" id="save-json-file" placeholder="Enter file name to regressed coefficients to(e.g., calibration)" style="width: 10em">
+                        <input type="text" id="save-json-file"
+                            placeholder="Enter file name to regressed coefficients to(e.g., calibration)"
+                            style="width: 10em">
                         <span id="save-json-file-error" class="error"></span>
                         <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
-                        <br/>
-                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
+                        <br />
+                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
+                            style="width:10%;">
                     </div>
-                </div>   
+                </div>
             </div>
         </div>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
@@ -236,44 +356,43 @@
         </footer>
     </div>
         <script src="{{ url_for('static', filename='navigation.min.js') }}"></script>
-        <script >
-            // Get top-left height as reference to reflect in top-right
-            function alignTopWithReference(refId = 'meas-mode-section', targetId='top-right') {
-                const ref = document.getElementById(refId);
-                const target = document.getElementById(targetId);
-                if (!ref || !target) return;
+    <script>
+        // Get top-left height as reference to reflect in top-right
+        function alignTopWithReference(refId = 'meas-mode-section', targetId = 'top-right') {
+            const ref = document.getElementById(refId);
+            const target = document.getElementById(targetId);
+            if (!ref || !target) return;
 
-                const rect = ref.getBoundingClientRect();
-                const offsetTop = rect.top; // Get absolute top position relative to page
-                console.log('Offset top is ', offsetTop);
-                // Update CSS variable dynamically
-                target.style.setProperty('--dynamic-top', `${offsetTop}px`);
-            }
-            alignTopWithReference();
-            const rootPath = {{ directory | tojson | safe}};
-            const csvPath = {{ csv_path | tojson | safe }}
-            const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
-            const temp_quantity_input = {{ quantity_input | tojson | safe}};
+            const rect = ref.getBoundingClientRect();
+            const offsetTop = rect.top; // Get absolute top position relative to page
+            console.log('Offset top is ', offsetTop);
+            // Update CSS variable dynamically
+            target.style.setProperty('--dynamic-top', `${offsetTop}px`);
+        }
+        alignTopWithReference();
+        const rootPath = {{ directory | tojson | safe}};
+        const csvPath = {{ csv_path | tojson | safe }}
+        const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+        const temp_quantity_input = {{ quantity_input | tojson | safe}};
 
-            function getNativePath(...paths) {
-                const isWindows = navigator.userAgent.includes('Windows');
-                const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
-                return isWindows ? joined.replace(/\//g, '\\') : joined;
-            }
-            $.get('/get_csv', {request: true}, function(response) {
-                updateFileTable(response.files, true);
-            }).fail(function(jqXHR, textStatus, errorThrown) {
-                console.log("AJAX error:", textStatus, errorThrown);
-                $showText("error-message", "Error fetching CSV files")
+        function getNativePath(...paths) {
+            const isWindows = navigator.userAgent.includes('Windows');
+            const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
+            return isWindows ? joined.replace(/\//g, '\\') : joined;
+        }
+        $.get('/get_csv', { request: true }, function (response) {
+            updateFileTable(response.files, true);
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            console.log("AJAX error:", textStatus, errorThrown);
+            $showText("error-message", "Error fetching CSV files")
+        });
+        $.get('/get_json_cal', { mode: "kinetics", numSources: 1 },
+            function (response) {
+                updateJSONTable(response.files);
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+                $showText("error-message", "Error fetching JSON files")
             });
-            $.get('/get_json_cal', {mode: "kinetics", numSources: 1}, 
-                function(response) {
-                    updateJSONTable(response.files);
-                }).fail(function(jqXHR, textStatus, errorThrown) {
-                    console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
-                    $showText("error-message", "Error fetching JSON files")
-                });
-        </script>
         <script src="{{ url_for('static', filename='short-hands.min.js') }}"></script>
         <script src="{{ url_for('static', filename='init.min.js') }}"></script>
         <script src="{{ url_for('static', filename='index.min.js') }}"></script>

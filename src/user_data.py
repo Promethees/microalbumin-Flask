@@ -26,6 +26,16 @@ def get_user_data() -> dict:
             'json': {
                 'kinetics': {},
                 'point': {}
+            },
+            'drive': {
+                'mode': 'guest',
+                'authenticated': False,
+                'folder_id': None,
+                'folder_name': None,
+                'credentials': None,
+                'last_sync': None,
+                'auto_sync_on_close': False,
+                'file_mapping': {}
             }
         }
     return USER_DATA[uid]
@@ -88,3 +98,66 @@ def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json") -
         user_data["json"]["point"]["exp_point.json"] = point_raw
 
     return user_data
+
+# ------------------------------------------------------------------
+# 5. Google Drive helpers
+# ------------------------------------------------------------------
+def get_drive_credentials(user_id: str = None):
+    """Retrieve stored Drive credentials for user."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    return user_data.get('drive', {}).get('credentials')
+
+def set_drive_credentials(credentials, user_id: str = None):
+    """Store Drive credentials for user."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    user_data['drive']['credentials'] = credentials
+    user_data['drive']['authenticated'] = True
+    user_data['drive']['mode'] = 'connected'
+
+def get_drive_folder(user_id: str = None):
+    """Get selected Drive folder ID."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    return user_data.get('drive', {}).get('folder_id')
+
+def set_drive_folder(folder_id: str, folder_name: str, user_id: str = None):
+    """Set user's Drive folder."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    user_data['drive']['folder_id'] = folder_id
+    user_data['drive']['folder_name'] = folder_name
+
+def get_drive_mode(user_id: str = None):
+    """Get current mode ('guest' or 'connected')."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    return user_data.get('drive', {}).get('mode', 'guest')
+
+def set_drive_preference(key: str, value, user_id: str = None):
+    """Update Drive preferences."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    user_data['drive'][key] = value
+
+def is_auto_sync_enabled(user_id: str = None):
+    """Check if auto-sync is enabled."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    return user_data.get('drive', {}).get('auto_sync_on_close', False)
+
+def disconnect_drive(user_id: str = None):
+    """Disconnect Drive and return to guest mode."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    user_data['drive'] = {
+        'mode': 'guest',
+        'authenticated': False,
+        'folder_id': None,
+        'folder_name': None,
+        'credentials': None,
+        'last_sync': None,
+        'auto_sync_on_close': False,
+        'file_mapping': {}
+    }

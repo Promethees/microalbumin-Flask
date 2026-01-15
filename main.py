@@ -11,7 +11,7 @@ from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 
 sys.path.append('src')
-from user_data import init_user_data, get_user_data
+from user_data import init_user_data, get_user_data, get_drive_mode, set_drive_preference, disconnect_drive
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
@@ -19,6 +19,11 @@ from get_next_filename import get_next_filename
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder, replace_empty
 from export_data import parse_metadata, is_metadata_consistent, write_metadata, write_headers, extract_single_entry, sort_csv_content, user_csv_lock
 from config import Config
+from google_drive_service import (
+    get_drive_service, get_authorization_url, exchange_code_for_credentials,
+    list_folders, create_folder, sync_session_to_drive, load_drive_to_session
+)
+from user_data import set_drive_credentials, set_drive_folder
 
 app = Flask(__name__, static_folder='static/dist')
 app.config.from_object(Config)
@@ -138,6 +143,175 @@ def get_csv_headers():
 @app.route("/api/current_output", methods=["GET"])
 def api_current_output():
     return jsonify({"exists": False, "message": "Not supported in multiuser mode"}), 404
+
+# Region 2.5: Google Drive Integration
+@app.route('/auth/google', methods=['GET'])
+def auth_google():
+    """Initiate OAuth 2.0 flow for Google Drive."""
+    try:
+        authorization_url, state = get_authorization_url()
+        # Store state in session for verification
+        from flask import session
+        session['oauth_state'] = state
+        return jsonify({'status': 'success', 'authorization_url': authorization_url})
+    except FileNotFoundError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Failed to initiate OAuth: {str(e)}'}), 500
+
+@app.route('/auth/google/callback', methods=['GET'])
+def auth_google_callback():
+    """Handle OAuth 2.0 callback from Google."""
+    try:
+        from flask import session
+        code = request.args.get('code')
+        state = request.args.get('state')
+        
+        # Verify state
+        if state != session.get('oauth_state'):
+            return render_template('callback.html', status='error', message='Invalid state parameter'), 400
+        
+        # Exchange code for credentials
+        credentials = exchange_code_for_credentials(code, state)
+        
+        # Store credentials
+        set_drive_credentials(credentials.to_json())
+        
+        # Clear oauth state
+        session.pop('oauth_state', None)
+        
+        return render_template('callback.html', status='success')
+    except Exception as e:
+        return render_template('callback.html', status='error', message=f'Authentication failed: {str(e)}'), 500
+
+@app.route('/auth/google/status', methods=['GET'])
+def auth_google_status():
+    """Check Google Drive authentication status."""
+    try:
+        user_data = get_user_data()
+        drive_data = user_data.get('drive', {})
+        
+        return jsonify({
+            'status': 'success',
+            'authenticated': drive_data.get('authenticated', False),
+            'mode': drive_data.get('mode', 'guest'),
+            'folder_id': drive_data.get('folder_id'),
+            'folder_name': drive_data.get('folder_name'),
+            'last_sync': drive_data.get('last_sync'),
+            'auto_sync_on_close': drive_data.get('auto_sync_on_close', False)
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/auth/google/logout', methods=['POST'])
+def auth_google_logout():
+    """Disconnect Google Drive and return to guest mode."""
+    try:
+        disconnect_drive()
+        return jsonify({'status': 'success', 'message': 'Disconnected from Google Drive'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/folders/list', methods=['GET'])
+def drive_folders_list():
+    """List user's Google Drive folders."""
+    try:
+        service = get_drive_service()
+        if not service:
+            return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+        
+        folders = list_folders(service)
+        return jsonify({'status': 'success', 'folders': folders})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/folder/create', methods=['POST'])
+def drive_folder_create():
+    """Create a new folder in Google Drive."""
+    try:
+        service = get_drive_service()
+        if not service:
+            return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+        
+        folder_name = request.json.get('folder_name', 'Easy OKAPI Data')
+        parent_id = request.json.get('parent_id')
+        
+        folder = create_folder(service, folder_name, parent_id)
+        if folder:
+            return jsonify({'status': 'success', 'folder': folder})
+        else:
+            return jsonify({'status': 'error', 'message': 'Failed to create folder'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/folder/select', methods=['POST'])
+def drive_folder_select():
+    """Set selected folder as storage location."""
+    try:
+        folder_id = request.json.get('folder_id')
+        folder_name = request.json.get('folder_name')
+        
+        if not folder_id or not folder_name:
+            return jsonify({'status': 'error', 'message': 'folder_id and folder_name required'}), 400
+        
+        set_drive_folder(folder_id, folder_name)
+        return jsonify({'status': 'success', 'message': f'Selected folder: {folder_name}'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/sync', methods=['POST'])
+def drive_sync():
+    """Sync session data to Google Drive."""
+    try:
+        result = sync_session_to_drive()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/load', methods=['POST'])
+def drive_load():
+    """Load data from Google Drive to session."""
+    try:
+        result = load_drive_to_session()
+        # Emit socket events to update UI
+        socketio.emit('update_csv')
+        socketio.emit('update_json', {'mode': 'kinetics'})
+        socketio.emit('update_json', {'mode': 'point'})
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/preferences/set', methods=['POST'])
+def drive_preferences_set():
+    """Update user Drive preferences."""
+    try:
+        key = request.json.get('key')
+        value = request.json.get('value')
+        
+        if not key:
+            return jsonify({'status': 'error', 'message': 'key required'}), 400
+        
+        set_drive_preference(key, value)
+        return jsonify({'status': 'success', 'message': f'Updated {key}'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/drive/preferences/get', methods=['GET'])
+def drive_preferences_get():
+    """Get current user Drive preferences."""
+    try:
+        user_data = get_user_data()
+        drive_data = user_data.get('drive', {})
+        
+        return jsonify({
+            'status': 'success',
+            'preferences': {
+                'auto_sync_on_close': drive_data.get('auto_sync_on_close', False),
+                'last_sync': drive_data.get('last_sync')
+            }
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # Region 3: USED by edit_file.js
 @app.route('/edit_file', methods=['POST'])

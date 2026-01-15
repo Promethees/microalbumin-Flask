@@ -17,3 +17,8 @@ vercel
 node_modules/
 npm-debug.log
 *.json
+
+# Google Drive API credentials (DO NOT COMMIT)
+credentials.json
+token.json
+*.pickle
