@@ -3,7 +3,7 @@ document.getElementById("year").textContent = new Date().getFullYear();
 let serverAvailable = true;
 let logInterval, updateInterval, serverCheckInterval;
 
-document.getElementById('toggleContainer').addEventListener('click', function() {
+document.getElementById('toggleContainer').addEventListener('click', function () {
     if (document.body.classList.contains('light')) {
         document.body.classList.remove('light');
         document.body.classList.add('dark');
@@ -19,7 +19,7 @@ document.getElementById('toggleContainer').addEventListener('click', function() 
     }
 });
 
-document.getElementById('filter-source').addEventListener('change', function() {
+document.getElementById('filter-source').addEventListener('change', function () {
     const numSourcesSelect = document.getElementById('num-sources-section');
     const splitBySensor = document.getElementById('split-sensor-section');
     updateDirectory(true);
@@ -56,7 +56,7 @@ document.getElementById('filter-source').addEventListener('change', function() {
     }
 });
 
-document.getElementById('num-sources').addEventListener('change', function() {
+document.getElementById('num-sources').addEventListener('change', function () {
     AppState.numSources = parseInt(this.value);
     console.log("Number of sources set to:", AppState.numSources);
     updateDirectory(true);
@@ -67,10 +67,10 @@ document.getElementById('num-sources').addEventListener('change', function() {
 document.getElementById('range-value-start').addEventListener('input', validateRangeInput);
 document.getElementById('range-value-end').addEventListener('input', validateRangeInput);
 
-document.getElementById('save-file').addEventListener('input', function() {
+document.getElementById('save-file').addEventListener('input', function () {
     validateFileName('save-file');
 });
-document.getElementById('save-json-file').addEventListener('input', function() {
+document.getElementById('save-json-file').addEventListener('input', function () {
     validateFileName('save-json-file');
 });
 
@@ -82,7 +82,7 @@ expSensor.addEventListener('change', updatePointEstimate);
 function isNullOrArrayOfNull(value) {
     if (value === null) return true; // case 1: value is null
     if (Array.isArray(value)) {
-    return value.every(item => item === null); // case 2: all items null
+        return value.every(item => item === null); // case 2: all items null
     }
     return false; // anything else
 }
@@ -114,15 +114,14 @@ function updatePointEstimate() {
     } else {
         estValError.innerHTML = '';
         if (Array.isArray(AppState.globalEstimatedValue)) {
-            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${
-                AppState.globalEstimatedValue
+            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${AppState.globalEstimatedValue
                     .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
                     .join(", ")
                 }`;
         } else {
             if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
                 estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
-            else 
+            else
                 estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
         }
     }
@@ -135,7 +134,7 @@ function validateRangeInput() {
 
     const startValue = parseFloat(startInput.value);
     const endValue = parseFloat(endInput.value);
-    
+
     // Reset state
     errorElement.innerHTML = '';
     startInput.classList.remove('invalid', 'valid');
@@ -158,7 +157,7 @@ function validateRangeInput() {
         endInput.classList.add('invalid');
         return false;
     }
-    
+
     startInput.classList.add('valid');
     endInput.classList.add('valid');
     return true;
@@ -168,43 +167,43 @@ function validateFileName(inputId) {
     const input = document.getElementById(inputId);
     const errorElement = document.getElementById(`${inputId}-error`);
     const fileName = input.value.trim();
-    
+
     // Reset state
     errorElement.innerHTML = '';
     input.classList.remove('invalid', 'valid');
-    
+
     const illegalChars = /[\\/:*?"<>|\0]/g;
     if (illegalChars.test(fileName)) {
         errorElement.innerHTML = 'File name cannot contain: \\ / : * ? " < > |<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
     if (reservedNames.test(fileName)) {
         errorElement.innerHTML = 'Reserved system name (CON, PRN, AUX, etc.)<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     if (fileName !== input.value) {
         errorElement.innerHTML = 'No leading/trailing spaces<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     if (fileName.startsWith('.') || fileName.endsWith('.')) {
         errorElement.innerHTML = 'Cannot start/end with period<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     if (fileName.length > 255) {
         errorElement.innerHTML = 'Max 255 characters<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     input.classList.add('valid');
     return true;
 }
@@ -213,11 +212,11 @@ function validatePathName(inputId) {
     const input = document.getElementById(inputId);
     const errorElement = document.getElementById(`${inputId}-error`);
     const path = input.value.trim();
-    
+
     // Reset state
     errorElement.innerHTML = '';
     input.classList.remove('invalid', 'valid');
-    
+
     if (path === '') {
         errorElement.innerHTML = 'Path cannot be empty<br/>';
         input.classList.add('invalid');
@@ -230,17 +229,17 @@ function validatePathName(inputId) {
         // Windows path
         invalidChars = /[*?"<>|\0]/g;
         if (/:/.test(path) && !/^[a-zA-Z]:\\/.test(path)) {
-        errorElement.innerHTML = 'Windows paths must start with drive letter (e.g., C:\\)<br/>';
-        input.classList.add('invalid');
-        return false;
+            errorElement.innerHTML = 'Windows paths must start with drive letter (e.g., C:\\)<br/>';
+            input.classList.add('invalid');
+            return false;
         }
     } else {
         // Unix-like path
         invalidChars = /[\0]/g;
         if (!path.startsWith('/')) {
-        errorElement.innerHTML = 'Unix paths must start with /<br/>';
-        input.classList.add('invalid');
-        return false;
+            errorElement.innerHTML = 'Unix paths must start with /<br/>';
+            input.classList.add('invalid');
+            return false;
         }
     }
 
@@ -274,7 +273,7 @@ function validatePathName(inputId) {
 
     input.classList.add('valid');
     return true;
-    }
+}
 
 function validateWindowSize(window_size) {
     // Validate window size
@@ -317,22 +316,22 @@ if (calButtons.length > 0) {
 
 const socket = io();
 
-socket.on('update_csv', function() {
-    $.get('/get_csv', {request: true}, function(response) {
+socket.on('update_csv', function () {
+    $.get('/get_csv', { request: true }, function (response) {
         console.log("give me response files ", response.files);
-        updateFileTable(response.files, deselect=false);
-    }).fail(function(jqXHR, textStatus, errorThrown) {
+        updateFileTable(response.files, deselect = false);
+    }).fail(function (jqXHR, textStatus, errorThrown) {
         console.log("AJAX error:", textStatus, errorThrown);
         $showText("error-message", "Error fetching CSV files")
     });
 });
 
-socket.on('update_json', function(data) {
+socket.on('update_json', function (data) {
     if (data.mode === AppState.currentMeasurementMode) {
-        $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, numSources: AppState.numSources}, 
-            function(response) {
-                updateJSONTable(response.files, deselect=false);
-            }).fail(function(jqXHR, textStatus, errorThrown) {
+        $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
+            function (response) {
+                updateJSONTable(response.files, deselect = false);
+            }).fail(function (jqXHR, textStatus, errorThrown) {
                 console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
                 $showText("error-message", "Error fetching JSON files")
             });

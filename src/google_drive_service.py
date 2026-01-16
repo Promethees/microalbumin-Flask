@@ -35,7 +35,10 @@ def get_drive_service(user_id: str = None):
     if not creds:
         return None
     
-    # Convert dict back to Credentials object if needed
+    # Convert to Credentials object if needed
+    if isinstance(creds, str):
+        creds = json.loads(creds)
+    
     if isinstance(creds, dict):
         creds = Credentials.from_authorized_user_info(creds, Config.GOOGLE_SCOPES)
     
@@ -245,13 +248,31 @@ def upload_file(service, filename: str, content: str, folder_id: str, mime_type:
         return None
 
 
-def download_file(service, file_id: str) -> Optional[str]:
+def download_file(service, file_id: str, mime_type: str = None) -> Optional[str]:
     """
     Download file content from Drive.
+    If it's a Google Doc/Sheet, use export_media.
     Returns content as string, None on error.
     """
     try:
-        request = service.files().get_media(fileId=file_id)
+        # If mime_type not provided, fetch it
+        if not mime_type:
+            file_meta = service.files().get(fileId=file_id, fields='mimeType').execute()
+            mime_type = file_meta.get('mimeType')
+
+        # Check if it's a Google Doc/Sheet/etc.
+        if mime_type and mime_type.startswith('application/vnd.google-apps.'):
+            # For spreadsheets, export as CSV
+            if 'spreadsheet' in mime_type:
+                request = service.files().export_media(fileId=file_id, mimeType='text/csv')
+            else:
+                # Other Google formats not explicitly handled yet
+                print(f"Skipping non-spreadsheet Google format: {mime_type}")
+                return None
+        else:
+            # Standard binary download
+            request = service.files().get_media(fileId=file_id)
+
         file_bytes = BytesIO()
         downloader = MediaIoBaseDownload(file_bytes, request)
         
@@ -367,7 +388,7 @@ def load_drive_to_session(user_id: str = None) -> Dict:
             file_id = file_info['id']
             
             # Download content
-            content = download_file(service, file_id)
+            content = download_file(service, file_id, file_info.get('mimeType'))
             if not content:
                 errors.append(filename)
                 continue

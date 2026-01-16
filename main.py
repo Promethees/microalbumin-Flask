@@ -212,15 +212,16 @@ def auth_google_logout():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/drive/folders/list', methods=['GET'])
-def drive_folders_list():
-    """List user's Google Drive folders."""
+@app.route('/drive/folder/list', methods=['GET'])
+def drive_folder_list():
+    """List Google Drive folders, optionally under a specific parent."""
     try:
         service = get_drive_service()
         if not service:
             return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
         
-        folders = list_folders(service)
+        parent_id = request.args.get('parent_id', 'root')
+        folders = list_folders(service, parent_id=parent_id)
         return jsonify({'status': 'success', 'folders': folders})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -273,6 +274,7 @@ def drive_load():
     """Load data from Google Drive to session."""
     try:
         result = load_drive_to_session()
+        print("The result of the fetch is ", result)
         # Emit socket events to update UI
         socketio.emit('update_csv')
         socketio.emit('update_json', {'mode': 'kinetics'})

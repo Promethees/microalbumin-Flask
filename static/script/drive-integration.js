@@ -165,6 +165,7 @@ function toggleFolderChoice() {
     } else {
         $('#existing-folder-select').addClass('hidden');
         $('#new-folder-create').removeClass('hidden');
+        $('#selected-folder-display').addClass('hidden');
     }
 }
 
@@ -174,19 +175,34 @@ function toggleFolderChoice() {
 function refreshFolderList() {
     $('#drive-folder-dropdown').html('<option value="">Loading folders...</option>');
 
-    $.get('/drive/folders/list', function (response) {
-        if (response.status === 'success') {
-            const dropdown = $('#drive-folder-dropdown');
-            dropdown.empty();
-            dropdown.append('<option value="">Select a folder...</option>');
+    $.get('/drive/folder/list')
+        .done(function (response) {
+            if (response.status === 'success') {
+                const dropdown = $('#drive-folder-dropdown');
+                dropdown.empty();
+                dropdown.append('<option value="">Select a folder...</option>');
 
-            response.folders.forEach(folder => {
-                dropdown.append(`<option value="${folder.id}">${folder.name}</option>`);
+                response.folders.forEach(folder => {
+                    dropdown.append(`<option value="${folder.id}">${folder.name}</option>`);
+                });
+            } else {
+                Swal.fire('Error', response.message || 'Invalid response format', 'error');
+            }
+        })
+        .fail(function (xhr, status, error) {
+            // Most useful information combination
+            const errorMessage = xhr.responseJSON?.message
+                || xhr.responseText
+                || error
+                || 'Unknown error occurred';
+
+            Swal.fire({
+                title: 'Error',
+                html: `Failed to load folders<br><br><small>${errorMessage}</small>`,
+                icon: 'error',
+                confirmButtonText: 'OK'
             });
-        }
-    }).fail(function (xhr) {
-        Swal.fire('Error', 'Failed to load folders', 'error');
-    });
+        });
 }
 
 /**
@@ -196,22 +212,55 @@ function selectDriveFolder() {
     const folderId = $('#drive-folder-dropdown').val();
     const folderName = $('#drive-folder-dropdown option:selected').text();
 
-    if (!folderId) return;
+    if (!folderId) {
+        Swal.fire('Warning', 'Please select a folder first', 'warning');
+        return;
+    }
 
-    $.post('/drive/folder/select',
-        JSON.stringify({ folder_id: folderId, folder_name: folderName }),
-        function (response) {
+    $.ajax({
+        url: '/drive/folder/select',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            folder_id: folderId,
+            folder_name: folderName
+        }),
+        dataType: 'json'
+    })
+        .done(function (response) {
             if (response.status === 'success') {
                 $('#selected-folder-display').removeClass('hidden');
                 $('#current-folder-name').text(folderName);
                 $('#drive-sync-section').removeClass('hidden');
-                Swal.fire('Folder Selected', `Using folder: ${folderName}`, 'success');
+                Swal.fire({
+                    title: 'Success',
+                    text: `Using folder: ${folderName}`,
+                    icon: 'success',
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', response.message || 'Operation failed', 'error');
             }
-        },
-        'json'
-    ).fail(function (xhr) {
-        Swal.fire('Error', 'Failed to select folder', 'error');
-    });
+        })
+        .fail(function (xhr, textStatus, errorThrown) {
+            let errorMsg = 'Failed to select folder';
+
+            // Try to get the most useful error message in this order
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            } else if (xhr.responseText) {
+                errorMsg = xhr.responseText;
+            } else {
+                errorMsg = `${textStatus} - ${errorThrown} (HTTP ${xhr.status})`;
+            }
+
+            Swal.fire({
+                title: 'Error',
+                html: `Failed to select folder<br><small>${errorMsg}</small>`,
+                icon: 'error'
+            });
+        });
 }
 
 /**
@@ -331,9 +380,14 @@ function loadFromDrive() {
                         text: response.message
                     });
                 }
+                refreshFolderList();
             }).fail(function (xhr) {
                 Swal.close();
-                Swal.fire('Error', xhr.responseJSON?.message || 'Load failed', 'error');
+                const msg = xhr.responseJSON?.message
+                    || xhr.responseText
+                    || `Load failed (HTTP ${xhr.status})`;
+
+                Swal.fire('Error', msg, 'error');
             });
         }
     });
