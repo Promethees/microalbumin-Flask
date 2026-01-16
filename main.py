@@ -239,7 +239,7 @@ def drive_folder_create():
             return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
         
         folder_name = request.json.get('folder_name', 'Easy OKAPI Data')
-        parent_id = request.json.get('parent_id')
+        parent_id = request.json.get('parent_id', 'root')
         
         folder = create_folder(service, folder_name, parent_id)
         if folder:
