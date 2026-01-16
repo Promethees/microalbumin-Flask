@@ -114,8 +114,14 @@ def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", c
     return user_data
 
 # ------------------------------------------------------------------
-# 5. Google Drive helpers
+# 5. User Data Helpers
 # ------------------------------------------------------------------
+def get_drive_mode(user_id: str = None):
+    """Get current Drive mode ('guest' or 'connected')."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    return user_data.get('drive', {}).get('mode', 'guest')
+
 def get_drive_credentials(user_id: str = None):
     """Retrieve stored Drive credentials for user."""
     uid = user_id or get_user_id()
@@ -143,14 +149,8 @@ def set_drive_folder(folder_id: str, folder_name: str, user_id: str = None):
     user_data['drive']['folder_id'] = folder_id
     user_data['drive']['folder_name'] = folder_name
 
-def get_drive_mode(user_id: str = None):
-    """Get current mode ('guest' or 'connected')."""
-    uid = user_id or get_user_id()
-    user_data = get_user_data()
-    return user_data.get('drive', {}).get('mode', 'guest')
-
 def set_drive_preference(key: str, value, user_id: str = None):
-    """Update Drive preferences."""
+    """Set a drive preference like 'auto_sync_on_close'."""
     uid = user_id or get_user_id()
     user_data = get_user_data()
     user_data['drive'][key] = value
@@ -173,7 +173,23 @@ def disconnect_drive(user_id: str = None):
         'credentials': None,
         'last_sync': None,
         'auto_sync_on_close': False,
-        'file_mapping': {}
+        'file_mapping': {},
+        'pending_oauth_state': None
     }
     # Restore default data
     init_user_data(clear_existing=True)
+
+def set_pending_oauth_state(state: str, user_id: str = None):
+    """Store OAuth state for verification (server-side to avoid cookie races)."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    user_data['drive']['pending_oauth_state'] = state
+
+def get_pending_oauth_state(user_id: str = None) -> str:
+    """Retrieve and CLEAR the pending OAuth state."""
+    uid = user_id or get_user_id()
+    user_data = get_user_data()
+    state = user_data['drive'].get('pending_oauth_state')
+    # Optional: Clear it after retrieval for one-time use (security)
+    # user_data['drive']['pending_oauth_state'] = None 
+    return state

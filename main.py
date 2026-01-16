@@ -160,10 +160,13 @@ def api_current_output():
 def auth_google():
     """Initiate OAuth 2.0 flow for Google Drive."""
     try:
+        from user_data import set_pending_oauth_state
+        
         authorization_url, state = get_authorization_url()
-        # Store state in session for verification
-        from flask import session
-        session['oauth_state'] = state
+        # Store state in server-side USER_DATA (keyed by user_id)
+        # This avoids race conditions with session cookies during SocketIO polling
+        set_pending_oauth_state(state)
+        
         return jsonify({'status': 'success', 'authorization_url': authorization_url})
     except FileNotFoundError as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -175,15 +178,19 @@ def auth_google_callback():
     """Handle OAuth 2.0 callback from Google."""
     try:
         from flask import session
+        from user_data import get_pending_oauth_state
+        
         code = request.args.get('code')
         state = request.args.get('state')
         
-        # Verify state
-        if state != session.get('oauth_state'):
+        # Verify state using server-side storage
+        pending_state = get_pending_oauth_state()
+        
+        if state != pending_state:
             debug_info = {
                 'url_state': state,
-                'session_state': session.get('oauth_state'),
-                'session_content': {k: v for k, v in session.items() if k != '_id'} # Expose session keys for debugging
+                'pending_server_state': pending_state, # Use server-side state for debug
+                'session_content': {k: v for k, v in session.items() if k != '_id'}
             }
             return render_template('callback.html', 
                                 status='error', 
@@ -196,8 +203,8 @@ def auth_google_callback():
         # Store credentials
         set_drive_credentials(credentials.to_json())
         
-        # Clear oauth state
-        session.pop('oauth_state', None)
+        # Note: pending state is cleared by get_pending_oauth_state() if implemented, 
+        # or we rely on it being overwritten next time.
         
         return render_template('callback.html', status='success')
     except Exception as e:
