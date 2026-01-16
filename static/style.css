@@ -11,7 +11,53 @@
     --chart-title-light: #333333;
     --chart-title-dark: #aaaaaa;
     --chart-label-light: #333333;
+    --chart-label-light: #333333;
     --chart-label-dark: #aaaaaa;
+
+    /* Custom Scrollbar Colors */
+    --scrollbar-track-light: #f5f5f5;
+    --scrollbar-track-dark: #2d2d2d;
+    --scrollbar-thumb-light: #cccccc;
+    --scrollbar-thumb-dark: #555555;
+    --scrollbar-thumb-hover-light: #aaaaaa;
+    --scrollbar-thumb-hover-dark: #777777;
+}
+
+/* ==========================================================================
+   Custom Scrollbar (Global or Focused)
+   ========================================================================== */
+/* ==========================================================================
+   Custom Scrollbar (Global or Focused)
+   ========================================================================== */
+#drive-section::-webkit-scrollbar {
+    width: 6px;
+    /* Width of the scrollbar */
+    height: 6px;
+    /* Height of the scrollbar (for horizontal) */
+}
+
+#drive-section::-webkit-scrollbar-track {
+    background: transparent;
+    /* Make track transparent or matching bg */
+}
+
+#drive-section::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-light);
+    border-radius: 10px;
+    /* Rounded corners */
+}
+
+#drive-section::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-light);
+}
+
+/* Dark Mode Scrollbar Overrides */
+body.dark #drive-section::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-dark);
+}
+
+body.dark #drive-section::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-dark);
 }
 
 /* ==========================================================================
@@ -398,6 +444,24 @@ body.dark .button-group button.selected {
     left: 1.3vw;
     max-width: 23.5vw;
     box-sizing: border-box;
+}
+
+/* Drive Section with Scroll */
+#drive-section {
+    max-height: 40vh;
+    /* Allow it to grow but scroll if too tall */
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 5px;
+    /* Space for scrollbar */
+
+    /* Firefox Scrollbar Support */
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-light) transparent;
+}
+
+body.dark #drive-section {
+    scrollbar-color: var(--scrollbar-thumb-dark) transparent;
 }
 
 .top-left .flex-group {
@@ -1186,6 +1250,9 @@ body.dark .swal2-container.swal2-backdrop-show {
         margin-bottom: 0px;
         order: 1;
         /* appear above main-content */
+        /* Reset scrolling for mobile flow */
+        max-height: none;
+        overflow-y: visible;
     }
 
     .top-left>*:not(.flex-group) {
@@ -1271,6 +1338,19 @@ body.dark .swal2-container.swal2-backdrop-show {
     background-color: #2980b9 !important;
 }
 
+#drive-sync-section {
+    width: 100%;
+}
+
+.sync-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    /* Allow stacking on narrow screens */
+    gap: 8px;
+    /* Vertical and horizontal gap */
+    width: 100%;
+}
+
 .danger-btn {
     background-color: #e74c3c !important;
     color: white !important;
@@ -1291,6 +1371,15 @@ body.dark .swal2-container.swal2-backdrop-show {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    flex: 1;
+    /* Make buttons proportional */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    /* Prevent text wrapping inside button */
+    min-width: 120px;
+    /* Force wrap if too narrow */
 }
 
 .sync-btn:hover {
