@@ -33,13 +33,18 @@ function setupOAuthMessageListener() {
             setTimeout(() => {
                 checkDriveStatus();
                 refreshFolderList(); // Automatically load folders after connection
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Connected!',
-                    text: 'Successfully connected to Google Drive',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+
+                if (!getBtnChecked("no-swal-checkbox")) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Connected!',
+                        text: 'Successfully connected to Google Drive',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    console.log('Successfully connected to Google Drive');
+                }
             }, 500);
         }
     });
@@ -144,7 +149,11 @@ function disconnectGoogleDrive() {
             $.post('/auth/google/logout', function (response) {
                 if (response.status === 'success') {
                     updateDriveUI({ mode: 'guest', authenticated: false });
-                    Swal.fire('Disconnected', 'You are now in Guest Mode', 'success');
+                    if (!getBtnChecked("no-swal-checkbox")) {
+                        Swal.fire('Disconnected', 'You are now in Guest Mode', 'success');
+                    } else {
+                        console.log('Disconnected from Google Drive');
+                    }
                 }
                 $("#selected-folder-display").addClass("hidden");
             }).fail(function (xhr) {
@@ -234,13 +243,17 @@ function selectDriveFolder() {
                 $('#selected-folder-display').removeClass('hidden');
                 $('#current-folder-name').text(folderName);
                 $('#drive-sync-section').removeClass('hidden');
-                Swal.fire({
-                    title: 'Success',
-                    text: `Using folder: ${folderName}`,
-                    icon: 'success',
-                    timer: 1800,
-                    showConfirmButton: false
-                });
+                if (!getBtnChecked("no-swal-checkbox")) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: `Using folder: ${folderName}`,
+                        icon: 'success',
+                        timer: 1800,
+                        showConfirmButton: false
+                    });
+                } else {
+                    console.log(`Using folder: ${folderName}`);
+                }
             } else {
                 Swal.fire('Error', response.message || 'Operation failed', 'error');
             }
@@ -284,7 +297,11 @@ function createDriveFolder() {
                             $('#selected-folder-display').removeClass('hidden');
                             $('#current-folder-name').text(folder.name);
                             $('#drive-sync-section').removeClass('hidden');
-                            Swal.fire('Folder Created', `Created and selected: ${folder.name}`, 'success');
+                            if (!getBtnChecked("no-swal-checkbox")) {
+                                Swal.fire('Folder Created', `Created and selected: ${folder.name}`, 'success');
+                            } else {
+                                console.log(`Created and selected: ${folder.name}`);
+                            }
                         }
                     },
                     'json'
@@ -315,12 +332,16 @@ function syncToDrive() {
 
         if (response.status === 'success') {
             updateLastSyncTime(new Date().toISOString());
-            Swal.fire({
-                icon: 'success',
-                title: 'Sync Complete',
-                text: response.message,
-                timer: 2000
-            });
+            if (!getBtnChecked("no-swal-checkbox")) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Sync Complete',
+                    text: response.message,
+                    timer: 2000
+                });
+            } else {
+                console.log('Sync Complete:', response.message);
+            }
         } else if (response.status === 'partial') {
             Swal.fire({
                 icon: 'warning',
@@ -367,13 +388,17 @@ function loadFromDrive() {
                 Swal.close();
 
                 if (response.status === 'success') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Load Complete',
-                        text: response.message,
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    if (!getBtnChecked("no-swal-checkbox")) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Load Complete',
+                            text: response.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        console.log('Load Complete:', response.message);
+                    }
                     // Note: Tables update automatically via socket events
                 } else {
                     Swal.fire({
