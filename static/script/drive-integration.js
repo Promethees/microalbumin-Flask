@@ -182,8 +182,9 @@ function toggleFolderChoice() {
 
 /**
  * Refresh the list of Drive folders
+ * @param {string} selectedId - Optional ID of folder to select after loading
  */
-function refreshFolderList() {
+function refreshFolderList(selectedId = null) {
     $('#drive-folder-dropdown').html('<option value="">Loading folders...</option>');
 
     $.get('/drive/folder/list')
@@ -196,6 +197,11 @@ function refreshFolderList() {
                 response.folders.forEach(folder => {
                     dropdown.append(`<option value="${folder.id}">${folder.name}</option>`);
                 });
+
+                // Auto-select if requested
+                if (selectedId) {
+                    dropdown.val(selectedId);
+                }
             } else {
                 Swal.fire('Error', response.message || 'Invalid response format', 'error');
             }
@@ -284,33 +290,49 @@ function selectDriveFolder() {
 function createDriveFolder() {
     const folderName = $('#new-folder-name').val() || 'Easy OKAPI Data';
 
-    $.post('/drive/folder/create',
-        JSON.stringify({ folder_name: folderName }),
-        function (response) {
-            if (response.status === 'success') {
-                const folder = response.folder;
-                // Auto-select the newly created folder
-                $.post('/drive/folder/select',
-                    JSON.stringify({ folder_id: folder.id, folder_name: folder.name }),
-                    function (selectResponse) {
-                        if (selectResponse.status === 'success') {
-                            $('#selected-folder-display').removeClass('hidden');
-                            $('#current-folder-name').text(folder.name);
-                            $('#drive-sync-section').removeClass('hidden');
-                            if (!getBtnChecked("no-swal-checkbox")) {
-                                Swal.fire('Folder Created', `Created and selected: ${folder.name}`, 'success');
-                            } else {
-                                console.log(`Created and selected: ${folder.name}`);
-                            }
-                        }
-                    },
-                    'json'
-                );
-            }
-        },
-        'json'
-    ).fail(function (xhr) {
-        Swal.fire('Error', 'Failed to create folder', 'error');
+    $.ajax({
+        url: '/drive/folder/create',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ folder_name: folderName }),
+        dataType: 'json'
+    }).done(function (response) {
+        if (response.status === 'success') {
+            const folder = response.folder;
+            // Auto-select the newly created folder
+            $.ajax({
+                url: '/drive/folder/select',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ folder_id: folder.id, folder_name: folder.name }),
+                dataType: 'json'
+            }).done(function (selectResponse) {
+                if (selectResponse.status === 'success') {
+                    $('#selected-folder-display').removeClass('hidden');
+                    $('#current-folder-name').text(folder.name);
+                    $('#drive-sync-section').removeClass('hidden');
+
+                    if (!getBtnChecked("no-swal-checkbox")) {
+                        Swal.fire('Folder Created', `Created and selected: ${folder.name}`, 'success');
+                    } else {
+                        console.log(`Created and selected: ${folder.name}`);
+                    }
+
+                    // Return to "Use Existing" mode automatically and select the new folder
+                    $('input[name="folder-choice"][value="existing"]').prop('checked', true);
+                    $('#existing-folder-select').removeClass('hidden');
+                    $('#new-folder-create').addClass('hidden');
+                    refreshFolderList(folder.id);
+                }
+            }).fail(function (selectXhr) {
+                const msg = selectXhr.responseJSON?.message || 'Failed to select folder';
+                console.error('Select failed:', selectXhr);
+                Swal.fire('Warning', msg + ' (folder was created)', 'warning');
+            });
+        }
+    }).fail(function (xhr) {
+        const msg = xhr.responseJSON?.message || 'Failed to create folder';
+        Swal.fire('Error', msg, 'error');
     });
 }
 
@@ -407,7 +429,6 @@ function loadFromDrive() {
                         text: response.message
                     });
                 }
-                refreshFolderList();
             }).fail(function (xhr) {
                 Swal.close();
                 const msg = xhr.responseJSON?.message
