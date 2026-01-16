@@ -73,10 +73,24 @@ def _load_file(path: Path) -> str:
 # ------------------------------------------------------------------
 # 4. Main init function – populates USER_DATA from files
 # ------------------------------------------------------------------
-def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json") -> None:
+def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", clear_existing: bool = False) -> None:
     csv_dir = Path(csv_dir)
     json_dir = Path(json_dir)
     user_data = get_user_data()
+
+    if clear_existing:
+        user_data['csv'].clear()
+        user_data['json']['kinetics'].clear()
+        user_data['json']['point'].clear()
+    
+    # Do NOT load defaults if we already have data 
+    if user_data['csv'] or user_data['json']['kinetics'] or user_data['json']['point']:
+        return user_data
+    
+    # Do NOT load defaults if we are in Connected mode (unless forcing clear_existing)
+    if get_drive_mode() == 'connected' and not clear_existing:
+        return user_data
+
     # --- CSV: multi.csv + single.csv ---
     for fname in ("multi.csv", "single.csv"):
         csv_data = _load_file(csv_dir / fname)
@@ -148,7 +162,7 @@ def is_auto_sync_enabled(user_id: str = None):
     return user_data.get('drive', {}).get('auto_sync_on_close', False)
 
 def disconnect_drive(user_id: str = None):
-    """Disconnect Drive and return to guest mode."""
+    """Disconnect Drive and return to guest mode with default data."""
     uid = user_id or get_user_id()
     user_data = get_user_data()
     user_data['drive'] = {
@@ -161,3 +175,5 @@ def disconnect_drive(user_id: str = None):
         'auto_sync_on_close': False,
         'file_mapping': {}
     }
+    # Restore default data
+    init_user_data(clear_existing=True)

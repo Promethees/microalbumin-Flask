@@ -208,6 +208,10 @@ def auth_google_logout():
     """Disconnect Google Drive and return to guest mode."""
     try:
         disconnect_drive()
+        # Emit socket events to update UI
+        socketio.emit('update_csv')
+        socketio.emit('update_json', {'mode': 'kinetics'})
+        socketio.emit('update_json', {'mode': 'point'})
         return jsonify({'status': 'success', 'message': 'Disconnected from Google Drive'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

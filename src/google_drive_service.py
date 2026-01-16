@@ -380,6 +380,12 @@ def load_drive_to_session(user_id: str = None) -> Dict:
     errors = []
     
     try:
+        # Clear existing session data and mappings before loading from Drive
+        user_data['csv'].clear()
+        user_data['json']['kinetics'].clear()
+        user_data['json']['point'].clear()
+        user_data['drive']['file_mapping'].clear()
+        
         # Get all files in folder
         all_files = list_files(service, folder_id)
         

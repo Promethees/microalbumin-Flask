@@ -145,6 +145,7 @@ function disconnectGoogleDrive() {
                     updateDriveUI({ mode: 'guest', authenticated: false });
                     Swal.fire('Disconnected', 'You are now in Guest Mode', 'success');
                 }
+                $("#selected-folder-display").addClass("hidden");
             }).fail(function (xhr) {
                 Swal.fire('Error', xhr.responseJSON?.message || 'Failed to disconnect', 'error');
             });
@@ -369,10 +370,10 @@ function loadFromDrive() {
                         icon: 'success',
                         title: 'Load Complete',
                         text: response.message,
-                        timer: 2000
+                        timer: 2000,
+                        showConfirmButton: false
                     });
-                    // Refresh file tables
-                    location.reload();
+                    // Note: Tables update automatically via socket events
                 } else {
                     Swal.fire({
                         icon: 'error',
