@@ -169,7 +169,15 @@ def auth_google_callback():
         
         # Verify state
         if state != session.get('oauth_state'):
-            return render_template('callback.html', status='error', message='Invalid state parameter'), 400
+            debug_info = {
+                'url_state': state,
+                'session_state': session.get('oauth_state'),
+                'session_content': {k: v for k, v in session.items() if k != '_id'} # Expose session keys for debugging
+            }
+            return render_template('callback.html', 
+                                status='error', 
+                                message='Invalid state parameter', 
+                                debug=debug_info), 400
         
         # Exchange code for credentials
         credentials = exchange_code_for_credentials(code, state)
