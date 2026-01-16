@@ -160,12 +160,25 @@ def api_current_output():
 def auth_google():
     """Initiate OAuth 2.0 flow for Google Drive."""
     try:
-        from user_data import set_pending_oauth_state
+        from user_data import set_pending_oauth_state, get_user_id
+        import secrets
         
-        authorization_url, state = get_authorization_url()
-        # Store state in server-side USER_DATA (keyed by user_id)
-        # This avoids race conditions with session cookies during SocketIO polling
-        set_pending_oauth_state(state)
+        # 1. Generate a secure token
+        token = secrets.token_urlsafe(32)
+        
+        # 2. Get stable user_id
+        uid = get_user_id()
+        
+        # 3. Create composite state: "user_id|token"
+        # This allows us to recover the user_id (and session) if cookies are dropped
+        state_payload = f"{uid}|{token}"
+        
+        # 4. Get URL with this specific state
+        authorization_url, _ = get_authorization_url(state=state_payload)
+        
+        # 5. Store ONLY the token (or full state) in server-side memory for verification
+        # Keyed by uid. If session is lost, we recover uid from state_payload to find this data.
+        set_pending_oauth_state(state_payload)
         
         return jsonify({'status': 'success', 'authorization_url': authorization_url})
     except FileNotFoundError as e:
@@ -183,13 +196,28 @@ def auth_google_callback():
         code = request.args.get('code')
         state = request.args.get('state')
         
-        # Verify state using server-side storage
+        # --- Session Recovery Logic ---
+        # If session cookie was dropped (common in cross-site redirects without perfect settings),
+        # session['user_id'] will be missing or new. We recover it from the state parameter.
+        if state and '|' in state:
+            parts = state.split('|')
+            if len(parts) >= 2:
+                recovered_uid = parts[0]
+                
+                # If we are "logged out" (no user_id) or have a different user_id (new session),
+                # FORCE restore the session to the one that initiated the request.
+                current_uid = session.get('user_id')
+                if not current_uid or current_uid != recovered_uid:
+                    print(f"[INFO] Recovering session for user: {recovered_uid}")
+                    session['user_id'] = recovered_uid
+        
+        # Verify state using server-side storage (now that session['user_id'] is correct)
         pending_state = get_pending_oauth_state()
         
         if state != pending_state:
             debug_info = {
                 'url_state': state,
-                'pending_server_state': pending_state, # Use server-side state for debug
+                'pending_server_state': pending_state, 
                 'session_content': {k: v for k, v in session.items() if k != '_id'}
             }
             return render_template('callback.html', 

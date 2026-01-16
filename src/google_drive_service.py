@@ -107,7 +107,8 @@ def get_authorization_url(state: str = None) -> Tuple[str, str]:
     authorization_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
-        prompt='consent'  # Force consent to get refresh token
+        prompt='consent',  # Force consent to get refresh token
+        state=state
     )
     
     return authorization_url, state
