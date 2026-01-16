@@ -32,6 +32,7 @@ function setupOAuthMessageListener() {
             // Update Drive status without page refresh
             setTimeout(() => {
                 checkDriveStatus();
+                refreshFolderList(); // Automatically load folders after connection
                 Swal.fire({
                     icon: 'success',
                     title: 'Connected!',
