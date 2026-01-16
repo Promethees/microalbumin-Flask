@@ -9,6 +9,7 @@ from http import HTTPStatus
 import re
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 sys.path.append('src')
 from user_data import init_user_data, get_user_data, get_drive_mode, set_drive_preference, disconnect_drive
@@ -28,6 +29,16 @@ from user_data import set_drive_credentials, set_drive_folder
 app = Flask(__name__, static_folder='static/dist')
 app.config.from_object(Config)
 app.secret_key = 'easy-sensor-kit'  # Required for session to work
+
+# Production Security & Session handling
+if not app.debug:
+    # Use ProxyFix to handle HTTPS behind Heroku's proxy
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    # Ensure cookies are sent over HTTPS and during OAuth redirects
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet', engineio_logger=True, logger=True)
 
 delimiter = "/"
