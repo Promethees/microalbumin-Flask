@@ -53,9 +53,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 } else {
                     // Primitive
                     const inputType = typeof val === 'number' ? 'number' :
-                                    typeof val === 'boolean' ? 'checkbox' : 'text';
+                        typeof val === 'boolean' ? 'checkbox' : 'text';
                     const valueAttr = typeof val === 'boolean' ? (val ? 'checked' : '') :
-                                    `value="${escapeHtml(String(val))}"`;
+                        `value="${escapeHtml(String(val))}"`;
 
                     if (inputType === 'checkbox') {
                         html += `
@@ -143,9 +143,16 @@ function editFile(fileName, button, tableSelector = "#file-table") {
     }
 
 
-    const row = $(button).closest("tr");
-    const deleteBtn = row.find("button:contains('Delete')");
-    deleteBtn.prop('disabled', true).addClass('disabled').attr('aria-disabled', 'true');
+    const row = button.closest("tr");
+    if (!row) return;
+
+    // Find the delete button within the row
+    const deleteBtn = Array.from(row.querySelectorAll("button")).find(btn => btn.textContent.includes('Delete'));
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.classList.add('disabled');
+        deleteBtn.setAttribute('aria-disabled', 'true');
+    }
 
     let editMode = tableSelector === '#file-table' ? 'table' : 'graphic'; // Default mode depend on selected table
 
@@ -161,24 +168,24 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         let selectedRow = null;
 
         // Row selection
-        table.addEventListener('click', function(e) {
+        table.addEventListener('click', function (e) {
             const cell = e.target.closest('td, th');
             if (!cell) return;
-            
+
             const row = cell.closest('tr');
             if (!row || row.parentNode.tagName !== 'TBODY') return;
-            
+
             // Clear previous selection
             const previouslySelected = table.querySelector('tr.selected');
             if (previouslySelected) {
                 previouslySelected.classList.remove('selected');
             }
-            
+
             // Set new selection
             row.classList.add('selected');
             selectedRow = row;
             if (deleteRowBtn) deleteRowBtn.disabled = false;
-            
+
             // If clicking an editable cell, focus it
             if (cell.tagName === 'TD' && cell.contentEditable === 'true') {
                 cell.focus();
@@ -187,22 +194,24 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
         // Add row
         if (addRowBtn) {
-            addRowBtn.addEventListener('click', function() {
+            addRowBtn.addEventListener('click', function () {
                 const tbody = document.getElementById('swal-edit-body');
                 if (!tbody) return;
-                
+
                 const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
                 const newRow = document.createElement('tr');
                 newRow.dataset.rowIndex = tbody.children.length;
-                
+
                 // Get reference values from first existing row (if available)
                 const referenceValues = {};
-                const defaultValues = {'Timestamp': '0.00', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
-                                        'Type': 'NONE', 'Concentration': 'NONE', 
-                                        'Value': '0.00', 'maxRate': '0.00', 'Slope': '0.00',
-                                        'Sat': '0.00', 'Time To Sat': '0.00', 'MeasUnit': 'NONE',
-                                        'TimeUnit': 'minutes', 'MeasMode': 'kinetics',
-                                        'TimePoint': '0'};
+                const defaultValues = {
+                    'Timestamp': '0.00', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
+                    'Type': 'NONE', 'Concentration': 'NONE',
+                    'Value': '0.00', 'maxRate': '0.00', 'Slope': '0.00',
+                    'Sat': '0.00', 'Time To Sat': '0.00', 'MeasUnit': 'NONE',
+                    'TimeUnit': 'minutes', 'MeasMode': 'kinetics',
+                    'TimePoint': '0'
+                };
                 if (tbody.children.length > 0) {
                     const firstRow = tbody.children[0];
                     headers.forEach((header, index) => {
@@ -213,7 +222,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         }
                     });
                 }
-                
+
                 headers.forEach((header, index) => {
                     let isEditable = true;
                     // In calibrate mode, 'Concentration' is editable
@@ -222,7 +231,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     }
                     const td = document.createElement('td');
                     td.dataset.col = header;
-                    
+
                     // Set default values
                     let defaultValue = '';
                     console.log(`References values are:`, referenceValues);
@@ -231,7 +240,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     } else {
                         defaultValue = defaultValues[header] || '';
                     }
-                    
+
                     td.textContent = defaultValue;
                     Object.assign(td.style, {
                         border: '1px solid #ddd',
@@ -242,14 +251,14 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         whiteSpace: header === 'Timestamp' ? 'nowrap' : '',
                         textAlign: (header === 'Value' || header === 'Concentration') ? 'right' : ''
                     });
-                    
+
                     if (isEditable) {
                         td.contentEditable = true;
                     }
-                    
+
                     newRow.appendChild(td);
                 });
-                
+
                 tbody.appendChild(newRow);
                 // Auto-select the new row
                 if (selectedRow) {
@@ -264,7 +273,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
         // Delete row
         if (deleteRowBtn) {
-            deleteRowBtn.addEventListener('click', function() {
+            deleteRowBtn.addEventListener('click', function () {
                 if (selectedRow) {
                     selectedRow.remove();
                     selectedRow = null;
@@ -273,29 +282,29 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
         }
     }
-        
-        function renderContent(content) {
-            let html = '';
-            if (tableSelector === '#json-table' && editMode === 'graphic') {
-                let parsed;
-                try { parsed = JSON.parse(content.content); } catch (e) {
-                    return `<p style="color:red;">Invalid JSON: ${e.message}</p>`;
-                }
 
-                return `
+    function renderContent(content) {
+        let html = '';
+        if (tableSelector === '#json-table' && editMode === 'graphic') {
+            let parsed;
+            try { parsed = JSON.parse(content.content); } catch (e) {
+                return `<p style="color:red;">Invalid JSON: ${e.message}</p>`;
+            }
+
+            return `
                     <input type="text" id="swal-input-filename" class="swal2-input"
                         value="${fileName}" placeholder="Enter new filename">
                     <div class="json-graphic-container" style="margin-top:12px; max-height:500px; overflow-y:auto;">
                         ${buildGraphicUI(parsed)}
                     </div>`;
-            }
-            if (editMode === 'text') {
-                html = `
+        }
+        if (editMode === 'text') {
+            html = `
                     <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
                     <textarea id="swal-input-content" class="swal2-input" rows="10" style="width: 100%; height: 200px; font-family: monospace;">${content.content}</textarea>
                 `;
-            } else {
-                const lines = content.content.trim().split('\n');
+        } else {
+            const lines = content.content.trim().split('\n');
 
             // Separate metadata (lines starting with "#") and data lines
             const metadata = {};
@@ -328,8 +337,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         </thead>
                         <tbody>
                             ${Object.entries(metadata).map(([key, value]) => {
-                                const isNonEditable = nonEditableMetadata.includes(key);
-                                return `
+                const isNonEditable = nonEditableMetadata.includes(key);
+                return `
                                     <tr>
                                         <td class="metadata-key">${key}</td>
                                         <td 
@@ -341,7 +350,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                         </td>
                                     </tr>
                                 `;
-                            }).join('')}
+            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -373,15 +382,15 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         </thead>
                         <tbody id="swal-edit-body">
                             ${data.map((row, rowIndex) => {
-                                const cells = row.split(',');
-                                return `<tr data-row-index="${rowIndex}">
+                const cells = row.split(',');
+                return `<tr data-row-index="${rowIndex}">
                                     ${cells.map((cell, cellIndex) => {
-                                        const columnName = headers[cellIndex];
-                                        let isEditable = true;
-                                        if (columnName !== 'Concentration' || AppState.currentMeasurementMode !== 'calibrate') {
-                                            isEditable = !nonEditableColumns.includes(columnName);
-                                        }
-                                        return `
+                    const columnName = headers[cellIndex];
+                    let isEditable = true;
+                    if (columnName !== 'Concentration' || AppState.currentMeasurementMode !== 'calibrate') {
+                        isEditable = !nonEditableColumns.includes(columnName);
+                    }
+                    return `
                                             <td ${isEditable ? 'contenteditable="true"' : 'class="non-editable"'} 
                                                 style="border: 1px solid #ddd; padding: 6px;
                                                 font-size: 0.82em;
@@ -392,9 +401,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                                 ${cell.trim()}
                                             </td>
                                         `;
-                                    }).join('')}
+                }).join('')}
                                 </tr>`;
-                            }).join('')}
+            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -406,99 +415,100 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         return html;
     }
     const fileType = tableSelector === '#file-table' ? "csv" : "json";
-    // Fetch CSV content
-    $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&type=${encodeURIComponent(fileType)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}`, function(content) {
-        let originalContent = content.content; // ← raw string
+    // Fetch CSV/JSON content
+    fetchJSON(`/get_file_content?file=${encodeURIComponent(fileName)}&type=${encodeURIComponent(fileType)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}`)
+        .then(content => {
+            let originalContent = content.content; // ← raw string
             let finalContent = null; // ← final string to save
-        let workingJSON = null; // ← **one-time parse**
+            let workingJSON = null; // ← **one-time parse**
 
-        const rebuildContent = () => {
-            if (workingJSON !== null)
-                finalContent = JSON.stringify(workingJSON, null, 2);
-        };
+            const rebuildContent = () => {
+                if (workingJSON !== null)
+                    finalContent = JSON.stringify(workingJSON, null, 2);
+            };
 
-        function setValueByPath(path, value) {
-            if (workingJSON === null) {
-                console.error("setValueByPath called on a non-JSON file");
-                return;
+            function setValueByPath(path, value) {
+                if (workingJSON === null) {
+                    console.error("setValueByPath called on a non-JSON file");
+                    return;
+                }
+                const parts = path
+                    .replace(/\[(\d+)\]/g, ".$1")
+                    .split(".")
+                    .filter(Boolean)
+                    .slice(1);               // remove leading "root"
+                const last = parts.pop();
+                let cur = workingJSON;
+
+                for (const part of parts) {
+                    // auto-create missing objects / arrays
+                    cur[part] = cur[part] ?? (isNaN(part) ? {} : []);
+                    cur = cur[part];
+                }
+                cur[last] = value;
+                rebuildContent();          // keep the displayed string in sync
             }
-            const parts = path
-                .replace(/\[(\d+)\]/g, ".$1")
-                .split(".")
-                .filter(Boolean)
-                .slice(1);               // remove leading "root"
-            const last = parts.pop();
-            let cur = workingJSON;
 
-            for (const part of parts) {
-                // auto-create missing objects / arrays
-                cur[part] = cur[part] ?? (isNaN(part) ? {} : []);
-                cur = cur[part];
+            function getValueByPath(path) {
+                if (workingJSON === null) return undefined;
+                let cur = workingJSON;
+                const parts = path
+                    .replace(/\[(\d+)\]/g, ".$1")
+                    .split(".")
+                    .filter(Boolean);
+                for (const part of parts) {
+                    if (cur === undefined || cur === null) return undefined;
+                    cur = cur[part];
+                }
+                return cur;
             }
-            cur[last] = value;
-            rebuildContent();          // keep the displayed string in sync
-        }
 
-        function getValueByPath(path) {
-            if (workingJSON === null) return undefined;
-            let cur = workingJSON;
-            const parts = path
-                .replace(/\[(\d+)\]/g, ".$1")
-                .split(".")
-                .filter(Boolean);
-            for (const part of parts) {
-                if (cur === undefined || cur === null) return undefined;
-                cur = cur[part];
-            }
-            return cur;
-        }
-
-        function bindDynamicButtons() {
-            // ---- Add field (object) ----
-            document.querySelectorAll('.json-add-field').forEach(btn => {
-                btn.onclick = () => {
-                    const path = btn.dataset.path;
-                    const keyInp = btn.parentElement.querySelector('.json-new-key');
-                    const valInp = btn.parentElement.querySelector('.json-new-value');
-                    const key = keyInp.value.trim();
-                    const raw = valInp.value.trim();
-                    if (!key) return Swal.showValidationMessage('Key is required');
-                    let val;
-                    try { val = raw === '' ? null : JSON.parse(raw); }
-                    catch { val = raw; }
-                    setValueByPath(path + '.' + key, val);
-                    keyInp.value = ''; valInp.value = '';
-                    refreshGraphicUI();
-                };
-            });
-
-            // ---- Add array item ----
-            document.querySelectorAll('.json-add-array-item').forEach(btn => {
-                btn.onclick = () => {
-                    const path = btn.dataset.path;
-                    const arr = getValueByPath(path) || [];
-                    arr.push(null); // placeholder
-                    setValueByPath(path, arr);
-                    refreshGraphicUI();
-                };
-            });
-
-            // ---- Delete array item ----
-            document.querySelectorAll('.json-delete-item').forEach(btn => {
-                btn.onclick = () => {
-                    const path = btn.dataset.path;
-                    const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
-                    const idx = parseInt(parts.pop());
-                    const parentPath = parts.join('.');
-                    const arr = getValueByPath(parentPath);
-                    if (Array.isArray(arr)) {
-                        arr.splice(idx, 1);
-                        setValueByPath(parentPath, arr);
+            function bindDynamicButtons() {
+                // ---- Add field (object) ----
+                document.querySelectorAll('.json-add-field').forEach(btn => {
+                    btn.onclick = () => {
+                        const path = btn.dataset.path;
+                        const keyInp = btn.parentElement.querySelector('.json-new-key');
+                        const valInp = btn.parentElement.querySelector('.json-new-value');
+                        const key = keyInp.value.trim();
+                        const raw = valInp.value.trim();
+                        if (!key) return Swal.showValidationMessage('Key is required');
+                        let val;
+                        try { val = raw === '' ? null : JSON.parse(raw); }
+                        catch { val = raw; }
+                        setValueByPath(path + '.' + key, val);
+                        keyInp.value = ''; valInp.value = '';
                         refreshGraphicUI();
-                    }
-                };
-            });
-        }
+                    };
+                });
+
+                // ---- Add array item ----
+                document.querySelectorAll('.json-add-array-item').forEach(btn => {
+                    btn.onclick = () => {
+                        const path = btn.dataset.path;
+                        const arr = getValueByPath(path) || [];
+                        arr.push(null); // placeholder
+                        setValueByPath(path, arr);
+                        refreshGraphicUI();
+                    };
+                });
+
+                // ---- Delete array item ----
+                document.querySelectorAll('.json-delete-item').forEach(btn => {
+                    btn.onclick = () => {
+                        const path = btn.dataset.path;
+                        const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+                        const idx = parseInt(parts.pop());
+                        const parentPath = parts.join('.');
+                        const arr = getValueByPath(parentPath);
+                        if (Array.isArray(arr)) {
+                            arr.splice(idx, 1);
+                            setValueByPath(parentPath, arr);
+                            refreshGraphicUI();
+                        }
+                    };
+                });
+            }
 
             function refreshGraphicUI() {
                 const container = document.querySelector('.json-graphic-container');
@@ -529,7 +539,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 allCoefInputs.forEach(inp => {
                     const oldPath = inp.dataset.path;
                     const base = oldPath.replace(/\.[^.]+$/, '');
-                    if (!groups.has(base)) groups.set(base, {fields: [], inputs: []});
+                    if (!groups.has(base)) groups.set(base, { fields: [], inputs: [] });
                     const group = groups.get(base);
                     const field = inp.closest('.json-field');
                     if (field && !group.fields.includes(field)) group.fields.push(field);
@@ -540,9 +550,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 // 2. Mapping: fit_type → [label1, label2, (label3)]
                 // -----------------------------------------------------------------
                 const labelMap = {
-                    linear:          ['a', 'b'],
+                    linear: ['a', 'b'],
                     'Michaelis-Menten': ['VMax', 'Km'],
-                    default:         ['a', 'b', 'c']
+                    default: ['a', 'b', 'c']
                 };
 
                 // -----------------------------------------------------------------
@@ -556,8 +566,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     allCoefInputs.forEach(inp => {
                         const path = inp.dataset.path;
                         const value = inp.tagName === 'TEXTAREA' ? inp.value :
-                                    inp.type === 'checkbox' ? inp.checked :
-                                    inp.value;
+                            inp.type === 'checkbox' ? inp.checked :
+                                inp.value;
                         window._originalCoefValues.set(path, value);
                     });
                 }
@@ -596,7 +606,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 // -----------------------------------------------------------------
                 function updateAllBlocks(tupleChanged = false, isRestore = false) {
                     const selected = fitTypeSelect.value.trim();
-                    const labels   = labelMap[selected] || labelMap.default;
+                    const labels = labelMap[selected] || labelMap.default;
                     const originalType = fitTypeSelect.dataset.originalType;
 
                     for (const [base, group] of groups) {
@@ -679,7 +689,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     const oldTuple = labelMap[fitTypeSelect.dataset.prev || 'linear'] || labelMap.default;
                     const newTuple = labelMap[fitTypeSelect.value] || labelMap.default;
                     const tupleChanged = oldTuple.length !== newTuple.length ||
-                                        oldTuple.some((v, i) => v !== newTuple[i]);
+                        oldTuple.some((v, i) => v !== newTuple[i]);
 
                     const originalType = fitTypeSelect.dataset.originalType;
                     const isRestore = fitTypeSelect.value === originalType && fitTypeSelect.dataset.prev !== originalType;
@@ -696,75 +706,75 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 });
             }
 
-        // On time workingJSON parser, only for json-table
-        if (tableSelector === "#json-table") {
-            try {
-                workingJSON = JSON.parse(originalContent);
-            } catch (e) {
-                Swal.fire({
-                title: "Invalid JSON",
-                text: `The file contains malformed JSON: ${e.message}`,
-                icon: "error",
-                });
-                return;
+            // On time workingJSON parser, only for json-table
+            if (tableSelector === "#json-table") {
+                try {
+                    workingJSON = JSON.parse(originalContent);
+                } catch (e) {
+                    Swal.fire({
+                        title: "Invalid JSON",
+                        text: `The file contains malformed JSON: ${e.message}`,
+                        icon: "error",
+                    });
+                    return;
+                }
             }
-        }
 
-        Swal.fire({
-            title: `Edit ${fileName}`,
-            width: '800px',
-            html: renderContent(content),
-            footer:  '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Save Changes',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#50C878',
-            cancelButtonColor: '#d33',
-            didOpen: () => {
-                // -----------------------------------------------------------------
-                //  CSS for the graphic UI
-                // -----------------------------------------------------------------
-                if (!document.getElementById('json-graphic-styles')) {
-                    const style = document.createElement('style');
-                    style.id = 'json-graphic-styles';
-                    style.textContent = `
+            Swal.fire({
+                title: `Edit ${fileName}`,
+                width: '800px',
+                html: renderContent(content),
+                footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#50C878',
+                cancelButtonColor: '#d33',
+                didOpen: () => {
+                    // -----------------------------------------------------------------
+                    //  CSS for the graphic UI
+                    // -----------------------------------------------------------------
+                    if (!document.getElementById('json-graphic-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'json-graphic-styles';
+                        style.textContent = `
                         .json-graphic-container fieldset.collapsed > .json-section { display:none; }
                         .json-graphic-container .json-input { font-size:0.9rem; }
                         .json-graphic-container .btn-small { font-size:0.8rem; cursor:pointer; }
                         .light .json-graphic-container .json-field:hover { background:#f8f9fa; }
                         .dark .json-graphic-container .json-field:hover { background:#343a40; }
                     `;
-                    document.head.appendChild(style);
-                }
-                const toggleButton = document.getElementById('toggle-mode');
-                if (editMode === 'table') {
-                    setupTableEvents();
+                        document.head.appendChild(style);
+                    }
+                    const toggleButton = document.getElementById('toggle-mode');
+                    if (editMode === 'table') {
+                        setupTableEvents();
                     } else if (editMode === 'graphic') {
                         syncFitCoefLabels(Swal.getPopup());
-                }
-                
-                if (toggleButton) {
-                    toggleButton.addEventListener('click', () => {
-                        editMode = editMode === 'text' ? (tableSelector === '#file-table' ? 'table' : 'graphic') : 'text';
-                        toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
-                        Swal.getHtmlContainer().innerHTML = renderContent({content: originalContent});
-                        if (editMode === 'table') {
-                            // Need a small delay to allow DOM to update
-                            setTimeout(setupTableEvents, 50);
+                    }
+
+                    if (toggleButton) {
+                        toggleButton.addEventListener('click', () => {
+                            editMode = editMode === 'text' ? (tableSelector === '#file-table' ? 'table' : 'graphic') : 'text';
+                            toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
+                            Swal.getHtmlContainer().innerHTML = renderContent({ content: originalContent });
+                            if (editMode === 'table') {
+                                // Need a small delay to allow DOM to update
+                                setTimeout(setupTableEvents, 50);
                             } else if (editMode === 'graphic') {
                                 syncFitCoefLabels(Swal.getPopup());
-                        }
-                    });
-                }
-            },
-            preConfirm: () => {
-                const newFileName = document.getElementById('swal-input-filename').value;
-                let content;
+                            }
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const newFileName = document.getElementById('swal-input-filename').value;
+                    let content;
 
                     if (editMode === 'text') {
                         content = document.getElementById('swal-input-content').value;
-                    } else if (editMode === 'table'){
+                    } else if (editMode === 'table') {
                         // --- Collect metadata lines ---
                         const metaTable = document.getElementById('swal-metadata-table');
                         let metaLines = [];
@@ -781,93 +791,93 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             }).filter(Boolean);
                         }
 
-                    // --- Collect main data table ---
-                    const table = document.getElementById('swal-edit-table');
-                    const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
-                    const rows = Array.from(table.querySelectorAll('tbody tr'));
+                        // --- Collect main data table ---
+                        const table = document.getElementById('swal-edit-table');
+                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                        const rows = Array.from(table.querySelectorAll('tbody tr'));
 
-                    const csvRows = rows.map(row => {
-                        return Array.from(row.querySelectorAll('td')).map(td => {
-                            let cellContent = td.textContent.trim();
-                            if (cellContent.includes(',') || cellContent.includes('\n') || cellContent.includes('"')) {
-                                return `"${cellContent.replace(/"/g, '""')}"`;
+                        const csvRows = rows.map(row => {
+                            return Array.from(row.querySelectorAll('td')).map(td => {
+                                let cellContent = td.textContent.trim();
+                                if (cellContent.includes(',') || cellContent.includes('\n') || cellContent.includes('"')) {
+                                    return `"${cellContent.replace(/"/g, '""')}"`;
+                                }
+                                return cellContent;
+                            }).join(',');
+                        });
+
+                        // --- Final content (metadata first, then CSV) ---
+                        content = [...metaLines, headers.join(','), ...csvRows].join('\n');
+                    }
+
+                    // Validate content based on tableSelector
+                    if (tableSelector === '#file-table') {
+                        const patternSets = [
+                            {
+                                // File pattern with metadata and headers
+                                header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
+                                error: 'Invalid format (Pattern 1). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                            },
+                            {
+                                header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                                error: 'Invalid format (Pattern 2). Header must be: Concentration,Value,TimePoint',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                            },
+                            {
+                                header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
+                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$/,
+                                error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
+                                meta: [
+                                    /^#\s*Measurement\s*:\s*.+$/,
+                                    /^#\s*Unit\s*:\s*.+$/,
+                                    /^#\s*Concentration\s*:\s*.+$/
+                                ]
                             }
-                            return cellContent;
-                        }).join(',');
-                    });
+                        ];
 
-                    // --- Final content (metadata first, then CSV) ---
-                    content = [...metaLines, headers.join(','), ...csvRows].join('\n');
-                }
-
-                // Validate content based on tableSelector
-                if (tableSelector === '#file-table') {
-                    const patternSets = [
-                        {
-                            // File pattern with metadata and headers
-                            header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*$/,
-                            data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
-                            error: 'Invalid format (Pattern 1). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat',
-                            meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
-                        },
-                        {
-                            header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*$/,
-                            data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
-                            error: 'Invalid format (Pattern 2). Header must be: Concentration,Value,TimePoint',
-                            meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
-                        },
-                        {
-                            header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                            data: /^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$/,
-                            error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
-                            meta: [
-                                /^#\s*Measurement\s*:\s*.+$/,
-                                /^#\s*Unit\s*:\s*.+$/,
-                                /^#\s*Concentration\s*:\s*.+$/
-                            ]
+                        const lines = content.trim().split('\n');
+                        if (lines.length < 1) {
+                            Swal.showValidationMessage('Content must contain at least the header');
+                            return false;
                         }
-                    ];
 
-                    const lines = content.trim().split('\n');
-                    if (lines.length < 1) {
-                        Swal.showValidationMessage('Content must contain at least the header');
-                        return false;
-                    }
+                        // Extract metadata lines and data lines
+                        const metaLines = lines.filter(line => line.trim().startsWith('#'));
+                        const dataLines = lines.filter(line => !line.trim().startsWith('#'));
 
-                    // Extract metadata lines and data lines
-                    const metaLines = lines.filter(line => line.trim().startsWith('#'));
-                    const dataLines = lines.filter(line => !line.trim().startsWith('#'));
+                        if (dataLines.length < 1) {
+                            Swal.showValidationMessage('CSV must contain a header after metadata');
+                            return false;
+                        }
 
-                    if (dataLines.length < 1) {
-                        Swal.showValidationMessage('CSV must contain a header after metadata');
-                        return false;
-                    }
+                        // Normalize the header line
+                        const normalizedHeader = dataLines[0].replace(/\s*,\s*/g, ',');
 
-                    // Normalize the header line
-                    const normalizedHeader = dataLines[0].replace(/\s*,\s*/g, ',');
+                        // Find matching pattern
+                        const matchedPattern = patternSets.find(pattern => {
+                            return pattern.header.test(dataLines[0]) || pattern.header.test(normalizedHeader);
+                        });
 
-                    // Find matching pattern
-                    const matchedPattern = patternSets.find(pattern => {
-                        return pattern.header.test(dataLines[0]) || pattern.header.test(normalizedHeader);
-                    });
+                        if (!matchedPattern) {
+                            const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
+                            Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
+                            return false;
+                        }
 
-                    if (!matchedPattern) {
-                        const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
-                        Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
-                        return false;
-                    }
-
-                    // ✅ Metadata validation if defined
-                    console.log("Metadata lines are: ", metaLines);
-                    if (matchedPattern.meta && matchedPattern.meta.length > 0) {
-                        for (let rule of matchedPattern.meta) {
-                            const found = metaLines.some(line => rule.test(line));
-                            if (!found) {
-                                Swal.showValidationMessage(`Missing required metadata: must include "${rule}"`);
-                                return false;
+                        // ✅ Metadata validation if defined
+                        console.log("Metadata lines are: ", metaLines);
+                        if (matchedPattern.meta && matchedPattern.meta.length > 0) {
+                            for (let rule of matchedPattern.meta) {
+                                const found = metaLines.some(line => rule.test(line));
+                                if (!found) {
+                                    Swal.showValidationMessage(`Missing required metadata: must include "${rule}"`);
+                                    return false;
+                                }
                             }
                         }
-                    }
 
                         // ✅ Data validation
                         for (let i = 1; i < dataLines.length; i++) {
@@ -885,7 +895,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 Swal.showValidationMessage(`Invalid JSON format: ${e.message}`);
                                 return false;
                             }
-                        } else {                            
+                        } else {
                             // Graphic mode: collect from inputs
                             const inputs = document.querySelectorAll('.json-input');
                             let err = null;
@@ -915,7 +925,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                         else if (t === 'false') val = false;
                                         else if (/^[-+]?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(t)) val = Number(t);
                                         else if (t.startsWith('{') || t.startsWith('[')) {
-                                            try { val = JSON.parse(t); } catch (_) {}
+                                            try { val = JSON.parse(t); } catch (_) { }
                                         }
                                     }
 
@@ -933,88 +943,99 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         }
                     }
 
-                return { newFileName, content };
-            }
-        }).then((result) => {
-            deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
+                    return { newFileName, content };
+                }
+            }).then((result) => {
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.classList.remove('disabled');
+                    deleteBtn.setAttribute('aria-disabled', 'false');
+                }
 
-            if (result.isConfirmed) {
-                const { newFileName, content } = result.value;
+                if (result.isConfirmed) {
+                    const { newFileName, content } = result.value;
 
-                $.post('/edit_file', {
-                    filename: fileName,
-                    new_filename: newFileName,
-                    type: fileType,
-                    content: content,
-                    calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp',
-                    mode: AppState.currentMeasurementMode
-                }, function(response) {
-                    if (response.status === 'success') {
-                        let textMsg;
-                        if (fileName !== newFileName) {
-                            row.find("td:first").text(newFileName);
-                            row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
-                            row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
-                            row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
-                            textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
-                        } else {
-                            textMsg = `File ${fileName} content updated successfully.`;
-                        }
-                        // Update AppState and Data display if the currently selected file is being edited
-                        if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
-                            console.log("Changing data display");
-                            deselectFile(tableSelector);
-                            selectFile(newFileName, button, tableSelector);
-                            toggleMode();
-                        }
-                        if (getBtnChecked("no-swal-checkbox")) {
-                            console.log(textMsg);
-                            if (tableSelector === "#file-table") {
-                                updateFileTable(response.files);
-                            } else if (tableSelector === "#json-table") {
-                                updateJSONTable(response.files);
+                    const formData = new URLSearchParams();
+                    formData.append('filename', fileName);
+                    formData.append('new_filename', newFileName);
+                    formData.append('type', fileType);
+                    formData.append('content', content);
+                    formData.append('calibrate_mode', AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp');
+                    formData.append('mode', AppState.currentMeasurementMode);
+
+                    fetch('/edit_file', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(response => {
+                            if (response.status === 'success') {
+                                let textMsg;
+                                if (fileName !== newFileName) {
+                                    const firstTd = row.querySelector("td");
+                                    if (firstTd) firstTd.textContent = newFileName;
+
+                                    const selectBtn = Array.from(row.querySelectorAll("button")).find(btn => btn.textContent.includes('Select'));
+                                    if (selectBtn) selectBtn.setAttribute('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
+
+                                    const editBtn = Array.from(row.querySelectorAll("button")).find(btn => btn.textContent.includes('Edit'));
+                                    if (editBtn) editBtn.setAttribute('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
+
+                                    const rowDeleteBtn = Array.from(row.querySelectorAll("button")).find(btn => btn.textContent.includes('Delete'));
+                                    if (rowDeleteBtn) rowDeleteBtn.setAttribute('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
+
+                                    textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
+                                } else {
+                                    textMsg = `File ${fileName} content updated successfully.`;
+                                }
+                                // Update AppState and Data display if the currently selected file is being edited
+                                if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
+                                    console.log("Changing data display");
+                                    deselectFile(tableSelector);
+                                    selectFile(newFileName, button, tableSelector);
+                                    toggleMode();
+                                }
+                                if (getBtnChecked("no-swal-checkbox")) {
+                                    console.log(textMsg);
+                                    if (tableSelector === "#file-table") {
+                                        updateFileTable(response.files);
+                                    } else if (tableSelector === "#json-table") {
+                                        updateJSONTable(response.files);
+                                    }
+                                    return; // Exit if no popup is needed
+                                }
+                                Swal.fire({
+                                    title: 'Updated!',
+                                    text: textMsg,
+                                    icon: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Error!',
+                                    text: response.message,
+                                    icon: 'error',
+                                    confirmButtonText: 'OK'
+                                });
                             }
-                            return; // Exit if no popup is needed
-                        }
-                        Swal.fire({
-                            title: 'Updated!',
-                            text: textMsg,
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
+                        })
+                        .catch(error => {
+                            console.error("Edit file error:", error);
+                            Swal.fire({
+                                title: 'Error!',
+                                text: error.message || 'An unexpected error occurred while saving the file',
+                                icon: 'error',
+                                confirmButtonText: 'OK'
+                            });
                         });
-                    } else {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: response.message,
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                }).fail(function(jqXHR) {
-                    let errorMessage = 'An unexpected error occurred while saving the file';
-                    if (jqXHR.responseJSON?.message) {
-                        errorMessage = jqXHR.responseJSON.message;
-                    } else if (jqXHR.status === 400) {
-                        errorMessage = 'Invalid request';
-                    } else if (jqXHR.status === 403) {
-                        errorMessage = 'Permission denied';
-                    } else if (jqXHR.status === 404) {
-                        errorMessage = 'File not found';
-                    } else if (jqXHR.status === 423) {
-                        errorMessage = 'File is locked by the data collection process';
-                    }
-                    
-                    Swal.fire({
-                        title: 'Error!',
-                        text: errorMessage,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                });
-            }
-        });
-    })
+                }
+            });
+        })
+        .catch(error => console.error("Error fetching file for edit:", error));
 }
 
 function toggleCollapse(legend) {

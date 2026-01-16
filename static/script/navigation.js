@@ -24,10 +24,10 @@ async function filterFiles(files) {
             }
 
             const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat"];
-            const cal_headers_point    = ["Concentration", "Value", "TimePoint"];
+            const cal_headers_point = ["Concentration", "Value", "TimePoint"];
 
             if (!data.headers) {
-                return false;  
+                return false;
             }
 
             const isMeasHeader = checkMeasHeader(data.headers);
@@ -48,11 +48,11 @@ async function filterFiles(files) {
 
     const filteredFiles = files.filter((_, idx) => {
         const result = checks[idx];
-        return result === true;         
+        return result === true;
     });
 
     return filteredFiles;
-} 
+}
 
 function buildMeasHeaders() {
     const headers = ["Timestamp"];
@@ -81,16 +81,16 @@ function updateJSONTable(files) {
     let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
     if (files && files.length > 0) {
         files.forEach(file => {
-           const isSelected = file === AppState.currentJSON ? ' class="selected"' : ''; 
-           html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
+            const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
+            html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
-        html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
+        html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
     }
     document.getElementById("json-table").innerHTML = html;
 }
 
-function updateFileTable(files, deselect=false) {
+function updateFileTable(files, deselect = false) {
 
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
     if (files) {
@@ -109,7 +109,7 @@ function updateFileTable(files, deselect=false) {
                 $toggleQueryClass("#file-table tr", "selected", false);
                 updateFileDisplay(AppState.currentFile);
             }
-        });  
+        });
     }
 }
 
@@ -121,73 +121,73 @@ function updateFileDisplay(curFile) {
         displayElement.innerHTML = `No file selected`;
 }
 
-function fetchJSON(jsonFile, callback) {
-    $.get('/get_json_content', {
-        json_name: jsonFile,
-        mode: AppState.currentMeasurementMode,
-        numSources: AppState.numSources
-    }, function(response) {
-        callback(response.json);
-    })
+async function fetchJSONContent(jsonFile, callback) {
+    try {
+        const url = `/get_json_content?json_name=${encodeURIComponent(jsonFile)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`;
+        const data = await fetchJSON(url);
+        callback(data.json);
+    } catch (error) {
+        console.error("Error fetching JSON content:", error);
+    }
 }
 
-function browseSavingLocation(deselect, changeToCalibrate=false, button = null) {
+function browseSavingLocation(deselect, changeToCalibrate = false, button = null) {
     // Temporarily disable the button to prevent multiple clicks
-    $(button).prop("disabled", true);
+    if (button) button.disabled = true;
     setTimeout(() => {
-        $(button).prop("disabled", false);
+        if (button) button.disabled = false;
     }, 1000); // Re-enable the button after 1 second
-    if (button.id === "go-to-exp-btn") {
+    if (button?.id === "go-to-exp-btn") {
         blinkingItem("cal-mode-select", 5000);
         blinkingItem("measurement-mode", 5000);
         blinkingItem("file-selection", 5000);
         updateDirectory(deselect, changeToCalibrate);
     } else {
         fetch('/api/current_output')
-        .then(response => {
-            if (!response.ok) {
-                // no marker or server error -> fallback
-                return { exists: false };
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.exists) {
-                // Use server-provided directory (with trailing separator if needed)
-                const fileName = data.filename;
+            .then(response => {
+                if (!response.ok) {
+                    // no marker or server error -> fallback
+                    return { exists: false };
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.exists) {
+                    // Use server-provided directory (with trailing separator if needed)
+                    const fileName = data.filename;
 
+                    updateDirectory(deselect, changeToCalibrate);
+
+                    // Wait for the table to refresh/populate, then select the row's button
+                    setTimeout(() => {
+                        // find a TD whose text exactly equals the filename
+                        const cells = document.querySelectorAll("#file-table tr td");
+                        const cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
+
+                        if (cell) {
+                            const row = cell.closest("tr");
+                            const btn = row.querySelector("button");
+
+                            if (btn) {
+                                selectFile(fileName, btn, "#file-table");
+                            } else {
+                                // fallback: pass the cell element so selectFile still finds the row to highlight
+                                selectFile(fileName, cell, "#file-table");
+                            }
+                        } else {
+                            console.warn(`File "${fileName}" not found in #file-table.`);
+                        }
+                    }, 500); // adjust delay if your table takes longer to populate
+                } else {
+                    // no recorded path -> fallback to original behavior
+                    updateDirectory(deselect, changeToCalibrate);
+                    blinkingItem("file-selection", 5000);
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching current_output:", err);
                 updateDirectory(deselect, changeToCalibrate);
-
-                // Wait for the table to refresh/populate, then select the row's button
-                setTimeout(() => {
-                    // find a TD whose text exactly equals the filename
-                    const cells = document.querySelectorAll("#file-table tr td");
-                    const cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
-
-                    if (cell) {
-                        const row = cell.closest("tr");
-                        const btn = row.querySelector("button");
-
-                    if (btn) {
-                        selectFile(fileName, btn, "#file-table");
-                    } else {
-                        // fallback: pass the cell element so selectFile still finds the row to highlight
-                        selectFile(fileName, cell, "#file-table");
-                    }
-                    } else {
-                        console.warn(`File "${fileName}" not found in #file-table.`);
-                    }
-                }, 500); // adjust delay if your table takes longer to populate
-            } else {
-                // no recorded path -> fallback to original behavior
-                updateDirectory(deselect, changeToCalibrate);
-                blinkingItem("file-selection", 5000);
-            }
-        })
-        .catch(err => {
-            console.error("Error fetching current_output:", err);
-            updateDirectory(deselect, changeToCalibrate);
-        });
+            });
     }
 }
 
@@ -211,7 +211,7 @@ function scrollWhenVisible(elementId, duration = 500) {
 
     // Helper to check if element is visible
     const isVisible = el =>
-    el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
+        el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
 
     // Scroll smoothly to the element
     const scrollToElement = () => {
@@ -227,9 +227,9 @@ function scrollWhenVisible(elementId, duration = 500) {
 
     // Poll every 100ms until element becomes visible
     const interval = setInterval(() => {
-    if (isVisible(target)) {
-        scrollToElement();
-        clearInterval(interval);
-    }
+        if (isVisible(target)) {
+            scrollToElement();
+            clearInterval(interval);
+        }
     }, 100);
 }

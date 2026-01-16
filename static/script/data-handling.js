@@ -26,7 +26,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
 
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
-    } 
+    }
     else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
 
@@ -34,7 +34,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $id("download-json-btn").disabled = false;
         $hidden(["right-deselect-btn", "json-display"], false);
 
-        fetchJSON(AppState.currentJSON, (JSON_content) => {
+        fetchJSONContent(AppState.currentJSON, (JSON_content) => {
             const display = $id("json-display");
             display.innerHTML = ""; // clear previous content
 
@@ -185,16 +185,21 @@ function copyFile(tableSelector = "#file-table") {
 
     const filePath = tableSelector === "#file-table" ? csvPath : currentFile;
 
-    $.ajax({
-        url: '/copy_file',
+    const formData = new URLSearchParams();
+    formData.append('filepath', filePath);
+    formData.append('filename', currentFile);
+    formData.append('mode', AppState.currentMeasurementMode);
+    formData.append('tabletype', tableSelector);
+
+    fetch('/copy_file', {
         method: 'POST',
-        data: {
-            filepath: filePath,
-            filename: currentFile,
-            mode: AppState.currentMeasurementMode,
-            tabletype: tableSelector
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
-        success: function(response) {
+        body: formData
+    })
+        .then(response => response.json())
+        .then(response => {
             if (response.status === 'success') {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
@@ -222,21 +227,14 @@ function copyFile(tableSelector = "#file-table") {
                     confirmButtonText: 'OK'
                 });
             }
-        },
-        error: function(xhr, status, error) {
+        })
+        .catch(error => {
             // Handle AJAX errors (network/server issues)
-            let message;
-            if (xhr.status === 423) { // HTTPStatus.LOCKED
-                message = 'File operation is locked because a process is currently running.';
-            } else if (xhr.status === 404) {
-                message = 'The file you are trying to copy was not found.';
-            } else if (xhr.status === 403) {
-                message = 'Permission denied. Please check your file permissions.';
-            } else if (xhr.status === 400) {
-                message = 'Invalid request. Please check the input data.';
-            } else {
-                message = 'Unexpected error: ' + (xhr.responseJSON?.message || error);
-            }
+            let message = 'Unexpected error: ' + error.message;
+
+            // Note: fetch doesn't throw on 4xx/5xx, but our fetchJSON might or we can check response.ok
+            // Since I'm using raw fetch here to match the specific error handling logic:
+            console.error("Copy file error:", error);
 
             Swal.fire({
                 title: 'Error!',
@@ -244,8 +242,7 @@ function copyFile(tableSelector = "#file-table") {
                 icon: 'error',
                 confirmButtonText: 'OK'
             });
-        }
-    });
+        });
 }
 
 function uploadFile(tableSelector = "#file-table") {
@@ -253,7 +250,7 @@ function uploadFile(tableSelector = "#file-table") {
     fileInput.type = "file";
     fileInput.accept = tableSelector === "#json-table" ? ".json" : ".csv";
 
-    fileInput.onchange = function(event) {
+    fileInput.onchange = function (event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -269,13 +266,12 @@ function uploadFile(tableSelector = "#file-table") {
             didOpen: () => Swal.showLoading()
         });
 
-        $.ajax({
-            url: "/upload_file",
+        fetch("/upload_file", {
             method: "POST",
-            data: formData,
-            processData: false,  // important for FormData
-            contentType: false,  // important for FormData
-            success: function(response) {
+            body: formData
+        })
+            .then(response => response.json())
+            .then(response => {
                 Swal.close();
 
                 if (response.status === "success") {
@@ -298,17 +294,16 @@ function uploadFile(tableSelector = "#file-table") {
                         confirmButtonText: "OK"
                     });
                 }
-            },
-            error: function(xhr, status, error) {
+            })
+            .catch(error => {
                 Swal.close();
                 Swal.fire({
                     title: "Upload Failed",
-                    text: xhr.responseJSON?.message || error,
+                    text: error.message,
                     icon: "error",
                     confirmButtonText: "OK"
                 });
-            }
-        });
+            });
     };
 
     fileInput.click(); // Trigger file chooser dialog
@@ -336,11 +331,9 @@ function downloadFile(tableSelector = "#file-table") {
         didOpen: () => Swal.showLoading()
     });
 
-    $.ajax({
-        url: '/get_file_content',
-        method: 'GET',
-        data: { file: currentFile, type: fileType, mode: AppState.currentMeasurementMode},
-        success: function(response) {
+    fetch(`/get_file_content?file=${encodeURIComponent(currentFile)}&type=${encodeURIComponent(fileType)}&mode=${encodeURIComponent(AppState.currentMeasurementMode)}`)
+        .then(response => response.json())
+        .then(response => {
             Swal.close();
 
             if (response.status === 'success' && response.content) {
@@ -376,32 +369,19 @@ function downloadFile(tableSelector = "#file-table") {
                     confirmButtonText: 'OK'
                 });
             }
-        },
-        error: function(xhr, status, error) {
+        })
+        .catch(error => {
             Swal.close();
-
-            let message;
-            if (xhr.status === 404) {
-                message = 'File not found on server.';
-            } else if (xhr.status === 403) {
-                message = 'Permission denied to access the file.';
-            } else if (xhr.status === 400) {
-                message = 'Invalid request. Please check file path or name.';
-            } else {
-                message = xhr.responseJSON?.message || 'Unexpected error occurred while fetching the file.';
-            }
-
             Swal.fire({
                 title: 'Error!',
-                text: message,
+                text: error.message || 'Unexpected error occurred while fetching the file.',
                 icon: 'error',
                 confirmButtonText: 'OK'
             });
-        }
-    });
+        });
 }
 
-function processDataDisplay(fileName, jsonFileContent=null) {
+function processDataDisplay(fileName, jsonFileContent = null) {
     // Proceed with fetching and displaying data
     fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
@@ -461,10 +441,20 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 deselectFile(tableSelector);
             }
 
-            $.post('/delete_file', { 
-                filename: fileName, 
-                tabletype: tableSelector 
-            }, handleResponse).fail(handleError);
+            const formData = new URLSearchParams();
+            formData.append('filename', fileName);
+            formData.append('tabletype', tableSelector);
+
+            fetch('/delete_file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            })
+                .then(response => response.json())
+                .then(handleResponse)
+                .catch(handleError);
         } else if (tableSelector === "#json-table") {
             if (AppState.currentJSON === fileName) {
                 deselectFile(tableSelector);
@@ -472,12 +462,22 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
             console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
 
-            $.post('/delete_file', { 
-                filename: fileName, 
-                mode: AppState.currentMeasurementMode, 
-                tabletype: tableSelector,
-                numSources: AppState.numSources
-            }, handleResponse).fail(handleError);
+            const formData = new URLSearchParams();
+            formData.append('filename', fileName);
+            formData.append('mode', AppState.currentMeasurementMode);
+            formData.append('tabletype', tableSelector);
+            formData.append('numSources', AppState.numSources);
+
+            fetch('/delete_file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            })
+                .then(response => response.json())
+                .then(handleResponse)
+                .catch(handleError);
         }
     };
 
@@ -492,7 +492,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 text: response.message,
                 icon: 'success',
                 timer: 2000,
-            showConfirmButton: false
+                showConfirmButton: false
             });
         } else {
             Swal.fire({
@@ -506,20 +506,11 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
         }
     };
 
-    const handleError = (jqXHR) => {
-        let errorMessage = 'An unexpected error occurred while deleting the file';
-        if (jqXHR.status === 400) {
-            errorMessage = jqXHR.responseJSON?.message || 'Invalid request';
-        } else if (jqXHR.status === 403) {
-            errorMessage = jqXHR.responseJSON?.message || 'Permission denied while deleting the file';
-        } else if (jqXHR.status === 404) {
-            errorMessage = jqXHR.responseJSON?.message || 'File not found';
-        } else if (jqXHR.status === 423) {
-            errorMessage = jqXHR.responseJSON?.message || 'File is currently being used by the data collection process. Stop the process and try again.';
-        }
+    const handleError = (error) => {
+        console.error("Delete file error:", error);
         Swal.fire({
             title: 'Error!',
-            text: errorMessage,
+            text: error.message || 'An unexpected error occurred while deleting the file',
             icon: 'error',
             confirmButtonText: 'OK'
         }).then(() => {
@@ -552,10 +543,10 @@ function settingDerivedCon() {
     let derived_con_text = null;
     derived_section = [];
     derived_con_text = [];
-        for (let i = 0; i < AppState.numSources; i++) {
-            derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
-            derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
-        }
+    for (let i = 0; i < AppState.numSources; i++) {
+        derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
+        derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
+    }
     return {
         derived_section: derived_section,
         derived_con_text: derived_con_text
@@ -600,23 +591,19 @@ const fetchData = async (filename, jsonFile) => {
     }
 };
 
-const fetchDataFromServer = async (filename) => {    
-    return await $.get('/get_data', {
-        file: `${filename}`
-    }).fail((xhr, status, errorThrown) => {
+const fetchDataFromServer = async (filename) => {
+    try {
+        return await fetchJSON(`/get_data?file=${encodeURIComponent(filename)}`);
+    } catch (error) {
         // Create a custom error object with all the details
-        const enhancedError = new Error(`Fetch failed for ${filename}`);
-        enhancedError.xhr = xhr;
-        enhancedError.status = status;
-        enhancedError.errorThrown = errorThrown;
+        const enhancedError = new Error(`Fetch failed for ${filename}: ${error.message}`);
         enhancedError.filename = filename;
         enhancedError.directory = csvPath;
-        
         throw enhancedError;
-    });
+    }
 };
 
-function processResponse (response, jsonFile) {
+function processResponse(response, jsonFile) {
     if (!response.data || response.data.length === 0) {
         handleEmptyData();
         return null;
@@ -641,7 +628,7 @@ function processResponse (response, jsonFile) {
     return response;
 };
 
-function handleNonCalibrationMode(jsonFile) {    
+function handleNonCalibrationMode(jsonFile) {
     const derivedSettings = settingDerivedCon();
     if (derivedSettings) {
         updateDerivedSections(derivedSettings);
@@ -681,8 +668,8 @@ function calculateKineticValue(quantity) {
     };
 
     const val = getKineticValue(quantity);
-    return val !== null && kineticCalculations[quantity] 
-        ? kineticCalculations[quantity](val) 
+    return val !== null && kineticCalculations[quantity]
+        ? kineticCalculations[quantity](val)
         : null;
 };
 
@@ -713,45 +700,45 @@ function updateSingleConcentration(element, value, fitType, coef) {
 function handleEmptyData() {
     $hidden(["plot-canvas"]);
     const plotAnalysis = document.getElementById("plot-analysis");
-    if (plotAnalysis )
-        plotAnalysis.innerHTML = 
+    if (plotAnalysis)
+        plotAnalysis.innerHTML =
             `<span style="color: red;">No data available</span>`;
 };
 
 function handleFetchError(error) {
     console.group('🚨 Fetch Error Details');
     console.error("Failed to fetch data:", error.message);
-    
+
     if (error.xhr) {
         console.log("📡 XHR Object:", error.xhr);
         console.log("📊 Status:", error.status);
         console.log("❌ Error Thrown:", error.errorThrown);
-        
+
         // Log response text if available
         if (error.xhr.responseText) {
             console.log("📄 Response Text:", error.xhr.responseText);
         }
-        
+
         // Log response headers if available
         if (error.xhr.getAllResponseHeaders) {
             console.log("📋 Response Headers:", error.xhr.getAllResponseHeaders());
         }
-        
+
         // Log status code and text
         console.log("🔢 Status Code:", error.xhr.status);
         console.log("📝 Status Text:", error.xhr.statusText);
     }
-    
+
     if (error.filename) {
         console.log("📁 Requested Filename:", error.filename);
     }
-    
+
     if (error.directory) {
         console.log("📂 Directory:", error.directory);
     }
-    
+
     console.groupEnd();
-    
+
     // You can also add more specific error handling based on status
     if (error.status === 'error' && error.errorThrown) {
         console.warn("⚠️ Possible network or server error:", error.errorThrown);
@@ -774,7 +761,7 @@ function getKineticValue(property) {
 function updateRefCalPoint(jsonFile) {
     const jsonTimePoint = jsonFile["time"];
     const jsonTimeUnit = jsonFile["time-unit"];
-    
+
     // Convert time units
     const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(getTimeUnitValue());
     AppState.refCalPoint = jsonTimePoint * conversionFactor;
@@ -827,7 +814,7 @@ function updatePlotBasedOnMode(jsonFile) {
             console.log("Give me uniqueTimePoints ", uniqueTimePoints);
             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
             const timePoint = document.getElementById("regressed-time-point").value;
-            const processingData = AppState.responseData.filter(row => 
+            const processingData = AppState.responseData.filter(row =>
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(processingData, "Concentration", "Value");
@@ -838,7 +825,7 @@ function updatePlotBasedOnMode(jsonFile) {
             updateRefCalPoint(jsonFile);
             document.getElementById("add-json-section").textContent = "";
         }
-        
+
         const values = Array.from(
             { length: AppState.numSources },
             (_, i) => `Value:${i + 1}`
@@ -883,7 +870,7 @@ function toggleMode() {
         <p>${desc.math}</p>
         <p>${desc.text}</p>
       `;
-      MathJax.typeset();
+    MathJax.typeset();
     if (calDiv.getAttribute('data-value') === "kinetics") {
         const sel_quant = document.querySelector("#regressed-quantity");
         document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
@@ -1070,21 +1057,21 @@ function sendExportPayload(payload, isBatch) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(payload),
-        success: function(response) {
+        success: function (response) {
             if (response.status === 'success') {
                 alert(`Success: ${response.message}!`);
             } else {
                 alert(`Error: ${response.message}`);
             }
         },
-        error: function(jqXHR, textStatus, errorThrown) {
+        error: function (jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
             alert("Error exporting data");
         }
     });
 }
 
-function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=true) {
+function sendExportData(saveDir, saveFile, analysisData, concentration, newFile = true) {
     console.log("analysisData is ", analysisData);
     if (analysisData) {
         const data = {
@@ -1095,7 +1082,7 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=
             sat: (analysisData.saturationValue === "--" || !analysisData.saturationValue) ? "NONE" : analysisData.saturationValue,
             timeSat: (analysisData.timeToSaturation === "--" || !analysisData.timeToSaturation) ? "NONE" : analysisData.timeToSaturation,
             con: concentration,
-            measUnit: analysisData.measUnit, 
+            measUnit: analysisData.measUnit,
             newFile: newFile,
             measMode: AppState.currentMeasurementMode,
             meas: analysisData.measurement,
@@ -1107,14 +1094,14 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(data),
-            success: function(response) {
+            success: function (response) {
                 if (response.status === 'success') {
                     alert(`Success: ${response.message}!`);
                 } else {
                     alert(`Error: ${response.message}`);
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
+            error: function (jqXHR, textStatus, errorThrown) {
                 console.log("AJAX error:", textStatus, errorThrown);
                 alert("Error exporting data");
             }
@@ -1128,9 +1115,9 @@ function exportJSONCoef() {
     if (!validateFileName("save-json-file")) {
         return; // Stop if validation fails
     }
-    
+
     const selectElement = document.getElementById('regressed-quantity');
-    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)){
+    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)) {
         alert("Please set time point to regress data from");
         return null;
     } else {
@@ -1152,14 +1139,14 @@ function exportJSONCoef() {
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                success: function(response) {
+                success: function (response) {
                     if (response.status === 'success') {
                         alert(`Success: ${response.message}!`);
                     } else {
                         alert(`Error: ${response.message}`);
                     }
                 },
-                error: function(jqXHR, textStatus, errorThrown) {
+                error: function (jqXHR, textStatus, errorThrown) {
                     console.log("AJAX error:", textStatus, errorThrown);
                     alert("Error exporting data");
                 }

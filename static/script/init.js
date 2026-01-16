@@ -31,14 +31,16 @@ document.getElementById('filter-source').addEventListener('change', function () 
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
-        $.get('/get_num_sources', { request: true }, function (response) {
-            const select = document.getElementById('num-sources');
-            select.innerHTML = ''; // clear existing options (optional)
-            response.num_sources.forEach(num => {
-                select.add(new Option(num, num));
-            });
-            AppState.numSources = response.num_sources[0] || 1;
-        });
+        fetchJSON('/get_num_sources?request=true')
+            .then(response => {
+                const select = document.getElementById('num-sources');
+                select.innerHTML = ''; // clear existing options (optional)
+                response.num_sources.forEach(num => {
+                    select.add(new Option(num, num));
+                });
+                AppState.numSources = response.num_sources[0] || 1;
+            })
+            .catch(error => console.error("Error fetching num sources:", error));
     } else {
         numSourcesSelect.classList.add('hidden');
     }
@@ -115,8 +117,8 @@ function updatePointEstimate() {
         estValError.innerHTML = '';
         if (Array.isArray(AppState.globalEstimatedValue)) {
             estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${AppState.globalEstimatedValue
-                    .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
-                    .join(", ")
+                .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
+                .join(", ")
                 }`;
         } else {
             if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
@@ -317,22 +319,25 @@ if (calButtons.length > 0) {
 const socket = io();
 
 socket.on('update_csv', function () {
-    $.get('/get_csv', { request: true }, function (response) {
-        console.log("give me response files ", response.files);
-        updateFileTable(response.files, deselect = false);
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        console.log("AJAX error:", textStatus, errorThrown);
-        $showText("error-message", "Error fetching CSV files")
-    });
+    fetchJSON('/get_csv?request=true')
+        .then(response => {
+            console.log("give me response files ", response.files);
+            updateFileTable(response.files, deselect = false);
+        })
+        .catch(error => {
+            console.error("Fetch error:", error);
+            $showText("error-message", "Error fetching CSV files")
+        });
 });
 
 socket.on('update_json', function (data) {
     if (data.mode === AppState.currentMeasurementMode) {
-        $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
-            function (response) {
+        fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`)
+            .then(response => {
                 updateJSONTable(response.files, deselect = false);
-            }).fail(function (jqXHR, textStatus, errorThrown) {
-                console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+            })
+            .catch(error => {
+                console.error("Fetch error fetching JSON files:", error);
                 $showText("error-message", "Error fetching JSON files")
             });
     }

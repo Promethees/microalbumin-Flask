@@ -9,13 +9,13 @@ function initDefaultState() {
         'select-time-point',
         'export-coef'
     ].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
     });
 
     ['terminate-script-btn', 'go-to-btn'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('blinking');
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('blinking');
     });
 }
 
@@ -24,7 +24,7 @@ const AppState = {
     scriptRunning: false,
     currentMeasurementMode: modeDiv.getAttribute('data-value'),
     currentFile: null,
-    prevFile: null, 
+    prevFile: null,
     currentJSON: null,
     currentJSONcontent: null,
     refCalPoint: null,
@@ -52,7 +52,7 @@ const AppState = {
     ],
     quantity_input: temp_quantity_input,
 
-    reset: function() {
+    reset: function () {
         this.myChart = null;
         this.scriptRunning = false;
         this.currentMeasurementMode = "kinetics";
@@ -74,108 +74,116 @@ const AppState = {
     }
 };
 
-    // Set initial checkbox states and toggle quantity visibility based on passed isFullDisplay
-    const fullDisplayCheckboxes = document.querySelectorAll('input[id^="full-display-"]');
-    fullDisplayCheckboxes.forEach(cb => cb.checked = isFullDisplay);
-    const quantityLabels = document.querySelectorAll('label[id^="quantity-checkboxes-"]');
-    quantityLabels.forEach(ql => {
-        if (isFullDisplay) {
-            ql.classList.remove('hidden');
-        } else {
-            ql.classList.add('hidden');
-        }
-    });
+// Set initial checkbox states and toggle quantity visibility based on passed isFullDisplay
+const fullDisplayCheckboxes = document.querySelectorAll('input[id^="full-display-"]');
+fullDisplayCheckboxes.forEach(cb => cb.checked = isFullDisplay);
+const quantityLabels = document.querySelectorAll('label[id^="quantity-checkboxes-"]');
+quantityLabels.forEach(ql => {
+    if (isFullDisplay) {
+        ql.classList.remove('hidden');
+    } else {
+        ql.classList.add('hidden');
+    }
+});
 
 const input = document.getElementById("window-size");
 
 
 const descriptions = {
-      polynomial: {
+    polynomial: {
         title: "Polynomial Function (Second Degree)",
         math: "\\[ [S] = ax^2 + bx + c \\]",
         text: "A second-degree polynomial function, also known as a quadratic function, has the form \\( ax^2 + bx + c \\), where \\( a \\neq 0 \\), \\( [S] \\) is <span class=\"sel-quantity\">Initial Analyte Concentration</span>, \\( x \\) is <span class=\"sel-quantity\" id=\"selected-quantity\"></span>."
-      },
-      linear: {
+    },
+    linear: {
         title: "Linear Function",
         math: "\\[ [S] = ax + b \\]",
         text: "A linear function represents a straight line with slope \\( a \\) and y-intercept \\( b \\). It models relationships with a constant rate of change, where \\( [S] \\) is <span class=\"sel-quantity\">Initial Analyte Concentration</span>, \\( x \\) is <span class=\"sel-quantity\" id=\"selected-quantity\"></span>."
-      },
-      logarithmic: {
+    },
+    logarithmic: {
         title: "Logarithmic Function",
         math: "\\[ [S] = a \\ln(x + b) + c \\]",
         text: "A logarithmic function, based on the natural logarithm, grows slowly for large \\( x \\). It’s used to model phenomena like growth rates or data with diminishing returns, where \\( [S] \\) is <span class=\"sel-quantity\">Initial Analyte Concentration</span>, \\( x \\) is <span class=\"sel-quantity\" id=\"selected-quantity\"></span>, \\( a \\) scales the curve and \\( b \\), \\( c \\) shifts it along the coordinates."
-      },
-      exponential: {
+    },
+    exponential: {
         title: "Exponential Function",
         math: "\\[ [S] = a e^{bx} + c \\]",
         text: "An exponential function grows or decays rapidly based on the exponent \\( bx \\). It’s used for processes like population growth or radioactive decay, where \\( [S] \\) is <span class=\"sel-quantity\">Initial Analyte Concentration</span>, \\( x \\) is <span class=\"sel-quantity\" id=\"selected-quantity\"></span>, \\( a \\) is the initial value, \\( b \\) determines the rate, while \\( c \\) shifts it."
-      },
-      'Michaelis-Menten': {
+    },
+    'Michaelis-Menten': {
         title: "Michaelis-Menten Function",
         math: "\\[ [S] = \\frac{K_m x}{V_{\\max} - x} \\]",
         text: "The Michaelis-Menten function models enzyme kinetics, where \\( x \\) is <span class=\"sel-quantity\" id=\"selected-quantity\"></span>, \\( V_{\\max} \\) is the maximum rate, \\( [S] \\) is <span class=\"sel-quantity\">initial Analyte Concentration</span>, and \\( K_m \\) is the analyte concentration at half \\( V_{\\max} \\)."
-      }
-    };
+    }
+};
 
 input.addEventListener("keydown", function (e) {
     // Allow: ArrowUp, ArrowDown, Tab, etc.
     if (
-      ["ArrowUp", "ArrowDown", "Tab"].includes(e.key)
+        ["ArrowUp", "ArrowDown", "Tab"].includes(e.key)
     ) return;
 
     // Prevent all other key presses
     e.preventDefault();
-  });
+});
 
-function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr=AppState.processedExpPath, changeToCalibrate=true) {
-    $(buttonId).off('click').on('click', function() {
+const clickHandlers = new Map();
+
+function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr = AppState.processedExpPath, changeToCalibrate = true) {
+    const selector = buttonId.startsWith('#') ? buttonId.slice(1) : buttonId;
+    const el = document.getElementById(selector);
+    if (!el) return;
+
+    if (clickHandlers.has(el)) {
+        el.removeEventListener('click', clickHandlers.get(el));
+    }
+
+    const handler = function () {
         console.log(`${buttonId} clicked, using path:`, pathStr);
         updateDirectory(true, changeToCalibrate);
-    });
+    };
+
+    el.addEventListener('click', handler);
+    clickHandlers.set(el, handler);
 }
 
-function clearCache() {
-    $.ajax({
-        url: '/clear_cache',
-        type: 'POST',
-        success: function(response) {
-            if (response.status === 'success' && response.action === 'clear_storage') {
-                // Clear localStorage and sessionStorage
-                localStorage.clear();
-                sessionStorage.clear();
-                $append("log-display", "Client-side cache cleared.\n");
-                // Optionally reload the page to ensure fresh content
-                window.location.reload(true); // true forces reload from server, bypassing cache
-            } else {
-                $append("log-display", `Error clearing cache: ${response.message}\n`);
-            }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-            console.log("Clear cache AJAX error:", textStatus, errorThrown);
-            $append("log-display", "Error: Failed to clear cache\n");
+async function clearCache() {
+    try {
+        const response = await fetchJSON('/clear_cache', { method: 'POST' });
+        if (response.status === 'success' && response.action === 'clear_storage') {
+            // Clear localStorage and sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            $append("log-display", "Client-side cache cleared.\n");
+            // Optionally reload the page to ensure fresh content
+            window.location.reload(true); // true forces reload from server, bypassing cache
+        } else {
+            $append("log-display", `Error clearing cache: ${response.message}\n`);
         }
-    });
+    } catch (error) {
+        console.log("Clear cache error:", error);
+        $append("log-display", "Error: Failed to clear cache\n");
+    }
 }
 
-function checkServerStatus() {
-    $.get('/ping')
-        .done(function() {
-            if (!serverAvailable) {
-                console.log('Server is back up, resuming polling...');
-                serverAvailable = true;
-            }
-        })
-        .fail(function() {
-            if (serverAvailable) {
-                console.log('Server is down, pausing polling, clearing cache and resetting state...');
-                clearCache();
-                serverAvailable = false;
-                AppState.reset();
-            }
-        });
+async function checkServerStatus() {
+    try {
+        await fetchJSON('/ping');
+        if (!serverAvailable) {
+            console.log('Server is back up, resuming polling...');
+            serverAvailable = true;
+        }
+    } catch (error) {
+        if (serverAvailable) {
+            console.log('Server is down, pausing polling, clearing cache and resetting state...');
+            clearCache();
+            serverAvailable = false;
+            AppState.reset();
+        }
+    }
 }
 
-$(document).ready(function() {
+window.addEventListener('load', function () {
     AppState.reset();
 
     // When server is Down, reset global variables
@@ -184,7 +192,7 @@ $(document).ready(function() {
     initDefaultState();
 
     // Periodically update file table every 0.5 seconds
-    updateInterval = setInterval(function() {
+    updateInterval = setInterval(function () {
         if (!serverAvailable) return;
         // updateDirectory(false);
 
@@ -236,19 +244,19 @@ $(document).ready(function() {
     })
 
     document.getElementById('data-display-section')
-    .classList.toggle('hidden', !AppState.currentFile);
+        .classList.toggle('hidden', !AppState.currentFile);
 
     bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
 
     const select = document.getElementById("exp-json-regress-algo");
     const selected = select.value;
-    const desc = descriptions[selected];  
+    const desc = descriptions[selected];
     document.getElementById("func-desc").innerHTML = `
         <h2>${desc.title}</h2>
         <p>${desc.math}</p>
         <p>${desc.text}</p>
       `;
-      MathJax.typeset();
+    MathJax.typeset();
     if (calDiv.getAttribute('data-value') === "kinetics") {
         const sel_quant = document.querySelector("#regressed-quantity");
         document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
@@ -380,7 +388,7 @@ function calPointBehaviour() {
     document.getElementById('select-time-point')?.classList.remove('hidden');
 }
 
-function updateDirectory(deselect, changeToCalibrate=false) {
+async function updateDirectory(deselect, changeToCalibrate = false) {
     if (AppState.currentMeasurementMode !== "calibrate") {
         //Change #cal-mode-select in the background before switching to calibrate mode
         calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
@@ -392,32 +400,34 @@ function updateDirectory(deselect, changeToCalibrate=false) {
             }
         })
     }
-    if(changeToCalibrate) {
+    if (changeToCalibrate) {
         selectButton(modeButtons[2], modeButtons, modeDiv);
         AppState.currentMeasurementMode = "calibrate";
         AppState.currentFile = null;
         calModeBehaviour();
     }
-    // console.log("Updating directory to:", path);
-    $.get('/get_csv', {request: true}, function(response) {
-        console.log("give me response files ", response.files);
-        updateFileTable(response.files, deselect);
-    }).fail(function(jqXHR, textStatus, errorThrown) {
-        console.log("AJAX error:", textStatus, errorThrown);
+
+    try {
+        const csvResponse = await fetchJSON('/get_csv?request=true');
+        console.log("give me response files ", csvResponse.files);
+        updateFileTable(csvResponse.files, deselect);
+    } catch (error) {
+        console.error("Error fetching CSV files:", error);
         $showText("error-message", "Error fetching CSV files")
-    });
-    $.get('/get_json_cal', {mode: AppState.currentMeasurementMode, numSources: AppState.numSources}, 
-        function(response) {
-            updateJSONTable(response.files);
-        }).fail(function(jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
-            $showText("error-message", "Error fetching JSON files")
-        });
+    }
+
+    try {
+        const jsonResponse = await fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`);
+        updateJSONTable(jsonResponse.files);
+    } catch (error) {
+        console.error("Error fetching JSON files:", error);
+        $showText("error-message", "Error fetching JSON files")
+    }
 }
 
 function drawMeasurementChart() {
     fetchData(AppState.currentFile, AppState.currentJSONcontent);
-    document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1); 
+    document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
 }
 
 function updateMultiSourceExportOptions() {
@@ -440,13 +450,13 @@ function switchingModes(mode) {
     AppState.currentFile = null;
     document.getElementById("json-display").textContent = "";
     $hidden(["right-deselect-btn"]);
-    
+
     if (mode === "kinetics") {
         kineticsModeBehaviour();
     } else if (mode === "point") {
         pointModeBehaviour();
     } else {
-        calModeBehaviour(); 
+        calModeBehaviour();
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {

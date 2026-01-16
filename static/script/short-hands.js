@@ -10,7 +10,7 @@ const $append = (id, text) => { $id(id).textContent += text; };
 const $disable = (ids, state = true) => ids.forEach(id => $id(id).disabled = state);
 const $toggleClass = (id, cls, state) => {
     const element = $id(id);
-    if (element) 
+    if (element)
         element.classList.toggle(cls, state);
 }
 
@@ -37,3 +37,26 @@ const $showText = (id, text) => {
     el.textContent = text;
     el.style.display = "";
 };
+
+async function fetchJSON(url, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    };
+
+    // Merge options, making sure to handle Method and Body if provided
+    const mergedOptions = { ...defaultOptions, ...options };
+
+    try {
+        const response = await fetch(url, mergedOptions);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Fetch error for ${url}:`, error);
+        throw error;
+    }
+}
