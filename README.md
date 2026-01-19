@@ -12,6 +12,8 @@ The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](
 	- Open browser, access the software via address of `http://0.0.0.0:5000` or `http://localhost:5000`
 
 ### Online deployment
+	- Download `npm` with [Node.js](https://nodejs.org/en/download/)
+	- Download `terser` with `npm install --save-dev terser`
 	- Make changes, then use `npm run build` to obfuscate your latest code
 	- Commit locally using `git commit -m "Your message"`
 	- Push to deployment using `git push online:main`
