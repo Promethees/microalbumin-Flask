@@ -766,6 +766,126 @@ function toggleMode() {
     }
 }
 
+    const table = document.getElementById("file-table");
+    const rows = table.querySelectorAll("tr");
+    const files = [];
+    rows.forEach((row, index) => {
+        if (index === 0) return;
+        const cell = row.querySelector("td");
+        if (cell && cell.textContent.trim().endsWith(".csv")) {
+            files.push(cell.textContent.trim());
+        }
+    });
+
+    if (files.length < 2) {
+        Swal.fire({
+            title: 'Not enough files',
+            text: 'You need at least two CSV files in the directory to merge.',
+            icon: 'info'
+        });
+        return;
+    }
+
+    let fileOptions = files.map(f => `<option value="${f}">${f}</option>`).join('');
+
+    Swal.fire({
+        title: 'Merge CSV Files',
+        html: `
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
+                <label for="swal-file1">First File:</label>
+                <select id="swal-file1" class="swal2-input" style="margin: 0; width: 100%;">
+                    ${fileOptions}
+                </select>
+                <label for="swal-file2">Second File:</label>
+                <select id="swal-file2" class="swal2-input" style="margin: 0; width: 100%;">
+                    ${fileOptions}
+                </select>
+                <label for="swal-output">Output Name:</label>
+                <input id="swal-output" class="swal2-input" style="margin: 0; width: 100%;" placeholder="merged_output">
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Merge',
+        didOpen: () => {
+            const file1Select = document.getElementById('swal-file1');
+            const file2Select = document.getElementById('swal-file2');
+            const outputInput = document.getElementById('swal-output');
+
+            const updateDefaultOutput = () => {
+                const f1 = file1Select.value.replace('.csv', '');
+                const f2 = file2Select.value.replace('.csv', '');
+                outputInput.value = `${f1}_${f2}_merged`;
+            };
+
+            file1Select.addEventListener('change', updateDefaultOutput);
+            file2Select.addEventListener('change', updateDefaultOutput);
+
+            if (AppState.currentFile && files.includes(AppState.currentFile)) {
+                file1Select.value = AppState.currentFile;
+            }
+            updateDefaultOutput();
+        },
+        preConfirm: () => {
+            const file1 = document.getElementById('swal-file1').value;
+            const file2 = document.getElementById('swal-file2').value;
+            const output_name = document.getElementById('swal-output').value;
+
+            if (file1 === file2) {
+                Swal.showValidationMessage('Please select two different files');
+                return false;
+            }
+            if (!output_name) {
+                Swal.showValidationMessage('Please enter an output name');
+                return false;
+            }
+
+            return { file1, file2, output_name };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const { file1, file2, output_name } = result.value;
+
+            $.ajax({
+                url: '/merge_csv',
+                method: 'POST',
+                data: {
+                    file1: file1,
+                    file2: file2,
+                    output_name: output_name,
+                    path: document.getElementById("directory").value
+                },
+                success: function (response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: response.message,
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            updateDirectory(document.getElementById("directory").value);
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: response.message,
+                            icon: 'error'
+                        });
+                    }
+                },
+                error: function (xhr) {
+                    Swal.fire({
+                        title: 'Error!',
+                        text: xhr.responseJSON?.message || 'Failed to merge files',
+                        icon: 'error'
+                    });
+                }
+            });
+        }
+    });
+}
+
 function exportData() {
     // Validate file name and path
     if (!validateFileName("save-file") || !validatePathName("save-dir")) {

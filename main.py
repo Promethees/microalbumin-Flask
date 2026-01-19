@@ -24,7 +24,7 @@ from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
 from quantity import get_quantity_input
-from file import get_file_list, get_dynamic_data, replace_empty
+from file import get_file_list, get_dynamic_data, replace_empty, merge_csv_files
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
@@ -806,6 +806,60 @@ def copy_file():
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while copying the file'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+@app.route('/merge_csv', methods=['POST'])
+def merge_csv():
+    try:
+        # Prevent merge during running process
+        if process and process.poll() is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot merge files while the data collection process is running'
+            }), HTTPStatus.LOCKED
+
+        file1 = request.form.get('file1')
+        file2 = request.form.get('file2')
+        output_name = request.form.get('output_name')
+        path = request.form.get('path') if request.form.get('path') else get_directory()
+
+        if not file1 or not file2 or not output_name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Both files and output name are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        if not output_name.endswith('.csv'):
+            output_name += '.csv'
+
+        file1_path = os.path.join(path, file1)
+        file2_path = os.path.join(path, file2)
+        output_path = os.path.join(path, output_name)
+
+        # Validate file path to prevent directory traversal
+        if '..' in os.path.normpath(file1_path) or '..' in os.path.normpath(file2_path) or '..' in os.path.normpath(output_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        success, result = merge_csv_files(file1_path, file2_path, output_path)
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': f'Files merged successfully into {result}'
+            }), HTTPStatus.OK
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': result
+            }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        print(f"Unexpected error in merge_csv: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while merging the files'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @app.route('/get_num_sources', methods=['GET'])
