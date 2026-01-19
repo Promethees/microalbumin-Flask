@@ -21,7 +21,7 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
 
     const allGroups = {
         allXColumn: extractColumnAndConvert(data, XColumn),
-        allYColumn: YColumn.map(y => extractColumnAndNormalize(data, y)),
+        allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(data, y)) : [extractColumnAndNormalize(data, YColumn)],
         allData: data
     };
 
