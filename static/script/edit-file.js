@@ -142,6 +142,34 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         return div.innerHTML;
     }
 
+    function collectTableContent() {
+        const metaTable = document.getElementById('swal-metadata-table');
+        let metaLines = [];
+        if (metaTable) {
+            const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
+            metaLines = metaRows.map(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 2) {
+                    const key = cells[0].textContent.trim();
+                    const value = cells[1].textContent.trim();
+                    return `# ${key}: ${value}`;
+                }
+                return null;
+            }).filter(Boolean);
+        }
+
+        const table = document.getElementById('swal-edit-table');
+        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const dataLines = rows.map(row => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            return cells.map(cell => cell.textContent.trim()).join(',');
+        });
+
+        return metaLines.join('\n') + (metaLines.length ? '\n' : '') + headers.join(',') + '\n' + dataLines.join('\n');
+    }
+
+
     checkScriptStatus().then((isRunning) => {
         if (isRunning || AppState.scriptRunning) {
             Swal.fire({
@@ -177,6 +205,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
             const addRowBtn = document.getElementById('add-row-btn');
             const deleteRowBtn = document.getElementById('delete-row-btn');
+            const removeColsBtn = document.getElementById('remove-cols-btn');
             let selectedRow = null;
 
             // Row selection
@@ -293,6 +322,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     }
                 });
             }
+
+            // Remove columns
         }
 
         function renderContent(content) {
@@ -373,23 +404,27 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     <input type="text" id="swal-input-filename" class="swal2-input" value="${fileName}" placeholder="Enter new filename">
                     ${metadataHtml}
                     <div style="display: flex; justify-content: space-between; margin: 10px 0;">
-                        <button id="add-row-btn" class="swal2-confirm swal2-styled" style="padding: 5px 10px;">
-                            Add Row (+)
-                        </button>
-                        <button id="delete-row-btn" class="swal2-deny swal2-styled" style="padding: 5px 10px;" disabled>
-                            Delete Selected Row (-)
-                        </button>
+                        <div>
+                            <button id="add-row-btn" class="swal2-confirm swal2-styled" style="padding: 5px 10px;">
+                                Add Row (+)
+                            </button>
+                            <button id="delete-row-btn" class="swal2-deny swal2-styled" style="padding: 5px 10px;" disabled>
+                                Delete Selected Row (-)
+                            </button>
+                        </div>
                     </div>
                     <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
                         <table id="swal-edit-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
                             <thead>
                                 <tr style="position: sticky; top: 0; background: white; z-index: 10;">
-                                    ${headers.map(col => `
-                                        <th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
+                                    ${headers.map(col => {
+                    const isValueCol = col.startsWith('Value:');
+                    return `<th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
                                             font-size: 0.85em; font-weight: bold; white-space: nowrap;">
                                             ${col}
-                                        </th>
-                                    `).join('')}
+                                            ${isValueCol ? `<span class="remove-col-btn" onclick="removeColumn('${col}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>` : ''}
+                                        </th>`;
+                }).join('')}
                                 </tr>
                             </thead>
                             <tbody id="swal-edit-body">
@@ -527,7 +562,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 if (!container) return;
                 let parsed;
                 try { parsed = JSON.parse(originalContent); } catch (_) { return; }
-                container.innerHTML = buildSettingsUI(parsed);
+                container.innerHTML = buildGraphicUI(parsed);
                 bindDynamicButtons();
                 syncFitCoefLabels(document.querySelector('.swal2-popup'));
             }
@@ -732,309 +767,274 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 }
             }
 
-            Swal.fire({
-                title: `Edit ${fileName}`,
-                width: '800px',
-                html: renderContent(content),
-                footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Save Changes',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#50C878',
-                cancelButtonColor: '#d33',
-                didOpen: () => {
-                    // -----------------------------------------------------------------
-                    //  CSS for the graphic UI
-                    // -----------------------------------------------------------------
-                    if (!document.getElementById('json-graphic-styles')) {
-                        const style = document.createElement('style');
-                        style.id = 'json-graphic-styles';
-                        style.textContent = `
-                            .json-graphic-container fieldset.collapsed > .json-section { display:none; }
-                            .json-graphic-container .json-input { font-size:0.9rem; }
-                            .json-graphic-container .btn-small { font-size:0.8rem; cursor:pointer; }
-                            .light .json-graphic-container .json-field:hover { background:#f8f9fa; }
-                            .dark .json-graphic-container .json-field:hover { background:#343a40; }
-                        `;
-                        document.head.appendChild(style);
-                    }
-                    const toggleButton = document.getElementById('toggle-mode');
-                    if (editMode === 'table') {
-                        setupTableEvents();
-                    } else if (editMode === 'graphic') {
-                        syncFitCoefLabels(Swal.getPopup());
-                    }
+            // --- End functions ---
 
-                    if (toggleButton) {
-                        toggleButton.addEventListener('click', () => {
-                            editMode = editMode === 'text' ? (tableSelector === '#file-table' ? 'table' : 'graphic') : 'text';
-                            toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
-                            Swal.getHtmlContainer().innerHTML = renderContent({ content: originalContent });
-                            if (editMode === 'table') {
-                                // Need a small delay to allow DOM to update
-                                setTimeout(setupTableEvents, 50);
-                            } else if (editMode === 'graphic') {
-                                syncFitCoefLabels(Swal.getPopup());
-                            }
-                        });
-                    }
-                },
-                preConfirm: () => {
-                    const newFileName = document.getElementById('swal-input-filename').value;
-                    let content;
+            function showModal(contentToShow, nameToShow) {
+                Swal.fire({
+                    title: `Edit ${nameToShow}`,
+                    width: '800px',
+                    html: renderContent({ content: contentToShow }),
+                    footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Save Changes',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#50C878',
+                    cancelButtonColor: '#d33',
+                    didOpen: () => {
+                        // Restore filename
+                        const nameInput = document.getElementById('swal-input-filename');
+                        if (nameInput) nameInput.value = nameToShow;
 
-                    if (editMode === 'text') {
-                        content = document.getElementById('swal-input-content').value;
-                    } else if (editMode === 'table') {
-                        // --- Collect metadata lines ---
-                        const metaTable = document.getElementById('swal-metadata-table');
-                        let metaLines = [];
-                        if (metaTable) {
-                            const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
-                            metaLines = metaRows.map(row => {
-                                const cells = row.querySelectorAll('td');
-                                if (cells.length === 2) {
-                                    const key = cells[0].textContent.trim();
-                                    const value = cells[1].textContent.trim();
-                                    return `# ${key}: ${value}`;
+                        // -----------------------------------------------------------------
+                        //  CSS for the graphic UI
+                        // -----------------------------------------------------------------
+                        if (!document.getElementById('json-graphic-styles')) {
+                            const style = document.createElement('style');
+                            style.id = 'json-graphic-styles';
+                            style.textContent = `
+                                .json-graphic-container fieldset.collapsed > .json-section { display:none; }
+                                .json-graphic-container .json-input { font-size:0.9rem; }
+                                .json-graphic-container .btn-small { font-size:0.8rem; cursor:pointer; }
+                                .light .json-graphic-container .json-field:hover { background:#f8f9fa; }
+                                .dark .json-graphic-container .json-field:hover { background:#343a40; }
+                            `;
+                            document.head.appendChild(style);
+                        }
+                        const toggleButton = document.getElementById('toggle-mode');
+                        if (editMode === 'table') {
+                            setupTableEvents();
+                        } else if (editMode === 'graphic') {
+                            syncFitCoefLabels(Swal.getPopup());
+                        }
+
+                        if (toggleButton) {
+                            toggleButton.addEventListener('click', () => {
+                                editMode = editMode === 'text' ? (tableSelector === '#file-table' ? 'table' : 'graphic') : 'text';
+                                toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
+                                Swal.getHtmlContainer().innerHTML = renderContent({ content: originalContent });
+                                if (editMode === 'table') {
+                                    // Need a small delay to allow DOM to update
+                                    setTimeout(setupTableEvents, 50);
+                                } else if (editMode === 'graphic') {
+                                    syncFitCoefLabels(Swal.getPopup());
                                 }
-                                return null;
-                            }).filter(Boolean);
+                            });
                         }
+                    },
+                    preConfirm: () => {
+                        const newFileName = document.getElementById('swal-input-filename').value;
+                        let content;
 
-                        // --- Collect main data table ---
-                        const table = document.getElementById('swal-edit-table');
-                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
-                        const rows = Array.from(table.querySelectorAll('tbody tr'));
-
-                        const csvRows = rows.map(row => {
-                            return Array.from(row.querySelectorAll('td')).map(td => {
-                                let cellContent = td.textContent.trim();
-                                if (cellContent.includes(',') || cellContent.includes('\n') || cellContent.includes('"')) {
-                                    return `"${cellContent.replace(/"/g, '""')}"`;
-                                }
-                                return cellContent;
-                            }).join(',');
-                        });
-
-                        // --- Final content (metadata first, then CSV) ---
-                        content = [...metaLines, headers.join(','), ...csvRows].join('\n');
-                    }
-
-                    // Validate content based on tableSelector
-                    if (tableSelector === '#file-table') {
-                        const patternSets = [
-                            {
-                                // File pattern with metadata and headers
-                                header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*$/,
-                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
-                                error: 'Invalid format (Pattern 1). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat',
-                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
-                            },
-                            {
-                                header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*$/,
-                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
-                                error: 'Invalid format (Pattern 2). Header must be: Concentration,Value,TimePoint',
-                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
-                            },
-                            {
-                                header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL)?\s*)*$/,
-                                error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
-                                meta: [
-                                    /^#\s*Measurement\s*:\s*.+$/,
-                                    /^#\s*Unit\s*:\s*.+$/,
-                                    /^#\s*Concentration\s*:\s*.+$/
-                                ]
+                        if (editMode === 'text') {
+                            content = document.getElementById('swal-input-content').value;
+                        } else if (editMode === 'table') {
+                            // --- Collect metadata lines ---
+                            const metaTable = document.getElementById('swal-metadata-table');
+                            let metaLines = [];
+                            if (metaTable) {
+                                const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
+                                metaLines = metaRows.map(row => {
+                                    const cells = row.querySelectorAll('td');
+                                    if (cells.length === 2) {
+                                        const key = cells[0].textContent.trim();
+                                        const value = cells[1].textContent.trim();
+                                        return `# ${key}: ${value}`;
+                                    }
+                                    return null;
+                                }).filter(Boolean);
                             }
-                        ];
 
-                        const lines = content.trim().split('\n');
-                        if (lines.length < 1) {
-                            Swal.showValidationMessage('Content must contain at least the header');
-                            return false;
+                            // --- Collect main data table ---
+                            const table = document.getElementById('swal-edit-table');
+                            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                            const rows = Array.from(table.querySelectorAll('tbody tr'));
+
+                            const csvRows = rows.map(row => {
+                                return Array.from(row.querySelectorAll('td')).map(td => {
+                                    let cellContent = td.textContent.trim();
+                                    if (cellContent.includes(',') || cellContent.includes('\n') || cellContent.includes('"')) {
+                                        return `"${cellContent.replace(/"/g, '""')}"`;
+                                    }
+                                    return cellContent;
+                                }).join(',');
+                            });
+
+                            // --- Final content (metadata first, then CSV) ---
+                            content = [...metaLines, headers.join(','), ...csvRows].join('\n');
                         }
 
-                        // Extract metadata lines and data lines
-                        const metaLines = lines.filter(line => line.trim().startsWith('#'));
-                        const dataLines = lines.filter(line => !line.trim().startsWith('#'));
+                        // Validate content based on tableSelector
+                        if (tableSelector === '#file-table') {
+                            const patternSets = [
+                                {
+                                    // File pattern with metadata and headers
+                                    header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*$/,
+                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
+                                    error: 'Invalid format (Pattern 1). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat',
+                                    meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                                },
+                                {
+                                    header: /^\s*Concentration\s*,\s*Value\s*,\s*TimePoint\s*$/,
+                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                                    error: 'Invalid format (Pattern 2). Header must be: Concentration,Value,TimePoint',
+                                    meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
+                                },
+                                {
+                                    header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
+                                    data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL)?\s*)*$/,
+                                    error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
+                                    meta: [
+                                        /^#\s*Measurement\s*:\s*.+$/,
+                                        /^#\s*Unit\s*:\s*.+$/,
+                                        /^#\s*Concentration\s*:\s*.+$/
+                                    ]
+                                }
+                            ];
 
-                        if (dataLines.length < 1) {
-                            Swal.showValidationMessage('CSV must contain a header after metadata');
-                            return false;
-                        }
+                            const lines = content.trim().split('\n');
+                            if (lines.length < 1) {
+                                Swal.showValidationMessage('Content must contain at least the header');
+                                return false;
+                            }
 
-                        // Normalize the header line
-                        const normalizedHeader = dataLines[0].replace(/\s*,\s*/g, ',');
+                            // Extract metadata lines and data lines
+                            const metaLines = lines.filter(line => line.trim().startsWith('#'));
+                            const dataLines = lines.filter(line => !line.trim().startsWith('#'));
 
-                        // Find matching pattern
-                        const matchedPattern = patternSets.find(pattern => {
-                            return pattern.header.test(dataLines[0]) || pattern.header.test(normalizedHeader);
-                        });
+                            if (dataLines.length < 1) {
+                                Swal.showValidationMessage('CSV must contain a header after metadata');
+                                return false;
+                            }
 
-                        if (!matchedPattern) {
-                            const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
-                            Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
-                            return false;
-                        }
+                            // Normalize the header line
+                            const normalizedHeader = dataLines[0].replace(/\s*,\s*/g, ',');
 
-                        // ✅ Metadata validation if defined
-                        console.log("Metadata lines are: ", metaLines);
-                        if (matchedPattern.meta && matchedPattern.meta.length > 0) {
-                            for (let rule of matchedPattern.meta) {
-                                const found = metaLines.some(line => rule.test(line));
-                                if (!found) {
-                                    Swal.showValidationMessage(`Missing required metadata: must include "${rule}"`);
+                            // Find matching pattern
+                            const matchedPattern = patternSets.find(pattern => {
+                                return pattern.header.test(dataLines[0]) || pattern.header.test(normalizedHeader);
+                            });
+
+                            if (!matchedPattern) {
+                                const validHeaders = patternSets.map(p => p.error.split('Header must be: ')[1]).join(' OR ');
+                                Swal.showValidationMessage(`Invalid header. Must match one of: ${validHeaders}`);
+                                return false;
+                            }
+
+                            // ✅ Metadata validation if defined
+                            console.log("Metadata lines are: ", metaLines);
+                            if (matchedPattern.meta && matchedPattern.meta.length > 0) {
+                                for (let rule of matchedPattern.meta) {
+                                    const found = metaLines.some(line => rule.test(line));
+                                    if (!found) {
+                                        Swal.showValidationMessage(`Missing required metadata: must include "${rule}"`);
+                                        return false;
+                                    }
+                                }
+                            }
+
+                            // ✅ Data validation
+                            for (let i = 1; i < dataLines.length; i++) {
+                                const normalizedLine = dataLines[i].replace(/\s*,\s*/g, ',');
+                                if (!matchedPattern.data.test(dataLines[i]) && !matchedPattern.data.test(normalizedLine)) {
+                                    Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
                                     return false;
                                 }
                             }
-                        }
-
-                        // ✅ Data validation
-                        for (let i = 1; i < dataLines.length; i++) {
-                            const normalizedLine = dataLines[i].replace(/\s*,\s*/g, ',');
-                            if (!matchedPattern.data.test(dataLines[i]) && !matchedPattern.data.test(normalizedLine)) {
-                                Swal.showValidationMessage(`Invalid data in row ${i + 1} for the detected format.`);
-                                return false;
-                            }
-                        }
-                    } else if (tableSelector === '#json-table') {
-                        if (editMode === 'text') {
-                            try {
-                                JSON.parse(content);
-                            } catch (e) {
-                                Swal.showValidationMessage(`Invalid JSON format: ${e.message}`);
-                                return false;
-                            }
-                        } else {
-                            // Graphic mode: collect from inputs
-                            const inputs = document.querySelectorAll('.json-input');
-                            let err = null;
-
-                            inputs.forEach(el => {
-                                if (err) return;
-                                const path = el.dataset.path;
-                                if (!path) return;
-
-                                let val;
+                        } else if (tableSelector === '#json-table') {
+                            if (editMode === 'text') {
                                 try {
-                                    if (el.type === 'checkbox') val = el.checked;
-                                    else if (el.tagName === 'TEXTAREA') val = el.value;
-                                    else if (el.type === 'number') {
-                                        const n = el.value.trim();
-                                        val = n === '' ? null : Number(n);
-                                        if (n !== '' && isNaN(val)) throw new Error('not a number');
-                                    } else {
-                                        val = el.value;
-                                    }
-
-                                    // Smart parsing
-                                    if (typeof val === 'string') {
-                                        const t = val.trim();
-                                        if (t === 'null') val = null;
-                                        else if (t === 'true') val = true;
-                                        else if (t === 'false') val = false;
-                                        else if (/^[-+]?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(t)) val = Number(t);
-                                        else if (t.startsWith('{') || t.startsWith('[')) {
-                                            try { val = JSON.parse(t); } catch (_) { }
-                                        }
-                                    }
-
-                                    setValueByPath(path, val);  // now safe!
+                                    JSON.parse(content);
                                 } catch (e) {
-                                    err = `Path "${path}": ${e.message}`;
+                                    return false;
                                 }
-                            });
-
-                            if (err) {
-                                Swal.showValidationMessage(err);
-                                return false;
+                                content = (editMode === "graphic" && finalContent) ? finalContent : originalContent;  // final string
                             }
-                            content = (editMode === "graphic" && finalContent) ? finalContent : originalContent;  // final string
                         }
+
+                        return { newFileName, content };
                     }
+                }).then((result) => {
+                    deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
 
-                    return { newFileName, content };
-                }
-            }).then((result) => {
-                deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
+                    if (result.isConfirmed) {
+                        const { newFileName, content } = result.value;
 
-                if (result.isConfirmed) {
-                    const { newFileName, content } = result.value;
-
-                    $.post('/edit_file', {
-                        filename: fileName,
-                        new_filename: newFileName,
-                        path: filePath,
-                        content: content,
-                        calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp'
-                    }, function (response) {
-                        if (response.status === 'success') {
-                            let textMsg;
-                            if (fileName !== newFileName) {
-                                row.find("td:first").text(newFileName);
-                                row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
-                                row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
-                                row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
-                                textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
-                            } else {
-                                textMsg = `File ${fileName} content updated successfully.`;
-                            }
-                            // Update AppState and Data display if the currently selected file is being edited
-                            if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
-                                console.log("Changing data display");
-                                deselectFile(tableSelector);
-                                selectFile(newFileName, button, tableSelector);
-                                toggleMode();
-                            }
-                            if (getBtnChecked("no-swal-checkbox")) {
-                                console.log(textMsg);
-                                if (tableSelector === "#file-table") {
-                                    updateDirectory(document.getElementById("directory").value);
-                                } else if (tableSelector === "#json-table") {
-                                    updateJSONTable();
+                        $.post('/edit_file', {
+                            filename: fileName,
+                            new_filename: newFileName,
+                            path: filePath,
+                            content: content,
+                            calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp'
+                        }, function (response) {
+                            if (response.status === 'success') {
+                                let textMsg;
+                                if (fileName !== newFileName) {
+                                    row.find("td:first").text(newFileName);
+                                    row.find("button:contains('Select')").attr('onclick', `selectFile('${newFileName}', this, '${tableSelector}')`);
+                                    row.find("button:contains('Edit')").attr('onclick', `editFile('${newFileName}', this, '${tableSelector}')`);
+                                    row.find("button:contains('Delete')").attr('onclick', `deleteFile('${newFileName}', this, '${tableSelector}')`);
+                                    textMsg = `File ${fileName} renamed to ${newFileName} and content updated successfully.`;
+                                } else {
+                                    textMsg = `File ${fileName} content updated successfully.`;
                                 }
-                                return; // Exit if no popup is needed
+                                // Update AppState and Data display if the currently selected file is being edited
+                                if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
+                                    console.log("Changing data display");
+                                    deselectFile(tableSelector);
+                                    selectFile(newFileName, button, tableSelector);
+                                    toggleMode();
+                                }
+                                if (getBtnChecked("no-swal-checkbox")) {
+                                    console.log(textMsg);
+                                    if (tableSelector === "#file-table") {
+                                        updateDirectory(document.getElementById("directory").value);
+                                    } else if (tableSelector === "#json-table") {
+                                        updateJSONTable();
+                                    }
+                                    return; // Exit if no popup is needed
+                                }
+                                Swal.fire({
+                                    title: 'Updated!',
+                                    text: textMsg,
+                                    icon: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                Swal.fire({
+                                    title: 'Error!',
+                                    text: response.message,
+                                    icon: 'error',
+                                    confirmButtonText: 'OK'
+                                });
                             }
-                            Swal.fire({
-                                title: 'Updated!',
-                                text: textMsg,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
-                            });
-                        } else {
+                        }).fail(function (jqXHR) {
+                            let errorMessage = 'An unexpected error occurred while saving the file';
+                            if (jqXHR.responseJSON?.message) {
+                                errorMessage = jqXHR.responseJSON.message;
+                            } else if (jqXHR.status === 400) {
+                                errorMessage = 'Invalid request';
+                            } else if (jqXHR.status === 403) {
+                                errorMessage = 'Permission denied';
+                            } else if (jqXHR.status === 404) {
+                                errorMessage = 'File not found';
+                            } else if (jqXHR.status === 423) {
+                                errorMessage = 'File is locked by the data collection process';
+                            }
+
                             Swal.fire({
                                 title: 'Error!',
-                                text: response.message,
+                                text: errorMessage,
                                 icon: 'error',
                                 confirmButtonText: 'OK'
                             });
-                        }
-                    }).fail(function (jqXHR) {
-                        let errorMessage = 'An unexpected error occurred while saving the file';
-                        if (jqXHR.responseJSON?.message) {
-                            errorMessage = jqXHR.responseJSON.message;
-                        } else if (jqXHR.status === 400) {
-                            errorMessage = 'Invalid request';
-                        } else if (jqXHR.status === 403) {
-                            errorMessage = 'Permission denied';
-                        } else if (jqXHR.status === 404) {
-                            errorMessage = 'File not found';
-                        } else if (jqXHR.status === 423) {
-                            errorMessage = 'File is locked by the data collection process';
-                        }
-
-                        Swal.fire({
-                            title: 'Error!',
-                            text: errorMessage,
-                            icon: 'error',
-                            confirmButtonText: 'OK'
                         });
-                    });
-                }
-            });
+                    }
+                });
+            }
+
+            showModal(originalContent, fileName);
         }).fail(function (jqXHR) {
             let errorMessage = 'Failed to load file content';
             if (jqXHR.responseJSON?.message) {
@@ -1067,4 +1067,61 @@ function toggleCollapse(legend) {
     const labelText = isCollapsed ? 'Expand [+]' : 'Collapse [−]';
 
     legend.firstChild.nodeValue = labelText + ' ';
+}
+
+function removeColumn(headerName) {
+    const table = document.getElementById('swal-edit-table');
+    if (!table) return;
+
+    // Use regex to strip the (-) suffix and trim whitespace/newlines
+    const headers = Array.from(table.querySelectorAll('th')).map(th =>
+        th.textContent.replace(/\s*\(\-\)\s*$/, '').trim()
+    );
+    const valueCols = headers.filter(h => h.startsWith('Value:'));
+
+    if (valueCols.length <= 1) {
+        Swal.showValidationMessage('At least one Value column must remain.');
+        return;
+    }
+
+    const colIndex = headers.indexOf(headerName);
+    if (colIndex === -1) {
+        console.error(`Column '${headerName}' not found in headers:`, headers);
+        return;
+    }
+
+    // Remove header
+    table.querySelectorAll('th')[colIndex].remove();
+
+    // Remove cells
+    table.querySelectorAll('tbody tr').forEach(row => {
+        if (row.children[colIndex]) {
+            row.children[colIndex].remove();
+        }
+    });
+
+    // Renumber remaining Value: columns
+    const newHeaders = Array.from(table.querySelectorAll('th'));
+    let valueCount = 1;
+    newHeaders.forEach(th => {
+        // Use the same regex cleaning for consistency
+        const text = th.textContent.replace(/\s*\(\-\)\s*$/, '').trim();
+        if (text.startsWith('Value:')) {
+            const newName = `Value:${valueCount}`;
+            th.innerHTML = `${newName} <span class="remove-col-btn" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>`;
+            th.onclick = function (e) {
+                if (e.target.classList.contains('remove-col-btn')) {
+                    removeColumn(newName);
+                }
+            };
+
+            // Update data-col attribute for all cells in this column
+            const index = newHeaders.indexOf(th);
+            table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`).forEach(td => {
+                td.dataset.col = newName;
+            });
+
+            valueCount++;
+        }
+    });
 }

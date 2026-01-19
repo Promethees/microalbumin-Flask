@@ -25,6 +25,7 @@ from mode import get_mode_input
 from measure import sort_csv_file
 from quantity import get_quantity_input
 from file import get_file_list, get_dynamic_data, replace_empty, merge_csv_files
+from file_operations import remove_csv_columns
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
@@ -861,6 +862,37 @@ def merge_csv():
             'status': 'error',
             'message': 'An unexpected error occurred while merging the files'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+@app.route('/remove_columns', methods=['POST'])
+def remove_columns():
+    try:
+        data = request.json
+        filename = data.get('filename')
+        path = data.get('path')
+        columns = data.get('columns', [])
+        
+        if not filename or not path:
+            return jsonify({'status': 'failure', 'message': 'Filename and path are required'}), 400
+            
+        file_path = os.path.join(path, filename)
+        
+        # Security check
+        if '..' in os.path.normpath(file_path):
+             return jsonify({'status': 'failure', 'message': 'Invalid file path'}), 400
+             
+        success, message = remove_csv_columns(file_path, columns)
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': message
+            })
+        else:
+            return jsonify({'status': 'failure', 'message': message}), 400
+            
+    except Exception as e:
+        print(f"Error in remove_columns: {str(e)}")
+        return jsonify({'status': 'failure', 'message': str(e)}), 500
 
 @app.route('/get_num_sources', methods=['GET'])
 def get_num_sources():

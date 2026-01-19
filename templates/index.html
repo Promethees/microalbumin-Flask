@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,8 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cbb.ico') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
@@ -113,11 +115,11 @@
             try {
                 const pathDisplay = document.getElementById(inputId);
                 const DELIMITER = "{{ delimiter }}";
-                
+
                 // Normalize paths
                 let currentPath = await normalizePath(pathDisplay.value || '', DELIMITER.replace('\\\\', '\\'));
                 let basePath = await normalizePath('{{ directory | tojson }}' || '', DELIMITER.replace('\\\\', '\\'));
-                
+
                 // Set default path if empty
                 if (!currentPath) {
                     currentPath = basePath;
@@ -161,20 +163,22 @@
         }
     </script>
 </head>
+
 <body class="light">
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
-                <img src="../static/cbb.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo" class="hidden" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
-                
+                <img src="../static/cbb.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo"
+                    class="hidden" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+
                 <div id="title" class="title-place hidden">
                     <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
                     <h1 class="okapi-line" style="font-size: 20px;">
-                        <span style="color: #3498db;">Easy</span> OKAPI 
+                        <span style="color: #3498db;">Easy</span> OKAPI
                         <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img">
                     </h1>
                 </div>
-                
+
                 <div class="toggle-container" id="toggleContainer">
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
@@ -184,7 +188,8 @@
                     <div class="section" id="top-left-dir-section">
                         <h2>Directory</h2>
                         <div style="display: block; justify-content: space-between; align-items: center;">
-                            <input type="text" id="directory-top" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
+                            <input type="text" id="directory-top" value="{{ directory | safe}}"
+                                onchange="updateDirectory(this.value, true)" style="width: 85%;">
                             <button onclick="browseDirectory()">Browse Path</button>
                         </div>
                         <div id="dir-suggestions-top">
@@ -201,13 +206,13 @@
                         {% endfor %}
                     </div>
                 </div>
-                <div class="section hidden" style="position: static;" id="cal-json-exp-section"> 
+                <div class="section hidden" style="position: static;" id="cal-json-exp-section">
                     <h3>Calibrating for:</h3>
                     <div id="cal-mode-select" class="button-group" data-value="">
                         <button data-mode="kinetics">kinetics</button>
                         <button data-mode="point">point</button>
                     </div>
-                </div>  
+                </div>
                 <div class="section hidden" style="position: static;" id="options-section">
                     <h3>Options</h3>
                     <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -223,7 +228,7 @@
                             Filter by number of sources
                         </label>
 
-                        <div id="num-sources-section" class="hidden"> 
+                        <div id="num-sources-section" class="hidden">
                             <label for="num-sources">Number of sources:</label>
                             <select id="num-sources">
                             </select>
@@ -246,44 +251,48 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         ">Shutdown Server</button>
         <!-- Initial prompt shown on page load -->
-        <div id="init-prompt" style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; padding: 0rem; border-radius: 10px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 100%;">
+        <div id="init-prompt"
+            style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; padding: 0rem; border-radius: 10px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 100%;">
             <!-- Company Logo -->
             <img src="../static/cbb.png" alt="Company Logo" style="height: 400px; margin-bottom: 1rem;">
-            
+
             <!-- Software Name with Styling -->
             <h1 style="color: #2c3e50; font-size: 2.2rem; margin-bottom: 0.5rem; font-weight: 600;">
                 <h1 class="okapi-line" style="color: black">
                     <span style="color: #3498db;">Easy</span>OKAPI
-                    <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img" style="width: 35px; height: 35px;">
+                    <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img"
+                        style="width: 35px; height: 35px;">
                 </h1>
             </h1>
-            
+
             <p style="color: #7f8c8d; margin-bottom: 2rem; font-size: 1.1rem;">
                 Welcome to the EasyOKAPI Software!<br>
                 The best low-cost solution for your colorimetric measurements.
             </p>
-            
+
             <!-- <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;"> -->
-                <!-- <p id="prompt-message">
+            <!-- <p id="prompt-message">
                     Please select the directory containing <code>main.py</code> to get started.<br>
                     <small style="color: #95a5a6;">(expected: {{ directory }})</small>
                 </p> -->
-                
-                <!-- <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+
+            <!-- <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                     Get Started
                 </button>
                 
                 <p id="error-message" class="error" style="display: none; color: #e74c3c; margin-top: 1rem;"></p>
             </div> -->
-            <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            <button onclick="init()" id="init-button"
+                style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                 Get Started
             </button>
-        </div>            
+        </div>
         <div id="main-content" class="hidden">
             <div class="section">
                 <h2>Directory</h2>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <input type="text" id="directory" value="{{ directory | safe}}" onchange="updateDirectory(this.value, true)" style="width: 85%;">
+                    <input type="text" id="directory" value="{{ directory | safe}}"
+                        onchange="updateDirectory(this.value, true)" style="width: 85%;">
                     <button onclick="browseDirectory()" style="width: 15%;">Browse Path</button>
                 </div>
                 <div id="dir-suggestions">
@@ -297,7 +306,7 @@
             <div class="section script-controls" id="log-hid-data">
                 <h2>Reading Colorimetric Data</h2>
                 <div>
-                    <label id="base-dir-label" for="base-dir">Saving Directory: 
+                    <label id="base-dir-label" for="base-dir">Saving Directory:
                         <input type="text" id="base-dir" value="{{ directory | default('') }}" disabled>
                     </label>
                     <span id="base-dir-error" class="error"></span>
@@ -310,7 +319,7 @@
                 </div>
                 <div>
                     <label>Timeout: </label>
-                    <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input> 
+                    <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input>
                     <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
                     <select id="timeout-unit">
                         {% for unit in range_input.units %}
@@ -326,12 +335,12 @@
                         <option value="{{ unit }}">{{ unit }}</option>
                         {% endfor %}
                     </select>
-                </div> 
-                <span id="timeout-interval-error" class="error"></span>  
+                </div>
+                <span id="timeout-interval-error" class="error"></span>
                 <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
-                <br/>
+                <br />
                 <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
-                <button id="terminate-script-btn" onclick="terminateScript()"  disabled>Stop reading</button>
+                <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
                 <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
                 <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live data</button>
                 <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
@@ -340,44 +349,58 @@
                 <h2>Select Coefficients for standard curve</h2>
                 <div id="file-table-container" class="scrollbar-style">
                     <table id="json-table" class="table">
-                        <tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>
+                        <tr>
+                            <th>Calibrated JSON</th>
+                            <th colspan="3">Action</th>
+                        </tr>
                         {% if cal_json_list %}
-                            {% for file in cal_json_list %}
-                            <tr>
-                                <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
-                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
-                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
-                            </tr>
-                            {% endfor %}
+                        {% for file in cal_json_list %}
+                        <tr>
+                            <td>{{ file }}</td>
+                            <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
+                            <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
+                            <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
+                        </tr>
+                        {% endfor %}
                         {% else %}
-                            <tr><td colspan="3">No Calibrated JSON is available.</td></tr>
+                        <tr>
+                            <td colspan="3">No Calibrated JSON is available.</td>
+                        </tr>
                         {% endif %}
-                    </table> 
+                    </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;" class="utility-btn">Deselect</button>
-                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled class="utility-btn">Copy</button>
+                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
+                    class="utility-btn">Deselect</button>
+                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
+                    class="utility-btn">Copy</button>
                 <div class="top-right" id="top-right">
-                    <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"class="hidden scrollbar-style"></div>
-                    <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;">Deselect</button>
+                    <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
+                        class="hidden scrollbar-style"></div>
+                    <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
+                        style="cursor: pointer;">Deselect</button>
                 </div>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
-                <h2 >File Selection</h2>
+                <h2>File Selection</h2>
                 <div id="file-table-container" class="scrollbar-style">
                     <table id="file-table" class="table">
-                        <tr><th>File Name</th><th colspan="3">Action</th></tr>
+                        <tr>
+                            <th>File Name</th>
+                            <th colspan="3">Action</th>
+                        </tr>
                         {% if file_list %}
-                            {% for file in file_list %}
-                            <tr>
-                                <td>{{ file }}</td>
-                                <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
-                                <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
-                                <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
-                            </tr>
-                            {% endfor %}
+                        {% for file in file_list %}
+                        <tr>
+                            <td>{{ file }}</td>
+                            <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
+                            <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
+                            <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
+                        </tr>
+                        {% endfor %}
                         {% else %}
-                            <tr><td colspan="3">No CSV files found in the directory.</td></tr>
+                        <tr>
+                            <td colspan="3">No CSV files found in the directory.</td>
+                        </tr>
                         {% endif %}
                     </table>
                 </div>
@@ -393,7 +416,7 @@
                 <!-- Display selected file name -->
                 <div id="selected-file-display">No file selected</div>
                 <div class="section" id="point-json-exp-section">
-                    Reference point is at <span type="number" id="cal-point"></span> 
+                    Reference point is at <span type="number" id="cal-point"></span>
                     <span id="cal-time-unit" style="font-weight: bold;">second</span>
                     </br>
                     <span id="add-json-section"></span>
@@ -407,8 +430,8 @@
                     Select quantity to derive concentration from
                     <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
-                            {% set transformed = quantity.lower().replace(' ', '_') %}
-                            <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
+                        {% set transformed = quantity.lower().replace(' ', '_') %}
+                        <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -418,7 +441,7 @@
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
-                <div id="select-regress-algo"> 
+                <div id="select-regress-algo">
                     Select Regress Algo to export:
                     <select id="exp-json-regress-algo" onchange="toggleMode()">
                         <option value="polynomial">polynomial</option>
@@ -432,9 +455,11 @@
                 <div class="section" id="range-display">
                     <h3>{{ range_input.title }}</h3>
                     From
-                    <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0" onchange="toggleMode()" style="width: 5em;">
+                    <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
+                        onchange="toggleMode()" style="width: 5em;">
                     To
-                    <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0" onchange="toggleMode()" style="width: 5em;">
+                    <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
+                        onchange="toggleMode()" style="width: 5em;">
                     <select id="time-unit" onchange="toggleMode()">
                         {% for unit in range_input.units %}
                         <option value="{{ unit }}">{{ unit }}</option>
@@ -447,7 +472,8 @@
                         <input type="checkbox" id="split-sensor" onchange="toggleMode()"> Split by Sensors
                     </label>
                     <label id="normalize-mode-section">
-                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove Blank)
+                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove
+                        Blank)
                     </label>
                     <label id="open-all-analysis-section">
                         <input type="checkbox" id="open-all-analysis" onchange="toggleMode()"> Expand all Analyses
@@ -466,77 +492,87 @@
                     <div>
                         <h3>Export analysis</h3>
                         <div class="section" id="set-exp-point-section">
-                            Set reference point to export: <input type="number" id="exp-json-time-value" style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
-                            <br/>
+                            Set reference point to export: <input type="number" id="exp-json-time-value"
+                                style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
+                            <br />
                             <span id="est-val-error" class="error"></span>
                             <span id="est-val-exp"></span>
                         </div>
-                        <label id="save-dir-label" for="save-dir">Saving Directory: 
-                        <input type="text" id="save-dir" value="{{ directory | default('') }}" disabled>
-                        <!-- <button onclick="pickDirectory('save-dir')">Select Directory</button> -->
+                        <label id="save-dir-label" for="save-dir">Saving Directory:
+                            <input type="text" id="save-dir" value="{{ directory | default('') }}" disabled>
+                            <!-- <button onclick="pickDirectory('save-dir')">Select Directory</button> -->
                         </label>
                         <span id="save-dir-error" class="error"></span>
                     </div>
-                    <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data file</input>
+                    <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data
+                    file</input>
                     <div>
                         <label for="save-file">File Name: </label>
-                        <input type="text" id="save-file" placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
+                        <input type="text" id="save-file"
+                            placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
                         <span id="save-file-error" class="error"></span>
                     </div>
                     <button id="export-btn" onclick="exportData()">Export Data</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)">Browse Saving Location</button>
-                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span> Exporting data will automatically convert the kinetics quantities to per <span style="font-weight: bold;">"minutes"!</span></p>
-                </div>  
+                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)">Browse Saving
+                        Location</button>
+                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
+                        Exporting data will automatically convert the kinetics quantities to per <span
+                            style="font-weight: bold;">"minutes"!</span></p>
+                </div>
                 <div id="export-coef">
                     <h3>Export coefficients for standard curve</h3>
                     <div>
                         <label for="save-file">File Name: </label>
-                        <input type="text" id="save-json-file" placeholder="Enter file name to regressed coefficients to(e.g., calibration)" style="width: 10em">
+                        <input type="text" id="save-json-file"
+                            placeholder="Enter file name to regressed coefficients to(e.g., calibration)"
+                            style="width: 10em">
                         <span id="save-json-file-error" class="error"></span>
                         <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
-                        <br/>
-                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0" style="width:10%;">
+                        <br />
+                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
+                            style="width:10%;">
                     </div>
-                </div>   
+                </div>
             </div>
         </div>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center;">
             © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
         </footer>
     </div>
-        <script >
-            // Get top-left height as reference to reflect in top-right
-            function alignTopWithReference(refId = 'shutdown-btn', targetId='top-right') {
-                const ref = document.getElementById(refId);
-                const target = document.getElementById(targetId);
-                if (!ref || !target) return;
+    <script>
+        // Get top-left height as reference to reflect in top-right
+        function alignTopWithReference(refId = 'shutdown-btn', targetId = 'top-right') {
+            const ref = document.getElementById(refId);
+            const target = document.getElementById(targetId);
+            if (!ref || !target) return;
 
-                const rect = ref.getBoundingClientRect();
-                const offsetTop = rect.bottom + rect.height; // Get absolute top position relative to page
-                console.log('Offset top is ', offsetTop);
-                // Update CSS variable dynamically
-                target.style.setProperty('--dynamic-top', `${offsetTop}px`);
-            }
-            // const rootPath = JSON.parse('{{ directory | tojson }}');
-            const rootPath = {{ directory | tojson | safe}};
-            const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
-            const temp_quantity_input = {{ quantity_input | tojson | safe}};
+            const rect = ref.getBoundingClientRect();
+            const offsetTop = rect.bottom + rect.height; // Get absolute top position relative to page
+            console.log('Offset top is ', offsetTop);
+            // Update CSS variable dynamically
+            target.style.setProperty('--dynamic-top', `${offsetTop}px`);
+        }
+        // const rootPath = JSON.parse('{{ directory | tojson }}');
+        const rootPath = {{ directory | tojson | safe}};
+        const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+        const temp_quantity_input = {{ quantity_input | tojson | safe}};
 
-            function getNativePath(...paths) {
-                const isWindows = navigator.userAgent.includes('Windows');
-                const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
-                return isWindows ? joined.replace(/\//g, '\\') : joined;
-            }
-        </script>
-        <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/init.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/index.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
+        function getNativePath(...paths) {
+            const isWindows = navigator.userAgent.includes('Windows');
+            const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
+            return isWindows ? joined.replace(/\//g, '\\') : joined;
+        }
+    </script>
+    <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/init.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
 </body>
+
 </html>
