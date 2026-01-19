@@ -30,13 +30,13 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
     const isMultipleY = Array.isArray(allYColumnOrArray[0]);
     const allYColumns = isMultipleY ? allYColumnOrArray : [allYColumnOrArray];
     const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(timeUnit);
-    
+
     const processedYColumns = [];
     const allYValues = [];
     let xColumn;
-    
+
     allYColumns.forEach((yCol, i) => {
-        const { x: px, y: py } = mapDuplicates(allXColumn, yCol);
+        const { x: px, y: py } = mapDuplicates(allXColumn, yCol, true);
         const { XColumn: xAfterAvg, YColumn: yAfterAvg } = averageDuplicates(px, py);
         processedYColumns.push(yAfterAvg);
         allYValues.push(...yAfterAvg);
@@ -51,12 +51,12 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
 function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint) {
     const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
     const pointRadius = isSinglePoint || thisYAllEqual ? 5 : 3;
-    
+
     const dataset = {
         label,
         data: yColumn,
-        borderColor: selectColor !== null 
-            ? AppState.plotColors[selectColor % AppState.plotColors.length] 
+        borderColor: selectColor !== null
+            ? AppState.plotColors[selectColor % AppState.plotColors.length]
             : AppState.plotColors[i % AppState.plotColors.length],
         tension: isSinglePoint ? 0 : 0.1,
         fill: false,
@@ -73,7 +73,7 @@ function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint) 
 function createRegressionDataset(xMax, xMin, analysis, label) {
     const regressionData = getRegressionData(xMax, xMin, analysis, 100);
     if (regressionData.length === 0) return null;
-    
+
     return {
         label: `Regression (${label})`,
         data: regressionData,
@@ -91,12 +91,12 @@ function getChartScales(xColumn, allYValues, labels) {
     const xMax = isSinglePoint ? xColumn[0] + 1 : Math.max(...xColumn);
     const xStepSize = isSinglePoint ? 0.5 : Number((xMax - xMin) / (xColumn.length - 1)).toFixed(4) || 1;
     const { yMin, yMax, yStepSize } = findYDimension(allYValues, labels[0]);
-    
+
     return { isSinglePoint, xMin, xMax, xStepSize, yMin, yMax, yStepSize };
 }
 
 function getAxisStyle(colorProperty) {
-    return AppState.lightDisplay 
+    return AppState.lightDisplay
         ? getComputedStyle(document.documentElement).getPropertyValue(`--chart-${colorProperty}-light`).trim()
         : getComputedStyle(document.documentElement).getPropertyValue(`--chart-${colorProperty}-dark`).trim();
 }
@@ -104,7 +104,7 @@ function getAxisStyle(colorProperty) {
 function createAnnotations(isFullDisplay, measurementMode, analysis, conversionFactor, xMax, yMin, yMax, checkboxes, isSinglePoint) {
     const fontSize = 8;
     const annotations = {};
-    
+
     if (isFullDisplay && measurementMode === "point" && AppState.refCalPoint) {
         annotations.refCalLine = {
             type: 'line',
@@ -131,7 +131,7 @@ function createAnnotations(isFullDisplay, measurementMode, analysis, conversionF
                 label: { display: true, content: 'MaxRate', position: 'start', font: { size: fontSize } }
             };
         }
-        
+
         if (analysis.linearXMin && !isSinglePoint && checkboxes.slope.checked) {
             annotations.regressionLine = {
                 type: 'line',
@@ -144,7 +144,7 @@ function createAnnotations(isFullDisplay, measurementMode, analysis, conversionF
                 label: { display: true, content: 'Linear', position: 'middle', font: { size: fontSize } }
             };
         }
-        
+
         if (analysis.saturationValue !== "--" && !isSinglePoint && checkboxes.saturation.checked) {
             annotations.saturationLine = {
                 type: 'line',
@@ -168,10 +168,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
 
     const checkboxes = getCheckboxes(canvasId);
     const isFullDisplay = checkboxes.fullDisplay ? checkboxes.fullDisplay.checked : false;
-    
+
     const labels = Array.isArray(labelOrLabels) ? labelOrLabels : [labelOrLabels];
-    const analyses = (Array.isArray(analysisOrArray) && AppState.currentMeasurementMode !== "calibrate") 
-        ? analysisOrArray 
+    const analyses = (Array.isArray(analysisOrArray) && AppState.currentMeasurementMode !== "calibrate")
+        ? analysisOrArray
         : [analysisOrArray];
 
     const { xColumn, processedYColumns, allYValues, conversionFactor } = processData(allXColumn, allYColumnOrArray, getTimeUnitValue());
@@ -202,8 +202,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
             scales: {
                 x: {
                     type: 'linear',
-                    title: { 
-                        display: true, 
+                    title: {
+                        display: true,
                         text: (AppState.currentMeasurementMode !== "calibrate") ? `Time (${getTimeUnitValue()})` : 'Concentration (ng/µL)',
                         color: getAxisStyle('label')
                     },
@@ -218,8 +218,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                 },
                 y: {
                     type: 'linear',
-                    title: { 
-                        display: true, 
+                    title: {
+                        display: true,
                         text: unit !== "NONE" ? unit : '',
                         color: getAxisStyle('label')
                     },
@@ -241,7 +241,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     color: getAxisStyle('title')
                 },
                 annotation: {
-                    annotations: createAnnotations(isFullDisplay, AppState.currentMeasurementMode, analyses[0], conversionFactor, 
+                    annotations: createAnnotations(isFullDisplay, AppState.currentMeasurementMode, analyses[0], conversionFactor,
                         xMax, yMin, yMax, checkboxes, allXColumn.length === 1)
                 }
             }

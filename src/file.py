@@ -44,6 +44,7 @@ def get_dynamic_data(file_path):
             # Parse the CSV part into a DataFrame
             if data_lines:
                 df = pd.read_csv(io.StringIO("".join(data_lines)))
+                df = df.fillna("NONE")
                 data = df.to_dict('records')
             else:
                 data = []

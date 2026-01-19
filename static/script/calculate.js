@@ -105,25 +105,40 @@ function calculateCoefAndRSquared(x, y, regressAlgo = "linear") {
             break;
     }
 
-    return { 
-        slope: slope, 
-        rSquared: rSquared, 
-        coefficients: coefficients 
+    return {
+        slope: slope,
+        rSquared: rSquared,
+        coefficients: coefficients
     };
 }
 
 
 function calculateKineticsQuantities(XColumn, YColumn, window_size) {
-    if (XColumn.length < 2 || YColumn.length < 2 || window_size < 2 || window_size > XColumn.length) {
+    // Filter only valid pairs where both are not null/NONE/OVFL
+    const validPairs = [];
+    for (let i = 0; i < XColumn.length; i++) {
+        const x = XColumn[i];
+        const y = YColumn[i];
+        if (x !== null && x !== "NONE" && y !== null && y !== "NONE" && y !== "OVFL") {
+            validPairs.push({ x, y });
+        }
+    }
+
+    if (validPairs.length < 2) {
         return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", maxRate: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 };
+    }
+
+    XColumn = validPairs.map(p => p.x);
+    YColumn = validPairs.map(p => p.y);
+
+    window_size = Number(window_size);
+    if (window_size < 2 || window_size > XColumn.length) {
+        window_size = XColumn.length;
     }
 
     let localSlopes = [];
     let rSquaredValues = [];
     let intercepts = [];
-    window_size = Number(window_size);
-    if (window_size > XColumn.length)
-        window_size = XColumn.length;
     const rSquaredThreshold = getRSquaredThreshold(window_size, XColumn.length);
 
     for (let i = 0; i <= XColumn.length - window_size; i++) {
@@ -260,7 +275,7 @@ function linearRegression(x, y) {
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
-    return [ slope, intercept ];
+    return [slope, intercept];
 }
 
 // Linear regression slope
@@ -340,17 +355,17 @@ function logarithmicRegression(x, y) {
 
             // Perform linear regression on ln(x + b) and y
             const [a, c] = linearRegression(validData.x, validData.y);
-            
+
             // Compute R-squared
             const predicted = validData.x.map(xi => a * xi + c);
             const rSquared = computeRSquared(validData.y, predicted);
-            
+
             if (rSquared > bestRSquared) {
                 bestRSquared = rSquared;
                 bestB = b;
                 bestCoeffs = [a, bestB, c];
             }
-            
+
             b += step;
         }
 
@@ -413,14 +428,14 @@ function logarithmicRegressionSlope(x, y) {
 function exponentialRegression(x, y) {
     // Initial guess for c: minimum y value or mean if all positive
     const c = Math.min(...y) > 0 ? Math.min(...y) : y.reduce((sum, yi) => sum + yi, 0) / y.length;
-    
+
     // Transform y to y' = y - c, then take logarithm: ln(y' - c) = ln(a) + b*x
     const transformedY = y.map(yi => {
         const diff = yi - c;
         if (diff <= 0) return null; // Handle non-positive values
         return Math.log(diff);
     });
-    
+
     // Filter out invalid data points
     const validData = x.reduce((acc, xi, i) => {
         if (transformedY[i] !== null && !isNaN(transformedY[i]) && isFinite(transformedY[i])) {
@@ -549,28 +564,32 @@ function michaelisMentenConcentrationRegression(rates, analyte) {
 function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
     if (!Array.isArray(data) || data.length === 0 || !timepoint) return null;
 
-    // Sort data by timestamp
-    data.sort((a, b) => a["Timestamp"] - b["Timestamp"]);
-
     // Pick which key to use
     let valueKey = `Value:${sourceIndex}`; // e.g. Value:1, Value:2
 
-    // Loop to find the two surrounding points
-    for (let i = 0; i < data.length - 1; i++) {
-        const t1 = data[i]["Timestamp"];
-        const t2 = data[i + 1]["Timestamp"];
+    // Filter only rows with valid numeric values for this specific source
+    const validData = data
+        .filter(row => row[valueKey] !== null && row[valueKey] !== "NONE" && row[valueKey] !== "OVFL" && !isNaN(parseFloat(row[valueKey])))
+        .sort((a, b) => a["Timestamp"] - b["Timestamp"]);
+
+    if (validData.length === 0) return null;
+
+    // Loop to find the two surrounding points in valid data
+    for (let i = 0; i < validData.length - 1; i++) {
+        const t1 = validData[i]["Timestamp"];
+        const t2 = validData[i + 1]["Timestamp"];
 
         // Exact match
-        if (t1 === timepoint) return data[i][valueKey];
-        if (t2 === timepoint) return data[i + 1][valueKey];
+        if (parseFloat(t1) === parseFloat(timepoint)) return parseFloat(validData[i][valueKey]);
+        if (parseFloat(t2) === parseFloat(timepoint)) return parseFloat(validData[i + 1][valueKey]);
 
         // Interpolation between surrounding timestamps
         if (t1 < timepoint && timepoint < t2) {
             const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
             if (minDiff > maxTolerance) return null;
 
-            const v1 = data[i][valueKey];
-            const v2 = data[i + 1][valueKey];
+            const v1 = parseFloat(validData[i][valueKey]);
+            const v2 = parseFloat(validData[i + 1][valueKey]);
 
             const ratio = (timepoint - t1) / (t2 - t1);
             return v1 + ratio * (v2 - v1);
@@ -578,14 +597,14 @@ function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
     }
 
     // Check ends if out-of-bounds but within tolerance
-    const first = data[0], last = data[data.length - 1];
-    if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return first[valueKey];
-    if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return last[valueKey];
+    const first = validData[0], last = validData[validData.length - 1];
+    if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return parseFloat(first[valueKey]);
+    if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return parseFloat(last[valueKey]);
 
     return null;
 }
 
-function getUniqueColumnEntries(data, columnName="TimePoint") {
+function getUniqueColumnEntries(data, columnName = "TimePoint") {
     const uniqueColumnEntries = new Set(data.map(row => row[columnName]).filter(tp => tp));
     return Array.from(uniqueColumnEntries).sort((a, b) => Number(b) - Number(a));
 }
@@ -638,7 +657,7 @@ function computeFit(value, fit_type, coef) {
 
 function averageDuplicates(xColumn, yColumn) {
     const dataMap = new Map();
-    
+
     // Group YColumn values by XColumn values
     for (let i = 0; i < xColumn.length; i++) {
         if (!dataMap.has(xColumn[i])) {
@@ -652,8 +671,13 @@ function averageDuplicates(xColumn, yColumn) {
     const averagedY = [];
     for (let [x, yValues] of dataMap) {
         uniqueX.push(x);
-        const avg = yValues.reduce((sum, value) => sum + value, 0) / yValues.length;
-        averagedY.push(avg);
+        const validValues = yValues.filter(v => v !== null && v !== "NONE" && !isNaN(v));
+        if (validValues.length > 0) {
+            const avg = validValues.reduce((sum, value) => sum + parseFloat(value), 0) / validValues.length;
+            averagedY.push(avg);
+        } else {
+            averagedY.push(null);
+        }
     }
 
     return { XColumn: uniqueX, YColumn: averagedY };
@@ -668,36 +692,50 @@ function getTimeUnitMultiplier(unit) {
     return multipliers[unit] || 1;
 }
 
-function mapDuplicates(x, y) {
+function mapDuplicates(x, y, keepGaps = false) {
     // Create a map to store sum and count of y values for each x
     const xMap = new Map();
-    
+
     // Process each pair
     for (let i = 0; i < x.length; i++) {
         const currentX = x[i];
         const currentY = y[i];
-        
-        // Skip if y is "NONE"
-        if (currentY === "NONE") continue;
-        
-        if (!xMap.has(currentX)) {
-            xMap.set(currentX, { sum: parseFloat(currentY), count: 1 });
+
+        // Skip or mark as gap if y is "NONE" or null
+        const isNone = currentY === "NONE" || currentY === null || currentY === "OVFL";
+        if (isNone) {
+            if (!keepGaps) continue;
+            if (!xMap.has(currentX)) {
+                xMap.set(currentX, { sum: 0, count: 0, hasValid: false });
+            }
         } else {
-            const entry = xMap.get(currentX);
-            entry.sum += parseFloat(currentY);
-            entry.count++;
+            const val = parseFloat(currentY);
+            if (!isNaN(val)) {
+                if (!xMap.has(currentX)) {
+                    xMap.set(currentX, { sum: val, count: 1, hasValid: true });
+                } else {
+                    const entry = xMap.get(currentX);
+                    entry.sum += val;
+                    entry.count++;
+                    entry.hasValid = true;
+                }
+            } else if (keepGaps) {
+                if (!xMap.has(currentX)) {
+                    xMap.set(currentX, { sum: 0, count: 0, hasValid: false });
+                }
+            }
         }
     }
-    
+
     // Convert the map back to arrays
     const processedX = [];
     const processedY = [];
-    
+
     xMap.forEach((value, key) => {
         processedX.push(key);
-        processedY.push(value.sum / value.count);
+        processedY.push(value.hasValid ? (value.sum / value.count) : null);
     });
-    
+
     return { x: processedX, y: processedY };
 }
 

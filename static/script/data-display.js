@@ -1,3 +1,5 @@
+window.ChartDataStore = window.ChartDataStore || {};
+
 function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     // Save current scroll position
     const chartContainer = document.getElementById('chart-container');
@@ -14,14 +16,14 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     // Clean and sort data
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
-    
+
     const isSplitMode = getBtnChecked("split-sensor");
 
     const allGroups = {
-            allXColumn: extractColumnAndConvert(data, XColumn),
-            allYColumn: Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(data, y)) : [extractColumnAndNormalize(data, YColumn)],
-            allData: data
-        };
+        allXColumn: extractColumnAndConvert(data, XColumn),
+        allYColumn: YColumn.map(y => extractColumnAndNormalize(data, y)),
+        allData: data
+    };
 
     let Args = [
         allGroups,
@@ -71,58 +73,52 @@ function formatAnalysisInfo(analysis, label) {
 }
 
 function checkboxHtmlWithID(
-  id,
-  canvasId,
-  allXColumn,
-  allYColumnOrArray,
-  labelOrLabels,
-  unit,
-  index
+    id,
+    canvasId,
+    allXColumn,
+    allYColumnOrArray,
+    labelOrLabels,
+    unit,
+    index
 ) {
-  return AppState.quantity_input.quantities
-    .filter(q => q !== "Time To Sat")
-    .map(q => `
+    // Store data in case it's not already there (compatibility)
+    if (!window.ChartDataStore[canvasId]) {
+        window.ChartDataStore[canvasId] = { allXColumn, allYColumnOrArray, labelOrLabels, unit, index };
+    }
+
+    return AppState.quantity_input.quantities
+        .filter(q => q !== "Time To Sat")
+        .map(q => `
       <input type="checkbox" 
           class="quantity-checkbox" 
           value="${q}" 
           id="${q.toLowerCase().replace(/\s+/g, '_')}-${id}" 
           checked
-          onchange="handleCkboxChange( 
-              '${canvasId}', 
-              ${JSON.stringify(allXColumn)}, 
-              ${JSON.stringify(allYColumnOrArray)}, 
-              '${labelOrLabels}', 
-              '${unit}', 
-              ${index}
-          )">
+          onchange="handleCkboxChange('${canvasId}')">
       <span>${q}</span>
     `)
-    .join("");
+        .join("");
 }
 
-function handleConValueReadChange(canvasId, allXColumn, allYColumnOrArray, index, unit) {
+function handleConValueReadChange(canvasId, index, unit) {
     const input = document.getElementById(`con-value-read-source-${index}`);
     const value = input ? input.value : '';
     // Save to localStorage for persistence
     if (value !== '') {
         localStorage.setItem(`con-value-read-source-${index}`, value);
     } else {
-        // Optionally remove from localStorage if empty
         localStorage.removeItem(`con-value-read-source-${index}`);
     }
 
-    // Call getLabel with the current value at change time
-    const label = getLabel(`Value:${index + 1}`, unit);
-    
-    // Call the original handler with the dynamically generated label
-    handleCkboxChange(canvasId, allXColumn, allYColumnOrArray, label, unit, index);
+    // Call the original handler with stored data
+    handleCkboxChange(canvasId);
 }
 
 // Helper function to save value on blur (user leaves the field)
 function saveConcentrationValue(index) {
     const input = document.getElementById(`con-value-read-source-${index}`);
     const value = input ? input.value : '';
-    
+
     if (value !== '') {
         localStorage.setItem(`con-value-read-source-${index}`, value);
     } else {
@@ -131,10 +127,26 @@ function saveConcentrationValue(index) {
 }
 
 function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labelOrLabels, unit, index) {
+    // If called with only canvasId, fetch data from store
+    if (arguments.length === 1 || originalAllXColumn === undefined) {
+        const store = window.ChartDataStore[canvasId];
+        if (!store) return;
+        originalAllXColumn = store.allXColumn;
+        allYColumnOrArray = store.allYColumnOrArray;
+        labelOrLabels = store.labelOrLabels;
+        unit = store.unit;
+        index = store.index;
+    }
+
+    // Update label dynamically for concentration input if it exists
+    if (index !== null) {
+        labelOrLabels = getLabel(`Value:${index + 1}`, unit);
+    }
+
     // Normalize Y values if normalizeMode is checked
     allYColumnOrArray = getBtnChecked("normalize-mode") ? (Array.isArray(allYColumnOrArray[0])
-        ? allYColumnOrArray.map(yCol => yCol.map(value => (value - Math.min(...yCol))))
-        : allYColumnOrArray.map(value => (value - Math.min(...allYColumnOrArray))))
+        ? allYColumnOrArray.map(yCol => yCol.map(value => (value !== null ? value - Math.min(...yCol.filter(v => v !== null)) : null)))
+        : allYColumnOrArray.map(value => (value !== null ? value - Math.min(...allYColumnOrArray.filter(v => v !== null)) : null)))
         : allYColumnOrArray;
 
     const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue());
@@ -183,30 +195,21 @@ function createChartSection({
     const previousValueKey = `con-value-read-source-${index}`;
     const previousValue = localStorage.getItem(previousValueKey) || '';
 
-    // Store parameters needed for dynamic label generation
-    window[`chartParams_${index}`] = {
-        canvasId,
-        allXColumn: JSON.stringify(allXColumn),
-        allYColumnOrArray: JSON.stringify(allYColumnOrArray),
+    // Store parameters needed for dynamic label generation and handlers
+    window.ChartDataStore[canvasId] = {
+        allXColumn,
+        allYColumnOrArray,
+        labelOrLabels,
         unit,
         index
     };
 
-    return AppState.currentMeasurementMode !== "calibrate" ? 
-    `
+    return AppState.currentMeasurementMode !== "calibrate" ?
+        `
         <div id="${sectionId}">
             <label>
                 <input type="checkbox" id="${fullDisplayId}" 
-                    onchange="handleFullDisplayChange(
-                        '${fullDisplayId}', 
-                        '${quantityId}', 
-                        '${canvasId}', 
-                        ${JSON.stringify(allXColumn)}, 
-                        ${JSON.stringify(allYColumnOrArray)}, 
-                        '${labelOrLabels}', 
-                        '${unit}', 
-                        ${index}
-                    )"> 
+                    onchange="handleFullDisplayChange('${fullDisplayId}', '${quantityId}', '${canvasId}')"> 
                 Full display: See all data and special lines
             </label>
             <label id="quantity-checkboxes-${quantityId}" class="hidden">
@@ -219,13 +222,8 @@ function createChartSection({
                     Concentration from source-${index + 1} sample is 
                     <input type="number" id="con-value-read-source-${index}" 
                         value="${previousValue}"
-                        onchange="handleConValueReadChange('${canvasId}', 
-                            ${JSON.stringify(allXColumn)}, 
-                            ${JSON.stringify(allYColumnOrArray)},
-                            ${index},
-                            '${unit}')" 
+                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')" 
                         onblur="saveConcentrationValue(${index})"
-                        value="${previousValue}" 
                         min=0 style="width: 5em;"> </input> ng/µL
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
@@ -234,8 +232,8 @@ function createChartSection({
                 `}
             <canvas id="${canvasId}"></canvas>
         </div>
-    ` : 
-    `
+    ` :
+        `
         <div id="${sectionId}">
             <div id="${analysisId}"></div>
             <canvas id="${canvasId}"></canvas>
@@ -243,10 +241,10 @@ function createChartSection({
     `;
 }
 
-function handleFullDisplayChange(fullDisplayId, quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, index) {
+function handleFullDisplayChange(fullDisplayId, quantityId, canvasId) {
     const fullDisplayCheckbox = document.getElementById(fullDisplayId);
     const quantityContainer = document.getElementById(`quantity-checkboxes-${quantityId}`);
-    
+
     if (!fullDisplayCheckbox || !quantityContainer) return;
 
     // Toggle hidden class
@@ -256,21 +254,17 @@ function handleFullDisplayChange(fullDisplayId, quantityId, canvasId, allXColumn
         quantityContainer.classList.add("hidden");
     }
 
-    // Call generateChart with updated state
-    handleCkboxChange(
-        canvasId,
-        allXColumn,
-        allYColumnOrArray,
-        labelOrLabels,
-        unit,
-        index
-    );
+    // Call handleCkboxChange with stored data
+    handleCkboxChange(canvasId);
 }
 
 function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index = null) {
     const container = document.getElementById("chart-container");
 
     // Helper to append HTML or elements cleanly
+    const canvasId = getBtnChecked("split-sensor") ? `source-${index}-canvas` : "plot-canvas";
+    window.ChartDataStore[canvasId] = { allXColumn, allYColumnOrArray, labelOrLabels, unit, index };
+
     const appendHTML = (html) => {
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = html.trim();
@@ -315,7 +309,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
     const charts = [];
     const analyses = [];
-    
+
     for (let i = 0; i < AppState.numSources; i++) {
         const yColumn = YColumn[i];
         const isFullDisplay = getBtnChecked(`full-display-source-${i}`);
@@ -337,10 +331,10 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, label);
-        document.getElementById(analysisId).innerHTML = formatAnalysisHtml(analysisInfo, 
-                                                                            AppState.plotColors[i % AppState.plotColors.length], 
-                                                                            `Source ${i + 1}`
-                                                                            );
+        document.getElementById(analysisId).innerHTML = formatAnalysisHtml(analysisInfo,
+            AppState.plotColors[i % AppState.plotColors.length],
+            `Source ${i + 1}`
+        );
     }
 
     AppState.sourceCharts = charts;
@@ -403,11 +397,11 @@ function getLabel(yColumn, measUnit) {
     const elementId = `con-value-read-source-${n - 1}`;
 
     // let conValueRead = document.getElementById(elementId)?.value;
-    
+
     // conValueRead = conValueRead ? 
     const conValueRead = localStorage.getItem(elementId);
 
-    return conValueRead 
+    return conValueRead
         ? `${AppState.metaData['Measurement']} at ${conValueRead} ng/µL ${unitDisplay(measUnit)}`
         : `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
 }
@@ -432,14 +426,14 @@ function addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUni
         inputElement.addEventListener("change", function () {
             const value = this.value;
             const storageKey = `con-value-read-source-${i}`;
-            
+
             // Save to localStorage
             if (value !== '') {
                 localStorage.setItem(storageKey, value);
             } else {
                 localStorage.removeItem(storageKey);
             }
-            
+
             // Generate labels and handle change
             const yLabels = capturedY.map(y => getLabel(y, measUnit));
             handleCkboxChange(
@@ -456,7 +450,7 @@ function addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUni
         inputElement.addEventListener("blur", function () {
             const value = this.value;
             const storageKey = `con-value-read-source-${i}`;
-            
+
             if (value !== '') {
                 localStorage.setItem(storageKey, value);
             } else {
@@ -508,7 +502,7 @@ function filteredByRangeValue(isFullDisplay, data, XColumn, YColumn) {
         const range = getRangeStartEnd(isFullDisplay);
         const timeThresholdStart = range.start * getTimeUnitMultiplier(getTimeUnitValue());
         const timeThresholdEnd = range.end * getTimeUnitMultiplier(getTimeUnitValue());
-        return data.filter(row => row[XColumn] >= timeThresholdStart && row[XColumn] <= timeThresholdEnd && row[YColumn] !== "NONE");
+        return data.filter(row => row[XColumn] >= timeThresholdStart && row[XColumn] <= timeThresholdEnd);
     }
 }
 
@@ -599,7 +593,7 @@ function createTable(coef, rSquared, headers) {
 function getCalKineticsString(analysis, fitType, analysisId = "cal-kinetics-analysis") {
     if (!analysis || !AppState.quantity_input.quantities) return '';
     let headers
-    switch(fitType) {
+    switch (fitType) {
         case "Michaelis-Menten":
             headers = ['V_max', 'Km'];
             break;
@@ -652,23 +646,12 @@ function getCalPointString(analysis, analysisId = "cal-point-analysis") {
     `;
 }
 
-function preprocessData(data, XColumn, YColumn) {
-    const isMultipleY = Array.isArray(YColumn);
-    if (isMultipleY) {
-        return data
-            .filter(row => 
-                row[XColumn] !== "NONE" && 
-                YColumn.every(yCol => (row[yCol] !== "NONE" && row[yCol] !== null && row[yCol] !== "OVFL"))
-            )
-            .sort((a, b) => a[XColumn] - b[XColumn]);
-    } else {
-        return data
-            .filter(row => 
-                (row[XColumn] !== "NONE" && 
-                row[YColumn] !== "NONE" && row[YColumn] !== null && row[YColumn] !== "OVFL")
-            )
-            .sort((a, b) => a[XColumn] - b[XColumn]);
-    }
+function preprocessData(data, XColumn) {
+    return data
+        .filter(row =>
+            row[XColumn] !== "NONE" && row[XColumn] !== null
+        )
+        .sort((a, b) => a[XColumn] - b[XColumn]);
 }
 
 function preprocessDataCalParams(data, XColumn, YColumn) {
@@ -760,7 +743,7 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
     const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}
-        ${createToggleButton(analysisId=analysisId)}
+        ${createToggleButton(analysisId = analysisId)}
         <div style="display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto; scrollbar-width:thin;" class="scrollbar-style">
             <table style="border-collapse: collapse;">
                 <tr>
@@ -834,7 +817,7 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
         const calParams = Array.from(selectElement.options).map(option => option.value);
         const currQuantity = selectElement.value;
         analysis = analysisArray[calParams.indexOf(currQuantity)];
-    } else 
+    } else
         analysis = analysisArray;
 
     if (AppState.currentMeasurementMode === "calibrate" && analysis && analysis.coefficients && numDiv > 0) {
@@ -847,7 +830,7 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
 
             switch (regressAlgo) {
                 case "linear": {
-                    const [ a, b ] = analysis.coefficients;
+                    const [a, b] = analysis.coefficients;
                     y = a !== 0 ? (x - b) / a : 0;
                     break;
                 }
@@ -866,18 +849,18 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
                     break;
                 }
                 case "logarithmic": {
-                    const [ a, b, c ] = analysis.coefficients;
+                    const [a, b, c] = analysis.coefficients;
                     y = a !== 0 ? Math.exp((x - c) / a) - b : 0;
                     break;
                 }
                 case "exponential": {
-                    const [ a, b, c ] = analysis.coefficients;
-                    y = (a !== 0 && x > c && b != 0) ? Math.log((x - c) / a)/b : 0;
+                    const [a, b, c] = analysis.coefficients;
+                    y = (a !== 0 && x > c && b != 0) ? Math.log((x - c) / a) / b : 0;
                     break;
                 }
                 case "Michaelis-Menten": {
-                    const [ Vmax, Km ] = analysis.coefficients;
-                    y = (Vmax * x)/ (Km + x);
+                    const [Vmax, Km] = analysis.coefficients;
+                    y = (Vmax * x) / (Km + x);
                     break;
                 }
                 default:
@@ -890,14 +873,15 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
 }
 
 function findYDimension(allYValues, labels) {
-    const isSinglePoint = allYValues.length === 1;
+    const validYValues = allYValues.filter(y => y !== null && y !== "NONE" && !isNaN(y));
+    const isSinglePoint = validYValues.length === 1;
     // Check if all Y values across all datasets are equal
-    const allYEqual = allYValues.length > 0 && allYValues.every(y => y === allYValues[0]);
+    const allYEqual = validYValues.length > 0 && validYValues.every(y => y === validYValues[0]);
     let yMin, yMax, yStepSize;
 
     if (allYEqual) {
         // Case: All Y values are equal
-        const yValue = allYValues[0];
+        const yValue = validYValues[0];
         if (yValue === 0) {
             // If Y value is 0, set a small range around 0
             yMin = -0.1;
@@ -912,11 +896,11 @@ function findYDimension(allYValues, labels) {
     } else {
         // Original logic for non-equal Y values
         if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-sensor")) {
-            yMin = Math.min(Math.min(...allYValues), 0);
-            yMax = 0.6;      
+            yMin = Math.min(Math.min(...validYValues), 0);
+            yMax = 0.6;
         } else {
-            yMin = Math.min(Math.min(...allYValues), 0);
-            yMax = isSinglePoint ? Math.max(...allYValues) * 1.1 : Math.max(...allYValues) * 1.1;
+            yMin = Math.min(Math.min(...validYValues), 0);
+            yMax = validYValues.length > 0 ? Math.max(...validYValues) * 1.1 : 1;
         }
         yStepSize = Number((yMax - yMin) / 10).toFixed(3) || 0.1;
     }
@@ -925,11 +909,11 @@ function findYDimension(allYValues, labels) {
         yMax: yMax,
         yStepSize: yStepSize
     }
-} 
+}
 
 function getLabelsFromYColumn(YColumn, measurementLabel, unit) {
-    const labels = Array.isArray(YColumn) 
-        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`) 
+    const labels = Array.isArray(YColumn)
+        ? YColumn.map(y => `${measurementLabel} ${y} ${unitDisplay(unit)}`)
         : [`${measurementLabel} ${unitDisplay(unit)}`];
     return labels;
 }
