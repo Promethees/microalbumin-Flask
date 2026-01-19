@@ -16,7 +16,9 @@ The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](
 	- Download `terser` with `npm install --save-dev terser`
 	- Make changes, then use `npm run build` to obfuscate your latest code
 	- Commit locally using `git commit -m "Your message"`
-	- Push to deployment using `git push online:main`
+	- Check if already logged in with heroku `heroku whoami`, if not yet use `heroku login`
+	- Configure heroku remote using `heroku git:remote -a easysensor-kit`
+	- Push to deployment using `git push heroku online:main`
 
 ### Update package.json with latest versions
 	- Use `npm init -y && npm pkg set scripts.build="node build.js" scripts.start="gunicorn main:app" && npm install --save-dev javascript-obfuscator terser clean-css`
