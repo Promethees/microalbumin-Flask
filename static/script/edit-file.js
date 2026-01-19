@@ -167,6 +167,15 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         const deleteRowBtn = document.getElementById('delete-row-btn');
         let selectedRow = null;
 
+        // Column removal delegation
+        table.addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-col-btn')) {
+                const th = e.target.closest('th');
+                const headerText = th.textContent.replace('(-)', '').trim();
+                removeColumn(headerText);
+            }
+        });
+
         // Row selection
         table.addEventListener('click', function (e) {
             const cell = e.target.closest('td, th');
@@ -321,7 +330,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             });
 
             // Extract headers + data
-            const headers = dataLines.length > 0 ? dataLines[0].split(',') : [];
+            const headers = dataLines.length > 0 ? dataLines[0].split(',').map(h => h.trim()) : [];
             const data = dataLines.slice(1);
 
             // Build editable metadata table
@@ -372,12 +381,14 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     <table id="swal-edit-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
                         <thead>
                             <tr style="position: sticky; top: 0; background: white; z-index: 10;">
-                                ${headers.map(col => `
-                                    <th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
+                                ${headers.map(col => {
+                const isValueCol = col.startsWith('Value:');
+                return `<th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
                                         font-size: 0.85em; font-weight: bold; white-space: nowrap;">
                                         ${col}
-                                    </th>
-                                `).join('')}
+                                        ${isValueCol ? `<span class="remove-col-btn" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>` : ''}
+                                    </th>`;
+            }).join('')}
                             </tr>
                         </thead>
                         <tbody id="swal-edit-body">
@@ -793,7 +804,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                         // --- Collect main data table ---
                         const table = document.getElementById('swal-edit-table');
-                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.replace(/\s*\(\-\)\s*$/, '').trim());
                         const rows = Array.from(table.querySelectorAll('tbody tr'));
 
                         const csvRows = rows.map(row => {
@@ -1046,4 +1057,56 @@ function toggleCollapse(legend) {
     const labelText = isCollapsed ? 'Expand [+]' : 'Collapse [−]';
 
     legend.firstChild.nodeValue = labelText + ' ';
+}
+
+function removeColumn(headerName) {
+    const table = document.getElementById('swal-edit-table');
+    if (!table) return;
+
+    const headers = Array.from(table.querySelectorAll('th')).map(th =>
+        th.textContent.replace(/\s*\(\-\)\s*$/, '').trim()
+    );
+    const valueCols = headers.filter(h => h.startsWith('Value:'));
+
+    if (valueCols.length <= 1) {
+        Swal.showValidationMessage('At least one Value column must remain.');
+        return;
+    }
+
+    const colIndex = headers.indexOf(headerName);
+    if (colIndex === -1) {
+        console.error(`Column '${headerName}' not found in headers:`, headers);
+        return;
+    }
+
+    // Remove header
+    table.querySelectorAll('th')[colIndex].remove();
+
+    // Remove cells
+    table.querySelectorAll('tbody tr').forEach(row => {
+        if (row.children[colIndex]) {
+            row.children[colIndex].remove();
+        }
+    });
+
+    // Renumber remaining Value: columns
+    const newHeaders = Array.from(table.querySelectorAll('th'));
+    let valueCount = 1;
+
+    newHeaders.forEach(th => {
+        const text = th.textContent.replace(/\s*\(\-\)\s*$/, '').trim();
+        if (text.startsWith('Value:')) {
+            const newName = `Value:${valueCount}`;
+            // Update header text and button
+            th.innerHTML = `${newName} <span class="remove-col-btn" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>`;
+
+            // Update data-col attribute for all cells in this column
+            const index = newHeaders.indexOf(th);
+            table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`).forEach(td => {
+                td.dataset.col = newName;
+            });
+
+            valueCount++;
+        }
+    });
 }
