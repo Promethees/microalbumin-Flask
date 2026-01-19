@@ -35,7 +35,7 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
     let xColumn;
 
     allYColumns.forEach((yCol, i) => {
-        const { x: px, y: py } = mapDuplicates(allXColumn, yCol);
+        const { x: px, y: py } = mapDuplicates(allXColumn, yCol, true);
         const { XColumn: xAfterAvg, YColumn: yAfterAvg } = averageDuplicates(px, py);
         processedYColumns.push(yAfterAvg);
         allYValues.push(...yAfterAvg);

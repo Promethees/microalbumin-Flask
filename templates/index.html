@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cbb.ico') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -355,7 +355,7 @@
             © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
         </footer>
     </div>
-    <script src="{{ url_for('static', filename='navigation.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
     <script>
         // Get top-left height as reference to reflect in top-right
         function alignTopWithReference(refId = 'meas-mode-section', targetId = 'top-right') {
@@ -394,15 +394,15 @@
                 $showText("error-message", "Error fetching JSON files")
             });
     </script>
-    <script src="{{ url_for('static', filename='short-hands.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='init.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='index.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='drive-integration.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='generate-chart.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='data-display.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='data-handling.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='edit-file.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='calculate.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/init.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/index.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/drive-integration.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
 </body>
 
 </html>
