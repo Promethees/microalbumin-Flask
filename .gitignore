@@ -19,3 +19,5 @@ node_modules
 # Exception: Do not ignore .csv files inside sample_data (or its subfolders)
 !sample_data/*.csv
 !sample_data/**/*.csv
+
+*.env
