@@ -25,6 +25,7 @@ from google_drive_service import (
     list_folders, create_folder, sync_session_to_drive, load_drive_to_session
 )
 from user_data import set_drive_credentials, set_drive_folder
+from file_merge import merge_csv_contents
 
 app = Flask(__name__, static_folder='static/dist')
 app.config.from_object(Config)
@@ -744,6 +745,52 @@ def upload_file():
         return jsonify({
             'status': 'error',
             'message': 'An unexpected error occurred while uploading the file.'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+@app.route('/merge_csv', methods=['POST'])
+def merge_csv():
+    try:
+        file1 = request.form.get('file1')
+        file2 = request.form.get('file2')
+        output_name = request.form.get('output_name')
+
+        if not file1 or not file2 or not output_name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Both files and output name are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        if not output_name.endswith('.csv'):
+            output_name += '.csv'
+
+        user_data = get_user_data()
+        content1 = user_data['csv'].get(file1)
+        content2 = user_data['csv'].get(file2)
+
+        if not content1:
+            return jsonify({'status': 'error', 'message': f'File {file1} not found'}), HTTPStatus.NOT_FOUND
+        if not content2:
+            return jsonify({'status': 'error', 'message': f'File {file2} not found'}), HTTPStatus.NOT_FOUND
+
+        success, result = merge_csv_contents(content1, content2)
+        
+        if success:
+            user_data['csv'][output_name] = result
+            socketio.emit('update_csv')
+            return jsonify({
+                'status': 'success',
+                'message': f'Files merged successfully into {output_name}'
+            }), HTTPStatus.OK
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': result
+            }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'An unexpected error occurred while merging the files: {str(e)}'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @app.route('/get_num_sources', methods=['GET'])
