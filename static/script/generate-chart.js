@@ -59,7 +59,8 @@ function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint) 
             : AppState.plotColors[i % AppState.plotColors.length],
         tension: isSinglePoint ? 0 : 0.1,
         fill: false,
-        pointRadius
+        pointRadius,
+        spanGaps: true
     };
 
     if (analysis) {
