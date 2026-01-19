@@ -766,6 +766,7 @@ function toggleMode() {
     }
 }
 
+function showMergeModal() {
     const table = document.getElementById("file-table");
     const rows = table.querySelectorAll("tr");
     const files = [];
