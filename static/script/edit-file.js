@@ -847,7 +847,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                             // --- Collect main data table ---
                             const table = document.getElementById('swal-edit-table');
-                            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+                            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.replace(/\s*\(\-\)\s*$/, '').trim());
                             const rows = Array.from(table.querySelectorAll('tbody tr'));
 
                             const csvRows = rows.map(row => {
@@ -882,7 +882,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 },
                                 {
                                     header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                    data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL)?\s*)*$/,
+                                    data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
                                     error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
                                     meta: [
                                         /^#\s*Measurement\s*:\s*.+$/,
