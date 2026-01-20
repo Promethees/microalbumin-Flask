@@ -847,6 +847,7 @@ def get_data():
             # Parse the CSV part into a DataFrame
             if data_lines:
                 df = pd.read_csv(StringIO("\n".join(data_lines)))
+                df = df.astype(object).where(pd.notnull(df), None)
                 data = df.to_dict('records')
             else:
                 data = []
