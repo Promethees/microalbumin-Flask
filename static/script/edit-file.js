@@ -1077,66 +1077,37 @@ function moveColumn(headerName, direction) {
     const table = document.getElementById('swal-edit-table');
     if (!table) return;
 
-    // Clean header name to find index
-    const cleanHeader = (text) => text.replace(/\s*\(\-\)\s*$/, '').replace(/\(\<\)\s*\(\>\)\s*$/, '').trim().split(' ')[0];
+    const cleanHeader = t =>
+        t.replace(/\s*\(\-\)\s*$/, '')
+            .replace(/\(\<\)\s*\(\>\)\s*$/, '')
+            .trim()
+            .split(' ')[0];
 
     const headers = Array.from(table.querySelectorAll('th'));
-    const colIndex = headers.findIndex(th => cleanHeader(th.textContent) === headerName);
+    const colIndex = headers.findIndex(
+        th => cleanHeader(th.textContent) === headerName
+    );
 
-    if (colIndex === -1) {
-        console.error(`Column '${headerName}' not found.`);
-        return;
+    if (colIndex === -1) return;
+
+    const first = 1;
+    const last = headers.length - 1;
+
+    // 🔄 wrap without shifting middle
+    if (colIndex === first && direction === -1) {
+        swapColumns(table, first, last);
+    }
+    else if (colIndex === last && direction === 1) {
+        swapColumns(table, first, last);
+    }
+    else {
+        const targetIndex = colIndex + direction;
+        swapColumns(table, colIndex, targetIndex);
     }
 
-    const targetIndex = colIndex + direction;
-
-    // Boundary Validation
-    if (targetIndex < 0 || targetIndex >= headers.length) {
-        return; // Can't move outside bounds
-    }
-
-    const targetHeaderName = cleanHeader(headers[targetIndex].textContent);
-
-    // Prevent swapping with Timestamp or non-Value columns if strictly enforced
-    // The requirement says "not swapping with Timestamp". Usually Timestamp is first.
-    // Also likely want to restrict to swapping only between 'Value:' columns.
-    if (!targetHeaderName.startsWith('Value:')) {
-        Swal.showValidationMessage('Can only swap with other Value columns.');
-        return;
-    }
-
-    // Perform DOM Swap
-    // 1. Swap Headers
-    const headerRow = table.querySelector('thead tr');
-    // Using insertBefore. If direction is 1 (right), insert current after target.
-    // Use standard node swapping logic
-    if (direction === 1) {
-        headerRow.insertBefore(headers[targetIndex], headers[colIndex]);
-        // Wait, if I move A to right of B (A, B -> B, A)
-        // insertBefore(node, reference). 
-        // If A is at 1, B is at 2. Move A to 2. 
-        // insertBefore(A, B.nextSibling)
-        headerRow.insertBefore(headers[colIndex], headers[targetIndex].nextSibling);
-    } else {
-        // Move A left (B, A -> A, B)
-        // insertBefore(A, B)
-        headerRow.insertBefore(headers[colIndex], headers[targetIndex]);
-    }
-
-    // 2. Swap All Data Cells
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        const cells = row.children;
-        if (direction === 1) {
-            row.insertBefore(cells[colIndex], cells[targetIndex].nextSibling);
-        } else {
-            row.insertBefore(cells[colIndex], cells[targetIndex]);
-        }
-    });
-
-    // Renumber Columns
     renumberValueColumns(table);
 }
+
 
 function removeColumn(headerName) {
     const table = document.getElementById('swal-edit-table');
@@ -1214,3 +1185,35 @@ function renumberValueColumns(table) {
         }
     });
 }
+
+function swapColumns(table, i, j) {
+    if (i === j) return;
+    if (i > j) [i, j] = [j, i]; // normalize order
+
+    const headerRow = table.querySelector('thead tr');
+
+    // --- HEADERS ---
+    const headers = Array.from(headerRow.children);
+    const thA = headers[i];
+    const thB = headers[j];
+
+    headerRow.removeChild(thB);
+    headerRow.removeChild(thA);
+
+    headerRow.insertBefore(thB, headerRow.children[i]);
+    headerRow.insertBefore(thA, headerRow.children[j]);
+
+    // --- BODY ---
+    table.querySelectorAll('tbody tr').forEach(row => {
+        const cells = Array.from(row.children);
+        const tdA = cells[i];
+        const tdB = cells[j];
+
+        row.removeChild(tdB);
+        row.removeChild(tdA);
+
+        row.insertBefore(tdB, row.children[i]);
+        row.insertBefore(tdA, row.children[j]);
+    });
+}
+
