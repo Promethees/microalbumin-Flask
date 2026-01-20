@@ -386,7 +386,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 return `<th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
                                         font-size: 0.85em; font-weight: bold; white-space: nowrap;">
                                         ${col}
-                                        ${isValueCol ? `<span class="remove-col-btn" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>` : ''}
+                                        ${isValueCol ? `
+                                            <span class="move-col-btn" onclick="moveColumn('${col}', -1)" style="cursor: pointer; margin-left: 5px;">(&lt;)</span>
+                                            <span class="move-col-btn" onclick="moveColumn('${col}', 1)" style="cursor: pointer; margin-left: 5px;">(&gt;)</span>
+                                            <span class="remove-col-btn" onclick="removeColumn('${col}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>
+                                        ` : ''}
                                     </th>`;
             }).join('')}
                             </tr>
@@ -804,7 +808,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                         // --- Collect main data table ---
                         const table = document.getElementById('swal-edit-table');
-                        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.replace(/\s*\(\-\)\s*$/, '').trim());
+                        const headers = Array.from(table.querySelectorAll('th')).map(th => {
+                            let text = th.textContent
+                                .replace(/\s*\([-+<>]\)\s*/g, '') // Remove buttons in string before submitting to backend
+                                .trim();
+                            return text;
+                        });
                         const rows = Array.from(table.querySelectorAll('tbody tr'));
 
                         const csvRows = rows.map(row => {
@@ -1105,6 +1114,101 @@ function removeColumn(headerName) {
             table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`).forEach(td => {
                 td.dataset.col = newName;
             });
+
+            valueCount++;
+        }
+    });
+}
+
+function moveColumn(headerName, direction) {
+    const table = document.getElementById('swal-edit-table');
+    if (!table) return;
+
+    // Get clean header names (without buttons and extra whitespace)
+    const headers = Array.from(table.querySelectorAll('th')).map(th => {
+        let text = th.textContent || '';
+
+        // Remove move buttons (<) (>) and remove button (-), including surrounding spaces
+        text = text.replace(/\s*\([-+<>]\)\s*/g, '');
+
+        // Normalize all whitespace (spaces, tabs, newlines) → single space
+        text = text.replace(/\s+/g, ' ').trim();
+
+        return text;
+    });
+
+    // Find the column index using the clean name
+    const colIndex = headers.findIndex(hd => hd === headerName);
+
+    if (colIndex === -1) {
+        console.warn(`Column "${headerName}" not found in:`, headers);
+        return;
+    }
+
+    const targetIndex = colIndex + direction;
+
+    // Can't move outside table bounds
+    if (targetIndex < 0 || targetIndex >= headers.length) {
+        return;
+    }
+
+    // Only allow moving between Value: columns
+    const targetCleanName = headers[targetIndex];
+    if (!targetCleanName.startsWith('Value:')) {
+        Swal.showValidationMessage('Can only swap with other Value columns.');
+        return;
+    }
+
+    // ── DOM Swap ───────────────────────────────────────────────
+
+    const headerRow = table.querySelector('thead tr');
+    const allRows = [headerRow, ...table.querySelectorAll('tbody tr')];
+
+    allRows.forEach(row => {
+        const cells = Array.from(row.children);
+        const sourceCell = cells[colIndex];
+        const targetCell = cells[targetIndex];
+
+        if (!sourceCell || !targetCell) return;
+
+        if (direction === 1) {
+            // Moving right: insert source after target
+            row.insertBefore(sourceCell, targetCell.nextSibling);
+        } else {
+            // Moving left: insert source before target
+            row.insertBefore(sourceCell, targetCell);
+        }
+    });
+
+    // Renumber all Value: columns after moving
+    renumberValueColumns(table);
+}
+
+
+function renumberValueColumns(table) {
+    const headers = Array.from(table.querySelectorAll('th'));
+    let valueCount = 1;
+
+    headers.forEach((th) => {
+        let text = (th.textContent || '')
+            .replace(/\s*\([-+<>]\)\s*/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (text.startsWith('Value:')) {
+            const newName = `Value:${valueCount}`;
+
+            th.innerHTML = `
+                ${newName}
+                <span class="move-col-btn" onclick="moveColumn('${newName}', -1)" style="cursor: pointer; margin-left: 5px;">(&lt;)</span>
+                <span class="move-col-btn" onclick="moveColumn('${newName}', 1)" style="cursor: pointer; margin-left: 5px;">(&gt;)</span>
+                <span class="remove-col-btn" onclick="removeColumn('${newName}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>
+            `;
+
+            // Update data-col for cells in this column
+            const colIdx = Array.from(th.parentNode.children).indexOf(th);
+            table.querySelectorAll(`tbody tr td:nth-child(${colIdx + 1})`)
+                .forEach(td => td.dataset.col = newName);
 
             valueCount++;
         }
