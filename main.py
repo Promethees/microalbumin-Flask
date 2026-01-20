@@ -505,7 +505,7 @@ def edit_file():
                 },
                 {
                     'header_test': is_multi_value_timeseries_csv_header,
-                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL)?\s*)*$',
+                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
                     'meta': ["Measurement", "Unit", "Concentration"],
                     'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
                 }
