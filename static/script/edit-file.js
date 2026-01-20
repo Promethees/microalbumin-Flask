@@ -422,7 +422,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     return `<th style="border: 1px solid #ddd; padding: 6px; text-align: left; 
                                             font-size: 0.85em; font-weight: bold; white-space: nowrap;">
                                             ${col}
-                                            ${isValueCol ? `<span class="remove-col-btn" onclick="removeColumn('${col}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>` : ''}
+                                            ${isValueCol ? `
+                                                <span class="move-col-btn" onclick="moveColumn('${col}', -1)" style="cursor: pointer; margin-left: 5px;">(&lt;)</span>
+                                                <span class="move-col-btn" onclick="moveColumn('${col}', 1)" style="cursor: pointer; margin-left: 5px;">(&gt;)</span>
+                                                <span class="remove-col-btn" onclick="removeColumn('${col}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>
+                                            ` : ''}
                                         </th>`;
                 }).join('')}
                                 </tr>
@@ -847,7 +851,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                             // --- Collect main data table ---
                             const table = document.getElementById('swal-edit-table');
-                            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.replace(/\s*\(\-\)\s*$/, '').trim());
+                            const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.replace(/\s*(?:\n\s*\([^)]+\)){1,3}\s*$/, '').trim());
                             const rows = Array.from(table.querySelectorAll('tbody tr'));
 
                             const csvRows = rows.map(row => {
@@ -1069,29 +1073,103 @@ function toggleCollapse(legend) {
     legend.firstChild.nodeValue = labelText + ' ';
 }
 
+function moveColumn(headerName, direction) {
+    const table = document.getElementById('swal-edit-table');
+    if (!table) return;
+
+    // Clean header name to find index
+    const cleanHeader = (text) => text.replace(/\s*\(\-\)\s*$/, '').replace(/\(\<\)\s*\(\>\)\s*$/, '').trim().split(' ')[0];
+
+    const headers = Array.from(table.querySelectorAll('th'));
+    const colIndex = headers.findIndex(th => cleanHeader(th.textContent) === headerName);
+
+    if (colIndex === -1) {
+        console.error(`Column '${headerName}' not found.`);
+        return;
+    }
+
+    const targetIndex = colIndex + direction;
+
+    // Boundary Validation
+    if (targetIndex < 0 || targetIndex >= headers.length) {
+        return; // Can't move outside bounds
+    }
+
+    const targetHeaderName = cleanHeader(headers[targetIndex].textContent);
+
+    // Prevent swapping with Timestamp or non-Value columns if strictly enforced
+    // The requirement says "not swapping with Timestamp". Usually Timestamp is first.
+    // Also likely want to restrict to swapping only between 'Value:' columns.
+    if (!targetHeaderName.startsWith('Value:')) {
+        Swal.showValidationMessage('Can only swap with other Value columns.');
+        return;
+    }
+
+    // Perform DOM Swap
+    // 1. Swap Headers
+    const headerRow = table.querySelector('thead tr');
+    // Using insertBefore. If direction is 1 (right), insert current after target.
+    // Use standard node swapping logic
+    if (direction === 1) {
+        headerRow.insertBefore(headers[targetIndex], headers[colIndex]);
+        // Wait, if I move A to right of B (A, B -> B, A)
+        // insertBefore(node, reference). 
+        // If A is at 1, B is at 2. Move A to 2. 
+        // insertBefore(A, B.nextSibling)
+        headerRow.insertBefore(headers[colIndex], headers[targetIndex].nextSibling);
+    } else {
+        // Move A left (B, A -> A, B)
+        // insertBefore(A, B)
+        headerRow.insertBefore(headers[colIndex], headers[targetIndex]);
+    }
+
+    // 2. Swap All Data Cells
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const cells = row.children;
+        if (direction === 1) {
+            row.insertBefore(cells[colIndex], cells[targetIndex].nextSibling);
+        } else {
+            row.insertBefore(cells[colIndex], cells[targetIndex]);
+        }
+    });
+
+    // Renumber Columns
+    renumberValueColumns(table);
+}
+
 function removeColumn(headerName) {
     const table = document.getElementById('swal-edit-table');
     if (!table) return;
 
-    // Use regex to strip the (-) suffix and trim whitespace/newlines
-    const headers = Array.from(table.querySelectorAll('th')).map(th =>
-        th.textContent.replace(/\s*\(\-\)\s*$/, '').trim()
-    );
-    const valueCols = headers.filter(h => h.startsWith('Value:'));
+    // Use regex to strip the buttons and trim
+    // Note: The move buttons adds text content to the header? 
+    // Usually buttons are elements so th.textContent includes them.
+    // We should be careful matching headerName. 
+    // The passed headerName usually comes from the original render or current state.
 
+    const headers = Array.from(table.querySelectorAll('th'));
+    // Find column index
+    const colIndex = headers.findIndex(th => {
+        // We need to match the 'Value:X' part. 
+        // The header content might be "Value:1 (<) (>) (-)"
+        return th.textContent.includes(headerName);
+    });
+
+    // Check if enough Value columns remain
+    const valueCols = headers.filter(th => th.textContent.trim().startsWith('Value:'));
     if (valueCols.length <= 1) {
         Swal.showValidationMessage('At least one Value column must remain.');
         return;
     }
 
-    const colIndex = headers.indexOf(headerName);
     if (colIndex === -1) {
-        console.error(`Column '${headerName}' not found in headers:`, headers);
+        console.error(`Column '${headerName}' not found in headers.`);
         return;
     }
 
     // Remove header
-    table.querySelectorAll('th')[colIndex].remove();
+    headers[colIndex].remove();
 
     // Remove cells
     table.querySelectorAll('tbody tr').forEach(row => {
@@ -1101,24 +1179,35 @@ function removeColumn(headerName) {
     });
 
     // Renumber remaining Value: columns
-    const newHeaders = Array.from(table.querySelectorAll('th'));
+    renumberValueColumns(table);
+}
+
+function renumberValueColumns(table) {
+    const headers = Array.from(table.querySelectorAll('th'));
     let valueCount = 1;
-    newHeaders.forEach(th => {
-        // Use the same regex cleaning for consistency
-        const text = th.textContent.replace(/\s*\(\-\)\s*$/, '').trim();
+
+    headers.forEach((th, index) => {
+        // Check if it was a Value column (by checking text content or previous setup)
+        // Since we might have messed up text content with buttons, best is to check if it starts with Value
+        // Or cleaner: We know Timestamp is usually first. 
+        // Let's assume all columns after Timestamp that are not Type/Unit etc are Value columns
+        // Or just check if the text starts with Value:
+
+        let text = th.textContent.trim();
         if (text.startsWith('Value:')) {
             const newName = `Value:${valueCount}`;
-            th.innerHTML = `${newName} <span class="remove-col-btn" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>`;
-            th.onclick = function (e) {
-                if (e.target.classList.contains('remove-col-btn')) {
-                    removeColumn(newName);
-                }
-            };
+            th.innerHTML = `
+                ${newName}
+                <span class="move-col-btn" onclick="moveColumn('${newName}', -1)" style="cursor: pointer; margin-left: 5px;">(&lt;)</span>
+                <span class="move-col-btn" onclick="moveColumn('${newName}', 1)" style="cursor: pointer; margin-left: 5px;">(&gt;)</span>
+                <span class="remove-col-btn" onclick="removeColumn('${newName}')" style="color: red; cursor: pointer; font-weight: bold; margin-left: 5px;">(-)</span>
+            `;
 
             // Update data-col attribute for all cells in this column
-            const index = newHeaders.indexOf(th);
-            table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`).forEach(td => {
-                td.dataset.col = newName;
+            const colIdx = Array.from(th.parentNode.children).indexOf(th);
+            table.querySelectorAll(`tbody tr`).forEach(row => {
+                const td = row.children[colIdx];
+                if (td) td.dataset.col = newName;
             });
 
             valueCount++;
