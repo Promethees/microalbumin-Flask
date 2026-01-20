@@ -1137,47 +1137,63 @@ function moveColumn(headerName, direction) {
         return text;
     });
 
-    // Find the column index using the clean name
-    const colIndex = headers.findIndex(hd => hd === headerName);
+    const colIndex = headers.findIndex(h => h === headerName);
+    if (colIndex === -1) return;
 
-    if (colIndex === -1) {
-        console.warn(`Column "${headerName}" not found in:`, headers);
-        return;
+    const first = 1;
+    const last = headers.length - 1;
+
+    // 🚫 column 0 is fixed
+    if (colIndex === 0) return;
+
+    let swapA = colIndex;
+    let swapB = null;
+
+    // ── Wrap rules (explicit) ─────────────────────────────────
+    if (colIndex === first && direction === -1) {
+        swapB = last;
     }
-
-    const targetIndex = colIndex + direction;
-
-    // Can't move outside table bounds
-    if (targetIndex < 0 || targetIndex >= headers.length) {
-        return;
+    else if (colIndex === last && direction === 1) {
+        swapB = first;
     }
+    else {
+        const targetIndex = colIndex + direction;
 
-    // Only allow moving between Value: columns
-    const targetCleanName = headers[targetIndex];
-    if (!targetCleanName.startsWith('Value:')) {
-        Swal.showValidationMessage('Can only swap with other Value columns.');
-        return;
-    }
+        // stay within movable range
+        if (targetIndex < first || targetIndex > last) return;
 
-    // ── DOM Swap ───────────────────────────────────────────────
-
-    const headerRow = table.querySelector('thead tr');
-    const allRows = [headerRow, ...table.querySelectorAll('tbody tr')];
-
-    allRows.forEach(row => {
-        const cells = Array.from(row.children);
-        const sourceCell = cells[colIndex];
-        const targetCell = cells[targetIndex];
-
-        if (!sourceCell || !targetCell) return;
-
-        if (direction === 1) {
-            // Moving right: insert source after target
-            row.insertBefore(sourceCell, targetCell.nextSibling);
-        } else {
-            // Moving left: insert source before target
-            row.insertBefore(sourceCell, targetCell);
+        if (!headers[targetIndex].startsWith('Value:')) {
+            Swal.showValidationMessage('Can only swap with other Value columns.');
+            return;
         }
+
+        swapB = targetIndex;
+    }
+
+    if (swapB == null || swapA === swapB) return;
+
+    // ── True DOM swap (NO SHIFTING) ────────────────────────────
+    const rows = [
+        table.querySelector('thead tr'),
+        ...table.querySelectorAll('tbody tr')
+    ];
+
+    rows.forEach(row => {
+        const cells = Array.from(row.children);
+
+        const i = Math.min(swapA, swapB);
+        const j = Math.max(swapA, swapB);
+
+        const cellI = cells[i];
+        const cellJ = cells[j];
+
+        if (!cellI || !cellJ) return;
+
+        row.removeChild(cellJ);
+        row.removeChild(cellI);
+
+        row.insertBefore(cellJ, row.children[i] || null);
+        row.insertBefore(cellI, row.children[j] || null);
     });
 
     // Renumber all Value: columns after moving
