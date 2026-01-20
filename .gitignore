@@ -21,3 +21,5 @@ node_modules
 !sample_data/**/*.csv
 
 *.env
+
+index_temp.html
