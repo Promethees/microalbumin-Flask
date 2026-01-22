@@ -1438,3 +1438,338 @@ body.dark .swal2-container.swal2-backdrop-show {
 .checkbox-label input[type="checkbox"] {
     margin-right: 6px;
 }
+
+/* ==========================================================================
+   User Guide / Tutorial System
+   ========================================================================== */
+
+/* User Guide Button */
+#user-guide-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.light #user-guide-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    border: none;
+}
+
+body.dark #user-guide-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #1a1a1a;
+    border: none;
+}
+
+#user-guide-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#user-guide-btn::before {
+    content: '?';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    font-weight: bold;
+}
+
+/* Overlay - Grey curtain */
+.user-guide-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.user-guide-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Spotlight - Highlighted area */
+.user-guide-spotlight {
+    position: absolute;
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+    z-index: 10001;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-guide-spotlight.active {
+    opacity: 1;
+    visibility: visible;
+    animation: pulse-spotlight 2s ease-in-out infinite;
+}
+
+@keyframes pulse-spotlight {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7),
+            0 0 20px rgba(255, 255, 255, 0.3),
+            inset 0 0 20px rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7),
+            0 0 30px rgba(255, 255, 255, 0.5),
+            inset 0 0 30px rgba(255, 255, 255, 0.2);
+    }
+}
+
+/* Tooltip */
+.user-guide-tooltip {
+    position: absolute;
+    max-width: 400px;
+    min-width: 300px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 10002;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.9);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.light .user-guide-tooltip {
+    background: #ffffff;
+    color: #333333;
+    border: 2px solid #667eea;
+}
+
+body.dark .user-guide-tooltip {
+    background: #2a2a2a;
+    color: #eeeeee;
+    border: 2px solid #4facfe;
+}
+
+.user-guide-tooltip.active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+/* Tooltip Header */
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.dark .tooltip-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-step-counter {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body.light .tooltip-step-counter {
+    color: #667eea;
+}
+
+body.dark .tooltip-step-counter {
+    color: #4facfe;
+}
+
+.tooltip-close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+body.light .tooltip-close-btn {
+    color: #666666;
+}
+
+body.dark .tooltip-close-btn {
+    color: #aaaaaa;
+}
+
+.tooltip-close-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: rotate(90deg);
+}
+
+body.dark .tooltip-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Tooltip Content */
+.tooltip-content {
+    padding: 20px;
+}
+
+.tooltip-title {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+body.light .tooltip-title {
+    color: #333333;
+}
+
+body.dark .tooltip-title {
+    color: #ffffff;
+}
+
+.tooltip-description {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+body.light .tooltip-description {
+    color: #666666;
+}
+
+body.dark .tooltip-description {
+    color: #cccccc;
+}
+
+/* Tooltip Footer */
+.tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.dark .tooltip-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    flex: 1;
+}
+
+.tooltip-prev-btn {
+    background: transparent;
+    border: 1px solid #cccccc;
+}
+
+body.light .tooltip-prev-btn {
+    color: #666666;
+}
+
+body.dark .tooltip-prev-btn {
+    color: #aaaaaa;
+    border-color: #555555;
+}
+
+.tooltip-prev-btn:hover {
+    transform: translateX(-2px);
+}
+
+body.light .tooltip-prev-btn:hover {
+    background: #f5f5f5;
+    border-color: #999999;
+}
+
+body.dark .tooltip-prev-btn:hover {
+    background: #3a3a3a;
+    border-color: #777777;
+}
+
+.tooltip-next-btn,
+.tooltip-finish-btn {
+    color: #ffffff;
+}
+
+body.light .tooltip-next-btn,
+body.light .tooltip-finish-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.dark .tooltip-next-btn,
+body.dark .tooltip-finish-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #1a1a1a;
+}
+
+.tooltip-next-btn:hover,
+.tooltip-finish-btn:hover {
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tooltip-finish-btn {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.tooltip-finish-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .user-guide-tooltip {
+        max-width: 90vw;
+        min-width: 280px;
+    }
+
+    #user-guide-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+
+    .tooltip-footer {
+        flex-direction: column;
+    }
+
+    .tooltip-btn {
+        width: 100%;
+    }
+}
