@@ -30,7 +30,8 @@ body {
     padding: 10px;
     box-sizing: border-box;
     display: flex;
-    flex-direction: column; /* allows reordering */
+    flex-direction: column;
+    /* allows reordering */
 }
 
 .section {
@@ -44,9 +45,9 @@ body {
 
 .okapi-line {
     /* Enables Flexbox on the <h1> element */
-    display: flex; 
+    display: flex;
     /* Centers items vertically within the h1's line */
-    align-items: center; 
+    align-items: center;
     /* Ensures the image doesn't wrap to the next line if the h1 is narrow */
     white-space: nowrap;
 }
@@ -54,19 +55,27 @@ body {
 .okapi-img {
     height: 30px;
     width: 30px;
-    margin-left: 3px; 
+    margin-left: 3px;
 }
 
-#base-dir-label, #save-dir-label {
-    display: flex;              /* make label a flexbox */
-    align-items: center;        /* align text + input vertically */
-    width: 100%;                /* span full parent width */
-    gap: 8px;                   /* optional spacing between text and input */
+#base-dir-label,
+#save-dir-label {
+    display: flex;
+    /* make label a flexbox */
+    align-items: center;
+    /* align text + input vertically */
+    width: 100%;
+    /* span full parent width */
+    gap: 8px;
+    /* optional spacing between text and input */
 }
 
-input#base-dir, input#save-dir {
-    flex: 1;                    /* take remaining space */
-    min-width: 0;               /* prevent flex overflow */
+input#base-dir,
+input#save-dir {
+    flex: 1;
+    /* take remaining space */
+    min-width: 0;
+    /* prevent flex overflow */
 }
 
 /* Light Theme */
@@ -181,22 +190,26 @@ body.light .button-group {
     display: flex;
     gap: 5px;
 }
+
 body.light .button-group button {
     padding: 5px 10px;
     border: 1px solid #333;
     border-radius: 4px;
     cursor: pointer;
 }
+
 body.light .button-group button:hover:not(.selected) {
     background-color: #aaaaaa;
     color: var(--text-color-light);
 }
+
 body.light .button-group button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
     background-color: #aaaaaa;
     color: var(--text-color-light);
 }
+
 body.light .button-group button.selected {
     font-weight: bold;
     background-color: #ec0808ef !important;
@@ -348,22 +361,26 @@ body.dark .button-group {
     display: flex;
     gap: 5px;
 }
+
 body.dark .button-group button {
     padding: 5px 10px;
     border: 1px solid #333;
     border-radius: 4px;
     cursor: pointer;
 }
+
 body.dark .button-group button:hover:not(.selected) {
     background-color: #555555;
     color: var(--text-color-dark);
 }
+
 body.dark .button-group button:disabled {
     cursor: not-allowed;
     opacity: 0.6;
     background-color: #555555;
     color: var(--text-color-dark);
 }
+
 body.dark .button-group button.selected {
     font-weight: bold;
     background-color: #e2e382 !important;
@@ -389,12 +406,13 @@ body.dark .button-group button.selected {
     flex-wrap: wrap;
 }
 
-.top-left > *:not(.flex-group) {
+.top-left>*:not(.flex-group) {
     margin-left: 10px;
 }
 
 #top-left-scrollable {
-    max-height: calc(100vh - 140px) !important;   /* 150px ≈ logo + title + margins + shutdown button */
+    max-height: calc(100vh - 140px) !important;
+    /* 150px ≈ logo + title + margins + shutdown button */
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding-right: 6px;
@@ -526,7 +544,8 @@ body.dark .button-group button.selected {
 #main-content {
     max-width: 50vw;
     width: 100%;
-    margin: 0 auto;   /* center it */
+    margin: 0 auto;
+    /* center it */
     box-sizing: border-box;
 }
 
@@ -559,7 +578,8 @@ table {
     width: 100%;
 }
 
-th, td {
+th,
+td {
     border: 1px solid #ddd;
     padding: 8px;
     text-align: left;
@@ -579,7 +599,8 @@ th {
     margin-top: 10px;
 }
 
-.table th, .table td {
+.table th,
+.table td {
     padding: 10px;
     border: 1px solid;
     text-align: left;
@@ -638,7 +659,8 @@ body.dark #swal-edit-table tr.selected td {
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap; /* required for ellipsis to show */
+    white-space: nowrap;
+    /* required for ellipsis to show */
 }
 
 #swal-edit-table th {
@@ -646,9 +668,9 @@ body.dark #swal-edit-table tr.selected td {
 }
 
 .analysis-cell {
-    border: 1px solid #ddd; 
-    padding: 8px; 
-    text-align: left; 
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
 }
 
 /* ==========================================================================
@@ -659,8 +681,9 @@ body.dark #swal-edit-table tr.selected td {
     max-height: 300px;
     overflow-y: auto;
     width: 100%;
-    box-sizing: border-box; 
-    scrollbar-width: thin; /* Firefox */
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    /* Firefox */
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
@@ -669,7 +692,8 @@ body.dark #swal-edit-table tr.selected td {
     max-height: 120px;
     width: 100%;
     margin: 20px auto;
-    scrollbar-width: thin; /* Firefox */
+    scrollbar-width: thin;
+    /* Firefox */
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
@@ -708,29 +732,29 @@ body.dark #swal-edit-table tr.selected td {
 }
 
 /* Chrome, Edge, Safari */
-.scrollbar-style::-webkit-scrollbar{
+.scrollbar-style::-webkit-scrollbar {
     width: 2px;
     height: 2px;
 }
 
-.scrollbar-style::-webkit-scrollbar-track{
+.scrollbar-style::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
 }
 
-.scrollbar-style::-webkit-scrollbar-thumb{
+.scrollbar-style::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb);
     border-radius: 4px;
     opacity: 0.7;
 }
 
 /* Light mode */
-.light .scrollbar-style{
+.light .scrollbar-style {
     --scrollbar-track: #f0f0f0;
     --scrollbar-thumb: rgba(0, 0, 0, 0.3);
 }
 
 /* Dark mode */
-.dark .scrollbar-style{
+.dark .scrollbar-style {
     --scrollbar-track: #2a2a2a;
     --scrollbar-thumb: rgba(255, 255, 255, 0.4);
 }
@@ -764,7 +788,8 @@ body.dark #swal-edit-table tr.selected td {
     height: 40%;
     position: relative;
     max-height: 600px;
-    scrollbar-width: thin; /* Firefox */
+    scrollbar-width: thin;
+    /* Firefox */
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
@@ -778,7 +803,7 @@ body.light .display {
     white-space: pre-wrap;
 }
 
-body.dark .display{
+body.dark .display {
     border: 1px solid #555;
     padding: 10px;
     background-color: #222;
@@ -878,14 +903,27 @@ body.dark #plot-analysis {
    Animations & Effects
    ========================================================================== */
 @keyframes blink {
-    0% { border-color: var(--blink-color, transparent); }
-    50% { border-color: transparent; }
-    100% { border-color: var(--blink-color, transparent); }
+    0% {
+        border-color: var(--blink-color, transparent);
+    }
+
+    50% {
+        border-color: transparent;
+    }
+
+    100% {
+        border-color: var(--blink-color, transparent);
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* Blinking Elements */
@@ -968,18 +1006,23 @@ body.dark #swal-input-content {
 
 .json-input {
     box-sizing: border-box;
-    width: 90%;             
-    padding: 4px 8px 4px 4px;  /* left/right padding + tiny right for arrow */
-    margin: 0;                 /* remove any default margin */
+    width: 90%;
+    padding: 4px 8px 4px 4px;
+    /* left/right padding + tiny right for arrow */
+    margin: 0;
+    /* remove any default margin */
     font-family: monospace;
-    line-height: 1.4;          /* same height */
+    line-height: 1.4;
+    /* same height */
     border-radius: 2px;
 }
 
 /* Noneditable metadata cells */
 .light #swal-metadata-table tbody td.noneditable {
-    background: #f5f5f5;   /* slightly different than editable white */
-    color: #777;           /* dimmed text */
+    background: #f5f5f5;
+    /* slightly different than editable white */
+    color: #777;
+    /* dimmed text */
     font-style: italic;
     pointer-events: none;
     user-select: none;
@@ -1012,8 +1055,10 @@ body.dark #swal-input-content {
 }
 
 .dark #swal-metadata-table tbody td.noneditable {
-    background: #252525;   /* slightly lighter than editable dark */
-    color: #999;           /* dimmed text */
+    background: #252525;
+    /* slightly lighter than editable dark */
+    color: #999;
+    /* dimmed text */
     font-style: italic;
     pointer-events: none;
     user-select: none;
@@ -1075,16 +1120,16 @@ body.dark #swal-edit-table td.non-editable {
 }
 
 /* Help text below the editor */
-#swal-edit-table + p {
+#swal-edit-table+p {
     font-size: 0.8em;
     margin-top: 5px;
 }
 
-body.light #swal-edit-table + p {
+body.light #swal-edit-table+p {
     color: #666666;
 }
 
-body.dark #swal-edit-table + p {
+body.dark #swal-edit-table+p {
     color: #aaaaaa;
 }
 
@@ -1140,15 +1185,17 @@ body.dark .swal2-container.swal2-backdrop-show {
 
 @media (max-width: 768px) {
     .top-left {
-        position: relative; /* no longer fixed */
+        position: relative;
+        /* no longer fixed */
         top: auto;
         left: auto;
         max-width: 100%;
         margin-bottom: 0px;
-        order: 1; /* appear above main-content */
+        order: 1;
+        /* appear above main-content */
     }
 
-    .top-left > *:not(.flex-group) {
+    .top-left>*:not(.flex-group) {
         margin-left: 0px;
     }
 
@@ -1166,18 +1213,355 @@ body.dark .swal2-container.swal2-backdrop-show {
     }
 
     #main-content {
-        max-width: 100%;  /* expand fully */
+        max-width: 100%;
+        /* expand fully */
         width: 100%;
         order: 2;
     }
 
     #init-prompt {
-        max-width: 100%;  /* expand fully */
+        max-width: 100%;
+        /* expand fully */
         width: 100%;
         order: 2;
     }
 
     footer {
         order: 3;
+    }
+}
+
+/* ==========================================================================
+   User Guide / Tutorial System
+   ========================================================================== */
+
+/* User Guide Button */
+#user-guide-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+body.light #user-guide-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    border: none;
+}
+
+body.dark #user-guide-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #1a1a1a;
+    border: none;
+}
+
+#user-guide-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+#user-guide-btn::before {
+    content: '?';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    font-weight: bold;
+}
+
+/* Overlay - Grey curtain */
+.user-guide-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+
+.user-guide-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* Spotlight - Highlighted area */
+.user-guide-spotlight {
+    position: absolute;
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+    z-index: 10001;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-guide-spotlight.active {
+    opacity: 1;
+    visibility: visible;
+    animation: pulse-spotlight 2s ease-in-out infinite;
+}
+
+@keyframes pulse-spotlight {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7),
+            0 0 20px rgba(255, 255, 255, 0.3),
+            inset 0 0 20px rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7),
+            0 0 30px rgba(255, 255, 255, 0.5),
+            inset 0 0 30px rgba(255, 255, 255, 0.2);
+    }
+}
+
+/* Tooltip */
+.user-guide-tooltip {
+    position: absolute;
+    max-width: 400px;
+    min-width: 300px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 10002;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.9);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.light .user-guide-tooltip {
+    background: #ffffff;
+    color: #333333;
+    border: 2px solid #667eea;
+}
+
+body.dark .user-guide-tooltip {
+    background: #2a2a2a;
+    color: #eeeeee;
+    border: 2px solid #4facfe;
+}
+
+.user-guide-tooltip.active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+/* Tooltip Header */
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.dark .tooltip-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-step-counter {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body.light .tooltip-step-counter {
+    color: #667eea;
+}
+
+body.dark .tooltip-step-counter {
+    color: #4facfe;
+}
+
+.tooltip-close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+body.light .tooltip-close-btn {
+    color: #666666;
+}
+
+body.dark .tooltip-close-btn {
+    color: #aaaaaa;
+}
+
+.tooltip-close-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: rotate(90deg);
+}
+
+body.dark .tooltip-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Tooltip Content */
+.tooltip-content {
+    padding: 20px;
+}
+
+.tooltip-title {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+body.light .tooltip-title {
+    color: #333333;
+}
+
+body.dark .tooltip-title {
+    color: #ffffff;
+}
+
+.tooltip-description {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+body.light .tooltip-description {
+    color: #666666;
+}
+
+body.dark .tooltip-description {
+    color: #cccccc;
+}
+
+/* Tooltip Footer */
+.tooltip-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 15px 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.dark .tooltip-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tooltip-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    flex: 1;
+}
+
+.tooltip-prev-btn {
+    background: transparent;
+    border: 1px solid #cccccc;
+}
+
+body.light .tooltip-prev-btn {
+    color: #666666;
+}
+
+body.dark .tooltip-prev-btn {
+    color: #aaaaaa;
+    border-color: #555555;
+}
+
+.tooltip-prev-btn:hover {
+    transform: translateX(-2px);
+}
+
+body.light .tooltip-prev-btn:hover {
+    background: #f5f5f5;
+    border-color: #999999;
+}
+
+body.dark .tooltip-prev-btn:hover {
+    background: #3a3a3a;
+    border-color: #777777;
+}
+
+.tooltip-next-btn,
+.tooltip-finish-btn {
+    color: #ffffff;
+}
+
+body.light .tooltip-next-btn,
+body.light .tooltip-finish-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+body.dark .tooltip-next-btn,
+body.dark .tooltip-finish-btn {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #1a1a1a;
+}
+
+.tooltip-next-btn:hover,
+.tooltip-finish-btn:hover {
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tooltip-finish-btn {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.tooltip-finish-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .user-guide-tooltip {
+        max-width: 90vw;
+        min-width: 280px;
+    }
+
+    #user-guide-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+    }
+
+    .tooltip-footer {
+        flex-direction: column;
+    }
+
+    .tooltip-btn {
+        width: 100%;
     }
 }
