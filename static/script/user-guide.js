@@ -179,14 +179,14 @@ class UserGuide {
                 {
                     target: '#options-section',
                     title: 'Options',
-                    description: 'Configure your preferences here. You can disable popups and filter sensors by number of sources.',
+                    description: 'Configure your preferences here. You can disable popups and filter data files by number of measurement sources.',
                     position: 'right',
                     skipInteraction: true
                 },
                 {
                     target: '#drive-section',
                     title: 'Google Drive Storage',
-                    description: 'Connect to Google Drive to automatically sync your data. You can push and pull data from the cloud.',
+                    description: 'Connect to Google Drive to sync your data. You can push and pull data from the cloud.',
                     position: 'right',
                     skipInteraction: true
                 }
@@ -195,8 +195,9 @@ class UserGuide {
             {
                 target: '#cal-json-sel-section',
                 title: 'Calibration Coefficients',
-                description: 'Select calibrated JSON files containing standard curve coefficients. You can upload, download, edit, or delete calibration files.',
-                position: 'left'
+                description: 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. You can upload, download, edit, or delete calibration files.',
+                position: 'left',
+                skipInteraction: true
             };
 
             const shareStepsSecondPart = [
@@ -205,15 +206,7 @@ class UserGuide {
                     title: 'File Selection',
                     description: 'Select CSV data files to analyze. You can upload new files, edit existing ones, or merge multiple files together.',
                     position: 'left',
-                    skipInteraction: true
-                },
-                {
-                    target: '#data-display-section',
-                    title: 'Data Display & Analysis',
-                    description: 'Once you select a file, this section will show your data visualization, charts, and analysis tools. You can configure time ranges, normalization, and export results.',
-                    position: 'left',
-                    scrollIntoView: true,
-                    skipInteraction: true
+                    skipInteraction: false
                 }
             ];
             this.steps = [
@@ -234,22 +227,12 @@ class UserGuide {
      * Get mode-specific workflow steps for data display section
      */
     getModeSpecificSteps(mode) {
-        const baseSteps = [
-            {
-                target: '#file-selection',
-                title: 'Step 1: Select a File',
-                description: 'First, select a CSV file from the file table to begin working with data in the Data Display section.',
-                scrollIntoView: true,
-                position: 'left'
-            }
-        ];
 
         if (mode === 'kinetics') {
             return [
-                ...baseSteps,
                 {
                     target: '#data-display-section',
-                    title: 'Step 2: Data Display Section',
+                    title: 'Data Display Section',
                     description: 'After selecting a file, the Data Display section will appear here. In kinetics mode, you can view time-series measurements.',
                     position: 'left',
                     scrollIntoView: true,
@@ -257,77 +240,82 @@ class UserGuide {
                 },
                 {
                     target: '#window-size-section',
-                    title: 'Step 3: Window Size (Kinetics Mode)',
+                    title: 'Window Size (Kinetics Mode)',
                     description: 'Configure the window size for maxRate regression. This determines the number of data points used to calculate local slopes (minimum: 3).',
-                    position: 'left'
+                    position: 'left',
+                    skipInteraction: true,
+                    scrollIntoView: true
                 },
                 {
                     target: '#range-display',
-                    title: 'Step 4: Display Range',
+                    title: 'Display Range',
                     description: 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.',
-                    position: 'left'
+                    position: 'bottom',
+                    skipInteraction: true,
+                    scrollIntoView: true
                 },
                 {
                     target: '#split-sensor-section',
-                    title: 'Step 5: Split by Sensors',
+                    title: 'Split by Sensors',
                     description: 'Split the data by sensors. This will display each sensor\'s data in a separate chart and opt to display kinetics quantities for each measurement.',
                     position: 'right'
                 },
                 {
                     target: '#normalize-mode-section',
-                    title: 'Step 6: Normalize Data',
+                    title: 'Normalize Data',
                     description: 'Normalize the data by removing blank values. This will display the data with the blank values removed.',
-                    position: 'right'
+                    position: 'right',
+                    scrollIntoView: true
                 },
                 {
                     target: '#plot-button',
-                    title: 'Step 7: See kinetics analysis',
+                    title: 'See kinetics analysis',
                     description: 'See the kinetics analysis of the data. This will display the kinetics analysis of the data.',
                     position: 'right'
                 },
                 {
                     target: '#full-display-source-0',
-                    title: 'Step 8: Full Display',
+                    title: 'Full Display',
                     description: 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data and special analysis lines.',
                     position: 'right'
                 },
                 {
                     target: 'label[id^="quantity-checkboxes-"]',
-                    title: 'Step 9: Select Quantities',
+                    title: 'Select Quantities',
                     description: 'Select the quantities to display on the chart. You can select multiple quantities to display on the chart.',
                     position: 'right'
                 },
                 {
                     target: '#con-value-read-source-0',
-                    title: 'Step 10: Concentration Value',
+                    title: 'Concentration Value',
                     description: 'The concentration value of the data. This will display the concentration value of the data.',
                     position: 'right',
                     skipInteraction: true
                 },
                 {
                     target: '#chart-container',
-                    title: 'Step 11: View Charts',
+                    title: 'View Charts',
                     description: 'Your data will be visualized in charts here. You can enable "Full Display" to see all data and special analysis lines.',
                     position: 'right',
                     skipInteraction: true
                 },
                 {
                     target: '#select-sensor-to-export',
-                    title: 'Step 12: Select Sensor to Export',
+                    title: 'Select Sensor to Export',
                     description: 'Select the sensor to export the data. You can select multiple sensors to export the data.',
                     position: 'right'
                 },
                 {
                     target: '#export-analysis',
-                    title: 'Step 13: Export Analysis',
+                    title: 'Export Analysis',
                     description: 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.',
-                    position: 'left'
+                    position: 'top'
                 },
                 {
                     target: '#json-table',
                     title: 'Standard Curve Coefficients',
                     description: 'Select calibrated JSON files containing standard curve coefficients. You can upload, download, edit, or delete calibration files.',
-                    position: 'left',
+                    position: 'bottom',
                     scrollIntoView: true,
                     skipInteraction: true
                 },
@@ -341,10 +329,9 @@ class UserGuide {
             ];
         } else if (mode === 'point') {
             return [
-                ...baseSteps,
                 {
                     target: '#data-display-section',
-                    title: 'Step 2: Data Display Section',
+                    title: 'Data Display Section',
                     description: 'After selecting a file, the Data Display section will appear here. In point mode, you can view single-point measurements.',
                     position: 'left',
                     scrollIntoView: true,
@@ -352,40 +339,40 @@ class UserGuide {
                 },
                 {
                     target: '#point-json-exp-section',
-                    title: 'Step 3: Reference Point (Point Mode)',
+                    title: 'Reference Point (Point Mode)',
                     description: 'Set the reference point for your measurements. This indicates the time point at which measurements were taken.',
                     position: 'left'
                 },
                 {
                     target: '#select-time-point',
-                    title: 'Step 4: Select Time Point',
+                    title: 'Select Time Point',
                     description: 'If using calibration, select which time point to derive concentration from. You can choose "ALL" to use all time points.',
                     position: 'left'
                 },
                 {
                     target: '#range-display',
-                    title: 'Step 5: Display Range',
+                    title: 'Display Range',
                     description: 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.',
-                    position: 'left'
+                    position: 'bottom'
                 },
                 {
                     target: '#chart-container',
-                    title: 'Step 7: View Charts',
+                    title: 'View Charts',
                     description: 'Your data will be visualized in charts here. Point measurements will be displayed at the selected reference point.',
                     position: 'left',
                     skipInteraction: true
                 },
                 {
                     target: '#export-analysis',
-                    title: 'Step 8: Export Analysis',
+                    title: 'Export Analysis',
                     description: 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.',
-                    position: 'left'
+                    position: 'top'
                 },
                 {
                     target: '#json-table',
                     title: 'Standard Curve Coefficients',
                     description: 'Select calibrated JSON files containing standard curve coefficients. You can upload, download, edit, or delete calibration files.',
-                    position: 'left',
+                    position: 'bottom',
                     skipInteraction: true
                 }
             ];
@@ -396,10 +383,9 @@ class UserGuide {
 
             if (calMode === 'kinetics') {
                 return [
-                    ...baseSteps,
                     {
                         target: '#data-display-section',
-                        title: 'Step 2: Data Display Section',
+                        title: 'Data Display Section',
                         description: 'After selecting a file, the Data Display section will appear here. In calibration mode (kinetics), you can create standard curves.',
                         position: 'left',
                         scrollIntoView: true,
@@ -407,35 +393,34 @@ class UserGuide {
                     },
                     {
                         target: '#select-quantity-section',
-                        title: 'Step 3: Select Quantity (Calibration - Kinetics)',
+                        title: 'Select Quantity (Calibration - Kinetics)',
                         description: 'Select which quantity to use for calibration: maxRate, Slope of Linear progression, Sat, or Reacting Time taken to Saturation.',
                         position: 'left'
                     },
                     {
                         target: '#select-regress-algo',
-                        title: 'Step 4: Select Regression Algorithm',
+                        title: 'Select Regression Algorithm',
                         description: 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.',
                         position: 'left'
                     },
                     {
                         target: '#chart-container',
-                        title: 'Step 5: View Calibration Chart',
+                        title: 'View Calibration Chart',
                         description: 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.',
                         position: 'left'
                     },
                     {
                         target: '#export-coef',
-                        title: 'Step 6: Export Coefficients',
+                        title: 'Export Coefficients',
                         description: 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.',
                         position: 'left'
                     }
                 ];
             } else {
                 return [
-                    ...baseSteps,
                     {
                         target: '#data-display-section',
-                        title: 'Step 2: Data Display Section',
+                        title: 'Data Display Section',
                         description: 'After selecting a file, the Data Display section will appear here. In calibration mode (point), you can create standard curves.',
                         position: 'left',
                         scrollIntoView: true,
@@ -443,34 +428,33 @@ class UserGuide {
                     },
                     {
                         target: '#select-time-point',
-                        title: 'Step 3: Select Time Point (Calibration - Point)',
+                        title: 'Select Time Point (Calibration - Point)',
                         description: 'Select which time point to use for calibration. Choose from the time points that were exported during measurement.',
                         position: 'left'
                     },
                     {
                         target: '#select-regress-algo',
-                        title: 'Step 4: Select Regression Algorithm',
+                        title: 'Select Regression Algorithm',
                         description: 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.',
                         position: 'left'
                     },
                     {
                         target: '#chart-container',
-                        title: 'Step 5: View Calibration Chart',
+                        title: 'View Calibration Chart',
                         description: 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.',
                         position: 'left',
                         skipInteraction: true
                     },
                     {
                         target: '#export-coef',
-                        title: 'Step 6: Export Coefficients',
+                        title: 'Export Coefficients',
                         description: 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.',
                         position: 'left'
                     }
                 ];
             }
         } else {
-            // Fallback to default steps if mode is unknown
-            return baseSteps;
+            return;
         }
     }
 
@@ -764,7 +748,7 @@ class UserGuide {
         const nextBtn = this.tooltip.querySelector('.tooltip-next-btn');
         const finishBtn = this.tooltip.querySelector('.tooltip-finish-btn');
 
-        counter.textContent = `Step ${stepIndex + 1} of ${this.steps.length}`;
+        counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
         title.textContent = step.title;
 
         // Add instruction to interact with highlighted element
