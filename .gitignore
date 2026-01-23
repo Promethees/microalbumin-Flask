@@ -24,3 +24,5 @@ token.json
 *.pickle
 *.env
 index_temp.html
+
+.history/
