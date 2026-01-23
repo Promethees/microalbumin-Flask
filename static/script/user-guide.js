@@ -564,6 +564,9 @@ class UserGuide {
 
         // Create handler function
         const handler = (e) => {
+            // Remove interaction handler immediately to prevent double-firing
+            this.removeInteractionHandler();
+
             // For checkboxes and radios, allow the default behavior
             if (isCheckbox) {
                 // Wait a bit for the change to register, then proceed
