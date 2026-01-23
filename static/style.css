@@ -1497,7 +1497,7 @@ body.dark #user-guide-btn {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.3);
     z-index: 10000;
     opacity: 0;
     visibility: hidden;
@@ -1527,6 +1527,7 @@ body.dark #user-guide-btn {
     opacity: 1;
     visibility: visible;
     animation: pulse-spotlight 2s ease-in-out infinite;
+    pointer-events: auto;
 }
 
 @keyframes pulse-spotlight {
