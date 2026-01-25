@@ -15,6 +15,100 @@ class UserGuide {
         this.currentInteractionHandler = null;
         this.currentTargetElement = null;
         this.currentStepData = null;
+
+        // Step Definitions Configuration
+        this.stepDefinitions = {
+            common: [
+                this.createStep('#logo', 'Welcome to Easy OKAPI!', 'Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), developed by Center for Bioscience and Biotechnology, HCMUS-VNU. Click the logo anytime to scroll to the top of the page.', { position: 'bottom', skipInteraction: true }),
+                this.createStep('#toggleContainer', 'Theme Toggle', 'Switch between light and dark modes for comfortable viewing in any environment.', { position: 'bottom' }),
+                this.createStep('#meas-mode-section', 'Measurement Mode', 'Select your measurement mode: "kinetics" for time-series data or "point" for single-point measurements, or "calibrate" to create standard curves.', { position: 'right', skipInteraction: true }),
+                this.createStep('#options-section', 'Options', 'Configure your preferences here. You can disable popups and filter data files by number of measurement sources.', { position: 'right', skipInteraction: true }),
+                this.createStep('#drive-section', 'Google Drive Storage', 'Connect to Google Drive to sync your data. You can push and pull data from the cloud.', { position: 'right', skipInteraction: true })
+            ],
+            nonCalibrate: this.createStep('#cal-json-sel-section', 'Calibration Coefficients', 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'left', skipInteraction: true }),
+            fileSelection: [
+                this.createStep('#file-selection', 'File Selection', 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.', { position: 'left', skipInteraction: false })
+            ],
+            kinetics: {
+                part1: [
+                    this.createStep('#data-display-section', 'Data Display Section', 'After selecting a file, the Data Display section will appear here. In kinetics mode, you can view time-series measurements.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#window-size-section', 'Window Size (Kinetics Mode)', 'Configure the window size for maxRate regression. This determines the number of data points used to calculate local slopes (minimum: 3).', { position: 'left', skipInteraction: true, scrollIntoView: true }),
+                    this.createStep('#range-display', 'Display Range', 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.', { position: 'bottom', skipInteraction: true, scrollIntoView: true }),
+                    this.createStep('#split-sensor-section', 'Split by Sensors', 'Split the data by sensors. This will display each sensor\'s data in a separate chart and opt to display kinetics quantities for each measurement.', { position: 'right' }),
+                    this.createStep('#normalize-mode-section', 'Normalize Data', 'Normalize the data by substracting ground value for each measurement.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#open-all-analysis', 'Expand All Analyses', 'Expand all Kinetics Analysis of measurement data.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#plot-button', 'See kinetics analysis', 'See the kinetics analysis of the data.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#full-display-source-0', 'Full Display', 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data and special analysis lines.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('label[id^="quantity-checkboxes-"]', 'Select Quantities', 'Select the quantities to display on the chart. You can select multiple quantities to display on the chart.', { position: 'right', skipInteraction: true }),
+                    this.createStep('#con-value-read-source-0', 'Concentration Value', 'The concentration value of the data. This will display the concentration value of the data.', { position: 'right', skipInteraction: true }),
+                    this.createStep('#chart-container', 'View Charts', 'Your data will be visualized in charts here.', { position: 'left', skipInteraction: true })
+                ],
+                deriveConPart: [
+                    this.createStep('#json-display', 'Details of Calibration Standard Curve', 'Standard Curve used to derive Analyte Concentration is realized as coefficients for the chosen fitting function.', { position: 'left', skipInteraction: true }),
+                    this.createStep('#derived-concentration-section-source-0', 'Derived Concentration', 'Concentration of the measuring Analyte derived from the selected standard curve and measurement data.', { position: 'right', skipInteraction: true })
+                ],
+                secondPart: [
+                    this.createStep('#select-sensor-to-export', 'Select Sensor to Export', 'Select the sensor to export the data. You can select multiple sensors to export the data.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
+                    this.createStep('#export-analysis', 'Export Analysis', 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.', { position: 'top', skipInteraction: true, scrollIntoView: true })
+                ],
+                jsonTable: this.createStep('#cal-json-sel-section', 'Standard Curve Coefficients', 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
+                measurementMode: this.createStep('#measurement-mode', 'Switch to calibrate mode', 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.', { scrollIntoView: true, position: 'right', skipInteraction: true })
+            },
+            point: {
+                part1: [
+                    this.createStep('#data-display-section', 'Data Display Section', 'After selecting a file, Data Display section will appear here. In point mode, you can select an time point accompanying with measurement data for standard curve establishment.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#set-exp-point-section', 'Reference Point (Point Mode)', 'Set the reference point for your measurements. This indicates the time point at which measurements were taken.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#range-display', 'Display Range', 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#split-sensor-section', 'Split by Sensors', 'Split the data by sensors. This will display each sensor\'s data in a separate chart and opt to display kinetics quantities for each measurement.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#normalize-mode-section', 'Normalize Data', 'Normalize the data by substracting ground value for each measurement.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#open-all-analysis', 'Expand All Analyses', 'Expand all Kinetics Analysis of measurement data.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#plot-button', 'See kinetics analysis', 'See the kinetics analysis of the data.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#full-display-source-0', 'Full Display', 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data Reference Calibration point', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#con-value-read-source-0', 'Concentration Value', 'The concentration value of the data. This will display the concentration value of the data.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
+                    this.createStep('#chart-container', 'View Charts', 'Your data will be visualized in charts here.', { position: 'left', skipInteraction: true, scrollIntoView: true })
+                ],
+                // deriveConPart, secondPart, jsonTable, measurementMode are shared or similar but defined separately if needed or reused
+            },
+            calibrate: {
+                common: [
+                    this.createStep('#cal-mode-select', 'Calibration Mode', 'Switch between "kinetics" and "point" calibration modes here.', { position: 'right', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#data-display-section', 'Data Display Section', 'After selecting a file, the Data Display section will appear here. In calibration mode (kinetics), you can create standard curves.', { position: 'left', scrollIntoView: true, skipInteraction: true }) // Note: description slightly differs in code, but checking logic
+                ],
+                kinetics: [
+                    this.createStep('#select-quantity-section', 'Select Quantity (Calibration - Kinetics)', 'Select which quantity to use for calibration: maxRate, Slope of Linear progression, Sat, or Reacting Time taken to Saturation.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#select-regress-algo', 'Select Regression Algorithm', 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#func-desc', 'Fitting function description', 'The description of the selected fitting function is displayed here.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#open-all-analysis', 'Expand all analyses', 'Expand all fitting coefficients tables for selected fitting functional formula with different kinetics parameters.', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#cal-kinetics-button', 'Open/Collapse window of fitting coefficients', 'Toggle to see or hide fitting coefficients', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#chart-container', 'View Calibration Chart', 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#export-coef', 'Export Coefficients', 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true })
+                ],
+                point: [
+                    this.createStep('#select-time-point', 'Select Time Point (Calibration - Point)', 'Select which time point to use for calibration. Choose from the time points that were exported during measurement.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    // Reuse similar steps from kinetics where possible or define explicit
+                    this.createStep('#select-regress-algo', 'Select Regression Algorithm', 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#func-desc', 'Fitting function description', 'The description of the selected fitting function is displayed here.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#open-all-analysis', 'Expand all analyses', 'Expand all fitting coefficients tables for selected fitting functional formula.', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#cal-point-button', 'Open/Collapse window of fitting coefficients', 'Toggle to see or hide fitting coefficients', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#chart-container', 'View Calibration Chart', 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#export-coef', 'Export Coefficients', 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
+                    this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true })
+                ]
+            }
+        };
+    }
+
+    /**
+     * Helper to create a step object
+     */
+    createStep(target, title, description, options = {}) {
+        return {
+            target,
+            title,
+            description,
+            ...options
+        };
     }
 
     /**
@@ -84,57 +178,33 @@ class UserGuide {
         // Prevent clicks on spotlight from closing, but allow forwarding to target
         this.spotlight.addEventListener('click', (e) => {
             e.stopPropagation();
-            // If there's a current step that requires interaction, handle it
             if (this.currentTargetElement && this.currentStepData && !this.currentStepData.skipInteraction) {
-                const tagName = this.currentTargetElement.tagName.toLowerCase();
-                const isInput = tagName === 'input';
-                const isSelect = tagName === 'select';
-                const elementType = isInput ? (this.currentTargetElement.type ? this.currentTargetElement.type.toLowerCase() : '') : '';
-                const isCheckbox = isInput && (elementType === 'checkbox' || elementType === 'radio');
-                const isTextInput = isInput && (elementType === 'text' || elementType === 'number');
+                this.handleInteraction({ currentTarget: this.currentTargetElement, type: 'click' }); // Simulate click handling
 
-                // For checkboxes, toggle them first (this will trigger the change handler)
-                if (isCheckbox) {
-                    this.currentTargetElement.checked = !this.currentTargetElement.checked;
-                    // Trigger change event which will be caught by our handler
-                    const changeEvent = new Event('change', { bubbles: true });
-                    this.currentTargetElement.dispatchEvent(changeEvent);
-                    return; // Handler will proceed
-                }
-
-                // For selects, focus them (user needs to actually change the value)
-                if (isSelect) {
-                    this.currentTargetElement.focus();
-                    return; // Change handler will proceed when value changes
-                }
-
-                // For text inputs, focus them (user needs to type and blur)
-                if (isTextInput) {
-                    this.currentTargetElement.focus();
-                    return; // Blur handler will proceed
-                }
-
-                // For buttons and other clickable elements, trigger their click
-                // This will trigger the element's click handler which will proceed
-                const isContainer = ['div', 'section', 'span'].includes(tagName);
-
-                // Try to trigger the element's click handler by dispatching a click event
-                // This should trigger the handler we attached in attachInteractionHandler
+                // Try to forward click to the actual element if it's not a direct interaction handled by us
                 try {
-                    const clickEvent = new MouseEvent('click', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window,
-                        detail: 1
-                    });
-                    this.currentTargetElement.dispatchEvent(clickEvent);
+                    // Check if we should manually trigger click on element
+                    // Logic adapted from original: some elements need focus, some need click dispatch
+                    const { tagName, isInput, isSelect, isCheckbox, isTextInput } = this.determineElementType(this.currentTargetElement);
 
-                    // The dispatched click event will trigger the handler attached in attachInteractionHandler
-                    // which handles the proceedToNextStep call. We don't need to do it here as well.
+                    if (isCheckbox) {
+                        this.currentTargetElement.checked = !this.currentTargetElement.checked;
+                        this.currentTargetElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else if (isSelect || isTextInput) {
+                        this.currentTargetElement.focus();
+                    } else {
+                        // Default click dispatch
+                        const clickEvent = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            detail: 1
+                        });
+                        this.currentTargetElement.dispatchEvent(clickEvent);
+                    }
+
                 } catch (err) {
                     console.warn('Error triggering element click:', err);
-                    // If triggering fails, proceed directly
-                    this.proceedToNextStep();
                 }
             }
         });
@@ -145,80 +215,18 @@ class UserGuide {
      * Define the guide steps
      */
     defineSteps() {
-        // Check if data-display-section is currently visible (not hidden)
-        // This indicates a file is selected and the section is shown
         const dataDisplaySection = document.getElementById('data-display-section');
         const isDataDisplayVisible = dataDisplaySection && !dataDisplaySection.classList.contains('hidden');
         const appState = (typeof AppState !== 'undefined') ? AppState : (window.AppState || {});
         const currentMode = appState.currentMeasurementMode || 'kinetics';
 
-        // If data-display-section is visible (not hidden), use default guide
-        // Otherwise, show mode-specific workflow for working with files in Data Display
         if (!isDataDisplayVisible) {
-            const shareStepsFirstPart = [
-                {
-                    target: '#logo',
-                    title: 'Welcome to Easy OKAPI!',
-                    description: 'Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), developed by Center for Bioscience and Biotechnology, HCMUS-VNU. Click the logo anytime to scroll to the top of the page.',
-                    position: 'bottom',
-                    skipInteraction: true
-                },
-                {
-                    target: '#toggleContainer',
-                    title: 'Theme Toggle',
-                    description: 'Switch between light and dark modes for comfortable viewing in any environment.',
-                    position: 'bottom'
-                },
-                {
-                    target: '#meas-mode-section',
-                    title: 'Measurement Mode',
-                    description: 'Select your measurement mode: "kinetics" for time-series data or "point" for single-point measurements, or "calibrate" to create standard curves.',
-                    position: 'right',
-                    skipInteraction: true
-                },
-                {
-                    target: '#options-section',
-                    title: 'Options',
-                    description: 'Configure your preferences here. You can disable popups and filter data files by number of measurement sources.',
-                    position: 'right',
-                    skipInteraction: true
-                },
-                {
-                    target: '#drive-section',
-                    title: 'Google Drive Storage',
-                    description: 'Connect to Google Drive to sync your data. You can push and pull data from the cloud.',
-                    position: 'right',
-                    skipInteraction: true
-                }
-            ];
-            const nonCalibrateStep =
-            {
-                target: '#cal-json-sel-section',
-                title: 'Calibration Coefficients',
-                description: 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.',
-                position: 'left',
-                skipInteraction: true
-            };
-
-            const shareStepsSecondPart = [
-                {
-                    target: '#file-selection',
-                    title: 'File Selection',
-                    description: 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.',
-                    position: 'left',
-                    skipInteraction: false
-                }
-            ];
-            this.steps = [
-                ...shareStepsFirstPart,
-            ];
+            this.steps = [...this.stepDefinitions.common];
             if (currentMode !== 'calibrate') {
-                this.steps.push(nonCalibrateStep);
+                this.steps.push(this.stepDefinitions.nonCalibrate);
             }
-            this.steps.push(...shareStepsSecondPart);
-
+            this.steps.push(...this.stepDefinitions.fileSelection);
         } else {
-            // Data display section is hidden - show mode-specific workflow
             this.steps = this.getModeSpecificSteps(currentMode);
         }
     }
@@ -230,466 +238,55 @@ class UserGuide {
         const JSONDisplay = document.getElementById('json-display');
         const isJSONDisplayVisible = JSONDisplay && !JSONDisplay.classList.contains('hidden');
 
+        // Helper to reconstruct arrays safely
+        const buildSteps = (part1, derivePart, secondPart, jsonTableInfo, measurementModeInfo) => {
+            let steps = [...part1];
+            if (isJSONDisplayVisible) {
+                steps.push(...derivePart);
+            }
+            steps.push(...secondPart);
+            if (!isJSONDisplayVisible) {
+                steps.push(jsonTableInfo);
+            }
+            steps.push(measurementModeInfo);
+            return steps;
+        };
+
         if (mode === 'kinetics') {
-            const firstPart = [
-                {
-                    target: '#data-display-section',
-                    title: 'Data Display Section',
-                    description: 'After selecting a file, the Data Display section will appear here. In kinetics mode, you can view time-series measurements.',
-                    position: 'left',
-                    scrollIntoView: true,
-                    skipInteraction: true
-                },
-                {
-                    target: '#window-size-section',
-                    title: 'Window Size (Kinetics Mode)',
-                    description: 'Configure the window size for maxRate regression. This determines the number of data points used to calculate local slopes (minimum: 3).',
-                    position: 'left',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                },
-                {
-                    target: '#range-display',
-                    title: 'Display Range',
-                    description: 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.',
-                    position: 'bottom',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                },
-                {
-                    target: '#split-sensor-section',
-                    title: 'Split by Sensors',
-                    description: 'Split the data by sensors. This will display each sensor\'s data in a separate chart and opt to display kinetics quantities for each measurement.',
-                    position: 'right'
-                },
-                {
-                    target: '#normalize-mode-section',
-                    title: 'Normalize Data',
-                    description: 'Normalize the data by substracting ground value for each measurement.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#open-all-analysis',
-                    title: 'Expand All Analyses',
-                    description: 'Expand all Kinetics Analysis of measurement data.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#plot-button',
-                    title: 'See kinetics analysis',
-                    description: 'See the kinetics analysis of the data.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#full-display-source-0',
-                    title: 'Full Display',
-                    description: 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data and special analysis lines.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: 'label[id^="quantity-checkboxes-"]',
-                    title: 'Select Quantities',
-                    description: 'Select the quantities to display on the chart. You can select multiple quantities to display on the chart.',
-                    position: 'right',
-                    skipInteraction: true
-                },
-                {
-                    target: '#con-value-read-source-0',
-                    title: 'Concentration Value',
-                    description: 'The concentration value of the data. This will display the concentration value of the data.',
-                    position: 'right',
-                    skipInteraction: true
-                },
-                {
-                    target: '#chart-container',
-                    title: 'View Charts',
-                    description: 'Your data will be visualized in charts here.',
-                    position: 'left',
-                    skipInteraction: true
-                }];
-            const deriveConPart = [
-                {
-                    target: '#json-display',
-                    title: 'Details of Calibration Standard Curve',
-                    description: 'Standard Curve used to derive Analyte Concentration is realized as coefficients for the chosen fitting function.',
-                    position: 'left',
-                    skipInteraction: true
-                },
-                {
-                    target: '#derived-concentration-section-source-0',
-                    title: 'Derived Concentration',
-                    description: 'Concentration of the measuring Analyte derived from the selected standard curve and measurement data.',
-                    position: 'right',
-                    skipInteraction: true
-                }];
-            const secondPart = [
-                {
-                    target: '#select-sensor-to-export',
-                    title: 'Select Sensor to Export',
-                    description: 'Select the sensor to export the data. You can select multiple sensors to export the data.',
-                    position: 'right',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                },
-                {
-                    target: '#export-analysis',
-                    title: 'Export Analysis',
-                    description: 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.',
-                    position: 'top',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                }];
-            const JSONTable = {
-                target: '#cal-json-sel-section',
-                title: 'Standard Curve Coefficients',
-                description: 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.',
-                position: 'bottom',
-                scrollIntoView: true,
-                skipInteraction: true
-            };
-            const measurementMode = {
-                target: '#measurement-mode',
-                title: 'Switch to calibrate mode',
-                description: 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.',
-                scrollIntoView: true,
-                position: 'right',
-                skipInteraction: true
-            };
-            let returnedSteps = [
-                ...firstPart
-            ];
-
-            if (isJSONDisplayVisible) {
-                returnedSteps.push(...deriveConPart);
-            }
-            returnedSteps.push(...secondPart);
-
-            if (!isJSONDisplayVisible) {
-                returnedSteps.push(JSONTable);
-            }
-
-            returnedSteps.push(measurementMode);
-            return returnedSteps;
+            return buildSteps(
+                this.stepDefinitions.kinetics.part1,
+                this.stepDefinitions.kinetics.deriveConPart,
+                this.stepDefinitions.kinetics.secondPart,
+                this.stepDefinitions.kinetics.jsonTable,
+                this.stepDefinitions.kinetics.measurementMode
+            );
         } else if (mode === 'point') {
-            const firstPart = [
-                {
-                    target: '#data-display-section',
-                    title: 'Data Display Section',
-                    description: 'After selecting a file, Data Display section will appear here. In point mode, you can select an time point accompanying with measurement data for standard curve establishment.',
-                    position: 'left',
-                    scrollIntoView: true,
-                    skipInteraction: true
-                },
-                {
-                    target: '#set-exp-point-section',
-                    title: 'Reference Point (Point Mode)',
-                    description: 'Set the reference point for your measurements. This indicates the time point at which measurements were taken.',
-                    position: 'left',
-                    scrollIntoView: true,
-                    skipInteraction: true
-                },
-                {
-                    target: '#range-display',
-                    title: 'Display Range',
-                    description: 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.',
-                    position: 'bottom',
-                    scrollIntoView: true,
-                    skipInteraction: true
-                },
-                {
-                    target: '#split-sensor-section',
-                    title: 'Split by Sensors',
-                    description: 'Split the data by sensors. This will display each sensor\'s data in a separate chart and opt to display kinetics quantities for each measurement.',
-                    position: 'right',
-                    scrollIntoView: true,
-                },
-                {
-                    target: '#normalize-mode-section',
-                    title: 'Normalize Data',
-                    description: 'Normalize the data by substracting ground value for each measurement.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#open-all-analysis',
-                    title: 'Expand All Analyses',
-                    description: 'Expand all Kinetics Analysis of measurement data.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#plot-button',
-                    title: 'See kinetics analysis',
-                    description: 'See the kinetics analysis of the data.',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#full-display-source-0',
-                    title: 'Full Display',
-                    description: 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data Reference Calibration point',
-                    position: 'right',
-                    scrollIntoView: true
-                },
-                {
-                    target: '#con-value-read-source-0',
-                    title: 'Concentration Value',
-                    description: 'The concentration value of the data. This will display the concentration value of the data.',
-                    position: 'right',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                },
-                {
-                    target: '#chart-container',
-                    title: 'View Charts',
-                    description: 'Your data will be visualized in charts here.',
-                    position: 'left',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                }];
-            const deriveConPart = [
-                {
-                    target: '#json-display',
-                    title: 'Details of Calibration Standard Curve',
-                    description: 'Standard Curve used to derive Analyte Concentration is realized as coefficients for the chosen fitting function.',
-                    position: 'left',
-                    skipInteraction: true
-                },
-                {
-                    target: '#derived-concentration-section-source-0',
-                    title: 'Derived Concentration',
-                    description: 'Concentration of the measuring Analyte derived from the selected standard curve and measurement data.',
-                    position: 'right',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                }];
-            const secondPart = [
-                {
-                    target: '#select-sensor-to-export',
-                    title: 'Select Sensor to Export',
-                    description: 'Select the sensor to export the data. You can select multiple sensors to export the data.',
-                    position: 'right',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                },
-                {
-                    target: '#export-analysis',
-                    title: 'Export Analysis',
-                    description: 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.',
-                    position: 'top',
-                    skipInteraction: true,
-                    scrollIntoView: true
-                }];
-            const JSONTable = {
-                target: '#cal-json-sel-section',
-                title: 'Standard Curve Coefficients',
-                description: 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.',
-                position: 'bottom',
-                scrollIntoView: true,
-                skipInteraction: true
-            };
-            const measurementMode = {
-                target: '#measurement-mode',
-                title: 'Switch to calibrate mode',
-                description: 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.',
-                scrollIntoView: true,
-                position: 'right',
-                skipInteraction: true
-            };
-            let returnedSteps = [
-                ...firstPart
-            ];
-
-            if (isJSONDisplayVisible) {
-                returnedSteps.push(...deriveConPart);
-            }
-            returnedSteps.push(...secondPart);
-
-            if (!isJSONDisplayVisible) {
-                returnedSteps.push(JSONTable);
-            }
-
-            returnedSteps.push(measurementMode);
-            return returnedSteps;
+            // Reuse secondPart and others from kinetics where they are identical in content
+            return buildSteps(
+                this.stepDefinitions.point.part1,
+                this.stepDefinitions.kinetics.deriveConPart, // Same content
+                this.stepDefinitions.kinetics.secondPart, // Same content
+                this.stepDefinitions.kinetics.jsonTable, // Same content
+                this.stepDefinitions.kinetics.measurementMode // Same content
+            );
         } else if (mode === 'calibrate') {
-            // Check if calibrate mode is kinetics or point
             const calModeDiv = document.getElementById('cal-mode-select');
             const calMode = (calModeDiv && calModeDiv.getAttribute('data-value')) || 'kinetics';
 
-            if (calMode === 'kinetics') {
-                return [
-                    {
-                        target: '#cal-mode-select',
-                        title: 'Calibration Mode',
-                        description: 'Switch between "kinetics" and "point" calibration modes here.',
-                        position: 'right',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#data-display-section',
-                        title: 'Data Display Section',
-                        description: 'After selecting a file, the Data Display section will appear here. In calibration mode (kinetics), you can create standard curves.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#select-quantity-section',
-                        title: 'Select Quantity (Calibration - Kinetics)',
-                        description: 'Select which quantity to use for calibration: maxRate, Slope of Linear progression, Sat, or Reacting Time taken to Saturation.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#select-regress-algo',
-                        title: 'Select Regression Algorithm',
-                        description: 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#func-desc',
-                        title: 'Fitting function description',
-                        description: 'The description of the selected fitting function is displayed here.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#open-all-analysis',
-                        title: 'Expand all analyses',
-                        description: 'Expand all fitting coefficients tables for selected fitting functional formula with different kinetics parameters.',
-                        position: 'bottom',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#cal-kinetics-button',
-                        title: 'Open/Collapse window of fitting coefficients',
-                        description: 'Toggle to see or hide fitting coefficients',
-                        position: 'bottom',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#chart-container',
-                        title: 'View Calibration Chart',
-                        description: 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#export-coef',
-                        title: 'Export Coefficients',
-                        description: 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#threshold-value',
-                        title: 'rSquared fitting threshold',
-                        description: 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    }
-                ];
-            } else {
-                return [
-                    {
-                        target: '#cal-mode-select',
-                        title: 'Calibration Mode',
-                        description: 'Switch between "kinetics" and "point" calibration modes here.',
-                        position: 'right',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#data-display-section',
-                        title: 'Data Display Section',
-                        description: 'After selecting a file, the Data Display section will appear here. In calibration mode (point), you can create standard curves.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#select-time-point',
-                        title: 'Select Time Point (Calibration - Point)',
-                        description: 'Select which time point to use for calibration. Choose from the time points that were exported during measurement.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#select-regress-algo',
-                        title: 'Select Regression Algorithm',
-                        description: 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#func-desc',
-                        title: 'Fitting function description',
-                        description: 'The description of the selected fitting function is displayed here.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#open-all-analysis',
-                        title: 'Expand all analyses',
-                        description: 'Expand all fitting coefficients tables for selected fitting functional formula.',
-                        position: 'bottom',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#cal-point-button',
-                        title: 'Open/Collapse window of fitting coefficients',
-                        description: 'Toggle to see or hide fitting coefficients',
-                        position: 'bottom',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#chart-container',
-                        title: 'View Calibration Chart',
-                        description: 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#export-coef',
-                        title: 'Export Coefficients',
-                        description: 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    },
-                    {
-                        target: '#threshold-value',
-                        title: 'rSquared fitting threshold',
-                        description: 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.',
-                        position: 'left',
-                        scrollIntoView: true,
-                        skipInteraction: true
-                    }
-                ];
+            // Common calibrate steps + specific
+            // Update common step description for point mode if needed or just use generic
+            let commonSteps = this.stepDefinitions.calibrate.common.map(step => ({ ...step })); // clone
+            if (calMode === 'point') {
+                commonSteps[1].description = 'After selecting a file, the Data Display section will appear here. In calibration mode (point), you can create standard curves.';
             }
-        } else {
-            return;
+
+            if (calMode === 'kinetics') {
+                return [...commonSteps, ...this.stepDefinitions.calibrate.kinetics];
+            } else {
+                return [...commonSteps, ...this.stepDefinitions.calibrate.point];
+            }
         }
+        return [];
     }
 
     /**
@@ -704,7 +301,6 @@ class UserGuide {
         this.currentStep = 0;
         this.isActive = true;
 
-        // Show overlay and start first step
         this.overlay.classList.add('active');
         console.log(this.steps);
         this.showStep(this.currentStep);
@@ -728,7 +324,6 @@ class UserGuide {
     showStep(stepIndex) {
         if (stepIndex < 0 || stepIndex >= this.steps.length) return;
 
-        // Remove previous interaction handler if exists
         this.removeInteractionHandler();
 
         const step = this.steps[stepIndex];
@@ -739,140 +334,99 @@ class UserGuide {
             return;
         }
 
-        // Store current target element and step data
         this.currentTargetElement = targetElement;
         this.currentStepData = step;
 
-        // Scroll into view if needed
-        if (step.scrollIntoView) {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Wait for scroll to complete
-            setTimeout(() => {
-                this.positionSpotlight(targetElement, step);
-                this.attachInteractionHandler(targetElement, step);
-            }, 300);
-        } else {
+        const setupStep = () => {
             this.positionSpotlight(targetElement, step);
             this.attachInteractionHandler(targetElement, step);
+        };
+
+        if (step.scrollIntoView) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(setupStep, 300);
+        } else {
+            setupStep();
         }
 
-        // Update tooltip content
         this.updateTooltip(step, stepIndex);
+    }
+
+    /**
+     * Helper to determine element type and properties
+     */
+    determineElementType(element) {
+        const tagName = element.tagName.toLowerCase();
+        const elementType = element.type ? element.type.toLowerCase() : '';
+        const isInput = tagName === 'input';
+
+        return {
+            tagName,
+            isInput,
+            isSelect: tagName === 'select',
+            isButton: tagName === 'button' || element.classList.contains('button') || element.onclick !== null,
+            isCheckbox: isInput && (elementType === 'checkbox' || elementType === 'radio'),
+            isClickable: (tagName === 'button' || element.classList.contains('button') || element.onclick !== null) || element.style.cursor === 'pointer',
+            isTableRow: tagName === 'tr' || tagName === 'td',
+            isLabel: tagName === 'label',
+            isContainer: ['div', 'section', 'span'].includes(tagName),
+            isTextInput: isInput && (elementType === 'text' || elementType === 'number')
+        };
     }
 
     /**
      * Attach interaction handler to target element
      */
     attachInteractionHandler(element, step) {
-        // Skip if step allows skipping interaction
-        if (step.skipInteraction) {
-            return;
-        }
+        if (step.skipInteraction) return;
 
-        // Determine interaction type based on element
-        const tagName = element.tagName.toLowerCase();
-        const elementType = element.type ? element.type.toLowerCase() : '';
-        const isInput = tagName === 'input';
-        const isSelect = tagName === 'select';
-        const isButton = tagName === 'button' || element.classList.contains('button') || element.onclick !== null;
-        const isCheckbox = isInput && (elementType === 'checkbox' || elementType === 'radio');
-        const isClickable = isButton || element.onclick !== null || element.style.cursor === 'pointer';
-        const isTableRow = tagName === 'tr' || tagName === 'td';
-        const isLabel = tagName === 'label';
-        const isContainer = ['div', 'section', 'span'].includes(tagName) && !isClickable && !isTableRow;
+        const { isCheckbox, isSelect, isInput, isTextInput, isContainer, isLabel } = this.determineElementType(element);
 
-        // Create handler function
-        const handler = (e) => {
-            // Remove interaction handler immediately to prevent double-firing
-            this.removeInteractionHandler();
+        const handler = (e) => this.handleInteraction(e);
 
-            // For checkboxes and radios, allow the default behavior
-            if (isCheckbox) {
-                // Wait a bit for the change to register, then proceed
-                setTimeout(() => {
-                    this.proceedToNextStep();
-                }, 100);
-                return;
-            }
-
-            // For labels, allow the click to trigger the associated input, then proceed
-            if (isLabel) {
-                // Let the label's default behavior happen (clicking associated input)
-                setTimeout(() => {
-                    this.proceedToNextStep();
-                }, 150);
-                return;
-            }
-
-            // For buttons and clickable elements, allow the click to happen first, then proceed
-            if (isButton || isClickable) {
-                // Don't prevent default - let the button's normal action happen
-                setTimeout(() => {
-                    this.proceedToNextStep();
-                }, 200);
-                return;
-            }
-
-            // For selects, proceed on change
-            if (isSelect) {
-                setTimeout(() => {
-                    this.proceedToNextStep();
-                }, 100);
-                return;
-            }
-
-            // For table rows/cells, proceed on click
-            if (isTableRow) {
-                setTimeout(() => {
-                    this.proceedToNextStep();
-                }, 100);
-                return;
-            }
-
-            // For containers/sections, proceed on click anywhere in the element
-            if (isContainer) {
-                e.stopPropagation();
-                setTimeout(() => {
-                    this.proceedToNextStep();
-                }, 100);
-                return;
-            }
-
-            // For other elements, proceed on click
-            e.stopPropagation();
-            setTimeout(() => {
-                this.proceedToNextStep();
-            }, 100);
-        };
-
-        // Attach appropriate event listener
+        let eventType = 'click';
         if (isCheckbox || isSelect) {
-            element.addEventListener('change', handler);
-            this.currentInteractionHandler = { element, event: 'change', handler };
-        } else if (isInput && (elementType === 'text' || elementType === 'number')) {
-            // For text/number inputs, proceed on blur (when user finishes editing)
-            element.addEventListener('blur', handler);
-            this.currentInteractionHandler = { element, event: 'blur', handler };
-        } else {
-            // Default to click for most elements
-            element.addEventListener('click', handler);
-            this.currentInteractionHandler = { element, event: 'click', handler };
+            eventType = 'change';
+        } else if (isInput && isTextInput) {
+            eventType = 'blur';
         }
 
-        // Make element visually indicate it's interactive (unless it's a container)
-        if (!isContainer) {
+        element.addEventListener(eventType, handler);
+        this.currentInteractionHandler = { element, event: eventType, handler };
+
+        // Visual indicators
+        if (!isContainer && !isLabel) { // Label logic was slightly different in original, but simplified here
             element.style.cursor = 'pointer';
             element.style.outline = '2px solid #3498db';
             element.style.outlineOffset = '2px';
-        } else {
-            // For containers, make the spotlight area clickable
+        } else if (isContainer) {
             this.spotlight.style.cursor = 'pointer';
-        }
-
-        // For labels, also make them visually interactive
-        if (isLabel) {
+        } else if (isLabel) {
             element.style.cursor = 'pointer';
         }
+    }
+
+    /**
+     * Handle interaction events
+     */
+    handleInteraction(e) {
+        // Debounce or Prevent double calling is handled by removing handler immediately
+        if (!this.currentInteractionHandler && e.type !== 'click') return; // approximate check
+
+        this.removeInteractionHandler();
+
+        const { isCheckbox, isSelect, isButton, isClickable, isTableRow, isContainer } = this.determineElementType(this.currentTargetElement);
+
+        let delay = 100;
+
+        if (isButton || isClickable) delay = 200;
+        else if (isCheckbox) delay = 150; // Increased to match original code update
+        else if (isContainer && e.stopPropagation) e.stopPropagation();
+        else if (e.stopPropagation) e.stopPropagation(); // formatted default
+
+        setTimeout(() => {
+            this.proceedToNextStep();
+        }, delay);
     }
 
     /**
@@ -883,14 +437,12 @@ class UserGuide {
             const { element, event, handler } = this.currentInteractionHandler;
             element.removeEventListener(event, handler);
 
-            // Remove visual indicators
             element.style.cursor = '';
             element.style.outline = '';
             element.style.outlineOffset = '';
 
             this.currentInteractionHandler = null;
         }
-        // Reset spotlight cursor
         if (this.spotlight) {
             this.spotlight.style.cursor = '';
         }
@@ -907,7 +459,6 @@ class UserGuide {
             this.currentStep++;
             this.showStep(this.currentStep);
         } else {
-            // Last step - finish guide
             this.stop();
         }
     }
@@ -919,14 +470,12 @@ class UserGuide {
         const rect = element.getBoundingClientRect();
         const padding = 10;
 
-        // Position spotlight
         this.spotlight.style.top = `${rect.top - padding + window.scrollY}px`;
         this.spotlight.style.left = `${rect.left - padding}px`;
         this.spotlight.style.width = `${rect.width + padding * 2}px`;
         this.spotlight.style.height = `${rect.height + padding * 2}px`;
         this.spotlight.classList.add('active');
 
-        // Position tooltip
         this.positionTooltip(rect, step.position || 'bottom');
     }
 
@@ -960,7 +509,6 @@ class UserGuide {
                 left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
         }
 
-        // Ensure tooltip stays within viewport
         const maxLeft = window.innerWidth - tooltipRect.width - 20;
         const maxTop = window.innerHeight + window.scrollY - tooltipRect.height - 20;
 
@@ -986,23 +534,19 @@ class UserGuide {
         counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
         title.textContent = step.title;
 
-        // Add instruction to interact with highlighted element
         const interactionInstruction = step.skipInteraction ? '' : ' Click or interact with the highlighted element to continue.';
         description.textContent = step.description + interactionInstruction;
 
-        // Show/hide navigation buttons
-        // Hide next button if interaction is required (unless step explicitly allows skipping)
         prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
         nextBtn.style.display = (stepIndex < this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
         finishBtn.style.display = (stepIndex === this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
     }
 
     /**
-     * Go to next step (manual navigation - only works if step allows skipping)
+     * Go to next step (manual navigation)
      */
     nextStep() {
         const currentStep = this.steps[this.currentStep];
-        // Only allow manual next if step explicitly allows skipping interaction
         if (currentStep && currentStep.skipInteraction) {
             if (this.currentStep < this.steps.length - 1) {
                 this.removeInteractionHandler();
