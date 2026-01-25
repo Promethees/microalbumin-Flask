@@ -204,10 +204,14 @@ function createChartSection({
         index
     };
 
+    const isKinetics = AppState.currentMeasurementMode === "kinetics";
+    const isJsonSelected = !!AppState.currentJSON;
+    const fullDisplayStyle = (isKinetics || isJsonSelected) ? "" : "display: none;";
+
     return AppState.currentMeasurementMode !== "calibrate" ?
         `
         <div id="${sectionId}">
-            <label>
+            <label style="${fullDisplayStyle}">
                 <input type="checkbox" id="${fullDisplayId}" 
                     onchange="handleFullDisplayChange('${fullDisplayId}', '${quantityId}', '${canvasId}')"> 
                 Full display: See all data and special lines
@@ -229,6 +233,7 @@ function createChartSection({
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
                 </div>
+                <div id="est-value-msg-source-${index}" class="est-value-msg"></div>
                 `}
             <canvas id="${canvasId}"></canvas>
         </div>
@@ -368,6 +373,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
             <div id="derived-concentration-section-source-${i}" class="hidden">
                 Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
             </div>
+            <div id="est-value-msg-source-${i}" class="est-value-msg"></div>
         `
         if (i < analysisInfo.length - 1) html += '<br/>';
     });

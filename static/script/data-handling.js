@@ -778,13 +778,12 @@ function processPointMode(jsonFile, derived_con_text) {
     const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue()), sourceIndex).toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
-        if (derived_con_text && derived_con_text.id.includes("source-")) {
-            $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from source-${sourceIndex} is ${estValueRead}${unitPrinted}.<br/>`);
-        } else {
-            $append("add-json-section", `The estimated ${AppState.globalAnalysis.meas} value read from data source is ${estValueRead}${unitPrinted}.`);
+        // Target the specific source message container
+        const msgDivId = `est-value-msg-source-${sourceIndex - 1}`;
+        const msgDiv = document.getElementById(msgDivId);
+        if (msgDiv) {
+            msgDiv.innerHTML = `The estimated ${AppState.globalAnalysis.meas} value read from source-${sourceIndex} is ${estValueRead}${unitPrinted}.`;
         }
-    } else {
-        $append("add-json-section", "");
     }
     try {
         calculated_con = computeFit(parseFloat(estValueRead), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
