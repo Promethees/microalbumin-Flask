@@ -270,22 +270,32 @@ class UserGuide {
                     scrollIntoView: true
                 },
                 {
+                    target: '#open-all-analysis',
+                    title: 'Expand All Analyses',
+                    description: 'Expand all Kinetics Analysis of measurement data.',
+                    position: 'right',
+                    scrollIntoView: true
+                },
+                {
                     target: '#plot-button',
                     title: 'See kinetics analysis',
                     description: 'See the kinetics analysis of the data.',
-                    position: 'right'
+                    position: 'right',
+                    scrollIntoView: true
                 },
                 {
                     target: '#full-display-source-0',
                     title: 'Full Display',
                     description: 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data and special analysis lines.',
-                    position: 'right'
+                    position: 'right',
+                    scrollIntoView: true
                 },
                 {
                     target: 'label[id^="quantity-checkboxes-"]',
                     title: 'Select Quantities',
                     description: 'Select the quantities to display on the chart. You can select multiple quantities to display on the chart.',
-                    position: 'right'
+                    position: 'right',
+                    skipInteraction: true
                 },
                 {
                     target: '#con-value-read-source-0',
@@ -404,7 +414,27 @@ class UserGuide {
                     position: 'right',
                     scrollIntoView: true
                 },
-
+                {
+                    target: '#open-all-analysis',
+                    title: 'Expand All Analyses',
+                    description: 'Expand all Kinetics Analysis of measurement data.',
+                    position: 'right',
+                    scrollIntoView: true
+                },
+                {
+                    target: '#plot-button',
+                    title: 'See kinetics analysis',
+                    description: 'See the kinetics analysis of the data.',
+                    position: 'right',
+                    scrollIntoView: true
+                },
+                {
+                    target: '#full-display-source-0',
+                    title: 'Full Display',
+                    description: 'Enable "Full Display" to see all data and special analysis lines. Check this box to see all data Reference Calibration point',
+                    position: 'right',
+                    scrollIntoView: true
+                },
                 {
                     target: '#con-value-read-source-0',
                     title: 'Concentration Value',
@@ -493,6 +523,14 @@ class UserGuide {
             if (calMode === 'kinetics') {
                 return [
                     {
+                        target: '#cal-mode-select',
+                        title: 'Calibration Mode',
+                        description: 'Switch between "kinetics" and "point" calibration modes here.',
+                        position: 'right',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
                         target: '#data-display-section',
                         title: 'Data Display Section',
                         description: 'After selecting a file, the Data Display section will appear here. In calibration mode (kinetics), you can create standard curves.',
@@ -504,29 +542,77 @@ class UserGuide {
                         target: '#select-quantity-section',
                         title: 'Select Quantity (Calibration - Kinetics)',
                         description: 'Select which quantity to use for calibration: maxRate, Slope of Linear progression, Sat, or Reacting Time taken to Saturation.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     },
                     {
                         target: '#select-regress-algo',
                         title: 'Select Regression Algorithm',
                         description: 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#func-desc',
+                        title: 'Fitting function description',
+                        description: 'The description of the selected fitting function is displayed here.',
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#open-all-analysis',
+                        title: 'Expand all analyses',
+                        description: 'Expand all fitting coefficients tables for selected fitting functional formula with different kinetics parameters.',
+                        position: 'bottom',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#cal-kinetics-button',
+                        title: 'Open/Collapse window of fitting coefficients',
+                        description: 'Toggle to see or hide fitting coefficients',
+                        position: 'bottom',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     },
                     {
                         target: '#chart-container',
                         title: 'View Calibration Chart',
                         description: 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     },
                     {
                         target: '#export-coef',
                         title: 'Export Coefficients',
                         description: 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#threshold-value',
+                        title: 'rSquared fitting threshold',
+                        description: 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.',
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     }
                 ];
             } else {
                 return [
+                    {
+                        target: '#cal-mode-select',
+                        title: 'Calibration Mode',
+                        description: 'Switch between "kinetics" and "point" calibration modes here.',
+                        position: 'right',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
                     {
                         target: '#data-display-section',
                         title: 'Data Display Section',
@@ -539,26 +625,65 @@ class UserGuide {
                         target: '#select-time-point',
                         title: 'Select Time Point (Calibration - Point)',
                         description: 'Select which time point to use for calibration. Choose from the time points that were exported during measurement.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     },
                     {
                         target: '#select-regress-algo',
                         title: 'Select Regression Algorithm',
                         description: 'Choose the regression algorithm for your standard curve: polynomial, linear, logarithmic, exponential, or Michaelis-Menten.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#func-desc',
+                        title: 'Fitting function description',
+                        description: 'The description of the selected fitting function is displayed here.',
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#open-all-analysis',
+                        title: 'Expand all analyses',
+                        description: 'Expand all fitting coefficients tables for selected fitting functional formula.',
+                        position: 'bottom',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#cal-point-button',
+                        title: 'Open/Collapse window of fitting coefficients',
+                        description: 'Toggle to see or hide fitting coefficients',
+                        position: 'bottom',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     },
                     {
                         target: '#chart-container',
                         title: 'View Calibration Chart',
                         description: 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.',
                         position: 'left',
+                        scrollIntoView: true,
                         skipInteraction: true
                     },
                     {
                         target: '#export-coef',
                         title: 'Export Coefficients',
                         description: 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.',
-                        position: 'left'
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
+                    },
+                    {
+                        target: '#threshold-value',
+                        title: 'rSquared fitting threshold',
+                        description: 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.',
+                        position: 'left',
+                        scrollIntoView: true,
+                        skipInteraction: true
                     }
                 ];
             }
