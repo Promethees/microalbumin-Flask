@@ -179,19 +179,20 @@ class UserGuide {
         this.spotlight.addEventListener('click', (e) => {
             e.stopPropagation();
             if (this.currentTargetElement && this.currentStepData && !this.currentStepData.skipInteraction) {
-                this.handleInteraction({ currentTarget: this.currentTargetElement, type: 'click' }); // Simulate click handling
+                const targetElement = this.currentTargetElement;
+                this.handleInteraction({ currentTarget: targetElement, type: 'click' }); // Simulate click handling
 
                 // Try to forward click to the actual element if it's not a direct interaction handled by us
                 try {
                     // Check if we should manually trigger click on element
                     // Logic adapted from original: some elements need focus, some need click dispatch
-                    const { tagName, isInput, isSelect, isCheckbox, isTextInput } = this.determineElementType(this.currentTargetElement);
+                    const { tagName, isInput, isSelect, isCheckbox, isTextInput } = this.determineElementType(targetElement);
 
                     if (isCheckbox) {
-                        this.currentTargetElement.checked = !this.currentTargetElement.checked;
-                        this.currentTargetElement.dispatchEvent(new Event('change', { bubbles: true }));
+                        targetElement.checked = !targetElement.checked;
+                        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
                     } else if (isSelect || isTextInput) {
-                        this.currentTargetElement.focus();
+                        targetElement.focus();
                     } else {
                         // Default click dispatch
                         const clickEvent = new MouseEvent('click', {
@@ -200,7 +201,7 @@ class UserGuide {
                             view: window,
                             detail: 1
                         });
-                        this.currentTargetElement.dispatchEvent(clickEvent);
+                        targetElement.dispatchEvent(clickEvent);
                     }
 
                 } catch (err) {
@@ -413,9 +414,14 @@ class UserGuide {
         // Debounce or Prevent double calling is handled by removing handler immediately
         if (!this.currentInteractionHandler && e.type !== 'click') return; // approximate check
 
+        const targetElement = this.currentTargetElement || e.currentTarget;
+
         this.removeInteractionHandler();
 
-        const { isCheckbox, isSelect, isButton, isClickable, isTableRow, isContainer } = this.determineElementType(this.currentTargetElement);
+        // If targetElement is null (unexpected), return
+        if (!targetElement) return;
+
+        const { isCheckbox, isSelect, isButton, isClickable, isTableRow, isContainer } = this.determineElementType(targetElement);
 
         let delay = 100;
 
