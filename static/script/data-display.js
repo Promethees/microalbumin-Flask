@@ -204,14 +204,10 @@ function createChartSection({
         index
     };
 
-    const isKinetics = AppState.currentMeasurementMode === "kinetics";
-    const isJsonSelected = !!AppState.currentJSON;
-    const fullDisplayStyle = (isKinetics || isJsonSelected) ? "" : "display: none;";
-
     return AppState.currentMeasurementMode !== "calibrate" ?
         `
         <div id="${sectionId}">
-            <label style="${fullDisplayStyle}">
+            <label>
                 <input type="checkbox" id="${fullDisplayId}" 
                     onchange="handleFullDisplayChange('${fullDisplayId}', '${quantityId}', '${canvasId}')"> 
                 Full display: See all data and special lines
