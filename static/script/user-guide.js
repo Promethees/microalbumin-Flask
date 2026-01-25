@@ -159,7 +159,7 @@ class UserGuide {
                 {
                     target: '#logo',
                     title: 'Welcome to Easy OKAPI!',
-                    description: 'This is your colorimeter analysis platform. Click the logo anytime to scroll to the top of the page.',
+                    description: 'Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), developed by Center for Bioscience and Biotechnology, HCMUS-VNU. Click the logo anytime to scroll to the top of the page.',
                     position: 'bottom',
                     skipInteraction: true
                 },
@@ -195,16 +195,16 @@ class UserGuide {
             {
                 target: '#cal-json-sel-section',
                 title: 'Calibration Coefficients',
-                description: 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. You can upload, download, edit, or delete calibration files.',
+                description: 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.',
                 position: 'left',
                 skipInteraction: true
             };
 
             const shareStepsSecondPart = [
                 {
-                    target: '#file-table',
+                    target: '#file-selection',
                     title: 'File Selection',
-                    description: 'Select CSV data files to analyze. You can upload new files, edit existing ones, or merge multiple files together.',
+                    description: 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.',
                     position: 'left',
                     skipInteraction: false
                 }
@@ -227,9 +227,11 @@ class UserGuide {
      * Get mode-specific workflow steps for data display section
      */
     getModeSpecificSteps(mode) {
+        const JSONDisplay = document.getElementById('json-display');
+        const isJSONDisplayVisible = JSONDisplay && !JSONDisplay.classList.contains('hidden');
 
         if (mode === 'kinetics') {
-            return [
+            const firstPart = [
                 {
                     target: '#data-display-section',
                     title: 'Data Display Section',
@@ -263,14 +265,14 @@ class UserGuide {
                 {
                     target: '#normalize-mode-section',
                     title: 'Normalize Data',
-                    description: 'Normalize the data by removing blank values. This will display the data with the blank values removed.',
+                    description: 'Normalize the data by substracting ground value for each measurement.',
                     position: 'right',
                     scrollIntoView: true
                 },
                 {
                     target: '#plot-button',
                     title: 'See kinetics analysis',
-                    description: 'See the kinetics analysis of the data. This will display the kinetics analysis of the data.',
+                    description: 'See the kinetics analysis of the data.',
                     position: 'right'
                 },
                 {
@@ -295,87 +297,194 @@ class UserGuide {
                 {
                     target: '#chart-container',
                     title: 'View Charts',
-                    description: 'Your data will be visualized in charts here. You can enable "Full Display" to see all data and special analysis lines.',
-                    position: 'right',
+                    description: 'Your data will be visualized in charts here.',
+                    position: 'left',
+                    skipInteraction: true
+                }];
+            const deriveConPart = [
+                {
+                    target: '#json-display',
+                    title: 'Details of Calibration Standard Curve',
+                    description: 'Standard Curve used to derive Analyte Concentration is realized as coefficients for the chosen fitting function.',
+                    position: 'left',
                     skipInteraction: true
                 },
+                {
+                    target: '#derived-concentration-section-source-0',
+                    title: 'Derived Concentration',
+                    description: 'Concentration of the measuring Analyte derived from the selected standard curve and measurement data.',
+                    position: 'right',
+                    skipInteraction: true
+                }];
+            const secondPart = [
                 {
                     target: '#select-sensor-to-export',
                     title: 'Select Sensor to Export',
                     description: 'Select the sensor to export the data. You can select multiple sensors to export the data.',
-                    position: 'right'
+                    position: 'right',
+                    skipInteraction: true,
+                    scrollIntoView: true
                 },
                 {
                     target: '#export-analysis',
                     title: 'Export Analysis',
                     description: 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.',
-                    position: 'top'
-                },
-                {
-                    target: '#json-table',
-                    title: 'Standard Curve Coefficients',
-                    description: 'Select calibrated JSON files containing standard curve coefficients. You can upload, download, edit, or delete calibration files.',
-                    position: 'bottom',
-                    scrollIntoView: true,
-                    skipInteraction: true
-                },
-                {
-                    target: '#measurement-mode',
-                    title: 'Switch to calibrate mode',
-                    description: 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.',
-                    scrollIntoView: true,
-                    position: 'right'
-                }
+                    position: 'top',
+                    skipInteraction: true,
+                    scrollIntoView: true
+                }];
+            const JSONTable = {
+                target: '#cal-json-sel-section',
+                title: 'Standard Curve Coefficients',
+                description: 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.',
+                position: 'bottom',
+                scrollIntoView: true,
+                skipInteraction: true
+            };
+            const measurementMode = {
+                target: '#measurement-mode',
+                title: 'Switch to calibrate mode',
+                description: 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.',
+                scrollIntoView: true,
+                position: 'right',
+                skipInteraction: true
+            };
+            let returnedSteps = [
+                ...firstPart
             ];
+
+            if (isJSONDisplayVisible) {
+                returnedSteps.push(...deriveConPart);
+            }
+            returnedSteps.push(...secondPart);
+
+            if (!isJSONDisplayVisible) {
+                returnedSteps.push(JSONTable);
+            }
+
+            returnedSteps.push(measurementMode);
+            return returnedSteps;
         } else if (mode === 'point') {
-            return [
+            const firstPart = [
                 {
                     target: '#data-display-section',
                     title: 'Data Display Section',
-                    description: 'After selecting a file, the Data Display section will appear here. In point mode, you can view single-point measurements.',
+                    description: 'After selecting a file, Data Display section will appear here. In point mode, you can select an time point accompanying with measurement data for standard curve establishment.',
                     position: 'left',
                     scrollIntoView: true,
                     skipInteraction: true
                 },
                 {
-                    target: '#point-json-exp-section',
+                    target: '#set-exp-point-section',
                     title: 'Reference Point (Point Mode)',
                     description: 'Set the reference point for your measurements. This indicates the time point at which measurements were taken.',
-                    position: 'left'
-                },
-                {
-                    target: '#select-time-point',
-                    title: 'Select Time Point',
-                    description: 'If using calibration, select which time point to derive concentration from. You can choose "ALL" to use all time points.',
-                    position: 'left'
+                    position: 'left',
+                    scrollIntoView: true,
+                    skipInteraction: true
                 },
                 {
                     target: '#range-display',
                     title: 'Display Range',
                     description: 'Set the time range to display on your charts. Adjust the "From" and "To" values and select the appropriate time unit.',
-                    position: 'bottom'
+                    position: 'bottom',
+                    scrollIntoView: true,
+                    skipInteraction: true
+                },
+                {
+                    target: '#split-sensor-section',
+                    title: 'Split by Sensors',
+                    description: 'Split the data by sensors. This will display each sensor\'s data in a separate chart and opt to display kinetics quantities for each measurement.',
+                    position: 'right',
+                    scrollIntoView: true,
+                },
+                {
+                    target: '#normalize-mode-section',
+                    title: 'Normalize Data',
+                    description: 'Normalize the data by substracting ground value for each measurement.',
+                    position: 'right',
+                    scrollIntoView: true
+                },
+
+                {
+                    target: '#con-value-read-source-0',
+                    title: 'Concentration Value',
+                    description: 'The concentration value of the data. This will display the concentration value of the data.',
+                    position: 'right',
+                    skipInteraction: true,
+                    scrollIntoView: true
                 },
                 {
                     target: '#chart-container',
                     title: 'View Charts',
-                    description: 'Your data will be visualized in charts here. Point measurements will be displayed at the selected reference point.',
+                    description: 'Your data will be visualized in charts here.',
+                    position: 'left',
+                    skipInteraction: true,
+                    scrollIntoView: true
+                }];
+            const deriveConPart = [
+                {
+                    target: '#json-display',
+                    title: 'Details of Calibration Standard Curve',
+                    description: 'Standard Curve used to derive Analyte Concentration is realized as coefficients for the chosen fitting function.',
                     position: 'left',
                     skipInteraction: true
+                },
+                {
+                    target: '#derived-concentration-section-source-0',
+                    title: 'Derived Concentration',
+                    description: 'Concentration of the measuring Analyte derived from the selected standard curve and measurement data.',
+                    position: 'right',
+                    skipInteraction: true,
+                    scrollIntoView: true
+                }];
+            const secondPart = [
+                {
+                    target: '#select-sensor-to-export',
+                    title: 'Select Sensor to Export',
+                    description: 'Select the sensor to export the data. You can select multiple sensors to export the data.',
+                    position: 'right',
+                    skipInteraction: true,
+                    scrollIntoView: true
                 },
                 {
                     target: '#export-analysis',
                     title: 'Export Analysis',
                     description: 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.',
-                    position: 'top'
-                },
-                {
-                    target: '#json-table',
-                    title: 'Standard Curve Coefficients',
-                    description: 'Select calibrated JSON files containing standard curve coefficients. You can upload, download, edit, or delete calibration files.',
-                    position: 'bottom',
-                    skipInteraction: true
-                }
+                    position: 'top',
+                    skipInteraction: true,
+                    scrollIntoView: true
+                }];
+            const JSONTable = {
+                target: '#cal-json-sel-section',
+                title: 'Standard Curve Coefficients',
+                description: 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.',
+                position: 'bottom',
+                scrollIntoView: true,
+                skipInteraction: true
+            };
+            const measurementMode = {
+                target: '#measurement-mode',
+                title: 'Switch to calibrate mode',
+                description: 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.',
+                scrollIntoView: true,
+                position: 'right',
+                skipInteraction: true
+            };
+            let returnedSteps = [
+                ...firstPart
             ];
+
+            if (isJSONDisplayVisible) {
+                returnedSteps.push(...deriveConPart);
+            }
+            returnedSteps.push(...secondPart);
+
+            if (!isJSONDisplayVisible) {
+                returnedSteps.push(JSONTable);
+            }
+
+            returnedSteps.push(measurementMode);
+            return returnedSteps;
         } else if (mode === 'calibrate') {
             // Check if calibrate mode is kinetics or point
             const calModeDiv = document.getElementById('cal-mode-select');
@@ -472,6 +581,7 @@ class UserGuide {
 
         // Show overlay and start first step
         this.overlay.classList.add('active');
+        console.log(this.steps);
         this.showStep(this.currentStep);
     }
 
