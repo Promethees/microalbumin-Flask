@@ -38,7 +38,7 @@ class UserGuide {
                     this.createStep('#normalize-mode-section', 'Normalize Data', 'Normalize the data by substracting ground value for each measurement.', { position: 'right', scrollIntoView: true }),
                     this.createStep('#open-all-analysis', 'Expand All Analyses', 'Expand all Kinetics Analysis of measurement data.', { position: 'right', scrollIntoView: true }),
                     this.createStep('#plot-button-source-0', 'See kinetics analysis', 'Toggle this button to view or hide kinetics analysis.', { position: 'right', scrollIntoView: true }),
-                    this.createStep('#full-display-source-0', 'Full Display', 'Enable \"Full Display\" to see all data and special analysis lines. Check this box to see all data and special analysis lines.', { position: 'right', scrollIntoView: true }),
+                    this.createStep('#full-display-source-0', 'Full Display', 'Enable Full Display: to see all data and special analysis lines. Check this box to see all data and special analysis lines.', { position: 'right', scrollIntoView: true }),
                     this.createStep('label[id^="quantity-checkboxes-"]', 'Select Quantities', 'Select the quantities to display on the chart. You can select multiple quantities to display on the chart.', { position: 'right', skipInteraction: true }),
                     this.createStep('#con-value-read-source-0', 'Concentration Value', 'The concentration value of the data. This will display the concentration value of the data.', { position: 'right', skipInteraction: true }),
                     this.createStep('#chart-container', 'View Charts', 'Your data will be visualized in charts here.', { position: 'left', skipInteraction: true })
