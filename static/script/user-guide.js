@@ -15,6 +15,8 @@ class UserGuide {
         this.currentInteractionHandler = null;
         this.currentTargetElement = null;
         this.currentStepData = null;
+        this.resizeObserver = null;
+        this.pollingInterval = null;
 
         // Step Definitions Configuration
         this.stepDefinitions = {
@@ -324,11 +326,50 @@ class UserGuide {
      */
     stop() {
         this.isActive = false;
+        this.cleanupObservers();
         this.removeInteractionHandler();
         this.overlay.classList.remove('active');
         this.spotlight.classList.remove('active');
         this.tooltip.classList.remove('active');
         document.body.style.overflow = '';
+    }
+
+    /**
+     * Cleanup observers and intervals
+     */
+    cleanupObservers() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    /**
+     * Start polling for position changes (fallback for layout shifts)
+     */
+    startPolling(element, step) {
+        // Poll every 100ms for 2 seconds, then every 500ms
+        let count = 0;
+        this.pollingInterval = setInterval(() => {
+            if (!this.isActive || !element) {
+                this.cleanupObservers();
+                return;
+            }
+            this.positionSpotlight(element, step);
+            count++;
+            // Slow down after 2 seconds
+            if (count === 20) {
+                clearInterval(this.pollingInterval);
+                this.pollingInterval = setInterval(() => {
+                    if (!this.isActive) return;
+                    this.positionSpotlight(element, step);
+                }, 500);
+            }
+        }, 100);
     }
 
     /**
@@ -338,6 +379,7 @@ class UserGuide {
         if (stepIndex < 0 || stepIndex >= this.steps.length) return;
 
         this.removeInteractionHandler();
+        this.cleanupObservers();
 
         const step = this.steps[stepIndex];
         const targetElement = document.querySelector(step.target);
@@ -353,6 +395,18 @@ class UserGuide {
         const setupStep = () => {
             this.positionSpotlight(targetElement, step);
             this.attachInteractionHandler(targetElement, step);
+
+            // Setup ResizeObserver
+            if (window.ResizeObserver) {
+                this.resizeObserver = new ResizeObserver(() => {
+                    this.positionSpotlight(targetElement, step);
+                });
+                this.resizeObserver.observe(targetElement);
+                this.resizeObserver.observe(document.body); // Watch body for major shifts
+            }
+
+            // Start Polling
+            this.startPolling(targetElement, step);
         };
 
         if (step.scrollIntoView) {
@@ -485,14 +539,24 @@ class UserGuide {
      * Position the spotlight on the target element
      */
     positionSpotlight(element, step) {
+        if (!element || !this.isActive) return;
+
         const rect = element.getBoundingClientRect();
         const padding = 10;
+
+        // Ensure rect is valid (non-zero if visible)
+        if (rect.width === 0 && rect.height === 0) return;
 
         this.spotlight.style.top = `${rect.top - padding + window.scrollY}px`;
         this.spotlight.style.left = `${rect.left - padding}px`;
         this.spotlight.style.width = `${rect.width + padding * 2}px`;
         this.spotlight.style.height = `${rect.height + padding * 2}px`;
         this.spotlight.classList.add('active');
+
+        // Ensure high z-index
+        this.spotlight.style.zIndex = '9999';
+        this.overlay.style.zIndex = '9998';
+        this.tooltip.style.zIndex = '10000';
 
         this.positionTooltip(rect, step.position || 'bottom');
     }
