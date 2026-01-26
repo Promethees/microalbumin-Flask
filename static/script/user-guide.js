@@ -16,7 +16,9 @@ class UserGuide {
         this.currentTargetElement = null;
         this.currentStepData = null;
         this.resizeObserver = null;
+        this.resizeObserver = null;
         this.pollingInterval = null;
+        this.waitInterval = null;
 
         // Step Definitions Configuration
         this.stepDefinitions = {
@@ -315,6 +317,10 @@ class UserGuide {
     stop() {
         this.isActive = false;
         this.cleanupObservers();
+        if (this.waitInterval) {
+            clearInterval(this.waitInterval);
+            this.waitInterval = null;
+        }
         this.removeInteractionHandler();
         this.overlay.classList.remove('active');
         this.spotlight.classList.remove('active');
@@ -368,44 +374,67 @@ class UserGuide {
 
         this.removeInteractionHandler();
         this.cleanupObservers();
-
-        const step = this.steps[stepIndex];
-        const targetElement = document.querySelector(step.target);
-
-        if (!targetElement) {
-            console.warn(`Target element not found: ${step.target}`);
-            return;
+        if (this.waitInterval) {
+            clearInterval(this.waitInterval);
+            this.waitInterval = null;
         }
 
-        this.currentTargetElement = targetElement;
-        this.currentStepData = step;
+        const step = this.steps[stepIndex];
+        // Helper to setup step once element is found
+        const setupStepWithElement = (target) => {
+            this.currentTargetElement = target;
+            this.currentStepData = step;
 
-        const setupStep = () => {
-            this.positionSpotlight(targetElement, step);
-            this.attachInteractionHandler(targetElement, step);
+            this.positionSpotlight(target, step);
+            this.attachInteractionHandler(target, step);
 
             // Setup ResizeObserver
             if (window.ResizeObserver) {
                 this.resizeObserver = new ResizeObserver(() => {
-                    this.positionSpotlight(targetElement, step);
+                    this.positionSpotlight(target, step);
                 });
-                this.resizeObserver.observe(targetElement);
+                this.resizeObserver.observe(target);
                 this.resizeObserver.observe(document.body); // Watch body for major shifts
             }
 
             // Start Polling
-            this.startPolling(targetElement, step);
+            this.startPolling(target, step);
         };
 
-        if (step.scrollIntoView) {
-            // Using 'auto' for instant scrolling to avoid timing issues with smooth scroll on slower devices/obfuscated builds
-            // fallback to smooth if desired but with longer timeout
-            const scrollBehavior = 'smooth';
-            targetElement.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
-            // Increased timeout to ensure scroll completion, especially for obfuscated/slower execution
-            setTimeout(setupStep, 800);
+        const targetElement = document.querySelector(step.target);
+
+        if (targetElement) {
+            setupStepWithElement(targetElement);
+            if (step.scrollIntoView) {
+                // Using 'auto' for instant scrolling works better with subsequent observer updates
+                const scrollBehavior = 'smooth';
+                targetElement.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
+            }
         } else {
-            setupStep();
+            console.warn(`Target element not found initially: ${step.target}. Waiting...`);
+            // Poll for element appearance (up to 3 seconds)
+            let checkCount = 0;
+            const maxChecks = 30; // 3 seconds total
+            const checkInterval = setInterval(() => {
+                const el = document.querySelector(step.target);
+                if (el) {
+                    clearInterval(checkInterval);
+                    setupStepWithElement(el);
+                    if (step.scrollIntoView) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                } else {
+                    checkCount++;
+                    if (checkCount >= maxChecks) {
+                        clearInterval(checkInterval);
+                        console.error(`Target element still not found after waiting: ${step.target}`);
+                        // Optional: skip to next step or show error
+                    }
+                }
+            }, 100);
+
+            // Store interval to clear it if we stop/move
+            this.waitInterval = checkInterval;
         }
 
         this.updateTooltip(step, stepIndex);
