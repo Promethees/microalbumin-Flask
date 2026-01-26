@@ -334,7 +334,8 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         const analysisInfo = formatAnalysisInfo(analysis, label);
         document.getElementById(analysisId).innerHTML = formatAnalysisHtml(analysisInfo,
             AppState.plotColors[i % AppState.plotColors.length],
-            `Source ${i + 1}`
+            `Source ${i + 1}`,
+            `plot-analysis-source-${i}`
         );
     }
 
@@ -361,7 +362,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`);
+        html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
