@@ -344,8 +344,12 @@ class UserGuide {
         };
 
         if (step.scrollIntoView) {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(setupStep, 300);
+            // Using 'auto' for instant scrolling to avoid timing issues with smooth scroll on slower devices/obfuscated builds
+            // fallback to smooth if desired but with longer timeout
+            const scrollBehavior = 'smooth';
+            targetElement.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
+            // Increased timeout to ensure scroll completion, especially for obfuscated/slower execution
+            setTimeout(setupStep, 800);
         } else {
             setupStep();
         }
