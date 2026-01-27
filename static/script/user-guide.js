@@ -87,8 +87,10 @@ class UserGuide {
                 // deriveConPart, secondPart, jsonTable, measurementMode are shared or similar but defined separately if needed or reused
             },
             calibrate: {
+                calmode: [
+                    this.createStep('#cal-mode-select', 'Calibration Mode', 'Switch between "kinetics" and "point" calibration modes here.', { position: 'right', scrollIntoView: true, skipInteraction: true })
+                ],
                 common: [
-                    this.createStep('#cal-mode-select', 'Calibration Mode', 'Switch between "kinetics" and "point" calibration modes here.', { position: 'right', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#data-display-section', 'Data Display Section', 'After selecting a file, the Data Display section will appear here. In calibration mode (kinetics), you can create standard curves.', { position: 'left', scrollIntoView: true, skipInteraction: true }) // Note: description slightly differs in code, but checking logic
                 ],
                 kinetics: [
@@ -242,6 +244,8 @@ class UserGuide {
             this.steps = [...this.stepDefinitions.common];
             if (currentMode !== 'calibrate') {
                 this.steps.push(this.stepDefinitions.nonCalibrate);
+            } else {
+                this.steps.push(...this.stepDefinitions.calibrate.calmode);
             }
             this.steps.push(...this.stepDefinitions.fileSelection);
         } else {
