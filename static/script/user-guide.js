@@ -185,34 +185,43 @@ class UserGuide {
         // Prevent clicks on spotlight from closing, but allow forwarding to target
         this.spotlight.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (this.currentTargetElement && this.currentStepData && !this.currentStepData.skipInteraction) {
-                const targetElement = this.currentTargetElement;
-                this.handleInteraction({ currentTarget: targetElement, type: 'click' }); // Simulate click handling
-
-                // Try to forward click to the actual element if it's not a direct interaction handled by us
-                try {
-                    // Check if we should manually trigger click on element
-                    // Logic adapted from original: some elements need focus, some need click dispatch
-                    const { tagName, isInput, isSelect, isCheckbox, isTextInput } = this.determineElementType(targetElement);
-
-                    if (isCheckbox) {
-                        targetElement.checked = !targetElement.checked;
-                        targetElement.dispatchEvent(new Event('change', { bubbles: true }));
-                    } else if (isSelect || isTextInput) {
-                        targetElement.focus();
-                    } else {
-                        // Default click dispatch
-                        const clickEvent = new MouseEvent('click', {
-                            bubbles: true,
-                            cancelable: true,
-                            view: window,
-                            detail: 1
-                        });
-                        targetElement.dispatchEvent(clickEvent);
+            if (this.currentStepData && !this.currentStepData.skipInteraction) {
+                // Re-verify target element in case of DOM re-render
+                let targetElement = this.currentTargetElement;
+                if (!targetElement || !document.body.contains(targetElement)) {
+                    targetElement = document.querySelector(this.currentStepData.target);
+                    if (targetElement) {
+                        console.log('Target element was detached or null, re-found:', targetElement);
+                        this.currentTargetElement = targetElement;
                     }
+                }
 
-                } catch (err) {
-                    console.warn('Error triggering element click:', err);
+                if (targetElement) {
+                    this.handleInteraction({ currentTarget: targetElement, type: 'click' }); // Simulate click handling
+
+                    // Try to forward click to the actual element if it's not a direct interaction handled by us
+                    try {
+                        const { isCheckbox, isSelect, isTextInput } = this.determineElementType(targetElement);
+
+                        if (isCheckbox) {
+                            targetElement.checked = !targetElement.checked;
+                            targetElement.dispatchEvent(new Event('change', { bubbles: true }));
+                        } else if (isSelect || isTextInput) {
+                            targetElement.focus();
+                        } else {
+                            // Default click dispatch
+                            const clickEvent = new MouseEvent('click', {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window,
+                                detail: 1
+                            });
+                            targetElement.dispatchEvent(clickEvent);
+                        }
+
+                    } catch (err) {
+                        console.warn('Error triggering element click:', err);
+                    }
                 }
             }
         });
@@ -348,24 +357,44 @@ class UserGuide {
     }
 
     /**
-     * Start polling for position changes (fallback for layout shifts)
+     * Start polling for position changes (fallback for layout shifts or re-renders)
      */
-    startPolling(element, step) {
+    startPolling(step) {
         // Poll every 100ms for 2 seconds, then every 500ms
         let count = 0;
         this.pollingInterval = setInterval(() => {
-            if (!this.isActive || !element) {
+            if (!this.isActive) {
                 this.cleanupObservers();
                 return;
             }
-            this.positionSpotlight(element, step);
+
+            // Re-query the element in case it was re-rendered
+            const element = document.querySelector(step.target);
+            if (element) {
+                // If the element has changed (re-rendered), re-attach handlers
+                if (element !== this.currentTargetElement) {
+                    this.removeInteractionHandlersOnly(); // Custom helper to not clear step data
+                    this.currentTargetElement = element;
+                    this.attachInteractionHandler(element, step);
+                }
+                this.positionSpotlight(element, step);
+            }
+
             count++;
             // Slow down after 2 seconds
             if (count === 20) {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = setInterval(() => {
                     if (!this.isActive) return;
-                    this.positionSpotlight(element, step);
+                    const el = document.querySelector(step.target);
+                    if (el) {
+                        if (el !== this.currentTargetElement) {
+                            this.removeInteractionHandlersOnly();
+                            this.currentTargetElement = el;
+                            this.attachInteractionHandler(el, step);
+                        }
+                        this.positionSpotlight(el, step);
+                    }
                 }, 500);
             }
         }, 100);
@@ -403,7 +432,7 @@ class UserGuide {
             }
 
             // Start Polling
-            this.startPolling(target, step);
+            this.startPolling(step);
         };
 
         const targetElement = document.querySelector(step.target);
@@ -531,9 +560,22 @@ class UserGuide {
      * Remove interaction handler from current target
      */
     removeInteractionHandler() {
+        this.removeInteractionHandlersOnly();
+        this.currentTargetElement = null;
+        this.currentStepData = null;
+    }
+
+    /**
+     * Internal helper to remove event listeners without clearing step context
+     */
+    removeInteractionHandlersOnly() {
         if (this.currentInteractionHandler) {
             const { element, event, handler } = this.currentInteractionHandler;
-            element.removeEventListener(event, handler);
+            try {
+                element.removeEventListener(event, handler);
+            } catch (e) {
+                // Ignore if element is already gone
+            }
 
             element.style.cursor = '';
             element.style.outline = '';
@@ -544,8 +586,6 @@ class UserGuide {
         if (this.spotlight) {
             this.spotlight.style.cursor = '';
         }
-        this.currentTargetElement = null;
-        this.currentStepData = null;
     }
 
     /**
