@@ -293,6 +293,7 @@ function kineticsModeBehaviour() {
         'sensor-options',
         'normalize-mode-section',
         'select-sensor-to-export',
+        'split-sensor-section',
     ];
 
     $hidden(addHidden, true);
@@ -322,7 +323,8 @@ function pointModeBehaviour() {
         'log-hid-data',
         'sensor-options',
         'normalize-mode-section',
-        'select-sensor-to-export'
+        'select-sensor-to-export',
+        'split-sensor-section'
     ];
 
     $hidden(addHidden, true);
