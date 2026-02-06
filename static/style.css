@@ -1,26 +1,38 @@
-/* ==========================================================================
-   CSS Variables (Custom Properties)
-   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
 :root {
-    --text-color-light: #333333;
-    --text-color-dark: #ffffff;
-    --table-border-light: #333333;
-    --table-border-dark: #ffffff;
-    --chart-grid-light: #cccccc;
-    --chart-grid-dark: #666666;
-    --chart-title-light: #333333;
-    --chart-title-dark: #aaaaaa;
-    --chart-label-light: #333333;
-    --chart-label-light: #333333;
-    --chart-label-dark: #aaaaaa;
+    --text-color-light: #1f2937;
+    --text-color-dark: #f3f4f6;
+    --table-border-light: #e5e7eb;
+    --table-border-dark: #374151;
+    --chart-grid-light: #f3f4f6;
+    --chart-grid-dark: #374151;
+    --chart-title-light: #1f2937;
+    --chart-title-dark: #d1d5db;
+    --chart-label-light: #4b5563;
+    --chart-label-dark: #9ca3af;
+
+    /* Modern Color Palette */
+    --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    --secondary-gradient: linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%);
+    --danger-gradient: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+    --success-gradient: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+
+    --primary-color: #6366f1;
+    --surface-light: rgba(255, 255, 255, 0.8);
+    --surface-dark: rgba(31, 41, 55, 0.8);
+    --border-radius: 12px;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
     /* Custom Scrollbar Colors */
-    --scrollbar-track-light: #f5f5f5;
-    --scrollbar-track-dark: #2d2d2d;
-    --scrollbar-thumb-light: #cccccc;
-    --scrollbar-thumb-dark: #555555;
-    --scrollbar-thumb-hover-light: #aaaaaa;
-    --scrollbar-thumb-hover-dark: #777777;
+    --scrollbar-track-light: #f9fafb;
+    --scrollbar-track-dark: #111827;
+    --scrollbar-thumb-light: #d1d5db;
+    --scrollbar-thumb-dark: #4b5563;
+    --scrollbar-thumb-hover-light: #9ca3af;
+    --scrollbar-thumb-hover-dark: #6b7280;
 }
 
 /* ==========================================================================
@@ -60,14 +72,14 @@ body.dark #drive-section::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover-dark);
 }
 
-/* ==========================================================================
-   Base Styles & Layout
-   ========================================================================== */
 body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 20px;
     display: flex;
     justify-content: center;
+    min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .container {
@@ -82,8 +94,26 @@ body {
 }
 
 .section {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--surface-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
     max-width: 100% !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+body.dark .section {
+    background: var(--surface-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.section:hover {
+    box-shadow: var(--shadow-lg);
 }
 
 .hidden {
@@ -127,33 +157,86 @@ input#save-dir {
 
 /* Light Theme */
 body.light {
-    background-color: #ffffff;
-    color: #333333;
+    background-color: #f3f4f6;
+    color: var(--text-color-light);
 }
 
-body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
-    background-color: #e0e0e0;
-    color: #333333;
-    border: 1px solid #cccccc;
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+    padding: 10px 18px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-radius: var(--border-radius);
+    border: none;
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+    background: #ffffff;
+    color: var(--text-color-light);
+    border: 1px solid #e5e7eb;
 }
 
-body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
-    background-color: #d0d0d0;
-    transform: scale(1.05);
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: #f9fafb;
 }
 
-body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):enabled {
-    opacity: 1;
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):active:enabled {
+    transform: translateY(0);
 }
 
-body.light button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
-    background-color: #f0f0f0;
-    color: #999999;
-    border: 1px solid #dddddd;
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+    background-color: #f3f4f6;
+    color: #9ca3af;
+    border: 1px solid #e5e7eb;
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.7;
+}
+
+/* Primary Button Style */
+.primary-btn,
+#init-button {
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.primary-btn:hover:enabled,
+#init-button:hover:enabled {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Utility/Secondary Buttons */
+.utility-btn,
+.icon-btn {
+    background: #ffffff !important;
+    color: var(--text-color-light) !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+body.dark .utility-btn,
+body.dark .icon-btn {
+    background: #374151 !important;
+    color: var(--text-color-dark) !important;
+    border: 1px solid #4b5563 !important;
+}
+
+/* Danger Buttons */
+.danger-btn {
+    background: var(--danger-gradient) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.danger-btn:hover:enabled {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 body.light input[type="text"] {
@@ -239,28 +322,24 @@ body.light .button-group {
 }
 
 body.light .button-group button {
-    padding: 5px 10px;
-    border: 1px solid #333;
-    border-radius: 4px;
-    cursor: pointer;
+    padding: 8px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--text-color-light);
+    font-weight: 500;
 }
 
 body.light .button-group button:hover:not(.selected) {
-    background-color: #aaaaaa;
-    color: var(--text-color-light);
-}
-
-body.light .button-group button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    background-color: #aaaaaa;
-    color: var(--text-color-light);
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
 }
 
 body.light .button-group button.selected {
-    font-weight: bold;
-    background-color: #ec0808ef !important;
-    color: var(--text-color-dark) !important;
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 body.light option {
@@ -270,21 +349,18 @@ body.light option {
 
 /* Dark Theme */
 body.dark {
-    background-color: #333333;
-    color: #eeeeee;
+    background-color: #111827;
+    color: var(--text-color-dark);
 }
 
 body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
-    background-color: #555555;
-    color: #eeeeee;
-    border: 1px solid #aaaaaa;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    background-color: #1f2937;
+    color: var(--text-color-dark);
+    border: 1px solid #374151;
 }
 
 body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
-    background-color: #666666;
-    transform: scale(1.05);
+    background-color: #374151;
 }
 
 body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):enabled {
@@ -410,28 +486,24 @@ body.dark .button-group {
 }
 
 body.dark .button-group button {
-    padding: 5px 10px;
-    border: 1px solid #333;
-    border-radius: 4px;
-    cursor: pointer;
+    padding: 8px 14px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    background: #1f2937;
+    color: var(--text-color-dark);
+    font-weight: 500;
 }
 
 body.dark .button-group button:hover:not(.selected) {
-    background-color: #555555;
-    color: var(--text-color-dark);
-}
-
-body.dark .button-group button:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    background-color: #555555;
-    color: var(--text-color-dark);
+    background-color: #374151;
+    border-color: #4b5563;
 }
 
 body.dark .button-group button.selected {
-    font-weight: bold;
-    background-color: #e2e382 !important;
-    color: var(--text-color-light) !important;
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
 /* ==========================================================================
@@ -514,27 +586,30 @@ body.dark #drive-section {
    Theme Toggle Component
    ========================================================================== */
 .toggle-container {
-    width: 60px;
-    height: 30px;
-    background-color: #ccc;
-    border-radius: 15px;
-    margin-left: 20px;
-    position: static;
+    width: 56px;
+    height: 28px;
+    background: #e5e7eb;
+    border-radius: 20px;
+    padding: 2px;
     cursor: pointer;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+body.dark .toggle-container {
+    background: #374151;
 }
 
 .toggle-button {
-    width: 27px;
-    height: 27px;
-    background-color: #ffffff;
+    width: 24px;
+    height: 24px;
+    background: white;
     border-radius: 50%;
-    position: static;
-    transition: transform 0.3s ease, background-color 0.3s ease;
     display: flex;
-    justify-content: center;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-button::before {
@@ -631,19 +706,44 @@ body.dark #drive-section {
    Table Styles
    ========================================================================== */
 table {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--table-border-light);
+}
+
+body.dark table {
+    border-color: var(--table-border-dark);
 }
 
 th,
 td {
-    border: 1px solid #ddd;
-    padding: 8px;
+    padding: 12px 16px;
     text-align: left;
+    border-bottom: 1px solid var(--table-border-light);
+}
+
+body.dark th,
+body.dark td {
+    border-bottom: 1px solid var(--table-border-dark);
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #f9fafb;
+    font-weight: 600;
+    color: var(--text-color-light);
+    font-family: 'Outfit', sans-serif;
+}
+
+body.dark th {
+    background-color: #374151;
+    color: var(--text-color-dark);
+}
+
+tr:last-child td {
+    border-bottom: none;
 }
 
 #file-table button,
@@ -1295,12 +1395,13 @@ body.dark .swal2-container.swal2-backdrop-show {
    Google Drive Integration Styles
    ========================================================================== */
 #drive-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--secondary-gradient);
     color: white;
-    padding: 15px;
-    border-radius: 8px;
+    padding: 20px;
+    border-radius: var(--border-radius);
     margin-bottom: 20px;
-    margin-right: 20px;
+    margin-right: 0;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
 }
 
 #drive-section h3 {
