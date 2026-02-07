@@ -918,8 +918,8 @@ function exportData() {
 
 // Validate concentration values based on source mode
 function validateConcentration() {
-    const sensorValue = document.getElementById("exp-json-sensor").value;
-    if (sensorValue === "ALL") {
+    const sourceValue = document.getElementById("exp-json-source").value;
+    if (sourceValue === "ALL") {
         for (let i = 0; i < AppState.numSources; i++) {
             const inputId = `con-value-read-source-${i}`;
             if (!document.getElementById(inputId).value) {
@@ -929,7 +929,7 @@ function validateConcentration() {
             }
         }
     } else {
-        const sourceIndex = getValInt("exp-json-sensor") - 1;
+        const sourceIndex = getValInt("exp-json-source") - 1;
         const inputId = `con-value-read-source-${sourceIndex}`;
         if (!document.getElementById(inputId).value) {
             alert(`Please enter a concentration value for source-${sourceIndex + 1}`);
@@ -954,8 +954,8 @@ function generateAnalysisData() {
 
 // Generate kinetics mode data
 function generateKineticsData() {
-    const sensorValue = document.getElementById("exp-json-sensor").value;
-    if (sensorValue === "ALL") {
+    const sourceValue = document.getElementById("exp-json-source").value;
+    if (sourceValue === "ALL") {
         return Array.from({ length: AppState.numSources }, (_, i) => ({
             maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
             slope: AppState.globalAnalysis.sources[i].slope * getTimeUnitMultiplier('minutes'),
@@ -965,12 +965,12 @@ function generateKineticsData() {
             measUnit: AppState.globalAnalysis.meas_unit
         }));
     } else {
-        const exportSensor = getValInt("exp-json-sensor") - 1;
+        const exportSource = getValInt("exp-json-source") - 1;
         return [{
-            maxrate: AppState.globalAnalysis.sources[exportSensor].maxrate * getTimeUnitMultiplier('minutes'),
-            slope: AppState.globalAnalysis.sources[exportSensor].slope * getTimeUnitMultiplier('minutes'),
-            saturationValue: AppState.globalAnalysis.sources[exportSensor].sat,
-            timeToSaturation: AppState.globalAnalysis.sources[exportSensor].time_to_sat / getTimeUnitMultiplier('minutes'),
+            maxrate: AppState.globalAnalysis.sources[exportSource].maxrate * getTimeUnitMultiplier('minutes'),
+            slope: AppState.globalAnalysis.sources[exportSource].slope * getTimeUnitMultiplier('minutes'),
+            saturationValue: AppState.globalAnalysis.sources[exportSource].sat,
+            timeToSaturation: AppState.globalAnalysis.sources[exportSource].time_to_sat / getTimeUnitMultiplier('minutes'),
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
         }];
@@ -985,8 +985,8 @@ function generatePointData() {
         return null;
     }
 
-    const sensorValue = document.getElementById("exp-json-sensor").value;
-    if (sensorValue === "ALL") {
+    const sourceValue = document.getElementById("exp-json-source").value;
+    if (sourceValue === "ALL") {
         return Array.from({ length: AppState.numSources }, (_, i) => ({
             estValue: AppState.globalEstimatedValue[i].toFixed(4),
             timePoint: currExpTimePoint,
@@ -994,7 +994,7 @@ function generatePointData() {
             measUnit: AppState.globalAnalysis.meas_unit
         }));
     } else {
-        const sourceIndex = getValInt("exp-json-sensor") - 1;
+        const sourceIndex = getValInt("exp-json-source") - 1;
         return [{
             estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
             timePoint: currExpTimePoint,
@@ -1018,8 +1018,8 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
     let payload;
     let isBatch = false;
 
-    const sensorValue = document.getElementById("exp-json-sensor").value;
-    if (sensorValue === "ALL") {
+    const sourceValue = document.getElementById("exp-json-source").value;
+    if (sourceValue === "ALL") {
         isBatch = true;
         const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`, "MIXED"));
         if (entries.length === 0) {
@@ -1028,7 +1028,7 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
         }
         payload = { ...commonData, newFile: true, entries };
     } else {
-        const sourceIndex = getValInt("exp-json-sensor") - 1;
+        const sourceIndex = getValInt("exp-json-source") - 1;
         const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`, "MIXED");
         if (!entry) {
             alert("No analysis data available to export.");

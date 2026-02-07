@@ -17,7 +17,7 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     const rawData = data;
     data = preprocessData(data, XColumn, YColumn);
 
-    const isSplitMode = getBtnChecked("split-sensor");
+    const isSplitMode = getBtnChecked("split-source");
 
     const allGroups = {
         allXColumn: extractColumnAndConvert(data, XColumn),
@@ -272,7 +272,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
     const container = document.getElementById("chart-container");
 
     // Helper to append HTML or elements cleanly
-    const canvasId = getBtnChecked("split-sensor") ? `source-${index}-canvas` : "plot-canvas";
+    const canvasId = getBtnChecked("split-source") ? `source-${index}-canvas` : "plot-canvas";
     window.ChartDataStore[canvasId] = { allXColumn, allYColumnOrArray, labelOrLabels, unit, index };
 
     const appendHTML = (html) => {
@@ -283,7 +283,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         }
     };
 
-    if (getBtnChecked("split-sensor")) {
+    if (getBtnChecked("split-source")) {
         // One section per source
         const section = createChartSection({
             sectionId: `source-chart-${index}-section`,
@@ -910,7 +910,7 @@ function findYDimension(allYValues, labels) {
         }
     } else {
         // Original logic for non-equal Y values
-        if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-sensor")) {
+        if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-source")) {
             yMin = Math.min(Math.min(...validYValues), 0);
             yMax = 0.6;
         } else {

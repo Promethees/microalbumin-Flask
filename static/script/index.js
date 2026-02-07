@@ -339,10 +339,10 @@ function kineticsModeBehaviour() {
         'export-analysis',
         'range-display',
         'log-hid-data',
-        'sensor-options',
+        'source-options',
         'normalize-mode-section',
-        'select-sensor-to-export',
-        'split-sensor-section',
+        'select-source-to-export',
+        'split-source-section',
     ];
 
     $hidden(addHidden, true);
@@ -370,10 +370,10 @@ function pointModeBehaviour() {
         'set-exp-point-section',
         'range-display',
         'log-hid-data',
-        'sensor-options',
+        'source-options',
         'normalize-mode-section',
-        'select-sensor-to-export',
-        'split-sensor-section'
+        'select-source-to-export',
+        'split-source-section'
     ];
 
     $hidden(addHidden, true);
@@ -390,13 +390,13 @@ function calModeBehaviour() {
         'export-analysis',
         'range-display',
         'full-display-section',
-        'split-sensor-section',
+        'split-source-section',
         'log-hid-data',
         'window-size-section',
-        'sensor-options',
+        'source-options',
         'normalize-mode-section',
-        'select-sensor-to-export',
-        'sensor-options',
+        'select-source-to-export',
+        'source-options',
         'num-sources-section'
     ];
 
@@ -499,7 +499,7 @@ function drawMeasurementChart() {
 }
 
 function updateMultiSourceExportOptions() {
-    const selectElement = document.getElementById('exp-json-sensor');
+    const selectElement = document.getElementById('exp-json-source');
     // Optional: Clear previous options except "ALL"
     selectElement.innerHTML = '<option value="ALL">ALL</option>';
     for (let i = 1; i <= AppState.numSources; i++) {

@@ -3,7 +3,7 @@ document.getElementById("year").textContent = new Date().getFullYear();
 let serverAvailable = true;
 let logInterval, updateInterval, serverCheckInterval;
 
-document.getElementById('toggleContainer').addEventListener('click', function() {
+document.getElementById('toggleContainer').addEventListener('click', function () {
     if (document.body.classList.contains('light')) {
         document.body.classList.remove('light');
         document.body.classList.add('dark');
@@ -19,12 +19,12 @@ document.getElementById('toggleContainer').addEventListener('click', function() 
     }
 });
 
-document.getElementById('shutdown-btn').addEventListener('click', function() {
+document.getElementById('shutdown-btn').addEventListener('click', function () {
     terminateScript();
     const confirmationMessage = "{{ production_mode }}" === "True"
         ? 'WARNING: Production mode. This will terminate the server process and close the terminal. Continue?'
         : 'Are you sure you want to shutdown the server?';
-    
+
     if (confirm(confirmationMessage)) {
         // Determine the current mode
         fetch('/shutdown', {
@@ -34,21 +34,23 @@ document.getElementById('shutdown-btn').addEventListener('click', function() {
             },
             body: JSON.stringify({ mode: AppState.lightDisplay ? 'light' : 'dark' }) // Send mode to server
         })
-        .then(response => response.text())
-        .then(html => {
-            document.open();
-            document.write(html);
-            document.close();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            window.location.href = '/goodbye';
-        });
+            .then(response => response.text())
+            .then(html => {
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.location.href = '/goodbye';
+            });
     }
 });
 
-document.getElementById('filter-source').addEventListener('change', function() {
+document.getElementById('filter-source').addEventListener('change', function () {
     const numSourcesSelect = document.getElementById('num-sources-section');
+    const splitBySource = document.getElementById('split-source-section');
+    updateDirectory(true);
     deselectFile();
     deselectFile("#json-table");
     AppState.responseData = null;
@@ -72,7 +74,7 @@ document.getElementById('filter-source').addEventListener('change', function() {
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        const selectElement = document.getElementById('exp-json-sensor');
+        const selectElement = document.getElementById('exp-json-source');
         // Optional: Clear previous options except "ALL"
         selectElement.innerHTML = '<option value="ALL">ALL</option>';
         for (let i = 1; i <= AppState.numSources; i++) {
@@ -84,7 +86,7 @@ document.getElementById('filter-source').addEventListener('change', function() {
     }
 });
 
-document.getElementById('num-sources').addEventListener('change', function() {
+document.getElementById('num-sources').addEventListener('change', function () {
     AppState.numSources = parseInt(this.value);
     console.log("Number of sources set to:", AppState.numSources);
     const currentDir = document.getElementById("directory").value;
@@ -98,7 +100,7 @@ document.getElementById('num-sources').addEventListener('change', function() {
 const sameBaseDirCheckbox = document.getElementById("save-same-dir");
 const baseDirInput = document.getElementById("base-dir");
 
-sameBaseDirCheckbox.addEventListener("change", function() {
+sameBaseDirCheckbox.addEventListener("change", function () {
     // Enable if unchecked, disable if checked
     baseDirInput.disabled = this.checked;
 });
@@ -106,7 +108,7 @@ sameBaseDirCheckbox.addEventListener("change", function() {
 const sameDirCheckbox = document.getElementById("same-dir-as-data");
 const saveDirInput = document.getElementById("save-dir");
 
-sameDirCheckbox.addEventListener("change", function() {
+sameDirCheckbox.addEventListener("change", function () {
     // Enable if unchecked, disable if checked
     saveDirInput.disabled = this.checked;
 });
@@ -114,32 +116,32 @@ sameDirCheckbox.addEventListener("change", function() {
 document.getElementById('range-value-start').addEventListener('input', validateRangeInput);
 document.getElementById('range-value-end').addEventListener('input', validateRangeInput);
 
-document.getElementById('base-name').addEventListener('input', function() {
+document.getElementById('base-name').addEventListener('input', function () {
     validateFileName('base-name');
 });
-document.getElementById('save-file').addEventListener('input', function() {
+document.getElementById('save-file').addEventListener('input', function () {
     validateFileName('save-file');
 });
-document.getElementById('save-json-file').addEventListener('input', function() {
+document.getElementById('save-json-file').addEventListener('input', function () {
     validateFileName('save-json-file');
 });
 
-document.getElementById('base-dir').addEventListener('input', function() {
+document.getElementById('base-dir').addEventListener('input', function () {
     validatePathName('base-dir');
 });
-saveDirInput.addEventListener('input', function() {
+saveDirInput.addEventListener('input', function () {
     validatePathName('save-dir');
 });
 
 const expPoint = document.getElementById('exp-json-time-value');
 expPoint.addEventListener('change', updatePointEstimate);
-const expSensor = document.getElementById('exp-json-sensor');
-expSensor.addEventListener('change', updatePointEstimate);
+const expSource = document.getElementById('exp-json-source');
+expSource.addEventListener('change', updatePointEstimate);
 
 function isNullOrArrayOfNull(value) {
     if (value === null) return true; // case 1: value is null
     if (Array.isArray(value)) {
-    return value.every(item => item === null); // case 2: all items null
+        return value.every(item => item === null); // case 2: all items null
     }
     return false; // anything else
 }
@@ -151,7 +153,7 @@ function updatePointEstimate() {
 
     console.log("response Data is", AppState.responseData);
 
-    if (document.getElementById("exp-json-sensor").value === "ALL") {
+    if (document.getElementById("exp-json-source").value === "ALL") {
         AppState.globalEstimatedValue = [];
         for (let i = 1; i <= AppState.numSources; i++) {
             AppState.globalEstimatedValue.push(
@@ -159,7 +161,7 @@ function updatePointEstimate() {
             );
         }
     } else {
-        const sourceIndex = getValInt("exp-json-sensor");
+        const sourceIndex = getValInt("exp-json-source");
         AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
     }
 
@@ -171,15 +173,14 @@ function updatePointEstimate() {
     } else {
         estValError.innerHTML = '';
         if (Array.isArray(AppState.globalEstimatedValue)) {
-            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${
-                AppState.globalEstimatedValue
+            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${AppState.globalEstimatedValue
                     .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
                     .join(", ")
                 }`;
         } else {
             if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
                 estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
-            else 
+            else
                 estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
         }
     }
@@ -192,7 +193,7 @@ function validateRangeInput() {
 
     const startValue = parseFloat(startInput.value);
     const endValue = parseFloat(endInput.value);
-    
+
     // Reset state
     errorElement.innerHTML = '';
     startInput.classList.remove('invalid', 'valid');
@@ -215,7 +216,7 @@ function validateRangeInput() {
         endInput.classList.add('invalid');
         return false;
     }
-    
+
     startInput.classList.add('valid');
     endInput.classList.add('valid');
     return true;
@@ -225,43 +226,43 @@ function validateFileName(inputId) {
     const input = document.getElementById(inputId);
     const errorElement = document.getElementById(`${inputId}-error`);
     const fileName = input.value.trim();
-    
+
     // Reset state
     errorElement.innerHTML = '';
     input.classList.remove('invalid', 'valid');
-    
+
     const illegalChars = /[\\/:*?"<>|\0]/g;
     if (illegalChars.test(fileName)) {
         errorElement.innerHTML = 'File name cannot contain: \\ / : * ? " < > |<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
     if (reservedNames.test(fileName)) {
         errorElement.innerHTML = 'Reserved system name (CON, PRN, AUX, etc.)<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     if (fileName !== input.value) {
         errorElement.innerHTML = 'No leading/trailing spaces<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     if (fileName.startsWith('.') || fileName.endsWith('.')) {
         errorElement.innerHTML = 'Cannot start/end with period<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     if (fileName.length > 255) {
         errorElement.innerHTML = 'Max 255 characters<br/>';
         input.classList.add('invalid');
         return false;
     }
-    
+
     input.classList.add('valid');
     return true;
 }
@@ -270,11 +271,11 @@ function validatePathName(inputId) {
     const input = document.getElementById(inputId);
     const errorElement = document.getElementById(`${inputId}-error`);
     const path = input.value.trim();
-    
+
     // Reset state
     errorElement.innerHTML = '';
     input.classList.remove('invalid', 'valid');
-    
+
     if (path === '') {
         errorElement.innerHTML = 'Path cannot be empty<br/>';
         input.classList.add('invalid');
@@ -287,17 +288,17 @@ function validatePathName(inputId) {
         // Windows path
         invalidChars = /[*?"<>|\0]/g;
         if (/:/.test(path) && !/^[a-zA-Z]:\\/.test(path)) {
-        errorElement.innerHTML = 'Windows paths must start with drive letter (e.g., C:\\)<br/>';
-        input.classList.add('invalid');
-        return false;
+            errorElement.innerHTML = 'Windows paths must start with drive letter (e.g., C:\\)<br/>';
+            input.classList.add('invalid');
+            return false;
         }
     } else {
         // Unix-like path
         invalidChars = /[\0]/g;
         if (!path.startsWith('/')) {
-        errorElement.innerHTML = 'Unix paths must start with /<br/>';
-        input.classList.add('invalid');
-        return false;
+            errorElement.innerHTML = 'Unix paths must start with /<br/>';
+            input.classList.add('invalid');
+            return false;
         }
     }
 
@@ -331,7 +332,7 @@ function validatePathName(inputId) {
 
     input.classList.add('valid');
     return true;
-    }
+}
 
 function validateTimeoutInterval() {
     const infTimeout = document.getElementById('inf-timeout');
@@ -404,7 +405,7 @@ function validateTimeoutInterval() {
         interval.classList.add('invalid');
         return false;
     }
-    
+
     timeout.classList.add('valid');
     interval.classList.add('valid');
     return true;
@@ -427,52 +428,52 @@ function validateWindowSize(window_size) {
 }
 
 // Event listener to toggle timeout input disabled state
-document.getElementById('inf-timeout').addEventListener('change', function() {
+document.getElementById('inf-timeout').addEventListener('change', function () {
     document.getElementById('timeout').value = '';
     document.getElementById('timeout').disabled = this.checked;
-    document.getElementById('timeout-unit').disabled = this.checked;                
+    document.getElementById('timeout-unit').disabled = this.checked;
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-        const mainDirSection = document.querySelector("#main-content .section"); // Main Directory section
-        const topLeftDirSection = document.querySelector("#top-left-dir-section");  // Top-left Directory section
+    const mainDirSection = document.querySelector("#main-content .section"); // Main Directory section
+    const topLeftDirSection = document.querySelector("#top-left-dir-section");  // Top-left Directory section
 
-        const mainDirInput = document.getElementById("directory");
-        const topDirInput = document.getElementById("directory-top");
+    const mainDirInput = document.getElementById("directory");
+    const topDirInput = document.getElementById("directory-top");
 
-        const parentDirMain = document.getElementById("parent-dir");
-        const childDirMain = document.getElementById("child-dirs");
-        const parentDirTop = document.getElementById("parent-dir-top");
-        const childDirTop = document.getElementById("child-dirs-top");
+    const parentDirMain = document.getElementById("parent-dir");
+    const childDirMain = document.getElementById("child-dirs");
+    const parentDirTop = document.getElementById("parent-dir-top");
+    const childDirTop = document.getElementById("child-dirs-top");
 
-        // Hide top-left on load
-        topLeftDirSection.style.display = "none";
+    // Hide top-left on load
+    topLeftDirSection.style.display = "none";
 
-        // Keep inputs synced both ways
-        mainDirInput.addEventListener("input", () => {
-            topDirInput.value = mainDirInput.value;
-        });
-        topDirInput.addEventListener("input", () => {
-            mainDirInput.value = topDirInput.value;
-        });
-
-        // Observer to toggle top-left visibility
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Main visible → hide top-left
-                    topLeftDirSection.style.display = "none";
-                } else {
-                    // Main scrolled away → show top-left
-                    topLeftDirSection.style.display = "block";
-                    parentDirTop.innerHTML = parentDirMain.innerHTML;
-                    childDirTop.innerHTML = childDirMain.innerHTML;
-                }
-            });
-        }, { threshold: 0 });
-
-        observer.observe(mainDirSection);
+    // Keep inputs synced both ways
+    mainDirInput.addEventListener("input", () => {
+        topDirInput.value = mainDirInput.value;
     });
+    topDirInput.addEventListener("input", () => {
+        mainDirInput.value = topDirInput.value;
+    });
+
+    // Observer to toggle top-left visibility
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Main visible → hide top-left
+                topLeftDirSection.style.display = "none";
+            } else {
+                // Main scrolled away → show top-left
+                topLeftDirSection.style.display = "block";
+                parentDirTop.innerHTML = parentDirMain.innerHTML;
+                childDirTop.innerHTML = childDirMain.innerHTML;
+            }
+        });
+    }, { threshold: 0 });
+
+    observer.observe(mainDirSection);
+});
 
 const modeDiv = document.getElementById('measurement-mode');
 const modeButtons = modeDiv.querySelectorAll('button[data-mode]');
