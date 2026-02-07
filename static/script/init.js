@@ -21,7 +21,7 @@ document.getElementById('toggleContainer').addEventListener('click', function ()
 
 document.getElementById('filter-source').addEventListener('change', function () {
     const numSourcesSelect = document.getElementById('num-sources-section');
-    const splitBySensor = document.getElementById('split-sensor-section');
+    const splitBySource = document.getElementById('split-source-section');
     updateDirectory(true);
     AppState.responseData = null;
     AppState.globalAnalysis = null;
@@ -46,7 +46,7 @@ document.getElementById('filter-source').addEventListener('change', function () 
     }
 
     if (AppState.currentMeasurementMode !== "calibrate") {
-        const selectElement = document.getElementById('exp-json-sensor');
+        const selectElement = document.getElementById('exp-json-source');
         // Optional: Clear previous options except "ALL"
         selectElement.innerHTML = '<option value="ALL">ALL</option>';
         for (let i = 1; i <= AppState.numSources; i++) {
@@ -78,8 +78,8 @@ document.getElementById('save-json-file').addEventListener('input', function () 
 
 const expPoint = document.getElementById('exp-json-time-value');
 expPoint.addEventListener('change', updatePointEstimate);
-const expSensor = document.getElementById('exp-json-sensor');
-expSensor.addEventListener('change', updatePointEstimate);
+const expSource = document.getElementById('exp-json-source');
+expSource.addEventListener('change', updatePointEstimate);
 
 function isNullOrArrayOfNull(value) {
     if (value === null) return true; // case 1: value is null
@@ -96,7 +96,7 @@ function updatePointEstimate() {
 
     console.log("response Data is", AppState.responseData);
 
-    if (document.getElementById("exp-json-sensor").value === "ALL") {
+    if (document.getElementById("exp-json-source").value === "ALL") {
         AppState.globalEstimatedValue = [];
         for (let i = 1; i <= AppState.numSources; i++) {
             AppState.globalEstimatedValue.push(
@@ -104,7 +104,7 @@ function updatePointEstimate() {
             );
         }
     } else {
-        const sourceIndex = getValInt("exp-json-sensor");
+        const sourceIndex = getValInt("exp-json-source");
         AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
     }
 

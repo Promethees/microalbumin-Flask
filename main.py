@@ -1024,9 +1024,9 @@ def export_cal_coefs():
     thres_val = float(data.get('threshold_val', 0))
     regress_algo = data.get('regress_algo', 'linear')
     # if is_multi_source:
-    #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
+    #     export_path = os.path.join(json_root_path, f"{num_sources}_sources", cal_mode)
     # else:
-    #     export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
+    #     export_path = os.path.join(json_root_path, "single_source", cal_mode)
     try: 
         user_data = get_user_data()
         if cal_mode not in user_data['json']:
