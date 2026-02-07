@@ -100,6 +100,14 @@ function checkboxHtmlWithID(
         .join("");
 }
 
+function adjustInputWidth(el) {
+    if (!el) return;
+    const minWidth = 6; // em
+    const val = el.value || "";
+    // Approximate character width with a safety margin
+    el.style.width = Math.max(minWidth, val.length + 5) + "ch";
+}
+
 function handleConValueReadChange(canvasId, index, unit) {
     const input = document.getElementById(`con-value-read-source-${index}`);
     const value = input ? input.value : '';
@@ -223,8 +231,9 @@ function createChartSection({
                     <input type="number" id="con-value-read-source-${index}" 
                         value="${previousValue}"
                         onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')" 
+                        oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
-                        min=0 style="width: 5em;"> </input> ng/µL
+                        min=0 style="width: ${Math.max(5, previousValue.length + 2)}ch;"> </input> ng/µL
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
@@ -365,7 +374,10 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
         html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
         html += `
             <div id="concentration-reader-section-source-${i}">
-                Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" value="" min=0 style="width: 5em;"> </input> ng/µL
+                Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" 
+                    value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}" 
+                    oninput="adjustInputWidth(this)"
+                    min=0 style="width: ${Math.max(5, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input> ng/µL
             </div>
             <div id="derived-concentration-section-source-${i}" class="hidden">
                 Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
