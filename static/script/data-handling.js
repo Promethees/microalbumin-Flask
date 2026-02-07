@@ -32,7 +32,7 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
 
         $id("copy-json-btn").disabled = false;
         $id("download-json-btn").disabled = false;
-        $hidden(["right-deselect-btn", "json-display"], false);
+        $hidden(["right-deselect-btn", "json-display", "top-right"], false);
 
         fetchJSONContent(AppState.currentJSON, (JSON_content) => {
             const display = $id("json-display");
@@ -412,7 +412,7 @@ function deselectFile(tableSelector = "#file-table") {
         AppState.currentJSON = null;
         AppState.currentJSONcontent = null;
 
-        $hidden(["json-display"], true);
+        $hidden(["json-display", "top-right"], true);
         $text("json-display", "");
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
 
