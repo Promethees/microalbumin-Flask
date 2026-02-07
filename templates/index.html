@@ -523,16 +523,17 @@
                         </label>
                         <span id="save-dir-error" class="error"></span>
                     </div>
-                    <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data
-                    file</input>
-                    <div>
+                    <div class="export-row">
+                        <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data
+                        file</input>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-file"
-                            placeholder="Enter file name to save analysis data to(e.g., results)" style="width: 50%">
+                            placeholder="Enter calibrate file name to save analysis data to (e.g., results)"
+                            style="width: 70%">
                         <span id="save-file-error" class="error"></span>
                     </div>
-                    <button id="export-btn" onclick="exportData()">Export Data</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)">Browse Saving
+                    <button id="export-btn" onclick="exportData()">Export Data to Calibrate</button>
+                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)">Browse Saving
                         Location</button>
                     <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
                         Exporting data will automatically convert the kinetics quantities to per <span
@@ -543,8 +544,7 @@
                     <div>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-json-file"
-                            placeholder="Enter file name to regressed coefficients to(e.g., calibration)"
-                            style="width: 10em">
+                            placeholder="Enter json file name to save coefficients to" style="width: 50%">
                         <span id="save-json-file-error" class="error"></span>
                         <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
                         <br />
