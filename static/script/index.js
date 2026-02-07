@@ -289,6 +289,14 @@ $(document).ready(function() {
     // bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
     // bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
 
+    // Initialize dynamic widths for range inputs
+    ['range-value-start', 'range-value-end'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && typeof adjustInputWidth === 'function') {
+            adjustInputWidth(el);
+        }
+    });
+
     const select = document.getElementById("exp-json-regress-algo");
     const selected = select.value;
     const desc = descriptions[selected];  

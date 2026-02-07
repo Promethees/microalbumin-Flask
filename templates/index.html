@@ -474,10 +474,12 @@
                     <h3>{{ range_input.title }}</h3>
                     From
                     <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
-                        onchange="toggleMode()" style="width: 5em;">
+                        onchange="toggleMode()" oninput="adjustInputWidth(this)"
+                        style="width: {{ [6, range_input.value_start|string|length + 5]|max }}ch;">
                     To
                     <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
-                        onchange="toggleMode()" style="width: 5em;">
+                        onchange="toggleMode()" oninput="adjustInputWidth(this)"
+                        style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
                     <select id="time-unit" onchange="toggleMode()">
                         {% for unit in range_input.units %}
                         <option value="{{ unit }}">{{ unit }}</option>
