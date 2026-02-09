@@ -25,12 +25,12 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
 
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
-    } 
+    }
     else if (tableSelector === "#json-table") {
         AppState.currentJSON = fileName;
 
         $id("copy-json-btn").disabled = false;
-        $hidden(["right-deselect-btn"], false);
+        $hidden(["right-deselect-btn", "json-display", "top-right"], false);
 
         fetchJSON(AppState.currentJSON, (JSON_content) => {
             const display = $id("json-display");
@@ -192,7 +192,7 @@ function copyFile(tableSelector = "#file-table") {
             mode: AppState.currentMeasurementMode,
             tabletype: tableSelector
         },
-        success: function(response) {
+        success: function (response) {
             if (response.status === 'success') {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
@@ -227,7 +227,7 @@ function copyFile(tableSelector = "#file-table") {
                 });
             }
         },
-        error: function(xhr, status, error) {
+        error: function (xhr, status, error) {
             // Handle AJAX errors (network/server issues)
             let message;
             if (xhr.status === 423) { // HTTPStatus.LOCKED
@@ -252,7 +252,7 @@ function copyFile(tableSelector = "#file-table") {
     });
 }
 
-function processDataDisplay(fileName, jsonFileContent=null) {
+function processDataDisplay(fileName, jsonFileContent = null) {
     // Proceed with fetching and displaying data
     fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
@@ -327,10 +327,10 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                     deselectFile(tableSelector);
                 }
 
-                $.post('/delete_file', { 
-                    filename: fileName, 
-                    path: document.getElementById("directory").value, 
-                    tabletype: tableSelector 
+                $.post('/delete_file', {
+                    filename: fileName,
+                    path: document.getElementById("directory").value,
+                    tabletype: tableSelector
                 }, handleResponse).fail(handleError);
             } else if (tableSelector === "#json-table") {
                 if (AppState.currentJSON === fileName) {
@@ -339,14 +339,14 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
                 console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
 
-            $.post('/delete_file', { 
-                filename: fileName, 
-                mode: AppState.currentMeasurementMode, 
-                tabletype: tableSelector,
-                numSources: AppState.numSources
-            }, handleResponse).fail(handleError);
-        }
-    };
+                $.post('/delete_file', {
+                    filename: fileName,
+                    mode: AppState.currentMeasurementMode,
+                    tabletype: tableSelector,
+                    numSources: AppState.numSources
+                }, handleResponse).fail(handleError);
+            }
+        };
 
         const handleResponse = (response) => {
             if (response.status === 'success') {
@@ -359,7 +359,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                     text: response.message,
                     icon: 'success',
                     timer: 2000,
-                showConfirmButton: false
+                    showConfirmButton: false
                 });
             } else {
                 Swal.fire({
@@ -420,10 +420,10 @@ function settingDerivedCon() {
     let derived_con_text = null;
     derived_section = [];
     derived_con_text = [];
-        for (let i = 0; i < AppState.numSources; i++) {
-            derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
-            derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
-        }
+    for (let i = 0; i < AppState.numSources; i++) {
+        derived_section.push(document.getElementById(`derived-concentration-section-source-${i}`));
+        derived_con_text.push(document.getElementById(`der-con-value-source-${i}`));
+    }
     return {
         derived_section: derived_section,
         derived_con_text: derived_con_text
@@ -470,7 +470,7 @@ const fetchData = async (filename, jsonFile) => {
 
 const fetchDataFromServer = async (filename) => {
     const directory = document.getElementById("directory").value;
-    
+
     return await $.get('/get_data', {
         file: `${directory}${DELIMITER}${filename}`
     }).fail((xhr, status, errorThrown) => {
@@ -481,12 +481,12 @@ const fetchDataFromServer = async (filename) => {
         enhancedError.errorThrown = errorThrown;
         enhancedError.filename = filename;
         enhancedError.directory = directory;
-        
+
         throw enhancedError;
     });
 };
 
-function processResponse (response, jsonFile) {
+function processResponse(response, jsonFile) {
     if (!response.data || response.data.length === 0) {
         handleEmptyData();
         return null;
@@ -511,7 +511,7 @@ function processResponse (response, jsonFile) {
     return response;
 };
 
-function handleNonCalibrationMode(jsonFile) {    
+function handleNonCalibrationMode(jsonFile) {
     const derivedSettings = settingDerivedCon();
     if (derivedSettings) {
         updateDerivedSections(derivedSettings);
@@ -551,8 +551,8 @@ function calculateKineticValue(quantity) {
     };
 
     const val = getKineticValue(quantity);
-    return val !== null && kineticCalculations[quantity] 
-        ? kineticCalculations[quantity](val) 
+    return val !== null && kineticCalculations[quantity]
+        ? kineticCalculations[quantity](val)
         : null;
 };
 
@@ -583,45 +583,45 @@ function updateSingleConcentration(element, value, fitType, coef) {
 function handleEmptyData() {
     $hidden(["plot-canvas"]);
     const plotAnalysis = document.getElementById("plot-analysis");
-    if (plotAnalysis )
-        plotAnalysis.innerHTML = 
+    if (plotAnalysis)
+        plotAnalysis.innerHTML =
             `<span style="color: red;">No data available</span>`;
 };
 
 function handleFetchError(error) {
     console.group('🚨 Fetch Error Details');
     console.error("Failed to fetch data:", error.message);
-    
+
     if (error.xhr) {
         console.log("📡 XHR Object:", error.xhr);
         console.log("📊 Status:", error.status);
         console.log("❌ Error Thrown:", error.errorThrown);
-        
+
         // Log response text if available
         if (error.xhr.responseText) {
             console.log("📄 Response Text:", error.xhr.responseText);
         }
-        
+
         // Log response headers if available
         if (error.xhr.getAllResponseHeaders) {
             console.log("📋 Response Headers:", error.xhr.getAllResponseHeaders());
         }
-        
+
         // Log status code and text
         console.log("🔢 Status Code:", error.xhr.status);
         console.log("📝 Status Text:", error.xhr.statusText);
     }
-    
+
     if (error.filename) {
         console.log("📁 Requested Filename:", error.filename);
     }
-    
+
     if (error.directory) {
         console.log("📂 Directory:", error.directory);
     }
-    
+
     console.groupEnd();
-    
+
     // You can also add more specific error handling based on status
     if (error.status === 'error' && error.errorThrown) {
         console.warn("⚠️ Possible network or server error:", error.errorThrown);
@@ -644,7 +644,7 @@ function getKineticValue(property) {
 function updateRefCalPoint(jsonFile) {
     const jsonTimePoint = jsonFile["time"];
     const jsonTimeUnit = jsonFile["time-unit"];
-    
+
     // Convert time units
     const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(getTimeUnitValue());
     AppState.refCalPoint = jsonTimePoint * conversionFactor;
@@ -696,7 +696,7 @@ function updatePlotBasedOnMode(jsonFile) {
             console.log("Give me uniqueTimePoints ", uniqueTimePoints);
             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
             const timePoint = document.getElementById("regressed-time-point").value;
-            const processingData = AppState.responseData.filter(row => 
+            const processingData = AppState.responseData.filter(row =>
                 !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
             );
             AppState.exp_json_content = updatePlot(processingData, "Concentration", "Value");
@@ -707,7 +707,7 @@ function updatePlotBasedOnMode(jsonFile) {
             updateRefCalPoint(jsonFile);
             document.getElementById("add-json-section").textContent = "";
         }
-        
+
         const values = Array.from(
             { length: AppState.numSources },
             (_, i) => `Value:${i + 1}`
@@ -752,7 +752,7 @@ function toggleMode() {
         <p>${desc.math}</p>
         <p>${desc.text}</p>
       `;
-      MathJax.typeset();
+    MathJax.typeset();
     if (calDiv.getAttribute('data-value') === "kinetics") {
         const sel_quant = document.querySelector("#regressed-quantity");
         document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
@@ -1065,21 +1065,21 @@ function sendExportPayload(payload, isBatch) {
         type: 'POST',
         contentType: 'application/json',
         data: JSON.stringify(payload),
-        success: function(response) {
+        success: function (response) {
             if (response.status === 'success') {
                 alert(`Success: ${response.message}!`);
             } else {
                 alert(`Error: ${response.message}`);
             }
         },
-        error: function(jqXHR, textStatus, errorThrown) {
+        error: function (jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
             alert("Error exporting data");
         }
     });
 }
 
-function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=true) {
+function sendExportData(saveDir, saveFile, analysisData, concentration, newFile = true) {
     console.log("analysisData is ", analysisData);
     if (analysisData) {
         const data = {
@@ -1090,7 +1090,7 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=
             sat: (analysisData.saturationValue === "--" || !analysisData.saturationValue) ? "NONE" : analysisData.saturationValue,
             timeSat: (analysisData.timeToSaturation === "--" || !analysisData.timeToSaturation) ? "NONE" : analysisData.timeToSaturation,
             con: concentration,
-            measUnit: analysisData.measUnit, 
+            measUnit: analysisData.measUnit,
             newFile: newFile,
             measMode: AppState.currentMeasurementMode,
             meas: analysisData.measurement,
@@ -1102,14 +1102,14 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile=
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(data),
-            success: function(response) {
+            success: function (response) {
                 if (response.status === 'success') {
                     alert(`Success: ${response.message}!`);
                 } else {
                     alert(`Error: ${response.message}`);
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
+            error: function (jqXHR, textStatus, errorThrown) {
                 console.log("AJAX error:", textStatus, errorThrown);
                 alert("Error exporting data");
             }
@@ -1123,9 +1123,9 @@ function exportJSONCoef() {
     if (!validateFileName("save-json-file")) {
         return; // Stop if validation fails
     }
-    
+
     const selectElement = document.getElementById('regressed-quantity');
-    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)){
+    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)) {
         alert("Please set time point to regress data from");
         return null;
     } else {
@@ -1147,14 +1147,14 @@ function exportJSONCoef() {
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify(data),
-                success: function(response) {
+                success: function (response) {
                     if (response.status === 'success') {
                         alert(`Success: ${response.message}!`);
                     } else {
                         alert(`Error: ${response.message}`);
                     }
                 },
-                error: function(jqXHR, textStatus, errorThrown) {
+                error: function (jqXHR, textStatus, errorThrown) {
                     console.log("AJAX error:", textStatus, errorThrown);
                     alert("Error exporting data");
                 }
