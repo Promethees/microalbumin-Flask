@@ -11,9 +11,13 @@ function initDefaultState() {
     ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
     });
 
     ['terminate-script-btn', 'go-to-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('blinking');
         const el = document.getElementById(id);
         if (el) el.classList.remove('blinking');
     });
@@ -276,6 +280,12 @@ window.addEventListener('load', function () {
             document.querySelector("#selected-quantity").textContent = "Endpoint Value";
         }
     }
+
+    // Re-apply button text shrinking on window resize
+    window.addEventListener('resize', () => {
+        clearTimeout(window.resizeTimer);
+        window.resizeTimer = setTimeout(() => shrinkAllButtonsToFit(), 250);
+    });
 });
 
 function kineticsModeBehaviour() {
@@ -411,74 +421,76 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
         })
     }
     if (changeToCalibrate) {
-        selectButton(modeButtons[2], modeButtons, modeDiv);
-        AppState.currentMeasurementMode = "calibrate";
+        if (changeToCalibrate) {
+            selectButton(modeButtons[2], modeButtons, modeDiv);
+            AppState.currentMeasurementMode = "calibrate";
+            AppState.currentFile = null;
+            calModeBehaviour();
+        }
+
+        try {
+            const csvResponse = await fetchJSON('/get_csv?request=true');
+            console.log("give me response files ", csvResponse.files);
+            updateFileTable(csvResponse.files, deselect);
+        } catch (error) {
+            console.error("Error fetching CSV files:", error);
+            $showText("error-message", "Error fetching CSV files")
+        }
+
+        try {
+            const jsonResponse = await fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`);
+            updateJSONTable(jsonResponse.files);
+        } catch (error) {
+            console.error("Error fetching JSON files:", error);
+            $showText("error-message", "Error fetching JSON files")
+        }
+    }
+
+    function drawMeasurementChart() {
+        fetchData(AppState.currentFile, AppState.currentJSONcontent);
+        document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
+        document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
+    }
+
+    function updateMultiSourceExportOptions() {
+        const selectElement = document.getElementById('exp-json-source');
+        // Optional: Clear previous options except "ALL"
+        selectElement.innerHTML = '<option value="ALL">ALL</option>';
+        for (let i = 1; i <= AppState.numSources; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            selectElement.appendChild(option);
+        }
+    }
+
+    function switchingModes(mode) {
+        AppState.currentMeasurementMode = mode;
+        updateDirectory(true);
+        AppState.currentJSON = null;
+        AppState.currentJSONcontent = null;
         AppState.currentFile = null;
-        calModeBehaviour();
+        document.getElementById("json-display").textContent = "";
+        $hidden(["right-deselect-btn"]);
+
+        if (mode === "kinetics") {
+            kineticsModeBehaviour();
+        } else if (mode === "point") {
+            pointModeBehaviour();
+        } else {
+            calModeBehaviour();
+        }
+
+        if (AppState.currentMeasurementMode !== "calibrate") {
+            updateMultiSourceExportOptions();
+        }
+    };
+
+    function switchingCalModes(mode) {
+        if (mode === "point") {
+            calPointBehaviour();
+        } else {
+            calKineticsBehaviour();
+        }
+        updateDirectory(true);
     }
-
-    try {
-        const csvResponse = await fetchJSON('/get_csv?request=true');
-        console.log("give me response files ", csvResponse.files);
-        updateFileTable(csvResponse.files, deselect);
-    } catch (error) {
-        console.error("Error fetching CSV files:", error);
-        $showText("error-message", "Error fetching CSV files")
-    }
-
-    try {
-        const jsonResponse = await fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`);
-        updateJSONTable(jsonResponse.files);
-    } catch (error) {
-        console.error("Error fetching JSON files:", error);
-        $showText("error-message", "Error fetching JSON files")
-    }
-}
-
-function drawMeasurementChart() {
-    fetchData(AppState.currentFile, AppState.currentJSONcontent);
-    document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
-}
-
-function updateMultiSourceExportOptions() {
-    const selectElement = document.getElementById('exp-json-source');
-    // Optional: Clear previous options except "ALL"
-    selectElement.innerHTML = '<option value="ALL">ALL</option>';
-    for (let i = 1; i <= AppState.numSources; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = i;
-        selectElement.appendChild(option);
-    }
-}
-
-function switchingModes(mode) {
-    AppState.currentMeasurementMode = mode;
-    updateDirectory(true);
-    AppState.currentJSON = null;
-    AppState.currentJSONcontent = null;
-    AppState.currentFile = null;
-    document.getElementById("json-display").textContent = "";
-    $hidden(["right-deselect-btn"]);
-
-    if (mode === "kinetics") {
-        kineticsModeBehaviour();
-    } else if (mode === "point") {
-        pointModeBehaviour();
-    } else {
-        calModeBehaviour();
-    }
-
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        updateMultiSourceExportOptions();
-    }
-};
-
-function switchingCalModes(mode) {
-    if (mode === "point") {
-        calPointBehaviour();
-    } else {
-        calKineticsBehaviour();
-    }
-    updateDirectory(true);
-}

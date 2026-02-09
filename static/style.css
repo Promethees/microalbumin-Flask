@@ -162,7 +162,7 @@ body.light {
 }
 
 button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
-    padding: 10px 18px;
+    padding: 8px 10px;
     font-family: 'Outfit', sans-serif;
     font-weight: 600;
     font-size: 0.95rem;
@@ -178,6 +178,9 @@ button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
     background: #ffffff;
     color: var(--text-color-light);
     border: 1px solid #e5e7eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
@@ -244,7 +247,7 @@ input[type="text"],
 input[type="number"],
 textarea {
     width: 100%;
-    padding: 10px 14px;
+    padding: 6px 8px;
     font-family: 'Inter', sans-serif;
     font-size: 0.95rem;
     border-radius: 10px;
@@ -257,7 +260,7 @@ textarea {
 select {
     width: auto;
     min-width: 150px;
-    padding: 10px 14px;
+    padding: 6px 8px;
     font-family: 'Inter', sans-serif;
     font-size: 0.95rem;
     border-radius: 10px;
