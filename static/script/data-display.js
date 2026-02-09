@@ -233,7 +233,7 @@ function createChartSection({
                         onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')" 
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
-                        min=0 style="width: ${Math.max(5, previousValue.length + 2)}ch;"> </input> ng/µL
+                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input> ng/µL
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
@@ -377,7 +377,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" 
                     value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}" 
                     oninput="adjustInputWidth(this)"
-                    min=0 style="width: ${Math.max(5, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input> ng/µL
+                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input> ng/µL
             </div>
             <div id="derived-concentration-section-source-${i}" class="hidden">
                 Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
