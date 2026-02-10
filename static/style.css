@@ -94,8 +94,8 @@ body {
 }
 
 .section {
-    margin-bottom: 24px;
-    padding: 20px;
+    margin-bottom: 12px;
+    padding: 0px 15px 15px 15px;
     background: var(--surface-light);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -495,7 +495,16 @@ body.dark .button-group button.selected {
     top: 20px;
     left: 1.3vw;
     max-width: 23.5vw;
+    max-height: calc(100vh - 40px);
     box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-light) transparent;
+}
+
+body.dark .top-left {
+    scrollbar-color: var(--scrollbar-thumb-dark) transparent;
 }
 
 /* Drive Section with Scroll */
