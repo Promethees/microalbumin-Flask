@@ -11,13 +11,9 @@ function initDefaultState() {
     ].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
-        const el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
     });
 
     ['terminate-script-btn', 'go-to-btn'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove('blinking');
         const el = document.getElementById(id);
         if (el) el.classList.remove('blinking');
     });
