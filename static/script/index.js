@@ -441,52 +441,53 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
             $showText("error-message", "Error fetching JSON files")
         }
     }
+}
 
-    function drawMeasurementChart() {
-        fetchData(AppState.currentFile, AppState.currentJSONcontent);
-        document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
-        document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
+function drawMeasurementChart() {
+    fetchData(AppState.currentFile, AppState.currentJSONcontent);
+    document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
+    document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
+}
+
+function updateMultiSourceExportOptions() {
+    const selectElement = document.getElementById('exp-json-source');
+    // Optional: Clear previous options except "ALL"
+    selectElement.innerHTML = '<option value="ALL">ALL</option>';
+    for (let i = 1; i <= AppState.numSources; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = i;
+        selectElement.appendChild(option);
+    }
+}
+
+function switchingModes(mode) {
+    AppState.currentMeasurementMode = mode;
+    updateDirectory(true);
+    AppState.currentJSON = null;
+    AppState.currentJSONcontent = null;
+    AppState.currentFile = null;
+    document.getElementById("json-display").textContent = "";
+    $hidden(["right-deselect-btn"]);
+
+    if (mode === "kinetics") {
+        kineticsModeBehaviour();
+    } else if (mode === "point") {
+        pointModeBehaviour();
+    } else {
+        calModeBehaviour();
     }
 
-    function updateMultiSourceExportOptions() {
-        const selectElement = document.getElementById('exp-json-source');
-        // Optional: Clear previous options except "ALL"
-        selectElement.innerHTML = '<option value="ALL">ALL</option>';
-        for (let i = 1; i <= AppState.numSources; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            selectElement.appendChild(option);
-        }
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        updateMultiSourceExportOptions();
     }
+};
 
-    function switchingModes(mode) {
-        AppState.currentMeasurementMode = mode;
-        updateDirectory(true);
-        AppState.currentJSON = null;
-        AppState.currentJSONcontent = null;
-        AppState.currentFile = null;
-        document.getElementById("json-display").textContent = "";
-        $hidden(["right-deselect-btn"]);
-
-        if (mode === "kinetics") {
-            kineticsModeBehaviour();
-        } else if (mode === "point") {
-            pointModeBehaviour();
-        } else {
-            calModeBehaviour();
-        }
-
-        if (AppState.currentMeasurementMode !== "calibrate") {
-            updateMultiSourceExportOptions();
-        }
-    };
-
-    function switchingCalModes(mode) {
-        if (mode === "point") {
-            calPointBehaviour();
-        } else {
-            calKineticsBehaviour();
-        }
-        updateDirectory(true);
+function switchingCalModes(mode) {
+    if (mode === "point") {
+        calPointBehaviour();
+    } else {
+        calKineticsBehaviour();
     }
+    updateDirectory(true);
+}
