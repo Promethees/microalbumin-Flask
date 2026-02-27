@@ -351,14 +351,6 @@
                 <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live data</button>
                 <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
             </div>
-        </div>
-        <div class="top-right hidden" id="top-right">
-            <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
-                class="hidden scrollbar-style"></div>
-            <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
-                style="cursor: pointer;">Deselect</button>
-        </div>
-        <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>
                 <div id="file-table-container" class="scrollbar-style">
@@ -549,46 +541,52 @@
                     </div>
                 </div>
             </div>
+            <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center;">
+                © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
+            </footer>
         </div>
-        <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center;">
-            © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
-        </footer>
-    </div>
-    <script>
-        // Get top-left height as reference to reflect in top-right
-        function alignTopWithReference(refId = 'shutdown-btn', targetId = 'top-right') {
-            const ref = document.getElementById(refId);
-            const target = document.getElementById(targetId);
-            if (!ref || !target) return;
+        <div class="top-right hidden" id="top-right">
+            <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
+                class="hidden scrollbar-style"></div>
+            <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
+                style="cursor: pointer;">Deselect</button>
+        </div>
 
-            const rect = ref.getBoundingClientRect();
-            const offsetTop = rect.bottom + rect.height; // Get absolute top position relative to page
-            console.log('Offset top is ', offsetTop);
-            // Update CSS variable dynamically
-            target.style.setProperty('--dynamic-top', `${offsetTop}px`);
-        }
-        // const rootPath = JSON.parse('{{ directory | tojson }}');
-        const rootPath = {{ directory | tojson | safe}};
-        const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
-        const temp_quantity_input = {{ quantity_input | tojson | safe}};
+        <script>
+            // Get top-left height as reference to reflect in top-right
+            function alignTopWithReference(refId = 'shutdown-btn', targetId = 'top-right') {
+                const ref = document.getElementById(refId);
+                const target = document.getElementById(targetId);
+                if (!ref || !target) return;
 
-        function getNativePath(...paths) {
-            const isWindows = navigator.userAgent.includes('Windows');
-            const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
-            return isWindows ? joined.replace(/\//g, '\\') : joined;
-        }
-    </script>
-    <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/init.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/index.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
-    <script src="{{ url_for('static', filename='script/user-guide.js') }}"></script>
+                const rect = ref.getBoundingClientRect();
+                const offsetTop = rect.bottom + rect.height; // Get absolute top position relative to page
+                console.log('Offset top is ', offsetTop);
+                // Update CSS variable dynamically
+                target.style.setProperty('--dynamic-top', `${offsetTop}px`);
+            }
+            // const rootPath = JSON.parse('{{ directory | tojson }}');
+            const rootPath = {{ directory | tojson | safe}};
+            const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+            const temp_quantity_input = {{ quantity_input | tojson | safe}};
+
+            function getNativePath(...paths) {
+                const isWindows = navigator.userAgent.includes('Windows');
+                const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
+                return isWindows ? joined.replace(/\//g, '\\') : joined;
+            }
+        </script>
+        <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/init.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/index.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/user-guide.js') }}"></script>
 </body>
 
 </html>
