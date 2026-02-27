@@ -1,17 +1,19 @@
 window.ChartDataStore = window.ChartDataStore || {};
 
 function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
-    // Save current scroll position
+    // Save current scroll positions
     const chartContainer = document.getElementById('chart-container');
-    const scrollPosition = chartContainer.scrollTop;
+    const containerScrollPosition = chartContainer.scrollTop;
+    const windowScrollPosition = window.scrollY;
 
     destroyCharts();
     while (chartContainer.firstChild) {
         chartContainer.removeChild(chartContainer.firstChild);
     }
 
-    // Restore scroll position
-    chartContainer.scrollTop = scrollPosition;
+    // Immediate partial restoration to minimize jump
+    chartContainer.scrollTop = containerScrollPosition;
+    window.scrollTo(0, windowScrollPosition);
 
     // Clean and sort data
     const rawData = data;
@@ -30,15 +32,18 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
         XColumn,
         YColumn
     ]
+    // Use requestAnimationFrame to ensure DOM rendering is complete
+    requestAnimationFrame(() => {
+        chartContainer.scrollTop = containerScrollPosition;
+        window.scrollTo(0, windowScrollPosition);
+    });
+
     if (AppState.currentMeasurementMode === "calibrate") {
         Args.push(rawData);
         return calibrateRoutine(...Args);
     } else {
         return isSplitMode ? splitMultiSourceRoutine(...Args) : groupMultiSourceRoutine(...Args);
     }
-    setTimeout(() => {
-        chartContainer.scrollTop = scrollPosition;
-    }, 0);
 }
 
 function formatAnalysisInfo(analysis, label) {

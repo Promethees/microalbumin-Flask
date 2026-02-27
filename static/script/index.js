@@ -243,6 +243,7 @@ $(document).ready(function () {
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
                 if (AppState.scriptRunning) {
+                    // console.log("Live update: Nullifying prevFile to force redraw");
                     // Nullify previous file so that graphics can be redrawn
                     AppState.prevFile = null;
                     drawMeasurementChart();
