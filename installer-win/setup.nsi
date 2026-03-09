@@ -1,10 +1,10 @@
-; Installer script for EasySensorKit
+; Installer script for EasyOKAPI
 ; Requires NSIS 3.0 or later
 
 ; Define the application name and version
-!define APP_NAME "EasySensor Kit"
-!define APP_VERSION "1.0"
-!define INSTALL_DIR "$PROGRAMFILES\EasySensor Kit"
+!define APP_NAME "EasyOKAPI"
+!define APP_VERSION "0.0.5beta"
+!define INSTALL_DIR "$PROGRAMFILES\EasyOKAPI"
 !define RUNNER_NAME "${APP_NAME}" 
 !define MUI_ICON "setup.ico"
 
@@ -16,7 +16,7 @@ SetCompressor lzma
 
 ; Installer metadata
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "EasySensorKit_Setup.exe"
+OutFile "EasyOKAPI_Setup.exe"
 InstallDir "${INSTALL_DIR}"
 ShowInstDetails show
 ShowUninstDetails show
@@ -86,7 +86,7 @@ Section "Install" SEC01
   File "startwindow-5-run.bat"
   
   ; Include the precompiled app runner
-  File "EasySensor Kit.exe"
+  File "EasyOKAPI.exe"
 
   ; Execute the setup batch scripts with admin privileges
   DetailPrint "Running startwindow-1-git.bat..."

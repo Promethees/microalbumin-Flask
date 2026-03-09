@@ -8,8 +8,8 @@
 
 ;--------------------------------
 ; General
-Name "Easy Sensor Web Interface Runner"
-OutFile "EasySensor Kit.exe"
+Name "EasyOKAPI Web Interface Runner"
+OutFile "EasyOKAPI.exe"
 InstallDir "$EXEDIR"
 RequestExecutionLevel admin ; Request admin privileges for the installer
 
@@ -36,7 +36,7 @@ Section "MainSection" SEC01
   ; File "startwindow-5-run.bat"
   
   ; Create a desktop shortcut to the executable
-  CreateShortCut "$DESKTOP\EasySensor Kit.lnk" "$INSTDIR\EasySensor Kit.exe" "" "$INSTDIR\EasySensor Kit.exe" 0
+  CreateShortCut "$DESKTOP\EasyOKAPI.lnk" "$INSTDIR\EasyOKAPI.exe" "" "$INSTDIR\EasyOKAPI.exe" 0
   
   ; Execute the batch file as administrator
   ExecWait '"$SYSDIR\cmd.exe" /c "$INSTDIR\startwindow-5-run.bat"'

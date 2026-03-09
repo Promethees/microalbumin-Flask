@@ -19,7 +19,7 @@ if "%~2"=="" (
 )
 
 :: Set Version tag
-set "VERSION_TAG=v0.0.2beta"
+set "VERSION_TAG=v0.0.5beta"
 
 :: Set installation directory and token
 set "INSTALL_DIR=%~1"
