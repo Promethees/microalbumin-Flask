@@ -35,7 +35,7 @@ from send_command import connect_to_device, send_command_and_wait_ack
 app = Flask(__name__, static_folder='static')
 process = None
 monitor_thread = None
-log_file = "log\script_logs.txt"
+log_file = "log\\script_logs.txt"
 args = None
 
 os_name = platform.system().lower()
