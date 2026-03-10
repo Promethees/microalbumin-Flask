@@ -53,7 +53,7 @@ class HIDDataCollector:
         self.interface = None
 
         # Logging setup
-        self.log_dir = os.path.join(os.getcwd(), "log")
+        self.log_dir = os.path.join(os.getcwd(), "code/log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.log_file_path = os.path.join(self.log_dir, "script_logs.txt")
         self.log_file = open(self.log_file_path, 'a', encoding='utf-8')
