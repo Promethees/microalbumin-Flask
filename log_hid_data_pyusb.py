@@ -141,7 +141,7 @@ class HIDDataCollector:
 
     def is_main_header(self, line):
         """Check if the line matches the main header pattern."""
-        if re.match(self.header_pattern, line.strip()):
+        if re.match(self.header_pattern, line):
             headers = line.strip().split(',')
             self.num_values = len(headers) - 1  # exclude TIMESTAMP
             return True
@@ -151,7 +151,7 @@ class HIDDataCollector:
         """Check if data lines are corresponding to the headers"""
         if self.num_values is None:
             return False
-        if not re.match(self.data_pattern, line.strip()):
+        if not re.match(self.data_pattern, line):
             return False
         values = line.strip().split(',')
         return len(values) == self.num_values + 1  # +1 for timestamp
