@@ -35,7 +35,9 @@ from send_command import connect_to_device, send_command_and_wait_ack
 app = Flask(__name__, static_folder='static')
 process = None
 monitor_thread = None
-log_file = "log\\script_logs.txt"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+log_file = os.path.join(script_dir, "log", "script_logs.txt")
+os.makedirs(os.path.dirname(log_file), exist_ok=True)
 args = None
 
 os_name = platform.system().lower()
@@ -44,7 +46,7 @@ if "window" in os_name:
 else:
     delimiter = "/";
 
-json_root_path = os.path.join(os.getcwd(), "json")
+json_root_path = os.path.join(script_dir, "json")
 # Configuration - Set this to False for development, True for production
 PRODUCTION_MODE = True  # Change this based on your environment
 
@@ -238,7 +240,7 @@ def get_csv_headers():
 def api_current_output():
     try:
         # adjust this to the actual location of the "log" folder if needed
-        marker_path = os.path.join(os.getcwd(), "log", "current_output.txt")
+        marker_path = os.path.join(script_dir, "log", "current_output.txt")
 
         if not os.path.isfile(marker_path):
             return jsonify({"exists": False, "message": "marker not found"}), 404
@@ -881,7 +883,7 @@ def get_file_content():
 
         # Check if the subprocess is running
         if process and process.poll() is None:
-            if path.startswith(os.path.abspath(os.path.join(os.getcwd(), 'data'))):
+            if path.startswith(os.path.abspath(os.path.join(script_dir, 'data'))):
                 return jsonify({
                     'status': 'error',
                     'message': f'File {file_name} may be in use by the data collection process'
