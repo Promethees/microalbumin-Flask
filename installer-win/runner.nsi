@@ -1,5 +1,5 @@
 ; runner.nsi
-; NSIS script to create an executable that runs startwindow-4-venv-run.bat as administrator
+; NSIS script to create an executable that runs startwindow-5-run.bat as administrator
 
 ;--------------------------------
 ; Include Modern UI and plugins
@@ -8,10 +8,10 @@
 
 ;--------------------------------
 ; General
-Name "EasyOKAPI Web Interface Runner"
+Name "EasyOKAPI Launcher"
 OutFile "EasyOKAPI.exe"
 InstallDir "$EXEDIR"
-RequestExecutionLevel admin ; Request admin privileges for the installer
+RequestExecutionLevel admin ; Request admin privileges for the launcher
 
 ;--------------------------------
 ; Interface Settings
@@ -28,25 +28,23 @@ RequestExecutionLevel admin ; Request admin privileges for the installer
 !insertmacro MUI_LANGUAGE "English"
 
 ;--------------------------------
-; Installer Sections
-Section "MainSection" SEC01
+; Launcher Sections
+Section "Launch Program" SEC01
   SetOutPath "$INSTDIR"
   
-  ; Copy the batch file to the installation directory (optional, assuming it's already there)
-  ; File "startwindow-5-run.bat"
-  
-  ; Create a desktop shortcut to the executable
-  CreateShortCut "$DESKTOP\EasyOKAPI.lnk" "$INSTDIR\EasyOKAPI.exe" "" "$INSTDIR\EasyOKAPI.exe" 0
-  
-  ; Execute the batch file as administrator
-  ExecWait '"$SYSDIR\cmd.exe" /c "$INSTDIR\startwindow-5-run.bat"'
+  ; Ensure the batch file exists before trying to run it
+  IfFileExists "$INSTDIR\startwindow-5-run.bat" 0 +3
+    CreateShortCut "$DESKTOP\EasyOKAPI.lnk" "$INSTDIR\EasyOKAPI.exe" "" "$INSTDIR\EasyOKAPI.exe" 0
+    ExecWait '"$SYSDIR\cmd.exe" /c "$INSTDIR\startwindow-5-run.bat"'
+    Goto +2
+  MessageBox MB_OK "Error: startwindow-5-run.bat not found in $INSTDIR"
 SectionEnd
 
 ;--------------------------------
 ; Descriptions
-LangString DESC_SEC01 ${LANG_ENGLISH} "Running the Program, use Ctrl + C in the running Server window to terminate."
+LangString DESC_SEC01 ${LANG_ENGLISH} "Launches the EasyOKAPI Web Interface. Use Ctrl + C in the running Server window to terminate."
 
-; Assign description to section (optional, requires components page)
+; Assign description to section
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} $(DESC_SEC01)
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
