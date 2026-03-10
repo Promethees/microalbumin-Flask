@@ -168,7 +168,7 @@ def merge_csv_files(file1_path, file2_path, output_path):
     combined_meta = list(dict.fromkeys(meta1 + meta2))
 
     # Write to file
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, 'w', encoding='utf-8', newline='') as f:
         for line in combined_meta:
             f.write(f"{line}\n")
         merged_df.to_csv(f, index=False)
