@@ -6,7 +6,7 @@ import os
 import re
 import argparse
 import sys
-sys.path.append('src')
+sys.path.append('code\src')
 from get_next_filename import get_next_filename
 
 # PyBadge USB VID and PID (Adafruit PyBadge)
