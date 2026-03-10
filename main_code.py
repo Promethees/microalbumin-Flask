@@ -308,10 +308,12 @@ def run_script():
             return jsonify({'status': 'failure', 'message': error_msg})
         
         if "window" in os_name:
-            venv_python = os.path.join('venv', 'Scripts', 'python.exe')
-            cmd = [venv_python, 'log_hid_data_pyusb.py', '--base-dir', base_dir, '--base-name', base_name]
+            venv_python = os.path.join(script_dir, 'venv', 'Scripts', 'python.exe')
+            script_path = os.path.join(script_dir, 'log_hid_data_pyusb.py')
+            cmd = [venv_python, script_path, '--base-dir', base_dir, '--base-name', base_name]
         else:
-            cmd = ['sudo', 'python3', 'log_hid_data.py', '--base-dir', base_dir, '--base-name', base_name]
+            script_path = os.path.join(script_dir, 'log_hid_data.py')
+            cmd = ['sudo', 'python3', script_path, '--base-dir', base_dir, '--base-name', base_name]
         
         with open(log_file, 'a') as f:
             process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)    
