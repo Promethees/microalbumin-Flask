@@ -24,7 +24,8 @@ from range import get_range_input
 from mode import get_mode_input
 from measure import sort_csv_file
 from quantity import get_quantity_input
-from file import get_file_list, get_dynamic_data, replace_empty
+from file import get_file_list, get_dynamic_data, replace_empty, merge_csv_files
+from file_operations import remove_csv_columns
 from get_next_filename import get_next_filename
 from script_monitor import check_log_for_errors
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
@@ -508,7 +509,7 @@ def edit_file():
                 },
                 {
                     'header_test': is_multi_value_timeseries_csv_header,
-                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:,\s*(?:-?\d+(?:\.\d{1,3})?|OVFL))*\s*$',
+                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
                     'meta': ["Measurement", "Unit", "Concentration"],
                     'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
                 }
@@ -812,6 +813,91 @@ def copy_file():
             'message': 'An unexpected error occurred while copying the file'
         }), HTTPStatus.INTERNAL_SERVER_ERROR
 
+@app.route('/merge_csv', methods=['POST'])
+def merge_csv():
+    try:
+        # Prevent merge during running process
+        if process and process.poll() is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot merge files while the data collection process is running'
+            }), HTTPStatus.LOCKED
+
+        file1 = request.form.get('file1')
+        file2 = request.form.get('file2')
+        output_name = request.form.get('output_name')
+        path = request.form.get('path') if request.form.get('path') else get_directory()
+
+        if not file1 or not file2 or not output_name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Both files and output name are required'
+            }), HTTPStatus.BAD_REQUEST
+
+        if not output_name.endswith('.csv'):
+            output_name += '.csv'
+
+        file1_path = os.path.join(path, file1)
+        file2_path = os.path.join(path, file2)
+        output_path = os.path.join(path, output_name)
+
+        # Validate file path to prevent directory traversal
+        if '..' in os.path.normpath(file1_path) or '..' in os.path.normpath(file2_path) or '..' in os.path.normpath(output_path):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid file path'
+            }), HTTPStatus.BAD_REQUEST
+
+        success, result = merge_csv_files(file1_path, file2_path, output_path)
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': f'Files merged successfully into {result}'
+            }), HTTPStatus.OK
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': result
+            }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        print(f"Unexpected error in merge_csv: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An unexpected error occurred while merging the files'
+        }), HTTPStatus.INTERNAL_SERVER_ERROR
+
+@app.route('/remove_columns', methods=['POST'])
+def remove_columns():
+    try:
+        data = request.json
+        filename = data.get('filename')
+        path = data.get('path')
+        columns = data.get('columns', [])
+        
+        if not filename or not path:
+            return jsonify({'status': 'failure', 'message': 'Filename and path are required'}), 400
+            
+        file_path = os.path.join(path, filename)
+        
+        # Security check
+        if '..' in os.path.normpath(file_path):
+             return jsonify({'status': 'failure', 'message': 'Invalid file path'}), 400
+             
+        success, message = remove_csv_columns(file_path, columns)
+        
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': message
+            })
+        else:
+            return jsonify({'status': 'failure', 'message': message}), 400
+            
+    except Exception as e:
+        print(f"Error in remove_columns: {str(e)}")
+        return jsonify({'status': 'failure', 'message': str(e)}), 500
+
 @app.route('/get_num_sources', methods=['GET'])
 def get_num_sources():
     directory = request.args.get('path') if request.args.get('path') else get_directory()
@@ -999,7 +1085,7 @@ def export_cal_coefs():
     thres_val = float(data.get('threshold_val', 0))
     regress_algo = data.get('regress_algo', 'linear')
     # if is_multi_source:
-    #     export_path = os.path.join(json_root_path, f"{num_sources}_sensors", cal_mode)
+    #     export_path = os.path.join(json_root_path, f"{num_sources}_sources", cal_mode)
     # else:
     #     export_path = os.path.join(json_root_path, "single_sensor", cal_mode)
     export_path = os.path.join(json_root_path, cal_mode)
