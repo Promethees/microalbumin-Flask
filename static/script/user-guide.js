@@ -22,6 +22,9 @@ class UserGuide {
 
         // Step Definitions Configuration
         this.stepDefinitions = {
+            initial: [
+                this.createStep('#init-button', 'Get Started', 'Welcome to Easy OKAPI! To begin your colorimetric measurements, please click the "Get Started" button to initialize the application.', { position: 'right', skipInteraction: false })
+            ],
             common: [
                 this.createStep('#logo', 'Welcome to Easy OKAPI!', 'Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), developed by Center for Bioscience and Biotechnology, HCMUS-VNU. Click the logo anytime to scroll to the top of the page.', { position: 'bottom', skipInteraction: true }),
                 this.createStep('#toggleContainer', 'Theme Toggle', 'Switch between light and dark modes for comfortable viewing in any environment.', { position: 'bottom' }),
@@ -235,10 +238,17 @@ class UserGuide {
      * Define the guide steps
      */
     defineSteps() {
+        const mainContent = document.getElementById('main-content');
+        const isMainContentVisible = mainContent && !mainContent.classList.contains('hidden');
         const dataDisplaySection = document.getElementById('data-display-section');
         const isDataDisplayVisible = dataDisplaySection && !dataDisplaySection.classList.contains('hidden');
         const appState = (typeof AppState !== 'undefined') ? AppState : (window.AppState || {});
         const currentMode = appState.currentMeasurementMode || 'kinetics';
+
+        if (!isMainContentVisible) {
+            this.steps = [...this.stepDefinitions.initial];
+            return;
+        }
 
         if (!isDataDisplayVisible) {
             this.steps = [...this.stepDefinitions.common];
