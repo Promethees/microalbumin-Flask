@@ -26,3 +26,5 @@ index_temp.html
 
 .history/
 node_modules
+
+*.dmg
