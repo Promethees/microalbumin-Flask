@@ -12,7 +12,7 @@
 	- Using installer:
 		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
 		+ After the download is done, reenable with `sudo spctl --master-enable`
-		+ Download the [![Latest Release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
+		+ Download the [![Latest Release](https://img.shields.io/badge/latest-0.0.5beta-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
 		+ Open the `EasySensorKit.dmg`
 		+ From it, run `install-tools-clone-repo`, then `install-venv` to install dependencies and virtual environment. 
 		+ Key in your device password to proceed when prompted 
@@ -50,7 +50,7 @@
 		</div>
 
 	- Using Installer: 
-		+ Download the [![Latest release](https://img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
+		+ Download the [![Latest release](https://img.shields.io/badge/latest-0.0.5beta-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
 		+ After the installation, you can use `Easy OKAPI` icon on the Desktop to start the app
