@@ -2,7 +2,7 @@
 
 # Configuration
 APP_NAME="EasySensorKit"
-VERSION="0.0.5beta"
+VERSION="v0.0.5beta"
 DMG_NAME="${APP_NAME}_${VERSION}.dmg"
 SOURCE_DIR="installer-mac"
 TMP_DIR="tmp_dmg_root"
