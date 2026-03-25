@@ -9,20 +9,26 @@
 
 ### Installation:
 * On Mac:
-	- Using installer:
-		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
-		<div align="center">
-			<img src="/images/disable-security-check.png" width="600">
-		</div>
-		*Note: Navigate to Privacy & Security to run it anyway if prompted.*
-		+ After the download is done, reenable with `sudo spctl --master-enable`
-		+ Download the [![Latest Release](https://img.shields.io/badge/latest-0.0.5beta-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
-		+ Open the `EasySensorKit.dmg`
-		+ From it, run `install-tools-clone-repo`, then `install-venv` to install dependencies and virtual environment. 
-		+ Key in your device password to proceed when prompted 
-		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
-		+ Use `run` to start the Application when all of the above steps are finished
-		+ Use `uninstall` to uninstall the application. 
+	- Using installer (DMG):
+		- Download the [![Latest release](https://img.shields.io/badge/latest-0.0.5beta-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac.
+		- Open the `EasySensorKit.dmg` to mount it.
+		- **Terminal-based Installation** (to bypass security warnings):
+			1. Open the **Terminal** app.
+			2. Run the first installation script with `sudo`:
+			   ```bash
+			   sudo /Volumes/EasySensorKit/install-tools-clone-repo.command
+			   ```
+			3. Run the second installation script:
+			   ```bash
+			   sudo /Volumes/EasySensorKit/install-venv.command
+			   ```
+			4. To launch the application:
+			   ```bash
+			   sudo /Volumes/EasySensorKit/run.command
+			   ```
+		- Key in your device password to proceed when prompted.
+		- Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
+		- Use `uninstall` to uninstall the application. 
 
 	- Using batch scripts:
 		+ Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
