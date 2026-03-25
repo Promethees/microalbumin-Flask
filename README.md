@@ -11,6 +11,10 @@
 * On Mac:
 	- Using installer:
 		+ Disable ***GATEKEEPER*** to let Mac allow your installation: Open `Terminal` app and key in `sudo spctl --master-disable` with your password when prompted
+		<div align="center">
+			<img src="/images/disable-security-check.png" width="600">
+		</div>
+		*Note: Navigate to Privacy & Security to run it anyway if prompted.*
 		+ After the download is done, reenable with `sudo spctl --master-enable`
 		+ Download the [![Latest Release](https://img.shields.io/badge/latest-0.0.5beta-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac
 		+ Open the `EasySensorKit.dmg`
