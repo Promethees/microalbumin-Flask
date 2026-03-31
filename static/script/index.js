@@ -452,7 +452,13 @@ function calPointBehaviour() {
     document.getElementById('select-time-point')?.classList.remove('hidden');
 }
 
+let isUpdatingDirectory = false;
 function updateDirectory(path, deselect, changeToCalibrate = false) {
+    if (isUpdatingDirectory && !deselect) {
+        return Promise.resolve();
+    }
+    isUpdatingDirectory = true;
+
     if (AppState.currentMeasurementMode !== "calibrate") {
         //Change #cal-mode-select in the background before switching to calibrate mode
         calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
@@ -470,38 +476,53 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
         AppState.currentFile = null;
         calModeBehaviour();
     }
-    // console.log("Updating directory to:", path);
-    $.post('/browse', { path: path }, function (response) {
-        if (response.status === 'success') {
-            document.getElementById("directory").value = response.path;
-            document.getElementById("directory-top").value = response.path;
-            if (getBtnChecked("same-dir-as-data")) {
-                document.getElementById("save-dir").value = response.path;
-                validatePathName('save-dir');
+    
+    const browsePromise = new Promise((resolve) => {
+        $.post('/browse', { path: path }, function (response) {
+            if (response.status === 'success') {
+                document.getElementById("directory").value = response.path;
+                document.getElementById("directory-top").value = response.path;
+                if (getBtnChecked("same-dir-as-data")) {
+                    document.getElementById("save-dir").value = response.path;
+                    validatePathName('save-dir');
+                }
+                if (getBtnChecked("save-same-dir")) {
+                    document.getElementById("base-dir").value = response.path;
+                    validatePathName('base-dir');
+                }
+                $hidden(["error-message"]);
+                
+                // updateFileTable returns a Promise
+                updateFileTable(response.files, deselect).then(resolve);
+                if (deselect) {
+                    deselectFile();
+                }
+            } else {
+                $showText("error-message", response.message);
+                resolve();
             }
-            if (getBtnChecked("save-same-dir")) {
-                document.getElementById("base-dir").value = response.path;
-                validatePathName('base-dir');
-            }
-            $hidden(["error-message"]);
-            updateFileTable(response.files, deselect);
-            if (deselect) {
-                deselectFile();
-            }
-        } else {
-            $showText("error-message", response.message);
-        }
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        console.log("AJAX error:", textStatus, errorThrown);
-        $showText("error-message", "Error updating directory")
-    });
-    $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
-        function (response) {
-            updateJSONTable(response.files);
         }).fail(function (jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
-            $showText("error-message", "Error fetching JSON files")
+            console.log("AJAX error:", textStatus, errorThrown);
+            $showText("error-message", "Error updating directory");
+            resolve();
         });
+    });
+
+    const jsonPromise = new Promise((resolve) => {
+        $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
+            function (response) {
+                updateJSONTable(response.files);
+                resolve();
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
+                $showText("error-message", "Error fetching JSON files");
+                resolve();
+            });
+    });
+
+    return Promise.all([browsePromise, jsonPromise]).finally(() => {
+        isUpdatingDirectory = false;
+    });
 }
 
 function drawMeasurementChart() {

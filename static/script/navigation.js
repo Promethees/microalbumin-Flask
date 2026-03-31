@@ -125,10 +125,9 @@ function updateJSONTable(files) {
 }
 
 function updateFileTable(files, deselect) {
-
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
 
-    filterFiles(files).then((filteredFiles) => {
+    return filterFiles(files).then((filteredFiles) => {
         if (filteredFiles && filteredFiles.length > 0) {
             filteredFiles.forEach(file => {
                 const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
@@ -164,7 +163,7 @@ function fetchJSON(jsonFile, callback) {
     })
 }
 
-function browseSavingLocation(changeToCalibrate=false, button = null, path="") {
+async function browseSavingLocation(changeToCalibrate=false, button = null, path="") {
     // Temporarily disable the button to prevent multiple clicks
     $(button).prop("disabled", true);
     setTimeout(() => {
@@ -175,33 +174,34 @@ function browseSavingLocation(changeToCalibrate=false, button = null, path="") {
         blinkingItem("measurement-mode", 5000);
         blinkingItem("file-selection", 5000);
         const dirPath = document.getElementById("save-dir").value;
-        updateDirectory(dirPath, true, changeToCalibrate);
+        await updateDirectory(dirPath, true, changeToCalibrate);
     } else {
-        fetch('/api/current_output')
-        .then(response => {
-            if (!response.ok) {
-                // no marker or server error -> fallback
-                return { exists: false };
+        try {
+            const response = await fetch('/api/current_output');
+            let data = { exists: false };
+            if (response.ok) {
+                data = await response.json();
             }
-            return response.json();
-        })
-        .then(data => {
+
             if (data && data.exists) {
                 // Use server-provided directory (with trailing separator if needed)
                 const dirPath = data.dir || data.dir_with_sep;
                 const fileName = data.filename;
 
-                updateDirectory(dirPath, true, changeToCalibrate);
+                await updateDirectory(dirPath, true, changeToCalibrate);
 
                 // Wait for the table to refresh/populate, then select the row's button
-                setTimeout(() => {
-                    // find a TD whose text exactly equals the filename
-                    const cells = document.querySelectorAll("#file-table tr td");
-                    const cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
+                // Since updateDirectory now returns a Promise, we don't need a timeout here
+                // but we wait one tick to ensure DOM is updated
+                await new Promise(resolve => setTimeout(resolve, 50));
 
-                    if (cell) {
-                        const row = cell.closest("tr");
-                        const btn = row.querySelector("button");
+                // find a TD whose text exactly equals the filename
+                const cells = document.querySelectorAll("#file-table tr td");
+                const cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
+
+                if (cell) {
+                    const row = cell.closest("tr");
+                    const btn = row.querySelector("button");
 
                     if (btn) {
                         selectFile(fileName, btn, "#file-table");
@@ -209,20 +209,18 @@ function browseSavingLocation(changeToCalibrate=false, button = null, path="") {
                         // fallback: pass the cell element so selectFile still finds the row to highlight
                         selectFile(fileName, cell, "#file-table");
                     }
-                    } else {
-                        console.warn(`File "${fileName}" not found in #file-table.`);
-                    }
-                }, 500); // adjust delay if your table takes longer to populate
+                } else {
+                    console.warn(`File "${fileName}" not found in #file-table.`);
+                }
             } else {
                 // no recorded path -> fallback to original behavior
-                updateDirectory(path, true, changeToCalibrate);
+                await updateDirectory(path, true, changeToCalibrate);
                 blinkingItem("file-selection", 5000);
             }
-        })
-        .catch(err => {
+        } catch (err) {
             console.error("Error fetching current_output:", err);
-            updateDirectory(path, true, changeToCalibrate);
-        });
+            await updateDirectory(path, true, changeToCalibrate);
+        }
     }
 }
 
