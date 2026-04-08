@@ -85,3 +85,11 @@
 - CSV content is validated against strict regex patterns before saving.
 - JSON content is validated as parseable before saving.
 - File names are sanitized with `werkzeug.utils.secure_filename`.
+
+---
+
+## 3. Autonomous Documentation Updates
+
+- **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.
+- **Functional updates**: If your changes introduce new files, routes, dependencies, or alter the architectural flow, you MUST proactively edit `easyokapi-knowledge/EASY OKAPI.md`.
+- **Behavioral updates**: If your task establishes new strict coding patterns, behavioral constraints, or anti-patterns, you MUST proactively edit `Rule.md`.
