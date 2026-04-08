@@ -121,7 +121,7 @@ git push heroku online:main
 
 ### 4.0 Mandatory First Step: Read AGENTS.md
 
-- **BEFORE executing any commands like `ls -R` or `find` to explore the codebase**, you **MUST** read `docs/obsidian/AGENTS.md` first.
+- **BEFORE executing any commands like `ls -R` or `find` to explore the codebase**, you **MUST** read `easyokapi-knowledge/AGENTS.md` first.
 - This document holds the summary, architecture, and exact roadmap of the project. Prioritizing reading this prevents wasting tokens on excessive directory listings and codebase guessing.
 
 ### 4.1 Data Storage — NEVER Use Local Filesystem for User Data
