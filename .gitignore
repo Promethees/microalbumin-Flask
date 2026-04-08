@@ -26,3 +26,5 @@ token.json
 index_temp.html
 
 .history/
+
+*.dmg
