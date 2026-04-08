@@ -116,3 +116,11 @@ Timestamp,Value:1,Value:2,...
 - **HID logging**: Different scripts for Mac (`log_hid_data.py` with `sudo`) vs. Windows (`log_hid_data_pyusb.py`).
 - **Process termination**: Windows uses `process.terminate()`, Mac uses `os.killpg(SIGTERM)`.
 - **Hosts file**: Windows at `C:\Windows\System32\drivers\etc\hosts`, Mac at `/etc/hosts`.
+
+---
+
+## 3. Autonomous Documentation Updates
+
+- **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.
+- **Functional updates**: If your changes introduce new files, routes, dependencies, or alter the architectural flow, you MUST proactively edit `easyokapi-knowledge/EASY OKAPI.md`.
+- **Behavioral updates**: If your task establishes new strict coding patterns, behavioral constraints, or anti-patterns, you MUST proactively edit `Rule.md`.
