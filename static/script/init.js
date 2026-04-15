@@ -321,8 +321,13 @@ const socket = io();
 socket.on('update_csv', function () {
     fetchJSON('/get_csv?request=true')
         .then(response => {
-            console.log("give me response files ", response.files);
-            updateFileTable(response.files, deselect = false);
+            console.log("CSV files updated via SocketIO:", response.files);
+            updateFileTable(response.files, false);
+
+            // Trigger redraw if we are currently viewing this file in live mode
+            if (AppState.currentFile) {
+                drawMeasurementChart();
+            }
         })
         .catch(error => {
             console.error("Fetch error:", error);
@@ -334,7 +339,7 @@ socket.on('update_json', function (data) {
     if (data.mode === AppState.currentMeasurementMode) {
         fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`)
             .then(response => {
-                updateJSONTable(response.files, deselect = false);
+                updateJSONTable(response.files, false);
             })
             .catch(error => {
                 console.error("Fetch error fetching JSON files:", error);

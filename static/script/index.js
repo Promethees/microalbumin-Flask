@@ -21,7 +21,6 @@ function initDefaultState() {
 
 const AppState = {
     myChart: null,
-    scriptRunning: false,
     currentMeasurementMode: modeDiv.getAttribute('data-value'),
     currentFile: null,
     prevFile: null,
@@ -54,7 +53,6 @@ const AppState = {
 
     reset: function () {
         this.myChart = null;
-        this.scriptRunning = false;
         this.currentMeasurementMode = "kinetics";
         this.currentFile = null;
         this.currentJSON = null;
@@ -191,32 +189,7 @@ window.addEventListener('load', function () {
 
     initDefaultState();
 
-    // Periodically update file table every 0.5 seconds
-    updateInterval = setInterval(function () {
-        if (!serverAvailable) return;
-        // updateDirectory(false);
-
-        if (AppState.currentFile) {
-            if (AppState.currentFile !== AppState.prevFile) {
-                if (AppState.scriptRunning) {
-                    // Nullify previous file so that graphics can be redrawn
-                    AppState.prevFile = null;
-                    drawMeasurementChart();
-                } else {
-                    AppState.prevFile = AppState.currentFile;
-                }
-            }
-            $hidden(["data-display-section"], false);
-        } else {
-            $hidden(["data-display-section"]);
-        }
-
-        if (!AppState.currentJSON) {
-            $hidden(["derived-concentration-section"]);
-        }
-
-
-    }, 500);
+    // Polling removed in favor of event-driven updates (SocketIO and selectFile)
 
     // Add click event to each button
     modeButtons.forEach(mode => {

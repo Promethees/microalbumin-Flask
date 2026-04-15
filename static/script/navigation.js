@@ -137,6 +137,8 @@ function browseSavingLocation(deselect, changeToCalibrate = false, button = null
     setTimeout(() => {
         if (button) button.disabled = false;
     }, 1000); // Re-enable the button after 1 second
+    deselectFile();
+    deselectFile("#json-table");
     if (button?.id === "go-to-exp-btn") {
         blinkingItem("cal-mode-select", 5000);
         blinkingItem("measurement-mode", 5000);
