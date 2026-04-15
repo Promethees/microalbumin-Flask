@@ -20,3 +20,5 @@ class Config:
     GOOGLE_ENCRYPTION_KEY = os.environ.get('GOOGLE_ENCRYPTION_KEY')  # Required in env
     GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')
+    
+    PRODUCTION_MODE = True

@@ -15,7 +15,7 @@ The application provides a Web GUI for users to:
 2. Conduct analysis and generate Standard Curves (`kinetics`, `point`, `calibrate`).
 3. View dynamically generated HTML dashboard plots using Socket.IO updates for live responsiveness across sessions.
 
-## 2. Architecture & Relationships
+### 2. Architecture & Relationships
 ```mermaid
 graph TD
     UI[Frontend HTML/JS] -->|WebSockets / SocketIO| WS(Socket.IO Event Hub)
@@ -23,6 +23,13 @@ graph TD
     
     API --> Main[[main.py]]
     WS --> Main
+    
+    Main --> Extensions[[src/extensions.py]]
+    Main --> Routes[[src/routes/]]
+    
+    Routes --> Auth[[auth_routes.py]]
+    Routes --> File[[file_routes.py]]
+    Routes --> Data[[data_routes.py]]
     
     Main --> UserData[[src/user_data.py]]
     Main --> DriveSvc[[src/google_drive_service.py]]
@@ -33,36 +40,33 @@ graph TD
     DriveSvc --> GoogleCloud[(Google Drive API)]
 ```
 
-### 2.1 Backend (`main.py` — single entry point, ~1078 lines)
+### 2.1 Backend (`main.py` — entry point)
 
-The Flask app is organized into **regions** by the JS consumer:
+The Flask app is refactored using **Blueprints** to ensure maintainability:
 
-| Region | Routes | Consumer |
+| Component | Blueprint / Module | Responsibility |
 |---|---|---|
-| Region 1 | `/ping`, `/clear_cache`, `/`, `/get_csv`, `/get_json_cal` | `index.js` |
-| Region 2 | `/get_json_content`, `/get_headers`, `/api/current_output` | `navigation.js` |
-| Region 2.5 | `/auth/google/*`, `/drive/*` (13 endpoints) | `drive-integration.js` |
-| Region 3 | `/edit_file`, `/delete_file`, `/copy_file`, `/upload_file`, `/merge_csv` | `edit-file.js` |
-| (unlabelled) | `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs` | `data-handling.js`, `data-display.js` |
-
-* **Session-based multi-user**: Each user gets a unique `user_id` via Flask `session`. User data is isolated in `USER_DATA[uid]`.
-* **No filesystem access**: All user data is stored **in-memory**; absolutely no I/O reading/writing to the server's filesystem for user files.
+| Core | `main.py` | App initialization, SocketIO setup, Base routes (`/`, `/ping`) |
+| Auth | `src/routes/auth_routes.py` | Google Drive OAuth2 flow and sync operations |
+| File Ops | `src/routes/file_routes.py` | CSV/JSON CRUD operations (Edit, Delete, Copy, Upload, Merge) |
+| Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export |
+| Extensions | `src/extensions.py` | Centralized SocketIO instance to avoid circular imports |
 
 ### 2.2 Backend Modules (`src/`)
 
-| Module | Purpose |
-|---|---|
-| [[src/user_data.py\|user_data.py]] | In-memory per-session storage (`USER_DATA` dict), session management, Drive state helpers |
-| [[src/google_drive_service.py\|google_drive_service.py]] | OAuth 2.0 flow, Drive CRUD operations (folders, files), session-to-Drive sync |
-| `config.py` | Configuration class (`Config`): secret keys, Google API settings, file size limits |
-| `export_data.py` | CSV metadata parsing, header writing, export utilities with thread locks |
-| [[src/export_cal_json.py\|export_cal_json.py]] | Standard curve coefficient processing, JSON export for calibration data |
-| [[src/file_merge.py\|file_merge.py]] | Merging CSV contents from two files |
-| `file_path.py` | File path utilities |
-| `get_next_filename.py` | Auto-naming duplicates (e.g., `file_1.csv`, `file_2.csv`) |
-| `mode.py` | Returns available measurement modes: `kinetics`, `point`, `calibrate` |
-| `quantity.py` | Returns available quantity options for kinetics analysis |
-| `range.py` | Returns display range input configuration |
+| Module                                                   | Purpose                                                                                   |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [[src/user_data.py\|user_data.py]]                       | In-memory per-session storage (`USER_DATA` dict), session management, Drive state helpers |
+| [[src/google_drive_service.py\|google_drive_service.py]] | OAuth 2.0 flow, Drive CRUD operations (folders, files), session-to-Drive sync             |
+| `config.py`                                              | Configuration class (`Config`): secret keys, Google API settings, PRODUCTION_MODE         |
+| `export_data.py`                                         | CSV metadata parsing, header writing, export utilities with thread locks                  |
+| [[src/export_cal_json.py\|export_cal_json.py]]           | Standard curve coefficient processing, JSON export for calibration data                   |
+| [[src/file_merge.py\|file_merge.py]]                     | Merging CSV contents from two files                                                       |
+| `file_path.py`                                           | File path utilities                                                                       |
+| `get_next_filename.py`                                   | Auto-naming duplicates (e.g., `file_1.csv`, `file_2.csv`)                                 |
+| `mode.py`                                                | Returns available measurement modes: `kinetics`, `point`, `calibrate`                     |
+| `quantity.py`                                            | Returns available quantity options for kinetics analysis                                  |
+| `range.py`                                               | Returns display range input configuration                                                 |
 
 ### 2.3 Frontend (`static/script/` — 11 JS files)
 
