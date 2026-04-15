@@ -22,6 +22,8 @@ function selectFile(fileName, button, tableSelector = "#file-table") {
         $id("range-value-start").disabled = false;
         $id("range-value-end").disabled = false;
 
+        $hidden(["data-display-section"], false);
+
         // Check all quantity-checkbox elements
         document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
 
@@ -407,6 +409,7 @@ function deselectFile(tableSelector = "#file-table") {
 
         updateFileDisplay(AppState.currentFile);
         $disable(["copy-file-btn", "download-file-btn"], true);
+        $hidden(["data-display-section"], true);
 
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = null;
