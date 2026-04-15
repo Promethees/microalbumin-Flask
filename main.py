@@ -18,7 +18,7 @@ from routes.auth_routes import auth_bp
 from routes.file_routes import file_bp
 from routes.data_routes import data_bp
 
-app = Flask(__name__, static_folder='static/dist')
+app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 
 # Production Security & Session handling
