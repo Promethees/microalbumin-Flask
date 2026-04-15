@@ -406,7 +406,6 @@ function calPointBehaviour() {
 
 async function updateDirectory(deselect, changeToCalibrate = false) {
     if (AppState.currentMeasurementMode !== "calibrate") {
-        //Change #cal-mode-select in the background before switching to calibrate mode
         calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
         calButtons.forEach(button => {
             if (button.getAttribute('data-mode') === AppState.currentMeasurementMode) {
@@ -414,31 +413,34 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
             } else {
                 button.classList.remove('selected');
             }
-        })
+        });
     }
+
     if (changeToCalibrate) {
-        if (changeToCalibrate) {
-            selectButton(modeButtons[2], modeButtons, modeDiv);
-            AppState.currentMeasurementMode = "calibrate";
-            AppState.currentFile = null;
-            calModeBehaviour();
-        }
+        selectButton(modeButtons[2], modeButtons, modeDiv);
+        AppState.currentMeasurementMode = "calibrate";
+        AppState.currentFile = null;
+        calModeBehaviour();
+    }
 
-        try {
-            const csvResponse = await fetchJSON('/get_csv?request=true');
-            console.log("give me response files ", csvResponse.files);
-            updateFileTable(csvResponse.files, deselect);
-        } catch (error) {
-            console.error("Error fetching CSV files:", error);
-            $showText("error-message", "Error fetching CSV files")
-        }
+    // Always fetch CSV files to update the table for the current mode
+    try {
+        const csvResponse = await fetchJSON('/get_csv?request=true');
+        console.log("CSV files updated:", csvResponse.files);
+        updateFileTable(csvResponse.files, deselect);
+    } catch (error) {
+        console.error("Error fetching CSV files:", error);
+        $showText("error-message", "Error fetching CSV files");
+    }
 
+    // Always fetch relevant JSON calibration files for the current mode
+    if (AppState.currentMeasurementMode !== "calibrate") {
         try {
             const jsonResponse = await fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`);
             updateJSONTable(jsonResponse.files);
         } catch (error) {
             console.error("Error fetching JSON files:", error);
-            $showText("error-message", "Error fetching JSON files")
+            $showText("error-message", "Error fetching JSON files");
         }
     }
 }
