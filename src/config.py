@@ -10,6 +10,9 @@ class Config:
     DOWNLOAD_FOLDER = 'downloads'
     CLEANUP_DATA_FILE = 'cleanup_data.json'
     
+    # Redis configuration
+    REDIS_URL = os.environ.get('REDIS_URL')
+    
     # Cleanup settings
     CLEANUP_DELAY = 300  # 5 minutes in seconds
     WARNING_THRESHOLD = 60  # Warn 1 minute before cleanup
@@ -21,4 +24,10 @@ class Config:
     GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')
     
-    PRODUCTION_MODE = os.environ.get('PRODUCTION_MODE', 'False').lower() == 'true'
+    # Automatic Production Detection (Heroku uses 'DYNO', generic servers often use 'PORT')
+    _prod_env = os.environ.get('PRODUCTION_MODE')
+    if _prod_env is not None:
+        PRODUCTION_MODE = _prod_env.lower() == 'true'
+    else:
+        # Default to True if on Heroku or generic server, otherwise False
+        PRODUCTION_MODE = any(os.environ.get(k) for k in ['DYNO', 'PORT', 'HEROKU_APP_NAME'])
