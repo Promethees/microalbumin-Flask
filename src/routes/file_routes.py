@@ -4,11 +4,12 @@ import os
 import re
 import json
 from werkzeug.utils import secure_filename
-from user_data import get_user_data
+from user_data import get_user_data, update_file_metadata
 from get_next_filename import get_next_filename
 from export_cal_json import replace_empty
 from file_merge import merge_csv_contents
 from extensions import socketio
+from validators import validate_csv_content, validate_json_content
 
 file_bp = Blueprint('file', __name__)
 
@@ -17,107 +18,28 @@ def edit_file():
     try:
         # Extract request data
         file_name = request.form.get('filename')
-        new_file_name = request.form.get('new_filename', file_name)  # Default to original name if not provided
+        new_file_name = request.form.get('new_filename', file_name)
         type = request.form.get('type')
         content = request.form.get('content')
         calibrate_mode = request.form.get('calibrate_mode')
 
         # Input validation
         if not file_name or not content:
-            return jsonify({
-                'status': 'error',
-                'message': 'Filename and content are required'
-            }), HTTPStatus.BAD_REQUEST
+            return jsonify({'status': 'error', 'message': 'Filename and content are required'}), HTTPStatus.BAD_REQUEST
 
         if not (new_file_name.endswith('.csv') or new_file_name.endswith('.json')):
-            return jsonify({
-                'status': 'error',
-                'message': 'New file name must end with .csv or .json'
-            }), HTTPStatus.BAD_REQUEST
+            return jsonify({'status': 'error', 'message': 'New file name must end with .csv or .json'}), HTTPStatus.BAD_REQUEST
 
         is_json = new_file_name.endswith('.json')
 
         if is_json:
-            try:
-                parsed_json = json.loads(content)
-            except json.JSONDecodeError as e:
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Invalid JSON format: {str(e)}'
-                }), HTTPStatus.BAD_REQUEST
+            success, result = validate_json_content(content)
+            if not success:
+                return jsonify({'status': 'error', 'message': result}), HTTPStatus.BAD_REQUEST
         else:  # CSV validation
-            pattern_sets = [
-                {
-                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
-                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
-                },
-                {
-                    'header': r"^Concentration,Value,TimePoint$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
-                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
-                },
-                {
-                    'header': r'^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$',
-                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
-                    'meta': ["Measurement", "Unit", "Concentration"],
-                    'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
-                }
-            ]
-
-            lines = content.strip().split('\n')
-            if not lines:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'Content cannot be empty'
-                }), HTTPStatus.BAD_REQUEST
-
-            metadata_lines = [line.strip() for line in lines if line.strip().startswith('#')]
-            data_lines = [line.strip() for line in lines if not line.strip().startswith('#')]
-
-            if not data_lines:
-                return jsonify({
-                    'status': 'error',
-                    'message': 'CSV must contain at least a header row after metadata'
-                }), HTTPStatus.BAD_REQUEST
-
-            header_line = data_lines[0].replace(" ", "")
-            matched_pattern = None
-            for pattern in pattern_sets:
-                if re.match(pattern['header'], header_line):
-                    matched_pattern = pattern
-                    break
-
-            if not matched_pattern:
-                valid_headers = " OR ".join(p['error'].split('Header must be: ')[1] for p in pattern_sets)
-                return jsonify({
-                    'status': 'error',
-                    'message': f'Invalid CSV header. Must match one of: {valid_headers}'
-                }), HTTPStatus.BAD_REQUEST
-
-            required_meta = matched_pattern.get("meta", [])
-            if required_meta:
-                meta_dict = {}
-                for line in metadata_lines:
-                    if ":" in line:
-                        key, value = line.lstrip("#").split(":", 1)
-                        meta_dict[key.strip()] = value.strip()
-
-                missing_meta = [m for m in required_meta if m not in meta_dict]
-                if missing_meta:
-                    return jsonify({
-                        'status': 'error',
-                        'message': f'Missing metadata fields: {", ".join(missing_meta)}'
-                    }), HTTPStatus.BAD_REQUEST
-
-            for i, line in enumerate(data_lines[1:], 2):
-                if not re.match(matched_pattern['data'], line):
-                    return jsonify({
-                        'status': 'error',
-                        'message': f'Invalid data in row {i} for the detected format.'
-                    }), HTTPStatus.BAD_REQUEST
+            success, result = validate_csv_content(content)
+            if not success:
+                return jsonify({'status': 'error', 'message': result}), HTTPStatus.BAD_REQUEST
 
         user_data = get_user_data()
         if type == "json":
@@ -129,16 +51,10 @@ def edit_file():
             store = user_data['csv']
 
         if file_name not in store:
-            return jsonify({
-                'status': 'error',
-                'message': f'File {file_name} not found'
-            }), HTTPStatus.NOT_FOUND
+            return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
 
         if file_name != new_file_name and new_file_name in store:
-            return jsonify({
-                'status': 'error',
-                'message': f'File {new_file_name} already exists'
-            }), HTTPStatus.CONFLICT
+            return jsonify({'status': 'error', 'message': f'File {new_file_name} already exists'}), HTTPStatus.CONFLICT
 
         if is_json:
             parsed_json = json.loads(content)
@@ -146,8 +62,16 @@ def edit_file():
             store[new_file_name] = json.dumps(cleaned_json, indent=2)
         else:
             store[new_file_name] = content
+
         if file_name != new_file_name:
             del store[file_name]
+            # Update cache: remove old name
+            if 'metadata_cache' in user_data and file_name in user_data['metadata_cache']:
+                del user_data['metadata_cache'][file_name]
+        
+        # Update cache for new/updated content
+        if not is_json:
+            update_file_metadata(new_file_name, store[new_file_name])
         
         message = f'File {file_name} updated successfully' + (f' and renamed to {new_file_name}' if file_name != new_file_name else '')
 
@@ -169,6 +93,8 @@ def edit_file():
                 new_rows = [','.join(r) for r in parsed_rows]
                 new_content = '\n'.join(metadata + [header] + new_rows) + '\n'
                 store[new_file_name] = new_content
+                # Update cache again after sorting
+                update_file_metadata(new_file_name, new_content)
 
         if type == "json":
             socketio.emit('update_json', {'mode': mode})
@@ -203,6 +129,9 @@ def delete_file():
         else:
             if file_name in user_data['csv']:
                 del user_data['csv'][file_name]
+                # Delete cache
+                if 'metadata_cache' in user_data and file_name in user_data['metadata_cache']:
+                    del user_data['metadata_cache'][file_name]
                 socketio.emit('update_csv')
                 return jsonify({'status': 'success', 'message': f'File {file_name} deleted successfully'}), HTTPStatus.OK
             else:
@@ -242,6 +171,8 @@ def copy_file():
             files = list(user_data['csv'].keys())
             dst_name = get_next_filename(ext, files, base)
             user_data['csv'][dst_name] = content
+            # Update cache
+            update_file_metadata(dst_name, content)
             socketio.emit('update_csv')
             return jsonify({'status': 'success', 'message': f'File copied to {dst_name}', 'new_filename': dst_name}), HTTPStatus.OK
     except Exception as e:
@@ -281,6 +212,8 @@ def upload_file():
                 filename = get_next_filename(ext, list(store.keys()), base)
                 message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
             store[filename] = content
+            # Update cache
+            update_file_metadata(filename, content)
             socketio.emit('update_csv')
 
         return jsonify({'status': 'success', 'message': f'File "{filename}" uploaded successfully{message_suffix}.', 'filename': filename}), HTTPStatus.OK
@@ -312,6 +245,8 @@ def merge_csv():
         success, result = merge_csv_contents(content1, content2)
         if success:
             user_data['csv'][output_name] = result
+            # Update cache
+            update_file_metadata(output_name, result)
             socketio.emit('update_csv')
             return jsonify({'status': 'success', 'message': f'Files merged successfully into {output_name}'}), HTTPStatus.OK
         else:

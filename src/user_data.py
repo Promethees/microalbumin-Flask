@@ -27,6 +27,7 @@ def get_user_data() -> dict:
                 'kinetics': {},
                 'point': {}
             },
+            'metadata_cache': {},  # Cache for file metadata (e.g., source counts)
             'drive': {
                 'mode': 'guest',
                 'authenticated': False,
@@ -73,6 +74,31 @@ def _load_file(path: Path) -> str:
 # ------------------------------------------------------------------
 # 4. Main init function – populates USER_DATA from files
 # ------------------------------------------------------------------
+def get_file_metadata(filename: str, user_id: str = None) -> dict:
+    """Retrieve cached metadata for a file."""
+    user_data = get_user_data()
+    return user_data.get('metadata_cache', {}).get(filename)
+
+def update_file_metadata(filename: str, content: str, user_id: str = None):
+    """Parse and cache metadata (source count) for a file."""
+    user_data = get_user_data()
+    if 'metadata_cache' not in user_data:
+        user_data['metadata_cache'] = {}
+    
+    if filename.lower().endswith('.csv'):
+        # Small parsing logic to count 'Value:' headers without full Pandas Load
+        try:
+            lines = content.splitlines()
+            header = next((l for l in lines if l.strip() and not l.lstrip().startswith('#')), "")
+            if header:
+                count = sum(1 for col in header.split(',') if col.strip().startswith('Value:'))
+                if count > 0:
+                    user_data['metadata_cache'][filename] = {'num_sources': count}
+                else:
+                    user_data['metadata_cache'][filename] = {'num_sources': 1}
+        except:
+            pass
+
 def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", clear_existing: bool = False) -> None:
     csv_dir = Path(csv_dir)
     json_dir = Path(json_dir)
@@ -82,36 +108,33 @@ def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", c
         user_data['csv'].clear()
         user_data['json']['kinetics'].clear()
         user_data['json']['point'].clear()
+        user_data['metadata_cache'].clear()
     
-    # Do NOT load defaults if we already have data 
     if user_data['csv'] or user_data['json']['kinetics'] or user_data['json']['point']:
         return user_data
     
-    # Do NOT load defaults if we are in Connected mode (unless forcing clear_existing)
     if get_drive_mode() == 'connected' and not clear_existing:
         return user_data
 
-    # --- CSV: multi.csv + single.csv ---
     for fname in ("multi.csv", "single.csv"):
         csv_data = _load_file(csv_dir / fname)
         if csv_data:
             user_data["csv"][fname] = csv_data
+            update_file_metadata(fname, csv_data)
 
-    # --- JSON: kinetics ---
     kinetics_path = json_dir / "exp_kinetics.json"
     kinetics_raw = _load_file(kinetics_path)
-
     if kinetics_raw is not None:
         user_data["json"]["kinetics"]["exp_kinetics.json"] = kinetics_raw
 
-    # --- JSON: point ---
     point_path = json_dir / "exp_point.json"
     point_raw = _load_file(point_path)
-
     if point_raw is not None:
         user_data["json"]["point"]["exp_point.json"] = point_raw
 
     return user_data
+
+# ... [rest of the file] ...
 
 # ------------------------------------------------------------------
 # 5. User Data Helpers

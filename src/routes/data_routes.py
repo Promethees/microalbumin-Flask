@@ -57,21 +57,16 @@ def get_csv_headers():
     except Exception as e:
         return jsonify({'headers': [], 'error': f'Error reading CSV: {str(e)}'}), 200
 
+from user_data import get_user_data, get_file_metadata
+
 @data_bp.route('/get_num_sources', methods=['GET'])
 def get_num_sources():
     csv_data = get_user_data()['csv']
     num_sources = set()
-    for filename, content in csv_data.items():
-        if not filename.lower().endswith('.csv'):
-            continue
-        try:
-            lines = (line for line in content.splitlines() if line.strip() and not line.lstrip().startswith("#"))
-            df = pd.read_csv(StringIO("\n".join(lines)))
-            count = sum(col.startswith('Value:') for col in df.columns)
-            if count > 0:
-                num_sources.add(count)
-        except Exception:
-            continue
+    for filename in csv_data.keys():
+        meta = get_file_metadata(filename)
+        if meta and 'num_sources' in meta:
+            num_sources.add(meta['num_sources'])
     return jsonify({'num_sources': sorted(list(num_sources)), 'csv_data': csv_data})
 
 @data_bp.route('/get_data', methods=['GET'])
