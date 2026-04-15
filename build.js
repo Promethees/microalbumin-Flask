@@ -1,17 +1,31 @@
 // build.js
 const fs = require('fs');
 const path = require('path');
-const { minify } = require('terser');
-const CleanCSS = require('clean-css');
-const Obfuscator = require('javascript-obfuscator');
+
+// Move requires into try-catch to provide better error messages on Heroku
+let minify, CleanCSS, Obfuscator;
+try {
+  minify = require('terser').minify;
+  CleanCSS = require('clean-css');
+  Obfuscator = require('javascript-obfuscator');
+} catch (e) {
+  console.error('[FATAL ERROR] Missing build dependencies. Ensure clean-css, terser, and javascript-obfuscator are in "dependencies" in package.json.');
+  console.error(e);
+  process.exit(1);
+}
 
 // ---------- CONFIG ----------
-const SRC_JS_DIR   = path.join(__dirname, 'static', 'script');   // your JS folder
-const SRC_STATIC   = path.join(__dirname, 'static');              // root static/
+const SRC_JS_DIR   = path.join(__dirname, 'static', 'script');
+const SRC_STATIC   = path.join(__dirname, 'static');
 const DIST_DIR     = path.join(__dirname, 'static', 'dist');
 
+console.log('--- STARTING BUILD PROCESS ---');
+
 // Ensure dist exists
-fs.mkdirSync(DIST_DIR, { recursive: true });
+if (!fs.existsSync(DIST_DIR)) {
+  fs.mkdirSync(DIST_DIR, { recursive: true });
+  console.log('Created directory:', DIST_DIR);
+}
 
 // ---------- OBFUSCATOR SETTINGS ----------
 const OBFUSCATOR_OPTIONS = {
@@ -31,101 +45,60 @@ const OBFUSCATOR_OPTIONS = {
 
 function getReservedNamesFromHTML() {
   const templatesDir = path.join(__dirname, 'templates');
-  if (!fs.existsSync(templatesDir)) {
-    console.warn('templates/ folder not found — skipping auto-reserved names');
-    return [];
-  }
+  if (!fs.existsSync(templatesDir)) return [];
 
-  // Get all .html files
   const htmlFiles = fs.readdirSync(templatesDir)
     .filter(f => f.endsWith('.html'))
     .map(f => path.join(templatesDir, f));
 
-  if (htmlFiles.length === 0) {
-    console.warn('No .html files found in templates/');
-    return [];
-  }
-
   const reserved = new Set();
-
   htmlFiles.forEach(htmlPath => {
-    const filename = path.basename(htmlPath);
     const html = fs.readFileSync(htmlPath, 'utf8');
-
-    console.log(`Scanning ${filename} for public functions...`);
-
-    // 1. onclick="startMeasurement()"
     html.replace(/onclick=["']([^"')]+)["']/g, (_, fn) => {
       const name = fn.split('(')[0].trim();
-      if (name && !name.startsWith('window.') && !name.includes('.')) {
-        reserved.add(name);
-      }
+      if (name && !name.startsWith('window.') && !name.includes('.')) reserved.add(name);
     });
-
-    // 2. data-action="resetKit"
-    html.replace(/data-action=["']([^"']+)["']/g, (_, action) => {
-      reserved.add(action);
-    });
-
-    // 3. Inline <script> blocks: initSensor(), updateDisplay(42)
+    html.replace(/data-action=["']([^"']+)["']/g, (_, action) => reserved.add(action));
     html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (_, script) => {
       script.replace(/\b([a-zA-Z_$][\w$]*)\s*\(/g, (match, name) => {
-        // Skip internal names (start with _), object methods, or built-ins
-        if (
-          name &&
-          !name.startsWith('_') &&
-          !name.includes('.') &&
-          !['console', 'alert', 'confirm', 'prompt', 'setTimeout', 'setInterval'].includes(name)
-        ) {
+        if (name && !name.startsWith('_') && !name.includes('.') && 
+            !['console', 'alert', 'confirm', 'prompt', 'setTimeout', 'setInterval'].includes(name)) {
           reserved.add(name);
         }
         return match;
       });
     });
   });
-
-  const list = Array.from(reserved).sort();
-  if (list.length > 0) {
-    console.log(`Reserved public functions: ${list.join(', ')}`);
-  } else {
-    console.log('No public functions detected.');
-  }
-
-  return list;
+  return Array.from(reserved).sort();
 }
 
-// ---------- 1. COPY ALL NON-JS/CSS FILES ----------
+// ---------- 1. COPY STATIC ASSETS ----------
 function copyStaticAssets() {
-  console.log('Copying static assets (images, fonts, etc.)...');
-
+  console.log('[1/3] Copying static assets (images, fonts, icons)...');
   const exclude = ['.js', '.css', '.min.js', '.min.css'];
   const files = fs.readdirSync(SRC_STATIC)
     .filter(f => !exclude.some(ext => f.endsWith(ext)))
     .filter(f => fs.statSync(path.join(SRC_STATIC, f)).isFile());
 
   for (const file of files) {
-    const src = path.join(SRC_STATIC, file);
-    const dest = path.join(DIST_DIR, file);
-    fs.copyFileSync(src, dest);
-    console.log(`Copied: ${file}`);
+    fs.copyFileSync(path.join(SRC_STATIC, file), path.join(DIST_DIR, file));
+    console.log(`  Copied: ${file}`);
   }
 
-  // Also copy from subfolders like static/images/, static/fonts/, etc.
   const subfolders = ['images', 'fonts', 'icons', 'assets'];
   for (const folder of subfolders) {
     const srcFolder = path.join(SRC_STATIC, folder);
     const distFolder = path.join(DIST_DIR, folder);
     if (fs.existsSync(srcFolder)) {
-      fs.mkdirSync(distFolder, { recursive: true });
-      const items = fs.readdirSync(srcFolder);
-      for (const item of items) {
+      if (!fs.existsSync(distFolder)) fs.mkdirSync(distFolder, { recursive: true });
+      fs.readdirSync(srcFolder).forEach(item => {
         const srcItem = path.join(srcFolder, item);
         const destItem = path.join(distFolder, item);
         if (fs.statSync(srcItem).isFile()) {
           fs.copyFileSync(srcItem, destItem);
-          console.log(`Copied: ${folder}/${item}`);
+          console.log(`  Copied: ${folder}/${item}`);
         }
-      }
+      });
     }
   }
 }
@@ -135,14 +108,25 @@ async function processJS(filePath) {
   const filename = path.basename(filePath);
   const raw = fs.readFileSync(filePath, 'utf8');
 
-  console.log(`Obfuscating ${filename}...`);
-  const obf = Obfuscator.obfuscate(raw, OBFUSCATOR_OPTIONS).getObfuscatedCode();
-  const { code } = await minify(obf, { mangle: true, compress: true });
+  try {
+    console.log(`[2/3] Processing JS: ${filename}`);
+    console.log(`  - Obfuscating...`);
+    const obf = Obfuscator.obfuscate(raw, OBFUSCATOR_OPTIONS).getObfuscatedCode();
+    
+    console.log(`  - Minifying...`);
+    const minified = await minify(obf, { mangle: true, compress: true });
+    
+    if (!minified || !minified.code) {
+        throw new Error(`Minification resulted in empty code for ${filename}`);
+    }
 
-  const outName = filename.replace(/\.js$/, '.min.js');
-  const outPath = path.join(DIST_DIR, outName);
-  fs.writeFileSync(outPath, code || '');
-  console.log(`→ ${outName}`);
+    const outName = filename.replace(/\.js$/, '.min.js');
+    fs.writeFileSync(path.join(DIST_DIR, outName), minified.code);
+    console.log(`  OK -> ${outName} (${(minified.code.length / 1024).toFixed(2)} KB)`);
+  } catch (err) {
+    console.error(`[ERROR] Failed to process JS ${filename}:`, err);
+    process.exit(1); // Fail the build on error
+  }
 }
 
 // ---------- 3. PROCESS CSS ----------
@@ -150,38 +134,47 @@ function processCSS(filePath) {
   const filename = path.basename(filePath);
   const input = fs.readFileSync(filePath, 'utf8');
 
-  console.log(`Minifying ${filename}...`);
-  const output = new CleanCSS({ level: 2 }).minify(input).styles;
-  const outName = filename.replace(/\.css$/, '.min.css');
-  const outPath = path.join(DIST_DIR, outName);
-  fs.writeFileSync(outPath, output);
-  console.log(`→ ${outName}`);
+  try {
+    console.log(`[3/3] Processing CSS: ${filename}`);
+    const output = new CleanCSS({ level: 2 }).minify(input).styles;
+    const outName = filename.replace(/\.css$/, '.min.css');
+    fs.writeFileSync(path.join(DIST_DIR, outName), output);
+    console.log(`  OK -> ${outName} (${(output.length / 1024).toFixed(2)} KB)`);
+  } catch (err) {
+    console.error(`[ERROR] Failed to process CSS ${filename}:`, err);
+    process.exit(1);
+  }
 }
 
 // ---------- MAIN ----------
 (async () => {
-  // 1. Copy images, fonts, etc. FIRST
-  copyStaticAssets();
+  try {
+    copyStaticAssets();
 
-  // 2. Process JS
-  if (fs.existsSync(SRC_JS_DIR)) {
-    const jsFiles = fs.readdirSync(SRC_JS_DIR)
-      .filter(f => f.endsWith('.js'))
-      .map(f => path.join(SRC_JS_DIR, f));
+    if (fs.existsSync(SRC_JS_DIR)) {
+      const jsFiles = fs.readdirSync(SRC_JS_DIR)
+        .filter(f => f.endsWith('.js'))
+        .map(f => path.join(SRC_JS_DIR, f));
 
-    for (const file of jsFiles) {
-      await processJS(file);
+      for (const file of jsFiles) {
+        await processJS(file);
+      }
+    } else {
+      console.warn('[WARN] No JS source folder found at:', SRC_JS_DIR);
     }
+
+    const cssFiles = fs.readdirSync(SRC_STATIC)
+      .filter(f => f.endsWith('.css') && !f.endsWith('.min.css'))
+      .map(f => path.join(SRC_STATIC, f));
+
+    for (const file of cssFiles) {
+      processCSS(file);
+    }
+
+    console.log('\n--- BUILD SUCCESSFUL! ---');
+    console.log('Static assets are ready in static/dist/');
+  } catch (err) {
+    console.error('[FATAL ERROR] Build process failed:', err);
+    process.exit(1);
   }
-
-  // 3. Process CSS (from static/ root)
-  const cssFiles = fs.readdirSync(SRC_STATIC)
-    .filter(f => f.endsWith('.css') && !f.endsWith('.min.css'))
-    .map(f => path.join(SRC_STATIC, f));
-
-  for (const file of cssFiles) {
-    processCSS(file);
-  }
-
-  console.log('\nBuild complete! static/dist/ is ready (with .png preserved)');
 })();
