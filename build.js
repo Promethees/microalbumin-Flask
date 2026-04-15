@@ -100,17 +100,15 @@ function getReservedNames() {
 // ---------- OBFUSCATOR SETTINGS ----------
 const OBFUSCATOR_OPTIONS = {
   compact: true,
-  controlFlowFlattening: true,
-  controlFlowFlatteningThreshold: 0.75,
-  deadCodeInjection: true,
-  deadCodeInjectionThreshold: 0.4,
-  renameGlobals: false, // DO NOT rename global functions to avoid breaking HTML handlers
+  controlFlowFlattening: false,
+  deadCodeInjection: false,
+  renameGlobals: false,
   reservedNames: getReservedNames(),
-  stringArray: true,
-  stringArrayThreshold: 1,
+  stringArray: false,           // Disabled to prevent stack overflow on large files
+  identifierNamesGenerator: 'mangled', // More efficient than 'hexadecimal'
   transformObjectKeys: false,
-  unicodeEscapeSequence: true,
-  selfDefending: true,
+  unicodeEscapeSequence: false,
+  selfDefending: false,
 };
 
 // ---------- 1. COPY STATIC ASSETS ----------
@@ -155,7 +153,13 @@ async function processJS(filePath) {
     const obf = Obfuscator.obfuscate(raw, OBFUSCATOR_OPTIONS).getObfuscatedCode();
     
     console.log(`  - Minifying...`);
-    const minified = await minify(obf, { mangle: true, compress: true });
+    // Disable mangle in terser because obfuscator already handled renaming/obfuscation.
+    // We only want terser for compression and dead code removal.
+    const minified = await minify(obf, { 
+      mangle: false, 
+      compress: true,
+      output: { comments: false }
+    });
     
     if (!minified || !minified.code) {
         throw new Error(`Minification resulted in empty code for ${filename}`);
