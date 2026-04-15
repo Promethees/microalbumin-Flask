@@ -167,6 +167,8 @@ def export_data():
                 writer.writerow(entry)
             new_content = sort_csv_content(output.getvalue())
             user_data['csv'][full_name] = new_content
+            from user_data import save_user_data
+            save_user_data(user_data)
         return jsonify({"status": "success", "message": f"Data exported at {full_name}"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
@@ -194,6 +196,8 @@ def export_cal_coefs():
         if cal_mode == "point":
             json_content.update({"time": time, "time-unit": time_unit})
         user_data['json'][cal_mode][full_name] = json.dumps(json_content, cls=CustomEncoder, indent=4)
+        from user_data import save_user_data
+        save_user_data(user_data)
         return jsonify({"status": "success", "message": f"Data exported to {full_name}"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})

@@ -101,6 +101,9 @@ def edit_file():
         else:
             socketio.emit('update_csv')
 
+        from user_data import save_user_data
+        save_user_data(user_data)
+
         return jsonify({'status': 'success', 'message': message}), HTTPStatus.OK
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred while saving the file'}), 500
@@ -123,6 +126,8 @@ def delete_file():
             if mode in user_data['json'] and file_name in user_data['json'][mode]:
                 del user_data['json'][mode][file_name]
                 socketio.emit('update_json', {'mode': mode})
+                from user_data import save_user_data
+                save_user_data(user_data)
                 return jsonify({'status': 'success', 'message': f'File {file_name} deleted successfully'}), HTTPStatus.OK
             else:
                 return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
@@ -133,6 +138,8 @@ def delete_file():
                 if 'metadata_cache' in user_data and file_name in user_data['metadata_cache']:
                     del user_data['metadata_cache'][file_name]
                 socketio.emit('update_csv')
+                from user_data import save_user_data
+                save_user_data(user_data)
                 return jsonify({'status': 'success', 'message': f'File {file_name} deleted successfully'}), HTTPStatus.OK
             else:
                 return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
@@ -162,6 +169,8 @@ def copy_file():
             dst_name = get_next_filename(ext, files, base)
             user_data['json'][mode][dst_name] = content
             socketio.emit('update_json', {'mode': mode})
+            from user_data import save_user_data
+            save_user_data(user_data)
             return jsonify({'status': 'success', 'message': f'File copied to {dst_name}', 'new_filename': dst_name}), HTTPStatus.OK
         else:
             content = user_data['csv'].get(file_name, None)
@@ -174,6 +183,8 @@ def copy_file():
             # Update cache
             update_file_metadata(dst_name, content)
             socketio.emit('update_csv')
+            from user_data import save_user_data
+            save_user_data(user_data)
             return jsonify({'status': 'success', 'message': f'File copied to {dst_name}', 'new_filename': dst_name}), HTTPStatus.OK
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred while copying the file'}), 500
@@ -205,6 +216,8 @@ def upload_file():
                 message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
             store[filename] = content
             socketio.emit('update_json', {'mode': mode})
+            from user_data import save_user_data
+            save_user_data(user_data)
         else:
             store = user_data['csv']
             if filename in store:
@@ -215,6 +228,8 @@ def upload_file():
             # Update cache
             update_file_metadata(filename, content)
             socketio.emit('update_csv')
+            from user_data import save_user_data
+            save_user_data(user_data)
 
         return jsonify({'status': 'success', 'message': f'File "{filename}" uploaded successfully{message_suffix}.', 'filename': filename}), HTTPStatus.OK
     except Exception as e:
@@ -248,6 +263,8 @@ def merge_csv():
             # Update cache
             update_file_metadata(output_name, result)
             socketio.emit('update_csv')
+            from user_data import save_user_data
+            save_user_data(user_data)
             return jsonify({'status': 'success', 'message': f'Files merged successfully into {output_name}'}), HTTPStatus.OK
         else:
             return jsonify({'status': 'error', 'message': result}), 500

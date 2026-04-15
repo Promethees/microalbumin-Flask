@@ -342,6 +342,10 @@ def sync_session_to_drive(user_id: str = None, auto: bool = False) -> Dict:
                 else:
                     errors.append(filename)
         
+        # Save mappings to Redis
+        from user_data import save_user_data
+        save_user_data(user_data, user_id)
+        
         # Update last sync time
         set_drive_preference('last_sync', datetime.now().isoformat(), user_id)
         
@@ -421,6 +425,10 @@ def load_drive_to_session(user_id: str = None) -> Dict:
             
             # Update file mapping
             user_data['drive']['file_mapping'][filename] = file_id
+        
+        # Save loaded content to Redis
+        from user_data import save_user_data
+        save_user_data(user_data, user_id)
         
         if errors:
             return {

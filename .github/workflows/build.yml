@@ -38,3 +38,4 @@ jobs:
       run: |
         python3 tests/test_validators.py
         python3 tests/test_user_data.py
+        python3 tests/test_redis_logic.py
