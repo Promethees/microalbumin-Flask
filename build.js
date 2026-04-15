@@ -27,6 +27,76 @@ if (!fs.existsSync(DIST_DIR)) {
   console.log('Created directory:', DIST_DIR);
 }
 
+const MANUAL_RESERVED_NAMES = [
+  // Core App State & Data Fetching
+  'AppState', 'fetchJSON', 'fetchJSONContent', 'fetchData', 'fetchDataFromServer',
+  
+  // Mode Switching
+  'switchingModes', 'switchingCalModes', 'kineticsModeBehaviour', 'pointModeBehaviour', 'calModeBehaviour',
+  
+  // File/Table Interactions
+  'selectFile', 'deleteFile', 'editFile', 'deselectFile', 'updateFileTable', 'updateJSONTable', 'updateDirectory',
+  
+  // File Operations
+  'copyFile', 'uploadFile', 'downloadFile', 'merge_csv', 'showMergeModal',
+  
+  // UI Helpers & Formatting
+  'blinkingItem', 'scrollWhenVisible', 'adjustInputWidth', 'shrinkButtonTextToFit', 'shrinkAllButtonsToFit',
+  'createToggleButton', 'formatAnalysisHtml', 'formatAnalysisInfo', 'formatCoefficient',
+  
+  // Calculation & Logic
+  'processDataDisplay', 'processResponse', 'handleResponse', 'handleError', 'handleFetchError',
+  'getMetaUnit', 'getTimeUnitValue', 'getTimeUnitMultiplier', 'getBtnChecked', 'getValInt', 'getValFloat',
+  'arraysEqual', 'checkMeasHeader', 'buildMeasHeaders', 'filterFiles',
+  
+  // Charting
+  'generateChart', 'updatePlot', 'updatePlotBasedOnMode', 'drawMeasurementChart', 'destroyCharts',
+  'splitMultiSourceRoutine', 'groupMultiSourceRoutine', 'calibrateRoutine',
+  'updatePlotBasedOnMode', 'updateRefCalPoint', 'processPointMode', 'populateDropdown',
+  'settingDerivedCon', 'updateDerivedSections', 'updateMultiSourceExportOptions',
+  
+  // External Libraries
+  'Chart', 'Swal', 'MathJax', 'jQuery', '$'
+];
+
+function getReservedNames() {
+  const reserved = new Set(MANUAL_RESERVED_NAMES);
+  
+  // 1. Scan templates
+  const templatesDir = path.join(__dirname, 'templates');
+  if (fs.existsSync(templatesDir)) {
+    const htmlFiles = fs.readdirSync(templatesDir).filter(f => f.endsWith('.html'));
+    htmlFiles.forEach(file => {
+      const html = fs.readFileSync(path.join(templatesDir, file), 'utf8');
+      // Scan onclick/onchange attributes
+      html.replace(/(?:onclick|onchange|oninput|onblur)=["']([^"']+)["']/g, (_, inner) => {
+        inner.match(/([a-zA-Z0-9_$]+)\s*\(/g)?.forEach(f => reserved.add(f.replace('(', '').trim()));
+      });
+      // Scan script tags
+      html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (_, script) => {
+        script.match(/\b([a-zA-Z_$][\w$]*)\s*\(/g)?.forEach(m => {
+          const name = m.replace('(', '').trim();
+          if (!['console', 'alert', 'setTimeout', 'setInterval'].includes(name)) reserved.add(name);
+        });
+      });
+    });
+  }
+
+  // 2. Scan JS files for dynamic handler strings
+  if (fs.existsSync(SRC_JS_DIR)) {
+    const jsFiles = fs.readdirSync(SRC_JS_DIR).filter(f => f.endsWith('.js') && !f.endsWith('.min.js'));
+    jsFiles.forEach(file => {
+      const content = fs.readFileSync(path.join(SRC_JS_DIR, file), 'utf8');
+      content.replace(/(?:onclick|onchange|oninput|onblur)=["']([^"']+)["']/g, (_, inner) => {
+        inner.match(/([a-zA-Z0-9_$]+)\s*\(/g)?.forEach(f => reserved.add(f.replace('(', '').trim()));
+      });
+    });
+  }
+
+  console.log(`  Total reserved names protected: ${reserved.size}`);
+  return Array.from(reserved).sort();
+}
+
 // ---------- OBFUSCATOR SETTINGS ----------
 const OBFUSCATOR_OPTIONS = {
   compact: true,
@@ -34,43 +104,14 @@ const OBFUSCATOR_OPTIONS = {
   controlFlowFlatteningThreshold: 0.75,
   deadCodeInjection: true,
   deadCodeInjectionThreshold: 0.4,
-  renameGlobals: false,
-  reservedNames: getReservedNamesFromHTML(),
+  renameGlobals: false, // DO NOT rename global functions to avoid breaking HTML handlers
+  reservedNames: getReservedNames(),
   stringArray: true,
   stringArrayThreshold: 1,
   transformObjectKeys: false,
   unicodeEscapeSequence: true,
   selfDefending: true,
 };
-
-function getReservedNamesFromHTML() {
-  const templatesDir = path.join(__dirname, 'templates');
-  if (!fs.existsSync(templatesDir)) return [];
-
-  const htmlFiles = fs.readdirSync(templatesDir)
-    .filter(f => f.endsWith('.html'))
-    .map(f => path.join(templatesDir, f));
-
-  const reserved = new Set();
-  htmlFiles.forEach(htmlPath => {
-    const html = fs.readFileSync(htmlPath, 'utf8');
-    html.replace(/onclick=["']([^"')]+)["']/g, (_, fn) => {
-      const name = fn.split('(')[0].trim();
-      if (name && !name.startsWith('window.') && !name.includes('.')) reserved.add(name);
-    });
-    html.replace(/data-action=["']([^"']+)["']/g, (_, action) => reserved.add(action));
-    html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (_, script) => {
-      script.replace(/\b([a-zA-Z_$][\w$]*)\s*\(/g, (match, name) => {
-        if (name && !name.startsWith('_') && !name.includes('.') && 
-            !['console', 'alert', 'confirm', 'prompt', 'setTimeout', 'setInterval'].includes(name)) {
-          reserved.add(name);
-        }
-        return match;
-      });
-    });
-  });
-  return Array.from(reserved).sort();
-}
 
 // ---------- 1. COPY STATIC ASSETS ----------
 function copyStaticAssets() {
