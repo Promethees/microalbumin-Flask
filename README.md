@@ -11,14 +11,29 @@ The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](
 	- Start the app locally with `gunicorn -k eventlet -w 1 main:app --bind 0.0.0.0:5000`
 	- Open browser, access the software via address of `http://0.0.0.0:5000` or `http://localhost:5000`
 
-### Online deployment
-	- Download `npm` with [Node.js](https://nodejs.org/en/download/)
-	- Download `terser` with `npm install --save-dev terser`
-	- Make changes, then use `npm run build` to obfuscate your latest code
-	- Commit locally using `git commit -m "Your message"`
-	- Check if already logged in with heroku `heroku whoami`, if not yet use `heroku login`
-	- Configure heroku remote using `heroku git:remote -a easysensor-kit`
-	- Push to deployment using `git push heroku online:main`
+### Online deployment (Heroku)
+- **Log in to Heroku**: `heroku login`
+- **Configure Buildpacks** (Only needed once):
+  ```bash
+  # Clear existing buildpacks
+  heroku buildpacks:clear -a easysensor-kit
+  # Add Node.js for automated obfuscation
+  heroku buildpacks:add heroku/nodejs -a easysensor-kit
+  # Add Python for the Flask app
+  heroku buildpacks:add heroku/python -a easysensor-kit
+  ```
+- **Deploy**: 
+  - Make changes and commit them: `git add . && git commit -m "Your message"`
+  - Push the `online` branch to Heroku's `main`: `git push heroku online:main`
+- **Notes**: 
+  - The `heroku-postbuild` script in `package.json` will automatically run the obfuscation during every deployment.
+  - You no longer need to run `npm run build` manually on your local machine.
+
+> [!NOTE]  
+> **Offline Obfuscation**: If you still wish to obfuscate files locally (e.g., for testing or other platforms):
+> 1. Ensure Node.js is installed.
+> 2. Run `npm install` to get the build tools.
+> 3. Run `npm run build` to generate the `.min` files in `static/dist/`.
 
 ### Update package.json with latest versions
 	- Use `npm init -y && npm pkg set scripts.build="node build.js" scripts.start="gunicorn main:app" && npm install --save-dev javascript-obfuscator terser clean-css`
