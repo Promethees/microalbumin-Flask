@@ -403,6 +403,8 @@ def load_drive_to_session(user_id: str = None) -> Dict:
             # Store in appropriate location based on extension
             if filename.endswith('.csv'):
                 user_data['csv'][filename] = content
+                from user_data import update_file_metadata
+                update_file_metadata(filename, content)
                 loaded_files.append(filename)
             elif filename.endswith('.json'):
                 # Determine mode based on content or filename

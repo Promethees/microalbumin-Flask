@@ -1,3 +1,4 @@
+import os
 from flask import Blueprint, request, jsonify
 import pandas as pd
 from io import StringIO
@@ -67,7 +68,7 @@ def get_num_sources():
         meta = get_file_metadata(filename)
         if meta and 'num_sources' in meta:
             num_sources.add(meta['num_sources'])
-    return jsonify({'num_sources': sorted(list(num_sources)), 'csv_data': csv_data})
+    return jsonify({'num_sources': sorted(list(num_sources))})
 
 @data_bp.route('/get_data', methods=['GET'])
 def get_data():
@@ -112,7 +113,7 @@ def get_data():
                     if possible_name in data[0]:
                         unit = data[0][possible_name]
                         break
-            return jsonify({'data': data, 'unit': unit, 'error': None, 'metadata': {}, 'all_data': user_data['csv']})
+            return jsonify({'data': data, 'unit': unit, 'error': None, 'metadata': {}})
         return jsonify({'data': [], 'error': 'Unsupported file type', 'unit': "NONE", 'metadata': {}})
     except Exception as e:
         return jsonify({'data': [], 'error': f'Error processing file: {str(e)}', 'unit': "NONE", 'metadata': {}})

@@ -61,16 +61,20 @@ def validate_csv_content(content: str):
 
     # Validate metadata
     required_meta = matched_pattern.get("meta", [])
+    meta_dict = {}
     if required_meta:
-        meta_dict = {}
         for line in metadata_lines:
             if ":" in line:
                 key, value = line.lstrip("#").split(":", 1)
                 meta_dict[key.strip()] = value.strip()
-
-        missing_meta = [m for m in required_meta if m not in meta_dict]
-        if missing_meta:
-            return False, f"Missing metadata fields: {', '.join(missing_meta)}"
+        
+        # Check for required keys, allowing 'Unit' and 'MeasUnit' to be interchangeable
+        for req_key in required_meta:
+            if req_key in ['Unit', 'MeasUnit']:
+                if 'Unit' not in meta_dict and 'MeasUnit' not in meta_dict:
+                    return False, matched_pattern.get('error', f'Missing metadata: Unit or MeasUnit')
+            elif req_key not in meta_dict:
+                return False, matched_pattern.get('error', f'Missing metadata: {req_key}')
 
     # Validate data rows
     for i, line in enumerate(data_lines[1:], 2):
