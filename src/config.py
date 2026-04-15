@@ -21,4 +21,4 @@ class Config:
     GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')
     
-    PRODUCTION_MODE = True
+    PRODUCTION_MODE = os.environ.get('PRODUCTION_MODE', 'False').lower() == 'true'
