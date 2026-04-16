@@ -500,12 +500,8 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
 
     // Update analysis info display
-    let htmlString = "";
-    if (calDiv.getAttribute('data-value') === "kinetics") {
-        htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
-    } else if (calDiv.getAttribute('data-value') === "point") {
-        htmlString = getCalPointString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
-    }
+    const mode = calDiv.getAttribute('data-value');
+    let htmlString = getCalibrationAnalysisString(mixAnalysis, document.getElementById("exp-json-regress-algo").value, mode);
     document.getElementById("plot-analysis").innerHTML = htmlString;
 
     return {
@@ -610,45 +606,13 @@ function createTable(coef, rSquared, headers) {
     `;
 }
 
-function getCalKineticsString(analysis, fitType, analysisId = "cal-kinetics-analysis") {
-    if (!analysis || !AppState.quantity_input.quantities) return '';
-    let headers
-    switch (fitType) {
-        case "Michaelis-Menten":
-            headers = ['V_max', 'Km'];
-            break;
-        case "linear":
-            headers = ['a', 'b'];
-            break;
-        default:
-            headers = ['a', 'b', 'c'];
-            break;
-    }
-    const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
-
-    return AppState.quantity_input.quantities.map((label, i) => {
-        const coef = analysis[i]?.coefficients || null;
-        const rSquared = analysis[i]?.rSquared || null;
-        const showText = 'See kinetics analysis';
-        const hideText = 'Hide kinetics analysis';
-
-        return `
-            <span>
-                ${label ? `${label}: ` : ''}
-                ${createToggleButton(analysisId, showText, hideText)}
-                <div style="max-height: auto; display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
-                    ${createTable(coef, rSquared, headers)}
-                </div>
-            </span>
-            <br/>
-        `;
-    }).join('');
-}
-
-function getCalPointString(analysis, fitType, analysisId = "cal-point-analysis") {
+function getCalibrationAnalysisString(analysis, fitType, mode) {
     if (!analysis) return '';
+    const analysisId = mode === "kinetics" ? "cal-kinetics-analysis" : "cal-point-analysis";
+    const showText = `See ${mode} analysis`;
+    const hideText = `Hide ${mode} analysis`;
 
-    let headers
+    let headers;
     switch (fitType) {
         case "Michaelis-Menten":
             headers = ['V_max', 'Km'];
@@ -660,14 +624,12 @@ function getCalPointString(analysis, fitType, analysisId = "cal-point-analysis")
             headers = ['a', 'b', 'c'];
             break;
     }
-    const coef = analysis.coefficients || null;
-    const rSquared = analysis.rSquared || null;
-    const showText = 'See point analysis';
-    const hideText = 'Hide point analysis';
+
     const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
 
-    return `
+    const generateBlock = (coef, rSquared, label = '') => `
         <span>
+            ${label ? `${label}: ` : ''}
             ${createToggleButton(analysisId, showText, hideText)}
             <div style="max-height: auto; display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
                 ${createTable(coef, rSquared, headers)}
@@ -675,6 +637,19 @@ function getCalPointString(analysis, fitType, analysisId = "cal-point-analysis")
         </span>
         <br/>
     `;
+
+    if (mode === "kinetics") {
+        if (!AppState.quantity_input.quantities) return '';
+        return AppState.quantity_input.quantities.map((label, i) => {
+            const coef = analysis[i]?.coefficients || null;
+            const rSquared = analysis[i]?.rSquared || null;
+            return generateBlock(coef, rSquared, label);
+        }).join('');
+    } else {
+        const coef = analysis.coefficients || null;
+        const rSquared = analysis.rSquared || null;
+        return generateBlock(coef, rSquared);
+    }
 }
 
 function preprocessData(data, XColumn) {
