@@ -81,16 +81,51 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+:: Remove Git ignore file if it exists
+if exist ".gitignore" (
+    del /q ".gitignore"
+    if %ERRORLEVEL% neq 0 (
+        echo WARNING: Failed to remove .gitignore file.
+    )
+)
+
 :: Remove unwanted files (customize this list as needed)
 echo Removing unwanted files...
 del /s /q "!INSTALL_DIR!\*.command" >nul 2>&1
 del /s /q "!INSTALL_DIR!\*.bat" >nul 2>&1
 del /s /q "!INSTALL_DIR!\log_hid_data.py" >nul 2>&1
 del /s /q "!INSTALL_DIR!\requirements.txt" >nul 2>&1
+del /s /q "!INSTALL_DIR!\generate-tree.sh" >nul 2>&1
+del /s /q "!INSTALL_DIR!\BUILD_MAC.md" >nul 2>&1
+del /s /q "!INSTALL_DIR!\Rule.md" >nul 2>&1
 if exist "!INSTALL_DIR!\mac" (
     rmdir /s /q "!INSTALL_DIR!\mac"
     if !ERRORLEVEL! neq 0 (
         echo WARNING: Failed to remove "mac" directory.
+    )
+)
+if exist "!INSTALL_DIR!\easyokapi-knowledge" (
+    rmdir /s /q "!INSTALL_DIR!\easyokapi-knowledge"
+    if !ERRORLEVEL! neq 0 (
+        echo WARNING: Failed to remove "easyokapi-knowledge" directory.
+    )
+)
+if exist "!INSTALL_DIR!\images" (
+    rmdir /s /q "!INSTALL_DIR!\images"
+    if !ERRORLEVEL! neq 0 (
+        echo WARNING: Failed to remove "images" directory.
+    )
+)
+if exist "!INSTALL_DIR!\installer-mac" (
+    rmdir /s /q "!INSTALL_DIR!\installer-mac"
+    if !ERRORLEVEL! neq 0 (
+        echo WARNING: Failed to remove "installer-mac" directory.
+    )
+)
+if exist "!INSTALL_DIR!\installer-win" (
+    rmdir /s /q "!INSTALL_DIR!\installer-win"
+    if !ERRORLEVEL! neq 0 (
+        echo WARNING: Failed to remove "installer-win" directory.
     )
 )
 
