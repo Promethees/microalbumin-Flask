@@ -76,7 +76,7 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 | `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus` |
 | `navigation.js` | File table population (CSV and JSON), **directory browsing** (parent/child navigation) |
 | `hid-logging.js` | **PyBadge control UI**: `runScript`, `terminateScript`, `checkScriptStatus`, log display |
-| `data-handling.js` | File select/deselect/delete/copy/upload/download, data fetching, export logic |
+| `data-handling.js` | File select/deselect/delete/copy, data fetching, export logic |
 | `data-display.js` | Chart rendering orchestration, multi-source handling, calibration routines |
 | `generate-chart.js` | Chart.js chart creation, dataset construction, annotations |
 | `calculate.js` | Math: regression (linear, polynomial, logarithmic, exponential, Michaelis-Menten), R² |
