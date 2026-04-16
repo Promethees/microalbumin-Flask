@@ -99,14 +99,14 @@ def replace_empty(obj):
         - {}  (empty dict)
         - None
     """
+    if obj in ('', [], {}, None):
+        return "NONE"
+    
     if isinstance(obj, MutableMapping):               # dict-like
         return {k: replace_empty(v) for k, v in obj.items()}
     elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
         return [replace_empty(v) for v in obj]        # list / tuple / etc.
     else:
-        # leaf value
-        if obj in ('', [], {}, None):
-            return "NONE"
         return obj
 
 def merge_csv_files(file1_path, file2_path, output_path):
