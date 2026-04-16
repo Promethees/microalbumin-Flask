@@ -24,8 +24,9 @@ jobs:
           pip install -r requirements.txt
           
       - name: Run tests
+        env:
+          PYTHONPATH: .:${{ github.workspace }}/src
         run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
           pytest
           
   build-macos:
