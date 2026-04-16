@@ -61,5 +61,5 @@ if not exist "%~dp0code\venv\Scripts\python.exe" (
     pause
     exit /b 1
 )
-"%~dp0code\venv\Scripts\python.exe" "%~dp0code\main_code.py"
+"%~dp0code\venv\Scripts\python.exe" "%~dp0code\main.py"
 pause

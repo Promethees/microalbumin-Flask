@@ -86,7 +86,6 @@ echo Removing unwanted files...
 del /s /q "!INSTALL_DIR!\*.command" >nul 2>&1
 del /s /q "!INSTALL_DIR!\*.bat" >nul 2>&1
 del /s /q "!INSTALL_DIR!\log_hid_data.py" >nul 2>&1
-del /s /q "!INSTALL_DIR!\main.py" >nul 2>&1
 del /s /q "!INSTALL_DIR!\requirements.txt" >nul 2>&1
 if exist "!INSTALL_DIR!\mac" (
     rmdir /s /q "!INSTALL_DIR!\mac"
