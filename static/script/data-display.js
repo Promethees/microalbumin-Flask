@@ -504,7 +504,7 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     if (calDiv.getAttribute('data-value') === "kinetics") {
         htmlString = getCalKineticsString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
     } else if (calDiv.getAttribute('data-value') === "point") {
-        htmlString = getCalPointString(mixAnalysis);
+        htmlString = getCalPointString(mixAnalysis, document.getElementById("exp-json-regress-algo").value);
     }
     document.getElementById("plot-analysis").innerHTML = htmlString;
 
@@ -645,10 +645,21 @@ function getCalKineticsString(analysis, fitType, analysisId = "cal-kinetics-anal
     }).join('');
 }
 
-function getCalPointString(analysis, analysisId = "cal-point-analysis") {
+function getCalPointString(analysis, fitType, analysisId = "cal-point-analysis") {
     if (!analysis) return '';
 
-    const headers = ['a', 'b', 'c'];
+    let headers
+    switch (fitType) {
+        case "Michaelis-Menten":
+            headers = ['V_max', 'Km'];
+            break;
+        case "linear":
+            headers = ['a', 'b'];
+            break;
+        default:
+            headers = ['a', 'b', 'c'];
+            break;
+    }
     const coef = analysis.coefficients || null;
     const rSquared = analysis.rSquared || null;
     const showText = 'See point analysis';
