@@ -17,8 +17,14 @@ import re
 from filelock import FileLock, Timeout
 import shutil
 from pathlib import Path
+import sys
+import os
 
-sys.path.append('src')
+if os.name == "nt":  # Windows
+    sys.path.append(r"code\src")
+else:  # Linux, macOS, etc.
+    sys.path.append("src")
+    
 from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories, is_multi_value_timeseries_csv_header
 from range import get_range_input
 from mode import get_mode_input
