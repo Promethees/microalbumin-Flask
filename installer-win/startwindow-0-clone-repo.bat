@@ -128,6 +128,18 @@ if exist "!INSTALL_DIR!\installer-win" (
         echo WARNING: Failed to remove "installer-win" directory.
     )
 )
+if exist "!INSTALL_DIR!\tests" (
+    rmdir /s /q "!INSTALL_DIR!\tests"
+    if !ERRORLEVEL! neq 0 (
+        echo WARNING: Failed to remove "tests" directory.
+    )
+)
+if exist "!INSTALL_DIR!\.github" (
+    rmdir /s /q "!INSTALL_DIR!\.github"
+    if !ERRORLEVEL! neq 0 (
+        echo WARNING: Failed to remove ".github" directory.
+    )
+)
 
 :: Add more file patterns or directories to exclude here, e.g.:
 :: del /s /q "!INSTALL_DIR!\*.txt" >nul 2>&1

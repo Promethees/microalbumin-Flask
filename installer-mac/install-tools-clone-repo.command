@@ -115,14 +115,44 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Remove unwanted files and directories (adapted from Windows batch approach)
+echo "Cleaning up unwanted files and directories..."
+
 # Remove Git history
-echo "Removing Git history..."
-rm -rf "$INSTALL_DIR/.git"
+rm -rf "$INSTALL_DIR/.git" 2>/dev/null
 if [ $? -ne 0 ]; then
-    echo "❌ Error: Failed to remove Git history."
-    osascript -e 'display dialog "Failed to remove Git history." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
-    exit 1
+    echo "⚠️  Warning: Failed to remove .git history."
 fi
+
+# Remove .gitignore
+rm -f "$INSTALL_DIR/.gitignore" 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "⚠️  Warning: Failed to remove .gitignore."
+fi
+
+# Remove Windows-specific installer scripts
+rm -f "$INSTALL_DIR"/*.bat 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "⚠️  Warning: Failed to remove .bat files."
+fi
+
+
+# Remove development/build files
+[ -d "$INSTALL_DIR/tests" ] && rm -rf "$INSTALL_DIR/tests"
+[ -d "$INSTALL_DIR/.github" ] && rm -rf "$INSTALL_DIR/.github"
+[ -d "$INSTALL_DIR/mac" ] && rm -rf "$INSTALL_DIR/mac"
+[ -d "$INSTALL_DIR/easyokapi-knowledge" ] && rm -rf "$INSTALL_DIR/easyokapi-knowledge"
+[ -d "$INSTALL_DIR/images" ] && rm -rf "$INSTALL_DIR/images"
+[ -d "$INSTALL_DIR/installer-mac" ] && rm -rf "$INSTALL_DIR/installer-mac"
+[ -d "$INSTALL_DIR/installer-win" ] && rm -rf "$INSTALL_DIR/installer-win"
+
+# Remove development/documentation files
+rm -f "$INSTALL_DIR/log_hid_data_pyusb.py" 2>/dev/null
+rm -f "$INSTALL_DIR/requirements.txt" 2>/dev/null
+rm -f "$INSTALL_DIR/requirements-win.txt" 2>/dev/null
+rm -f "$INSTALL_DIR/generate-tree.sh" 2>/dev/null
+rm -f "$INSTALL_DIR/BUILD_MAC.md" 2>/dev/null
+rm -f "$INSTALL_DIR/Rule.md" 2>/dev/null
 
 echo "Repository cloned successfully to $INSTALL_DIR with tag $VERSION_TAG."
 echo "Preinstall script completed at $(date)"
