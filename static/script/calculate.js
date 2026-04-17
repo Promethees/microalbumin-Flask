@@ -7,583 +7,90 @@ function computeRSquared(actual, predicted) {
     return ssTotal === 0 ? 0 : 1 - ssResidual / ssTotal;
 }
 
+/**
+ * Perform regression analysis via the Python backend
+ * @param {Array} x - X values
+ * @param {Array} y - Y values
+ * @param {string} regressAlgo - Regression algorithm type
+ * @returns {Object} { slope, rSquared, coefficients }
+ */
 function calculateCoefAndRSquared(x, y, regressAlgo = "linear") {
-    // Preprocess the data first
-    const { x: processedX, y: processedY } = mapDuplicates(x, y);
-    x = processedX.map(num => parseFloat(num));
-    y = processedY.map(num => parseFloat(num));
-    if (x.length !== y.length || x.length < 2) {
-        return { slope: 0, rSquared: 0, coefficients: null };
-    }
-
-    let slope = 0;
-    let predicted = [];
-    let coefficients = null;
-    let rSquared = 0;
-
-    switch (regressAlgo) {
-        case "polynomial":
-            try {
-                const degree = 2;
-                coefficients = polynomialRegression(x, y, degree);
-                if (!coefficients || !Array.isArray(coefficients)) {
-                    throw new Error("polynomialRegression returned invalid coefficients");
-                }
-                predicted = x.map(xi =>
-                    coefficients.reduce((acc, c, i) => acc + c * Math.pow(xi, i), 0)
-                );
-                slope = polynomialRegressionSlope(x, y, degree);
-                rSquared = computeRSquared(y, predicted);
-                coefficients.reverse();
-            } catch (error) {
-                console.error("Error in polynomial regression:", error.message);
-                return { slope: 0, rSquared: 0, coefficients: null };
+    let result = { slope: 0, rSquared: 0, coefficients: null };
+    $.ajax({
+        url: '/calculate_coef_and_rsquared',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ x: x, y: y, regress_algo: regressAlgo }),
+        async: false,
+        success: function(response) {
+            if (response.status === 'success') {
+                result = response.result;
+            } else {
+                console.error("Math API Error:", response.message);
             }
-            break;
-
-        case "logarithmic":
-            try {
-                coefficients = logarithmicRegression(x, y);
-                if (!coefficients || !Array.isArray(coefficients)) {
-                    throw new Error("logarithmicRegression returned invalid coefficients");
-                }
-                predicted = x.map(xi => coefficients[0] * Math.log(xi + coefficients[1]) + coefficients[2]);
-                slope = logarithmicRegressionSlope(x, y);
-                rSquared = computeRSquared(y, predicted);
-            } catch (error) {
-                console.error("Error in logarithmic regression:", error.message);
-                return { slope: 0, rSquared: 0, coefficients: null };
-            }
-            break;
-
-        case "exponential":
-            try {
-                coefficients = exponentialRegression(x, y);
-                if (!coefficients || !Array.isArray(coefficients) || coefficients.length < 3) {
-                    throw new Error("exponentialRegression returned invalid coefficients");
-                }
-                predicted = x.map(xi => coefficients[0] * Math.exp(xi * coefficients[1]) + coefficients[2]);
-                slope = exponentialRegressionSlope(x, y);
-                rSquared = computeRSquared(y, predicted);
-            } catch (error) {
-                console.error("Error in exponential regression:", error.message);
-                return { slope: 0, rSquared: 0, coefficients: null };
-            }
-            break;
-
-        case "Michaelis-Menten":
-            try {
-                const expCoeffsMM = michaelisMentenConcentrationRegression(x, y);
-                if (!expCoeffsMM || !expCoeffsMM.Vmax || !expCoeffsMM.Km) {
-                    throw new Error("michaelisMentenConcentrationRegression returned invalid coefficients");
-                }
-                coefficients = [expCoeffsMM.Vmax, expCoeffsMM.Km];
-                predicted = x.map(xi => coefficients[1] * xi / (coefficients[0] - xi));
-                slope = coefficients[1] / (coefficients[0] - 1);
-                rSquared = computeRSquared(y, predicted);
-            } catch (error) {
-                console.error("Error in Michaelis-Menten regression:", error.message);
-                return { slope: 0, rSquared: 0, coefficients: null };
-            }
-            break;
-
-        case "linear":
-        default:
-            try {
-                const lin = linearRegression(x, y);
-                if (!lin || !Array.isArray(lin)) {
-                    throw new Error("linearRegression returned invalid coefficients");
-                }
-                coefficients = lin;
-                slope = lin[0];
-                predicted = x.map(xi => slope * xi + lin[1]);
-                rSquared = computeRSquared(y, predicted);
-            } catch (error) {
-                console.error("Error in linear regression:", error.message);
-                return { slope: 0, rSquared: 0, coefficients: null };
-            }
-            break;
-    }
-
-    return {
-        slope: slope,
-        rSquared: rSquared,
-        coefficients: coefficients
-    };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.error("AJAX Error:", textStatus, errorThrown);
+        }
+    });
+    return result;
 }
 
-
+/**
+ * Calculate kinetics quantities via the Python backend
+ * @param {Array} XColumn - Timestamps
+ * @param {Array} YColumn - Values
+ * @param {number} window_size - Sliding window size
+ * @returns {Object} Kinetics analysis results
+ */
 function calculateKineticsQuantities(XColumn, YColumn, window_size) {
-    // Filter only valid pairs where both are not null/NONE/OVFL
-    const validPairs = [];
-    for (let i = 0; i < XColumn.length; i++) {
-        const x = XColumn[i];
-        const y = YColumn[i];
-        if (x !== null && x !== "NONE" && y !== null && y !== "NONE" && y !== "OVFL") {
-            validPairs.push({ x, y });
-        }
-    }
-
-    if (validPairs.length < 2) {
-        return { slope: 0, intercept: 0, saturationValue: "--", timeToSaturation: "--", maxRate: 0, linearSlope: 0, linearYMin: 0, linearYMax: 0, linearXMin: 0, linearXMax: 0 };
-    }
-
-    XColumn = validPairs.map(p => p.x);
-    YColumn = validPairs.map(p => p.y);
-
-    window_size = Number(window_size);
-    if (window_size < 2 || window_size > XColumn.length) {
-        window_size = XColumn.length;
-    }
-
-    let localSlopes = [];
-    let rSquaredValues = [];
-    let intercepts = [];
-    const rSquaredThreshold = getRSquaredThreshold(window_size, XColumn.length);
-
-    for (let i = 0; i <= XColumn.length - window_size; i++) {
-        const x = XColumn.slice(i, i + window_size);
-        const y = YColumn.slice(i, i + window_size);
-        const calc = calculateCoefAndRSquared(x, y);
-
-        const intercept = y.reduce((a, b) => a + b, 0) / y.length - calc.slope * (x.reduce((a, b) => a + b, 0) / x.length);
-
-        localSlopes.push(calc.slope);
-        rSquaredValues.push(calc.rSquared);
-        intercepts.push(intercept);
-    }
-
-    let maxRate = 0;
-    let threshold = 0;
-    let startMaxRate = -1;
-    let endMaxRate = -1;
-    let yMaxRateStart = 0;
-    let yMaxRateEnd = 0;
-
-    for (let i = 0; i < localSlopes.length; i++) {
-        const adjustedLocal = 3600 * localSlopes[i];
-        if (rSquaredValues[i] >= rSquaredThreshold && localSlopes[i] > maxRate && adjustedLocal > threshold) {
-            maxRate = localSlopes[i];
-            startMaxRate = i;
-            endMaxRate = startMaxRate + window_size - 1;
-            yMaxRateStart = maxRate * XColumn[startMaxRate] + intercepts[i];
-            yMaxRateEnd = maxRate * XColumn[endMaxRate] + intercepts[i];
-        }
-    }
-
-    let linearStartIdx = -1;
-    let linearEndIdx = -1;
-    if (maxRate !== 0) {
-        for (let i = 0; i < localSlopes.length; i++) {
-            if (localSlopes[i] >= 0.8 * maxRate && rSquaredValues[i] >= rSquaredThreshold) {
-                if (linearStartIdx === -1) linearStartIdx = i;
-                linearEndIdx = i;
+    let result = null;
+    $.ajax({
+        url: '/calculate_kinetics_quantities',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ XColumn: XColumn, YColumn: YColumn, window_size: window_size }),
+        async: false,
+        success: function (response) {
+            if (response.status === 'success') {
+                result = response.result;
+            } else {
+                console.error("Math API Error:", response.message);
             }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.error("AJAX Error:", textStatus, errorThrown);
         }
-    }
-
-    let linearSlope = null;
-    let linearIntercept = 0;
-    let linearXMin = 0;
-    let linearXMax = 0;
-    let linearYMin = 0;
-    let linearYMax = 0;
-    let saturationValue = "--";
-    let timeToSaturation = "--";
-    let timeStartSaturation = "--";
-
-    if (linearStartIdx !== -1 && linearEndIdx !== -1) {
-        let start = linearStartIdx;
-        let end = linearEndIdx + window_size;
-        if (end > XColumn.length) end = XColumn.length;
-
-        const x = XColumn.slice(start, end);
-        const y = YColumn.slice(start, end);
-        const { slope, rSquared } = calculateCoefAndRSquared(x, y);
-
-        linearSlope = slope;
-        const avgX = x.reduce((a, b) => a + b, 0) / x.length;
-        const avgY = y.reduce((a, b) => a + b, 0) / y.length;
-        linearIntercept = avgY - slope * avgX;
-
-        linearXMin = XColumn[start];
-        linearXMax = XColumn[end - 1];
-        linearYMin = slope * linearXMin + linearIntercept;
-        linearYMax = slope * linearXMax + linearIntercept;
-
-        if (end >= YColumn.length) {
-            saturationValue = "--";
-        } else {
-            const theRest = YColumn.slice(end);
-            const sortedValuesForRest = [...theRest].sort((a, b) => a - b);
-            saturationValue = sortedValuesForRest[Math.floor(theRest.length / 2)];
-        }
-        timeToSaturation = (XColumn[end - 1] - XColumn[start]).toFixed(2);
-        timeStartSaturation = XColumn[end - 1].toFixed(2);
-    } else {
-        const sortedValues = [...YColumn].sort((a, b) => a - b);
-        saturationValue = sortedValues[Math.floor(YColumn.length / 2)];
-        timeToSaturation = XColumn[0];
-        timeStartSaturation = XColumn[0];
-    }
-
-    return {
-        slope: linearSlope,
-        intercept: linearIntercept.toFixed(2),
-        saturationValue,
-        timeToSaturation,
-        maxRate: maxRate.toFixed(6),
-        linearYMin: linearYMin,
-        linearYMax: linearYMax,
-        linearXMin: linearStartIdx !== -1 ? linearXMin.toFixed(2) : null,
-        linearXMax: linearEndIdx !== -1 ? linearXMax.toFixed(2) : null,
-        startMaxRate: startMaxRate !== -1 ? XColumn[startMaxRate].toFixed(2) : null,
-        endMaxRate: endMaxRate !== -1 ? XColumn[endMaxRate].toFixed(2) : null,
-        yMaxRateStart,
-        yMaxRateEnd,
-        timeStartSaturation
-    };
-}
-
-function getRSquaredThreshold(window_size, data_length) {
-    // Ensure valid inputs
-    if (window_size < 3 || window_size > data_length || data_length <= 0) {
-        return 0.9; // Return minimum threshold for invalid inputs
-    }
-
-    // Define start and end points
-    const minWindow = 3;
-    const maxRSquared = 0.97;
-    const minRSquared = 0.9;
-
-    // Linear decay from 0.97 at window_size=3 to 0.9 at window_size=data_length
-    const slope = (minRSquared - maxRSquared) / (data_length - minWindow);
-    const rSquared = maxRSquared + slope * (window_size - minWindow);
-
-    // Ensure result stays within bounds [0.9, 0.97]
-    return Math.max(minRSquared, Math.min(maxRSquared, rSquared));
-}
-
-// Linear regression: Returns slope and intercept
-function linearRegression(x, y) {
-    const n = x.length;
-    const sumX = x.reduce((sum, xi) => sum + xi, 0);
-    const sumY = y.reduce((sum, yi) => sum + yi, 0);
-    const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
-    const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    return [slope, intercept];
-}
-
-// Linear regression slope
-function linearRegressionSlope(x, y) {
-    return linearRegression(x, y)[0];
-}
-
-// Polynomial regression: Returns coefficients [c0, c1, c2, ...] for degree
-function polynomialRegression(x, y, degree) {
-    const n = x.length;
-    const X = Array(2 * degree + 1).fill(0);
-    const Y = Array(degree + 1).fill(0);
-
-    // Build Vandermonde matrix sums
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j <= 2 * degree; j++) {
-            X[j] = (X[j] || 0) + Math.pow(x[i], j);
-        }
-        for (let j = 0; j <= degree; j++) {
-            Y[j] = (Y[j] || 0) + y[i] * Math.pow(x[i], j);
-        }
-    }
-
-    // Solve system: X_matrix * coeffs = Y
-    const X_matrix = Array(degree + 1).fill().map((_, i) =>
-        Array(degree + 1).fill().map((_, j) => X[i + j])
-    );
-    const coeffs = gaussianElimination(X_matrix, Y);
-    return coeffs;
-}
-
-// Polynomial regression slope (approximated as derivative at midpoint)
-function polynomialRegressionSlope(x, y, degree) {
-    const coeffs = polynomialRegression(x, y, degree);
-    const midX = (Math.max(...x) + Math.min(...x)) / 2;
-    let slope = 0;
-    for (let i = 1; i < coeffs.length; i++) {
-        slope += i * coeffs[i] * Math.pow(midX, i - 1);
-    }
-    return slope;
-}
-
-// Logarithmic regression: y = a * ln(x + b) + c
-function logarithmicRegression(x, y) {
-    // Ensure x + b > 0, so b > -min(x)
-    const minX = Math.min(...x);
-    if (minX <= 0) {
-        // Initialize b slightly above -minX to ensure x + b > 0
-        let b = -minX + 0.1;
-        let bestB = b;
-        let bestRSquared = -Infinity;
-        let bestCoeffs = null;
-
-        // Try a range of b values
-        const step = 0.1;
-        const maxSteps = 100;
-        for (let i = 0; i < maxSteps; i++) {
-            // Transform x to ln(x + b)
-            const transformedX = x.map(xi => {
-                if (xi + b <= 0) return null;
-                return Math.log(xi + b);
-            });
-
-            // Filter out invalid data points
-            const validData = x.reduce((acc, xi, i) => {
-                if (transformedX[i] !== null && !isNaN(transformedX[i]) && isFinite(transformedX[i])) {
-                    acc.x.push(transformedX[i]);
-                    acc.y.push(y[i]);
-                }
-                return acc;
-            }, { x: [], y: [] });
-
-            if (validData.x.length < 2) {
-                b += step;
-                continue;
-            }
-
-            // Perform linear regression on ln(x + b) and y
-            const [a, c] = linearRegression(validData.x, validData.y);
-
-            // Compute R-squared
-            const predicted = validData.x.map(xi => a * xi + c);
-            const rSquared = computeRSquared(validData.y, predicted);
-
-            if (rSquared > bestRSquared) {
-                bestRSquared = rSquared;
-                bestB = b;
-                bestCoeffs = [a, bestB, c];
-            }
-
-            b += step;
-        }
-
-        return bestCoeffs || null;
-    } else {
-        // If all x > 0, start with b = 0
-        let b = 0;
-        let bestB = b;
-        let bestRSquared = -Infinity;
-        let bestCoeffs = null;
-
-        const step = 0.1;
-        const maxSteps = 100;
-        for (let i = 0; i < maxSteps; i++) {
-            const transformedX = x.map(xi => {
-                if (xi + b <= 0) return null;
-                return Math.log(xi + b);
-            });
-
-            const validData = x.reduce((acc, xi, i) => {
-                if (transformedX[i] !== null && !isNaN(transformedX[i]) && isFinite(transformedX[i])) {
-                    acc.x.push(transformedX[i]);
-                    acc.y.push(y[i]);
-                }
-                return acc;
-            }, { x: [], y: [] });
-
-            if (validData.x.length < 2) {
-                b += step;
-                continue;
-            }
-
-            const [a, c] = linearRegression(validData.x, validData.y);
-            const predicted = validData.x.map(xi => a * xi + c);
-            const rSquared = computeRSquared(validData.y, predicted);
-
-            if (rSquared > bestRSquared) {
-                bestRSquared = rSquared;
-                bestB = b;
-                bestCoeffs = [a, bestB, c];
-            }
-
-            b += step;
-        }
-
-        return bestCoeffs || null;
-    }
-}
-
-// Logarithmic regression slope (approximated at midpoint)
-function logarithmicRegressionSlope(x, y) {
-    const coeffs = logarithmicRegression(x, y);
-    if (!coeffs) return 0;
-    const [a, b] = coeffs;
-    const midX = (Math.max(...x) + Math.min(...x)) / 2;
-    return a / (midX + b); // Derivative of a * ln(x + b) + c is a / (x + b)
-}
-
-// Exponential regression: y = a * e^(b * x) + c
-function exponentialRegression(x, y) {
-    // Initial guess for c: minimum y value or mean if all positive
-    const c = Math.min(...y) > 0 ? Math.min(...y) : y.reduce((sum, yi) => sum + yi, 0) / y.length;
-
-    // Transform y to y' = y - c, then take logarithm: ln(y' - c) = ln(a) + b*x
-    const transformedY = y.map(yi => {
-        const diff = yi - c;
-        if (diff <= 0) return null; // Handle non-positive values
-        return Math.log(diff);
     });
-
-    // Filter out invalid data points
-    const validData = x.reduce((acc, xi, i) => {
-        if (transformedY[i] !== null && !isNaN(transformedY[i]) && isFinite(transformedY[i])) {
-            acc.x.push(xi);
-            acc.y.push(transformedY[i]);
-        }
-        return acc;
-    }, { x: [], y: [] });
-
-    if (validData.x.length < 2) return null;
-
-    // Perform linear regression on x and ln(y - c)
-    const [b, lnA] = linearRegression(validData.x, validData.y);
-    const a = Math.exp(lnA);
-
-    return [a, b, c];
+    return result;
 }
 
-// Exponential regression slope (approximated at midpoint)
-function exponentialRegressionSlope(x, y) {
-    const coeffs = exponentialRegression(x, y);
-    if (!coeffs) return 0;
-    const [a, b] = coeffs;
-    const midX = (Math.max(...x) + Math.min(...x)) / 2;
-    return a * b * Math.exp(b * midX); // Derivative of a * e^(b*x) + c is a * b * e^(b*x)
-}
-
-// Gaussian elimination for solving linear systems
-function gaussianElimination(A, b) {
-    const n = b.length;
-    const augmented = A.map((row, i) => [...row, b[i]]);
-
-    // Forward elimination
-    for (let i = 0; i < n; i++) {
-        let maxEl = Math.abs(augmented[i][i]);
-        let maxRow = i;
-        for (let k = i + 1; k < n; k++) {
-            if (Math.abs(augmented[k][i]) > maxEl) {
-                maxEl = Math.abs(augmented[k][i]);
-                maxRow = k;
-            }
-        }
-
-        // Swap rows
-        [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
-
-        // Eliminate column
-        for (let k = i + 1; k < n; k++) {
-            const c = -augmented[k][i] / augmented[i][i];
-            for (let j = i; j <= n; j++) {
-                augmented[k][j] += c * augmented[i][j];
-            }
-        }
-    }
-
-    // Back substitution
-    const x = Array(n).fill(0);
-    for (let i = n - 1; i >= 0; i--) {
-        x[i] = augmented[i][n] / augmented[i][i];
-        for (let k = i - 1; k >= 0; k--) {
-            augmented[k][n] -= augmented[k][i] * x[i];
-        }
-    }
-
-    return x;
-}
-
-// Michaelis-Menten function: [S] = (Km * v) / (Vmax - v)
-function mmFunction(params, rates) {
-    const [Vmax, Km] = params;
-    // Return a large value for invalid parameters to guide optimization
-    if (Vmax <= 0 || Km <= 0) {
-        return rates.map(() => Infinity);
-    }
-    return rates.map(v => {
-        if (v >= Vmax || v < 0) {
-            return Infinity; // Handle invalid rates gracefully
-        }
-        return (Km * v) / (Vmax - v);
-    });
-}
-
-// Residual function for optimization
-function residual(params, rates, analyte) {
-    const predicted = mmFunction(params, rates);
-    return predicted.map((pred, i) => pred === Infinity ? Infinity : pred - analyte[i]);
-}
-
-// Derive Vmax, Km coefficients for Michaelis-Menten concentration regression
-function michaelisMentenConcentrationRegression(rates, analyte) {
-    // Input validation
-    if (!Array.isArray(rates) || !Array.isArray(analyte) || rates.length !== analyte.length || rates.length === 0) {
-        return { error: "Invalid input: rates and analyte must be arrays of equal length and non-empty" };
-    }
-    if (rates.some(v => !Number.isFinite(v)) || analyte.some(s => !Number.isFinite(s) || s < 0)) {
-        return { error: "Invalid input: rates and analyte must contain finite, non-negative numbers" };
-    }
-
-    // Initial guess for parameters [Vmax, Km]
-    const VmaxGuess = Math.max(...rates) * 1.1; // Slightly overestimate Vmax
-    const halfMaxRateIndex = rates.findIndex(v => v >= VmaxGuess / 2);
-    const KmGuess = halfMaxRateIndex !== -1 ? analyte[halfMaxRateIndex] : analyte[Math.floor(analyte.length / 2)];
-
-    const initialParams = [VmaxGuess, KmGuess];
-
-    try {
-        // Perform Levenberg-Marquardt optimization (assuming numeric.levmar exists)
-        const result = numeric.uncmin(
-            params => numeric.norm2(residual(params, rates, analyte)),
-            initialParams
-        );
-
-        const [Vmax, Km] = result.solution;
-
-        // Validate fitted parameters
-        if (Vmax <= 0 || Km <= 0) {
-            return { error: "Optimization resulted in invalid parameters (Vmax or Km non-positive)" };
-        }
-
-        return { Vmax, Km };
-    } catch (error) {
-        return { error: `Optimization failed: ${error.message}` };
-    }
-}
-
+/**
+ * Get estimated value at a specific timepoint with interpolation
+ */
 function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
     if (!Array.isArray(data) || data.length === 0 || !timepoint) return null;
 
-    // Pick which key to use
-    let valueKey = `Value:${sourceIndex}`; // e.g. Value:1, Value:2
+    let valueKey = `Value:${sourceIndex}`;
 
-    // Filter only rows with valid numeric values for this specific source
+    // Filter and sort valid numeric data for this source
     const validData = data
-        .filter(row => row[valueKey] !== null && row[valueKey] !== "NONE" && row[valueKey] !== "OVFL" && !isNaN(parseFloat(row[valueKey])))
+        .filter(row => {
+            const val = row[valueKey];
+            return val !== null && val !== "NONE" && val !== "OVFL" && !isNaN(parseFloat(val));
+        })
         .sort((a, b) => a["Timestamp"] - b["Timestamp"]);
 
     if (validData.length === 0) return null;
 
-    // Loop to find the two surrounding points in valid data
+    // Linear interpolation between surrounding points
     for (let i = 0; i < validData.length - 1; i++) {
         const t1 = validData[i]["Timestamp"];
         const t2 = validData[i + 1]["Timestamp"];
 
-        // Exact match
         if (parseFloat(t1) === parseFloat(timepoint)) return parseFloat(validData[i][valueKey]);
         if (parseFloat(t2) === parseFloat(timepoint)) return parseFloat(validData[i + 1][valueKey]);
 
-        // Interpolation between surrounding timestamps
         if (t1 < timepoint && timepoint < t2) {
             const minDiff = Math.min(Math.abs(timepoint - t1), Math.abs(timepoint - t2));
             if (minDiff > maxTolerance) return null;
@@ -596,7 +103,7 @@ function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
         }
     }
 
-    // Check ends if out-of-bounds but within tolerance
+    // Handle endpoints with tolerance
     const first = validData[0], last = validData[validData.length - 1];
     if (Math.abs(timepoint - first["Timestamp"]) <= maxTolerance) return parseFloat(first[valueKey]);
     if (Math.abs(timepoint - last["Timestamp"]) <= maxTolerance) return parseFloat(last[valueKey]);
@@ -604,9 +111,47 @@ function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
     return null;
 }
 
+/**
+ * Compute fitted Y value based on fit type and coefficients
+ */
+function computeFit(value, fitType, coefficients) {
+    if (!coefficients) return 0;
+    
+    const isObject = !Array.isArray(coefficients);
+    const fit = fitType.toLowerCase();
+
+    switch (fit) {
+        case "linear":
+            if (isObject) return (coefficients.a || 0) * value + (coefficients.b || 0);
+            return (coefficients[0] || 0) * value + (coefficients[1] || 0);
+
+        case "polynomial":
+            if (isObject) return (coefficients.a || 0) * Math.pow(value, 2) + (coefficients.b || 0) * value + (coefficients.c || 0);
+            return coefficients.reduce((acc, c, i) => acc + c * Math.pow(value, coefficients.length - 1 - i), 0);
+
+        case "logarithmic":
+            if (isObject) return (coefficients.a || 0) * Math.log(value + (coefficients.b || 0)) + (coefficients.c || 0);
+            return (coefficients[0] || 0) * Math.log(value + (coefficients[1] || 0)) + (coefficients[2] || 0);
+
+        case "exponential":
+            if (isObject) return (coefficients.a || 0) * Math.exp(value * (coefficients.b || 1)) + (coefficients.c || 0);
+            return (coefficients[0] || 0) * Math.exp(value * (coefficients[1] || 1)) + (coefficients[2] || 0);
+
+        case "michaelis-menten":
+            const vmax = isObject ? (coefficients.Vmax || coefficients.VMax || 0) : (coefficients[0] || 0);
+            const km = isObject ? (coefficients.Km || 0) : (coefficients[1] || 0);
+            if (value >= vmax || value < 0) return Infinity;
+            return (km * value) / (vmax - value);
+
+        default:
+            return 0;
+    }
+}
+
+// Utility functions
 function getUniqueColumnEntries(data, columnName = "TimePoint") {
-    const uniqueColumnEntries = new Set(data.map(row => row[columnName]).filter(tp => tp));
-    return Array.from(uniqueColumnEntries).sort((a, b) => Number(b) - Number(a));
+    const unique = new Set(data.map(row => row[columnName]).filter(tp => tp));
+    return Array.from(unique).sort((a, b) => Number(b) - Number(a));
 }
 
 function arraysEqual(arr1, arr2) {
@@ -614,45 +159,65 @@ function arraysEqual(arr1, arr2) {
     return arr1.every((value, index) => value === arr2[index]);
 }
 
-function computeFit(value, fit_type, coef) {
-    const regressedQuantity = document.getElementById("regressed-quantity").value;
-    if (coef[0] === 'NONE' || coef[0] === 'NaN') {
-        throw new Error(`Fit_type: ${fit_type} cannot be used to derive concentration from ${regressedQuantity}`);
+function getTimeUnitMultiplier(unit) {
+    const multipliers = { 'seconds': 1, 'minutes': 60, 'hours': 3600 };
+    return multipliers[unit] || 1;
+}
+
+/**
+ * Handle duplicate X values by averaging their Y values
+ */
+function mapDuplicates(x, y, keepGaps = false) {
+    const xMap = new Map();
+    for (let i = 0; i < x.length; i++) {
+        const curX = x[i];
+        const curY = y[i];
+        const isInvalid = curY === "NONE" || curY === null || curY === "OVFL";
+        
+        if (isInvalid) {
+            if (!keepGaps) continue;
+            if (!xMap.has(curX)) xMap.set(curX, { sum: 0, count: 0, hasValid: false });
+        } else {
+            const val = parseFloat(curY);
+            if (!isNaN(val)) {
+                if (!xMap.has(curX)) {
+                    xMap.set(curX, { sum: val, count: 1, hasValid: true });
+                } else {
+                    const entry = xMap.get(curX);
+                    entry.sum += val;
+                    entry.count++;
+                    entry.hasValid = true;
+                }
+            } else if (keepGaps && !xMap.has(curX)) {
+                xMap.set(curX, { sum: 0, count: 0, hasValid: false });
+            }
+        }
     }
-    if (typeof value !== 'number' || isNaN(value)) {
-        throw new Error(`Quantity: ${regressedQuantity} is not available`);
+    const procX = [], procY = [];
+    xMap.forEach((v, k) => {
+        procX.push(k);
+        procY.push(v.hasValid ? v.sum / v.count : null);
+    });
+    return { x: procX, y: procY };
+}
+
+function filterXYPairs(XColumnVals, YColumnVals, startThreshold, endThreshold) {
+    const isMultiY = Array.isArray(YColumnVals[0]);
+    if (isMultiY) {
+        YColumnVals.forEach(y => checkSize(XColumnVals, y));
+    } else {
+        checkSize(XColumnVals, YColumnVals);
     }
-    switch (fit_type.toLowerCase()) {
-        case "linear":
-            // Expect coef = [a, b]
-            if (Object.keys(coef).length !== 2) throw new Error("Linear fit requires 2 coefficients: [a, b]");
-            return coef["a"] * value + coef["b"];
-
-        case "polynomial":
-            // Expect coef = [a, b, c]
-            if (Object.keys(coef).length !== 3) throw new Error("Polynomial fit requires 3 coefficients: [a, b, c]");
-            return coef["a"] * Math.pow(value, 2) + coef["b"] * value + coef["c"];
-
-        case "logarithmic":
-            // Expect coef = [a, b, c]
-            if (Object.keys(coef).length !== 3) throw new Error("Logarithmic fit requires 3 coefficients: [a, b, c]");
-            if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
-            return coef["a"] * Math.log(value + coef["b"]) + coef["c"];
-
-        case "exponential":
-            // Expect coef = [a, b, c]
-            if (Object.keys(coef).length !== 3) throw new Error("Exponential fit requires 3 coefficients: [a, b, c]");
-            return coef["a"] * Math.exp(value * coef["b"]) + coef["c"];
-
-        case "michaelis-menten":
-            // Expect coef = [Vmax, Km]
-            if (Object.keys(coef).length !== 2) throw new Error("Michaelis-Menten fit requires 2 coefficients: [Vmax, Km]");
-            if (value >= coef["VMax"] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value ${value}/minute must be < Vmax: ${coef["VMax"]} and >= 0`);
-            return (coef["Km"] * value) / (coef["VMax"] - value);
-
-        default:
-            throw new Error("Unknown fit type: " + fit_type);
-    }
+    const validIndices = XColumnVals
+        .map((x, i) => (x >= startThreshold && x <= endThreshold ? i : -1))
+        .filter(i => i !== -1);
+        
+    const filteredX = validIndices.map(i => XColumnVals[i]);
+    const filteredY = isMultiY
+        ? YColumnVals.map(y => validIndices.map(i => y[i]))
+        : validIndices.map(i => YColumnVals[i]);
+        
+    return { filteredX, filteredY };
 }
 
 function averageDuplicates(xColumn, yColumn) {
@@ -681,88 +246,6 @@ function averageDuplicates(xColumn, yColumn) {
     }
 
     return { XColumn: uniqueX, YColumn: averagedY };
-}
-
-function getTimeUnitMultiplier(unit) {
-    const multipliers = {
-        'seconds': 1,
-        'minutes': 60,
-        'hours': 3600
-    };
-    return multipliers[unit] || 1;
-}
-
-function mapDuplicates(x, y, keepGaps = false) {
-    // Create a map to store sum and count of y values for each x
-    const xMap = new Map();
-
-    // Process each pair
-    for (let i = 0; i < x.length; i++) {
-        const currentX = x[i];
-        const currentY = y[i];
-
-        // Skip or mark as gap if y is "NONE" or null
-        const isNone = currentY === "NONE" || currentY === null || currentY === "OVFL";
-        if (isNone) {
-            if (!keepGaps) continue;
-            if (!xMap.has(currentX)) {
-                xMap.set(currentX, { sum: 0, count: 0, hasValid: false });
-            }
-        } else {
-            const val = parseFloat(currentY);
-            if (!isNaN(val)) {
-                if (!xMap.has(currentX)) {
-                    xMap.set(currentX, { sum: val, count: 1, hasValid: true });
-                } else {
-                    const entry = xMap.get(currentX);
-                    entry.sum += val;
-                    entry.count++;
-                    entry.hasValid = true;
-                }
-            } else if (keepGaps) {
-                if (!xMap.has(currentX)) {
-                    xMap.set(currentX, { sum: 0, count: 0, hasValid: false });
-                }
-            }
-        }
-    }
-
-    // Convert the map back to arrays
-    const processedX = [];
-    const processedY = [];
-
-    xMap.forEach((value, key) => {
-        processedX.push(key);
-        processedY.push(value.hasValid ? (value.sum / value.count) : null);
-    });
-
-    return { x: processedX, y: processedY };
-}
-
-function filterXYPairs(XColumnVals, YColumnVals, startThreshold, endThreshold) {
-    const isMultiY = Array.isArray(YColumnVals[0]);
-
-    // Ensure X/Y sizes match
-    if (isMultiY) {
-        YColumnVals.forEach(y => checkSize(XColumnVals, y));
-    } else {
-        checkSize(XColumnVals, YColumnVals);
-    }
-
-    // Determine indices that satisfy the threshold range
-    const validIndices = XColumnVals
-        .map((x, i) => (x >= startThreshold && x <= endThreshold ? i : -1))
-        .filter(i => i !== -1);
-
-    // Filter X based on those indices
-    const filteredX = validIndices.map(i => XColumnVals[i]);
-
-    // Filter Y — handle both single and multiple Y columns
-    const filteredY = isMultiY
-        ? YColumnVals.map(y => validIndices.map(i => y[i]))
-        : validIndices.map(i => YColumnVals[i]);
-
-    return { filteredX, filteredY };
 }
 
 function checkSize(XColumn, YColumn) {

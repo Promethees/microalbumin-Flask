@@ -13,3 +13,5 @@ google-auth-httplib2==0.2.0
 google-api-python-client==2.116.0
 cryptography==44.0.0
 redis==5.0.4
+scipy==1.13.0
+numpy==1.26.4
