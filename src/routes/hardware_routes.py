@@ -6,6 +6,7 @@ import signal
 import state
 from script_monitor import check_log_for_errors
 from send_command import connect_to_device, send_command_and_wait_ack
+from validators import validate_json
 
 hardware_bp = Blueprint('hardware', __name__)
 
@@ -17,20 +18,22 @@ def clear_logs():
         pass
 
 @hardware_bp.route('/run_script', methods=['POST'])
-def run_script():
+@validate_json({
+    'base_dir': (str, 'data', False),
+    'base_name': (str, 'colorimeter_data', False),
+    'timeout_sec': (float, None, False),
+    'interval_sec': (float, None, False)
+})
+def run_script(validated_data):
     os_name = platform.system().lower()
     
     if state.process and state.process.poll() is None:
         return jsonify({'status': 'failure', 'message': 'A script is already running'})
     
-    if not request.is_json:
-        return jsonify({'status': 'failure', 'message': 'Request must be JSON'}), 400
-    
-    data = request.get_json()
-    base_dir = data.get('base_dir', 'data')
-    base_name = data.get('base_name', 'colorimeter_data')
-    timeout_sec = data.get('timeout_sec')
-    interval_sec = data.get('interval_sec')
+    base_dir = validated_data['base_dir']
+    base_name = validated_data['base_name']
+    timeout_sec = validated_data['timeout_sec']
+    interval_sec = validated_data['interval_sec']
     print("Interval seconds is ", interval_sec)
     try:
         pybadge = connect_to_device()

@@ -18,6 +18,7 @@ from measure import sort_csv_file
 from get_next_filename import get_next_filename
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from export_data import is_metadata_consistent, write_metadata, write_headers, extract_single_entry
+from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
 
@@ -334,12 +335,16 @@ def merge_csv():
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/remove_columns', methods=['POST'])
-def remove_columns():
+@validate_json({
+    'filename': str,
+    'path': str,
+    'columns': (list, [], False)
+})
+def remove_columns(validated_data):
     try:
-        data = request.json
-        filename = data.get('filename')
-        path = data.get('path')
-        columns = data.get('columns', [])
+        filename = validated_data['filename']
+        path = validated_data['path']
+        columns = validated_data['columns']
         
         if not filename or not path:
             return jsonify({'status': 'failure', 'message': 'Filename and path are required'}), 400
@@ -433,17 +438,25 @@ def get_file_content():
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/export_data', methods=['POST'])
-def export_data():
-    data = request.get_json()
-    entries = data.get('entries')
+@validate_json({
+    'entries': (list, [], False),
+    'save_file': (str, 'result', False),
+    'save_dir': str,
+    'meas': (str, 'NONE', False),
+    'measUnit': (str, 'NONE', False),
+    'measMode': str,
+    'newFile': (bool, True, False)
+})
+def export_data(validated_data):
+    entries = validated_data['entries']
     is_batch = bool(entries)
 
-    file_name = data.get('save_file', 'result')
-    save_dir = data.get('save_dir')
-    measurement = data.get('meas', 'NONE')
-    meas_unit = data.get('measUnit', 'NONE')
-    meas_mode = data.get('measMode')
-    newFile = data.get('newFile', True)
+    file_name = validated_data['save_file']
+    save_dir = validated_data['save_dir']
+    measurement = validated_data['meas']
+    meas_unit = validated_data['measUnit']
+    meas_mode = validated_data['measMode']
+    newFile = validated_data['newFile']
     time_unit = "minute" if meas_mode == "point" else "minutes"
 
     try:
@@ -466,7 +479,7 @@ def export_data():
             if is_batch:
                 entries = [extract_single_entry(entry, meas_mode) for entry in entries]
             else:
-                entries = [extract_single_entry(data, meas_mode)]
+                entries = [extract_single_entry(validated_data, meas_mode)]
             
             for entry in entries:
                 writer.writerow(entry)
@@ -478,18 +491,28 @@ def export_data():
         return jsonify({"status": "error", "message": str(e)})
 
 @file_bp.route('/export_cal_coefs', methods=['POST'])
-def export_cal_coefs():
-    data = request.get_json()
-    fit_type = data.get('fit_type')
-    for_meas = data.get('for_meas')
-    coef_content = data.get('coef_content')
-    time = data.get('time')
+@validate_json({
+    'fit_type': str,
+    'for_meas': str,
+    'coef_content': ((list, dict), None, False),
+    'time': (float, None, False),
+    'file_name': (str, 'calibrate', False),
+    'cal_mode': (str, 'kinetics', False),
+    'cal_params': (list, [], False),
+    'threshold_val': (float, 0.0, False),
+    'regress_algo': (str, 'linear', False)
+})
+def export_cal_coefs(validated_data):
+    fit_type = validated_data['fit_type']
+    for_meas = validated_data['for_meas']
+    coef_content = validated_data['coef_content']
+    time = validated_data['time']
     time_unit = "minute"
-    file_name = data.get('file_name', 'calibrate')
-    cal_mode = data.get('cal_mode', "kinetics")
-    cal_params = data.get('cal_params')
-    thres_val = float(data.get('threshold_val', 0))
-    regress_algo = data.get('regress_algo', 'linear')
+    file_name = validated_data['file_name']
+    cal_mode = validated_data['cal_mode']
+    cal_params = validated_data['cal_params']
+    thres_val = validated_data['threshold_val']
+    regress_algo = validated_data['regress_algo']
     export_path = os.path.join(state.json_root_path, cal_mode)
     
     try: 

@@ -1,4 +1,7 @@
 # Helper: Parse metadata from content
+import pandas as pd
+import io
+
 def parse_metadata(content):
     meta_dict = {}
     for line in content.split('\n'):
@@ -54,10 +57,17 @@ def sort_csv_content(content):
     data_lines = [l for l in lines if not l.startswith('#') and l.strip()]
     if not data_lines:
         return content
-    header = data_lines[0]
-    rows = data_lines[1:]
-    print("Echo the rows ", rows)
-    parsed_rows = [r.split(',') for r in rows if r]
-    parsed_rows.sort(key=lambda row: float(row[0]) if row[0] != 'NONE' else float('inf'))
-    new_rows = [','.join(r) for r in parsed_rows]
-    return '\n'.join(metadata + [header] + new_rows) + '\n'
+        
+    df = pd.read_csv(io.StringIO('\n'.join(data_lines)))
+    first_col = df.columns[0]
+    
+    # Temporarily replace 'NONE' with NaN to sort properly
+    df['_sort_key'] = pd.to_numeric(df[first_col], errors='coerce')
+    df = df.sort_values(by='_sort_key', na_position='last').drop(columns=['_sort_key'])
+    
+    csv_buffer = io.StringIO()
+    # Fill any NaNs created by read_csv back to 'NONE' if necessary, though 'NONE' usually parses as string
+    df = df.fillna('NONE')
+    df.to_csv(csv_buffer, index=False)
+    
+    return '\n'.join(metadata) + '\n' + csv_buffer.getvalue()
