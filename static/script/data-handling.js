@@ -989,9 +989,8 @@ function generatePointData() {
             measUnit: AppState.globalAnalysis.meas_unit
         }));
     } else {
-        const sourceIndex = getValInt("exp-json-source") - 1;
         return [{
-            estValue: AppState.globalEstimatedValue[sourceIndex].toFixed(4),
+            estValue: AppState.globalEstimatedValue.toFixed(4),
             timePoint: currExpTimePoint,
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
