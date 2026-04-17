@@ -28,3 +28,5 @@ index_temp.html
 node_modules
 
 *.dmg
+
+generate_heavy_csv.py

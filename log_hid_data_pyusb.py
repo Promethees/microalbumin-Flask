@@ -29,7 +29,7 @@ KEYCODE_MAP = {
     0x1E: '1', 0x1F: '2', 0x20: '3', 0x21: '4', 0x22: '5', 0x23: '6',
     0x24: '7', 0x25: '8', 0x26: '9', 0x27: '0',
     0x28: 'enter', 0x29: 'escape', 0x2A: 'backspace', 0x2B: 'tab',
-    0x2C: 'space', 0x36: ',', 0x37: '.', 0x33: ':'
+    0x2C: 'space', 0x2D: '-', 0x36: ',', 0x37: '.', 0x33: ':'
 }
 
 class HIDDataCollector:
@@ -43,7 +43,7 @@ class HIDDataCollector:
         self.metadata = {}
         self.metadata_pattern = r"^3 (MEASUREMENT|UNIT|CONCENTRATION):\s*([A-Za-z0-9μ]+)$"
         self.header_pattern = r"^TIMESTAMP,VALUE:\d+(?:,VALUE:\d+)*\n$"
-        self.data_pattern = r"^\d+\.\d{1,2},(?:\d+\.\d{1,3}|OVFL)(?:,(?:\d+\.\d{1,3}|OVFL))*\n$"
+        self.data_pattern = r"^\d+\.\d{1,2},(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*\n$"
         self.end_pattern = r"^SESSION TIMEOUT\n$"
         self.session_started = False
         self.current_header_index = None  # Track which header pattern is active
