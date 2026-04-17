@@ -41,11 +41,13 @@ import state
 from routes.core_routes import core_bp
 from routes.hardware_routes import hardware_bp
 from routes.file_routes import file_bp
+from routes.math_routes import math_bp
 
 app = Flask(__name__, static_folder='static')
 app.register_blueprint(core_bp)
 app.register_blueprint(hardware_bp)
 app.register_blueprint(file_bp)
+app.register_blueprint(math_bp)
 
 # Endpoints moved to their respective blueprints
 

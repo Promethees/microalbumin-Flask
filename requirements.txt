@@ -6,4 +6,4 @@ markupsafe==2.0.1
 filelock==3.16.1
 pyserial==3.5
 pytest==7.4.0
-pytest-flask==1.2.0
+pytest-flask==1.2.0scipy>=1.7.0
