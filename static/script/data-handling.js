@@ -858,6 +858,11 @@ function showMergeModal() {
                 },
                 success: function (response) {
                     if (response.status === 'success') {
+                        if (getBtnChecked("no-swal-checkbox")) {
+                            console.log("Merge successful:", response.message);
+                            updateDirectory(document.getElementById("directory").value);
+                            return;
+                        }
                         Swal.fire({
                             title: 'Success!',
                             text: response.message,
