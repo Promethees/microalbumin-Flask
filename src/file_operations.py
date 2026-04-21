@@ -1,6 +1,5 @@
 import io
 import pandas as pd
-import re
 
 def remove_csv_columns(file_path, columns_to_remove):
     """
