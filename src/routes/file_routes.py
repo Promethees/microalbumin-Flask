@@ -479,7 +479,8 @@ def export_data(validated_data):
             if is_batch:
                 entries = [extract_single_entry(entry, meas_mode) for entry in entries]
             else:
-                entries = [extract_single_entry(validated_data, meas_mode)]
+                raw_data = request.get_json()
+                entries = [extract_single_entry(raw_data, meas_mode)]
             
             for entry in entries:
                 writer.writerow(entry)
