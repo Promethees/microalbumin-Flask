@@ -1025,7 +1025,7 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
     const sourceValue = document.getElementById("exp-json-source").value;
     if (sourceValue === "ALL") {
         isBatch = true;
-        const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`, "MIXED"));
+        const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`));
         if (entries.length === 0) {
             alert("No analysis data available to export.");
             return;
@@ -1033,7 +1033,7 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
         payload = { ...commonData, newFile: true, entries };
     } else {
         const sourceIndex = getValInt("exp-json-source") - 1;
-        const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`, "MIXED");
+        const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`);
         if (!entry) {
             alert("No analysis data available to export.");
             return;
