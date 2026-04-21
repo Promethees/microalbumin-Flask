@@ -4,6 +4,7 @@ import datetime
 import os
 import re
 import argparse
+import signal
 import sys
 
 sys.path.append('src')
@@ -193,6 +194,15 @@ class HIDDataCollector:
 
     def start(self):
         """Start the HID data collection process."""
+        # Handle SIGTERM and SIGINT gracefully so the finally block always runs,
+        # which prevents semaphore leaks from abrupt process termination.
+        def _handle_signal(signum, frame):
+            self.log(f"Received signal {signum}, stopping cleanly...")
+            self.running = False
+
+        signal.signal(signal.SIGTERM, _handle_signal)
+        signal.signal(signal.SIGINT, _handle_signal)
+
         self.log("Searching for PyBadge HID device...")
         device_info = self.find_pybadge()
         if not device_info:

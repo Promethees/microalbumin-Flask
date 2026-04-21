@@ -136,12 +136,24 @@ def terminate_script():
                 return jsonify({'status': 'success'})
         else:
             try:
-                os.killpg(os.getpgid(state.process.pid), signal.SIGTERM)
-                state.process.wait(timeout=3)
+                pgid = os.getpgid(state.process.pid)
+                # SIGINT first — triggers KeyboardInterrupt in the HID script,
+                # allowing its finally block to close the device and log file,
+                # which prevents semaphore leaks.
+                os.killpg(pgid, signal.SIGINT)
+                try:
+                    state.process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    # Then SIGTERM
+                    os.killpg(pgid, signal.SIGTERM)
+                    try:
+                        state.process.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        # Finally SIGKILL as last resort
+                        os.killpg(pgid, signal.SIGKILL)
                 state.process = None
                 return jsonify({'status': 'success'})
-            except subprocess.TimeoutExpired:
-                os.killpg(os.getpgid(state.process.pid), signal.SIGKILL)
+            except ProcessLookupError:
                 state.process = None
                 return jsonify({'status': 'success'})
                 

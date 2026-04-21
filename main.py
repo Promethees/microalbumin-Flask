@@ -72,8 +72,18 @@ if __name__ == '__main__':
 
     atexit.register(cleanup, state.process, state.log_file, state.args)
 
+    def _shutdown_handler(signum, frame):
+        """Handle SIGTERM/SIGINT by triggering registered atexit handlers and exiting cleanly."""
+        print(f"Received signal {signum}, shutting down gracefully...")
+        sys.exit(0)  # triggers atexit.register(cleanup, ...)
+
+    signal.signal(signal.SIGTERM, _shutdown_handler)
+    signal.signal(signal.SIGINT, _shutdown_handler)
+
     try:
-        app.run(debug=True, host=host, port=port)
+        # use_reloader=False prevents Werkzeug from spawning a child reloader process.
+        # That child process is the main source of "leaked semaphore" warnings on shutdown.
+        app.run(debug=True, host=host, port=port, use_reloader=False)
     except Exception as e:
         print(f"Failed to start Flask server: {e}")
         sys.exit(1)

@@ -53,11 +53,30 @@ def close_port(port, exclude_pid=None):
 def cleanup(process, log_file, args):
     try:
         if process and process.poll() is None:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-            try:
-                process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            if platform.system() == "Windows":
+                # On Windows, terminate() is the standard way to stop a process
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+            else:
+                # On Unix, try SIGINT first for a graceful KeyboardInterrupt-style shutdown
+                try:
+                    pgid = os.getpgid(process.pid)
+                    os.killpg(pgid, signal.SIGINT)
+                    try:
+                        process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        # Then try SIGTERM
+                        os.killpg(pgid, signal.SIGTERM)
+                        try:
+                            process.wait(timeout=3)
+                        except subprocess.TimeoutExpired:
+                            # Finally SIGKILL
+                            os.killpg(pgid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
             process = None
     finally:
         # Log cleanup action
