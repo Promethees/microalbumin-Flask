@@ -37,9 +37,21 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
 
     allYColumns.forEach((yCol, i) => {
         const { x: px, y: py } = mapDuplicates(allXColumn, yCol, true);
-        const { XColumn: xAfterAvg, YColumn: yAfterAvg } = averageDuplicates(px, py);
-        processedYColumns.push(yAfterAvg);
-        allYValues.push(...yAfterAvg);
+        const { XColumn: xAfterAvg, YColumn: yAfterAvg, minY, maxY, stdY } = averageDuplicates(px, py);
+
+        // Store y values along with their min/max/std for distribution bars and tooltips
+        processedYColumns.push({
+            avg: yAfterAvg,
+            min: minY,
+            max: maxY,
+            std: stdY
+        });
+
+        // Include min and max in allYValues to ensure scales accommodate the bars
+        allYValues.push(...yAfterAvg.filter(v => v !== null));
+        allYValues.push(...minY.filter(v => v !== null));
+        allYValues.push(...maxY.filter(v => v !== null));
+
         if (i === 0) {
             xColumn = xAfterAvg;
         }
@@ -48,14 +60,21 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
     return { xColumn, processedYColumns, allYValues, conversionFactor };
 }
 
-function createDataset(yColumn, label, analysis, selectColor, i, isSinglePoint) {
+function createDataset(yData, label, analysis, selectColor, i, isSinglePoint) {
+    const yColumn = yData.avg;
     const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
     const pointRadius = isSinglePoint || thisYAllEqual ? 5 : 3;
 
     const dataset = {
         label,
         data: yColumn,
+        minData: yData.min, // Store min for distribution bars
+        maxData: yData.max, // Store max for distribution bars
+        stdData: yData.std, // Store std for tooltips
         borderColor: selectColor !== null
+            ? AppState.plotColors[selectColor % AppState.plotColors.length]
+            : AppState.plotColors[i % AppState.plotColors.length],
+        backgroundColor: selectColor !== null
             ? AppState.plotColors[selectColor % AppState.plotColors.length]
             : AppState.plotColors[i % AppState.plotColors.length],
         tension: isSinglePoint ? 0 : 0.1,
@@ -163,6 +182,52 @@ function createAnnotations(isFullDisplay, measurementMode, analysis, conversionF
     return annotations;
 }
 
+const distributionBarsPlugin = {
+    id: 'distributionBars',
+    afterDatasetsDraw(chart) {
+        const { ctx, scales: { x, y } } = chart;
+        if (!x || !y) return;
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            if (!dataset.minData || !dataset.maxData) return;
+
+            ctx.save();
+            ctx.strokeStyle = dataset.borderColor;
+            ctx.lineWidth = 1.5;
+
+            const meta = chart.getDatasetMeta(datasetIndex);
+            if (meta.hidden) return;
+
+            dataset.data.forEach((val, i) => {
+                if (val === null || dataset.minData[i] === null || dataset.maxData[i] === null) return;
+
+                // Only draw if there's an actual distribution
+                if (Math.abs(dataset.maxData[i] - dataset.minData[i]) < 1e-6) return;
+
+                const xPos = meta.data[i].x;
+                const yMinPos = y.getPixelForValue(dataset.minData[i]);
+                const yMaxPos = y.getPixelForValue(dataset.maxData[i]);
+
+                // Draw vertical line
+                ctx.beginPath();
+                ctx.moveTo(xPos, yMinPos);
+                ctx.lineTo(xPos, yMaxPos);
+                ctx.stroke();
+
+                // Draw horizontal caps
+                const capWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(xPos - capWidth, yMinPos);
+                ctx.lineTo(xPos + capWidth, yMinPos);
+                ctx.moveTo(xPos - capWidth, yMaxPos);
+                ctx.lineTo(xPos + capWidth, yMaxPos);
+                ctx.stroke();
+            });
+            ctx.restore();
+        });
+    }
+};
+
 function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, analysisOrArray, index = null) {
     const ctx = initializeChartCanvas(canvasId);
     if (!ctx) return null;
@@ -183,8 +248,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
 
     const { isSinglePoint, xMin, xMax, xStepSize, yMin, yMax, yStepSize } = getChartScales(xColumn, allYValues, labels);
 
-    const datasets = processedYColumns.map((yColumn, i) => {
-        const dataset = createDataset(yColumn, labels[i], analyses[i], selectColor = index, i, isSinglePoint);
+    const datasets = processedYColumns.map((yData, i) => {
+        const dataset = createDataset(yData, labels[i], analyses[i], selectColor = index, i, isSinglePoint);
         const regressionDataset = (AppState.currentMeasurementMode === "calibrate") ? createRegressionDataset(xMax, xMin, analyses[i], labels[i]) : null;
         return [dataset, ...(regressionDataset ? [regressionDataset] : [])];
     }).flat();
@@ -195,6 +260,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
             labels: xColumn,
             datasets
         },
+        plugins: [distributionBarsPlugin],
         options: {
             responsive: true,  // Ensure responsive behavior
             maintainAspectRatio: true,  // Maintain the aspect ratio
@@ -235,6 +301,18 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                 }
             },
             plugins: {
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function (context) {
+                            const dataset = context.dataset;
+                            const index = context.dataIndex;
+                            if (dataset.stdData && dataset.stdData[index] !== null && dataset.stdData[index] !== 0) {
+                                return `Std Dev: ${dataset.stdData[index].toFixed(4)}`;
+                            }
+                            return null;
+                        }
+                    }
+                },
                 legend: { labels: { color: getAxisStyle('label') } },
                 title: {
                     display: true,

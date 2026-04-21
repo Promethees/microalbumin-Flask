@@ -7,14 +7,14 @@ function calculateCoefAndRSquared(x, y, regressAlgo = "linear") {
         contentType: 'application/json',
         data: JSON.stringify({ x: x, y: y, regress_algo: regressAlgo }),
         async: false,
-        success: function(response) {
+        success: function (response) {
             if (response.status === 'success') {
                 result = response.result;
             } else {
                 console.error("Math API error:", response.message);
             }
         },
-        error: function(jqXHR, textStatus, errorThrown) {
+        error: function (jqXHR, textStatus, errorThrown) {
             console.error("AJAX Error:", textStatus, errorThrown);
         }
     });
@@ -30,14 +30,14 @@ function calculateKineticsQuantities(XColumn, YColumn, window_size) {
         contentType: 'application/json',
         data: JSON.stringify({ XColumn: XColumn, YColumn: YColumn, window_size: window_size }),
         async: false,
-        success: function(response) {
+        success: function (response) {
             if (response.status === 'success') {
                 result = response.result;
             } else {
                 console.error("Math API error:", response.message);
             }
         },
-        error: function(jqXHR, textStatus, errorThrown) {
+        error: function (jqXHR, textStatus, errorThrown) {
             console.error("AJAX Error:", textStatus, errorThrown);
         }
     });
@@ -149,21 +149,41 @@ function averageDuplicates(xColumn, yColumn) {
         dataMap.get(xColumn[i]).push(yColumn[i]);
     }
 
-    // Calculate average for each group
+    // Calculate average, min, max, and std for each group
     const uniqueX = [];
     const averagedY = [];
+    const minY = [];
+    const maxY = [];
+    const stdY = [];
+
     for (let [x, yValues] of dataMap) {
         uniqueX.push(x);
-        const validValues = yValues.filter(v => v !== null && v !== "NONE" && !isNaN(v));
+        const validValues = yValues
+            .filter(v => v !== null && v !== "NONE" && v !== "OVFL" && !isNaN(parseFloat(v)))
+            .map(v => parseFloat(v));
+
         if (validValues.length > 0) {
-            const avg = validValues.reduce((sum, value) => sum + parseFloat(value), 0) / validValues.length;
+            const avg = validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
             averagedY.push(avg);
+            minY.push(Math.min(...validValues));
+            maxY.push(Math.max(...validValues));
+
+            // Calculate standard deviation
+            if (validValues.length > 1) {
+                const variance = validValues.reduce((sum, value) => sum + Math.pow(value - avg, 2), 0) / (validValues.length - 1);
+                stdY.push(Math.sqrt(variance));
+            } else {
+                stdY.push(0);
+            }
         } else {
             averagedY.push(null);
+            minY.push(null);
+            maxY.push(null);
+            stdY.push(null);
         }
     }
 
-    return { XColumn: uniqueX, YColumn: averagedY };
+    return { XColumn: uniqueX, YColumn: averagedY, minY: minY, maxY: maxY, stdY: stdY };
 }
 
 function getTimeUnitMultiplier(unit) {
@@ -176,7 +196,7 @@ function getTimeUnitMultiplier(unit) {
 }
 
 function mapDuplicates(x, y, keepGaps = false) {
-    // Create a map to store sum and count of y values for each x
+    // Create a map to store all y values for each x
     const xMap = new Map();
 
     // Process each pair
@@ -189,34 +209,40 @@ function mapDuplicates(x, y, keepGaps = false) {
         if (isNone) {
             if (!keepGaps) continue;
             if (!xMap.has(currentX)) {
-                xMap.set(currentX, { sum: 0, count: 0, hasValid: false });
+                xMap.set(currentX, { values: [], hasValid: false });
             }
         } else {
             const val = parseFloat(currentY);
             if (!isNaN(val)) {
                 if (!xMap.has(currentX)) {
-                    xMap.set(currentX, { sum: val, count: 1, hasValid: true });
+                    xMap.set(currentX, { values: [val], hasValid: true });
                 } else {
                     const entry = xMap.get(currentX);
-                    entry.sum += val;
-                    entry.count++;
+                    entry.values.push(val);
                     entry.hasValid = true;
                 }
             } else if (keepGaps) {
                 if (!xMap.has(currentX)) {
-                    xMap.set(currentX, { sum: 0, count: 0, hasValid: false });
+                    xMap.set(currentX, { values: [], hasValid: false });
                 }
             }
         }
     }
 
-    // Convert the map back to arrays
+    // Convert the map back to flat arrays (maintaining duplicates)
     const processedX = [];
     const processedY = [];
 
-    xMap.forEach((value, key) => {
-        processedX.push(key);
-        processedY.push(value.hasValid ? (value.sum / value.count) : null);
+    xMap.forEach((entry, key) => {
+        if (entry.hasValid) {
+            entry.values.forEach(v => {
+                processedX.push(key);
+                processedY.push(v);
+            });
+        } else if (keepGaps) {
+            processedX.push(key);
+            processedY.push(null);
+        }
     });
 
     return { x: processedX, y: processedY };
