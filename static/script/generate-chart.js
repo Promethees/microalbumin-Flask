@@ -303,6 +303,16 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
             plugins: {
                 tooltip: {
                     callbacks: {
+                        label: function (context) {
+                            let value = context.raw;
+
+                            // Handle scatter vs line (object vs number)
+                            if (typeof value === 'object' && value !== null) {
+                                return `(${value.x.toFixed(4)}, ${value.y.toFixed(4)})`;
+                            }
+
+                            return `${context.dataset.label || ''}: ${Number(value).toFixed(4)}`;
+                        },
                         afterLabel: function (context) {
                             const dataset = context.dataset;
                             const index = context.dataIndex;
