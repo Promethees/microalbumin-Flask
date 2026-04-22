@@ -1,66 +1,96 @@
 @echo off
+setlocal enabledelayedexpansion
+
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
-echo ===============================================
-echo  Welcome to the Easy Sensor Web Interface Setup
-echo ===============================================
+
+:: ── Progress Bar Setup ─────────────────────────────────────────────────────
+set "BAR_WIDTH=40"
+set "PROGRESS_FILE=%TEMP%\easyokapi_progress.txt"
+if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
+
+:: Helper to draw the progress bar using PowerShell
+set "DRAW_PROGRESS=powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    \"$pct=[int]$args[0]; $label=$args[1]; ^
+    $filled=[int]($pct * %BAR_WIDTH% / 100); $empty=%BAR_WIDTH% - $filled; ^
+    $bar = ('█' * $filled) + ('░' * $empty); ^
+    Write-Host -NoNewline \"`r  `e[36m[`e[32m$bar`e[36m]`e[0m `e[1m$([string]$pct).PadLeft(3)%%`e[0m  $label\"\""
+
+:: Smoothly fill the bar from %1 to %2
+set "FILL_TO=for /L %%p in (%1,1,%2) do ( %DRAW_PROGRESS% %%p \"%~3\" & timeout /t 0 /nobreak >nul )"
+
+:: ── Banner ──────────────────────────────────────────────────────────────────
+cls
 echo.
-echo This script assumes Git and Python are already installed with pyenv.
-echo It will set up a virtual environment and install required libraries.
-echo If you haven't installed Git and Python yet, please run startwindow-1-git.bat first. 
-echo.
-echo If you see errors about permissions or installation, please:
-echo   1. Close this window.
-echo   2. Right-click startwindow.bat and select "Run as administrator".
+echo    [1m [36m╔══════════════════════════════════════════╗ [0m
+echo    [1m [36m║        EasyOKAPI  ·  Launching …         ║ [0m
+echo    [1m [36m╚══════════════════════════════════════════╝ [0m
 echo.
 
-REM Note: This script does not exit on every error automatically.
-REM Each critical step checks for errors and exits if needed.
+:: ── Step 1 : Initialise (0 → 30%) ──────────────────────────────────────────
+%DRAW_PROGRESS% 0 "Initialising environment ..."
+for /L %%p in (0,1,15) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." & timeout /t 0 /nobreak >nul )
 
-REM Check if Python 3.8.10 or 3.9.13 is installed via pyenv
-:: Purpose: Check for Python 3.8.10, install if not found, else check/install Python 3.9.13
-:: Initialize variables
-
-REM Get the path to the pyenv Python
+:: Get the path to the pyenv Python
 for /f "delims=" %%i in ('pyenv which python') do set PYENV_PYTHON=%%i
 if not defined PYENV_PYTHON (
-    echo ERROR: pyenv which python did not return a path. Check pyenv installation and local version.
-    pyenv versions
-    pyenv which python
+    echo.
+    echo    [31m✗  ERROR: pyenv Python not found. [0m
     pause
     exit /b 1
 )
-echo Using Python: %PYENV_PYTHON%
+for /L %%p in (15,1,30) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." & timeout /t 0 /nobreak >nul )
 
-REM Create venv if not exists
+:: ── Step 2 : Virtual Environment (30 → 60%) ────────────────────────────────
+for /L %%p in (30,1,45) do ( %DRAW_PROGRESS% %%p "Activating virtual environment ..." & timeout /t 0 /nobreak >nul )
 if not exist "venv" (
     "%PYENV_PYTHON%" -m venv venv
-    echo Created virtual environment in 'venv'.
 )
-
 call venv\Scripts\activate.bat
-echo Virtual environment activated.
+for /L %%p in (45,1,60) do ( %DRAW_PROGRESS% %%p "Activating virtual environment ..." & timeout /t 0 /nobreak >nul )
 
-REM Ensure pip is installed
-echo Checking pip...
-python -m ensurepip --upgrade
-
-REM Install required libraries
-echo Installing requirements...
-python -m pip install --upgrade pip
-pip install -r "%~dp0requirements-win.txt"
-
-
-REM Set the library path and start the app
-echo Starting app...
-
-:: Ensure python executable is used from the virtual environment
-if not exist "%~dp0venv\Scripts\python.exe" (
-    echo ERROR: Python executable not found in the virtual environment.
-    echo Please run script "startwindow-2-pyenv-python.bat" to set up Python and pyenv.
-    echo If you have already run it, ensure the virtual environment is created correctly.
+:: ── Step 3 : Preflight (60 → 70%) ──────────────────────────────────────────
+for /L %%p in (60,1,70) do ( %DRAW_PROGRESS% %%p "Running preflight checks ..." & timeout /t 0 /nobreak >nul )
+if not exist "main.py" (
+    echo.
+    echo    [31m✗  ERROR: main.py not found. [0m
     pause
     exit /b 1
 )
-"%~dp0venv\Scripts\python.exe" "%~dp0main.py"
+
+:: ── Launch application and Poll Progress (70 → 100%) ───────────────────────
+start /b "" venv\Scripts\python.exe main.py > nul 2>&1
+
+:poll
+if not exist "%PROGRESS_FILE%" (
+    timeout /t 1 /nobreak >nul
+    goto poll
+)
+
+set /a "last_pct=-1"
+:loop
+for /f "usebackq tokens=1*" %%a in ("%PROGRESS_FILE%") do (
+    set "raw_pct=%%a"
+    set "label=%%b"
+    set /a "pct=raw_pct"
+    :: Map Python 0-100 -> display 70-100
+    set /a "mapped=70 + (pct * 30 / 100)"
+    if !mapped! gtr 100 set mapped=100
+    
+    if !mapped! neq !last_pct! (
+        %DRAW_PROGRESS% !mapped! "!label!"
+        set /a "last_pct=mapped"
+    )
+    if !pct! geq 100 goto done
+)
+timeout /t 0 /nobreak >nul
+goto loop
+
+:done
+%DRAW_PROGRESS% 100 "Server ready!         "
+echo.
+echo.
+echo    [32m [1m✔  EasyOKAPI is running — opening browser… [0m
+echo.
+if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
 pause

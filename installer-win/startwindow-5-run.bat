@@ -1,65 +1,92 @@
 @echo off
+setlocal enabledelayedexpansion
+
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
-@REM echo ===============================================
-@REM echo  Welcome to the Easy Sensor Web Interface Setup
-@REM echo ===============================================
-@REM echo.
-@REM echo This script assumes Git and Python are already installed with pyenv.
-@REM echo It will set up a virtual environment and install required libraries.
-@REM echo If you haven't installed Git and Python yet, please run startwindow-1-git.bat first. 
-@REM echo.
-@REM echo If you see errors about permissions or installation, please:
-@REM echo   1. Close this window.
-@REM echo   2. Right-click startwindow.bat and select "Run as administrator".
-@REM echo.
 
-@REM REM Note: This script does not exit on every error automatically.
-@REM REM Each critical step checks for errors and exits if needed.
+:: ── Progress Bar Setup ─────────────────────────────────────────────────────
+set "BAR_WIDTH=40"
+set "PROGRESS_FILE=%TEMP%\easyokapi_progress.txt"
+if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
 
-@REM REM Check if Python 3.8.10 or 3.9.13 is installed via pyenv
-@REM :: Purpose: Check for Python 3.8.10, install if not found, else check/install Python 3.9.13
-@REM :: Initialize variables
+:: Helper to draw the progress bar using PowerShell
+set "DRAW_PROGRESS=powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    \"$pct=[int]$args[0]; $label=$args[1]; ^
+    $filled=[int]($pct * %BAR_WIDTH% / 100); $empty=%BAR_WIDTH% - $filled; ^
+    $bar = ('█' * $filled) + ('░' * $empty); ^
+    Write-Host -NoNewline \"`r  `e[36m[`e[32m$bar`e[36m]`e[0m `e[1m$([string]$pct).PadLeft(3)%%`e[0m  $label\"\""
 
-@REM REM Get the path to the pyenv Python
-@REM for /f "delims=" %%i in ('pyenv which python') do set PYENV_PYTHON=%%i
-@REM if not defined PYENV_PYTHON (
-@REM     echo ERROR: pyenv which python did not return a path. Check pyenv installation and local version.
-@REM     pyenv versions
-@REM     pyenv which python
-@REM     pause
-@REM     exit /b 1
-@REM )
-@REM echo Using Python: %PYENV_PYTHON%
+:: Smoothly fill the bar from %1 to %2
+set "FILL_TO=for /L %%p in (%1,1,%2) do ( %DRAW_PROGRESS% %%p \"%~3\" & timeout /t 0 /nobreak >nul )"
 
-@REM REM Create venv if not exists
-@REM if not exist "code\venv" (
-@REM     "%PYENV_PYTHON%" -m venv code\venv
-@REM     echo Created virtual environment in 'code\venv'.
-@REM )
+:: ── Banner ──────────────────────────────────────────────────────────────────
+cls
+echo.
+echo    [1m [36m╔══════════════════════════════════════════╗ [0m
+echo    [1m [36m║        EasyOKAPI  ·  Launching …         ║ [0m
+echo    [1m [36m╚══════════════════════════════════════════╝ [0m
+echo.
 
-@REM call code\venv\Scripts\activate.bat
-@REM echo Virtual environment activated.
+:: ── Step 1 : Initialise (0 → 30%) ──────────────────────────────────────────
+%DRAW_PROGRESS% 0 "Initialising environment ..."
+for /L %%p in (0,1,15) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." & timeout /t 0 /nobreak >nul )
 
-@REM REM Ensure pip is installed
-@REM echo Checking pip...
-@REM python -m ensurepip --upgrade
-
-@REM REM Install required libraries
-@REM echo Installing requirements...
-@REM pip install --upgrade pip
-@REM pip install -r "%~dp0code\requirements-win.txt"
-
-REM Set the library path and start the app
-echo Starting app...
-
-:: Ensure python executable is used from the virtual environment
-if not exist "%~dp0code\venv\Scripts\python.exe" (
-    echo ERROR: Python executable not found in the virtual environment.
-    echo Please run script "startwindow-2-pyenv-python.bat" to set up Python and pyenv.
-    echo If you have already run it, ensure the virtual environment is created correctly.
+:: Check if virtual environment exists
+if not exist "code\venv\Scripts\python.exe" (
+    echo.
+    echo    [31m✗  ERROR: Virtual environment not found in code\venv. [0m
     pause
     exit /b 1
 )
-"%~dp0code\venv\Scripts\python.exe" "%~dp0code\main.py"
+for /L %%p in (15,1,30) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." & timeout /t 0 /nobreak >nul )
+
+:: ── Step 2 : Activate (30 → 60%) ───────────────────────────────────────────
+for /L %%p in (30,1,45) do ( %DRAW_PROGRESS% %%p "Activating virtual environment ..." & timeout /t 0 /nobreak >nul )
+call code\venv\Scripts\activate.bat
+for /L %%p in (45,1,60) do ( %DRAW_PROGRESS% %%p "Activating virtual environment ..." & timeout /t 0 /nobreak >nul )
+
+:: ── Step 3 : Preflight (60 → 70%) ──────────────────────────────────────────
+for /L %%p in (60,1,70) do ( %DRAW_PROGRESS% %%p "Running preflight checks ..." & timeout /t 0 /nobreak >nul )
+if not exist "code\main.py" (
+    echo.
+    echo    [31m✗  ERROR: main.py not found in code directory. [0m
+    pause
+    exit /b 1
+)
+
+:: ── Launch application and Poll Progress (70 → 100%) ───────────────────────
+start /b "" code\venv\Scripts\python.exe code\main.py > nul 2>&1
+
+:poll
+if not exist "%PROGRESS_FILE%" (
+    timeout /t 1 /nobreak >nul
+    goto poll
+)
+
+set /a "last_pct=-1"
+:loop
+for /f "usebackq tokens=1*" %%a in ("%PROGRESS_FILE%") do (
+    set "raw_pct=%%a"
+    set "label=%%b"
+    set /a "pct=raw_pct"
+    :: Map Python 0-100 -> display 70-100
+    set /a "mapped=70 + (pct * 30 / 100)"
+    if !mapped! gtr 100 set mapped=100
+    
+    if !mapped! neq !last_pct! (
+        %DRAW_PROGRESS% !mapped! "!label!"
+        set /a "last_pct=mapped"
+    )
+    if !pct! geq 100 goto done
+)
+timeout /t 0 /nobreak >nul
+goto loop
+
+:done
+%DRAW_PROGRESS% 100 "Server ready!         "
+echo.
+echo.
+echo    [32m [1m✔  EasyOKAPI is running — opening browser… [0m
+echo.
+if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
 pause

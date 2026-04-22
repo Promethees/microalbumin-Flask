@@ -1,24 +1,36 @@
 # ── Startup progress reporter ────────────────────────────────────────────────
-# Writes "pct label\n" lines to a named FIFO so setup-3-run.command can drive
-# the terminal progress bar in real time.  Fails silently when the pipe is
-# absent (e.g. launched directly without the run script).
+# Writes "pct label\n" lines to a named FIFO or temporary file so launch
+# scripts can drive the terminal progress bar in real time.
+# Fails silently when the channel is absent.
 import os as _os
 
-_PROGRESS_PIPE = "/tmp/easyokapi_progress.pipe"
+if _os.name == "nt":  # Windows
+    # On Windows, we use a plain file in the temp directory
+    _PROGRESS_PIPE = _os.path.join(_os.environ.get("TEMP", "."), "easyokapi_progress.txt")
+else:                  # POSIX (macOS, Linux)
+    # On Unix, we use a named pipe (FIFO)
+    _PROGRESS_PIPE = "/tmp/easyokapi_progress.pipe"
+
 _progress_fd = None
 
 def _report(pct: int, label: str) -> None:
-    """Send a progress update to the shell progress bar (non-blocking)."""
+    """Send a progress update to the launch script (non-blocking)."""
     global _progress_fd
     try:
-        if _progress_fd is None and _os.path.exists(_PROGRESS_PIPE):
-            fd = _os.open(_PROGRESS_PIPE, _os.O_WRONLY | _os.O_NONBLOCK)
-            _progress_fd = _os.fdopen(fd, "w", buffering=1)
-        if _progress_fd is not None:
-            _progress_fd.write(f"{pct} {label}\n")
-            _progress_fd.flush()
-    except OSError:
-        pass        # pipe not ready yet — ignore
+        if _os.name == "nt":
+            # Direct file write for Windows polling
+            with open(_PROGRESS_PIPE, "w") as f:
+                f.write(f"{pct} {label}\n")
+        else:
+            # POSIX pipe logic
+            if _progress_fd is None and _os.path.exists(_PROGRESS_PIPE):
+                fd = _os.open(_PROGRESS_PIPE, _os.O_WRONLY | _os.O_NONBLOCK)
+                _progress_fd = _os.fdopen(fd, "w", buffering=1)
+            if _progress_fd is not None:
+                _progress_fd.write(f"{pct} {label}\n")
+                _progress_fd.flush()
+    except (OSError, IOError):
+        pass        # path not ready yet or pipe closed — ignore
 
 _report(5, "Python runtime ready …")
 
