@@ -25,69 +25,101 @@ echo    ============================================
 echo.
 
 :: ── Step 1 : Initialise (0 → 30%) ──────────────────────────────────────────
-%DRAW_PROGRESS% 0 "Initialising environment ..."
-for /L %%p in (0,1,15) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." & timeout /t 0 /nobreak >nul )
+echo Initialising environment...
+for /L %%p in (0,1,30) do (
+    cls
+    echo.
+    echo    ============================================
+    echo       EasyOKAPI - Launching...
+    echo    ============================================
+    echo.
+    echo Initialising environment...
+    set /a "filled=%%p * %BAR_WIDTH% / 100"
+    set /a "empty=%BAR_WIDTH% - !filled!"
+    set "bar="
+    for /L %%i in (1,1,!filled!) do set "bar=!bar!=" 
+    for /L %%i in (1,1,!empty!) do set "bar=!bar!-"
+    echo [!bar!] %%p%%
+    timeout /t 0 /nobreak >nul 2>&1
+)
 
 :: Get the path to the pyenv Python
 for /f "delims=" %%i in ('pyenv which python') do set PYENV_PYTHON=%%i
 if not defined PYENV_PYTHON (
+    cls
     echo.
     echo    [!] ERROR: pyenv Python not found.
+    echo.
     pause
     exit /b 1
 )
-for /L %%p in (15,1,30) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." & timeout /t 0 /nobreak >nul )
 
 :: ── Step 2 : Virtual Environment (30 → 60%) ────────────────────────────────
-for /L %%p in (30,1,45) do ( %DRAW_PROGRESS% %%p "Activating virtual environment ..." & timeout /t 0 /nobreak >nul )
+echo Activating virtual environment...
+for /L %%p in (30,1,60) do (
+    cls
+    echo.
+    echo    ============================================
+    echo       EasyOKAPI - Launching...
+    echo    ============================================
+    echo.
+    echo Activating virtual environment...
+    set /a "filled=%%p * %BAR_WIDTH% / 100"
+    set /a "empty=%BAR_WIDTH% - !filled!"
+    set "bar="
+    for /L %%i in (1,1,!filled!) do set "bar=!bar!=" 
+    for /L %%i in (1,1,!empty!) do set "bar=!bar!-"
+    echo [!bar!] %%p%%
+    timeout /t 0 /nobreak >nul 2>&1
+)
 if not exist "venv" (
     "%PYENV_PYTHON%" -m venv venv
 )
 call venv\Scripts\activate.bat
-for /L %%p in (45,1,60) do ( %DRAW_PROGRESS% %%p "Activating virtual environment ..." & timeout /t 0 /nobreak >nul )
 
-:: ── Step 3 : Preflight (60 → 70%) ──────────────────────────────────────────
-for /L %%p in (60,1,70) do ( %DRAW_PROGRESS% %%p "Running preflight checks ..." & timeout /t 0 /nobreak >nul )
+:: ── Step 3 : Preflight (60 → 80%) ──────────────────────────────────────────
+echo Running preflight checks...
+for /L %%p in (60,1,80) do (
+    cls
+    echo.
+    echo    ============================================
+    echo       EasyOKAPI - Launching...
+    echo    ============================================
+    echo.
+    echo Running preflight checks...
+    set /a "filled=%%p * %BAR_WIDTH% / 100"
+    set /a "empty=%BAR_WIDTH% - !filled!"
+    set "bar="
+    for /L %%i in (1,1,!filled!) do set "bar=!bar!=" 
+    for /L %%i in (1,1,!empty!) do set "bar=!bar!-"
+    echo [!bar!] %%p%%
+    timeout /t 0 /nobreak >nul 2>&1
+)
 if not exist "main.py" (
+    cls
     echo.
     echo    [!] ERROR: main.py not found.
+    echo.
     pause
     exit /b 1
 )
 
-:: ── Launch application and Poll Progress (70 → 100%) ───────────────────────
-start /b "" venv\Scripts\python.exe main.py > nul 2>&1
-
-:poll
-if not exist "%PROGRESS_FILE%" (
-    timeout /t 1 /nobreak >nul
-    goto poll
+:: ── Launch application (80 → 100%) ────────────────────────────────────────
+echo Launching application...
+for /L %%p in (80,1,100) do (
+    cls
+    echo.
+    echo    ============================================
+    echo       EasyOKAPI - Launching...
+    echo    ============================================
+    echo.
+    echo Launching application...
+    set /a "filled=%%p * %BAR_WIDTH% / 100"
+    set /a "empty=%BAR_WIDTH% - !filled!"
+    set "bar="
+    for /L %%i in (1,1,!filled!) do set "bar=!bar!=" 
+    for /L %%i in (1,1,!empty!) do set "bar=!bar!-"
+    echo [!bar!] %%p%%
+    timeout /t 0 /nobreak >nul 2>&1
 )
-
-set /a "last_pct=-1"
-:loop
-for /f "usebackq tokens=1*" %%a in ("%PROGRESS_FILE%") do (
-    set "raw_pct=%%a"
-    set "label=%%b"
-    set /a "pct=raw_pct"
-    :: Map Python 0-100 -> display 70-100
-    set /a "mapped=70 + (pct * 30 / 100)"
-    if !mapped! gtr 100 set mapped=100
-    
-    if !mapped! neq !last_pct! (
-        %DRAW_PROGRESS% !mapped! "!label!"
-        set /a "last_pct=mapped"
-    )
-    if !pct! geq 100 goto done
-)
-timeout /t 0 /nobreak >nul
-goto loop
-
-:done
-%DRAW_PROGRESS% 100 "Server ready!         "
-echo.
-echo.
-echo    [OK] EasyOKAPI is running - opening browser...
-echo.
-if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
-pause
+start /b "" venv\Scripts\python.exe main.py
