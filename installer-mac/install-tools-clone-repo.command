@@ -92,12 +92,48 @@ REPO_URL="https://github.com/Promethees/microalbumin-Flask.git"  # Replace with 
 REPO_NAME="microalbumin-Flask"
 INSTALL_DIR="/Applications/$REPO_NAME"
 
+# Check if installation directory is not empty
+if [ -d "$INSTALL_DIR" ]; then
+    # Count items in the directory
+    ITEM_COUNT=$(find "$INSTALL_DIR" -maxdepth 1 -type f -o -type d | wc -l)
+    
+    if [ "$ITEM_COUNT" -gt 1 ]; then  # More than 1 because the directory itself counts as 1
+        echo "An existing installation was found at: $INSTALL_DIR"
+        
+        # Check if version file exists to display current version
+        if [ -f "$INSTALL_DIR/VERSION.txt" ]; then
+            CURRENT_VERSION=$(cat "$INSTALL_DIR/VERSION.txt")
+            echo "Current version: $CURRENT_VERSION"
+        else
+            echo "Current version: Unknown (no version file found)"
+            CURRENT_VERSION="Unknown"
+        fi
+        
+        echo "New version: $VERSION_TAG"
+        echo ""
+        
+        # Prompt user using osascript with better formatting
+        CHOICE=$(osascript -e 'Tell application "System Events" to display dialog "An existing installation was found.\n\nCurrent version: '$CURRENT_VERSION'\nNew version: '$VERSION_TAG'\n\nWould you like to overwrite it?" buttons {"Cancel", "Overwrite"} default button "Cancel" with title "EasySensorKit Installer"' -e 'button returned of result' 2>/dev/null)
+        
+        if [ "$CHOICE" = "Overwrite" ]; then
+            echo "Removing existing installation..."
+            rm -rf "$INSTALL_DIR"
+            if [ $? -ne 0 ]; then
+                echo "❌ Error: Failed to remove existing installation."
+                osascript -e 'display dialog "Failed to remove existing installation. Check permissions and try again." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+                exit 1
+            fi
+            echo "Existing installation removed successfully."
+        else
+            echo "Installation cancelled. Keeping existing installation."
+            osascript -e 'display dialog "Installation cancelled. Keeping existing installation." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+            exit 0
+        fi
+    fi
+fi
+
 # Clone the repository
 echo "Cloning repository to $INSTALL_DIR..."
-if [ -d "$INSTALL_DIR" ]; then
-    echo "Directory $INSTALL_DIR already exists. Removing it..."
-    rm -rf "$INSTALL_DIR"
-fi
 su - "$CURRENT_USER" -c "git clone \"https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git\" \"$INSTALL_DIR\""
 if [ $? -ne 0 ]; then
     echo "❌ Error: Failed to clone repository."
@@ -153,6 +189,9 @@ rm -f "$INSTALL_DIR/requirements-win.txt" 2>/dev/null
 rm -f "$INSTALL_DIR/generate-tree.sh" 2>/dev/null
 rm -f "$INSTALL_DIR/BUILD_MAC.md" 2>/dev/null
 rm -f "$INSTALL_DIR/Rule.md" 2>/dev/null
+
+# Save version information for future checks
+echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
 echo "Repository cloned successfully to $INSTALL_DIR with tag $VERSION_TAG."
 echo "Preinstall script completed at $(date)"
