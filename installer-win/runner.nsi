@@ -33,9 +33,11 @@ Section "Launch Program" SEC01
   SetOutPath "$INSTDIR"
   
   ; Ensure the batch file exists before trying to run it
-  IfFileExists "$INSTDIR\startwindow-5-run.bat" 0 +3
+  IfFileExists "$INSTDIR\startwindow-5-run.bat" 0 +4
     CreateShortCut "$DESKTOP\EasyOKAPI.lnk" "$INSTDIR\EasyOKAPI.exe" "" "$INSTDIR\EasyOKAPI.exe" 0
-    ExecWait '"$SYSDIR\cmd.exe" /c "$INSTDIR\startwindow-5-run.bat"'
+    ; Run batch file minimized and then close NSIS window
+    ExecWait '"$SYSDIR\cmd.exe" /min /c "$INSTDIR\startwindow-5-run.bat"'
+    Quit
     Goto +2
   MessageBox MB_OK "Error: startwindow-5-run.bat not found in $INSTDIR"
 SectionEnd

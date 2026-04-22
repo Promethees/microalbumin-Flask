@@ -108,4 +108,7 @@ for /L %%p in (80,1,100) do (
     echo [!bar!] %%p%%
     timeout /t 0 /nobreak >nul 2>&1
 )
-start /b "" code\venv\Scripts\python.exe code\main.py
+
+:: Launch application in background and exit this window
+start /b /min "" code\venv\Scripts\python.exe code\main.py
+exit /b 0
