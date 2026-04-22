@@ -167,38 +167,105 @@ function getTimeUnitMultiplier(unit) {
 /**
  * Handle duplicate X values by averaging their Y values
  */
-function mapDuplicates(x, y, keepGaps = false) {
-    const xMap = new Map();
-    for (let i = 0; i < x.length; i++) {
-        const curX = x[i];
-        const curY = y[i];
-        const isInvalid = curY === "NONE" || curY === null || curY === "OVFL";
-        
-        if (isInvalid) {
-            if (!keepGaps) continue;
-            if (!xMap.has(curX)) xMap.set(curX, { sum: 0, count: 0, hasValid: false });
+function averageDuplicates(xColumn, yColumn) {
+    const dataMap = new Map();
+
+    // Group YColumn values by XColumn values
+    for (let i = 0; i < xColumn.length; i++) {
+        if (!dataMap.has(xColumn[i])) {
+            dataMap.set(xColumn[i], []);
+        }
+        dataMap.get(xColumn[i]).push(yColumn[i]);
+    }
+
+    // Calculate average, min, max, and std for each group
+    const uniqueX = [];
+    const averagedY = [];
+    const minY = [];
+    const maxY = [];
+    const stdY = [];
+
+    for (let [x, yValues] of dataMap) {
+        uniqueX.push(x);
+        const validValues = yValues
+            .filter(v => v !== null && v !== "NONE" && v !== "OVFL" && !isNaN(parseFloat(v)))
+            .map(v => parseFloat(v));
+
+        if (validValues.length > 0) {
+            const avg = validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
+            averagedY.push(avg);
+            minY.push(Math.min(...validValues));
+            maxY.push(Math.max(...validValues));
+
+            // Calculate standard deviation
+            if (validValues.length > 1) {
+                const variance = validValues.reduce((sum, value) => sum + Math.pow(value - avg, 2), 0) / (validValues.length - 1);
+                stdY.push(Math.sqrt(variance));
+            } else {
+                stdY.push(0);
+            }
         } else {
-            const val = parseFloat(curY);
+            averagedY.push(null);
+            minY.push(null);
+            maxY.push(null);
+            stdY.push(null);
+        }
+    }
+
+    return { XColumn: uniqueX, YColumn: averagedY, minY: minY, maxY: maxY, stdY: stdY };
+}
+
+function mapDuplicates(x, y, keepGaps = false) {
+    // Create a map to store all y values for each x
+    const xMap = new Map();
+
+    // Process each pair
+    for (let i = 0; i < x.length; i++) {
+        const currentX = x[i];
+        const currentY = y[i];
+
+        // Skip or mark as gap if y is "NONE" or null
+        const isNone = currentY === "NONE" || currentY === null || currentY === "OVFL";
+        if (isNone) {
+            if (!keepGaps) continue;
+            if (!xMap.has(currentX)) {
+                xMap.set(currentX, { values: [], hasValid: false });
+            }
+        } else {
+            const val = parseFloat(currentY);
             if (!isNaN(val)) {
-                if (!xMap.has(curX)) {
-                    xMap.set(curX, { sum: val, count: 1, hasValid: true });
+                if (!xMap.has(currentX)) {
+                    xMap.set(currentX, { values: [val], hasValid: true });
                 } else {
-                    const entry = xMap.get(curX);
-                    entry.sum += val;
-                    entry.count++;
+                    const entry = xMap.get(currentX);
+                    entry.values.push(val);
                     entry.hasValid = true;
                 }
-            } else if (keepGaps && !xMap.has(curX)) {
-                xMap.set(curX, { sum: 0, count: 0, hasValid: false });
+            } else if (keepGaps) {
+                if (!xMap.has(currentX)) {
+                    xMap.set(currentX, { values: [], hasValid: false });
+                }
             }
         }
     }
-    const procX = [], procY = [];
-    xMap.forEach((v, k) => {
-        procX.push(k);
-        procY.push(v.hasValid ? v.sum / v.count : null);
+
+    // Convert the map back to flat arrays (maintaining duplicates)
+    const processedX = [];
+    const processedY = [];
+
+    xMap.forEach((entry, key) => {
+        if (entry.hasValid) {
+            entry.values.forEach(v => {
+                processedX.push(key);
+                processedY.push(v);
+            });
+        } else if (keepGaps) {
+            processedX.push(key);
+            processedY.push(null);
+        }
     });
-    return { x: procX, y: procY };
+
+    return { x: processedX, y: processedY };
 }
 
 function filterXYPairs(XColumnVals, YColumnVals, startThreshold, endThreshold) {
@@ -218,34 +285,6 @@ function filterXYPairs(XColumnVals, YColumnVals, startThreshold, endThreshold) {
         : validIndices.map(i => YColumnVals[i]);
         
     return { filteredX, filteredY };
-}
-
-function averageDuplicates(xColumn, yColumn) {
-    const dataMap = new Map();
-
-    // Group YColumn values by XColumn values
-    for (let i = 0; i < xColumn.length; i++) {
-        if (!dataMap.has(xColumn[i])) {
-            dataMap.set(xColumn[i], []);
-        }
-        dataMap.get(xColumn[i]).push(yColumn[i]);
-    }
-
-    // Calculate average for each group
-    const uniqueX = [];
-    const averagedY = [];
-    for (let [x, yValues] of dataMap) {
-        uniqueX.push(x);
-        const validValues = yValues.filter(v => v !== null && v !== "NONE" && !isNaN(v));
-        if (validValues.length > 0) {
-            const avg = validValues.reduce((sum, value) => sum + parseFloat(value), 0) / validValues.length;
-            averagedY.push(avg);
-        } else {
-            averagedY.push(null);
-        }
-    }
-
-    return { XColumn: uniqueX, YColumn: averagedY };
 }
 
 function checkSize(XColumn, YColumn) {
