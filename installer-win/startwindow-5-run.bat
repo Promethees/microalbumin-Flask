@@ -13,8 +13,8 @@ if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
 set "DRAW_PROGRESS=powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     \"$pct=[int]$args[0]; $label=$args[1]; ^
     $filled=[int]($pct * %BAR_WIDTH% / 100); $empty=%BAR_WIDTH% - $filled; ^
-    $bar = ('█' * $filled) + ('░' * $empty); ^
-    Write-Host -NoNewline \"`r  `e[36m[`e[32m$bar`e[36m]`e[0m `e[1m$([string]$pct).PadLeft(3)%%`e[0m  $label\"\""
+    $bar = ('=' * $filled) + ('-' * $empty); ^
+    Write-Host -NoNewline \"`r  [$bar] $([string]$pct).PadLeft(3)%%  $label\""
 
 :: Smoothly fill the bar from %1 to %2
 set "FILL_TO=for /L %%p in (%1,1,%2) do ( %DRAW_PROGRESS% %%p \"%~3\" & timeout /t 0 /nobreak >nul )"
@@ -22,9 +22,9 @@ set "FILL_TO=for /L %%p in (%1,1,%2) do ( %DRAW_PROGRESS% %%p \"%~3\" & timeout 
 :: ── Banner ──────────────────────────────────────────────────────────────────
 cls
 echo.
-echo    [1m [36m╔══════════════════════════════════════════╗ [0m
-echo    [1m [36m║        EasyOKAPI  ·  Launching …         ║ [0m
-echo    [1m [36m╚══════════════════════════════════════════╝ [0m
+echo    ============================================
+echo       EasyOKAPI - Launching...
+echo    ============================================
 echo.
 
 :: ── Step 1 : Initialise (0 → 30%) ──────────────────────────────────────────
@@ -34,7 +34,7 @@ for /L %%p in (0,1,15) do ( %DRAW_PROGRESS% %%p "Initialising environment ..." &
 :: Check if virtual environment exists
 if not exist "code\venv\Scripts\python.exe" (
     echo.
-    echo    [31m✗  ERROR: Virtual environment not found in code\venv. [0m
+    echo    [!] ERROR: Virtual environment not found in code\venv.
     pause
     exit /b 1
 )
@@ -49,7 +49,7 @@ for /L %%p in (45,1,60) do ( %DRAW_PROGRESS% %%p "Activating virtual environment
 for /L %%p in (60,1,70) do ( %DRAW_PROGRESS% %%p "Running preflight checks ..." & timeout /t 0 /nobreak >nul )
 if not exist "code\main.py" (
     echo.
-    echo    [31m✗  ERROR: main.py not found in code directory. [0m
+    echo    [!] ERROR: main.py not found in code directory.
     pause
     exit /b 1
 )
@@ -86,7 +86,7 @@ goto loop
 %DRAW_PROGRESS% 100 "Server ready!         "
 echo.
 echo.
-echo    [32m [1m✔  EasyOKAPI is running — opening browser… [0m
+echo    [OK] EasyOKAPI is running - opening browser...
 echo.
 if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
 pause
