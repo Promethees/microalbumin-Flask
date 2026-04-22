@@ -29,6 +29,72 @@ set "GITHUB_TOKEN=%~2"
 set "REPO_BASE=https://github.com/Promethees/microalbumin-Flask.git"
 set "REPO_URL=https://!GITHUB_TOKEN!@github.com/Promethees/microalbumin-Flask.git"
 
+:: Check if installation already exists
+echo.
+echo    ============================================
+echo       EasyOKAPI - Installation Check
+echo    ============================================
+echo.
+
+:: Check if installation directory is not empty
+if exist "!INSTALL_DIR!" (
+    :: Count items in the directory (excluding . and ..)
+    setlocal enabledelayedexpansion
+    set "item_count=0"
+    for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
+    
+    if !item_count! gtr 0 (
+        echo [*] An existing installation was found at:
+        echo     !INSTALL_DIR!
+        echo.
+        
+        :: Check if version file exists to display current version
+        if exist "!INSTALL_DIR!\VERSION.txt" (
+            set /p CURRENT_VERSION=<"!INSTALL_DIR!\VERSION.txt"
+            echo     Current version: !CURRENT_VERSION!
+        ) else (
+            echo     Current version: Unknown (no version file found)
+            set "CURRENT_VERSION=Unknown"
+        )
+        
+        echo     New version: !VERSION_TAG!
+        echo.
+        echo Options:
+        echo   [1] Overwrite existing installation (recommended for updates)
+        echo   [2] Cancel and keep existing installation
+        echo.
+        
+        set /p "CHOICE=Enter your choice [1 or 2]: "
+        
+        if "!CHOICE!"=="1" (
+            echo.
+            echo Removing existing installation...
+            rmdir /s /q "!INSTALL_DIR!"
+            if !ERRORLEVEL! neq 0 (
+                echo ERROR: Failed to remove existing installation.
+                echo Please check permissions and try again.
+                pause >nul
+                exit /b 1
+            )
+            :: Recreate the empty directory
+            mkdir "!INSTALL_DIR!"
+            echo Existing installation removed successfully.
+        ) else if "!CHOICE!"=="2" (
+            echo.
+            echo Installation cancelled. Keeping existing installation.
+            pause >nul
+            exit /b 0
+        ) else (
+            echo.
+            echo ERROR: Invalid choice. Please enter 1 or 2.
+            pause >nul
+            exit /b 1
+        )
+        echo.
+    )
+    endlocal
+)
+
 :: Check if Git is installed
 where git >nul 2>&1
 if %ERRORLEVEL% neq 0 (
@@ -144,6 +210,9 @@ if exist "!INSTALL_DIR!\.github" (
 :: Add more file patterns or directories to exclude here, e.g.:
 :: del /s /q "!INSTALL_DIR!\*.txt" >nul 2>&1
 :: rmdir /s /q "!INSTALL_DIR!\test" >nul 2>&1
+
+:: Save version information for future checks
+echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
 
 echo Repository cloned successfully to "!INSTALL_DIR!" with tag "!VERSION_TAG!".
 echo You can now proceed with the next steps in the setup process.
