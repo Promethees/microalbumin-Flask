@@ -10,11 +10,8 @@ set "PROGRESS_FILE=%TEMP%\easyokapi_progress.txt"
 if exist "%PROGRESS_FILE%" del "%PROGRESS_FILE%"
 
 :: Helper to draw the progress bar using PowerShell
-set "DRAW_PROGRESS=powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    \"$pct=[int]$args[0]; $label=$args[1]; ^
-    $filled=[int]($pct * %BAR_WIDTH% / 100); $empty=%BAR_WIDTH% - $filled; ^
-    $bar = ('=' * $filled) + ('-' * $empty); ^
-    Write-Host -NoNewline \"`r  [$bar] $([string]$pct).PadLeft(3)%%  $label\""
+set "DRAW_PROGRESS=powershell -NoProfile -ExecutionPolicy Bypass -ArgumentList"  "^" "-Command" ^
+    "param($pct, $label); $filled=[int]($pct * %BAR_WIDTH% / 100); $empty=%BAR_WIDTH% - $filled; $bar = ('=' * $filled) + ('-' * $empty); Write-Host -NoNewline \"`r  [$bar] $([string]$pct).PadLeft(3)%%  $label\""
 
 :: Smoothly fill the bar from %1 to %2
 set "FILL_TO=for /L %%p in (%1,1,%2) do ( %DRAW_PROGRESS% %%p \"%~3\" & timeout /t 0 /nobreak >nul )"
