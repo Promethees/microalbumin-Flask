@@ -853,9 +853,9 @@ body.dark #swal-edit-table tr.selected td {
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-#file-table-container {
+.file-table-container {
     overflow-y: auto;
-    max-height: 120px;
+    max-height: 240px;
     width: 100%;
     margin: 20px auto;
     scrollbar-width: thin;
