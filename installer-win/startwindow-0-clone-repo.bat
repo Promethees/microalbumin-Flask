@@ -40,64 +40,67 @@ echo.
 if not exist "!INSTALL_DIR!" (
     echo [*] Installation directory does not exist. Proceeding with new installation...
     echo.
-) else (
-    :: Directory exists, count items to check if it's non-empty
-    set "item_count=0"
-    for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
+    goto :skip_menu
+)
+
+:: Directory exists, count items to check if it's non-empty
+set "item_count=0"
+for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
+
+if !item_count! gtr 0 (
+    echo [*] An existing installation was found at:
+    echo     !INSTALL_DIR!
+    echo.
     
-    if !item_count! gtr 0 (
-        echo [*] An existing installation was found at:
-        echo     !INSTALL_DIR!
+    :: Check if version file exists to display current version
+    if exist "!INSTALL_DIR!\VERSION.txt" (
+        set /p CURRENT_VERSION=<"!INSTALL_DIR!\VERSION.txt"
+        echo     Current version: !CURRENT_VERSION!
+    ) else (
+        echo     Current version: Unknown (no version file found)
+        set "CURRENT_VERSION=Unknown"
+    )
+    
+    echo     New version: !VERSION_TAG!
+    echo.
+    echo Options:
+    echo   [1] Overwrite existing installation (recommended for updates)
+    echo   [2] Cancel and keep existing installation
+    echo.
+    
+    set /p "CHOICE=Enter your choice [1 or 2]: "
+    
+    if "!CHOICE!"=="1" (
         echo.
-        
-        :: Check if version file exists to display current version
-        if exist "!INSTALL_DIR!\VERSION.txt" (
-            set /p CURRENT_VERSION=<"!INSTALL_DIR!\VERSION.txt"
-            echo     Current version: !CURRENT_VERSION!
-        ) else (
-            echo     Current version: Unknown (no version file found)
-            set "CURRENT_VERSION=Unknown"
-        )
-        
-        echo     New version: !VERSION_TAG!
-        echo.
-        echo Options:
-        echo   [1] Overwrite existing installation (recommended for updates)
-        echo   [2] Cancel and keep existing installation
-        echo.
-        
-        set /p "CHOICE=Enter your choice [1 or 2]: "
-        
-        if "!CHOICE!"=="1" (
-            echo.
-            echo Removing existing installation...
-            rmdir /s /q "!INSTALL_DIR!"
-            if !ERRORLEVEL! neq 0 (
-                echo ERROR: Failed to remove existing installation.
-                echo Please check permissions and try again.
-                pause >nul
-                exit /b 1
-            )
-            :: Recreate the empty directory
-            mkdir "!INSTALL_DIR!"
-            echo Existing installation removed successfully.
-        ) else if "!CHOICE!"=="2" (
-            echo.
-            echo Installation cancelled. Keeping existing installation.
-            pause >nul
-            exit /b 0
-        ) else (
-            echo.
-            echo ERROR: Invalid choice. Please enter 1 or 2.
+        echo Removing existing installation...
+        rmdir /s /q "!INSTALL_DIR!"
+        if !ERRORLEVEL! neq 0 (
+            echo ERROR: Failed to remove existing installation.
+            echo Please check permissions and try again.
             pause >nul
             exit /b 1
         )
+        :: Recreate the empty directory
+        mkdir "!INSTALL_DIR!"
+        echo Existing installation removed successfully.
+    ) else if "!CHOICE!"=="2" (
         echo.
+        echo Installation cancelled. Keeping existing installation.
+        pause >nul
+        exit /b 0
     ) else (
-        echo [*] Installation directory exists but is empty. Proceeding with installation...
         echo.
+        echo ERROR: Invalid choice. Please enter 1 or 2.
+        pause >nul
+        exit /b 1
     )
+    echo.
+) else (
+    echo [*] Installation directory exists but is empty. Proceeding with installation...
+    echo.
 )
+
+:skip_menu
 
 :: Check if Git is installed
 where git >nul 2>&1
