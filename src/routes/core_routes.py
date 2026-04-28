@@ -71,16 +71,9 @@ def index():
 
 def delayed_termination():
     time.sleep(5) 
-    if state.PRODUCTION_MODE:
-        if platform.system() == 'Windows':
-            os.kill(os.getpid(), signal.SIGTERM)
-        else:
-            os.killpg(os.getpgid(os.getpid()), signal.SIGTERM)
-    else:
-        func = request.environ.get('werkzeug.server.shutdown')
-        if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
-        func()
+    # Use SIGTERM for all platforms and modes. The server in main.py has signal handlers
+    # to gracefully detect SIGTERM and execute atexit hooks natively, protecting parent wrapper scripts.
+    os.kill(os.getpid(), signal.SIGTERM)
 
 @core_bp.route('/shutdown', methods=['POST'])
 def shutdown():
