@@ -42,7 +42,6 @@ if not exist "!INSTALL_DIR!" (
     echo.
 ) else (
     :: Directory exists, count items to check if it's non-empty
-    setlocal enabledelayedexpansion
     set "item_count=0"
     for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
     
@@ -98,7 +97,6 @@ if not exist "!INSTALL_DIR!" (
         echo [*] Installation directory exists but is empty. Proceeding with installation...
         echo.
     )
-    endlocal
 )
 
 :: Check if Git is installed
