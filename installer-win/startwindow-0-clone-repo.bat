@@ -29,16 +29,19 @@ set "GITHUB_TOKEN=%~2"
 set "REPO_BASE=https://github.com/Promethees/microalbumin-Flask.git"
 set "REPO_URL=https://!GITHUB_TOKEN!@github.com/Promethees/microalbumin-Flask.git"
 
-:: Check if installation already exists
+:: Check if installation directory exists and is not empty
 echo.
 echo    ============================================
 echo       EasyOKAPI - Installation Check
 echo    ============================================
 echo.
 
-:: Check if installation directory is not empty
-if exist "!INSTALL_DIR!" (
-    :: Count items in the directory (excluding . and ..)
+:: If installation directory doesn't exist, proceed directly to cloning
+if not exist "!INSTALL_DIR!" (
+    echo [*] Installation directory does not exist. Proceeding with new installation...
+    echo.
+) else (
+    :: Directory exists, count items to check if it's non-empty
     setlocal enabledelayedexpansion
     set "item_count=0"
     for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
@@ -90,6 +93,9 @@ if exist "!INSTALL_DIR!" (
             pause >nul
             exit /b 1
         )
+        echo.
+    ) else (
+        echo [*] Installation directory exists but is empty. Proceeding with installation...
         echo.
     )
     endlocal
