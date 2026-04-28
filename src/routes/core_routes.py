@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, make_response, render_template, request
 import os
-import platform
 import time
 import signal
 import threading
