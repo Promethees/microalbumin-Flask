@@ -4,7 +4,6 @@ import os
 import json
 import csv
 import re
-import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from filelock import FileLock, Timeout
@@ -47,6 +46,7 @@ def get_csv_headers():
         return jsonify({'headers': [], 'error': 'Path is not a file'}), 400
 
     try:
+        import pandas as pd
         df = pd.read_csv(read_file, nrows=0, comment='#')
         headers = df.columns.tolist()
         return jsonify({'headers': headers})

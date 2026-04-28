@@ -1,7 +1,6 @@
 import os
 import glob
 import json
-import pandas as pd
 import io
 from collections import MutableMapping, Sequence
 
@@ -42,6 +41,7 @@ def get_dynamic_data(file_path):
 
             # Parse the CSV part into a DataFrame
             if data_lines:
+                import pandas as pd
                 df = pd.read_csv(io.StringIO("".join(data_lines)))
                 df = df.fillna("NONE")
                 data = df.to_dict('records')
@@ -115,6 +115,7 @@ def merge_csv_files(file1_path, file2_path, output_path):
     Handles measured data (Value:n) and calibration data.
     """
     def parse_csv_with_metadata(path):
+        import pandas as pd
         metadata = []
         data_lines = []
         if not os.path.exists(path):
@@ -145,6 +146,7 @@ def merge_csv_files(file1_path, file2_path, output_path):
         return False, "Could not find common key column (Timestamp or Concentration)"
 
     # Merge logic based on the detected key
+    import pandas as pd
     if join_key == 'Timestamp':
         # Measured data: Rename Value:x columns and perform outer join
         df1_value_cols = [c for c in df1.columns if c.startswith('Value:')]
