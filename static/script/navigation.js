@@ -88,6 +88,10 @@ function updateJSONTable(files) {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
     }
     document.getElementById("json-table").innerHTML = html;
+    const searchInput = document.getElementById('json-search');
+    if (searchInput && searchInput.value) {
+        filterTable('json-table', searchInput.value);
+    }
 }
 
 function updateFileTable(files, deselect = false) {
@@ -104,6 +108,10 @@ function updateFileTable(files, deselect = false) {
                 html += '<tr><td colspan="3">No CSV files is available.</td></tr>';
             }
             document.getElementById("file-table").innerHTML = html;
+            const searchInput = document.getElementById('file-search');
+            if (searchInput && searchInput.value) {
+                filterTable('file-table', searchInput.value);
+            }
             if (deselect) {
                 AppState.currentFile = null;
                 $toggleQueryClass("#file-table tr", "selected", false);
