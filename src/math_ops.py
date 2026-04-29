@@ -1,6 +1,7 @@
+import numpy as np
+from scipy.optimize import curve_fit
 
 def compute_r_squared(actual, predicted):
-    import numpy as np
     if len(actual) != len(predicted) or len(actual) < 1:
         return 0.0
     actual = np.array(actual)
@@ -17,12 +18,10 @@ def poly_func(x, a, b, c):
     return a * (x**2) + b * x + c
 
 def log_func(x, a, b, c):
-    import numpy as np
     # a * ln(x + b) + c
     return a * np.log(x + b) + c
 
 def exp_func(x, a, b, c):
-    import numpy as np
     # a * e^(b * x) + c
     return a * np.exp(b * x) + c
 
@@ -63,8 +62,6 @@ def map_duplicates(x, y, keep_gaps=False):
     return processed_x, processed_y
 
 def calculate_coef_and_rsquared(x, y, regress_algo="linear"):
-    import numpy as np
-    from scipy.optimize import curve_fit
     px, py = map_duplicates(x, y)
     valid = [(xi, yi) for xi, yi in zip(px, py) if yi is not None]
     

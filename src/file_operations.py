@@ -1,4 +1,6 @@
 import io
+import pandas as pd
+
 def remove_csv_columns(file_path, columns_to_remove):
     """
     Remove specified columns from a CSV file and renumber 'Value:n' columns.
@@ -27,7 +29,6 @@ def remove_csv_columns(file_path, columns_to_remove):
         if not data_lines:
             return False, "No data found in CSV"
             
-        import pandas as pd
         df = pd.read_csv(io.StringIO("\n".join(data_lines)))
         
         # Validation

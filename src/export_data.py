@@ -1,4 +1,5 @@
 # Helper: Parse metadata from content
+import pandas as pd
 import io
 
 def parse_metadata(content):
@@ -57,7 +58,6 @@ def sort_csv_content(content):
     if not data_lines:
         return content
         
-    import pandas as pd
     df = pd.read_csv(io.StringIO('\n'.join(data_lines)))
     first_col = df.columns[0]
     
