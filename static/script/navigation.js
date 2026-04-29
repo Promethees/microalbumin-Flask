@@ -122,6 +122,10 @@ function updateJSONTable(files) {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
     }
     document.getElementById("json-table").innerHTML = html;
+    const searchInput = document.getElementById('json-search');
+    if (searchInput && searchInput.value) {
+        filterTable('json-table', searchInput.value);
+    }
 }
 
 function updateFileTable(files, deselect) {
@@ -137,12 +141,34 @@ function updateFileTable(files, deselect) {
             html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
         }
         document.getElementById("file-table").innerHTML = html;
+        const searchInput = document.getElementById('file-search');
+        if (searchInput && searchInput.value) {
+            filterTable('file-table', searchInput.value);
+        }
         if (deselect) {
             AppState.currentFile = null;
             $toggleQueryClass("#file-table tr", "selected", false);
             updateFileDisplay(AppState.currentFile);
         }
     });  
+}
+
+function filterTable(tableId, query) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const trs = table.getElementsByTagName("tr");
+    const lowerQuery = query.toLowerCase();
+    for (let i = 1; i < trs.length; i++) {
+        const tds = trs[i].getElementsByTagName("td");
+        if (tds.length > 0) {
+            const textValue = tds[0].textContent || tds[0].innerText;
+            if (textValue.toLowerCase().indexOf(lowerQuery) > -1) {
+                trs[i].style.display = "";
+            } else {
+                trs[i].style.display = "none";
+            }
+        }
+    }
 }
 
 function updateFileDisplay(curFile) {

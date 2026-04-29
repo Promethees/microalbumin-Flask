@@ -353,6 +353,7 @@
             </div>
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>
+                <input type="text" id="json-search" oninput="filterTable('json-table', this.value)" placeholder="Search Calibrated JSON..." style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                 <div class="scrollbar-style file-table-container">
                     <table id="json-table" class="table">
                         <tr>
@@ -382,6 +383,7 @@
             </div>
             <div class="section" id="file-selection" tabindex="-1">
                 <h2>File Selection</h2>
+                <input type="text" id="file-search" oninput="filterTable('file-table', this.value)" placeholder="Search CSV files..." style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                 <div class="scrollbar-style file-table-container">
                     <table id="file-table" class="table">
                         <tr>
