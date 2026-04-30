@@ -2,7 +2,7 @@
 
 # Configuration
 APP_NAME="EasySensorKit"
-VERSION="v1.0.0"
+VERSION="v1.0.1"
 DMG_NAME="${APP_NAME}_${VERSION}.dmg"
 SOURCE_DIR="installer-mac"
 TMP_DIR="tmp_dmg_root"
@@ -40,7 +40,7 @@ if [ $? -eq 0 ]; then
     
     # Update version in README.md (Static Badge)
     echo "📝 Updating version in README.md..."
-    # Update the badge URL: https://img.shields.io/badge/latest-v1.0.0-blue
+    # Update the badge URL: https://img.shields.io/badge/latest-v1.0.1-blue
     # This regex looks for the dynamic github release badge OR the static one and replaces it.
     sed -i '' "s|img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
     sed -i '' "s|img.shields.io/badge/latest-v[0-9.]*beta-blue|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"

@@ -3,7 +3,7 @@
 
 ; Define the application name and version
 !define APP_NAME "EasyOKAPI"
-!define APP_VERSION "1.0.0"
+!define APP_VERSION "1.0.1"
 !define INSTALL_DIR "$PROGRAMFILES\EasyOKAPI"
 !define RUNNER_NAME "${APP_NAME}" 
 !define MUI_ICON "setup.ico"

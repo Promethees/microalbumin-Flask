@@ -20,7 +20,7 @@ This guide explains how to build the `EasySensorKit.dmg` installer from the sour
 4.  The script will:
     - Cleanup previous builds.
     - Copy the contents of `installer-mac/` to a temporary directory.
-    - Create a compressed DMG named `EasySensorKit_1.0.0.dmg` in the project root.
+    - Create a compressed DMG named `EasySensorKit_1.0.1.dmg` in the project root.
     - Remove the temporary directory.
 
 ## Troubleshooting
