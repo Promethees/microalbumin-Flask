@@ -4,7 +4,6 @@ import os
 import json
 import csv
 import re
-import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from filelock import FileLock, Timeout
@@ -47,12 +46,21 @@ def get_csv_headers():
         return jsonify({'headers': [], 'error': 'Path is not a file'}), 400
 
     try:
-        df = pd.read_csv(read_file, nrows=0, comment='#')
-        headers = df.columns.tolist()
-        return jsonify({'headers': headers})
-    except pd.errors.EmptyDataError:
+        with open(read_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                stripped_line = line.strip()
+                if not stripped_line or stripped_line.startswith('#'):
+                    continue
+                
+                # Use csv.reader on a single line to get the headers
+                reader = csv.reader([line])
+                headers = [h.strip() for h in next(reader)]
+                return jsonify({'headers': headers})
+            
+            return jsonify({'headers': [], 'error': 'CSV file is empty'}), 200
+    except StopIteration:
         return jsonify({'headers': [], 'error': 'CSV file is empty'}), 200
-    except pd.errors.ParserError as e:
+    except (csv.Error, UnicodeDecodeError) as e:
         return jsonify({'headers': [], 'error': f'Invalid CSV format: {str(e)}'}), 200
     except PermissionError:
         return jsonify({'headers': [], 'error': 'Permission denied: Cannot read the file'}), 403

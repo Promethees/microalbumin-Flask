@@ -1,7 +1,7 @@
 import os
 import glob
 import json
-import pandas as pd
+import csv
 import io
 from collections import MutableMapping, Sequence
 
@@ -27,7 +27,7 @@ def get_dynamic_data(file_path):
             metadata = {}
             data = []
 
-            with open(file_path, "r") as f:
+            with open(file_path, "r", encoding='utf-8') as f:
                 lines = f.readlines()
 
             # Separate metadata and CSV data
@@ -35,18 +35,36 @@ def get_dynamic_data(file_path):
             for line in lines:
                 if line.strip().startswith("#"):
                     if ":" in line:
-                        key, value = line[1:].split(":", 1)
-                        metadata[key.strip()] = value.strip()
+                        parts = line[1:].split(":", 1)
+                        if len(parts) == 2:
+                            key, value = parts
+                            metadata[key.strip()] = value.strip()
                 elif line.strip():
                     data_lines.append(line)
 
-            # Parse the CSV part into a DataFrame
+            # Parse the CSV part into a list of dicts
             if data_lines:
-                df = pd.read_csv(io.StringIO("".join(data_lines)))
-                df = df.fillna("NONE")
-                data = df.to_dict('records')
+                # Use csv.reader first to get and strip headers
+                header_reader = csv.reader(io.StringIO("".join(data_lines)))
+                raw_headers = next(header_reader)
+                headers = [h.strip() for h in raw_headers]
+
+                # Use csv.DictReader with cleaned headers
+                content_stream = io.StringIO("".join(data_lines))
+                # Skip the first (header) line manually
+                next(content_stream) 
+                reader = csv.DictReader(content_stream, fieldnames=headers)
+                
+                data = []
+                for row in reader:
+                    # fillna("NONE") replacement
+                    cleaned_row = {k: (v if v is not None and v != "" else "NONE") for k, v in row.items()}
+                    data.append(cleaned_row)
+                
+                num_sources = sum(1 for h in headers if h.startswith('Value:'))
             else:
                 data = []
+                num_sources = 1
 
             # Unit resolution priority: check metadata keys
             unit = "NONE"
@@ -60,11 +78,11 @@ def get_dynamic_data(file_path):
                 'unit': unit,
                 'error': None,
                 'metadata': metadata,
-                'num_sources': len([col for col in df.columns if col.startswith('Value:')]) if 'Value:' in ''.join(df.columns) else 1
+                'num_sources': num_sources
             }
 
         elif file_path.lower().endswith('.json'):
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 json_data = json.load(f)
             
             data = json_data if isinstance(json_data, list) else [json_data]
@@ -125,44 +143,86 @@ def merge_csv_files(file1_path, file2_path, output_path):
                     metadata.append(line.strip())
                 elif line.strip():
                     data_lines.append(line)
-        if not data_lines:
-            return metadata, pd.DataFrame()
-        df = pd.read_csv(io.StringIO("".join(data_lines)))
-        return metadata, df
+        header_reader = csv.reader(io.StringIO("".join(data_lines)))
+        try:
+            raw_headers = next(header_reader)
+            headers = [h.strip() for h in raw_headers]
+        except StopIteration:
+            return metadata, []
+            
+        content_stream = io.StringIO("".join(data_lines))
+        next(content_stream) # skip raw header line
+        data = list(csv.DictReader(content_stream, fieldnames=headers))
+        return metadata, data
 
-    meta1, df1 = parse_csv_with_metadata(file1_path)
-    meta2, df2 = parse_csv_with_metadata(file2_path)
+    meta1, rows1 = parse_csv_with_metadata(file1_path)
+    meta2, rows2 = parse_csv_with_metadata(file2_path)
 
-    if df1 is None or df2 is None:
+    if rows1 is None or rows2 is None:
         return False, "One or both files not found"
 
+    if not rows1 and not rows2:
+        return False, "Both files are empty"
+        
+    # Get headers
+    headers1 = list(rows1[0].keys()) if rows1 else []
+    headers2 = list(rows2[0].keys()) if rows2 else []
+
     # Identify key column
-    if 'Timestamp' in df1.columns and 'Timestamp' in df2.columns:
+    if 'Timestamp' in headers1 and 'Timestamp' in headers2:
         join_key = 'Timestamp'
-    elif 'Concentration' in df1.columns and 'Concentration' in df2.columns:
+    elif 'Concentration' in headers1 and 'Concentration' in headers2:
         join_key = 'Concentration'
     else:
         return False, "Could not find common key column (Timestamp or Concentration)"
 
-    # Merge logic based on the detected key
+    # Merge logic
     if join_key == 'Timestamp':
-        # Measured data: Rename Value:x columns and perform outer join
-        df1_value_cols = [c for c in df1.columns if c.startswith('Value:')]
-        df2_value_cols = [c for c in df2.columns if c.startswith('Value:')]
-        
+        # Measured data
+        df1_value_cols = [c for c in headers1 if c.startswith('Value:')]
+        df2_value_cols = [c for c in headers2 if c.startswith('Value:')]
         n = len(df1_value_cols)
-        rename_map = {}
-        for i, col in enumerate(df2_value_cols, 1):
-            rename_map[col] = f"Value:{n + i}"
-        df2 = df2.rename(columns=rename_map)
         
-        merged_df = pd.merge(df1, df2, on='Timestamp', how='outer')
-    else:
-        # Calibration data: Concatenate rows to maintain format
-        merged_df = pd.concat([df1, df2], ignore_index=True)
+        # Create a combined data structure
+        combined = {} # key -> combined_row
+        
+        for r in rows1:
+            combined[r[join_key]] = r.copy()
+            
+        for r in rows2:
+            key = r[join_key]
+            if key not in combined:
+                combined[key] = {join_key: key}
+            
+            # Map Value:i in rows2 to Value:n+i
+            for i, col in enumerate(df2_value_cols, 1):
+                combined[key][f"Value:{n + i}"] = r.get(col, "NONE")
 
-    merged_df = merged_df.sort_values(by=join_key)
-    merged_df = merged_df.fillna("NONE")
+        # Resulting rows
+        merged_rows = list(combined.values())
+        
+        # New headers
+        all_val_cols = df1_value_cols + [f"Value:{n + i}" for i in range(1, len(df2_value_cols) + 1)]
+        new_headers = [join_key] + all_val_cols
+    else:
+        # Calibration data: Concatenate
+        merged_rows = rows1 + rows2
+        new_headers = list(dict.fromkeys(headers1 + headers2))
+
+    # Sort merged rows
+    def _safe_float(val):
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return val # fall back to string comparison if not float
+
+    merged_rows.sort(key=lambda x: _safe_float(x.get(join_key, "")))
+
+    # Fill NONEs for missing keys across all rows
+    for row in merged_rows:
+        for h in new_headers:
+            if h not in row or row[h] == "" or row[h] is None:
+                row[h] = "NONE"
 
     # Combine metadata (unique lines)
     combined_meta = list(dict.fromkeys(meta1 + meta2))
@@ -171,6 +231,8 @@ def merge_csv_files(file1_path, file2_path, output_path):
     with open(output_path, 'w', encoding='utf-8', newline='') as f:
         for line in combined_meta:
             f.write(f"{line}\n")
-        merged_df.to_csv(f, index=False)
+        writer = csv.DictWriter(f, fieldnames=new_headers)
+        writer.writeheader()
+        writer.writerows(merged_rows)
 
     return True, os.path.basename(output_path)

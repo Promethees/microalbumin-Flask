@@ -1,5 +1,5 @@
 # Helper: Parse metadata from content
-import pandas as pd
+import csv
 import io
 
 def parse_metadata(content):
@@ -58,16 +58,22 @@ def sort_csv_content(content):
     if not data_lines:
         return content
         
-    df = pd.read_csv(io.StringIO('\n'.join(data_lines)))
-    first_col = df.columns[0]
+    reader = csv.reader(io.StringIO('\n'.join(data_lines)))
+    headers = next(reader)
+    rows = list(reader)
     
-    # Temporarily replace 'NONE' with NaN to sort properly
-    df['_sort_key'] = pd.to_numeric(df[first_col], errors='coerce')
-    df = df.sort_values(by='_sort_key', na_position='last').drop(columns=['_sort_key'])
+    def _safe_float(val):
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return float('inf') # Push non-numeric to the end
+            
+    # Sort by the first column (Concentration)
+    rows.sort(key=lambda x: _safe_float(x[0]))
     
-    csv_buffer = io.StringIO()
-    # Fill any NaNs created by read_csv back to 'NONE' if necessary, though 'NONE' usually parses as string
-    df = df.fillna('NONE')
-    df.to_csv(csv_buffer, index=False)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    writer.writerows(rows)
     
-    return '\n'.join(metadata) + '\n' + csv_buffer.getvalue()
+    return '\n'.join(metadata) + '\n' + output.getvalue().strip()
