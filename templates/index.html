@@ -8,14 +8,19 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cbb.ico') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="{{ url_for('static', filename='vendor/jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/chartjs-plugin-annotation-2.0.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/sweetalert2.all.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/numeric-1.2.6.min.js') }}"></script>
+    <script>
+        window.MathJax = {
+            chtml: {
+                fontURL: '{{ url_for("static", filename="vendor/mathjax-fonts") }}'
+            }
+        };
+    </script>
+    <script src="{{ url_for('static', filename='vendor/mathjax-tex-mml-chtml.js') }}"></script>
     <script>
         // Predefine window[inputId + 'Handle'] for the input field
         window['base-dirHandle'] = null;
