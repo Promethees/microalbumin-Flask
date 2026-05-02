@@ -26,6 +26,7 @@ index_temp.html
 
 .history/
 node_modules
+static/vendor/
 
 *.dmg
 

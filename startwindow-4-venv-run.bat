@@ -104,6 +104,34 @@ if not exist "main.py" (
     exit /b 1
 )
 
+:: Download vendor libraries if not present
+if not exist "static\vendor\" (
+    echo Downloading front-end vendor libraries...
+    set "VENDOR_DIR=%~dp0static\vendor"
+    set "FONT_DIR=!VENDOR_DIR!\mathjax-fonts"
+    mkdir "!VENDOR_DIR!"
+    mkdir "!FONT_DIR!"
+
+    curl -fsSL "https://code.jquery.com/jquery-3.6.0.min.js" -o "!VENDOR_DIR!\jquery-3.6.0.min.js"
+    if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download jquery. & pause & exit /b 1 )
+    curl -fsSL "https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" -o "!VENDOR_DIR!\chart.umd.min.js"
+    if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download chart.js. & pause & exit /b 1 )
+    curl -fsSL "https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js" -o "!VENDOR_DIR!\chartjs-plugin-annotation-2.0.0.min.js"
+    if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download chartjs-plugin-annotation. & pause & exit /b 1 )
+    curl -fsSL "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js" -o "!VENDOR_DIR!\sweetalert2.all.min.js"
+    if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download sweetalert2. & pause & exit /b 1 )
+    curl -fsSL "https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js" -o "!VENDOR_DIR!\numeric-1.2.6.min.js"
+    if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download numeric.js. & pause & exit /b 1 )
+    curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" -o "!VENDOR_DIR!\mathjax-tex-mml-chtml.js"
+    if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download mathjax. & pause & exit /b 1 )
+
+    for %%F in (MathJax_AMS-Regular MathJax_Main-Regular MathJax_Main-Bold MathJax_Main-Italic MathJax_Math-Italic MathJax_Math-BoldItalic MathJax_Size1-Regular MathJax_Size2-Regular MathJax_Size3-Regular MathJax_Size4-Regular MathJax_Calligraphic-Regular MathJax_Calligraphic-Bold MathJax_Fraktur-Regular MathJax_Fraktur-Bold MathJax_SansSerif-Regular MathJax_SansSerif-Bold MathJax_SansSerif-Italic MathJax_Script-Regular MathJax_Typewriter-Regular MathJax_Vector-Regular MathJax_Vector-Bold MathJax_Zero) do (
+        curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/%%F.woff" -o "!FONT_DIR!\%%F.woff"
+        if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download %%F.woff & pause & exit /b 1 )
+    )
+    echo Vendor libraries downloaded successfully.
+)
+
 :: ── Launch application (80 → 100%) ────────────────────────────────────────
 echo Launching application...
 for /L %%p in (80,1,100) do (
