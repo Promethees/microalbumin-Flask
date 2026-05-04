@@ -18,7 +18,7 @@ if [ -z "$CURRENT_USER" ]; then
 fi
 
 # Define version tag
-VERSION_TAG="v1.0.2"
+VERSION_TAG="v1.0.3"
 
 # Set Homebrew installation directory
 HOMEBREW_PREFIX="/Users/$CURRENT_USER/homebrew"
