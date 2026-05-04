@@ -97,10 +97,12 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=5099, help='Port to run the Flask app on (default: 5099)')
     parser.add_argument('--alias', type=str, default='easyokapi.com', help='Optional domain alias (e.g., mydomain.com)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output (e.g. detailed HTTP logging).')
+    parser.add_argument('--mem-monitor', action='store_true', help='Enable memory monitoring to guard against memory leaks.')
 
     # We assign to state args directly
     state.args = parser.parse_args()
 
+    original_stdout = sys.stdout
     import logging
     import os
     if not state.args.verbose:
@@ -108,6 +110,56 @@ if __name__ == '__main__':
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
         # Suppress all explicit backend print commands
         sys.stdout = open(os.devnull, 'w')
+
+    if getattr(state.args, 'mem_monitor', False):
+        def _mem_monitor_thread():
+            import tracemalloc, time
+
+            # ANSI color codes
+            RED = "\033[91m"
+            YELLOW = "\033[93m"
+            GREEN = "\033[92m"
+            RESET = "\033[0m"
+
+            tracemalloc.start()
+            baseline = None
+            WARN_GROWTH_MB = float(os.environ.get("MEM_WARN_GROWTH_MB", "50"))
+            CRITICAL_GROWTH_MB = float(os.environ.get("MEM_CRITICAL_GROWTH_MB", "100"))
+            INTERVAL_SEC = int(os.environ.get("MEM_MONITOR_INTERVAL", "10"))
+
+            print(f"{GREEN}[MemGuard] Memory tracking started.{RESET}", file=original_stdout, flush=True)
+
+            while True:
+                try:
+                    time.sleep(INTERVAL_SEC)
+                    current, peak = tracemalloc.get_traced_memory()
+                    current_mb = current / 1024 / 1024
+                    peak_mb = peak / 1024 / 1024
+
+                    if baseline is None:
+                        baseline = current_mb
+
+                    growth = current_mb - baseline
+
+                    if growth > CRITICAL_GROWTH_MB:
+                        color = RED
+                        flag = " 🔴 CRITICAL: Possible memory leak!"
+                    elif growth > WARN_GROWTH_MB:
+                        color = YELLOW
+                        flag = " 🟡 WARNING: Memory growing"
+                    else:
+                        color = GREEN
+                        flag = ""
+
+                    print(
+                        f"{color}[MemGuard] Current: {current_mb:.2f} MB | Peak: {peak_mb:.2f} MB"
+                        f" | Growth: +{growth:.2f} MB{flag}{RESET}",
+                        file=original_stdout, flush=True
+                    )
+                except Exception as e:
+                    print(f"{RED}[MemGuard] Monitor error: {e}{RESET}", file=original_stdout, flush=True)
+                    break
+        threading.Thread(target=_mem_monitor_thread, daemon=True).start()
 
     host = '127.0.0.1'
     port = state.args.port
