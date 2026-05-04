@@ -22,8 +22,16 @@ def open_browser(host, port):
         time.sleep(2)  # Wait for server to start
         if is_port_open(host, port):
             try:
-                webbrowser.open(f'http://{host}:{port}')
-                print(f"Opened browser at http://{host}:{port}")
+                url = f"http://{host}:{port}"
+                sudo_user = os.environ.get("SUDO_USER")
+                if platform.system() == "Darwin" and sudo_user:
+                    # Drop privileges to the original user on macOS so Zoom can capture it
+                    subprocess.run(["sudo", "-u", sudo_user, "open", url], check=False)
+                elif platform.system() == "Linux" and sudo_user:
+                    subprocess.run(["sudo", "-u", sudo_user, "xdg-open", url], check=False)
+                else:
+                    webbrowser.open(url)
+                print(f"Opened browser at {url}")
             except Exception as e:
                 print(f"Failed to open browser: {e}")
         else:
