@@ -136,6 +136,7 @@ async function fetchJSONContent(jsonFile, callback) {
         callback(data.json);
     } catch (error) {
         console.error("Error fetching JSON content:", error);
+        callback(null);
     }
 }
 

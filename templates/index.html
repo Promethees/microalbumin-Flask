@@ -23,6 +23,13 @@
 </head>
 
 <body class="light">
+    <!-- Global Loader Overlay -->
+    <div id="global-spinner" class="hidden">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="spinner-message">Process is ongoing, please wait...</div>
+        </div>
+    </div>
     <!-- User Guide Button -->
     <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide">
         User Guide
@@ -175,6 +182,20 @@
             <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
                 style="cursor: pointer;">Deselect</button>
         </div>
+        <script>
+            // Global Loader Controls explicitly manually triggered
+            document.addEventListener("DOMContentLoaded", () => {
+                const spinner = document.getElementById('global-spinner');
+                
+                window.showSpinner = () => {
+                    if (spinner) spinner.classList.remove('hidden');
+                };
+
+                window.hideSpinner = () => {
+                    if (spinner) spinner.classList.add('hidden');
+                };
+            });
+        </script>
         <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>

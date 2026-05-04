@@ -325,18 +325,11 @@ function createDriveFolder() {
  * Sync session data to Drive
  */
 function syncToDrive() {
-    Swal.fire({
-        title: 'Syncing to Drive...',
-        text: 'Uploading your data',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    if (typeof window.showSpinner === 'function') window.showSpinner();
 
     fetchJSON('/drive/sync', { method: 'POST' })
         .then(response => {
-            Swal.close();
+            if (typeof window.hideSpinner === 'function') window.hideSpinner();
 
             if (response.status === 'success') {
                 updateLastSyncTime(new Date().toISOString());
@@ -366,7 +359,7 @@ function syncToDrive() {
             }
         })
         .catch(error => {
-            Swal.close();
+            if (typeof window.hideSpinner === 'function') window.hideSpinner();
             Swal.fire('Error', error.message || 'Sync failed', 'error');
         });
 }
@@ -384,18 +377,11 @@ function loadFromDrive() {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Loading from Drive...',
-                text: 'Downloading your data',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+            if (typeof window.showSpinner === 'function') window.showSpinner();
 
             fetchJSON('/drive/load', { method: 'POST' })
                 .then(response => {
-                    Swal.close();
+                    if (typeof window.hideSpinner === 'function') window.hideSpinner();
 
                     if (response.status === 'success') {
                         if (!getBtnChecked("no-swal-checkbox")) {
@@ -419,7 +405,7 @@ function loadFromDrive() {
                     }
                 })
                 .catch(error => {
-                    Swal.close();
+                    if (typeof window.hideSpinner === 'function') window.hideSpinner();
                     Swal.fire('Error', error.message || 'Load failed', 'error');
                 });
         }
