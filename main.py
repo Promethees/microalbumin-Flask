@@ -96,9 +96,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the Flask app with a specified port and alias.')
     parser.add_argument('--port', type=int, default=5099, help='Port to run the Flask app on (default: 5099)')
     parser.add_argument('--alias', type=str, default='easyokapi.com', help='Optional domain alias (e.g., mydomain.com)')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output (e.g. detailed HTTP logging).')
 
     # We assign to state args directly
     state.args = parser.parse_args()
+
+    import logging
+    import os
+    if not state.args.verbose:
+        # Hide standard HTTP request logs for a cleaner terminal interface
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        # Suppress all explicit backend print commands
+        sys.stdout = open(os.devnull, 'w')
 
     host = '127.0.0.1'
     port = state.args.port

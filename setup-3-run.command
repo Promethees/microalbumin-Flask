@@ -97,7 +97,7 @@ mkfifo "$PROGRESS_PIPE"
 READER_PID=$!
 
 # ── Launch application ───────────────────────────────────────────────────────
-sudo python3 main.py
+sudo python3 main.py "$@"
 
 # Cleanup if python exits before the pipe reader finishes
 kill "$READER_PID" 2>/dev/null

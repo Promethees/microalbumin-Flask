@@ -150,4 +150,4 @@ for /L %%p in (80,1,100) do (
     echo [!bar!] %%p%%
     timeout /t 0 /nobreak >nul 2>&1
 )
-start /b "" venv\Scripts\python.exe main.py
+start /b "" venv\Scripts\python.exe main.py %*
