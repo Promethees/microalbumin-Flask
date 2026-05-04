@@ -2,7 +2,6 @@ import os
 import glob
 import json
 import csv
-import io
 from collections import MutableMapping, Sequence
 
 def get_file_list(directory, fileType="*.csv"):
@@ -27,44 +26,34 @@ def get_dynamic_data(file_path):
             metadata = {}
             data = []
 
+            def valid_data_lines(file_obj):
+                for line in file_obj:
+                    stripped = line.strip()
+                    if stripped.startswith("#"):
+                        if ":" in line:
+                            parts = line[1:].split(":", 1)
+                            if len(parts) == 2:
+                                key, value = parts
+                                metadata[key.strip()] = value.strip()
+                    elif stripped:
+                        yield line
+
             with open(file_path, "r", encoding='utf-8') as f:
-                lines = f.readlines()
+                line_generator = valid_data_lines(f)
+                try:
+                    raw_headers_line = next(line_generator)
+                    raw_headers = next(csv.reader([raw_headers_line]))
+                    headers = [h.strip() for h in raw_headers]
 
-            # Separate metadata and CSV data
-            data_lines = []
-            for line in lines:
-                if line.strip().startswith("#"):
-                    if ":" in line:
-                        parts = line[1:].split(":", 1)
-                        if len(parts) == 2:
-                            key, value = parts
-                            metadata[key.strip()] = value.strip()
-                elif line.strip():
-                    data_lines.append(line)
-
-            # Parse the CSV part into a list of dicts
-            if data_lines:
-                # Use csv.reader first to get and strip headers
-                header_reader = csv.reader(io.StringIO("".join(data_lines)))
-                raw_headers = next(header_reader)
-                headers = [h.strip() for h in raw_headers]
-
-                # Use csv.DictReader with cleaned headers
-                content_stream = io.StringIO("".join(data_lines))
-                # Skip the first (header) line manually
-                next(content_stream) 
-                reader = csv.DictReader(content_stream, fieldnames=headers)
-                
-                data = []
-                for row in reader:
-                    # fillna("NONE") replacement
-                    cleaned_row = {k: (v if v is not None and v != "" else "NONE") for k, v in row.items()}
-                    data.append(cleaned_row)
-                
-                num_sources = sum(1 for h in headers if h.startswith('Value:'))
-            else:
-                data = []
-                num_sources = 1
+                    reader = csv.DictReader(line_generator, fieldnames=headers)
+                    data = []
+                    for row in reader:
+                        cleaned_row = {k: (v if v is not None and v != "" else "NONE") for k, v in row.items()}
+                        data.append(cleaned_row)
+                    num_sources = sum(1 for h in headers if h.startswith('Value:'))
+                except StopIteration:
+                    data = []
+                    num_sources = 1
 
             # Unit resolution priority: check metadata keys
             unit = "NONE"
@@ -134,25 +123,27 @@ def merge_csv_files(file1_path, file2_path, output_path):
     """
     def parse_csv_with_metadata(path):
         metadata = []
-        data_lines = []
         if not os.path.exists(path):
             return None, None
-        with open(path, 'r', encoding='utf-8') as f:
+
+        def iter_data_lines(f):
             for line in f:
                 if line.strip().startswith('#'):
                     metadata.append(line.strip())
                 elif line.strip():
-                    data_lines.append(line)
-        header_reader = csv.reader(io.StringIO("".join(data_lines)))
-        try:
-            raw_headers = next(header_reader)
-            headers = [h.strip() for h in raw_headers]
-        except StopIteration:
-            return metadata, []
-            
-        content_stream = io.StringIO("".join(data_lines))
-        next(content_stream) # skip raw header line
-        data = list(csv.DictReader(content_stream, fieldnames=headers))
+                    yield line
+
+        with open(path, 'r', encoding='utf-8') as f:
+            line_generator = iter_data_lines(f)
+            try:
+                raw_headers_line = next(line_generator)
+                raw_headers = next(csv.reader([raw_headers_line]))
+                headers = [h.strip() for h in raw_headers]
+                
+                data = list(csv.DictReader(line_generator, fieldnames=headers))
+            except StopIteration:
+                data = []
+
         return metadata, data
 
     meta1, rows1 = parse_csv_with_metadata(file1_path)
