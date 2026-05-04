@@ -16,26 +16,39 @@ def is_port_open(host, port):
     return result == 0
 
 def open_browser(host, port):
-    """Open the browser after a short delay to ensure server is running."""
-    # Only open browser in the main process, not the reloader
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        time.sleep(2)  # Wait for server to start
+    """Open the browser once the server is confirmed running."""
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        return
+
+    url = f"http://{host}:{port}"
+    sudo_user = os.environ.get("SUDO_USER")
+
+    if not wait_for_server(host, port):
+        print(f"Server did not start on port {port} in time.")
+        return
+
+    try:
+        open_url(url, sudo_user)
+        print(f"Opened browser at {url}")
+    except Exception as e:
+        print(f"Failed to open browser: {e}")
+
+def open_url(url, sudo_user=None):
+    system = platform.system()
+    if sudo_user and system == "Darwin":
+        subprocess.run(["sudo", "-u", sudo_user, "open", url], check=False)
+    elif sudo_user and system == "Linux":
+        subprocess.run(["sudo", "-u", sudo_user, "xdg-open", url], check=False)
+    else:
+        webbrowser.open(url)
+
+def wait_for_server(host, port, timeout=10, interval=0.2):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
         if is_port_open(host, port):
-            try:
-                url = f"http://{host}:{port}"
-                sudo_user = os.environ.get("SUDO_USER")
-                if platform.system() == "Darwin" and sudo_user:
-                    # Drop privileges to the original user on macOS so Zoom can capture it
-                    subprocess.run(["sudo", "-u", sudo_user, "open", url], check=False)
-                elif platform.system() == "Linux" and sudo_user:
-                    subprocess.run(["sudo", "-u", sudo_user, "xdg-open", url], check=False)
-                else:
-                    webbrowser.open(url)
-                print(f"Opened browser at {url}")
-            except Exception as e:
-                print(f"Failed to open browser: {e}")
-        else:
-            print(f"Failed to verify server is running on port {port}. Please check if the port is in use or accessible.")
+            return True
+        time.sleep(interval)
+    return False
 
 def close_port(port, exclude_pid=None):
     """Close processes using the specified port, excluding the given PID."""
