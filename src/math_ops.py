@@ -85,13 +85,13 @@ def calculate_coef_and_rsquared(x, y, regress_algo="linear"):
             coefficients = [a, b]
             
         elif regress_algo == "polynomial":
-            coeffs, _ = curve_fit(poly_func, x, y)
-            a, b, c = coeffs
+            # Use np.polyfit for robustness (descending order: ax^2 + bx + c)
+            a, b, c = np.polyfit(x, y, 2)
             predicted = poly_func(x, a, b, c)
             r_squared = compute_r_squared(y, predicted)
             mid_x = (np.max(x) + np.min(x)) / 2
             slope = 2 * a * mid_x + b
-            coefficients = [c, b, a] # JS returns c, b, a based on standard poly1d
+            coefficients = [a, b, c] # Descending order: [ax^2, bx, c] for JS
             
         elif regress_algo == "logarithmic":
             min_x = np.min(x)
