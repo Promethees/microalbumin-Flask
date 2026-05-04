@@ -117,3 +117,13 @@ def get_json_cal():
         json_files = get_file_list(json_path, "*.json")
         return jsonify({'status': 'success', 'files': json_files})
     return jsonify({'status': 'error', 'message': "Invalid directory"})
+
+@core_bp.route('/get_report_subjects', methods=['GET'])
+def get_report_subjects():
+    report_path = state.report_root_path
+    if os.path.exists(report_path):
+        # List only directories
+        subjects = [d for d in os.listdir(report_path) if os.path.isdir(os.path.join(report_path, d))]
+        subjects.sort()
+        return jsonify({'status': 'success', 'subjects': subjects})
+    return jsonify({'status': 'error', 'message': "Report directory not found"})

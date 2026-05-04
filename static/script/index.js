@@ -60,7 +60,9 @@ const AppState = {
         'rgba(216, 191, 216, 1)'
     ],
     quantity_input: temp_quantity_input,
+    report_root_path: getNativePath(rootPath, 'report'),
 
+    currentReportSubject: null,
     reset: function () {
         this.myChart = null;
         this.scriptRunning = false;
@@ -71,6 +73,7 @@ const AppState = {
         this.refCalPoint = null;
         this.globalAnalysis = null;
         this.prevDropdownEntries = null;
+        this.currentReportSubject = null;
         this.exp_json_content = null;
         this.responseData = null;
         this.metaData = null;
@@ -358,8 +361,59 @@ function kineticsModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
+    const header = document.getElementById("file-selection-header");
+    if (header) header.innerText = "File Selection";
+    const tableHeader = document.getElementById("file-table-header-name");
+    if (tableHeader) tableHeader.innerText = "File Name";
+    const searchInput = document.getElementById("file-search");
+    if (searchInput) searchInput.placeholder = "Search CSV files...";
 }
 
+
+function reportModeBehaviour() {
+    const addHidden = [
+        'point-json-exp-section',
+        'cal-json-exp-section',
+        'select-quantity-section',
+        'derived-concentration-section',
+        'set-exp-point-section',
+        'select-regress-algo',
+        'select-time-point',
+        'export-coef',
+        'window-size-section',
+        'cal-json-sel-section',
+        'kinetics-lines',
+        'json-display',
+        'export-analysis',
+        'range-display',
+        'log-hid-data',
+        'source-options',
+        'normalize-mode-section',
+        'select-source-to-export',
+        'split-source-section',
+        'data-display-section',
+        'num-sources-section',
+        'top-left-dir-section',
+        'main-directory-section'
+    ];
+
+    const removeHidden = [
+        'report-console-section',
+        'file-selection'
+    ];
+
+    $hidden(addHidden, true);
+    $hidden(removeHidden, false);
+
+    // Reposition/Focus folder browser
+    document.getElementById("file-selection").classList.remove('hidden');
+    document.getElementById("report-console-section").classList.add('hidden');
+
+    // Update Header
+    document.getElementById("file-selection-header").innerText = "Folder Selection";
+    document.getElementById("file-table-header-name").innerText = "Folder Name";
+    document.getElementById("file-search").placeholder = "Search subject folders...";
+}
 
 function pointModeBehaviour() {
     const addHidden = [
@@ -371,7 +425,8 @@ function pointModeBehaviour() {
         'select-time-point',
         'select-regress-algo',
         'export-coef',
-        'func-desc'
+        'func-desc',
+        'report-console-section'
     ];
 
     const removeHidden = [
@@ -384,12 +439,22 @@ function pointModeBehaviour() {
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
-        'split-source-section'
+        'split-source-section',
+        'top-left-dir-section',
+        'main-directory-section'
     ];
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
+    const header = document.getElementById("file-selection-header");
+    if (header) header.innerText = "File Selection";
+    const tableHeader = document.getElementById("file-table-header-name");
+    if (tableHeader) tableHeader.innerText = "File Name";
+    const searchInput = document.getElementById("file-search");
+    if (searchInput) searchInput.placeholder = "Search CSV files...";
 }
+
+
 
 
 function calModeBehaviour() {
@@ -420,6 +485,12 @@ function calModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
+    const header = document.getElementById("file-selection-header");
+    if (header) header.innerText = "File Selection";
+    const tableHeader = document.getElementById("file-table-header-name");
+    if (tableHeader) tableHeader.innerText = "File Name";
+    const searchInput = document.getElementById("file-search");
+    if (searchInput) searchInput.placeholder = "Search CSV files...";
 
     // Configure range input
     const rangeValue = document.getElementById('range-value');
@@ -476,12 +547,19 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
         AppState.currentFile = null;
         calModeBehaviour();
     }
-    
+
     const browsePromise = new Promise((resolve) => {
+        let browsePath = path;
+        if (AppState.currentMeasurementMode === 'report' && !path) {
+            // Fetch report root from state if possible, but we'll try to let backend handle it
+            // Actually, let's just use whatever path is passed or default
+        }
         $.post('/browse', { path: path }, function (response) {
             if (response.status === 'success') {
                 document.getElementById("directory").value = response.path;
-                document.getElementById("directory-top").value = response.path;
+                if (document.getElementById("directory-top")) {
+                    document.getElementById("directory-top").value = response.path;
+                }
                 if (getBtnChecked("same-dir-as-data")) {
                     document.getElementById("save-dir").value = response.path;
                     validatePathName('save-dir');
@@ -491,9 +569,13 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
                     validatePathName('base-dir');
                 }
                 $hidden(["error-message"]);
-                
+
                 // updateFileTable returns a Promise
-                updateFileTable(response.files, deselect).then(resolve);
+                if (AppState.currentMeasurementMode !== 'report') {
+                    updateFileTable(response.files, deselect).then(resolve);
+                } else {
+                    resolve();
+                }
                 if (deselect) {
                     deselectFile();
                 }
@@ -509,15 +591,20 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
     });
 
     const jsonPromise = new Promise((resolve) => {
-        $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
-            function (response) {
-                updateJSONTable(response.files);
+        if (AppState.currentMeasurementMode === 'report') {
+            $.get('/get_report_subjects', function (response) {
+                if (response.status === 'success') {
+                    updateReportTable(response.subjects);
+                }
                 resolve();
-            }).fail(function (jqXHR, textStatus, errorThrown) {
-                console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
-                $showText("error-message", "Error fetching JSON files");
-                resolve();
-            });
+            }).fail(resolve);
+        } else {
+            $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
+                function (response) {
+                    updateJSONTable(response.files);
+                    resolve();
+                }).fail(resolve);
+        }
     });
 
     return Promise.all([browsePromise, jsonPromise]).finally(() => {
@@ -545,7 +632,7 @@ function updateMultiSourceExportOptions() {
 function switchingModes(mode) {
     const currentDir = document.getElementById("directory").value;
     AppState.currentMeasurementMode = mode;
-    if (currentDir) {
+    if (mode !== 'report' && currentDir) {
         updateDirectory(currentDir, true);
     }
     AppState.currentJSON = null;
@@ -554,10 +641,25 @@ function switchingModes(mode) {
     document.getElementById("json-display").textContent = "";
     $hidden(["right-deselect-btn"]);
 
+    if (mode !== 'report') {
+        if (typeof clearReportSubject === 'function') clearReportSubject();
+    }
+
     if (mode === "kinetics") {
         kineticsModeBehaviour();
     } else if (mode === "point") {
         pointModeBehaviour();
+    } else if (mode === "report") {
+        reportModeBehaviour();
+        // Force update directory to report root
+        // We need report_root_path from server ideally, but we know it's "report" relative to script_dir
+        $.get('/get_parents', function () {
+            // This is a bit hacky, but let's try to just call browse with "report"
+            // Wait, the backend /browse takes absolute paths.
+            // Let's use get_json_cal logic or similar? No.
+            // We'll update switchingModes to fetch the report root path if needed.
+        });
+        updateDirectory("report", true); // Simple relative "report" might work if backend supports it
     } else {
         calModeBehaviour();
     }

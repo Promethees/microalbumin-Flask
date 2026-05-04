@@ -540,3 +540,111 @@ def export_cal_coefs(validated_data):
         return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
+@file_bp.route('/save_report', methods=['POST'])
+@validate_json({
+    'filename': (str, 'report', False),
+    'html_content': str
+})
+def save_report(validated_data):
+    filename = validated_data.get('filename', 'report')
+    if not filename.endswith('.html'):
+        filename += '.html'
+        
+    html_content = validated_data['html_content']
+    
+    try:
+        report_path = os.path.join(state.report_root_path, filename)
+        # Avoid overriding by getting next available name if file exists
+        full_path = get_next_filename(".html", state.report_root_path, Path(filename).stem)
+        
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+            
+        return jsonify({"status": "success", "message": f"Report saved at {full_path}"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+@file_bp.route('/export_to_report', methods=['POST'])
+@validate_json({
+    'subject': str,
+    'file_path': str,  # The current relative or absolute path
+    'metadata': (dict, {}, False)
+})
+def export_to_report(validated_data):
+    subject = validated_data['subject']
+    source_path = validated_data['file_path']
+    metadata = validated_data.get('metadata', {})
+    
+    try:
+        # Resolve source path
+        if not os.path.isabs(source_path):
+             source_path = os.path.abspath(os.path.join(state.script_dir, source_path))
+        
+        if not os.path.exists(source_path):
+            return jsonify({"status": "error", "message": f"Source file not found: {source_path}"}), 404
+            
+        # Create subject folder if it doesn't exist
+        subject_path = os.path.join(state.report_root_path, subject)
+        os.makedirs(subject_path, exist_ok=True)
+        
+        # Determine destination filename (prevent overwrite)
+        base_name = os.path.basename(source_path)
+        stem = Path(base_name).stem
+        ext = Path(base_name).suffix
+        
+        dest_filename = base_name
+        counter = 1
+        while os.path.exists(os.path.join(subject_path, dest_filename)):
+            dest_filename = f"{stem}_{counter}{ext}"
+            counter += 1
+            
+        dest_path = os.path.join(subject_path, dest_filename)
+        
+        # Copy the file
+        import shutil
+        shutil.copy2(source_path, dest_path)
+            
+        # Also save metadata for this specific file if needed
+        meta_filename = Path(dest_filename).stem + ".meta.json"
+        meta_path = os.path.join(subject_path, meta_filename)
+        import json
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=4)
+            
+        return jsonify({"status": "success", "message": f"Copied '{base_name}' to report subject '{subject}'"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+@file_bp.route('/get_report_items', methods=['GET'])
+def get_report_items():
+    subject = request.args.get('subject')
+    if not subject:
+        return jsonify({"status": "error", "message": "No subject provided"}), 400
+        
+    subject_path = os.path.join(state.report_root_path, subject)
+    if not os.path.exists(subject_path):
+        return jsonify({"status": "error", "message": "Subject not found"}), 404
+        
+    # List supported data files (CSV, JSON)
+    files = [f for f in os.listdir(subject_path) if f.endswith('.csv') or (f.endswith('.json') and not f.endswith('.meta.json'))]
+    items = []
+    for f in files:
+        meta_f = Path(f).stem + ".meta.json"
+        meta_p = os.path.join(subject_path, meta_f)
+        meta = {}
+        if os.path.exists(meta_p):
+            with open(meta_p, 'r', encoding='utf-8') as meta_file:
+                import json
+                meta = json.load(meta_file)
+        
+        items.append({
+            "filename": f,
+            "metadata": meta,
+            "path": os.path.join(subject_path, f)
+        })
+        
+    # Sort items by filename or meta timestamp
+    items.sort(key=lambda x: x.get('metadata', {}).get('timestamp', x['filename']))
+    
+    return jsonify({"status": "success", "items": items})

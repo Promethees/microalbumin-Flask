@@ -13,6 +13,13 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
         if (closestTr) closestTr.classList.add("selected");
 
         if (tableSelector === "#file-table") {
+            if (AppState.currentMeasurementMode === 'report') {
+                AppState.currentReportSubject = fileName;
+                $id("copy-file-btn").disabled = true; // Not applicable for subjects
+                updateFileDisplay(fileName);
+                return; // Skip standard measurement data processing for subject folders
+            }
+
             AppState.prevFile = AppState.currentFile;
             AppState.currentFile = fileName;
             clearConcentrationValues();

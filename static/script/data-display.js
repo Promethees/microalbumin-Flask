@@ -303,6 +303,20 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
             index: index
         });
         appendHTML(section);
+    } else if (AppState.currentMeasurementMode === "calibrate") {
+        // Calibration Grid (4 metrics)
+        const metrics = ['slope', 'linear_slope', 'maxRate', 'saturationValue'];
+        const html = `
+            <div id="plot-chart-section" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                <div id="plot-analysis" style="width: 100%;"></div>
+                ${metrics.map(m => `
+                    <div class="cal-chart-container" style="flex: 1 1 45%; min-width: 300px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #fff;">
+                        <canvas id="plot-canvas-${m}"></canvas>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        appendHTML(html);
     } else {
         // Single mixed plot
         const html = `
@@ -354,6 +368,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
     }
 
     AppState.sourceCharts = charts;
+    AppState.lastAnalyses = analyses;
 
     return extractMultiSourceResultSummary(AppState.metaData, analyses);
 
@@ -396,6 +411,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     addConReadValueEventListener(XColumnVals, YColumnVals, YColumn, measUnit);
 
     AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, analyses);
+    AppState.lastAnalyses = analyses;
 
     if (AppState.currentMeasurementMode !== "calibrate") {
         return extractMultiSourceResultSummary(AppState.metaData, analyses);
@@ -497,7 +513,25 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     // Generate chart
     const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(AppState.metaData, XColumn, YColumn), measUnit);
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels, measUnit);
-    AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
+    
+    if (AppState.currentMeasurementMode === "calibrate" && calDiv.getAttribute('data-value') === "kinetics") {
+        const metrics = ['slope', 'linear_slope', 'maxRate', 'saturationValue'];
+        AppState.chartInstances = {}; // clear old instances
+        
+        metrics.forEach((m, idx) => {
+            const mLabel = m.charAt(0).toUpperCase() + m.slice(1).replace(/([A-Z])/g, ' $1');
+            const mYVals = AppState.calibrationDataPoints.find(dp => dp.metric === m)?.y || [];
+            const mAnalysis = mixAnalysis[idx]; // mixAnalysis is an array for kinetics calibrate
+            
+            if (document.getElementById(`plot-canvas-${m}`)) {
+                AppState.chartInstances[m] = generateChart(`plot-canvas-${m}`, XColumnVals, [mYVals], [mLabel], measUnit, mAnalysis);
+            }
+        });
+        AppState.myChart = null; // Using chartInstances instead
+    } else {
+        AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
+    }
+    AppState.lastAnalyses = Array.isArray(mixAnalysis) ? mixAnalysis : [mixAnalysis];
 
     // Update analysis info display
     const mode = calDiv.getAttribute('data-value');
@@ -798,9 +832,18 @@ function calibrateKineticsAnalysis(data, XColumn, YColumn) {
     const dataMap = preprocessDataCalParams(data, XColumn, YColumn);
     const regressAlgo = document.getElementById("exp-json-regress-algo").value;
     if (dataMap) {
+        AppState.calibrationDataPoints = [];
         const results = dataMap.map(({ param, data }) => {
             const xValues = data.map(row => row[XColumn]);
             const yValues = data.map(row => row[param]);
+            
+            // Store for report generation
+            AppState.calibrationDataPoints.push({
+                metric: param,
+                x: xValues,
+                y: yValues
+            });
+
             const result = calculateCoefAndRSquared(yValues, xValues, regressAlgo);
             return result;
         });

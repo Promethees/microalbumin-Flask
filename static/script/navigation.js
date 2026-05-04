@@ -1,28 +1,28 @@
 function browseDirectory(blinkItem = false) {
-    $.get('/get_parents', function(parentResponse) {
+    $.get('/get_parents', function (parentResponse) {
         console.log("Parent directory:", parentResponse.parent);
-        let parentHtml = parentResponse.parent ? 
-            `${parentResponse.parent.split(DELIMITER).pop() ? 
-                `<div onclick="updateDirectory('${parentResponse.parent}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` : 
-                '<div>No parent directory</div>'}` : 
+        let parentHtml = parentResponse.parent ?
+            `${parentResponse.parent.split(DELIMITER).pop() ?
+                `<div onclick="updateDirectory('${parentResponse.parent}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` :
+                '<div>No parent directory</div>'}` :
             '<div>No parent directory</div>';
         document.getElementById("parent-dir").innerHTML = parentHtml;
 
-        $.get('/get_children', function(childResponse) {
+        $.get('/get_children', function (childResponse) {
             console.log("Child directories:", childResponse.children);
             const sortedChildren = childResponse.children.sort((a, b) => a.localeCompare(b));
             // Update the child directories display
-            let childHtml = sortedChildren.length > 0 ? 
-                `${sortedChildren.map(dir => 
+            let childHtml = sortedChildren.length > 0 ?
+                `${sortedChildren.map(dir =>
                     `<div onclick="updateDirectory('${dir}', 'true')" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
-                ).join('')}` : 
+                ).join('')}` :
                 '<div>No child directories</div>';
             document.getElementById("child-dirs").innerHTML = childHtml;
-        }).fail(function(jqXHR, textStatus, errorThrown) {
+        }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log("Error fetching child directories:", textStatus, errorThrown);
             $showText("error-message", "Error fetching child directories");
         });
-    }).fail(function(jqXHR, textStatus, errorThrown) {
+    }).fail(function (jqXHR, textStatus, errorThrown) {
         console.log("Error fetching parent directory:", textStatus, errorThrown);
         $showText("error-message", "Error fetching parent directory");
     });
@@ -58,10 +58,10 @@ async function filterFiles(files) {
             }
 
             const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat"];
-            const cal_headers_point    = ["Concentration", "Value", "TimePoint"];
+            const cal_headers_point = ["Concentration", "Value", "TimePoint"];
 
             if (!data.headers) {
-                return false;  
+                return false;
             }
 
             const isMeasHeader = checkMeasHeader(data.headers);
@@ -76,17 +76,21 @@ async function filterFiles(files) {
                 return arraysEqual(data.headers, expected);
             }
 
+            if (AppState.currentMeasurementMode === "report") {
+                return true;
+            }
+
             return false;
         })
     );
 
     const filteredFiles = files.filter((_, idx) => {
         const result = checks[idx];
-        return result === true;         
+        return result === true;
     });
 
     return filteredFiles;
-} 
+}
 
 function buildMeasHeaders() {
     const headers = ["Timestamp"];
@@ -115,16 +119,34 @@ function updateJSONTable(files) {
     let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
     if (files && files.length > 0) {
         files.forEach(file => {
-           const isSelected = file === AppState.currentJSON ? ' class="selected"' : ''; 
-           html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
+            const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
+            html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
-        html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>'; 
+        html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
     }
     document.getElementById("json-table").innerHTML = html;
     const searchInput = document.getElementById('json-search');
     if (searchInput && searchInput.value) {
         filterTable('json-table', searchInput.value);
+    }
+}
+
+function updateReportTable(subjects) {
+    let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="3">Action</th></tr>';
+    document.getElementById("file-search").placeholder = "Search subject folders...";
+    if (subjects && subjects.length > 0) {
+        subjects.forEach(subject => {
+            const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
+            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${subject}', this)">📁 Select Subject</button></td><td><button onclick="deleteFile('${subject}', this)">❌ Delete</button></td><td><button onclick="editFile('${subject}', this)">✏️ Edit</button></td></tr>`;
+        });
+    } else {
+        html += '<tr><td colspan="4">No report subjects found.</td></tr>';
+    }
+    document.getElementById("file-table").innerHTML = html;
+    const searchInput = document.getElementById('file-search');
+    if (searchInput && searchInput.value) {
+        filterTable('file-table', searchInput.value);
     }
 }
 
@@ -138,7 +160,7 @@ function updateFileTable(files, deselect) {
                 html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">✅ Select</button></td><td><button onclick="deleteFile('${file}', this)">❌ Delete</button></td><td><button onclick="editFile('${file}', this)">✏️ Edit</button></td></tr>`;
             });
         } else {
-            html += '<tr><td colspan="2">No CSV files found in the directory.</td></tr>';
+            html += '<tr><td colspan="4">No CSV files found in the directory.</td></tr>';
         }
         document.getElementById("file-table").innerHTML = html;
         const searchInput = document.getElementById('file-search');
@@ -150,7 +172,7 @@ function updateFileTable(files, deselect) {
             $toggleQueryClass("#file-table tr", "selected", false);
             updateFileDisplay(AppState.currentFile);
         }
-    });  
+    });
 }
 
 function filterTable(tableId, query) {
@@ -173,26 +195,31 @@ function filterTable(tableId, query) {
 
 function updateFileDisplay(curFile) {
     const displayElement = document.getElementById('selected-file-display');
-    if (curFile)
+    if (curFile) {
         displayElement.innerHTML = `Selected File: ${curFile}`;
-    else
+        if (AppState.currentMeasurementMode === 'report') {
+            onReportFolderSelected(curFile);
+        }
+    } else {
         displayElement.innerHTML = `No file selected`;
+    }
 }
+
 
 function fetchJSON(jsonFile, callback) {
     $.get('/get_json_content', {
         json_name: jsonFile,
         mode: AppState.currentMeasurementMode,
         numSources: AppState.numSources
-    }, function(response) {
+    }, function (response) {
         callback(response.json);
-    }).fail(function(xhr, status, error) {
+    }).fail(function (xhr, status, error) {
         console.error("fetchJSON failed:", error);
         callback(null);
     });
 }
 
-async function browseSavingLocation(changeToCalibrate=false, button = null, path="") {
+async function browseSavingLocation(changeToCalibrate = false, button = null, path = "") {
     // Temporarily disable the button to prevent multiple clicks
     $(button).prop("disabled", true);
     setTimeout(() => {
@@ -273,7 +300,7 @@ function scrollWhenVisible(elementId, duration = 500) {
 
     // Helper to check if element is visible
     const isVisible = el =>
-    el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
+        el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
 
     // Scroll smoothly to the element
     const scrollToElement = () => {
@@ -289,9 +316,9 @@ function scrollWhenVisible(elementId, duration = 500) {
 
     // Poll every 100ms until element becomes visible
     const interval = setInterval(() => {
-    if (isVisible(target)) {
-        scrollToElement();
-        clearInterval(interval);
-    }
+        if (isVisible(target)) {
+            scrollToElement();
+            clearInterval(interval);
+        }
     }, 100);
 }
