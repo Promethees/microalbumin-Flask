@@ -800,6 +800,62 @@ body.dark #swal-edit-table tr.selected td {
     background-color: #566283 !important;
 }
 
+/* ==========================================================================
+   Print Layout for Report Generation
+   ========================================================================== */
+@media print {
+    body {
+        background: white;
+        color: black;
+        margin: 0;
+        padding: 0;
+    }
+
+    body > *:not(#print-report-container) {
+        display: none !important;
+    }
+
+    #print-report-container {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        color: black;
+    }
+
+    .report-title {
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #2c3e50;
+    }
+
+    .report-meta {
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+    
+    .report-meta p {
+        margin: 5px 0;
+    }
+
+    .report-chart {
+        width: 100%;
+        max-width: 800px;
+        margin: 20px auto;
+        display: block;
+    }
+
+    .report-equation {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        background: #f9f9f9;
+        font-size: 16px;
+    }
+}
+
 #swal-edit-table td {
     word-break: break-word;
     max-width: 200px;
