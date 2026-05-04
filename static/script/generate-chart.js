@@ -236,9 +236,16 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     const isFullDisplay = checkboxes.fullDisplay ? checkboxes.fullDisplay.checked : false;
 
     const labels = Array.isArray(labelOrLabels) ? labelOrLabels : [labelOrLabels];
-    const analyses = (Array.isArray(analysisOrArray) && AppState.currentMeasurementMode !== "calibrate")
-        ? analysisOrArray
-        : [analysisOrArray];
+    // Analysis shape differs by mode:
+    // - normal measurement: one analysis per dataset (array)
+    // - calibrate point: single analysis object
+    // - calibrate kinetics: array of analyses (one per metric), and regression builder expects the FULL array
+    let analyses;
+    if (AppState.currentMeasurementMode === "calibrate" && calDiv.getAttribute('data-value') === "kinetics" && Array.isArray(analysisOrArray)) {
+        analyses = [analysisOrArray];
+    } else {
+        analyses = Array.isArray(analysisOrArray) ? analysisOrArray : [analysisOrArray];
+    }
 
     const { xColumn, processedYColumns, allYValues, conversionFactor } = processData(allXColumn, allYColumnOrArray, getTimeUnitValue());
     if (!xColumn || xColumn.length === 0) {

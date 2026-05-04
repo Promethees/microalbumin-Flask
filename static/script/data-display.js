@@ -304,16 +304,19 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         });
         appendHTML(section);
     } else if (AppState.currentMeasurementMode === "calibrate") {
-        // Calibration Grid (4 metrics)
-        const metrics = ['slope', 'linear_slope', 'maxRate', 'saturationValue'];
+        // Calibration chart: show only the selected metric for kinetics;
+        // point calibration already uses a single plot.
+        const isKineticsCal = calDiv.getAttribute('data-value') === "kinetics";
+        const selectedMetric = isKineticsCal
+            ? (document.getElementById('regressed-quantity')?.selectedOptions?.[0]?.dataset?.original || 'Slope')
+            : '';
         const html = `
             <div id="plot-chart-section" style="display: flex; flex-wrap: wrap; gap: 15px;">
                 <div id="plot-analysis" style="width: 100%;"></div>
-                ${metrics.map(m => `
-                    <div class="cal-chart-container" style="flex: 1 1 45%; min-width: 300px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #fff;">
-                        <canvas id="plot-canvas-${m}"></canvas>
-                    </div>
-                `).join('')}
+                <div class="cal-chart-container" style="flex: 1 1 100%; min-width: 300px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #fff;">
+                    ${isKineticsCal ? `<div style="font-weight:700; color:#2c3e50; margin-bottom: 8px;">Selected metric: ${selectedMetric}</div>` : ``}
+                    <canvas id="plot-canvas"></canvas>
+                </div>
             </div>
         `;
         appendHTML(html);
@@ -513,21 +516,31 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     // Generate chart
     const labels = getLabelsFromYColumn(YColumn, determineMeasurementLabel(AppState.metaData, XColumn, YColumn), measUnit);
     renderCharts(allGroups.allXColumn, allGroups.allYColumn, labels, measUnit);
-    
+
     if (AppState.currentMeasurementMode === "calibrate" && calDiv.getAttribute('data-value') === "kinetics") {
-        const metrics = ['slope', 'linear_slope', 'maxRate', 'saturationValue'];
+        // Only show the currently selected metric
+        const selectElement = document.getElementById('regressed-quantity');
+        const selectedOriginal = selectElement?.selectedOptions?.[0]?.dataset?.original || null; // e.g. "Slope", "maxRate"
+        const calParamsOriginal = selectElement
+            ? Array.from(selectElement.options).map(option => option.dataset.original)
+            : [];
+        const selectedIdx = selectedOriginal ? calParamsOriginal.indexOf(selectedOriginal) : -1;
+
+        const dp = selectedOriginal
+            ? AppState.calibrationDataPoints?.find(d => d.metric === selectedOriginal)
+            : null;
+        const yVals = dp?.y || [];
+        const analysisForSelected = (selectedIdx >= 0 && Array.isArray(mixAnalysis)) ? mixAnalysis[selectedIdx] : null;
+
         AppState.chartInstances = {}; // clear old instances
-        
-        metrics.forEach((m, idx) => {
-            const mLabel = m.charAt(0).toUpperCase() + m.slice(1).replace(/([A-Z])/g, ' $1');
-            const mYVals = AppState.calibrationDataPoints.find(dp => dp.metric === m)?.y || [];
-            const mAnalysis = mixAnalysis[idx]; // mixAnalysis is an array for kinetics calibrate
-            
-            if (document.getElementById(`plot-canvas-${m}`)) {
-                AppState.chartInstances[m] = generateChart(`plot-canvas-${m}`, XColumnVals, [mYVals], [mLabel], measUnit, mAnalysis);
-            }
-        });
-        AppState.myChart = null; // Using chartInstances instead
+        AppState.myChart = generateChart(
+            'plot-canvas',
+            XColumnVals,
+            [yVals],
+            [selectedOriginal || 'Selected Metric'],
+            measUnit,
+            mixAnalysis
+        );
     } else {
         AppState.myChart = generateChart('plot-canvas', XColumnVals, YColumnVals, labels, measUnit, mixAnalysis);
     }
