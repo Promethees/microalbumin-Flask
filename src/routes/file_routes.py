@@ -21,6 +21,30 @@ from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
 
+@file_bp.route('/get_calibration_json_list', methods=['GET'])
+def get_calibration_json_list():
+    """
+    Lists calibrated JSON coefficient files stored under /json/<mode>.
+    mode: "kinetics" or "point"
+    """
+    mode = request.args.get('mode', '').strip().lower()
+    if mode not in ('kinetics', 'point'):
+        return jsonify({'status': 'error', 'message': 'Invalid mode. Expected kinetics or point.'}), 400
+
+    try:
+        json_dir = os.path.join(state.json_root_path, mode)
+        if not os.path.exists(json_dir):
+            return jsonify({'status': 'success', 'items': []})
+
+        items = [
+            f for f in os.listdir(json_dir)
+            if f.lower().endswith('.json') and not f.lower().endswith('.meta.json')
+        ]
+        items.sort()
+        return jsonify({'status': 'success', 'items': items})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @file_bp.route('/get_json_content', methods=['GET'])
 def get_json_content():
     selected_json = request.args.get('json_name')

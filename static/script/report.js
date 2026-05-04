@@ -365,14 +365,35 @@ function onReportFolderSelected(folderName) {
 // Store item configurations independently
 window.ReportItemConfig = {};
 
+function updateReportWindowSize(filename, value) {
+    const config = window.ReportItemConfig?.[filename];
+    if (!config) return;
+
+    let v = parseInt(value, 10);
+    if (Number.isNaN(v) || v < 3) v = 4;
+    config.windowSize = v;
+}
+
+function updateReportDerivedQuantity(filename, value) {
+    const config = window.ReportItemConfig?.[filename];
+    if (!config) return;
+    config.derivedQuantity = value || 'maxrate';
+}
+
 async function loadReportItems(subject) {
     const container = document.getElementById('report-items-container');
     container.innerHTML = '<p>Loading items...</p>';
     window.ReportItemConfig = {}; // reset
 
     try {
-        const response = await fetch(`/get_report_items?subject=${encodeURIComponent(subject)}`);
-        const result = await response.json();
+        const [itemsRes, kinJsonRes, pointJsonRes] = await Promise.all([
+            fetch(`/get_report_items?subject=${encodeURIComponent(subject)}`),
+            fetch(`/get_calibration_json_list?mode=kinetics`),
+            fetch(`/get_calibration_json_list?mode=point`)
+        ]);
+        const result = await itemsRes.json();
+        const kinJson = await kinJsonRes.json();
+        const pointJson = await pointJsonRes.json();
 
         if (result.status === 'success') {
             if (result.items.length === 0) {
@@ -380,8 +401,10 @@ async function loadReportItems(subject) {
                 return;
             }
 
-            // Separate JSONs for calibration mapping
-            const jsonFiles = result.items.filter(i => i.filename.toLowerCase().endsWith('.json'));
+            // Global calibration JSONs (stored under /json/<mode>)
+            const kineticsJsonFiles = (kinJson.status === 'success' && Array.isArray(kinJson.items)) ? kinJson.items : [];
+            const pointJsonFiles = (pointJson.status === 'success' && Array.isArray(pointJson.items)) ? pointJson.items : [];
+
             const dataFiles = result.items.filter(i => i.filename.toLowerCase().endsWith('.csv'));
 
             if (dataFiles.length === 0) {
@@ -393,6 +416,7 @@ async function loadReportItems(subject) {
             for (const item of dataFiles) {
                 const itemID = `report-item-${item.filename.replace(/[^a-z0-9]/gi, '_')}`;
                 const isCalibrate = item.metadata.mode === 'calibrate';
+                const isKinetics = item.metadata.mode === 'kinetics';
                 const card = document.createElement('div');
                 card.className = 'report-item-card';
                 card.id = itemID;
@@ -441,12 +465,27 @@ async function loadReportItems(subject) {
                         </div>
                     `;
                 } else {
+                    const applicableJsonFiles = isKinetics ? kineticsJsonFiles : pointJsonFiles;
                     contentHtml = `
                         <div class="report-preview-layout">
                             <div class="report-preview-chart-container" style="flex: 2;">
                                 <canvas id="preview-chart-${itemID}"></canvas>
                             </div>
                             <div class="report-item-controls" id="controls-${itemID}" style="flex: 1; min-width: 200px;">
+                                ${isKinetics ? `
+                                <div class="control-group">
+                                    <label>Window size (auto = 4)</label>
+                                    <input
+                                        type="number"
+                                        min="3"
+                                        value="4"
+                                        style="width: 6em;"
+                                        class="report-window-size-input"
+                                        data-item="${item.filename}"
+                                        onchange="updateReportWindowSize('${item.filename}', this.value)"
+                                    >
+                                </div>
+                                ` : ''}
                                 <div class="control-group">
                                     <label>Visible Traces</label>
                                     <div class="trace-selection-group" id="traces-${itemID}">
@@ -457,9 +496,20 @@ async function loadReportItems(subject) {
                                     <label>Calibration Curve</label>
                                     <select class="cal-source-select" data-item="${item.filename}">
                                         <option value="">None (Raw Data)</option>
-                                        ${jsonFiles.map(j => `<option value="${j.filename}">${j.filename}</option>`).join('')}
+                                        ${applicableJsonFiles.map(j => `<option value="${j}">${j}</option>`).join('')}
                                     </select>
                                 </div>
+                                ${isKinetics ? `
+                                <div class="control-group">
+                                    <label>Derived concentration from</label>
+                                    <select class="derived-quantity-select" data-item="${item.filename}" onchange="updateReportDerivedQuantity('${item.filename}', this.value)">
+                                        <option value="maxrate" selected>maxRate</option>
+                                        <option value="slope">Slope</option>
+                                        <option value="sat">Saturation</option>
+                                        <option value="time_to_sat">Time to Sat</option>
+                                    </select>
+                                </div>
+                                ` : ''}
                                 <div class="control-group">
                                     <label>Report Layout</label>
                                     <select class="layout-toggle-select">
@@ -505,6 +555,7 @@ async function initItemPreview(item, itemID) {
         if (!response.data || response.data.length === 0) return;
 
         const isCalibrate = item.metadata.mode === 'calibrate';
+        const isKinetics = item.metadata.mode === 'kinetics';
         const numSources = response.num_sources || 1;
         const config = {
             data: response.data,
@@ -514,7 +565,9 @@ async function initItemPreview(item, itemID) {
             visibleMetrics: isCalibrate ? ['Slope', 'Time To Sat', 'maxRate', 'Sat'] : [],
             calFile: null,
             layout: 'together',
-            chart: null
+            chart: null,
+            windowSize: isKinetics ? 4 : null,
+            derivedQuantity: isKinetics ? 'maxrate' : null
         };
         window.ReportItemConfig[item.filename] = config;
 
@@ -808,6 +861,22 @@ async function finalizeReport() {
                 const layout = card.querySelector('.layout-toggle-select').value;
                 const renderData = config.data;
                 const visibleTraces = config.visibleTraces;
+                const isKinetics = config.metadata.mode === 'kinetics';
+                const windowSize = isKinetics ? (config.windowSize || 4) : null;
+                const unit = (config.metadata && config.metadata.Unit) ? config.metadata.Unit : 'NONE';
+                const isPoint = config.metadata.mode === 'point';
+                const derivedQuantity = isKinetics ? (config.derivedQuantity || 'maxrate') : null;
+                const derivedHtml = (calFile && (isKinetics || isPoint))
+                    ? await buildDerivedConcentrationForReport({
+                        mode: isKinetics ? 'kinetics' : 'point',
+                        calFile,
+                        renderData,
+                        visibleTraces,
+                        unit,
+                        windowSize,
+                        derivedQuantity
+                    })
+                    : '';
 
                 if (layout === 'together') {
                     const tempCanvas = document.createElement('canvas');
@@ -840,12 +909,17 @@ async function finalizeReport() {
                     });
 
                     const img = tempCanvas.toDataURL('image/png');
+                    const analysisHtml = isKinetics
+                        ? buildKineticsAnalysisForReport(renderData, visibleTraces, unit, windowSize)
+                        : '';
                     finalHtmlContent += `
                         <div class="report-chart-block">
                             <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Measurement Item: ${filename}</h2>
                             <img src="${img}" style="width:100%; border:1px solid #eee;"/>
                             <p style="font-size:0.8rem; color:#666; margin-top:5px;">Mode: ${config.metadata.mode || 'N/A'} | Calibration: ${calFile || 'None'}</p>
                             ${calFile ? `<div class="report-cal-meta" style="background:#f0f7ff; padding:10px; border-left:4px solid #3498db; font-size:0.8rem;">[Applied Calibration: ${calFile}]</div>` : ''}
+                            ${derivedHtml}
+                            ${analysisHtml}
                         </div>
                     `;
                     tempChart.destroy();
@@ -874,9 +948,14 @@ async function finalizeReport() {
                         });
 
                         const img = tempCanvas.toDataURL('image/png');
+                        const analysisHtml = isKinetics
+                            ? buildKineticsAnalysisForReport(renderData, [traceIdx], unit, windowSize)
+                            : '';
                         finalHtmlContent += `
                             <div class="report-chart-block" style="margin-bottom: 20px;">
                                  <img src="${img}" style="width:100%; border:1px solid #eee;"/>
+                                 ${derivedHtml}
+                                 ${analysisHtml}
                             </div>
                         `;
                         tempChart.destroy();
@@ -925,6 +1004,219 @@ async function finalizeReport() {
         console.error(e);
         Swal.fire('Error', 'Failed to generate report: ' + e.message, 'error');
     }
+}
+
+const _ReportJsonCache = new Map();
+
+async function fetchCalibrationJsonContent(mode, jsonName) {
+    const cacheKey = `${mode}::${jsonName}`;
+    if (_ReportJsonCache.has(cacheKey)) return _ReportJsonCache.get(cacheKey);
+
+    const resp = await fetch(`/get_json_content?json_name=${encodeURIComponent(jsonName)}&mode=${encodeURIComponent(mode)}`);
+    const payload = await resp.json();
+    if (!payload || payload.status !== 'success') {
+        throw new Error(payload?.message || `Failed to load calibration JSON: ${jsonName}`);
+    }
+    _ReportJsonCache.set(cacheKey, payload.json);
+    return payload.json;
+}
+
+function computeFitForReport(value, fit_type, coef, quantityLabel = '') {
+    // Copied behavior from calculate.js computeFit, but without relying on page DOM.
+    if (!coef || coef[0] === 'NONE' || coef[0] === 'NaN') {
+        throw new Error(`Fit_type: ${fit_type} cannot be used${quantityLabel ? ` to derive concentration from ${quantityLabel}` : ''}`);
+    }
+    if (typeof value !== 'number' || isNaN(value)) {
+        throw new Error(`${quantityLabel || 'Quantity'} is not available`);
+    }
+    switch ((fit_type || '').toLowerCase()) {
+        case "linear":
+            return coef["a"] * value + coef["b"];
+        case "polynomial":
+            return coef["a"] * Math.pow(value, 2) + coef["b"] * value + coef["c"];
+        case "logarithmic":
+            if (value <= 0) throw new Error("Invalid input for logarithm: value must be > 0");
+            return coef["a"] * Math.log(value + coef["b"]) + coef["c"];
+        case "exponential":
+            return coef["a"] * Math.exp(value * coef["b"]) + coef["c"];
+        case "michaelis-menten":
+            if (value >= coef["VMax"] || value < 0) throw new Error(`Invalid input for Michaelis-Menten: value must be < Vmax and >= 0`);
+            return (coef["Km"] * value) / (coef["VMax"] - value);
+        default:
+            throw new Error("Unknown fit type: " + fit_type);
+    }
+}
+
+function _timeUnitToSeconds(unit) {
+    const u = String(unit || '').toLowerCase();
+    if (u.startsWith('sec')) return 1;
+    if (u.startsWith('min')) return 60;
+    if (u.startsWith('hour')) return 3600;
+    return 60; // default matches existing export behavior
+}
+
+function _kineticsQuantityValuePerExportUnit(analysis, derivedQuantity) {
+    // Mirror static/script/data-handling.js calculateKineticValue conversions:
+    // - maxrate, slope: per minute (value * 60), since analysis is per second
+    // - sat: raw
+    // - time_to_sat: minutes (value / 60), since analysis time is seconds
+    const q = (derivedQuantity || 'maxrate').toLowerCase();
+    if (!analysis) return null;
+    if (q === 'maxrate') return (analysis.maxRate !== undefined) ? Number(analysis.maxRate) * 60 : null;
+    if (q === 'slope') return (analysis.slope !== undefined) ? Number(analysis.slope) * 60 : null;
+    if (q === 'sat') return (analysis.saturationValue !== undefined) ? Number(analysis.saturationValue) : null;
+    if (q === 'time_to_sat') return (analysis.timeToSaturation !== undefined) ? Number(analysis.timeToSaturation) / 60 : null;
+    return null;
+}
+
+async function buildDerivedConcentrationForReport({ mode, calFile, renderData, visibleTraces, unit, windowSize, derivedQuantity }) {
+    try {
+        const json = await fetchCalibrationJsonContent(mode, calFile);
+        const fitType = json.fit_type;
+
+        let rowsHtml = '';
+        if (mode === 'kinetics') {
+            const coefNode = json?.[derivedQuantity]?.fit_coef;
+            if (!coefNode) {
+                return `<div style="margin-top:12px; color:#b45309; font-size:0.85rem;">Derived concentration unavailable: JSON does not contain coefficients for <strong>${derivedQuantity}</strong>.</div>`;
+            }
+            for (const t of visibleTraces) {
+                const { x, y } = _extractValidXYForTrace(renderData, t);
+                const a = (x.length >= 4) ? calculateKineticsQuantities(x, y, (windowSize || 4)) : null;
+                const qVal = _kineticsQuantityValuePerExportUnit(a, derivedQuantity);
+                let con = '--';
+                try {
+                    con = Number(computeFitForReport(qVal, fitType, coefNode, derivedQuantity)).toFixed(4);
+                } catch (e) {
+                    con = `ERR: ${e.message}`;
+                }
+                rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ng/µL</strong></div>`;
+            }
+            return `
+                <div style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
+                    <h3 style="margin:0 0 8px 0; color:#2980b9;">Derived Concentration</h3>
+                    <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">From: <strong>${derivedQuantity}</strong> (per minute conversion applied where applicable)</div>
+                    ${rowsHtml}
+                </div>
+            `;
+        }
+
+        // point mode
+        const coef = json.fit_coef;
+        const timePoint = Number(json.time);
+        const timeUnit = json['time-unit'];
+        const timeSec = timePoint * _timeUnitToSeconds(timeUnit);
+
+        for (const t of visibleTraces) {
+            const estValue = getEstimatedValue(renderData, timeSec, t);
+            let con = '--';
+            try {
+                con = Number(computeFitForReport(Number(estValue), fitType, coef, 'Endpoint Value')).toFixed(4);
+            } catch (e) {
+                con = `ERR: ${e.message}`;
+            }
+            rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ng/µL</strong></div>`;
+        }
+
+        return `
+            <div style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
+                <h3 style="margin:0 0 8px 0; color:#2980b9;">Derived Concentration</h3>
+                <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">Endpoint: <strong>${json.time} ${timeUnit || 'minute'}</strong></div>
+                ${rowsHtml}
+            </div>
+        `;
+    } catch (e) {
+        return `<div style="margin-top:12px; color:#b45309; font-size:0.85rem;">Derived concentration unavailable: ${e.message}</div>`;
+    }
+}
+
+function _unitDisplayForReport(unit) {
+    if (!unit || unit === 'NONE') return '';
+    return unit;
+}
+
+function _extractValidXYForTrace(renderData, traceIdx) {
+    const x = [];
+    const y = [];
+    const key = `Value:${traceIdx}`;
+
+    for (const row of renderData) {
+        const xv = Number(row.Timestamp);
+        const rawY = row[key];
+        if (!Number.isFinite(xv)) continue;
+        if (rawY === null || rawY === undefined) continue;
+        if (rawY === 'NONE' || rawY === 'OVFL') continue;
+        const yv = Number(rawY);
+        if (!Number.isFinite(yv)) continue;
+        x.push(xv);
+        y.push(yv);
+    }
+    return { x, y };
+}
+
+function _formatMaybeNum(v, digits = 5) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(digits) : '--';
+}
+
+function buildKineticsAnalysisForReport(renderData, traceIndices, unit, windowSize) {
+    const unitText = _unitDisplayForReport(unit);
+    const ws = (Number.isFinite(Number(windowSize)) && Number(windowSize) >= 3) ? Number(windowSize) : 4;
+
+    let html = `
+        <div class="report-analysis" style="margin-top: 12px; background:#fff; border:1px solid #eee; padding:12px; border-radius:8px;">
+            <h3 style="margin: 0 0 10px 0; color:#34495e;">Measurement Trace Analysis (kinetics)</h3>
+            <div style="font-size:0.8rem; color:#666; margin-bottom:10px;">Window size used: <strong>${ws}</strong></div>
+    `;
+
+    for (const t of traceIndices) {
+        const { x, y } = _extractValidXYForTrace(renderData, t);
+        if (x.length < 4) {
+            html += `<div style="margin-bottom:10px; color:#b45309; font-size:0.85rem;">Source ${t}: not enough valid points for analysis.</div>`;
+            continue;
+        }
+
+        const a = calculateKineticsQuantities(x, y, ws);
+        const slope = _formatMaybeNum(a?.slope, 5);
+        const maxRate = _formatMaybeNum(a?.maxRate, 5);
+        const sat = _formatMaybeNum(a?.saturationValue, 5);
+        const tSat = _formatMaybeNum(a?.timeToSaturation, 2);
+        const linStart = _formatMaybeNum(a?.linearXMin, 2);
+        const linEnd = _formatMaybeNum(a?.linearXMax, 2);
+        const mrStart = _formatMaybeNum(a?.startMaxRate, 2);
+        const mrEnd = _formatMaybeNum(a?.endMaxRate, 2);
+
+        html += `
+            <div style="margin-top:10px; border-top: 1px solid #eee; padding-top:10px;">
+                <strong style="color: #2c3e50; display:block; margin-bottom:6px;">Source ${t}</strong>
+                <table style="width:100%; border-collapse: collapse; font-size: 0.8rem; border:1px solid #eee;">
+                    <tr style="background:#f8f9fa; border-bottom: 2px solid #3498db;">
+                        <th style="padding:8px; border:1px solid #eee; text-align:left;">Metric</th>
+                        <th style="padding:8px; border:1px solid #eee; text-align:left;">Value</th>
+                        <th style="padding:8px; border:1px solid #eee; text-align:left;">Context</th>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px; border:1px solid #eee; font-weight:bold;">Slope</td>
+                        <td style="padding:8px; border:1px solid #eee;">${slope}${unitText ? ` ${unitText}` : ''}/s</td>
+                        <td style="padding:8px; border:1px solid #eee;">${linStart} to ${linEnd} s</td>
+                    </tr>
+                    <tr style="background:#fcfcfc;">
+                        <td style="padding:8px; border:1px solid #eee; font-weight:bold;">Max Rate</td>
+                        <td style="padding:8px; border:1px solid #eee;">${maxRate}${unitText ? ` ${unitText}` : ''}/s</td>
+                        <td style="padding:8px; border:1px solid #eee;">${mrStart} to ${mrEnd} s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px; border:1px solid #eee; font-weight:bold;">Saturation</td>
+                        <td style="padding:8px; border:1px solid #eee;">${sat}${unitText ? ` ${unitText}` : ''}</td>
+                        <td style="padding:8px; border:1px solid #eee;">at ${tSat} s</td>
+                    </tr>
+                </table>
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    return html;
 }
 
 
