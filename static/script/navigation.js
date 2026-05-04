@@ -186,7 +186,10 @@ function fetchJSON(jsonFile, callback) {
         numSources: AppState.numSources
     }, function(response) {
         callback(response.json);
-    })
+    }).fail(function(xhr, status, error) {
+        console.error("fetchJSON failed:", error);
+        callback(null);
+    });
 }
 
 async function browseSavingLocation(changeToCalibrate=false, button = null, path="") {

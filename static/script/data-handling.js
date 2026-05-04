@@ -1,171 +1,182 @@
-function selectFile(fileName, button, tableSelector = "#file-table") {
-    // Disable the clicked button temporarily to prevent rapid clicks
-    button.disabled = true;
-    setTimeout(() => button.disabled = false, 1000);
+async function selectFile(fileName, button, tableSelector = "#file-table") {
+    if (typeof window.showSpinner === 'function') window.showSpinner();
+    try {
+        // Disable the clicked button temporarily to prevent rapid clicks
+        button.disabled = true;
+        setTimeout(() => button.disabled = false, 1000);
 
-    // Clear previous selection and highlight the current row
-    const table = document.querySelector(tableSelector);
-    table.querySelectorAll("tr").forEach(row => row.classList.remove("selected"));
-    button.closest("tr").classList.add("selected");
+        // Clear previous selection and highlight the current row
+        const table = document.querySelector(tableSelector);
+        if (!table) return;
+        table.querySelectorAll("tr").forEach(row => row.classList.remove("selected"));
+        const closestTr = button.closest("tr");
+        if (closestTr) closestTr.classList.add("selected");
 
-    if (tableSelector === "#file-table") {
-        AppState.prevFile = AppState.currentFile;
-        AppState.currentFile = fileName;
-        clearConcentrationValues();
+        if (tableSelector === "#file-table") {
+            AppState.prevFile = AppState.currentFile;
+            AppState.currentFile = fileName;
+            clearConcentrationValues();
 
-        $id("copy-file-btn").disabled = false;
+            $id("copy-file-btn").disabled = false;
 
-        // Reset range values
-        $id("range-value-start").value = 0;
-        $id("range-value-end").value = 1000;
-        $id("range-value-start").disabled = false;
-        $id("range-value-end").disabled = false;
+            // Reset range values
+            $id("range-value-start").value = 0;
+            $id("range-value-end").value = 1000;
+            $id("range-value-start").disabled = false;
+            $id("range-value-end").disabled = false;
 
-        // Check all quantity-checkbox elements
-        document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
+            // Check all quantity-checkbox elements
+            document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
 
-        processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+            await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+        }
+        else if (tableSelector === "#json-table") {
+            AppState.currentJSON = fileName;
+
+            $id("copy-json-btn").disabled = false;
+            $hidden(["right-deselect-btn", "json-display", "top-right"], false);
+
+            await new Promise((resolve) => {
+                fetchJSON(AppState.currentJSON, async (JSON_content) => {
+                    if (!JSON_content) {
+                        resolve();
+                        return; // Handle case where fetchJSON returns null/undefined
+                    }
+                    try {
+                        const display = $id("json-display");
+                        display.innerHTML = ""; // clear previous content
+
+                        const fitType = JSON_content.fit_type || "N/A";
+                        const measFor = JSON_content.for_meas || "N/A";
+                        const mode = AppState.currentMeasurementMode || "N/A";
+
+                        const labelCoefficients = (coefs) => {
+                            if (coefs && typeof coefs === 'object' && !Array.isArray(coefs)) {
+                                return Object.entries(coefs)
+                                    .filter(([key]) => key !== '__proto__' && key !== 'constructor' && key !== 'prototype') 
+                                    .map(([k, v]) => `${k} = ${v}`)
+                                    .join(', ');
+                            }
+                            return '—';
+                        }
+
+                        const formulas = {
+                            linear: "\\( [S] = a q + b \\)",
+                            polynomial: "\\( [S] = a q^2 + b q + c \\)",
+                            logarithmic: "\\( [S] = a \\ln(q + b) + c \\)",
+                            exponential: "\\( [S] = a e^{q b} + c \\)",
+                            "michaelis-menten": "\\( [S] = \\dfrac{K_m q}{V_{max} - q} \\)"
+                        };
+                        const getFormula = (type) => formulas[type.toLowerCase()] || "No formula available for this fit type.";
+
+                        // --- Build tables dynamically ---
+                        const buildCoefTable = (json) => {
+                            const table = document.createElement("table");
+                            table.border = "1";
+                            table.cellPadding = "1";
+                            table.cellSpacing = "0";
+                            table.className = "table";
+                            table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 1px;";
+
+                            const thead = document.createElement("thead");
+                            thead.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Fit Coefficients</th>
+                                </tr>
+                            ` : `
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Values</th>
+                                </tr>
+                            `;
+                            const tbody = document.createElement("tbody");
+
+                            for (const [key, value] of Object.entries(json)) {
+                                if (["fit_type", "for_meas"].includes(key)) continue;
+                                const tr = document.createElement("tr");
+                                tr.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
+                                    <td>${key}</td>
+                                    <td>${labelCoefficients(value?.fit_coef)}</td>
+                                ` : key === "fit_coef" ? `
+                                    <td>${key}</td>
+                                    <td>${labelCoefficients(value)}</td>
+                                ` : `
+                                    <td>${key}</td>
+                                    <td>${value}</td>
+                                `;
+                                tbody.appendChild(tr);
+                            }
+
+                            const heading = document.createElement("h4");
+                            heading.textContent = "Fitting Coefficients";
+                            heading.style.margin = "0px 0px 1px 0px";
+
+                            table.appendChild(thead);
+                            table.appendChild(tbody);
+
+                            display.appendChild(heading);
+                            display.appendChild(table);
+                        };
+
+                        const buildInfoTable = (info) => {
+                            const table = document.createElement("table");
+                            table.border = "1";
+                            table.cellPadding = "1";
+                            table.cellSpacing = "0";
+                            table.className = "table";
+                            table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 0px;";
+
+                            const tbody = document.createElement("tbody");
+                            for (const [key, value] of Object.entries(info)) {
+                                const tr = document.createElement("tr");
+                                tr.innerHTML = `<th style="width:30%;">${key}</th><td>${value}</td>`;
+                                tbody.appendChild(tr);
+                            }
+
+                            const heading = document.createElement("h4");
+                            heading.textContent = "Fit Information";
+                            heading.style.margin = "0px 0px 1px 0px";
+
+                            table.appendChild(tbody);
+
+                            display.appendChild(heading);
+                            display.appendChild(table);
+                        };
+
+                        const infoData = {
+                            "Current Mode": mode,
+                            "Fit Type": fitType,
+                            "Formula": getFormula(fitType),
+                            "[S]": "Initial Substance Concentration",
+                            "q (per minute)": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
+                            "Measurement For": measFor
+                        };
+
+                        buildCoefTable(JSON_content);
+                        display.appendChild(document.createElement("br"));
+                        buildInfoTable(infoData);
+
+                        if (window.MathJax) await MathJax.typesetPromise();
+
+                        AppState.currentJSONcontent = JSON_content;
+
+                        if (AppState.currentFile) {
+                            await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+                        }
+                    } finally {
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        // Smoothly scroll to section and blink
+        scrollWhenVisible("data-display-section", 1000);
+        blinkingItem("chart-container", 3000);
+    } finally {
+        if (typeof window.hideSpinner === 'function') window.hideSpinner();
     }
-    else if (tableSelector === "#json-table") {
-        AppState.currentJSON = fileName;
-
-        $id("copy-json-btn").disabled = false;
-        $hidden(["right-deselect-btn", "json-display", "top-right"], false);
-
-        fetchJSON(AppState.currentJSON, (JSON_content) => {
-            const display = $id("json-display");
-            display.innerHTML = ""; // clear previous content
-
-            const fitType = JSON_content.fit_type || "N/A";
-            const measFor = JSON_content.for_meas || "N/A";
-            const mode = AppState.currentMeasurementMode || "N/A";
-
-            const labelCoefficients = (coefs) => {
-                if (coefs && typeof coefs === 'object' && !Array.isArray(coefs)) {
-                    return Object.entries(coefs)
-                        .filter(([key]) => key !== '__proto__' && key !== 'constructor' && key !== 'prototype') // safety
-                        .map(([k, v]) => `${k} = ${v}`)
-                        .join(', ');
-                }
-
-                return '—';
-            }
-
-            const formulas = {
-                linear: "\\( [S] = a q + b \\)",
-                polynomial: "\\( [S] = a q^2 + b q + c \\)",
-                logarithmic: "\\( [S] = a \\ln(q + b) + c \\)",
-                exponential: "\\( [S] = a e^{q b} + c \\)",
-                "michaelis-menten": "\\( [S] = \\dfrac{K_m q}{V_{max} - q} \\)"
-            };
-            const getFormula = (type) => formulas[type.toLowerCase()] || "No formula available for this fit type.";
-
-            // --- Build tables dynamically ---
-            const buildCoefTable = (json) => {
-                const table = document.createElement("table");
-                table.border = "1";
-                table.cellPadding = "1";
-                table.cellSpacing = "0";
-                table.className = "table";
-                table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 1px;";
-
-                const thead = document.createElement("thead");
-                thead.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
-                    <tr>
-                        <th>Parameter</th>
-                        <th>Fit Coefficients</th>
-                    </tr>
-                ` : `
-                    <tr>
-                        <th>Parameter</th>
-                        <th>Values</th>
-                    </tr>
-                `;
-                const tbody = document.createElement("tbody");
-
-                for (const [key, value] of Object.entries(json)) {
-                    if (["fit_type", "for_meas"].includes(key)) continue;
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
-                        <td>${key}</td>
-                        <td>${labelCoefficients(value?.fit_coef)}</td>
-                    ` : key === "fit_coef" ? `
-                        <td>${key}</td>
-                        <td>${labelCoefficients(value)}</td>
-                    ` : `
-                        <td>${key}</td>
-                        <td>${value}</td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-
-                const heading = document.createElement("h4");
-                heading.textContent = "Fitting Coefficients";
-                heading.style.margin = "0px 0px 1px 0px";
-
-                table.appendChild(thead);
-                table.appendChild(tbody);
-
-                display.appendChild(heading);
-                display.appendChild(table);
-            };
-
-            const buildInfoTable = (info) => {
-                const table = document.createElement("table");
-                table.border = "1";
-                table.cellPadding = "1";
-                table.cellSpacing = "0";
-                table.className = "table";
-                table.style = "width:100%; text-align:left; margin-top: 0px; margin-bottom: 0px;";
-
-                const tbody = document.createElement("tbody");
-                for (const [key, value] of Object.entries(info)) {
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `<th style="width:30%;">${key}</th><td>${value}</td>`;
-                    tbody.appendChild(tr);
-                }
-
-                const heading = document.createElement("h4");
-                heading.textContent = "Fit Information";
-                heading.style.margin = "0px 0px 1px 0px";
-
-                table.appendChild(tbody);
-
-                display.appendChild(heading);
-                display.appendChild(table);
-            };
-
-            // --- Build info data ---
-            const infoData = {
-                "Current Mode": mode,
-                "Fit Type": fitType,
-                "Formula": getFormula(fitType),
-                "[S]": "Initial Substance Concentration",
-                "q (per minute)": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
-                "Measurement For": measFor
-            };
-
-            // Render tables
-            buildCoefTable(JSON_content);
-            display.appendChild(document.createElement("br"));
-            buildInfoTable(infoData);
-
-            // Render math if available
-            if (window.MathJax) MathJax.typesetPromise();
-
-            // Update state
-            AppState.currentJSONcontent = JSON_content;
-
-            // Display data if file selected
-            if (AppState.currentFile) {
-                processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
-            }
-        });
-    }
-
-    // Smoothly scroll to section and blink
-    scrollWhenVisible("data-display-section", 1000);
-    blinkingItem("chart-container", 3000);
 }
 
 function copyFile(tableSelector = "#file-table") {
@@ -252,9 +263,9 @@ function copyFile(tableSelector = "#file-table") {
     });
 }
 
-function processDataDisplay(fileName, jsonFileContent = null) {
+async function processDataDisplay(fileName, jsonFileContent = null) {
     // Proceed with fetching and displaying data
-    fetchData(fileName, jsonFileContent);
+    await fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
 }
 

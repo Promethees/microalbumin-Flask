@@ -1715,3 +1715,60 @@ body.dark .tooltip-finish-btn {
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   Global Loading Spinner
+   ========================================================================== */
+#global-spinner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 15000; /* above swal */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#global-spinner.hidden {
+    display: none !important;
+}
+
+.spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.spinner {
+    border: 8px solid rgba(255, 255, 255, 0.3);
+    border-top: 8px solid #3498db;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: global-spin 1s linear infinite;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.spinner-message {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 500;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    animation: pulse-opac 2s infinite ease-in-out;
+}
+
+@keyframes global-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-opac {
+    0%, 100% { opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+    50% { opacity: 0.6; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+}
