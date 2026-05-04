@@ -32,3 +32,5 @@ index_temp.html
 *.dmg
 
 generate_heavy_csv.py
+
+/static/vendor/
