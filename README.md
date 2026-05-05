@@ -10,21 +10,21 @@
 ### Installation:
 * On Mac:
 	- Using installer (DMG):
-		- Download the [![Latest release](https://img.shields.io/badge/latest-1.0.3-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit.dmg` on Mac.
-		- Open the `EasySensorKit.dmg` to mount it.
+		- Download the [![Latest release](https://img.shields.io/badge/latest-1.0.3-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI.dmg` on Mac.
+		- Open the `EasyOKAPI.dmg` to mount it.
 		- **Terminal-based Installation** (to bypass security warnings):
 			1. Open the **Terminal** app.
 			2. Run the first installation script with `sudo`:
 			   ```bash
-			   sudo /Volumes/EasySensorKit/install-tools-clone-repo.command
+			   sudo /Volumes/EasyOKAPI/install-tools-clone-repo.command
 			   ```
 			3. Run the second installation script:
 			   ```bash
-			   sudo /Volumes/EasySensorKit/install-venv.command
+			   sudo /Volumes/EasyOKAPI/install-venv.command
 			   ```
 			4. To launch the application:
 			   ```bash
-			   sudo /Volumes/EasySensorKit/run.command
+			   sudo /Volumes/EasyOKAPI/run.command
 			   ```
 		- Key in your device password to proceed when prompted.
 		- Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
@@ -60,7 +60,7 @@
 		</div>
 
 	- Using Installer: 
-		+ Download the [![Latest release](https://img.shields.io/badge/latest-1.0.3-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasySensorKit_Setup.exe` on Windows
+		+ Download the [![Latest release](https://img.shields.io/badge/latest-1.0.3-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
 		+ After the installation, you can use `Easy OKAPI` icon on the Desktop to start the app

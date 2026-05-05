@@ -80,10 +80,10 @@ if ! pyenv versions | grep -q "3.8.10"; then
 fi
 
 # Prompt for GitHub token using osascript
-GITHUB_TOKEN=$(osascript -e 'Tell application "System Events" to display dialog "Please enter your GitHub personal access token:" default answer "" with title "EasySensorKit Installer" with hidden answer' -e 'text returned of result' 2>/dev/null)
+GITHUB_TOKEN=$(osascript -e 'Tell application "System Events" to display dialog "Please enter your GitHub personal access token:" default answer "" with title "EasyOKAPI Installer" with hidden answer' -e 'text returned of result' 2>/dev/null)
 if [ $? -ne 0 ] || [ -z "$GITHUB_TOKEN" ]; then
     echo "❌ Error: GitHub token is required. User cancelled or provided empty input."
-    osascript -e 'display dialog "GitHub token is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "GitHub token is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -113,20 +113,20 @@ if [ -d "$INSTALL_DIR" ]; then
         echo ""
         
         # Prompt user using osascript with better formatting
-        CHOICE=$(osascript -e 'Tell application "System Events" to display dialog "An existing installation was found.\n\nCurrent version: '$CURRENT_VERSION'\nNew version: '$VERSION_TAG'\n\nWould you like to overwrite it?" buttons {"Cancel", "Overwrite"} default button "Cancel" with title "EasySensorKit Installer"' -e 'button returned of result' 2>/dev/null)
+        CHOICE=$(osascript -e 'Tell application "System Events" to display dialog "An existing installation was found.\n\nCurrent version: '$CURRENT_VERSION'\nNew version: '$VERSION_TAG'\n\nWould you like to overwrite it?" buttons {"Cancel", "Overwrite"} default button "Cancel" with title "EasyOKAPI Installer"' -e 'button returned of result' 2>/dev/null)
         
         if [ "$CHOICE" = "Overwrite" ]; then
             echo "Removing existing installation..."
             rm -rf "$INSTALL_DIR"
             if [ $? -ne 0 ]; then
                 echo "❌ Error: Failed to remove existing installation."
-                osascript -e 'display dialog "Failed to remove existing installation. Check permissions and try again." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+                osascript -e 'display dialog "Failed to remove existing installation. Check permissions and try again." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
                 exit 1
             fi
             echo "Existing installation removed successfully."
         else
             echo "Installation cancelled. Keeping existing installation."
-            osascript -e 'display dialog "Installation cancelled. Keeping existing installation." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+            osascript -e 'display dialog "Installation cancelled. Keeping existing installation." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
             exit 0
         fi
     fi
@@ -137,7 +137,7 @@ echo "Cloning repository to $INSTALL_DIR..."
 su - "$CURRENT_USER" -c "git clone \"https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git\" \"$INSTALL_DIR\""
 if [ $? -ne 0 ]; then
     echo "❌ Error: Failed to clone repository."
-    osascript -e 'display dialog "Failed to clone repository. Check your GitHub token and network connection." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Failed to clone repository. Check your GitHub token and network connection." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -147,7 +147,7 @@ cd "$INSTALL_DIR"
 su - "$CURRENT_USER" -c "git checkout tags/$VERSION_TAG"
 if [ $? -ne 0 ]; then
     echo "❌ Error: Failed to checkout tag $VERSION_TAG."
-    osascript -e "display dialog \"Failed to checkout tag $VERSION_TAG. Check if the tag exists.\" buttons {\"OK\"} default button \"OK\" with title \"EasySensorKit Installer\""
+    osascript -e "display dialog \"Failed to checkout tag $VERSION_TAG. Check if the tag exists.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
     exit 1
 fi
 
@@ -195,5 +195,5 @@ echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
 echo "Repository cloned successfully to $INSTALL_DIR with tag $VERSION_TAG."
 echo "Preinstall script completed at $(date)"
-osascript -e "display dialog \"Installation step 1 complete. Please run install-venv.command to continue.\" buttons {\"OK\"} default button \"OK\" with title \"EasySensorKit Installer\""
+osascript -e "display dialog \"Installation step 1 complete. Please run install-venv.command to continue.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
 exit 0

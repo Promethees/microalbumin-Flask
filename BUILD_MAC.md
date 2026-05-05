@@ -1,6 +1,6 @@
 # Building the macOS Installer DMG
 
-This guide explains how to build the `EasySensorKit.dmg` installer from the source files in `installer-mac/`.
+This guide explains how to build the `EasyOKAPI.dmg` installer from the source files in `installer-mac/`.
 
 ## Prerequisites
 - macOS (as it uses the native `hdiutil` command).

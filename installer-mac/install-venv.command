@@ -17,7 +17,7 @@ INSTALL_DIR="/Applications/$REPO_NAME"
 # Check if installation directory exists
 if [ ! -d "$INSTALL_DIR" ]; then
     echo "❌ Installation directory $INSTALL_DIR does not exist."
-    osascript -e 'display dialog "Installation directory not found. Please run install-homebrew-and-clone.command first." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Installation directory not found. Please run install-homebrew-and-clone.command first." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -33,7 +33,7 @@ pyenv global 3.8.10
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
 if [ "$PY_VER" != "3.8.10" ]; then
     echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
-    osascript -e 'display dialog "Python 3.8.10 is required but not found. Current version: '$PY_VER'" buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Python 3.8.10 is required but not found. Current version: '$PY_VER'" buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -43,7 +43,7 @@ if [ ! -d "venv" ]; then
     python3 -m venv venv
     if [ $? -ne 0 ]; then
         echo "❌ Failed to create virtual environment."
-        osascript -e 'display dialog "Failed to create virtual environment." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+        osascript -e 'display dialog "Failed to create virtual environment." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
         exit 1
     fi
 fi
@@ -56,7 +56,7 @@ echo "Checking pip..."
 python3 -m ensurepip --upgrade
 if [ $? -ne 0 ]; then
     echo "❌ Failed to ensure pip."
-    osascript -e 'display dialog "Failed to ensure pip." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Failed to ensure pip." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -65,7 +65,7 @@ echo "Installing requirements..."
 pip install --upgrade pip
 if [ $? -ne 0 ]; then
     echo "❌ Failed to upgrade pip."
-    osascript -e 'display dialog "Failed to upgrade pip." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Failed to upgrade pip." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -73,26 +73,26 @@ if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt
     if [ $? -ne 0 ]; then
         echo "❌ Failed to install requirements from requirements.txt."
-        osascript -e 'display dialog "Failed to install requirements from requirements.txt." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+        osascript -e 'display dialog "Failed to install requirements from requirements.txt." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
         exit 1
     fi
 else
     echo "❌ requirements.txt not found in $INSTALL_DIR."
-    osascript -e 'display dialog "requirements.txt not found in '$INSTALL_DIR'." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "requirements.txt not found in '$INSTALL_DIR'." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
 pip install flask
 if [ $? -ne 0 ]; then
     echo "❌ Failed to install Flask."
-    osascript -e 'display dialog "Failed to install Flask." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Failed to install Flask." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
 pip install pandas
 if [ $? -ne 0 ]; then
     echo "❌ Failed to install pandas."
-    osascript -e 'display dialog "Failed to install pandas." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Failed to install pandas." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -118,7 +118,7 @@ for entry in "${VENDOR_URLS[@]}"; do
     curl -fsSL "$url" -o "$VENDOR_DIR/$file"
     if [ $? -ne 0 ]; then
         echo "❌ Failed to download $file from $url"
-        osascript -e "display dialog \"Failed to download vendor library: $file\" buttons {\"OK\"} default button \"OK\" with title \"EasySensorKit Installer\""
+        osascript -e "display dialog \"Failed to download vendor library: $file\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
         exit 1
     fi
 done
@@ -138,7 +138,7 @@ for font in "${MATHJAX_FONTS[@]}"; do
     curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/${font}.woff" -o "$FONT_DIR/${font}.woff"
     if [ $? -ne 0 ]; then
         echo "❌ Failed to download MathJax font: ${font}.woff"
-        osascript -e "display dialog \"Failed to download MathJax font: ${font}.woff\" buttons {\"OK\"} default button \"OK\" with title \"EasySensorKit Installer\""
+        osascript -e "display dialog \"Failed to download MathJax font: ${font}.woff\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
         exit 1
     fi
 done
@@ -147,7 +147,7 @@ echo "✅ Vendor libraries downloaded successfully."
 # Ensure libhidapi.dylib is present
 if [ ! -f "mac/libhidapi.dylib" ]; then
     echo "❌ libhidapi.dylib not found in mac folder."
-    osascript -e 'display dialog "libhidapi.dylib not found in mac folder." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "libhidapi.dylib not found in mac folder." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
@@ -193,17 +193,17 @@ if [ -f "$HID_INIT_PATH" ]; then
     mv "$TEMP_FILE" "$HID_INIT_PATH"
     if [ $? -ne 0 ]; then
         echo "❌ Failed to modify hid/__init__.py."
-        osascript -e 'display dialog "Failed to modify hid/__init__.py." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+        osascript -e 'display dialog "Failed to modify hid/__init__.py." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
         exit 1
     fi
     echo "Modified hid/__init__.py to load libhidapi.dylib"
 else
     echo "❌ Could not find hid/__init__.py."
-    osascript -e 'display dialog "Could not find hid/__init__.py." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+    osascript -e 'display dialog "Could not find hid/__init__.py." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
 echo "Setup complete. Application is installed in $INSTALL_DIR."
 echo "Postinstall script completed at $(date)"
-osascript -e 'display dialog "Installation complete. Run run.command to launch the application." buttons {"OK"} default button "OK" with title "EasySensorKit Installer"'
+osascript -e 'display dialog "Installation complete. Run run.command to launch the application." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
 exit 0

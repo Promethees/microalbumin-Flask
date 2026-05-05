@@ -48,7 +48,7 @@ exec > >(tee -a /tmp/run.log) 2>&1
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
     echo -e "\n  ${RED}✗  This script must be run as root (sudo).${RESET}\n"
-    osascript -e 'display dialog "This script requires sudo privileges. Please run with sudo." buttons {"OK"} default button "OK" with title "EasySensorKit Run"'
+    osascript -e 'display dialog "This script requires sudo privileges. Please run with sudo." buttons {"OK"} default button "OK" with title "EasyOKAPI Run"'
     exit 1
 fi
 
@@ -59,7 +59,7 @@ INSTALL_DIR="/Applications/$REPO_NAME"
 # Check if installation directory exists
 if [ ! -d "$INSTALL_DIR" ]; then
     echo -e "\n  ${RED}✗  Installation directory $INSTALL_DIR not found.${RESET}\n"
-    osascript -e 'display dialog "Installation directory not found. Please install the application first." buttons {"OK"} default button "OK" with title "EasySensorKit Run"'
+    osascript -e 'display dialog "Installation directory not found. Please install the application first." buttons {"OK"} default button "OK" with title "EasyOKAPI Run"'
     exit 1
 fi
 
@@ -76,7 +76,7 @@ fill_to 10 20 "Initialising pyenv …"
 fill_to 20 30 "Activating virtual environment …"
 if [ ! -d "venv" ]; then
     echo -e "\n\n  ${RED}✗  Virtual environment not found. Please run install-venv.command first.${RESET}\n"
-    osascript -e 'display dialog "Virtual environment not found. Please run install-venv.command first." buttons {"OK"} default button "OK" with title "EasySensorKit Run"'
+    osascript -e 'display dialog "Virtual environment not found. Please run install-venv.command first." buttons {"OK"} default button "OK" with title "EasyOKAPI Run"'
     exit 1
 fi
 source venv/bin/activate
@@ -86,7 +86,7 @@ fill_to 30 40 "Activating virtual environment …"
 fill_to 40 50 "Running preflight checks …"
 if [ ! -f "main.py" ]; then
     echo -e "\n\n  ${RED}✗  main.py not found.${RESET}\n"
-    osascript -e 'display dialog "main.py not found in '$INSTALL_DIR'." buttons {"OK"} default button "OK" with title "EasySensorKit Run"'
+    osascript -e 'display dialog "main.py not found in '$INSTALL_DIR'." buttons {"OK"} default button "OK" with title "EasyOKAPI Run"'
     exit 1
 fi
 
