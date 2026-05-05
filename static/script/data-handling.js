@@ -784,7 +784,102 @@ function toggleMode() {
     }
 }
 
+async function refreshReportSubjects() {
+    const res = await fetch('/get_report_subjects');
+    const data = await res.json();
+    if (data.status === 'success') {
+        updateReportTable(data.subjects || []);
+    } else {
+        console.warn("Failed to refresh report subjects:", data.message);
+    }
+}
+
+function editReportSubject(subjectName, button) {
+    Swal.fire({
+        title: 'Rename Subject',
+        html: `
+            <div style="text-align:left;">
+                <div style="margin-bottom:8px; color:#666;">Old name: <strong>${subjectName}</strong></div>
+                <label style="display:block; margin-bottom:5px;">New subject name</label>
+                <input id="swal-new-subject" class="swal2-input" value="${subjectName}" style="width: 80%; margin: 0;">
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        preConfirm: () => document.getElementById('swal-new-subject').value.trim()
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        const newName = result.value;
+        if (!newName || newName === subjectName) return;
+
+        try {
+            const resp = await fetch('/rename_report_subject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_subject: subjectName, new_subject: newName })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Rename failed');
+
+            if (AppState.currentReportSubject === subjectName) {
+                AppState.currentReportSubject = newName;
+            }
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    });
+}
+
+function deleteReportSubject(subjectName, button) {
+    Swal.fire({
+        title: 'Delete subject?',
+        text: `This will permanently delete '${subjectName}' and all its items.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete'
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        try {
+            const resp = await fetch('/delete_report_subject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subjectName })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Delete failed');
+
+            if (AppState.currentReportSubject === subjectName) {
+                AppState.currentReportSubject = null;
+                document.getElementById('report-console-section')?.classList.add('hidden');
+            }
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    });
+}
+
+async function copyReportSubject(subjectName) {
+    try {
+        const resp = await fetch('/copy_report_subject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject: subjectName })
+        });
+        const data = await resp.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Copy failed');
+        await refreshReportSubjects();
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
+}
+
 function showMergeModal() {
+    if (AppState.currentMeasurementMode === "report") {
+        return showMergeSubjectsModal();
+    }
     const table = document.getElementById("file-table");
     const rows = table.querySelectorAll("tr");
     const files = [];
@@ -906,6 +1001,83 @@ function showMergeModal() {
                     });
                 }
             });
+        }
+    });
+}
+
+function showMergeSubjectsModal() {
+    // Read subjects from current table
+    const table = document.getElementById("file-table");
+    const rows = table.querySelectorAll("tr");
+    const subjects = [];
+    rows.forEach((row, index) => {
+        if (index === 0) return;
+        const cell = row.querySelector("td");
+        if (cell && cell.textContent.trim()) subjects.push(cell.textContent.trim());
+    });
+
+    if (subjects.length < 2) {
+        Swal.fire('Not enough subjects', 'You need at least two subjects to merge.', 'info');
+        return;
+    }
+
+    const options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    Swal.fire({
+        title: 'Merge Report Subjects',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
+                <label>First Subject:</label>
+                <select id="swal-sub1" class="swal2-input" style="margin:0; width:100%;">${options}</select>
+                <label>Second Subject:</label>
+                <select id="swal-sub2" class="swal2-input" style="margin:0; width:100%;">${options}</select>
+                <label>New Subject Name:</label>
+                <input id="swal-sub-out" class="swal2-input" style="margin:0; width:100%;" placeholder="merged_subject">
+                <div style="font-size:0.8rem; color:#666;">
+                    Items will be copied into the new subject (sources are kept).
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Merge',
+        didOpen: () => {
+            const s1 = document.getElementById('swal-sub1');
+            const s2 = document.getElementById('swal-sub2');
+            const out = document.getElementById('swal-sub-out');
+            const updateDefault = () => {
+                out.value = `${s1.value}_${s2.value}_merged`;
+            };
+            s1.addEventListener('change', updateDefault);
+            s2.addEventListener('change', updateDefault);
+            updateDefault();
+        },
+        preConfirm: () => {
+            const s1 = document.getElementById('swal-sub1').value;
+            const s2 = document.getElementById('swal-sub2').value;
+            const out = document.getElementById('swal-sub-out').value.trim();
+            if (s1 === s2) {
+                Swal.showValidationMessage('Please select two different subjects');
+                return false;
+            }
+            if (!out) {
+                Swal.showValidationMessage('Please enter a new subject name');
+                return false;
+            }
+            return { s1, s2, out };
+        }
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        const { s1, s2, out } = result.value;
+        try {
+            const resp = await fetch('/merge_report_subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subjects: [s1, s2], output_subject: out })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Merge failed');
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
         }
     });
 }

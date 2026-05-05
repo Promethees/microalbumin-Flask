@@ -1857,6 +1857,10 @@ body.dark .tooltip-finish-btn {
 }
 
 @media print {
+    @page {
+        margin: 12mm;
+    }
+
     /* Global box-sizing for print to prevent layout expansion */
     #print-report-container, 
     #print-report-container * {
@@ -1890,6 +1894,7 @@ body.dark .tooltip-finish-btn {
         left: 0 !important;
         z-index: auto !important;
         background: white !important;
+        padding: 40px !important; /* apply padding once to container */
     }
 
     #print-report-container.report-mode .report-body, 
@@ -1897,7 +1902,12 @@ body.dark .tooltip-finish-btn {
         max-width: none !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 40px !important; /* Standardized padding */
+        padding: 0 !important; /* avoid double padding that can cause blank pages */
+    }
+
+    /* Fixed-position elements can cause blank pages in PDF print */
+    .report-watermark-bg {
+        display: none !important;
     }
 
     /* Page Break Management */

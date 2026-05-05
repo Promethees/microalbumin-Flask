@@ -672,3 +672,124 @@ def get_report_items():
     items.sort(key=lambda x: x.get('metadata', {}).get('timestamp', x['filename']))
     
     return jsonify({"status": "success", "items": items})
+
+
+def _safe_subject_name(name: str) -> str:
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Subject name is required")
+    # Basic hardening against traversal and odd separators
+    if any(x in name for x in ("..", "/", "\\", "\x00")):
+        raise ValueError("Invalid subject name")
+    return name
+
+
+@file_bp.route('/delete_report_subject', methods=['POST'])
+@validate_json({
+    'subject': str
+})
+def delete_report_subject(validated_data):
+    try:
+        subject = _safe_subject_name(validated_data['subject'])
+        subject_path = os.path.join(state.report_root_path, subject)
+        if not os.path.isdir(subject_path):
+            return jsonify({'status': 'error', 'message': 'Subject not found'}), 404
+        shutil.rmtree(subject_path)
+        return jsonify({'status': 'success', 'message': f"Deleted subject '{subject}'"})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@file_bp.route('/copy_report_subject', methods=['POST'])
+@validate_json({
+    'subject': str
+})
+def copy_report_subject(validated_data):
+    try:
+        subject = _safe_subject_name(validated_data['subject'])
+        src = os.path.join(state.report_root_path, subject)
+        if not os.path.isdir(src):
+            return jsonify({'status': 'error', 'message': 'Subject not found'}), 404
+
+        base = f"{subject}_copy"
+        dst = os.path.join(state.report_root_path, base)
+        counter = 1
+        while os.path.exists(dst):
+            dst = os.path.join(state.report_root_path, f"{base}_{counter}")
+            counter += 1
+
+        shutil.copytree(src, dst)
+        return jsonify({'status': 'success', 'message': f"Copied subject '{subject}'", 'new_subject': os.path.basename(dst)})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@file_bp.route('/rename_report_subject', methods=['POST'])
+@validate_json({
+    'old_subject': str,
+    'new_subject': str
+})
+def rename_report_subject(validated_data):
+    try:
+        old_subject = _safe_subject_name(validated_data['old_subject'])
+        new_subject = _safe_subject_name(validated_data['new_subject'])
+        src = os.path.join(state.report_root_path, old_subject)
+        dst = os.path.join(state.report_root_path, new_subject)
+        if not os.path.isdir(src):
+            return jsonify({'status': 'error', 'message': 'Subject not found'}), 404
+        if os.path.exists(dst):
+            return jsonify({'status': 'error', 'message': 'New subject name already exists'}), 409
+        os.rename(src, dst)
+        return jsonify({'status': 'success', 'message': f"Renamed subject '{old_subject}' to '{new_subject}'"})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@file_bp.route('/merge_report_subjects', methods=['POST'])
+@validate_json({
+    'subjects': (list, [], False),
+    'output_subject': str
+})
+def merge_report_subjects(validated_data):
+    try:
+        subjects = validated_data.get('subjects') or []
+        if len(subjects) < 2:
+            return jsonify({'status': 'error', 'message': 'Please select at least 2 subjects to merge'}), 400
+
+        safe_subjects = [_safe_subject_name(s) for s in subjects]
+        output_subject = _safe_subject_name(validated_data['output_subject'])
+
+        out_path = os.path.join(state.report_root_path, output_subject)
+        if os.path.exists(out_path):
+            return jsonify({'status': 'error', 'message': 'Output subject already exists'}), 409
+        os.makedirs(out_path, exist_ok=False)
+
+        for sub in safe_subjects:
+            src_dir = os.path.join(state.report_root_path, sub)
+            if not os.path.isdir(src_dir):
+                return jsonify({'status': 'error', 'message': f"Subject not found: {sub}"}), 404
+
+            for fname in os.listdir(src_dir):
+                src_file = os.path.join(src_dir, fname)
+                if not os.path.isfile(src_file):
+                    continue
+                base = Path(fname).stem
+                ext = Path(fname).suffix
+                dst_file = os.path.join(out_path, fname)
+                counter = 1
+                while os.path.exists(dst_file):
+                    dst_file = os.path.join(out_path, f"{base}_{sub}_{counter}{ext}")
+                    counter += 1
+                shutil.copy2(src_file, dst_file)
+
+        return jsonify({'status': 'success', 'message': f"Merged {len(safe_subjects)} subjects into '{output_subject}'"})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
