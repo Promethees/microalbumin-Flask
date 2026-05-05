@@ -8,7 +8,7 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-CURRENT_USER="${SUDO_USER:-$(stat -c '%U' /proc/1)}"
+CURRENT_USER="${SUDO_USER:-}"
 INSTALL_DIR="/opt/EasyOKAPI"
 UDEV_RULE="/etc/udev/rules.d/99-easyokapi-hid.rules"
 DESKTOP_ENTRY="/usr/share/applications/EasyOKAPI.desktop"
@@ -53,6 +53,7 @@ fi
 # ── Remove desktop entry ──────────────────────────────────────────────────────
 if [ -f "$DESKTOP_ENTRY" ]; then
     rm -f "$DESKTOP_ENTRY"
+    update-desktop-database /usr/share/applications/ 2>/dev/null || true
     echo "✅ Desktop entry removed."
 fi
 

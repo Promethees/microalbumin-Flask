@@ -1,12 +1,10 @@
 #!/bin/bash
 
 # Log all output to a file for debugging
-exec > >(tee -a /tmp/easyokapi-install.log) 2>&1
-echo "Starting EasyOKAPI install script at $(date)"
+exec > >(tee -a /tmp/easyokapi-step1.log) 2>&1
+echo "Starting EasyOKAPI install step 1 at $(date)"
 
-# ── Helper: GUI prompt fallback chain ────────────────────────────────────────
-# Usage: prompt_input <title> <message> <secret>
-#   Returns result in $PROMPT_RESULT
+# ── Helper: GUI prompt fallback chain ─────────────────────────────────────────
 prompt_input() {
     local title="$1" msg="$2" secret="${3:-false}"
     PROMPT_RESULT=""
@@ -31,7 +29,6 @@ prompt_input() {
     fi
 }
 
-# Usage: prompt_confirm <title> <message>  → returns 0 for Yes, 1 for No
 prompt_confirm() {
     local title="$1" msg="$2"
     if command -v zenity &>/dev/null; then
@@ -56,7 +53,7 @@ fi
 # ── Determine the real user (the one who ran sudo) ────────────────────────────
 CURRENT_USER="${SUDO_USER:-}"
 if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ]; then
-    echo "❌ Unable to determine the invoking user. Run with: sudo ./install.sh"
+    echo "❌ Unable to determine the invoking user. Run with: sudo ./install-1-deps-clone.sh"
     exit 1
 fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
@@ -64,7 +61,6 @@ CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 # ── Configuration ─────────────────────────────────────────────────────────────
 VERSION_TAG="v1.0.3"
 INSTALL_DIR="/opt/EasyOKAPI"
-REPO_URL="https://github.com/Promethees/microalbumin-Flask.git"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
 
@@ -107,11 +103,12 @@ if ! grep -q 'pyenv init' "$SHELL_RC" 2>/dev/null; then
     } >> "$SHELL_RC"
     chown "$CURRENT_USER:$CURRENT_USER" "$SHELL_RC"
 fi
+echo "✅ pyenv ready."
 
 # ── Step 3: Install Python 3.8.10 via pyenv ───────────────────────────────────
 if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/null | grep -qF '$PYTHON_VERSION'"; then
     echo "Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)..."
-    su - "$CURRENT_USER" -c "PYENV_ROOT=\"$PYENV_ROOT\" $PYENV_BIN install $PYTHON_VERSION"
+    su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN install $PYTHON_VERSION"
     if [ $? -ne 0 ]; then
         echo "❌ Failed to install Python $PYTHON_VERSION."
         exit 1
@@ -167,114 +164,11 @@ rm -f  "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR/Rule.md"
 rm -f  "$INSTALL_DIR"/*.bat
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
-# ── Step 8: Create and populate virtual environment ───────────────────────────
-echo "Setting up Python virtual environment..."
-PYTHON_BIN="$PYENV_ROOT/versions/$PYTHON_VERSION/bin/python"
-su - "$CURRENT_USER" -c "$PYTHON_BIN -m venv $INSTALL_DIR/venv"
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to create virtual environment."
-    exit 1
-fi
-
-VENV_PIP="$INSTALL_DIR/venv/bin/pip"
-su - "$CURRENT_USER" -c "$VENV_PIP install --upgrade pip"
-if [ -f "$INSTALL_DIR/requirements.txt" ]; then
-    su - "$CURRENT_USER" -c "$VENV_PIP install -r $INSTALL_DIR/requirements.txt"
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to install requirements."
-        exit 1
-    fi
-else
-    echo "❌ requirements.txt not found."
-    exit 1
-fi
-echo "✅ Virtual environment ready."
-
-# ── Step 9: Download front-end vendor libraries ───────────────────────────────
-echo "Downloading front-end vendor libraries..."
-VENDOR_DIR="$INSTALL_DIR/static/vendor"
-FONT_DIR="$VENDOR_DIR/mathjax-fonts"
-mkdir -p "$FONT_DIR"
-
-VENDOR_URLS=(
-    "https://code.jquery.com/jquery-3.6.0.min.js|jquery-3.6.0.min.js"
-    "https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js|chart.umd.min.js"
-    "https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.0.0/dist/chartjs-plugin-annotation.min.js|chartjs-plugin-annotation-2.0.0.min.js"
-    "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js|sweetalert2.all.min.js"
-    "https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js|numeric-1.2.6.min.js"
-    "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js|mathjax-tex-mml-chtml.js"
-)
-
-for entry in "${VENDOR_URLS[@]}"; do
-    url="${entry%%|*}"
-    file="${entry##*|}"
-    echo "  Downloading $file..."
-    curl -fsSL "$url" -o "$VENDOR_DIR/$file"
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to download $file."
-        exit 1
-    fi
-done
-
-MATHJAX_FONTS=(
-    "MathJax_AMS-Regular" "MathJax_Main-Regular" "MathJax_Main-Bold" "MathJax_Main-Italic"
-    "MathJax_Math-Italic" "MathJax_Math-BoldItalic" "MathJax_Size1-Regular" "MathJax_Size2-Regular"
-    "MathJax_Size3-Regular" "MathJax_Size4-Regular" "MathJax_Calligraphic-Regular"
-    "MathJax_Calligraphic-Bold" "MathJax_Fraktur-Regular" "MathJax_Fraktur-Bold"
-    "MathJax_SansSerif-Regular" "MathJax_SansSerif-Bold" "MathJax_SansSerif-Italic"
-    "MathJax_Script-Regular" "MathJax_Typewriter-Regular" "MathJax_Vector-Regular"
-    "MathJax_Vector-Bold" "MathJax_Zero"
-)
-for font in "${MATHJAX_FONTS[@]}"; do
-    curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/${font}.woff" \
-        -o "$FONT_DIR/${font}.woff"
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to download MathJax font: ${font}.woff"
-        exit 1
-    fi
-done
-echo "✅ Vendor libraries downloaded."
-
-# ── Step 10: HID udev rule ────────────────────────────────────────────────────
-echo "Installing HID udev rule..."
-UDEV_RULE="/etc/udev/rules.d/99-easyokapi-hid.rules"
-cat > "$UDEV_RULE" <<'UDEV'
-# EasyOKAPI – PyBadge colorimeter HID access for all users
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="239a", MODE="0666"
-SUBSYSTEM=="usb",    ATTRS{idVendor}=="239a", MODE="0666"
-UDEV
-udevadm control --reload-rules
-udevadm trigger
-echo "✅ udev rule installed."
-
-# ── Step 11: Desktop entry ────────────────────────────────────────────────────
-echo "Installing desktop entry..."
-cat > /usr/share/applications/EasyOKAPI.desktop <<DESKTOP
-[Desktop Entry]
-Name=EasyOKAPI
-Comment=PyBadge colorimeter biosensor app
-Exec=bash -c 'pkexec env DISPLAY=\$DISPLAY XAUTHORITY=\$XAUTHORITY /opt/EasyOKAPI/run.sh'
-Icon=/opt/EasyOKAPI/static/favicon.ico
-Terminal=true
-Type=Application
-Categories=Science;
-DESKTOP
-chmod 644 /usr/share/applications/EasyOKAPI.desktop
-update-desktop-database /usr/share/applications/ 2>/dev/null || true
-echo "✅ Desktop entry installed."
-
-# ── Step 12: Copy run/uninstall scripts into install dir ─────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
-cp "$SCRIPT_DIR/uninstall.sh"  "$INSTALL_DIR/uninstall.sh"
-chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"
-
-# Fix ownership
+# Fix ownership so the user can write to the app dir
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
 
 echo ""
-echo "✅ EasyOKAPI $VERSION_TAG installed to $INSTALL_DIR"
-echo "   Run with: sudo $INSTALL_DIR/run.sh"
-echo "   Or launch from your desktop application menu."
-echo "Install script completed at $(date)"
+echo "✅ Step 1 complete. Repository cloned to $INSTALL_DIR at $VERSION_TAG."
+echo "   Next: run  sudo ./install-2-venv.sh"
+echo "Step 1 completed at $(date)"
 exit 0

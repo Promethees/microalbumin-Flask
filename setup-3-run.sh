@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to the script's directory (repo root)
+cd "$(dirname "$0")"
+
 # ── ANSI colours ──────────────────────────────────────────────────────────────
 RESET="\033[0m"
 BOLD="\033[1m"
@@ -39,23 +42,14 @@ exec > >(tee -a /tmp/easyokapi-run.log) 2>&1
 
 # ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
-    echo -e "\n  ${RED}✗  This script must be run as root (sudo).${RESET}\n"
+    echo -e "\n  ${RED}✗  This script must be run as root (sudo ./setup-3-run.sh).${RESET}\n"
     exit 1
 fi
-
-INSTALL_DIR="/opt/EasyOKAPI"
-
-if [ ! -d "$INSTALL_DIR" ]; then
-    echo -e "\n  ${RED}✗  $INSTALL_DIR not found. Please run install.sh first.${RESET}\n"
-    exit 1
-fi
-
-cd "$INSTALL_DIR"
 
 # ── Step 1: Activate venv (0 → 40%) ──────────────────────────────────────────
 fill_to 0 20 "Activating virtual environment …"
-if [ ! -d "venv" ]; then
-    echo -e "\n\n  ${RED}✗  Virtual environment not found. Please re-run install.sh.${RESET}\n"
+if [ ! -f "venv/bin/activate" ]; then
+    echo -e "\n\n  ${RED}✗  Virtual environment not found. Run setup-2-install-venv.sh first.${RESET}\n"
     exit 1
 fi
 source venv/bin/activate
@@ -64,7 +58,7 @@ fill_to 20 40 "Activating virtual environment …"
 # ── Step 2: Preflight (40 → 50%) ─────────────────────────────────────────────
 fill_to 40 50 "Running preflight checks …"
 if [ ! -f "main.py" ]; then
-    echo -e "\n\n  ${RED}✗  main.py not found in $INSTALL_DIR.${RESET}\n"
+    echo -e "\n\n  ${RED}✗  main.py not found. Make sure you are in the repo root.${RESET}\n"
     exit 1
 fi
 
@@ -92,9 +86,12 @@ mkfifo "$PROGRESS_PIPE"
 ) &
 READER_PID=$!
 
-python3 main.py
+# ── Launch application ────────────────────────────────────────────────────────
+python3 main.py "$@"
 
 kill "$READER_PID" 2>/dev/null
 rm -f "$PROGRESS_PIPE"
-echo "Application exited at $(date)"
+
+echo ""
+read -p "  Press Enter to exit…"
 exit 0

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-APP_NAME="EasySensorKit"
+APP_NAME="EasyOKAPI"
 VERSION="v1.0.3"
 TARBALL_NAME="${APP_NAME}_linux_${VERSION}.tar.gz"
 SOURCE_DIR="installer-linux"
