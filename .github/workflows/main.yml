@@ -51,21 +51,38 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install NSIS
         run: |
           choco install nsis -y
           echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
-        
+
       - name: Build Runner and Installer
         shell: cmd
         run: |
           cd installer-win
           makensis runner.nsi
           makensis setup.nsi
-          
+
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: EasySensorKit-win
           path: installer-win/*.exe
+
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Linux tarball
+        run: |
+          chmod +x ./installer-linux/build-tarball.sh
+          ./installer-linux/build-tarball.sh
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasySensorKit-linux
+          path: "*.tar.gz"
