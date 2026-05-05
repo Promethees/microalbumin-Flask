@@ -791,6 +791,7 @@ function toggleMode() {
             document.querySelector("#selected-quantity").textContent = "Endpoint Value";
         }
     }
+    if (typeof updateReportChartsTheme === 'function') updateReportChartsTheme();
 }
 
 async function refreshReportSubjects() {
