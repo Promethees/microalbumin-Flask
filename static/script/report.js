@@ -96,7 +96,8 @@ async function generateReport() {
                         curY = c1 !== 0 ? (curX - c0) / c1 : 0;
                     } else {
                         const discriminant = c1 * c1 - 4 * c2 * (c0 - curX);
-                        curY = discriminant >= 0 ? (-c1 + Math.sqrt(discriminant)) / (2 * c2) : 0;
+                        if (discriminant < 0) continue;
+                        curY = (-c1 + Math.sqrt(discriminant)) / (2 * c2);
                     }
                 } else if (regressAlgo === "logarithmic") {
                     const [a, b, c] = analysis.coefficients || [0, 0, 0];
@@ -853,7 +854,8 @@ async function finalizeReport() {
                                 if (ca === 0) curY = cb !== 0 ? (curX - cc) / cb : 0;
                                 else {
                                     const disc = cb * cb - 4 * ca * (cc - curX);
-                                    curY = disc >= 0 ? (-cb + Math.sqrt(disc)) / (2 * ca) : 0;
+                                    if (disc < 0) continue;
+                                    curY = (-cb + Math.sqrt(disc)) / (2 * ca);
                                 }
                             } else if (algo === "logarithmic") {
                                 curY = ca !== 0 ? Math.exp((curX - cc) / ca) - cb : 0;
