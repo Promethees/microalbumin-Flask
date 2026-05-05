@@ -23,6 +23,7 @@
 </head>
 
 <body class="light">
+    <div id="print-report-container" class="hidden"></div>
     <!-- Global Loader Overlay -->
     <div id="global-spinner" class="hidden">
         <div class="spinner-container">
@@ -233,7 +234,7 @@
             </div>
             <div id="error-message"></div>
             <div class="section" id="file-selection" tabindex="-1">
-                <h2>File Selection</h2>
+                <h2 id="file-selection-header">File Selection</h2>
                 <input type="text" id="file-search" oninput="filterTable('file-table', this.value)" placeholder="Search CSV files..." style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                 <div class="scrollbar-style file-table-container">
                     <table id="file-table" class="table">
@@ -268,6 +269,29 @@
                 <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
                     class="utility-btn">Merge Files</button>
             </div>
+            <div class="section hidden" id="report-console-section" tabindex="-1">
+                <h2>📊 Report Modification Console</h2>
+                <div id="report-subject-info" style="margin-bottom: 15px; font-weight: bold; color: #3498db;"></div>
+                <div class="report-layout-config"
+                    style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
+                    <h3>Layout Configurations</h3>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                        <label><input type="checkbox" id="console-watermark" checked> Include Watermark</label>
+                        <label><input type="checkbox" id="console-logo" checked> Include CBB Logo</label>
+                        <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report" style="width: 250px;"></label>
+                    </div>
+                </div>
+                <h3>Items in this Report Subject</h3>
+                <div id="report-items-container" class="scrollbar-style"
+                    style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; padding: 10px; margin-bottom: 15px; background: white;">
+                    <p style="color: #666;">Select a report subject folder to view items.</p>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="utility-btn" onclick="clearReportItems()">🗑️ Clear Selected Subject</button>
+                    <button class="primary-btn" onclick="finalizeReport()" style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
+                </div>
+            </div>
+
             <div class="section hidden" id="data-display-section">
                 <h2>Data Display</h2>
                 <!-- Display selected file name -->
@@ -386,6 +410,19 @@
                             style="width:10%;">
                     </div>
                 </div>
+                <div id="report-section">
+                    <h3>Report</h3>
+                    <div>
+                        <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
+                            style="margin-top: 5px;">📋 Generate quick Report</button>
+                        <div style="margin-top: 10px; display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
+                            <button id="export-to-report-btn" onclick="exportToReport()" class="utility-btn"
+                                style="background-color: #2ecc71; color: white;">🚀 Export Data to Report</button>
+                            <label> Subject: <input type="text" id="report-subject-name" placeholder="subject"
+                                    style="width: 100px;"> </label>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
@@ -446,6 +483,7 @@
     <script src="{{ url_for('static', filename='dist/edit-file.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/calculate.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/user-guide.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/report.min.js') }}"></script>
     {% else %}
     <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
     <script src="{{ url_for('static', filename='script/init.js') }}"></script>
@@ -457,6 +495,7 @@
     <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
     <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
     <script src="{{ url_for('static', filename='script/user-guide.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/report.js') }}"></script>
     {% endif %}
 </body>
 

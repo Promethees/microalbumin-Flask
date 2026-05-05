@@ -50,6 +50,7 @@ const AppState = {
         'rgba(44, 136, 115, 1)'
     ],
     quantity_input: temp_quantity_input,
+    currentReportSubject: null,
 
     reset: function () {
         this.myChart = null;
@@ -66,6 +67,7 @@ const AppState = {
         this.globalEstimatedValue = null;
         this.multiSource = false;
         this.numSources = 1;
+        this.currentReportSubject = null;
         if (this.chartInstances) {
             Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         }
@@ -266,7 +268,8 @@ function kineticsModeBehaviour() {
         'select-time-point',
         'select-regress-algo',
         'export-coef',
-        'func-desc'
+        'func-desc',
+        'report-console-section'
     ];
 
     const removeHidden = [
@@ -281,10 +284,51 @@ function kineticsModeBehaviour() {
         'normalize-mode-section',
         'select-source-to-export',
         'split-source-section',
+        'data-display-section',
+        'file-selection'
     ];
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
+    document.getElementById("file-selection-header").innerText = "File Selection";
+    document.getElementById("file-search").placeholder = "Search files...";
+}
+
+function reportModeBehaviour() {
+    const addHidden = [
+        'point-json-exp-section',
+        'cal-json-exp-section',
+        'select-quantity-section',
+        'set-exp-point-section',
+        'select-regress-algo',
+        'select-time-point',
+        'export-coef',
+        'window-size-section',
+        'cal-json-sel-section',
+        'kinetics-lines',
+        'json-display',
+        'export-analysis',
+        'range-display',
+        'log-hid-data',
+        'source-options',
+        'normalize-mode-section',
+        'select-source-to-export',
+        'split-source-section',
+        'data-display-section',
+        'num-sources-section'
+    ];
+
+    const removeHidden = [
+        'report-console-section',
+        'file-selection'
+    ];
+
+    $hidden(addHidden, true);
+    $hidden(removeHidden, false);
+
+    document.getElementById("report-console-section").classList.add('hidden');
+    document.getElementById("file-selection-header").innerText = "Folder Selection";
+    document.getElementById("file-search").placeholder = "Search subject folders...";
 }
 
 
@@ -298,7 +342,8 @@ function pointModeBehaviour() {
         'select-time-point',
         'select-regress-algo',
         'export-coef',
-        'func-desc'
+        'func-desc',
+        'report-console-section'
     ];
 
     const removeHidden = [
@@ -311,11 +356,15 @@ function pointModeBehaviour() {
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
-        'split-source-section'
+        'split-source-section',
+        'data-display-section',
+        'file-selection'
     ];
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
+    document.getElementById("file-selection-header").innerText = "File Selection";
+    document.getElementById("file-search").placeholder = "Search files...";
 }
 
 
@@ -335,14 +384,17 @@ function calModeBehaviour() {
         'normalize-mode-section',
         'select-source-to-export',
         'source-options',
-        'num-sources-section'
+        'num-sources-section',
+        'report-console-section'
     ];
 
     const removeHidden = [
         'cal-json-exp-section',
         'select-regress-algo',
         'export-coef',
-        'func-desc'
+        'func-desc',
+        'data-display-section',
+        'file-selection'
     ];
 
     $hidden(addHidden, true);
@@ -438,22 +490,32 @@ function updateMultiSourceExportOptions() {
 
 function switchingModes(mode) {
     AppState.currentMeasurementMode = mode;
-    updateDirectory(true);
     AppState.currentJSON = null;
     AppState.currentJSONcontent = null;
     AppState.currentFile = null;
     document.getElementById("json-display").textContent = "";
     $hidden(["right-deselect-btn"]);
 
+    const mergeBtn = document.getElementById('merge-file-btn');
+    if (mergeBtn) mergeBtn.textContent = mode === 'report' ? 'Merge Subjects' : 'Merge Files';
+
+    if (mode !== 'report') {
+        if (typeof clearReportSubject === 'function') clearReportSubject();
+        updateDirectory(true);
+    }
+
     if (mode === "kinetics") {
         kineticsModeBehaviour();
     } else if (mode === "point") {
         pointModeBehaviour();
+    } else if (mode === "report") {
+        reportModeBehaviour();
+        if (typeof refreshReportSubjects === 'function') refreshReportSubjects();
     } else {
         calModeBehaviour();
     }
 
-    if (AppState.currentMeasurementMode !== "calibrate") {
+    if (AppState.currentMeasurementMode !== "calibrate" && AppState.currentMeasurementMode !== "report") {
         updateMultiSourceExportOptions();
     }
 };

@@ -13,25 +13,30 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
         if (closestTr) closestTr.classList.add("selected");
 
         if (tableSelector === "#file-table") {
-            AppState.prevFile = AppState.currentFile;
-            AppState.currentFile = fileName;
-            clearConcentrationValues();
+            if (AppState.currentMeasurementMode === 'report') {
+                AppState.currentReportSubject = fileName;
+                updateFileDisplay(fileName);
+            } else {
+                AppState.prevFile = AppState.currentFile;
+                AppState.currentFile = fileName;
+                clearConcentrationValues();
 
-            $id("copy-file-btn").disabled = false;
-            $id("download-file-btn").disabled = false;
+                $id("copy-file-btn").disabled = false;
+                $id("download-file-btn").disabled = false;
 
-            // Reset range values
-            $id("range-value-start").value = 0;
-            $id("range-value-end").value = 1000;
-            $id("range-value-start").disabled = false;
-            $id("range-value-end").disabled = false;
+                // Reset range values
+                $id("range-value-start").value = 0;
+                $id("range-value-end").value = 1000;
+                $id("range-value-start").disabled = false;
+                $id("range-value-end").disabled = false;
 
-            $hidden(["data-display-section"], false);
+                $hidden(["data-display-section"], false);
 
-            // Check all quantity-checkbox elements
-            document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
+                // Check all quantity-checkbox elements
+                document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
 
-            await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+                await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+            }
         }
         else if (tableSelector === "#json-table") {
             AppState.currentJSON = fileName;
@@ -1161,6 +1166,9 @@ function exportJSONCoef() {
 }
 
 function showMergeModal() {
+    if (AppState.currentMeasurementMode === "report") {
+        return showMergeSubjectsModal();
+    }
     const table = document.getElementById("file-table");
     const rows = table.querySelectorAll("tr");
     const files = [];
@@ -1278,6 +1286,294 @@ function showMergeModal() {
                         icon: 'error'
                     });
                 });
+        }
+    });
+}
+
+// ── Report Subject CRUD ──────────────────────────────────────────────────────
+
+async function refreshReportSubjects() {
+    const res = await fetch('/get_report_subjects');
+    const data = await res.json();
+    if (data.status === 'success') {
+        updateReportTable(data.subjects || []);
+    } else {
+        console.warn("Failed to refresh report subjects:", data.message);
+    }
+}
+
+async function editReportSubject(subjectName, button) {
+    const { value: result } = await Swal.fire({
+        title: `Edit Subject: "${subjectName}"`,
+        html: `
+            <div style="text-align:left; margin-bottom:14px;">
+                <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:#666;">Rename to</label>
+                <input id="swal-rename-input" class="swal2-input" value="${subjectName}" style="width:90%; margin:0;">
+            </div>
+            <div style="text-align:left; margin-bottom:6px; display:flex; align-items:baseline; gap:8px;">
+                <span style="font-weight:600; font-size:0.9rem;">Items</span>
+                <span style="font-size:0.75rem; color:#94a3b8;">drag ⠿ to reorder · ✕ to remove</span>
+            </div>
+            <div id="swal-items-container" style="max-height:320px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fafafa;">
+                <p style="color:#94a3b8; margin:8px 0; text-align:center;">Loading items…</p>
+            </div>
+        `,
+        width: '680px',
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        cancelButtonText: 'Cancel',
+        focusConfirm: false,
+        didOpen: async () => {
+            const container = document.getElementById('swal-items-container');
+            await loadEditSwalItems(subjectName, container);
+            initSortableCards(container);
+        },
+        preConfirm: () => {
+            const newName = document.getElementById('swal-rename-input').value.trim();
+            const order = Array.from(
+                document.querySelectorAll('#swal-items-container [data-item-filename]')
+            ).map(el => el.dataset.itemFilename);
+            return { newName, order };
+        }
+    });
+
+    if (!result) return;
+
+    const { newName, order } = result;
+    try {
+        if (order.length > 0) {
+            await fetch('/save_report_item_order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subjectName, order })
+            });
+        }
+        const effectiveName = newName && newName !== subjectName ? newName : subjectName;
+        if (newName && newName !== subjectName) {
+            const resp = await fetch('/rename_report_subject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_subject: subjectName, new_subject: newName })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Rename failed');
+            if (AppState.currentReportSubject === subjectName) {
+                AppState.currentReportSubject = newName;
+            }
+        }
+        await refreshReportSubjects();
+        if (AppState.currentReportSubject === effectiveName) {
+            loadReportItems(effectiveName);
+        }
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
+}
+
+async function loadEditSwalItems(subjectName, container) {
+    try {
+        const res = await fetch(`/get_report_items?subject=${encodeURIComponent(subjectName)}`);
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        const dataFiles = data.items.filter(i => i.filename.toLowerCase().endsWith('.csv'));
+        if (dataFiles.length === 0) {
+            container.innerHTML = '<p style="color:#94a3b8; margin:8px 0; text-align:center;">No CSV items in this subject.</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+        for (const item of dataFiles) {
+            const safeId = `swal-card-${item.filename.replace(/[^a-z0-9]/gi, '_')}`;
+            const card = document.createElement('div');
+            card.className = 'report-item-card';
+            card.id = safeId;
+            card.draggable = true;
+            card.dataset.itemFilename = item.filename;
+            card.dataset.filename = item.filename;
+            card.dataset.subject = subjectName;
+            card.style.cssText = 'margin-bottom:6px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; transition: background 0.15s;';
+            card.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="drag-handle" title="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
+                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.filename}">${item.filename}</span>
+                    <span style="font-size:0.75rem; color:#6366f1; background:#eef2ff; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata?.mode || 'Measurement'}</span>
+                    <button data-card-id="${safeId}" data-filename="${item.filename}" title="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
+                </div>
+                <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid #fee2e2; text-align:right;">
+                    <span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>
+                    <button onclick="confirmSwalItemDelete(this)" style="background:#ef4444; color:#fff; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem; margin-right:4px;">Confirm</button>
+                    <button onclick="cancelSwalItemDelete(this)" style="background:#e5e7eb; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;">Cancel</button>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+    } catch (e) {
+        container.innerHTML = `<p style="color:#ef4444; margin:8px 0;">Error: ${e.message}</p>`;
+    }
+}
+
+function requestSwalItemDelete(btn) {
+    const card = btn.closest('[data-item-filename]');
+    if (!card) return;
+    card.style.background = '#fff5f5';
+    card.style.borderColor = '#fca5a5';
+    card.querySelector('.swal-delete-confirm').style.display = 'block';
+    btn.disabled = true;
+}
+
+function cancelSwalItemDelete(btn) {
+    const card = btn.closest('[data-item-filename]');
+    if (!card) return;
+    card.style.background = '#fff';
+    card.style.borderColor = '#e2e8f0';
+    card.querySelector('.swal-delete-confirm').style.display = 'none';
+    card.querySelector('button[title="Remove from subject"]').disabled = false;
+}
+
+async function confirmSwalItemDelete(btn) {
+    const card = btn.closest('[data-item-filename]');
+    if (!card) return;
+    const filename = card.dataset.filename;
+    const subject = card.dataset.subject;
+
+    try {
+        const response = await fetch('/delete_report_item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, filename })
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        card.remove();
+
+        const config = window.ReportItemConfig?.[filename];
+        if (config) {
+            if (config.chart) config.chart.destroy();
+            if (config.charts) Object.values(config.charts).forEach(c => c.destroy());
+            delete window.ReportItemConfig[filename];
+        }
+        const consoleCard = document.querySelector(`#report-items-container [data-filename="${filename}"]`)
+            ?.closest('.report-item-card');
+        consoleCard?.remove();
+        const consoleContainer = document.getElementById('report-items-container');
+        if (consoleContainer && !consoleContainer.querySelector('.report-item-card')) {
+            consoleContainer.innerHTML = '<p style="color:#666;">No items found in this subject folder.</p>';
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+        cancelSwalItemDelete(btn);
+    }
+}
+
+function deleteReportSubject(subjectName, button) {
+    Swal.fire({
+        title: 'Delete subject?',
+        text: `This will permanently delete '${subjectName}' and all its items.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete'
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        try {
+            const resp = await fetch('/delete_report_subject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subjectName })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Delete failed');
+
+            if (AppState.currentReportSubject === subjectName) {
+                AppState.currentReportSubject = null;
+                document.getElementById('report-console-section')?.classList.add('hidden');
+            }
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    });
+}
+
+async function copyReportSubject(subjectName) {
+    try {
+        const resp = await fetch('/copy_report_subject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject: subjectName })
+        });
+        const data = await resp.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Copy failed');
+        await refreshReportSubjects();
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
+}
+
+function showMergeSubjectsModal() {
+    const table = document.getElementById("file-table");
+    const rows = table.querySelectorAll("tr");
+    const subjects = [];
+    rows.forEach((row, index) => {
+        if (index === 0) return;
+        const cell = row.querySelector("td");
+        if (cell && cell.textContent.trim()) subjects.push(cell.textContent.trim());
+    });
+
+    if (subjects.length < 2) {
+        Swal.fire('Not enough subjects', 'You need at least two subjects to merge.', 'info');
+        return;
+    }
+
+    const options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    Swal.fire({
+        title: 'Merge Report Subjects',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
+                <label>First Subject:</label>
+                <select id="swal-sub1" class="swal2-input" style="margin:0; width:100%;">${options}</select>
+                <label>Second Subject:</label>
+                <select id="swal-sub2" class="swal2-input" style="margin:0; width:100%;">${options}</select>
+                <label>New Subject Name:</label>
+                <input id="swal-sub-out" class="swal2-input" style="margin:0; width:100%;" placeholder="merged_subject">
+                <div style="font-size:0.8rem; color:#666;">Items will be copied into the new subject (sources are kept).</div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Merge',
+        didOpen: () => {
+            const s1 = document.getElementById('swal-sub1');
+            const s2 = document.getElementById('swal-sub2');
+            const out = document.getElementById('swal-sub-out');
+            const updateDefault = () => { out.value = `${s1.value}_${s2.value}_merged`; };
+            s1.addEventListener('change', updateDefault);
+            s2.addEventListener('change', updateDefault);
+            updateDefault();
+        },
+        preConfirm: () => {
+            const s1 = document.getElementById('swal-sub1').value;
+            const s2 = document.getElementById('swal-sub2').value;
+            const out = document.getElementById('swal-sub-out').value.trim();
+            if (s1 === s2) { Swal.showValidationMessage('Please select two different subjects'); return false; }
+            if (!out) { Swal.showValidationMessage('Please enter a new subject name'); return false; }
+            return { s1, s2, out };
+        }
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        const { s1, s2, out } = result.value;
+        try {
+            const resp = await fetch('/merge_report_subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subjects: [s1, s2], output_subject: out })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Merge failed');
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
         }
     });
 }

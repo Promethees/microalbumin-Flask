@@ -73,8 +73,16 @@ def get_num_sources():
 @data_bp.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
+    subject = request.args.get('subject')
     user_data = get_user_data()
-    content = user_data['csv'].get(selected_file, None)
+
+    # If a report subject is specified, look up content from report store first
+    content = None
+    if subject:
+        content = user_data.get('report', {}).get(subject, {}).get('items', {}).get(selected_file, {}).get('content')
+    if content is None:
+        content = user_data['csv'].get(selected_file)
+
     if not content:
         return jsonify({'data': [], 'error': 'File not found', 'unit': "NONE", 'metadata': {}})
     try:

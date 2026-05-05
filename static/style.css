@@ -1944,3 +1944,221 @@ body.dark .tooltip-finish-btn {
         width: 100%;
     }
 }
+
+/* ==========================================================================
+   Report — Item Cards
+   ========================================================================== */
+#report-items-container {
+    border-radius: 8px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.report-item-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+    position: relative;
+    background: #fff;
+    transition: transform 0.2s;
+    color: #1f2937;
+}
+
+.report-item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* ==========================================================================
+   Print Layout for Report Generation
+   ========================================================================== */
+#print-report-container.report-mode {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    height: auto !important;
+    background: white !important;
+    z-index: 9999999 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+.report-chart-block {
+    width: 100%;
+    margin-bottom: 30px;
+    text-align: center;
+    page-break-inside: avoid;
+}
+
+.report-chart-block img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+@media print {
+    @page { margin: 12mm; }
+
+    #print-report-container,
+    #print-report-container * { box-sizing: border-box !important; }
+
+    html, body {
+        height: auto !important;
+        min-height: 100% !important;
+        overflow: visible !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        width: auto !important;
+    }
+
+    body > *:not(#print-report-container) { display: none !important; }
+
+    #print-report-container {
+        display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: auto !important;
+        background: white !important;
+        padding: 40px !important;
+    }
+
+    #print-report-container.report-mode .report-body,
+    #print-report-container.report-mode .report-header {
+        max-width: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .report-watermark-bg { display: none !important; }
+
+    .report-chart-block,
+    .report-results {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        margin-bottom: 24px !important;
+    }
+
+    .report-header { page-break-after: auto !important; }
+
+    #print-report-container.report-mode { min-height: 0 !important; }
+
+    .report-footer {
+        page-break-before: avoid !important;
+        break-before: avoid !important;
+        margin-top: 20px !important;
+    }
+}
+
+/* ==========================================================================
+   Dark Mode — Report Console UI
+   ========================================================================== */
+body.dark #report-items-container {
+    background: #111827 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .report-layout-config {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .report-item-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f3f4f6;
+}
+
+body.dark .report-item-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+body.dark .report-item-header {
+    background: #374151 !important;
+    border-bottom-color: #4b5563 !important;
+}
+
+body.dark .move-card-btn {
+    border-color: #4b5563 !important;
+    color: #9ca3af !important;
+    background: none !important;
+}
+
+body.dark .move-card-btn:hover:enabled {
+    border-color: #6b7280 !important;
+    color: #d1d5db !important;
+    background: #374151 !important;
+}
+
+body.dark .item-mode-badge {
+    color: #a5b4fc !important;
+    background: #312e81 !important;
+}
+
+body.dark .delete-item-btn {
+    background: none !important;
+    border-color: #b91c1c !important;
+    color: #fca5a5 !important;
+}
+
+body.dark .metric-console-block {
+    background: #111827 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .metric-console-block label { color: #d1d5db; }
+
+body.dark .algo-include-label {
+    background: #374151 !important;
+    color: #d1d5db !important;
+}
+
+body.dark .algo-include-label:hover { background: #4b5563 !important; }
+
+body.dark .report-item-controls { color: #d1d5db; }
+body.dark .report-item-controls label { color: #9ca3af; }
+body.dark .control-group { color: #d1d5db; }
+
+body.dark .report-derived-concentration {
+    background: #1e3a5f !important;
+    border-color: #2563eb !important;
+}
+
+body.dark .report-derived-concentration h3 { color: #60a5fa !important; }
+body.dark .report-derived-concentration div { color: #93c5fd !important; }
+
+body.dark .report-analysis {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .report-analysis h3 { color: #d1d5db !important; }
+body.dark .report-analysis table { border-color: #374151 !important; }
+
+body.dark .report-analysis th {
+    background: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f3f4f6 !important;
+}
+
+body.dark .report-analysis td {
+    border-color: #374151 !important;
+    color: #d1d5db !important;
+}

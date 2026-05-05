@@ -42,6 +42,10 @@ async function filterFiles(files) {
                 return arraysEqual(data.headers, expected);
             }
 
+            if (AppState.currentMeasurementMode === "report") {
+                return true;
+            }
+
             return false;
         })
     );
@@ -94,6 +98,24 @@ function updateJSONTable(files) {
     }
 }
 
+function updateReportTable(subjects) {
+    let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="3">Action</th></tr>';
+    document.getElementById("file-search").placeholder = "Search subject folders...";
+    if (subjects && subjects.length > 0) {
+        subjects.forEach(subject => {
+            const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
+            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${subject}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${subject}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${subject}', this)">✏️ Edit</button></td></tr>`;
+        });
+    } else {
+        html += '<tr><td colspan="4">No report subjects found.</td></tr>';
+    }
+    document.getElementById("file-table").innerHTML = html;
+    const searchInput = document.getElementById('file-search');
+    if (searchInput && searchInput.value) {
+        filterTable('file-table', searchInput.value);
+    }
+}
+
 function updateFileTable(files, deselect = false) {
 
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
@@ -123,10 +145,14 @@ function updateFileTable(files, deselect = false) {
 
 function updateFileDisplay(curFile) {
     const displayElement = document.getElementById('selected-file-display');
-    if (curFile)
+    if (curFile) {
         displayElement.innerHTML = `Selected File: ${curFile}`;
-    else
+        if (AppState.currentMeasurementMode === 'report') {
+            if (typeof onReportFolderSelected === 'function') onReportFolderSelected(curFile);
+        }
+    } else {
         displayElement.innerHTML = `No file selected`;
+    }
 }
 
 async function fetchJSONContent(jsonFile, callback) {
