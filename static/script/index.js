@@ -411,7 +411,6 @@ function reportModeBehaviour() {
 
     // Update Header
     document.getElementById("file-selection-header").innerText = "Folder Selection";
-    document.getElementById("file-table-header-name").innerText = "Folder Name";
     document.getElementById("file-search").placeholder = "Search subject folders...";
 }
 
@@ -640,6 +639,9 @@ function switchingModes(mode) {
     AppState.currentFile = null;
     document.getElementById("json-display").textContent = "";
     $hidden(["right-deselect-btn"]);
+
+    const mergeBtn = document.getElementById('merge-file-btn');
+    if (mergeBtn) mergeBtn.textContent = mode === 'report' ? 'Merge Subjects' : 'Merge Files';
 
     if (mode !== 'report') {
         if (typeof clearReportSubject === 'function') clearReportSubject();

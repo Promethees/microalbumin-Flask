@@ -1921,4 +1921,144 @@ body.dark .tooltip-finish-btn {
     .report-header {
         page-break-after: auto !important;
     }
+
+    /* Prevent min-height: 100% from forcing a blank second page */
+    #print-report-container.report-mode {
+        min-height: 0 !important;
+    }
+
+    /* Keep footer attached to the body — don't let it orphan on its own page */
+    .report-footer {
+        page-break-before: avoid !important;
+        break-before: avoid !important;
+        margin-top: 20px !important;
+    }
+}
+
+/* ==========================================================================
+   Dark Mode — Report Console UI
+   ========================================================================== */
+
+/* Container & layout config panel */
+body.dark #report-items-container {
+    background: #111827 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .report-layout-config {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+/* Item cards */
+body.dark .report-item-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f3f4f6;
+}
+
+body.dark .report-item-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+body.dark .report-item-header {
+    background: #374151 !important;
+    border-bottom-color: #4b5563 !important;
+}
+
+/* ▲ / ▼ reorder buttons */
+body.dark .move-card-btn {
+    border-color: #4b5563 !important;
+    color: #9ca3af !important;
+    background: none !important;
+}
+
+body.dark .move-card-btn:hover:enabled {
+    border-color: #6b7280 !important;
+    color: #d1d5db !important;
+    background: #374151 !important;
+}
+
+/* Mode badge */
+body.dark .item-mode-badge {
+    color: #a5b4fc !important;
+    background: #312e81 !important;
+}
+
+/* Delete-item button */
+body.dark .delete-item-btn {
+    background: none !important;
+    border-color: #b91c1c !important;
+    color: #fca5a5 !important;
+}
+
+/* Calibration metric blocks */
+body.dark .metric-console-block {
+    background: #111827 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .metric-console-block label {
+    color: #d1d5db;
+}
+
+body.dark .algo-include-label {
+    background: #374151 !important;
+    color: #d1d5db !important;
+}
+
+body.dark .algo-include-label:hover {
+    background: #4b5563 !important;
+}
+
+/* Measurement item controls panel */
+body.dark .report-item-controls {
+    color: #d1d5db;
+}
+
+body.dark .report-item-controls label {
+    color: #9ca3af;
+}
+
+body.dark .control-group {
+    color: #d1d5db;
+}
+
+/* Derived concentration box */
+body.dark .report-derived-concentration {
+    background: #1e3a5f !important;
+    border-color: #2563eb !important;
+}
+
+body.dark .report-derived-concentration h3 {
+    color: #60a5fa !important;
+}
+
+body.dark .report-derived-concentration div {
+    color: #93c5fd !important;
+}
+
+/* Kinetics analysis table (in preview cards) */
+body.dark .report-analysis {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+body.dark .report-analysis h3 {
+    color: #d1d5db !important;
+}
+
+body.dark .report-analysis table {
+    border-color: #374151 !important;
+}
+
+body.dark .report-analysis th {
+    background: #374151 !important;
+    border-color: #4b5563 !important;
+    color: #f3f4f6 !important;
+}
+
+body.dark .report-analysis td {
+    border-color: #374151 !important;
+    color: #d1d5db !important;
 }

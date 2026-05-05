@@ -1,12 +1,14 @@
 async function generateReport() {
-    // 1. Ask for a title and algorithm (if not already selected)
+    const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
+
+    // 1. Ask for a title (and algorithm only in calibrate mode)
     const { value: formValues } = await Swal.fire({
         title: 'Report Details',
         html: `
             <div style="text-align: left;">
                 <label style="display:block; margin-bottom:5px;">Report Title</label>
                 <input id="swal-input1" class="swal2-input" value="Colorimetric Analysis Report" style="width: 80%; margin: 0 0 15px 0;">
-                
+                ${isCalibrate ? `
                 <label style="display:block; margin-bottom:5px;">Fit Curve for Report</label>
                 <select id="swal-input2" class="swal2-input" style="width: 80%; margin: 0;">
                     <option value="polynomial">polynomial</option>
@@ -14,16 +16,15 @@ async function generateReport() {
                     <option value="logarithmic">logarithmic</option>
                     <option value="exponential">exponential</option>
                     <option value="Michaelis-Menten">Michaelis-Menten</option>
-                </select>
+                </select>` : ''}
             </div>
         `,
         focusConfirm: false,
         showCancelButton: true,
         preConfirm: () => {
-            return [
-                document.getElementById('swal-input1').value,
-                document.getElementById('swal-input2').value
-            ]
+            const title = document.getElementById('swal-input1').value;
+            const algoEl = document.getElementById('swal-input2');
+            return isCalibrate ? [title, algoEl ? algoEl.value : 'linear'] : [title];
         }
     });
 
@@ -44,7 +45,6 @@ async function generateReport() {
     let chartImageSrc = "";
     let concentrationResults = "";
     let analysisSummaries = "";
-    const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
 
     if (isCalibrate && AppState.calibrationDataPoints && AppState.lastAnalyses) {
         // Specialized Calibration Quad-Report
@@ -272,7 +272,7 @@ async function generateReport() {
                 <div style="margin-top:10px; font-size:0.9rem; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <span>Mode: <strong>${measMode}</strong></span>
                     ${isCalibrate ? '' : `<span>Split Mode: <strong>${splitMode}</strong></span>`}
-                    <span>Calibration Fit Type: <strong>${calCurve}</strong></span>
+                    <span>${isCalibrate ? 'Calibration Fit Type' : 'Calibration Curve'}: <strong>${calCurve}</strong></span>
                     <span>Generated: <strong>${timestamp}</strong></span>
                 </div>
             </div>
@@ -420,6 +420,8 @@ async function loadReportItems(subject) {
                 const card = document.createElement('div');
                 card.className = 'report-item-card';
                 card.id = itemID;
+                card.dataset.filename = item.filename;
+                card.dataset.subject = subject;
 
                 let contentHtml = '';
                 if (isCalibrate) {
@@ -451,9 +453,9 @@ async function loadReportItems(subject) {
                                         <div style="height: 100px; margin-bottom: 5px;">
                                             <canvas id="preview-chart-${itemID}-${m.id}"></canvas>
                                         </div>
-                                        <div style="display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.7rem;">
+                                        <div id="${itemID}-${m.id}-algo-checkboxes" style="display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.7rem;">
                                             ${algos.map(a => `
-                                                <label title="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
+                                                <label class="algo-include-label" title="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
                                                     <input type="checkbox" class="algo-include-checkbox" data-filename="${item.filename}" data-metric="${m.id}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
                                                     ${a.label}
                                                 </label>
@@ -523,12 +525,15 @@ async function loadReportItems(subject) {
                 }
 
                 card.innerHTML = `
-                    <div class="report-item-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; margin: -10px -10px 10px -10px; padding: 5px 10px; border-radius: 8px 8px 0 0;">
-                        <label style="font-weight: 700; cursor: pointer;">
+                    <div class="report-item-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; margin: -10px -10px 10px -10px; padding: 5px 10px; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 8px;">
+                        <button class="move-card-btn" onclick="moveCardUp(this)" title="Move up" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▲</button>
+                        <button class="move-card-btn" onclick="moveCardDown(this)" title="Move down" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▼</button>
+                        <label style="font-weight: 700; cursor: pointer; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             <input type="checkbox" class="report-console-item-checkbox" checked data-filename="${item.filename}" data-path="${item.path}" onchange="toggleItemCardOpacity('${itemID}', this.checked)">
                             ${item.filename}
                         </label>
-                        <span style="font-size: 0.8rem; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 10px; font-weight: bold;">${item.metadata.mode || 'Measurement'}</span>
+                        <span class="item-mode-badge" style="font-size: 0.8rem; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 10px; font-weight: bold; flex-shrink: 0;">${item.metadata.mode || 'Measurement'}</span>
+                        <button class="delete-item-btn" data-card-id="${itemID}" data-filename="${item.filename}" title="Remove from subject" onclick="deleteReportItem(this)" style="background: none; border: 1px solid #fca5a5; cursor: pointer; color: #ef4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;">✕ Remove</button>
                     </div>
                     ${contentHtml}
                 `;
@@ -547,6 +552,16 @@ async function loadReportItems(subject) {
 
 function toggleItemCardOpacity(id, checked) {
     document.getElementById(id).style.opacity = checked ? '1' : '0.5';
+}
+
+function _darkScale(overrides = {}) {
+    if (!document.body.classList.contains('dark')) return overrides;
+    return {
+        ...overrides,
+        grid: { ...(overrides.grid || {}), color: '#6b7280' },
+        ticks: { ...(overrides.ticks || {}), color: '#e5e7eb' },
+        title: { ...(overrides.title || {}), color: '#e5e7eb' }
+    };
 }
 
 async function initItemPreview(item, itemID) {
@@ -594,8 +609,8 @@ async function initItemPreview(item, itemID) {
                     options: {
                         responsive: true, maintainAspectRatio: false,
                         scales: {
-                            x: { type: 'linear', display: true },
-                            y: { display: true }
+                            x: _darkScale({ type: 'linear', display: true }),
+                            y: _darkScale({ display: true })
                         },
                         plugins: { legend: { display: false } },
                         animation: false
@@ -639,8 +654,8 @@ async function initItemPreview(item, itemID) {
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     scales: {
-                        x: { type: 'linear', title: { display: true, text: 'Time (s)', font: { size: 10 } }, ticks: { font: { size: 8 } } },
-                        y: { title: { display: true, text: 'Value', font: { size: 10 } }, ticks: { font: { size: 8 } } }
+                        x: _darkScale({ type: 'linear', title: { display: true, text: 'Time (s)', font: { size: 10 } }, ticks: { font: { size: 8 } } }),
+                        y: _darkScale({ title: { display: true, text: 'Value', font: { size: 10 } }, ticks: { font: { size: 8 } } })
                     },
                     plugins: { legend: { display: false } },
                     animation: false
@@ -684,6 +699,20 @@ function updateReportPreview(filename, sourceIdx, visible) {
     config.chart.update();
 }
 
+async function saveReportItemOrder(subject) {
+    const order = Array.from(
+        document.querySelectorAll('#report-items-container .report-item-card[data-filename]')
+    ).map(el => el.dataset.filename);
+    if (!subject || order.length === 0) return;
+    try {
+        await fetch('/save_report_item_order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, order })
+        });
+    } catch (_) { /* non-critical, ignore */ }
+}
+
 async function finalizeReport() {
     const subject = AppState.currentReportSubject;
     const selectedCheckboxes = Array.from(document.querySelectorAll('.report-console-item-checkbox:checked'));
@@ -693,6 +722,9 @@ async function finalizeReport() {
         return;
     }
 
+    // Persist the current drag order before generating
+    await saveReportItemOrder(subject);
+
     window.showSpinner();
     try {
         const includeWatermark = document.getElementById('console-watermark').checked;
@@ -701,7 +733,10 @@ async function finalizeReport() {
 
         let finalHtmlContent = '';
 
-        for (const cb of selectedCheckboxes) {
+        for (let _cbIdx = 0; _cbIdx < selectedCheckboxes.length; _cbIdx++) {
+            const cb = selectedCheckboxes[_cbIdx];
+            if (_cbIdx > 0) finalHtmlContent += `<hr style="margin: 30px 0; border: none; border-top: 1px dashed #ccc;"/>`;
+
             const filename = cb.getAttribute('data-filename');
             const config = window.ReportItemConfig[filename];
             if (!config) continue;
@@ -882,7 +917,24 @@ async function finalizeReport() {
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = 1600; tempCanvas.height = 800;
                     const tempCtx = tempCanvas.getContext('2d');
-                    const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+                    const colors = [
+                        'rgb(75, 192, 192)',
+                        'rgb(255, 99, 132)',
+                        'rgba(190, 136, 9, 1)',
+                        'rgb(54, 162, 235)',
+                        'rgb(153, 102, 255)',
+                        'rgba(139, 144, 75, 1)',
+                        'rgba(228, 87, 246, 1)',
+                        'rgba(44, 136, 115, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(199, 199, 199, 1)',
+                        'rgba(83, 102, 255, 1)',
+                        'rgba(255, 102, 178, 1)',
+                        'rgba(60, 179, 113, 1)',
+                        'rgba(255, 140, 0, 1)',
+                        'rgba(100, 149, 237, 1)',
+                        'rgba(216, 191, 216, 1)'
+                    ];
 
                     const tempChart = new Chart(tempCtx, {
                         type: 'line',
@@ -913,11 +965,13 @@ async function finalizeReport() {
                         ? buildKineticsAnalysisForReport(renderData, visibleTraces, unit, windowSize)
                         : '';
                     finalHtmlContent += `
-                        <div class="report-chart-block">
+                        <div style="margin-bottom: 30px;">
                             <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Measurement Item: ${filename}</h2>
-                            <img src="${img}" style="width:100%; border:1px solid #eee;"/>
-                            <p style="font-size:0.8rem; color:#666; margin-top:5px;">Mode: ${config.metadata.mode || 'N/A'} | Calibration: ${calFile || 'None'}</p>
-                            ${calFile ? `<div class="report-cal-meta" style="background:#f0f7ff; padding:10px; border-left:4px solid #3498db; font-size:0.8rem;">[Applied Calibration: ${calFile}]</div>` : ''}
+                            <div style="page-break-inside: avoid; break-inside: avoid;">
+                                <img src="${img}" style="width:100%; border:1px solid #eee;"/>
+                                <p style="font-size:0.8rem; color:#666; margin-top:5px;">Mode: ${config.metadata.mode || 'N/A'} | Calibration: ${calFile || 'None'}</p>
+                                ${calFile ? `<div class="report-cal-meta" style="background:#f0f7ff; padding:10px; border-left:4px solid #3498db; font-size:0.8rem;">[Applied Calibration: ${calFile}]</div>` : ''}
+                            </div>
                             ${derivedHtml}
                             ${analysisHtml}
                         </div>
@@ -952,36 +1006,37 @@ async function finalizeReport() {
                             ? buildKineticsAnalysisForReport(renderData, [traceIdx], unit, windowSize)
                             : '';
                         finalHtmlContent += `
-                            <div class="report-chart-block" style="margin-bottom: 20px;">
-                                 <img src="${img}" style="width:100%; border:1px solid #eee;"/>
-                                 ${derivedHtml}
-                                 ${analysisHtml}
+                            <div style="margin-bottom: 20px;">
+                                <div style="page-break-inside: avoid; break-inside: avoid;">
+                                    <img src="${img}" style="width:100%; border:1px solid #eee;"/>
+                                </div>
+                                ${derivedHtml}
+                                ${analysisHtml}
                             </div>
                         `;
                         tempChart.destroy();
                     }
                 }
             }
-            finalHtmlContent += `<hr style="margin: 30px 0; border: none; border-top: 1px dashed #ccc;"/>`;
         }
 
         const reportTemplate = `
         <div class="report-header" style="position:relative; z-index:10; display:flex; justify-content:space-between; border-bottom:2px solid #3498db; padding-bottom:20px; margin-bottom:30px;">
-                <div>
-                    <h1 style="margin: 0; font-size: 2rem; color: #3498db;">Easy<span style="color: #ff4444;">OKAPI</span> Report</h1>
-                    <h2 style="margin: 5px 0; font-size: 1.5rem; color:#333;">${reportTitle}</h2>
-                    <p style="margin: 5px 0; color: #666;">Subject: <strong>${subject}</strong></p>
-                    <p style="margin: 5px 0; color: #999; font-size:0.8rem;">Generated on: ${new Date().toLocaleString()}</p>
-                </div>
-                ${includeLogo ? `<img src="/static/cbb.png" style="height: 70px;" />` : ''}
+            <div>
+                <h1 style="margin: 0; font-size: 2rem; color: #3498db;">Easy<span style="color: #ff4444;">OKAPI</span> Report</h1>
+                <h2 style="margin: 5px 0; font-size: 1.5rem; color:#333;">${reportTitle}</h2>
+                <p style="margin: 5px 0; color: #666;">Subject: <strong>${subject}</strong></p>
+                <p style="margin: 5px 0; color: #999; font-size:0.8rem;">Generated on: ${new Date().toLocaleString()}</p>
             </div>
-            ${includeWatermark ? `<img src="/static/cbb.png" class="report-watermark-bg" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); opacity:0.04; width:70%; z-index:1; pointer-events:none;" />` : ''}
-            <div class="report-body" style="position:relative; z-index:10;">
-                ${finalHtmlContent}
-            </div>
-            <div class="report-footer" style="margin-top:50px; text-align:center; font-size:0.75rem; color:#999; border-top:1px solid #eee; padding-top:20px;">
-                Generated by EasyOKAPI Analytical Suite v1.0
-            </div>
+            ${includeLogo ? `<img src="/static/cbb.png" style="height: 70px;" />` : ''}
+        </div>
+        <div class="report-body" style="position:relative; z-index:1;">
+            ${finalHtmlContent}
+        </div>
+        ${includeWatermark ? `<img src="/static/cbb.png" class="report-watermark-bg" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); opacity:0.04; width:70%; z-index:100; pointer-events:none;" />` : ''}
+        <div class="report-footer" style="margin-top:50px; text-align:center; font-size:0.75rem; color:#999; border-top:1px solid #eee; padding-top:20px;">
+            Generated by EasyOKAPI Analytical Suite v1.0
+        </div>
         `;
 
         const printContainer = document.getElementById('print-report-container');
@@ -1093,7 +1148,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
                 rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ng/µL</strong></div>`;
             }
             return `
-                <div style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
+                <div class="report-derived-concentration" style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
                     <h3 style="margin:0 0 8px 0; color:#2980b9;">Derived Concentration</h3>
                     <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">From: <strong>${derivedQuantity}</strong> (per minute conversion applied where applicable)</div>
                     ${rowsHtml}
@@ -1119,7 +1174,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
         }
 
         return `
-            <div style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
+            <div class="report-derived-concentration" style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
                 <h3 style="margin:0 0 8px 0; color:#2980b9;">Derived Concentration</h3>
                 <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">Endpoint: <strong>${json.time} ${timeUnit || 'minute'}</strong></div>
                 ${rowsHtml}
@@ -1255,5 +1310,99 @@ function toggleItemCardOpacity(itemID, checked) {
     if (card) {
         card.style.opacity = checked ? '1' : '0.5';
         card.style.filter = checked ? 'none' : 'grayscale(50%)';
+    }
+}
+
+async function deleteReportItem(btn) {
+    const card = btn.closest('.report-item-card');
+    const cardId = btn.dataset.cardId;
+    const filename = btn.dataset.filename;
+    const subject = card.dataset.subject;
+
+    const result = await Swal.fire({
+        title: 'Remove item?',
+        text: `Remove "${filename}" from this subject? The file will be deleted from disk.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Remove',
+        confirmButtonColor: '#ef4444'
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+        window.showSpinner();
+        const response = await fetch('/delete_report_item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, filename })
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        // Destroy preview charts to free memory before removing DOM node
+        const config = window.ReportItemConfig[filename];
+        if (config) {
+            if (config.chart) config.chart.destroy();
+            if (config.charts) Object.values(config.charts).forEach(c => c.destroy());
+            delete window.ReportItemConfig[filename];
+        }
+        document.getElementById(cardId)?.remove();
+
+        const remaining = document.querySelectorAll('#report-items-container .report-item-card').length;
+        if (remaining === 0) {
+            document.getElementById('report-items-container').innerHTML =
+                '<p style="color: #666;">No items found in this subject folder.</p>';
+        }
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    } finally {
+        window.hideSpinner();
+    }
+}
+
+function initSortableCards(container) {
+    let dragging = null;
+
+    container.addEventListener('dragstart', e => {
+        const card = e.target.closest('.report-item-card');
+        if (!card) return;
+        dragging = card;
+        e.dataTransfer.effectAllowed = 'move';
+        // Defer opacity so the drag image captures the full card
+        setTimeout(() => { card.style.opacity = '0.4'; }, 0);
+    });
+
+    container.addEventListener('dragend', () => {
+        if (dragging) dragging.style.opacity = '';
+        dragging = null;
+    });
+
+    container.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!dragging) return;
+        const card = e.target.closest('.report-item-card');
+        if (!card || card === dragging) return;
+        const { top, height } = card.getBoundingClientRect();
+        if (e.clientY < top + height / 2) {
+            container.insertBefore(dragging, card);
+        } else {
+            container.insertBefore(dragging, card.nextSibling);
+        }
+    });
+}
+
+function moveCardUp(btn) {
+    const card = btn.closest('.report-item-card');
+    const prev = card.previousElementSibling;
+    if (prev && prev.classList.contains('report-item-card')) {
+        card.parentNode.insertBefore(card, prev);
+    }
+}
+
+function moveCardDown(btn) {
+    const card = btn.closest('.report-item-card');
+    const next = card.nextElementSibling;
+    if (next && next.classList.contains('report-item-card')) {
+        card.parentNode.insertBefore(next, card);
     }
 }

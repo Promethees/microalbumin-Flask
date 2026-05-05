@@ -133,15 +133,15 @@ function updateJSONTable(files) {
 }
 
 function updateReportTable(subjects) {
-    let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="4">Action</th></tr>';
+    let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="3">Action</th></tr>';
     document.getElementById("file-search").placeholder = "Search subject folders...";
     if (subjects && subjects.length > 0) {
         subjects.forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${subject}', this)">📁 Select Subject</button></td><td><button onclick="copyReportSubject('${subject}')">📄 Copy</button></td><td><button onclick="deleteReportSubject('${subject}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${subject}', this)">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${subject}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${subject}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${subject}', this)">✏️ Edit</button></td></tr>`;
         });
     } else {
-        html += '<tr><td colspan="5">No report subjects found.</td></tr>';
+        html += '<tr><td colspan="4">No report subjects found.</td></tr>';
     }
     document.getElementById("file-table").innerHTML = html;
     const searchInput = document.getElementById('file-search');

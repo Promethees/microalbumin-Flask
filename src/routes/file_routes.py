@@ -650,8 +650,15 @@ def get_report_items():
     if not os.path.exists(subject_path):
         return jsonify({"status": "error", "message": "Subject not found"}), 404
         
-    # List supported data files (CSV, JSON)
-    files = [f for f in os.listdir(subject_path) if f.endswith('.csv') or (f.endswith('.json') and not f.endswith('.meta.json'))]
+    # List supported data files (CSV, JSON) — exclude order.json and meta files
+    files = [
+        f for f in os.listdir(subject_path)
+        if f.endswith('.csv') or (
+            f.endswith('.json')
+            and not f.endswith('.meta.json')
+            and f != 'order.json'
+        )
+    ]
     items = []
     for f in files:
         meta_f = Path(f).stem + ".meta.json"
@@ -661,16 +668,24 @@ def get_report_items():
             with open(meta_p, 'r', encoding='utf-8') as meta_file:
                 import json
                 meta = json.load(meta_file)
-        
+
         items.append({
             "filename": f,
             "metadata": meta,
             "path": os.path.join(subject_path, f)
         })
-        
-    # Sort items by filename or meta timestamp
-    items.sort(key=lambda x: x.get('metadata', {}).get('timestamp', x['filename']))
-    
+
+    # Apply saved order if present, otherwise fall back to timestamp/name sort
+    order_path = os.path.join(subject_path, 'order.json')
+    if os.path.exists(order_path):
+        with open(order_path, 'r', encoding='utf-8') as of:
+            import json as _json
+            saved_order = _json.load(of)
+        order_map = {name: i for i, name in enumerate(saved_order)}
+        items.sort(key=lambda x: order_map.get(x['filename'], len(saved_order)))
+    else:
+        items.sort(key=lambda x: x.get('metadata', {}).get('timestamp', x['filename']))
+
     return jsonify({"status": "success", "items": items})
 
 
@@ -776,19 +791,78 @@ def merge_report_subjects(validated_data):
                 return jsonify({'status': 'error', 'message': f"Subject not found: {sub}"}), 404
 
             for fname in os.listdir(src_dir):
+                # Skip order.json and meta files — meta files are handled alongside their CSV
+                if fname == 'order.json' or fname.endswith('.meta.json'):
+                    continue
                 src_file = os.path.join(src_dir, fname)
                 if not os.path.isfile(src_file):
                     continue
+
+                # Resolve destination filename with conflict avoidance
+                dst_fname = fname
+                dst_file = os.path.join(out_path, dst_fname)
                 base = Path(fname).stem
                 ext = Path(fname).suffix
-                dst_file = os.path.join(out_path, fname)
                 counter = 1
                 while os.path.exists(dst_file):
-                    dst_file = os.path.join(out_path, f"{base}_{sub}_{counter}{ext}")
+                    dst_fname = f"{base}_{sub}_{counter}{ext}"
+                    dst_file = os.path.join(out_path, dst_fname)
                     counter += 1
                 shutil.copy2(src_file, dst_file)
 
+                # Copy paired meta file using the resolved destination name so the
+                # pairing is preserved even when the CSV was renamed
+                meta_src = os.path.join(src_dir, Path(fname).stem + '.meta.json')
+                if os.path.isfile(meta_src):
+                    shutil.copy2(meta_src, os.path.join(out_path, Path(dst_fname).stem + '.meta.json'))
+
         return jsonify({'status': 'success', 'message': f"Merged {len(safe_subjects)} subjects into '{output_subject}'"})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@file_bp.route('/save_report_item_order', methods=['POST'])
+@validate_json({'subject': str, 'order': list})
+def save_report_item_order(validated_data):
+    try:
+        subject = _safe_subject_name(validated_data['subject'])
+        order = validated_data['order']
+        for fname in order:
+            if any(x in str(fname) for x in ('..', '/', '\\', '\x00')):
+                return jsonify({'status': 'error', 'message': f'Invalid filename: {fname}'}), 400
+        subject_path = os.path.join(state.report_root_path, subject)
+        if not os.path.isdir(subject_path):
+            return jsonify({'status': 'error', 'message': 'Subject not found'}), 404
+        order_path = os.path.join(subject_path, 'order.json')
+        with open(order_path, 'w', encoding='utf-8') as f:
+            import json as _json
+            _json.dump(order, f)
+        return jsonify({'status': 'success'})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@file_bp.route('/delete_report_item', methods=['POST'])
+@validate_json({'subject': str, 'filename': str})
+def delete_report_item(validated_data):
+    try:
+        subject = _safe_subject_name(validated_data['subject'])
+        filename = validated_data['filename']
+        if any(x in filename for x in ('..', '/', '\\', '\x00')):
+            return jsonify({'status': 'error', 'message': 'Invalid filename'}), 400
+        subject_path = os.path.join(state.report_root_path, subject)
+        target = os.path.join(subject_path, filename)
+        if not os.path.isfile(target):
+            return jsonify({'status': 'error', 'message': 'File not found'}), 404
+        os.remove(target)
+        meta_path = os.path.join(subject_path, Path(filename).stem + '.meta.json')
+        if os.path.exists(meta_path):
+            os.remove(meta_path)
+        return jsonify({'status': 'success', 'message': f"Removed '{filename}' from '{subject}'"})
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
     except Exception as e:
