@@ -342,7 +342,8 @@ function kineticsModeBehaviour() {
         'select-time-point',
         'select-regress-algo',
         'export-coef',
-        'func-desc'
+        'func-desc',
+        'report-console-section'
     ];
 
     const removeHidden = [
@@ -357,6 +358,8 @@ function kineticsModeBehaviour() {
         'normalize-mode-section',
         'select-source-to-export',
         'split-source-section',
+        'top-left-dir-section',
+        'main-directory-section',
     ];
 
     $hidden(addHidden, true);
@@ -472,14 +475,17 @@ function calModeBehaviour() {
         'normalize-mode-section',
         'select-source-to-export',
         'source-options',
-        'num-sources-section'
+        'num-sources-section',
+        'report-console-section'
     ];
 
     const removeHidden = [
         'cal-json-exp-section',
         'select-regress-algo',
         'export-coef',
-        'func-desc'
+        'func-desc',
+        'top-left-dir-section',
+        'main-directory-section'
     ];
 
     $hidden(addHidden, true);
