@@ -2,6 +2,8 @@ import uuid
 import json
 import os
 from pathlib import Path
+from threading import Lock
+from collections import OrderedDict
 from flask import session
 from typing import Dict, Optional, Any
 from contextlib import contextmanager
@@ -29,8 +31,30 @@ if Config.REDIS_URL and redis:
 elif Config.REDIS_URL and not redis:
     print("[WARN] REDIS_URL set but 'redis' package not installed. Falling back to memory.")
 
-# Global in-memory storage (used as fallback or for local dev)
-USER_DATA: Dict[str, dict] = {}
+# Bounded LRU in-memory storage (fallback when Redis is unavailable).
+# Caps at 100 users to prevent unbounded memory growth.
+class _BoundedDict:
+    def __init__(self, maxsize: int = 100):
+        self._data: OrderedDict = OrderedDict()
+        self._maxsize = maxsize
+        self._lock = Lock()
+
+    def get(self, key, default=None):
+        with self._lock:
+            if key not in self._data:
+                return default
+            self._data.move_to_end(key)
+            return self._data[key]
+
+    def __setitem__(self, key, value):
+        with self._lock:
+            if key in self._data:
+                self._data.move_to_end(key)
+            self._data[key] = value
+            while len(self._data) > self._maxsize:
+                self._data.popitem(last=False)
+
+USER_DATA: _BoundedDict = _BoundedDict(maxsize=100)
 
 # ------------------------------------------------------------------
 # 2. Core Redis Helpers

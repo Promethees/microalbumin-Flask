@@ -1,6 +1,11 @@
 from threading import Lock
+from collections import defaultdict
 
-user_csv_lock = Lock()  # Global lock for CSV access
+_user_locks: defaultdict = defaultdict(Lock)
+
+def get_user_lock(uid: str) -> Lock:
+    """Return a per-user lock so concurrent exports never block each other."""
+    return _user_locks[uid]
 
 # Helper: Parse metadata from content
 def parse_metadata(content):

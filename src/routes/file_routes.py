@@ -5,7 +5,8 @@ import re
 import json
 from pathlib import Path
 from werkzeug.utils import secure_filename
-from user_data import get_user_data, save_user_data, user_data_session, update_file_metadata
+from user_data import get_user_data, get_user_id, save_user_data, user_data_session, update_file_metadata
+from export_data import get_user_lock
 from get_next_filename import get_next_filename
 from export_cal_json import replace_empty
 from file_merge import merge_csv_contents
@@ -212,35 +213,34 @@ def upload_file():
             content = uploaded_file.read().decode('utf-8')
         except UnicodeDecodeError:
             return jsonify({'status': 'error', 'message': 'File must be UTF-8 encoded text'}), HTTPStatus.BAD_REQUEST
-        user_data = get_user_data()
+        uid = get_user_id()
         message_suffix = ''
 
-        if tabletype == '#json-table':
-            if not mode:
-                return jsonify({'status': 'error', 'message': 'Mode is required for JSON uploads'}), HTTPStatus.BAD_REQUEST
-            if mode not in user_data['json']:
-                user_data['json'][mode] = {}
-            store = user_data['json'][mode]
-            if filename in store:
-                base, ext = os.path.splitext(filename)
-                filename = get_next_filename(ext, list(store.keys()), base)
-                message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
-            store[filename] = content
-            socketio.emit('update_json', {'mode': mode})
-            from user_data import save_user_data
-            save_user_data(user_data)
-        else:
-            store = user_data['csv']
-            if filename in store:
-                base, ext = os.path.splitext(filename)
-                filename = get_next_filename(ext, list(store.keys()), base)
-                message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
-            store[filename] = content
-            # Update cache
-            update_file_metadata(filename, content)
-            socketio.emit('update_csv')
-            from user_data import save_user_data
-            save_user_data(user_data)
+        with get_user_lock(uid):
+            user_data = get_user_data()
+            if tabletype == '#json-table':
+                if not mode:
+                    return jsonify({'status': 'error', 'message': 'Mode is required for JSON uploads'}), HTTPStatus.BAD_REQUEST
+                if mode not in user_data['json']:
+                    user_data['json'][mode] = {}
+                store = user_data['json'][mode]
+                if filename in store:
+                    base, ext = os.path.splitext(filename)
+                    filename = get_next_filename(ext, list(store.keys()), base)
+                    message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
+                store[filename] = content
+                save_user_data(user_data)
+                socketio.emit('update_json', {'mode': mode})
+            else:
+                store = user_data['csv']
+                if filename in store:
+                    base, ext = os.path.splitext(filename)
+                    filename = get_next_filename(ext, list(store.keys()), base)
+                    message_suffix = f' (auto-renamed to avoid overwrite). New name is {filename}'
+                store[filename] = content
+                update_file_metadata(filename, content)
+                save_user_data(user_data)
+                socketio.emit('update_csv')
 
         return jsonify({'status': 'success', 'message': f'File "{filename}" uploaded successfully{message_suffix}.', 'filename': filename}), HTTPStatus.OK
     except Exception as e:

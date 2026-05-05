@@ -4,11 +4,11 @@ import pandas as pd
 from io import StringIO
 import json
 import csv
-from user_data import get_user_data
+from user_data import get_user_data, get_user_id
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
 from export_data import (
-    parse_metadata, is_metadata_consistent, write_metadata, write_headers, 
-    extract_single_entry, sort_csv_content, user_csv_lock
+    parse_metadata, is_metadata_consistent, write_metadata, write_headers,
+    extract_single_entry, sort_csv_content, get_user_lock
 )
 from get_next_filename import get_next_filename
 
@@ -156,7 +156,7 @@ def export_data():
     time_unit = "minute" if meas_mode == "point" else "minutes"
     full_name = f"{file_name}_{meas_mode}.csv"
     try:
-        with user_csv_lock:
+        with get_user_lock(get_user_id()):
             content = user_data['csv'].get(full_name)
             file_exists = content is not None
             if file_exists:
