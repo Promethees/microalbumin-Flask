@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response
+from flask import Flask, render_template, request, jsonify, make_response, send_from_directory
 import os
 import sys
 from flask_socketio import SocketIO
@@ -84,6 +84,24 @@ def index():
                          delimiter=delimiter,
                          production_mode= app.config['PRODUCTION_MODE']))
     return response
+
+_OFFLINE_DOWNLOADS = {
+    'mac': ('EasyOKAPI.dmg',         'EasyOKAPI.dmg'),
+    'win': ('EasyOKAPI-Setup.exe',   'EasyOKAPI-Setup.exe'),
+}
+
+@app.route('/download/<platform>')
+def download_offline(platform):
+    if platform not in _OFFLINE_DOWNLOADS:
+        return jsonify({'status': 'error', 'message': 'Unknown platform'}), 404
+    filename, download_name = _OFFLINE_DOWNLOADS[platform]
+    try:
+        return send_from_directory('static/downloads', filename,
+                                   as_attachment=True,
+                                   download_name=download_name)
+    except FileNotFoundError:
+        return jsonify({'status': 'error',
+                        'message': 'Download not yet available — check back soon.'}), 404
 
 @app.route("/api/current_output", methods=["GET"])
 def api_current_output():
