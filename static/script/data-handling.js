@@ -310,7 +310,7 @@ function deselectFile(tableSelector = "#file-table") {
         AppState.currentJSON = null;
         AppState.currentJSONcontent = null;
 
-        $hidden(["json-display"], true);
+        $hidden(["json-display", "top-right"], true);
         $text("json-display", "");
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
 
