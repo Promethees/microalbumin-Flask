@@ -557,13 +557,35 @@ function toggleItemCardOpacity(id, checked) {
 }
 
 function _darkScale(overrides = {}) {
-    if (!document.body.classList.contains('dark')) return overrides;
+    const isLight = document.body.classList.contains('light');
     return {
         ...overrides,
-        grid: { ...(overrides.grid || {}), color: '#6b7280' },
-        ticks: { ...(overrides.ticks || {}), color: '#e5e7eb' },
-        title: { ...(overrides.title || {}), color: '#e5e7eb' }
+        grid: { ...(overrides.grid || {}), color: isLight ? '#d1d5db' : '#6b7280' },
+        ticks: { ...(overrides.ticks || {}), color: isLight ? '#374151' : '#e5e7eb' },
+        title: { ...(overrides.title || {}), color: isLight ? '#111827' : '#e5e7eb' }
     };
+}
+
+function updateReportChartsTheme() {
+    const isLight = document.body.classList.contains('light');
+    const gridColor  = isLight ? '#d1d5db' : '#6b7280';
+    const tickColor  = isLight ? '#374151' : '#e5e7eb';
+    const titleColor = isLight ? '#111827' : '#e5e7eb';
+
+    Object.values(window.ReportItemConfig || {}).forEach(config => {
+        const charts = [];
+        if (config.chart)  charts.push(config.chart);
+        if (config.charts) charts.push(...Object.values(config.charts));
+
+        charts.forEach(chart => {
+            Object.values(chart.options.scales || {}).forEach(scale => {
+                if (scale.grid)  scale.grid.color  = gridColor;
+                if (scale.ticks) scale.ticks.color = tickColor;
+                if (scale.title) scale.title.color = titleColor;
+            });
+            chart.update('none');
+        });
+    });
 }
 
 async function initItemPreview(item, itemID) {
