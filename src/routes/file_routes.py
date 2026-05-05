@@ -5,7 +5,7 @@ import re
 import json
 from pathlib import Path
 from werkzeug.utils import secure_filename
-from user_data import get_user_data, save_user_data, user_data_session
+from user_data import get_user_data, save_user_data, user_data_session, update_file_metadata
 from get_next_filename import get_next_filename
 from export_cal_json import replace_empty
 from file_merge import merge_csv_contents
@@ -88,7 +88,7 @@ def edit_file():
                 def key_func(row):
                     try:
                         return float(row[0]) if row[0] != 'NONE' else float('inf')
-                    except:
+                    except (ValueError, IndexError, TypeError):
                         return float('inf')
                 parsed_rows.sort(key=key_func)
                 new_rows = [','.join(r) for r in parsed_rows]
@@ -201,7 +201,17 @@ def upload_file():
             return jsonify({'status': 'error', 'message': 'File and tabletype are required'}), HTTPStatus.BAD_REQUEST
 
         filename = secure_filename(uploaded_file.filename)
-        content = uploaded_file.read().decode('utf-8')
+        if not filename:
+            return jsonify({'status': 'error', 'message': 'Invalid filename'}), HTTPStatus.BAD_REQUEST
+        ext = os.path.splitext(filename)[1].lower()
+        if tabletype == '#json-table' and ext != '.json':
+            return jsonify({'status': 'error', 'message': 'Only .json files are allowed'}), HTTPStatus.BAD_REQUEST
+        if tabletype != '#json-table' and ext != '.csv':
+            return jsonify({'status': 'error', 'message': 'Only .csv files are allowed'}), HTTPStatus.BAD_REQUEST
+        try:
+            content = uploaded_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            return jsonify({'status': 'error', 'message': 'File must be UTF-8 encoded text'}), HTTPStatus.BAD_REQUEST
         user_data = get_user_data()
         message_suffix = ''
 

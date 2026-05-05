@@ -25,6 +25,11 @@ from user_data import (
 from config import Config
 
 
+def _escape_drive_query(value: str) -> str:
+    """Escape a string for safe interpolation into a Drive API query."""
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
 def get_drive_service(user_id: str = None):
     """
     Get authenticated Google Drive service for user.
@@ -132,7 +137,7 @@ def list_folders(service, parent_id: str = 'root', max_results: int = 100) -> Li
     Returns list of {id, name, modifiedTime}
     """
     try:
-        query = f"mimeType='application/vnd.google-apps.folder' and '{parent_id}' in parents and trashed=false"
+        query = f"mimeType='application/vnd.google-apps.folder' and '{_escape_drive_query(parent_id)}' in parents and trashed=false"
         
         results = service.files().list(
             q=query,
@@ -181,10 +186,10 @@ def list_files(service, folder_id: str, mime_type: str = None) -> List[Dict]:
     Optionally filter by mime_type (e.g., 'text/csv', 'application/json')
     """
     try:
-        query = f"'{folder_id}' in parents and trashed=false"
-        
+        query = f"'{_escape_drive_query(folder_id)}' in parents and trashed=false"
+
         if mime_type:
-            query += f" and mimeType='{mime_type}'"
+            query += f" and mimeType='{_escape_drive_query(mime_type)}'"
         
         results = service.files().list(
             q=query,
@@ -209,7 +214,7 @@ def upload_file(service, filename: str, content: str, folder_id: str, mime_type:
     try:
         # Check if file already exists in folder
         existing_files = service.files().list(
-            q=f"name='{filename}' and '{folder_id}' in parents and trashed=false",
+            q=f"name='{_escape_drive_query(filename)}' and '{_escape_drive_query(folder_id)}' in parents and trashed=false",
             fields="files(id)"
         ).execute().get('files', [])
         

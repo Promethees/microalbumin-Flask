@@ -33,6 +33,20 @@ def auth_google_callback():
         code = request.args.get('code')
         state = request.args.get('state')
         
+        # Validate state FIRST before touching the session
+        pending_state = get_pending_oauth_state()
+        if state != pending_state:
+            debug_info = {
+                'url_state': state,
+                'pending_server_state': pending_state,
+                'session_content': {k: v for k, v in session.items() if k != '_id'}
+            }
+            return render_template('callback.html',
+                                status='error',
+                                message='Invalid state parameter',
+                                debug=debug_info), 400
+
+        # State is valid — safe to recover the session
         if state and '|' in state:
             parts = state.split('|')
             if len(parts) >= 2:
@@ -41,19 +55,7 @@ def auth_google_callback():
                 if not current_uid or current_uid != recovered_uid:
                     print(f"[INFO] Recovering session for user: {recovered_uid}")
                     session['user_id'] = recovered_uid
-        
-        pending_state = get_pending_oauth_state()
-        if state != pending_state:
-            debug_info = {
-                'url_state': state,
-                'pending_server_state': pending_state, 
-                'session_content': {k: v for k, v in session.items() if k != '_id'}
-            }
-            return render_template('callback.html', 
-                                status='error', 
-                                message='Invalid state parameter', 
-                                debug=debug_info), 400
-        
+
         credentials = exchange_code_for_credentials(code, state)
         set_drive_credentials(credentials.to_json())
         return render_template('callback.html', status='success')
