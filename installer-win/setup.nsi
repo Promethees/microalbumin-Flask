@@ -3,7 +3,10 @@
 
 ; Define the application name and version
 !define APP_NAME "EasyOKAPI"
-!define APP_VERSION "1.0.3"
+; APP_VERSION must be passed at compile time: makensis /DAPP_VERSION=x.x.x setup.nsi
+!ifndef APP_VERSION
+  !error "APP_VERSION is not defined. Pass it with: makensis /DAPP_VERSION=x.x.x setup.nsi"
+!endif
 !define INSTALL_DIR "$PROGRAMFILES\EasyOKAPI"
 !define RUNNER_NAME "${APP_NAME}" 
 !define MUI_ICON "setup.ico"

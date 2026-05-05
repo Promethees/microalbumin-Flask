@@ -1,15 +1,18 @@
 #!/bin/bash
 
 # Configuration
-APP_NAME="EasySensorKit"
-VERSION="v1.0.3"
-DMG_NAME="${APP_NAME}_${VERSION}.dmg"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
+APP_NAME="EasyOKAPI"
 SOURCE_DIR="installer-mac"
 TMP_DIR="tmp_dmg_root"
 
-# Get the script's directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
+if [ -z "${APP_VERSION:-}" ]; then
+    echo "❌ APP_VERSION is not set. This script must be run from the GitHub Actions workflow."
+    exit 1
+fi
+VERSION="v${APP_VERSION}"
+DMG_NAME="${APP_NAME}_${VERSION}.dmg"
 
 echo "🚀 Starting DMG build for $APP_NAME ($VERSION)..."
 

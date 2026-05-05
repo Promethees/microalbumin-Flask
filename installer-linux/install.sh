@@ -62,7 +62,8 @@ fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-VERSION_TAG="v1.0.3"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION_TAG="__APP_VERSION__"
 INSTALL_DIR="/opt/EasyOKAPI"
 REPO_URL="https://github.com/Promethees/microalbumin-Flask.git"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
@@ -264,7 +265,6 @@ update-desktop-database /usr/share/applications/ 2>/dev/null || true
 echo "✅ Desktop entry installed."
 
 # ── Step 12: Copy run/uninstall scripts into install dir ─────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
 cp "$SCRIPT_DIR/uninstall.sh"  "$INSTALL_DIR/uninstall.sh"
 chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"

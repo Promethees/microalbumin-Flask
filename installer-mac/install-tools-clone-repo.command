@@ -17,8 +17,8 @@ if [ -z "$CURRENT_USER" ]; then
     exit 1
 fi
 
-# Define version tag
-VERSION_TAG="v1.0.3"
+# Version is substituted by the GitHub Actions build before packaging
+VERSION_TAG="__APP_VERSION__"
 
 # Set Homebrew installation directory
 HOMEBREW_PREFIX="/Users/$CURRENT_USER/homebrew"

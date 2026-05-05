@@ -59,7 +59,8 @@ fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-VERSION_TAG="v1.0.3"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION_TAG="__APP_VERSION__"
 INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"

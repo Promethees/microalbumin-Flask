@@ -1,13 +1,17 @@
 #!/bin/bash
 
 # Configuration
-APP_NAME="EasyOKAPI"
-VERSION="v1.0.3"
-TARBALL_NAME="${APP_NAME}_linux_${VERSION}.tar.gz"
-SOURCE_DIR="installer-linux"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+APP_NAME="EasyOKAPI"
+SOURCE_DIR="installer-linux"
+
+if [ -z "${APP_VERSION:-}" ]; then
+    echo "❌ APP_VERSION is not set. This script must be run from the GitHub Actions workflow."
+    exit 1
+fi
+VERSION="v${APP_VERSION}"
+TARBALL_NAME="${APP_NAME}_linux_${VERSION}.tar.gz"
 
 echo "🚀 Starting Linux tarball build for $APP_NAME ($VERSION)..."
 

@@ -18,8 +18,8 @@ if "%~2"=="" (
     exit /b 1
 )
 
-:: Set Version tag
-set "VERSION_TAG=v1.0.3"
+:: Version is substituted by the GitHub Actions build before packaging
+set "VERSION_TAG=__APP_VERSION__"
 
 :: Set installation directory and token
 set "INSTALL_DIR=%~1"
