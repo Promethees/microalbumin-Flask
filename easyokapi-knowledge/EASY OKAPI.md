@@ -3,7 +3,7 @@
 This file serves as the primary orientation for any AI agent or developer regarding the **Main** branch of the `microalbumin-Flask` project. **Before writing code, study the relationships and file structures documented here.**
 
 ## 1. Project Overview
-The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI).
+The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.0.3**.
 It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over USB/Serial connection using HID. 
 
 The application provides a Web GUI (via Flask templates and vanilla JavaScript) for users to:
@@ -11,6 +11,7 @@ The application provides a Web GUI (via Flask templates and vanilla JavaScript) 
 2. Browse local directories to view recorded `.csv` data.
 3. Conduct analysis and generate Standard Curves based on measurement modes (`kinetics`, `point`, `calibrate`).
 4. Perform local file operations (copy, edit, delete `.csv` and `.json` standard curve files).
+5. Generate, save, and manage HTML analysis reports organized by subject.
 
 ## 2. Architecture Overview
 
@@ -19,37 +20,53 @@ graph TD
     Device((PyBadge/Colorimeter)) -->|USB/Serial HID| Logger[[log_hid_data*.py]]
     Logger -->|Logs to CSV via Subprocess| FileSys[(Local Filesystem)]
     
-    UI[Frontend HTML/JS] -->|AJAX HTTP| API(Flask API Endpoints)
+    UI[Frontend HTML/JS] -->|AJAX HTTP| API(Flask Blueprints)
     
     API --> Main[[main.py]]
     
-    Main --> Hardware[[src/send_command.py]]
-    Main --> FileMod[[src/export_data.py]]
-    Main --> PathMgmt[[src/file_path.py]]
-    
+    Main --> CoreBP[[routes/core_routes.py]]
+    Main --> FileBP[[routes/file_routes.py]]
+    Main --> HardBP[[routes/hardware_routes.py]]
+    Main --> MathBP[[routes/math_routes.py]]
+
+    CoreBP --> State[[src/state.py]]
+    FileBP --> State
+    HardBP --> State
+    MathBP --> MathOps[[src/math_ops.py]]
+
+    FileBP --> FileSys
+    CoreBP --> PathMgmt[[src/file_path.py]]
+    HardBP --> Hardware[[src/send_command.py]]
     Hardware --> Device
     Main -->|Dispatches Subprocess| Logger
-    FileMod --> FileSys
-    PathMgmt --> FileSys
 ```
 
-### 2.1 Backend (`main.py` — single entry point, ~1132 lines)
+### 2.1 Backend (`main.py` — 197-line thin entry point)
 
-| Region | Routes | Consumer |
-|---|---|---|
-| Region 1 | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_parents`, `/get_children`, `/get_json_cal` | `index.js` |
-| Region 2 | `/get_json_content`, `/get_csv_headers`, `/api/current_output` | `navigation.js` |
-| Region 3 | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
-| Region 4 | `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs` | `data-handling.js`, `edit-file.js`, `data-display.js` |
+`main.py` handles only: imports, startup progress reporting, CLI argument parsing, blueprint registration, browser launch, atexit cleanup, signal handlers, and `app.run()`.
 
-* **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem using standard Python libraries.
-* **Auto-browser launch**: `browser_mgt.py` natively opens the default browser upon server init.
+**All routes live in Flask blueprints under `src/routes/`:**
+
+| Blueprint | File | Routes | Frontend Consumer |
+|---|---|---|---|
+| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_parents`, `/get_children`, `/get_json_cal`, `/get_report_subjects` | `index.js`, `report.js` |
+| `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/get_calibration_json_list`, `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js`, `report.js` |
+| `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
+| `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
+
+* **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
+* **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init.
 * **Single-user process**: No isolation, no sessions, straight port serving.
+* **Startup progress reporter**: Writes `pct label\n` lines to `/tmp/easyokapi_progress.pipe` (Mac) or `%TEMP%\easyokapi_progress.txt` (Windows) for launch-script progress bars.
+* **CLI flags**: `--port` (default 5099), `--alias` (default `easyokapi.com`), `--verbose` / `-v`, `--mem-monitor`.
 
 ### 2.2 Backend Modules (`src/`)
 
 | Module | Purpose |
 |---|---|
+| `state.py` | **Global state singleton**: `process`, `monitor_thread`, `args`, `script_dir`, `log_file`, `json_root_path`, `report_root_path`, `os_name`, `delimiter`, `PRODUCTION_MODE` |
+| `validators.py` | `@validate_json(schema)` decorator — validates and coerces JSON request payloads; injects `validated_data` kwarg into route handlers |
+| `math_ops.py` | Server-side regression: `calculate_coef_and_rsquared`, `calculate_kinetics_quantities`, `map_duplicates`, `get_rsquared_threshold` — uses `scipy.optimize.curve_fit` and `numpy` |
 | `file_path.py` | Filesystem directory browsing: `get_directory`, `browse_directory`, `get_parent_directory`, `get_child_directories` |
 | `file.py` | File operations: `get_file_list` (glob), `get_dynamic_data` (parse CSV/JSON from disk), `merge_csv_files`, `replace_empty` |
 | `file_operations.py` | `remove_csv_columns` — removes columns from CSV files on disk, renumbers `Value:` columns |
@@ -63,11 +80,12 @@ graph TD
 | `mode.py` | Returns available measurement modes: `kinetics`, `point`, `calibrate` |
 | `quantity.py` | Returns available quantity options for kinetics analysis |
 | `range.py` | Returns display range input configuration |
+| `routes/__init__.py` | Empty package marker |
 
 ### 2.3 HID Data Collection (`log_hid_data.py`)
 Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB connection, spawning into log files configured via parameters.
 
-### 2.4 Frontend (`static/script/` — 11 JS files)
+### 2.4 Frontend (`static/script/` — 12 JS files)
 
 | File | Responsibility |
 |---|---|
@@ -79,8 +97,9 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 | `data-handling.js` | File select/deselect/delete/copy, data fetching, export logic |
 | `data-display.js` | Chart rendering orchestration, multi-source handling, calibration routines |
 | `generate-chart.js` | Chart.js chart creation, dataset construction, annotations |
-| `calculate.js` | Math: regression (linear, polynomial, logarithmic, exponential, Michaelis-Menten), R² |
+| `calculate.js` | Math: regression (linear, polynomial, logarithmic, exponential, Michaelis-Menten), R²; calls `/calculate_coef_and_rsquared` for server-side computation |
 | `edit-file.js` | SweetAlert2-based file editor modal (CSV and JSON), column operations |
+| `report.js` | Report generation (`generateReport`), subject CRUD UI (create/rename/copy/delete subjects, export to subject, view items) |
 | `user-guide.js` | Interactive step-by-step user guide with spotlight overlay |
 
 ### 2.5 Templates (`templates/`)
@@ -92,9 +111,38 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 
 ---
 
-## 3. Installation & Startup
+## 3. Report System
 
-### 3.1 Mac
+Reports are generated as standalone HTML files and organized under `report/<subject>/`.
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/get_report_subjects` | GET | List subject subdirectories in `report/` |
+| `/save_report` | POST | Save HTML report to `report/<filename>/` |
+| `/export_to_report` | POST | Copy a report HTML file into a named subject folder |
+| `/get_report_items` | GET | List HTML files within a subject folder |
+| `/delete_report_subject` | POST | Delete a subject folder and all its reports |
+| `/copy_report_subject` | POST | Duplicate a subject folder |
+| `/rename_report_subject` | POST | Rename a subject folder |
+
+---
+
+## 4. Math API
+
+Regression is computed **server-side** via `math_ops.py` (scipy + numpy), exposed as REST endpoints. The JS client calls these for calibration and kinetics analysis.
+
+| Route | Method | Payload | Returns |
+|---|---|---|---|
+| `/calculate_coef_and_rsquared` | POST | `{x, y, regress_algo}` | `{slope, rSquared, coefficients}` |
+| `/calculate_kinetics_quantities` | POST | `{XColumn, YColumn, window_size}` | kinetics analysis object |
+
+Supported algorithms: `linear`, `polynomial`, `logarithmic`, `exponential`, `Michaelis-Menten`.
+
+---
+
+## 5. Installation & Startup
+
+### 5.1 Mac
 ```bash
 # Option A: Installer (.dmg)
 # Option B: Scripts
@@ -103,7 +151,7 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 ./setup-3-run.command             # Start the application
 ```
 
-### 3.2 Windows
+### 5.2 Windows
 Requires `libusbK` driver installed via Zadig for PyBadge HID access.
 ```cmd
 startwindow-1-git.bat
@@ -112,18 +160,22 @@ startwindow-3-python.bat
 startwindow-4-venv-run.bat
 ```
 
-### 3.3 Direct Python
+### 5.3 Direct Python
 ```bash
 python main.py --port 5099 --alias easyokapi.com
+python main.py --verbose          # show HTTP logs + backend prints
+python main.py --mem-monitor      # enable tracemalloc memory growth tracking
 ```
 
 ---
 
-## 4. Directory Structure (Main Branch)
+## 6. Directory Structure (Main Branch)
 
 ```
 microalbumin-Flask/
-├── main.py                     # Flask app entry point (all routes)
+├── CLAUDE.md                   # Claude Code entry point
+├── Rule.md                     # AI coding rules
+├── main.py                     # Flask app entry point (197 lines, blueprint registration only)
 ├── log_hid_data.py             # HID data collection (Mac, hidapi)
 ├── log_hid_data_pyusb.py       # HID data collection (Windows, pyusb)
 ├── requirements.txt            # Python dependencies
@@ -132,21 +184,56 @@ microalbumin-Flask/
 ├── startwindow-*.bat           # Windows utility startup scripts
 ├── installer-mac/              # Mac .dmg installer assets
 ├── installer-win/              # Windows .exe installer assets
-├── src/                        # Utilities & hardware routing
-├── static/                     # Web assets (Raw, unminified source)
-│   ├── style.css               
-│   └── script/                 # Raw Vanilla JS components
+├── src/
+│   ├── state.py                # Global state singleton
+│   ├── validators.py           # @validate_json decorator
+│   ├── math_ops.py             # Server-side regression (scipy/numpy)
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── core_routes.py      # Core + browse + report subjects
+│   │   ├── file_routes.py      # CSV/JSON CRUD + report CRUD
+│   │   ├── hardware_routes.py  # HID subprocess control
+│   │   └── math_routes.py      # Regression math API
+│   ├── browser_mgt.py
+│   ├── export_cal_json.py
+│   ├── export_data.py
+│   ├── file.py
+│   ├── file_operations.py
+│   ├── file_path.py
+│   ├── get_next_filename.py
+│   ├── measure.py
+│   ├── mode.py
+│   ├── quantity.py
+│   ├── range.py
+│   ├── script_monitor.py
+│   └── send_command.py
+├── static/
+│   ├── style.css
+│   └── script/
+│       ├── calculate.js
+│       ├── data-display.js
+│       ├── data-handling.js
+│       ├── edit-file.js
+│       ├── generate-chart.js
+│       ├── hid-logging.js
+│       ├── index.js
+│       ├── init.js
+│       ├── navigation.js
+│       ├── report.js           # Report generation + subject CRUD
+│       ├── short-hands.js
+│       └── user-guide.js       # Interactive user guide
 ├── templates/
-│   ├── index.html              
-│   └── goodbye.html            
+│   ├── index.html
+│   └── goodbye.html
 ├── json/                       # Standard curve JSON files
 ├── log/                        # Script logs directory
-└── sample_data/                
+├── report/                     # Saved HTML reports (by subject subdirectory)
+└── sample_data/
 ```
 
 ---
 
-## 5. Key Differences from `online` Branch (Summary)
+## 7. Key Differences from `online` Branch (Summary)
 
 | Aspect | `main` branch | `online` branch |
 |---|---|---|
@@ -161,6 +248,8 @@ microalbumin-Flask/
 | Real-time | No SocketIO | Flask-SocketIO with eventlet |
 | Flask version | 1.1.4 | Latest (with SocketIO support) |
 | Shutdown endpoint | Present (`/shutdown`) | Not applicable |
-| `PRODUCTION_MODE` | `True` (controls kill behavior) | `True` (always) |
+| `PRODUCTION_MODE` | `True` (in `state.py`) | `True` (always) |
 | Browser auto-launch | Yes (`browser_mgt.py`) | No |
 | Installers | `.dmg` / `.exe` / batch scripts | N/A |
+| Route organization | Flask blueprints in `src/routes/` | Monolithic `main.py` |
+| Math computation | Server-side (`math_ops.py`, scipy) | Client-side JS only |
