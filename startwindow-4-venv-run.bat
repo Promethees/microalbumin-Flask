@@ -77,6 +77,19 @@ if not exist "venv" (
 )
 call venv\Scripts\activate.bat
 
+:: Install Python dependencies
+echo Installing Python dependencies...
+python -m pip install --upgrade pip
+pip install -r requirements-win.txt
+if %ERRORLEVEL% neq 0 (
+    cls
+    echo.
+    echo    [!] ERROR: Failed to install dependencies.
+    echo.
+    pause
+    exit /b 1
+)
+
 :: ── Step 3 : Preflight (60 → 80%) ──────────────────────────────────────────
 echo Running preflight checks...
 for /L %%p in (60,1,80) do (
