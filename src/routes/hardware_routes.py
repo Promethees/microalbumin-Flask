@@ -3,12 +3,18 @@ import os
 import platform
 import subprocess
 import signal
+import time
 import state
-from script_monitor import check_log_for_errors
+from script_monitor import check_log_for_errors, check_log_for_missed_read
 from send_command import connect_to_device, send_command_and_wait_ack
 from validators import validate_json
 
 hardware_bp = Blueprint('hardware', __name__)
+
+# Seconds after subprocess launch before the first missed-read check
+_MISSED_READ_CHECK_DELAY = 5.0
+# Seconds to wait after a resend before rechecking (gives PyBadge time to respond)
+_RESEND_COOLDOWN = 5.0
 
 def clear_logs():
     try:
@@ -35,6 +41,12 @@ def run_script(validated_data):
     timeout_sec = validated_data['timeout_sec']
     interval_sec = validated_data['interval_sec']
     print("Interval seconds is ", interval_sec)
+
+    state.last_run_params = {'timeout_sec': timeout_sec, 'interval_sec': interval_sec}
+    state.resend_attempt = 0
+    state.subprocess_start_time = None
+    state.last_resend_time = None
+
     try:
         pybadge = connect_to_device()
         print(f"Connected to PyBadge at {pybadge.port}")
@@ -61,7 +73,8 @@ def run_script(validated_data):
             cmd = ['sudo', 'python3', script_path, '--base-dir', base_dir, '--base-name', base_name]
         
         with open(state.log_file, 'a') as f:
-            state.process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)    
+            state.process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+            state.subprocess_start_time = time.time()
             try:
                 state.process.wait(timeout=1)
                 error = check_log_for_errors(state.log_file)
@@ -98,6 +111,73 @@ def check_status():
             return jsonify({'status': 'failure', 'message': 'Input endpoint error detected during runtime.'})
     
     if state.process.poll() is None:
+        # Check whether the HID subprocess missed early characters and needs a resend.
+        if state.subprocess_start_time is not None and state.last_run_params is not None:
+            now = time.time()
+            initial_wait_done = (now - state.subprocess_start_time) > _MISSED_READ_CHECK_DELAY
+
+            if state.last_resend_time is not None:
+                in_cooldown = (now - state.last_resend_time) < _RESEND_COOLDOWN
+                if in_cooldown:
+                    return jsonify({
+                        'status': 'resending',
+                        'message': (
+                            f'Resend attempt {state.resend_attempt}/{state.MAX_RESEND_ATTEMPTS}: '
+                            'waiting for device to respond...'
+                        )
+                    })
+
+            if initial_wait_done and check_log_for_missed_read(state.log_file):
+                if state.resend_attempt >= state.MAX_RESEND_ATTEMPTS:
+                    state.process = None
+                    return jsonify({
+                        'status': 'failure',
+                        'message': (
+                            f'Could not capture data after {state.MAX_RESEND_ATTEMPTS} '
+                            'resend attempts. Please restart the reading.'
+                        )
+                    })
+
+                state.resend_attempt += 1
+                attempt = state.resend_attempt
+                print(f"Missed read detected — resending reading request (attempt {attempt}/{state.MAX_RESEND_ATTEMPTS})")
+                clear_logs()
+                try:
+                    pybadge = connect_to_device()
+                    params = state.last_run_params
+                    commands = [
+                        "1\n",
+                        f"TIMEOUT:{float(params['timeout_sec']) if params['timeout_sec'] is not None else -1}\n",
+                        f"INTERVAL:{float(params['interval_sec']) if params['interval_sec'] is not None else -1}\n"
+                    ]
+                    success, error_msg = send_command_and_wait_ack(
+                        pybadge, commands,
+                        ["ACK_START", "ACK_TIMEOUT", "ACK_INTERVAL"],
+                        ["ERR_START", "ERR_TIMEOUT", "ERR_INTERVAL"]
+                    )
+                    pybadge.close()
+                    state.last_resend_time = time.time()
+                    if success:
+                        return jsonify({
+                            'status': 'resending',
+                            'message': (
+                                f'Reading request resent (attempt {attempt}/{state.MAX_RESEND_ATTEMPTS}). '
+                                'Waiting for device data...'
+                            )
+                        })
+                    return jsonify({
+                        'status': 'failure',
+                        'message': f'Resend attempt {attempt} failed: {error_msg}'
+                    })
+                except Exception as e:
+                    if 'pybadge' in locals():
+                        pybadge.close()
+                    state.last_resend_time = time.time()
+                    return jsonify({
+                        'status': 'failure',
+                        'message': f'Error during resend attempt {attempt}: {str(e)}'
+                    })
+
         return jsonify({'status': 'running', 'message': 'Script is running'})
     else:
         error = check_log_for_errors(state.log_file)

@@ -23,3 +23,10 @@ else:
 
 # Configuration
 PRODUCTION_MODE = True
+
+# Resend configuration
+MAX_RESEND_ATTEMPTS = 3   # Maximum number of reading-request resend attempts
+resend_attempt = 0         # Current resend attempt count for the active session
+last_run_params = None     # Parameters from the most recent run_script call (for resending)
+subprocess_start_time = None  # When the HID subprocess was last spawned
+last_resend_time = None    # When the last resend was issued

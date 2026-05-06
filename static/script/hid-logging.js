@@ -22,6 +22,10 @@ function checkScriptStatus() {
                         resetUIAfterCompletion();
                     }
                     resolve(false); // Script is not running
+                } else if (response.status === 'resending') {
+                    AppState.scriptRunning = true;
+                    logDisplay.insertAdjacentText('beforeend', `${response.message}\n`);
+                    resolve(true); // Keep polling
                 } else {
                     AppState.scriptRunning = true;
                     resolve(true); // Script is running
