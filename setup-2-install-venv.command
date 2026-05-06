@@ -20,9 +20,15 @@ if [ "$PY_VER" != "3.8.10" ]; then
     pyenv shell 3.8.10
 fi
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
+# Create virtual environment if activate script is missing
+if [ ! -f "venv/bin/activate" ]; then
+    echo "Creating virtual environment..."
+    rm -rf venv
     python3 -m venv venv
+    if [ ! -f "venv/bin/activate" ]; then
+        echo "❌ Failed to create virtual environment (venv/bin/activate not found)."
+        exit 1
+    fi
 fi
 
 # Activate virtual environment

@@ -37,12 +37,13 @@ if [ "$PY_VER" != "3.8.10" ]; then
     exit 1
 fi
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
+# Create virtual environment if activate script is missing
+if [ ! -f "venv/bin/activate" ]; then
     echo "Creating virtual environment..."
+    rm -rf venv
     python3 -m venv venv
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to create virtual environment."
+    if [ ! -f "venv/bin/activate" ]; then
+        echo "❌ Failed to create virtual environment (venv/bin/activate not found)."
         osascript -e 'display dialog "Failed to create virtual environment." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
         exit 1
     fi
