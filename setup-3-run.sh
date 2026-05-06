@@ -53,6 +53,28 @@ if [ ! -f "venv/bin/activate" ]; then
     exit 1
 fi
 source venv/bin/activate
+
+# ── Terminal icon via _NET_WM_ICON (X11, best-effort) ────────────────────────
+# Requires: $WINDOWID set by terminal emulator, xprop installed, PIL in venv
+if [ -n "$WINDOWID" ] && command -v xprop &>/dev/null; then
+    python3 - "$WINDOWID" "$(pwd)/static/ht.ico" 2>/dev/null <<'PYEOF'
+import sys, subprocess
+try:
+    from PIL import Image
+    wid, ico = sys.argv[1], sys.argv[2]
+    img = Image.open(ico).convert("RGBA")
+    def argb_data(sz):
+        r = img.resize((sz, sz))
+        return [sz, sz] + [(a<<24)|(rv<<16)|(g<<8)|b for rv,g,b,a in r.getdata()]
+    data = argb_data(48) + argb_data(32) + argb_data(16)
+    subprocess.run(["xprop", "-id", wid, "-format", "_NET_WM_ICON", "32c",
+                    "-set", "_NET_WM_ICON", ",".join(map(str, data))],
+                   capture_output=True)
+except Exception:
+    pass
+PYEOF
+fi
+
 fill_to 20 40 "Activating virtual environment …"
 
 # ── Step 2: Preflight (40 → 50%) ─────────────────────────────────────────────

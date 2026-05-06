@@ -55,6 +55,12 @@ if [ ! -f "venv/bin/activate" ]; then
     exit 1
 fi
 source venv/bin/activate
+
+# ── Terminal window title (macOS: Dock icon image is Terminal.app's and
+#    cannot be changed from a script; set the title as the closest equivalent)
+printf '\033]0;EasyOKAPI\007'
+osascript -e 'tell application "Terminal" to set custom title of front window to "EasyOKAPI"' 2>/dev/null || true
+
 fill_to 40 55 "Activating virtual environment …"
 
 # ── Step 3 : preflight check (55 → 60%) ─────────────────────────────────────
