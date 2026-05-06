@@ -169,7 +169,7 @@ async function terminateScript() {
             handleScriptTermination("Script terminated.\n");
         } else {
             $append("log-display", `Error: ${response.message}\n`);
-            if (response.message.includes("No process running")) handleScriptTermination("");
+            handleScriptTermination("");
         }
     } catch (err) {
         console.error("terminateScript error:", err);
@@ -177,6 +177,7 @@ async function terminateScript() {
         handleScriptTermination("");
     } finally {
         clearLogs();
+        clearStatusCheck();
     }
 }
 
