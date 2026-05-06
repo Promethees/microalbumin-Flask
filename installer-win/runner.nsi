@@ -16,7 +16,7 @@ RequestExecutionLevel admin ; Request admin privileges for the launcher
 ;--------------------------------
 ; Interface Settings
 !define MUI_ABORTWARNING 
-!define MUI_ICON "runner.ico"
+!define MUI_ICON "ht.ico"
 
 
 ;--------------------------------

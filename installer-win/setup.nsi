@@ -90,6 +90,7 @@ Section "Install" SEC01
   
   ; Include the precompiled app runner
   File "EasyOKAPI.exe"
+  File "ht.ico"
 
   ; Execute the setup batch scripts with admin privileges
   DetailPrint "Running startwindow-1-git.bat..."
