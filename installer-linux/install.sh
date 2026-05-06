@@ -255,7 +255,7 @@ cat > /usr/share/applications/EasyOKAPI.desktop <<DESKTOP
 Name=EasyOKAPI
 Comment=PyBadge colorimeter biosensor app
 Exec=bash -c 'pkexec env DISPLAY=\$DISPLAY XAUTHORITY=\$XAUTHORITY /opt/EasyOKAPI/run.sh'
-Icon=/opt/EasyOKAPI/static/favicon.ico
+Icon=/opt/EasyOKAPI/static/ht.ico
 Terminal=true
 Type=Application
 Categories=Science;
