@@ -180,7 +180,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
         }
 
         // Smoothly scroll to section and blink
-        scrollWhenVisible("data-display-section", 4000);
+        scrollWhenVisible("data-display-section", 10000);
         blinkingItem("chart-container", 3000);
     } finally {
         if (typeof window.hideSpinner === 'function') window.hideSpinner();
