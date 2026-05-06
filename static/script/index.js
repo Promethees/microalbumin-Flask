@@ -430,7 +430,7 @@ function calPointBehaviour() {
 }
 
 async function updateDirectory(deselect, changeToCalibrate = false) {
-    if (AppState.currentMeasurementMode !== "calibrate") {
+    if (AppState.currentMeasurementMode !== "calibrate" && AppState.currentMeasurementMode !== "report") {
         calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
         calButtons.forEach(button => {
             if (button.getAttribute('data-mode') === AppState.currentMeasurementMode) {
