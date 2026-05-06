@@ -314,11 +314,13 @@ function scrollWhenVisible(elementId, duration = 500) {
         return;
     }
 
-    // Poll every 100ms until element becomes visible
+    // Poll every 100ms until element becomes visible, but cancel after `duration` ms
+    // to prevent stale intervals from firing in a later session or context.
     const interval = setInterval(() => {
         if (isVisible(target)) {
             scrollToElement();
             clearInterval(interval);
         }
     }, 100);
+    setTimeout(() => clearInterval(interval), duration);
 }
