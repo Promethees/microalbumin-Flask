@@ -532,7 +532,7 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
     }
     isUpdatingDirectory = true;
 
-    if (AppState.currentMeasurementMode !== "calibrate") {
+    if (AppState.currentMeasurementMode !== "calibrate" && AppState.currentMeasurementMode !== "report") {
         //Change #cal-mode-select in the background before switching to calibrate mode
         calDiv.setAttribute('data-value', `${AppState.currentMeasurementMode}`);
         calButtons.forEach(button => {
@@ -633,9 +633,11 @@ function updateMultiSourceExportOptions() {
 
 function switchingModes(mode) {
     const currentDir = document.getElementById("directory").value;
+    const prevMode = AppState.currentMeasurementMode;
     AppState.currentMeasurementMode = mode;
     if (mode !== 'report' && currentDir) {
-        updateDirectory(currentDir, true);
+        const targetDir = prevMode === 'report' ? rootPath : currentDir;
+        updateDirectory(targetDir, true);
     }
     AppState.currentJSON = null;
     AppState.currentJSONcontent = null;
@@ -656,15 +658,7 @@ function switchingModes(mode) {
         pointModeBehaviour();
     } else if (mode === "report") {
         reportModeBehaviour();
-        // Force update directory to report root
-        // We need report_root_path from server ideally, but we know it's "report" relative to script_dir
-        $.get('/get_parents', function () {
-            // This is a bit hacky, but let's try to just call browse with "report"
-            // Wait, the backend /browse takes absolute paths.
-            // Let's use get_json_cal logic or similar? No.
-            // We'll update switchingModes to fetch the report root path if needed.
-        });
-        updateDirectory("report", true); // Simple relative "report" might work if backend supports it
+        updateDirectory(AppState.report_root_path, true);
     } else {
         calModeBehaviour();
     }
