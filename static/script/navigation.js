@@ -303,13 +303,22 @@ function scrollWhenVisible(elementId, duration = 500) {
         el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
 
     // Scroll so the element's centre aligns with the viewport's centre
-    const scrollToElement = () => {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Double rAF ensures Chart.js (and any other rAF-deferred renderers) have
+    // committed their layout before scrollIntoView reads element positions.
+    const scrollToElement = (deferred = false) => {
+        if (deferred) {
+            requestAnimationFrame(() => requestAnimationFrame(() =>
+                target.scrollIntoView({ behavior: "smooth", block: "center" })
+            ));
+        } else {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
     };
 
-    // If visible, scroll immediately
+    // If already visible, defer the scroll so any pending layout work (e.g.
+    // chart canvas resizing) finishes before we measure the scroll target.
     if (isVisible(target)) {
-        scrollToElement();
+        scrollToElement(true);
         return;
     }
 
