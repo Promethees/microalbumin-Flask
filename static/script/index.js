@@ -254,9 +254,6 @@ $(document).ready(function () {
                     AppState.prevFile = AppState.currentFile;
                 }
             }
-            $hidden(["data-display-section"], false);
-        } else {
-            $hidden(["data-display-section"]);
         }
 
         if (!AppState.currentJSON) {

@@ -21,6 +21,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
             }
 
             AppState.prevFile = AppState.currentFile;
+            $hidden(["data-display-section"], false);
             AppState.currentFile = fileName;
             clearConcentrationValues();
 
