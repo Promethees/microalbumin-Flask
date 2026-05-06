@@ -161,7 +161,6 @@ function handleAjaxError(textStatus, errorThrown) {
 
 // --- Terminate script ---
 async function terminateScript() {
-    clearLogs();
     try {
         const res = await fetch("/terminate_script", { method: "POST", headers: { "Content-Type": "application/json" } });
         const response = await res.json();
@@ -176,6 +175,8 @@ async function terminateScript() {
         console.error("terminateScript error:", err);
         $append("log-display", `Error: Failed to terminate script, error: ${err}\n`);
         handleScriptTermination("");
+    } finally {
+        clearLogs();
     }
 }
 
