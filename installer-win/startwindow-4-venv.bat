@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
 echo ===============================================
@@ -75,7 +76,7 @@ if %ERRORLEVEL% neq 0 ( echo ERROR: Failed to download numeric.js. & pause & exi
 curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" -o "%VENDOR_DIR%\mathjax-tex-mml-chtml.js"
 if %ERRORLEVEL% neq 0 ( echo ERROR: Failed to download mathjax. & pause & exit /b 1 )
 
-for %%F in (MathJax_AMS-Regular MathJax_Main-Regular MathJax_Main-Bold MathJax_Main-Italic MathJax_Math-Italic MathJax_Math-BoldItalic MathJax_Size1-Regular MathJax_Size2-Regular MathJax_Size3-Regular MathJax_Size4-Regular MathJax_Calligraphic-Regular MathJax_Calligraphic-Bold MathJax_Fraktur-Regular MathJax_Fraktur-Bold MathJax_SansSerif-Regular MathJax_SansSerif-Bold MathJax_SansSerif-Italic MathJax_Script-Regular MathJax_Typewriter-Regular MathJax_Vector-Regular MathJax_Vector-Bold MathJax_Zero) do (
+for %%F in (MathJax_AMS-Regular MathJax_Main-Regular MathJax_Main-Bold MathJax_Main-Italic MathJax_Math-Regular MathJax_Math-Italic MathJax_Math-BoldItalic MathJax_Size1-Regular MathJax_Size2-Regular MathJax_Size3-Regular MathJax_Size4-Regular MathJax_Calligraphic-Regular MathJax_Calligraphic-Bold MathJax_Fraktur-Regular MathJax_Fraktur-Bold MathJax_SansSerif-Regular MathJax_SansSerif-Bold MathJax_SansSerif-Italic MathJax_Script-Regular MathJax_Typewriter-Regular MathJax_Vector-Regular MathJax_Vector-Bold MathJax_Zero) do (
     curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/%%F.woff" -o "%FONT_DIR%\%%F.woff"
     if !ERRORLEVEL! neq 0 ( echo ERROR: Failed to download %%F.woff & pause & exit /b 1 )
 )
