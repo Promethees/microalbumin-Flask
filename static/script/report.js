@@ -1,7 +1,7 @@
 async function generateReport() {
     const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
 
-    // 1. Ask for a title (and algorithm only in calibrate mode)
+    // 1. Ask for a title, algorithm (calibrate only), and export format
     const { value: formValues } = await Swal.fire({
         title: 'Report Details',
         html: `
@@ -10,26 +10,37 @@ async function generateReport() {
                 <input id="swal-input1" class="swal2-input" value="Colorimetric Analysis Report" style="width: 80%; margin: 0 0 15px 0;">
                 ${isCalibrate ? `
                 <label style="display:block; margin-bottom:5px;">Fit Curve for Report</label>
-                <select id="swal-input2" class="swal2-input" style="width: 80%; margin: 0;">
+                <select id="swal-input2" class="swal2-input" style="width: 80%; margin: 0 0 15px 0;">
                     <option value="polynomial">polynomial</option>
                     <option value="linear" selected>linear</option>
                     <option value="logarithmic">logarithmic</option>
                     <option value="exponential">exponential</option>
                     <option value="Michaelis-Menten">Michaelis-Menten</option>
                 </select>` : ''}
+                <label style="display:block; margin-bottom:5px;">Export Format</label>
+                <div style="display:flex; gap:20px;">
+                    <label style="cursor:pointer;"><input type="radio" name="swal-fmt" value="pdf" checked> PDF (print)</label>
+                    <label style="cursor:pointer;"><input type="radio" name="swal-fmt" value="excel"> Excel (.xlsx)</label>
+                </div>
             </div>
         `,
         focusConfirm: false,
         showCancelButton: true,
         preConfirm: () => {
-            const title = document.getElementById('swal-input1').value;
+            const title  = document.getElementById('swal-input1').value;
             const algoEl = document.getElementById('swal-input2');
-            return isCalibrate ? [title, algoEl ? algoEl.value : 'linear'] : [title];
+            const fmt    = document.querySelector('input[name="swal-fmt"]:checked')?.value || 'pdf';
+            return isCalibrate ? [title, algoEl ? algoEl.value : 'linear', fmt] : [title, null, fmt];
         }
     });
 
-    if (!formValues) return; // User cancelled
-    const [reportTitle, promptedAlgo] = formValues;
+    if (!formValues) return;
+    const [reportTitle, promptedAlgo, reportFormat] = formValues;
+
+    if (reportFormat === 'excel') {
+        await generateReportExcelFromCurrent(reportTitle, promptedAlgo || 'linear');
+        return;
+    }
 
     // 2. Gather data
     const selectedFile = document.getElementById('selected-file-display') ? document.getElementById('selected-file-display').innerText.replace('Selected File: ', '') : 'No file selected';
@@ -304,6 +315,223 @@ async function generateReport() {
         printContainer.classList.add('hidden');
         printContainer.classList.remove('report-mode');
     }, 1000);
+}
+
+async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
+    window.showSpinner();
+    try {
+        const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
+        const isKinetics  = AppState.currentMeasurementMode === 'kinetics';
+        const isPoint     = AppState.currentMeasurementMode === 'point';
+
+        const currentFile = AppState.currentFile;
+        if (!currentFile) {
+            Swal.fire('No File', 'Please select a file first.', 'warning');
+            return;
+        }
+        const dir      = document.getElementById('directory').value;
+        const fullPath = dir + (dir.endsWith(DELIMITER) ? '' : DELIMITER) + currentFile;
+
+        // Fetch raw CSV data from server
+        const dataResp   = await $.get('/get_data', { file: fullPath });
+        const renderData = dataResp.data || [];
+        const numSources = dataResp.num_sources || 1;
+
+        const itemData = {
+            filename:      currentFile,
+            mode:          AppState.currentMeasurementMode || 'N/A',
+            chart_images:  [],
+            csv_columns:   [],
+            csv_rows:      [],
+            analysis_rows: [],
+            coef_rows:     [],
+            derived_lines: []
+        };
+
+        if (isCalibrate && AppState.calibrationDataPoints && AppState.calibrationDataPoints.length > 0) {
+            // ── Calibrate mode ──────────────────────────────────────────────
+            const xCol      = dataResp.metadata?.XColumn || 'Concentration';
+            const calMetrics = ['Slope', 'Time To Sat', 'maxRate', 'Sat'];
+
+            itemData.csv_columns = [xCol, ...calMetrics];
+            itemData.csv_rows    = renderData.map(row => {
+                const r = {};
+                itemData.csv_columns.forEach(col => { r[col] = row[col]; });
+                return r;
+            });
+
+            for (const dataPoint of AppState.calibrationDataPoints) {
+                const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, promptedAlgo);
+                if (!analysis || !analysis.coefficients) continue;
+
+                const [ca, cb2, cc] = analysis.coefficients;
+                const niceMetric = dataPoint.metric.charAt(0).toUpperCase() +
+                    dataPoint.metric.slice(1).replace(/([A-Z])/g, ' $1');
+                const fitLabel = `${niceMetric} — ${promptedAlgo}`;
+
+                itemData.coef_rows.push({
+                    'Metric':        dataPoint.metric,
+                    'Algorithm':     promptedAlgo,
+                    'a (or Vmax)':   ca.toFixed(5),
+                    'b (or Km)':     cb2.toFixed(5),
+                    'c':             analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
+                    'R²':            analysis.rSquared.toFixed(4)
+                });
+
+                // Build regression line
+                const xMin  = Math.min(...dataPoint.x);
+                const xMax  = Math.max(...dataPoint.x);
+                const range = xMax - xMin;
+                const pXMin = xMin - 0.1 * range;
+                const pXMax = xMax + 0.1 * range;
+                const step  = (pXMax - pXMin) / 49;
+                const regLine = [];
+                for (let j = 0; j < 50; j++) {
+                    const curX = pXMin + j * step;
+                    let curY = 0;
+                    if (promptedAlgo === 'linear')      curY = ca !== 0 ? (curX - cb2) / ca : 0;
+                    else if (promptedAlgo === 'polynomial') {
+                        if (ca === 0) curY = cb2 !== 0 ? (curX - cc) / cb2 : 0;
+                        else { const d = cb2 * cb2 - 4 * ca * (cc - curX); curY = d >= 0 ? (-cb2 + Math.sqrt(d)) / (2 * ca) : 0; }
+                    } else if (promptedAlgo === 'logarithmic') curY = ca !== 0 ? Math.exp((curX - cc) / ca) - cb2 : 0;
+                    else if (promptedAlgo === 'exponential')   curY = (ca !== 0 && curX > cc && cb2 !== 0) ? Math.log((curX - cc) / ca) / cb2 : 0;
+                    else if (promptedAlgo === 'Michaelis-Menten') curY = (ca * curX) / (cb2 + curX);
+                    regLine.push({ x: curX, y: curY });
+                }
+
+                let imgData = null;
+                await new Promise(resolve => {
+                    const cv = document.createElement('canvas');
+                    cv.width = 1600; cv.height = 800;
+                    const tc = new Chart(cv.getContext('2d'), {
+                        type: 'scatter',
+                        data: {
+                            datasets: [
+                                { label: 'Standards', data: dataPoint.x.map((x, i) => ({ x, y: dataPoint.y[i] })), backgroundColor: '#3498db', pointRadius: 6 },
+                                { label: `Fit (${promptedAlgo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
+                            ]
+                        },
+                        options: {
+                            responsive: false, animation: false,
+                            plugins: {
+                                title: { display: true, text: fitLabel, font: { size: 18 } },
+                                legend: { display: true, position: 'bottom' }
+                            },
+                            scales: {
+                                x: { title: { display: true, text: 'Concentration', font: { size: 14 } } },
+                                y: { title: { display: true, text: dataPoint.metric, font: { size: 14 } } }
+                            }
+                        }
+                    });
+                    setTimeout(() => { imgData = cv.toDataURL('image/png'); tc.destroy(); resolve(); }, 250);
+                });
+                if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+            }
+
+        } else {
+            // ── Standard / kinetics / point mode ────────────────────────────
+            const visibleTraces = Array.from({ length: numSources }, (_, i) => i + 1);
+            const csvCols = ['Timestamp', ...visibleTraces.map(t => `Value:${t}`)];
+            itemData.csv_columns = csvCols;
+            itemData.csv_rows    = renderData.map(row => {
+                const r = {};
+                csvCols.forEach(col => { r[col] = row[col]; });
+                return r;
+            });
+
+            // Analysis rows from AppState.lastAnalyses (already computed with correct time unit)
+            if (AppState.lastAnalyses && AppState.lastAnalyses.length > 0) {
+                const unitDisplay = getMetaUnit(AppState.metaData) !== 'NONE' ? getMetaUnit(AppState.metaData) : '';
+                const timeUnit    = getTimeUnitValue() ? getTimeUnitValue().slice(0, -1) : 'min';
+
+                AppState.lastAnalyses.forEach((rawAnalysis, idx) => {
+                    const info = formatAnalysisInfo(rawAnalysis, `Source ${idx + 1}`);
+                    if (!info) return;
+                    const sat    = !isNaN(info.saturationValue)  ? info.saturationValue  : '--';
+                    const timeSat = !isNaN(info.timeToSaturation) ? info.timeToSaturation : '--';
+                    itemData.analysis_rows.push({
+                        'Source':         `Source ${idx + 1}`,
+                        'Slope':          `${info.slope}${unitDisplay ? ' ' + unitDisplay : ''}/${timeUnit}`,
+                        'Slope Range':    `${info.linearStart} – ${info.linearEnd} ${timeUnit}`,
+                        'Max Rate':       `${info.maxRate}${unitDisplay ? ' ' + unitDisplay : ''}/${timeUnit}`,
+                        'Max Rate Range': `${info.maxRateStart} – ${info.maxRateEnd} ${timeUnit}`,
+                        'Saturation':     `${sat}${unitDisplay ? ' ' + unitDisplay : ''}`,
+                        'Time to Sat':    `${timeSat} ${timeUnit}`
+                    });
+                });
+            }
+
+            // Derived concentration values from DOM
+            document.querySelectorAll('[id^="derived-concentration-section-source-"]').forEach((sec, idx) => {
+                if (!sec.classList.contains('hidden')) {
+                    const val = sec.querySelector('.der-con-value')?.innerText || '--';
+                    itemData.derived_lines.push(`Source ${idx + 1}: ${val} ng/µL`);
+                }
+            });
+
+            // Chart image from the live AppState chart instance
+            const chartKeys = Object.keys(AppState.chartInstances || {});
+            if (chartKeys.length > 0) {
+                const orig = AppState.chartInstances[chartKeys[0]];
+                if (orig) {
+                    const cv = document.createElement('canvas');
+                    cv.width = 1600; cv.height = 800;
+                    const tc = new Chart(cv.getContext('2d'), {
+                        type: orig.config.type,
+                        data: JSON.parse(JSON.stringify(orig.config.data)),
+                        options: {
+                            ...orig.config.options,
+                            responsive: false,
+                            animation: false,
+                            plugins: {
+                                ...orig.config.options?.plugins,
+                                legend: { display: true, position: 'bottom' }
+                            }
+                        }
+                    });
+                    await new Promise(r => setTimeout(r, 500));
+                    itemData.chart_images.push({ label: currentFile, b64: cv.toDataURL('image/png') });
+                    tc.destroy();
+                }
+            }
+        }
+
+        // POST → download
+        const response = await fetch('/export_report_excel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title:        reportTitle,
+                subject:      currentFile,
+                split_sheets: false,
+                items:        [itemData]
+            })
+        });
+
+        if (!response.ok) {
+            let msg = 'Export failed';
+            try { const err = await response.json(); msg = err.message || msg; } catch (_) {}
+            throw new Error(msg);
+        }
+
+        const blob = await response.blob();
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = currentFile.replace(/\.csv$/i, '') + '_report.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(dlUrl);
+
+        Swal.fire('Success', 'Excel report downloaded.', 'success');
+
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'Excel export failed: ' + e.message, 'error');
+    } finally {
+        window.hideSpinner();
+    }
 }
 
 async function exportToReport() {
@@ -1443,5 +1671,273 @@ function moveCardDown(btn) {
     const next = card.nextElementSibling;
     if (next && next.classList.contains('report-item-card')) {
         card.parentNode.insertBefore(next, card);
+    }
+}
+
+async function finalizeReportExcel() {
+    const subject = AppState.currentReportSubject;
+    const selectedCheckboxes = Array.from(document.querySelectorAll('.report-console-item-checkbox:checked'));
+
+    if (!subject || selectedCheckboxes.length === 0) {
+        Swal.fire('No items selected', 'Please select at least one file to include in the report.', 'warning');
+        return;
+    }
+
+    await saveReportItemOrder(subject);
+
+    window.showSpinner();
+    try {
+        const reportTitle = document.getElementById('console-title').value || 'Analysis Report';
+        const splitSheets = document.getElementById('console-split-sheets').checked;
+        const COLORS = [
+            'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgba(190, 136, 9, 1)',
+            'rgb(54, 162, 235)', 'rgb(153, 102, 255)', 'rgba(139, 144, 75, 1)',
+            'rgba(228, 87, 246, 1)', 'rgba(44, 136, 115, 1)', 'rgba(255, 159, 64, 1)'
+        ];
+
+        const items = [];
+
+        for (const cb of selectedCheckboxes) {
+            const filename = cb.getAttribute('data-filename');
+            const config = window.ReportItemConfig[filename];
+            if (!config) continue;
+
+            const isCalibrate = config.metadata.mode === 'calibrate';
+            const isKinetics  = config.metadata.mode === 'kinetics';
+            const isPoint     = config.metadata.mode === 'point';
+            const card = cb.closest('.report-item-card');
+
+            const itemData = {
+                filename,
+                mode: config.metadata.mode || 'N/A',
+                chart_images: [],
+                csv_columns: [],
+                csv_rows: [],
+                analysis_rows: [],
+                coef_rows: [],
+                derived_lines: []
+            };
+
+            if (isCalibrate) {
+                const xCol = config.metadata.XColumn || 'Concentration';
+                const renderData = config.data;
+                const calMetrics = ['Slope', 'Time To Sat', 'maxRate', 'Sat'];
+
+                itemData.csv_columns = [xCol, ...calMetrics];
+                itemData.csv_rows = renderData.map(row => {
+                    const r = {};
+                    itemData.csv_columns.forEach(col => { r[col] = row[col]; });
+                    return r;
+                });
+
+                const includeMetrics = Array.from(card.querySelectorAll('.metric-include-checkbox:checked'));
+                for (const mCb of includeMetrics) {
+                    const metric = mCb.dataset.metric;
+                    const algoCbs = Array.from(card.querySelectorAll(`.algo-include-checkbox[data-metric="${metric}"]:checked`));
+                    if (algoCbs.length === 0) continue;
+
+                    for (const aCb of algoCbs) {
+                        const algo = aCb.dataset.algo;
+                        const aligned = renderData.map(row => ({
+                            xv: parseFloat(row[xCol]),
+                            yv: row[metric] === 'NONE' ? null : parseFloat(row[metric])
+                        })).filter(p => !isNaN(p.xv) && p.yv !== null && !isNaN(p.yv));
+
+                        const xVals = aligned.map(p => p.xv);
+                        const yVals = aligned.map(p => p.yv);
+                        if (xVals.length < 2) continue;
+
+                        const analysis = calculateCoefAndRSquared(yVals, xVals, algo);
+                        if (!analysis || !analysis.coefficients) continue;
+
+                        const [ca, cb2, cc] = analysis.coefficients;
+                        const niceMetric = metric.charAt(0).toUpperCase() + metric.slice(1).replace(/([A-Z])/g, ' $1');
+                        const fitLabel = `${niceMetric} - ${algo}`;
+
+                        itemData.coef_rows.push({
+                            'Analysis': fitLabel,
+                            'a (or Vmax)': ca.toFixed(5),
+                            'b (or Km)': cb2.toFixed(5),
+                            'c': analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
+                            'R²': analysis.rSquared.toFixed(4)
+                        });
+
+                        const pXMin = Math.min(...xVals) - 0.1 * (Math.max(...xVals) - Math.min(...xVals));
+                        const pXMax = Math.max(...xVals) + 0.1 * (Math.max(...xVals) - Math.min(...xVals));
+                        const step  = (pXMax - pXMin) / 49;
+                        const regLine = [];
+                        for (let j = 0; j < 50; j++) {
+                            const curX = pXMin + j * step;
+                            let curY = 0;
+                            if (algo === 'linear')            curY = ca !== 0 ? (curX - cb2) / ca : 0;
+                            else if (algo === 'polynomial') {
+                                if (ca === 0) curY = cb2 !== 0 ? (curX - cc) / cb2 : 0;
+                                else { const d = cb2 * cb2 - 4 * ca * (cc - curX); curY = d >= 0 ? (-cb2 + Math.sqrt(d)) / (2 * ca) : 0; }
+                            } else if (algo === 'logarithmic') curY = ca !== 0 ? Math.exp((curX - cc) / ca) - cb2 : 0;
+                            else if (algo === 'exponential')   curY = (ca !== 0 && curX > cc && cb2 !== 0) ? Math.log((curX - cc) / ca) / cb2 : 0;
+                            else if (algo === 'Michaelis-Menten') curY = (ca * curX) / (cb2 + curX);
+                            regLine.push({ x: curX, y: curY });
+                        }
+
+                        let imgData = null;
+                        await new Promise(resolve => {
+                            const calCv = document.createElement('canvas');
+                            calCv.width = 1600; calCv.height = 800;
+                            const tc = new Chart(calCv.getContext('2d'), {
+                                type: 'scatter',
+                                data: {
+                                    datasets: [
+                                        { label: 'Standards', data: xVals.map((x, i) => ({ x, y: yVals[i] })), backgroundColor: '#3498db', pointRadius: 6 },
+                                        { label: `Fit (${algo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
+                                    ]
+                                },
+                                options: {
+                                    responsive: false, animation: false,
+                                    plugins: { title: { display: true, text: fitLabel, font: { size: 18 } }, legend: { display: true, position: 'bottom' } },
+                                    scales: { x: { title: { display: true, text: 'Concentration' } }, y: { title: { display: true, text: niceMetric } } }
+                                }
+                            });
+                            setTimeout(() => { imgData = calCv.toDataURL('image/png'); tc.destroy(); resolve(); }, 250);
+                        });
+
+                        if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                    }
+                }
+
+            } else {
+                const calFile        = card.querySelector('.cal-source-select').value;
+                const layout         = card.querySelector('.layout-toggle-select').value;
+                const renderData     = config.data;
+                const visibleTraces  = config.visibleTraces;
+                const windowSize     = isKinetics ? (config.windowSize || 4) : null;
+                const unit           = (config.metadata && config.metadata.Unit) ? config.metadata.Unit : 'NONE';
+                const derivedQty     = isKinetics ? (config.derivedQuantity || 'maxrate') : null;
+
+                // CSV data
+                const csvCols = ['Timestamp', ...visibleTraces.map(t => `Value:${t}`)];
+                itemData.csv_columns = csvCols;
+                itemData.csv_rows = renderData.map(row => {
+                    const r = {};
+                    csvCols.forEach(col => { r[col] = row[col]; });
+                    return r;
+                });
+
+                // Kinetics analysis rows (structured, not HTML)
+                if (isKinetics) {
+                    for (const t of visibleTraces) {
+                        const { x, y } = _extractValidXYForTrace(renderData, t);
+                        if (x.length < 4) continue;
+                        const a = calculateKineticsQuantities(x, y, windowSize || 4);
+                        const ut = _unitDisplayForReport(unit);
+                        itemData.analysis_rows.push({
+                            'Source':        `Source ${t}`,
+                            'Slope':         `${_formatMaybeNum(a?.slope, 5)}${ut ? ' ' + ut : ''}/s`,
+                            'Slope Range':   `${_formatMaybeNum(a?.linearXMin, 2)} – ${_formatMaybeNum(a?.linearXMax, 2)} s`,
+                            'Max Rate':      `${_formatMaybeNum(a?.maxRate, 5)}${ut ? ' ' + ut : ''}/s`,
+                            'Max Rate Range':`${_formatMaybeNum(a?.startMaxRate, 2)} – ${_formatMaybeNum(a?.endMaxRate, 2)} s`,
+                            'Saturation':    `${_formatMaybeNum(a?.saturationValue, 5)}${ut ? ' ' + ut : ''}`,
+                            'Time to Sat':   `${_formatMaybeNum(a?.timeToSaturation, 2)} s`
+                        });
+                    }
+                }
+
+                // Derived concentration lines
+                if (calFile && (isKinetics || isPoint)) {
+                    try {
+                        const json = await fetchCalibrationJsonContent(isKinetics ? 'kinetics' : 'point', calFile);
+                        const fitType = json.fit_type;
+                        if (isKinetics) {
+                            const coefNode = json?.[derivedQty]?.fit_coef;
+                            for (const t of visibleTraces) {
+                                const { x, y } = _extractValidXYForTrace(renderData, t);
+                                const a = (x.length >= 4) ? calculateKineticsQuantities(x, y, windowSize || 4) : null;
+                                const qVal = _kineticsQuantityValuePerExportUnit(a, derivedQty);
+                                let con = '--';
+                                try { con = Number(computeFitForReport(qVal, fitType, coefNode, derivedQty)).toFixed(4); } catch (_) {}
+                                itemData.derived_lines.push(`Source ${t}: ${con} ng/µL (via ${derivedQty})`);
+                            }
+                        } else {
+                            const coef = json.fit_coef;
+                            const timeSec = Number(json.time) * _timeUnitToSeconds(json['time-unit']);
+                            for (const t of visibleTraces) {
+                                const estValue = getEstimatedValue(renderData, timeSec, t);
+                                let con = '--';
+                                try { con = Number(computeFitForReport(Number(estValue), fitType, coef, 'Endpoint Value')).toFixed(4); } catch (_) {}
+                                itemData.derived_lines.push(`Source ${t}: ${con} ng/µL`);
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+                // Chart image(s)
+                if (layout === 'together') {
+                    const cv = document.createElement('canvas');
+                    cv.width = 1600; cv.height = 800;
+                    const tc = new Chart(cv.getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            datasets: visibleTraces.map(t => ({
+                                label: `Source ${t}`,
+                                data: renderData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })),
+                                borderColor: COLORS[(t - 1) % COLORS.length], tension: 0.1, pointRadius: 0
+                            }))
+                        },
+                        options: {
+                            responsive: false, animation: false,
+                            plugins: { title: { display: true, text: filename, font: { size: 18 } }, legend: { display: true, position: 'bottom' } },
+                            scales: { x: { title: { display: true, text: 'Time (s)' } }, y: { title: { display: true, text: 'Value' } } }
+                        }
+                    });
+                    await new Promise(r => setTimeout(r, 250));
+                    itemData.chart_images.push({ label: filename, b64: cv.toDataURL('image/png') });
+                    tc.destroy();
+                } else {
+                    for (const t of visibleTraces) {
+                        const cv = document.createElement('canvas');
+                        cv.width = 1600; cv.height = 800;
+                        const tc = new Chart(cv.getContext('2d'), {
+                            type: 'line',
+                            data: { datasets: [{ label: `Source ${t}`, data: renderData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })), borderColor: '#6366f1', tension: 0.1, pointRadius: 0 }] },
+                            options: { responsive: false, animation: false, plugins: { title: { display: true, text: `${filename} – Source ${t}`, font: { size: 16 } } } }
+                        });
+                        await new Promise(r => setTimeout(r, 250));
+                        itemData.chart_images.push({ label: `Source ${t}`, b64: cv.toDataURL('image/png') });
+                        tc.destroy();
+                    }
+                }
+            }
+
+            items.push(itemData);
+        }
+
+        const response = await fetch('/export_report_excel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: reportTitle, subject, split_sheets: splitSheets, items })
+        });
+
+        if (!response.ok) {
+            let msg = 'Export failed';
+            try { const err = await response.json(); msg = err.message || msg; } catch (_) {}
+            throw new Error(msg);
+        }
+
+        const blob = await response.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `${subject.replace(/[^\w\-]/g, '_') || 'report'}_report.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        Swal.fire('Success', 'Excel file downloaded.', 'success');
+
+    } catch (e) {
+        console.error(e);
+        Swal.fire('Error', 'Failed to export as Excel: ' + e.message, 'error');
+    } finally {
+        window.hideSpinner();
     }
 }

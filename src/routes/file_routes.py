@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from http import HTTPStatus
 import os
 import json
@@ -867,3 +867,175 @@ def delete_report_item(validated_data):
         return jsonify({'status': 'error', 'message': str(e)}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@file_bp.route('/export_report_excel', methods=['POST'])
+@validate_json({
+    'title': (str, 'Analysis Report', False),
+    'subject': (str, '', False),
+    'split_sheets': (bool, True, False),
+    'items': (list, [], False),
+})
+def export_report_excel(validated_data):
+    import io
+    import base64
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.drawing.image import Image as XLImage
+    from openpyxl.utils import get_column_letter
+    from datetime import datetime as _dt
+
+    title = validated_data.get('title', 'Analysis Report')
+    subject = validated_data.get('subject', '')
+    split_sheets = validated_data.get('split_sheets', True)
+    items = validated_data.get('items', [])
+
+    HEADER_FILL    = PatternFill(fill_type='solid', fgColor='2980b9')
+    TABLE_HDR_FILL = PatternFill(fill_type='solid', fgColor='3498db')
+    SECTION_FILL   = PatternFill(fill_type='solid', fgColor='ecf0f1')
+    THIN           = Side(style='thin', color='b0b0b0')
+    CELL_BORDER    = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+
+    IMAGE_W = 640
+    IMAGE_H = 320
+    IMAGE_ROW_RESERVE = 18
+
+    def _cell(ws, row, col, value=None, bold=False, size=11, color='000000',
+              fill=None, align_h='left', border=None):
+        c = ws.cell(row=row, column=col, value=value)
+        c.font = Font(bold=bold, size=size, color=color)
+        if fill:
+            c.fill = fill
+        c.alignment = Alignment(horizontal=align_h, vertical='center', wrap_text=True)
+        if border:
+            c.border = border
+        return c
+
+    def _embed_image(ws, b64_str, anchor_row):
+        if b64_str.startswith('data:'):
+            b64_str = b64_str.split(',', 1)[1]
+        try:
+            xl_img = XLImage(io.BytesIO(base64.b64decode(b64_str)))
+            xl_img.width = IMAGE_W
+            xl_img.height = IMAGE_H
+            ws.add_image(xl_img, f'A{anchor_row}')
+        except Exception as e:
+            ws.cell(anchor_row, 1, value=f'[Image error: {e}]')
+            return anchor_row + 2
+        return anchor_row + IMAGE_ROW_RESERVE + 1
+
+    def _write_header(ws, title, subject, timestamp):
+        ws.merge_cells('A1:J1')
+        c = ws['A1']
+        c.value = title
+        c.font = Font(bold=True, size=18, color='FFFFFF')
+        c.fill = HEADER_FILL
+        c.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 36
+        ws['A2'] = f'Subject: {subject}'
+        ws['A2'].font = Font(bold=True, size=11)
+        ws['F2'] = f'Generated: {timestamp}'
+        ws.row_dimensions[2].height = 18
+
+    def _write_table(ws, r, section_label, columns, rows):
+        _cell(ws, r, 1, section_label, bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
+        if len(columns) > 1:
+            ws.merge_cells(start_row=r, start_column=1,
+                           end_row=r, end_column=min(len(columns), 8))
+        r += 1
+        for ci, col in enumerate(columns, 1):
+            _cell(ws, r, ci, col, bold=True, color='FFFFFF',
+                  fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
+            ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
+        r += 1
+        for row_data in rows:
+            for ci, col in enumerate(columns, 1):
+                val = row_data.get(col)
+                if val is not None:
+                    try:
+                        val = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                ws.cell(r, ci, value=val).border = CELL_BORDER
+            r += 1
+        return r + 1
+
+    def _write_item_block(ws, item, start_row):
+        r = start_row
+        filename      = item.get('filename', 'Item')
+        mode          = item.get('mode', 'N/A')
+        chart_images  = item.get('chart_images', [])
+        csv_columns   = item.get('csv_columns', [])
+        csv_rows      = item.get('csv_rows', [])
+        analysis_rows = item.get('analysis_rows', [])
+        coef_rows     = item.get('coef_rows', [])
+        derived_lines = item.get('derived_lines', [])
+
+        _cell(ws, r, 1, filename, bold=True, size=13, color='2c3e50')
+        ws.cell(r, 2, value=f'Mode: {mode}')
+        ws.row_dimensions[r].height = 20
+        r += 1
+
+        for ci_info in chart_images:
+            label = ci_info.get('label', '')
+            b64   = ci_info.get('b64', '')
+            if not b64:
+                continue
+            if label:
+                _cell(ws, r, 1, label, bold=True, size=11, color='555555')
+                r += 1
+            r = _embed_image(ws, b64, r)
+
+        if csv_columns and csv_rows:
+            r = _write_table(ws, r, 'Raw Data', csv_columns, csv_rows)
+
+        if analysis_rows:
+            r = _write_table(ws, r, 'Kinetics Analysis',
+                             list(analysis_rows[0].keys()), analysis_rows)
+
+        if coef_rows:
+            r = _write_table(ws, r, 'Calibration Fit Coefficients',
+                             list(coef_rows[0].keys()), coef_rows)
+
+        if derived_lines:
+            _cell(ws, r, 1, 'Derived Concentration', bold=True, size=11,
+                  fill=SECTION_FILL, color='2c3e50')
+            r += 1
+            for line in derived_lines:
+                ws.cell(r, 1, value=line)
+                r += 1
+
+        return r + 2
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    timestamp = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if split_sheets:
+        used_names = {}
+        for item in items:
+            base = re.sub(r'[\\/*?:\[\]]', '_', Path(item.get('filename', 'Sheet')).stem)[:27]
+            idx = used_names.get(base, 0)
+            used_names[base] = idx + 1
+            sheet_name = (base if idx == 0 else f'{base}_{idx}')[:31]
+            ws = wb.create_sheet(title=sheet_name)
+            _write_header(ws, title, subject, timestamp)
+            _write_item_block(ws, item, start_row=4)
+    else:
+        ws = wb.create_sheet(title='Report')
+        _write_header(ws, title, subject, timestamp)
+        cur = 4
+        for item in items:
+            cur = _write_item_block(ws, item, cur)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    safe_subject = re.sub(r'[^\w\-]', '_', subject) if subject else 'report'
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        attachment_filename=f'{safe_subject}_report.xlsx'
+    )

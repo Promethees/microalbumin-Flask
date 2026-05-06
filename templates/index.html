@@ -456,6 +456,7 @@
                         <label><input type="checkbox" id="console-logo" checked> Include CBB Logo</label>
                         <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report"
                                 style="width: 250px;"></label>
+                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per CSV)</label>
                     </div>
                 </div>
 
@@ -468,6 +469,8 @@
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="utility-btn" onclick="clearReportItems()">🗑️ Clear Selected Subject</button>
+                    <button class="utility-btn" onclick="finalizeReportExcel()"
+                        style="padding: 10px 20px; font-size: 1.1rem;">📊 Export as Excel</button>
                     <button class="primary-btn" onclick="finalizeReport()"
                         style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
                 </div>
