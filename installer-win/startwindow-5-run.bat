@@ -5,11 +5,13 @@ setlocal enabledelayedexpansion
 set "_ICON_PS=%TEMP%\easyokapi_icon.ps1"
 if exist "%_ICON_PS%" del "%_ICON_PS%"
 echo Add-Type -AssemblyName System.Drawing >> "%_ICON_PS%"
-echo Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint m, IntPtr w, IntPtr l); [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();' -Name ConsW -Namespace Prg >> "%_ICON_PS%"
+echo Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint m, IntPtr w, IntPtr l); [DllImport("user32.dll")] public static extern IntPtr SetClassLongPtr(IntPtr h, int n, IntPtr v); [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();' -Name ConsW -Namespace Prg >> "%_ICON_PS%"
 echo $ico = New-Object System.Drawing.Icon('%~dp0ht.ico') >> "%_ICON_PS%"
 echo $hwnd = [Prg.ConsW]::GetConsoleWindow() >> "%_ICON_PS%"
 echo [Prg.ConsW]::SendMessage($hwnd, 0x80, [IntPtr]::Zero, $ico.Handle) >> "%_ICON_PS%"
 echo [Prg.ConsW]::SendMessage($hwnd, 0x80, [IntPtr]1, $ico.Handle) >> "%_ICON_PS%"
+echo [Prg.ConsW]::SetClassLongPtr($hwnd, -34, $ico.Handle) >> "%_ICON_PS%"
+echo [Prg.ConsW]::SetClassLongPtr($hwnd, -14, $ico.Handle) >> "%_ICON_PS%"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%_ICON_PS%" 2>nul
 del "%_ICON_PS%" 2>nul
 
