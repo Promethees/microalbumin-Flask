@@ -302,10 +302,9 @@ function scrollWhenVisible(elementId, duration = 500) {
     const isVisible = el =>
         el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
 
-    // Scroll smoothly to the element
+    // Scroll so the element's centre aligns with the viewport's centre
     const scrollToElement = () => {
-        const targetTop = target.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: targetTop, behavior: "smooth" });
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
     // If visible, scroll immediately
