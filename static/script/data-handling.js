@@ -306,6 +306,7 @@ function deselectFile(tableSelector = "#file-table") {
 
         updateFileDisplay(AppState.currentFile);
         $disable(["copy-file-btn"], true);
+        $hidden(["data-display-section"]);
 
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = null;
