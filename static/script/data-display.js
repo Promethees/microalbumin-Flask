@@ -313,8 +313,8 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         const html = `
             <div id="plot-chart-section" style="display: flex; flex-wrap: wrap; gap: 15px;">
                 <div id="plot-analysis" style="width: 100%;"></div>
-                <div class="cal-chart-container" style="flex: 1 1 100%; min-width: 300px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #fff;">
-                    ${isKineticsCal ? `<div style="font-weight:700; color:#2c3e50; margin-bottom: 8px;">Selected metric: ${selectedMetric}</div>` : ``}
+                <div class="cal-chart-container" style="flex: 1 1 100%; min-width: 300px; padding: 10px; border-radius: 8px;">
+                    ${isKineticsCal ? `<div class="cal-metric-label">Selected metric: ${selectedMetric}</div>` : ``}
                     <canvas id="plot-canvas"></canvas>
                 </div>
             </div>
