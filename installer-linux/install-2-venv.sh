@@ -63,6 +63,12 @@ else
 fi
 echo "✅ Virtual environment ready."
 
+# ── Pre-compile bytecode for scipy/numpy so first app launch is not slow ──────
+echo "Pre-compiling Python bytecode for scientific libraries..."
+VENV_PYTHON="$INSTALL_DIR/venv/bin/python"
+su - "$CURRENT_USER" -c "$VENV_PYTHON -m compileall -q $INSTALL_DIR/venv/lib/python3.8/site-packages/scipy $INSTALL_DIR/venv/lib/python3.8/site-packages/numpy 2>/dev/null" || true
+echo "✅ Bytecode pre-compilation complete."
+
 # ── Step 2: Download front-end vendor libraries ───────────────────────────────
 echo "Downloading front-end vendor libraries..."
 VENDOR_DIR="$INSTALL_DIR/static/vendor"

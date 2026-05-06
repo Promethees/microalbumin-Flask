@@ -96,6 +96,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Pre-compile bytecode for scipy/numpy so first app launch is not slow
+echo "Pre-compiling Python bytecode for scientific libraries..."
+python3 -m compileall -q venv/lib/python3.8/site-packages/scipy venv/lib/python3.8/site-packages/numpy 2>/dev/null || true
+echo "✅ Bytecode pre-compilation complete."
+
 # Download front-end vendor libraries into static/vendor/
 echo "Downloading front-end vendor libraries..."
 VENDOR_DIR="$INSTALL_DIR/static/vendor"

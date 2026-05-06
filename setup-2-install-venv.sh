@@ -48,6 +48,12 @@ su - "$CURRENT_USER" -c "$VENV_PIP install --upgrade pip"
 su - "$CURRENT_USER" -c "$VENV_PIP install -r $REPO_DIR/requirements.txt"
 echo "✅ Virtual environment ready."
 
+# ── Pre-compile bytecode for scipy/numpy so first app launch is not slow ──────
+echo "Pre-compiling Python bytecode for scientific libraries..."
+VENV_PYTHON="$REPO_DIR/venv/bin/python"
+su - "$CURRENT_USER" -c "$VENV_PYTHON -m compileall -q $REPO_DIR/venv/lib/python3.8/site-packages/scipy $REPO_DIR/venv/lib/python3.8/site-packages/numpy 2>/dev/null" || true
+echo "✅ Bytecode pre-compilation complete."
+
 # ── Step 2: Download front-end vendor libraries ───────────────────────────────
 VENDOR_DIR="$REPO_DIR/static/vendor"
 FONT_DIR="$VENDOR_DIR/mathjax-fonts"

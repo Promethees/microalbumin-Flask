@@ -50,6 +50,11 @@ echo Installing requirements...
 pip install --upgrade pip
 pip install -r "%~dp0code\requirements-win.txt"
 
+REM Pre-compile bytecode for scipy/numpy so first app launch is not slow
+echo Pre-compiling Python bytecode for scientific libraries...
+python -m compileall -q "code\venv\Lib\site-packages\scipy" "code\venv\Lib\site-packages\numpy" 2>nul
+echo Bytecode pre-compilation complete.
+
 REM Download front-end vendor libraries
 echo Downloading front-end vendor libraries...
 set "VENDOR_DIR=%~dp0code\static\vendor"
