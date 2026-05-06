@@ -878,9 +878,11 @@ def delete_report_item(validated_data):
 })
 def export_report_excel(validated_data):
     import io
+    import base64
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.chart import LineChart, ScatterChart, Reference, Series
+    from openpyxl.chart import LineChart, Reference
+    from openpyxl.drawing.image import Image as XLImage
     from openpyxl.utils import get_column_letter
     from datetime import datetime as _dt
 
@@ -896,6 +898,9 @@ def export_report_excel(validated_data):
     CELL_BORDER    = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
     CHART_ROW_RESERVE = 22  # rows reserved per native chart (~12 cm at default row height)
+    IMAGE_W           = 640
+    IMAGE_H           = 320
+    IMAGE_ROW_RESERVE = 18
 
     def _cell(ws, row, col, value=None, bold=False, size=11, color='000000',
               fill=None, align_h='left', border=None):
@@ -908,36 +913,38 @@ def export_report_excel(validated_data):
             c.border = border
         return c
 
-    def _add_native_chart(ws, mode, columns, hdr_row, data_start, data_end):
+    def _add_native_chart(ws, columns, hdr_row, data_start, data_end):
         num_cols = len(columns)
         if num_cols < 2 or data_end < data_start:
             return data_end + 2
         anchor = data_end + 2
-        if mode == 'calibrate':
-            chart = ScatterChart()
-            chart.title = 'Standard Curve'
-            chart.x_axis.title = columns[0]
-            chart.y_axis.title = columns[1]
-            for col_idx in range(2, num_cols + 1):
-                xvals = Reference(ws, min_col=1, min_row=data_start, max_row=data_end)
-                yvals = Reference(ws, min_col=col_idx, min_row=data_start, max_row=data_end)
-                ser = Series(yvals, xvals, title=columns[col_idx - 1])
-                chart.series.append(ser)
-        else:
-            chart = LineChart()
-            chart.title = 'Measurement Data'
-            chart.x_axis.title = columns[0]
-            chart.y_axis.title = 'Value'
-            data_ref = Reference(ws, min_col=2, min_row=hdr_row,
-                                 max_col=num_cols, max_row=data_end)
-            chart.add_data(data_ref, titles_from_data=True)
-            cats = Reference(ws, min_col=1, min_row=data_start, max_row=data_end)
-            chart.set_categories(cats)
+        chart = LineChart()
+        chart.title = 'Measurement Data'
+        chart.x_axis.title = columns[0]
+        chart.y_axis.title = 'Value'
+        data_ref = Reference(ws, min_col=2, min_row=hdr_row,
+                             max_col=num_cols, max_row=data_end)
+        chart.add_data(data_ref, titles_from_data=True)
+        cats = Reference(ws, min_col=1, min_row=data_start, max_row=data_end)
+        chart.set_categories(cats)
         chart.style = 10
         chart.width = 20
         chart.height = 12
         ws.add_chart(chart, f'A{anchor}')
         return anchor + CHART_ROW_RESERVE
+
+    def _embed_image(ws, b64_str, anchor_row):
+        if b64_str.startswith('data:'):
+            b64_str = b64_str.split(',', 1)[1]
+        try:
+            xl_img = XLImage(io.BytesIO(base64.b64decode(b64_str)))
+            xl_img.width  = IMAGE_W
+            xl_img.height = IMAGE_H
+            ws.add_image(xl_img, f'A{anchor_row}')
+        except Exception as e:
+            ws.cell(anchor_row, 1, value=f'[Image error: {e}]')
+            return anchor_row + 2
+        return anchor_row + IMAGE_ROW_RESERVE + 1
 
     def _write_header(ws, title, subject, timestamp):
         ws.merge_cells('A1:J1')
@@ -979,6 +986,7 @@ def export_report_excel(validated_data):
         r = start_row
         filename      = item.get('filename', 'Item')
         mode          = item.get('mode', 'N/A')
+        chart_images  = item.get('chart_images', [])
         csv_columns   = item.get('csv_columns', [])
         csv_rows      = item.get('csv_rows', [])
         analysis_rows = item.get('analysis_rows', [])
@@ -991,29 +999,64 @@ def export_report_excel(validated_data):
         r += 1
 
         if csv_columns and csv_rows:
-            _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
-            if len(csv_columns) > 1:
-                ws.merge_cells(start_row=r, start_column=1,
-                               end_row=r, end_column=min(len(csv_columns), 8))
-            r += 1
-            hdr_row = r
-            for ci, col in enumerate(csv_columns, 1):
-                _cell(ws, r, ci, col, bold=True, color='FFFFFF',
-                      fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
-                ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
-            r += 1
-            data_start = r
-            for row_data in csv_rows:
-                for ci, col in enumerate(csv_columns, 1):
-                    val = row_data.get(col)
-                    if val is not None:
-                        try:
-                            val = float(val)
-                        except (ValueError, TypeError):
-                            pass
-                    ws.cell(r, ci, value=val).border = CELL_BORDER
+            if mode == 'calibrate':
+                # Write standards data table
+                _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
+                if len(csv_columns) > 1:
+                    ws.merge_cells(start_row=r, start_column=1,
+                                   end_row=r, end_column=min(len(csv_columns), 8))
                 r += 1
-            r = _add_native_chart(ws, mode, csv_columns, hdr_row, data_start, r - 1)
+                for ci, col in enumerate(csv_columns, 1):
+                    _cell(ws, r, ci, col, bold=True, color='FFFFFF',
+                          fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
+                    ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
+                r += 1
+                for row_data in csv_rows:
+                    for ci, col in enumerate(csv_columns, 1):
+                        val = row_data.get(col)
+                        if val is not None:
+                            try:
+                                val = float(val)
+                            except (ValueError, TypeError):
+                                pass
+                        ws.cell(r, ci, value=val).border = CELL_BORDER
+                    r += 1
+                r += 1  # blank row before images
+
+                # Embed canvas-rendered chart images (one per calibrated metric)
+                for ci_info in chart_images:
+                    label = ci_info.get('label', '')
+                    b64   = ci_info.get('b64', '')
+                    if not b64:
+                        continue
+                    if label:
+                        _cell(ws, r, 1, label, bold=True, size=11, color='555555')
+                        r += 1
+                    r = _embed_image(ws, b64, r)
+            else:
+                _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
+                if len(csv_columns) > 1:
+                    ws.merge_cells(start_row=r, start_column=1,
+                                   end_row=r, end_column=min(len(csv_columns), 8))
+                r += 1
+                hdr_row = r
+                for ci, col in enumerate(csv_columns, 1):
+                    _cell(ws, r, ci, col, bold=True, color='FFFFFF',
+                          fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
+                    ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
+                r += 1
+                data_start = r
+                for row_data in csv_rows:
+                    for ci, col in enumerate(csv_columns, 1):
+                        val = row_data.get(col)
+                        if val is not None:
+                            try:
+                                val = float(val)
+                            except (ValueError, TypeError):
+                                pass
+                        ws.cell(r, ci, value=val).border = CELL_BORDER
+                    r += 1
+                r = _add_native_chart(ws, csv_columns, hdr_row, data_start, r - 1)
 
         if analysis_rows:
             r = _write_table(ws, r, 'Kinetics Analysis',
