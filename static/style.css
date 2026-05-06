@@ -959,6 +959,29 @@ body.dark #swal-edit-table tr.selected td {
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
+.cal-chart-container {
+    border: 1px solid;
+}
+body.light .cal-chart-container {
+    border-color: #ddd;
+    background: #fff;
+}
+body.dark .cal-chart-container {
+    border-color: var(--table-border-dark);
+    background: var(--surface-dark);
+}
+
+.cal-metric-label {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+body.light .cal-metric-label {
+    color: #2c3e50;
+}
+body.dark .cal-metric-label {
+    color: #e2e8f0;
+}
+
 /* ==========================================================================
    Display Sections
    ========================================================================== */

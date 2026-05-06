@@ -283,34 +283,54 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         }
     };
 
-    if (getBtnChecked("split-source")) {
-        // One section per source
-        const section = createChartSection({
-            sectionId: `source-chart-${index}-section`,
-            analysisId: `source-${index}-analysis`,
-            canvasId: `source-${index}-canvas`,
-            quantityId: `source-${index}`,
-            fullDisplayId: `full-display-source-${index}`,
-            allXColumn: allXColumn,
-            allYColumnOrArray: allYColumnOrArray,
-            labelOrLabels: labelOrLabels,
-            unit: unit,
-            index: index
-        });
-        appendHTML(section);
-    } else {
-        // Single mixed plot
+    if (AppState.currentMeasurementMode === "calibrate") {
+        // Calibration chart: show only the selected metric for kinetics;
+        // point calibration already uses a single plot.
+        const isKineticsCal = calDiv.getAttribute('data-value') === "kinetics";
+        const selectedMetric = isKineticsCal
+            ? (document.getElementById('regressed-quantity')?.selectedOptions?.[0]?.dataset?.original || 'Slope')
+            : '';
         const html = `
-            <label id="quantity-checkboxes-plot" class="hidden">
-                <h3>Quantities to display on graphic</h3>
-                ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
-            </label>
-            <div id="plot-chart-section">
-                <div id="plot-analysis"></div>
-                <canvas id="plot-canvas"></canvas>
+            <div id="plot-chart-section" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                <div id="plot-analysis" style="width: 100%;"></div>
+                <div class="cal-chart-container" style="flex: 1 1 100%; min-width: 300px; padding: 10px; border-radius: 8px;">
+                    ${isKineticsCal ? `<div class="cal-metric-label">Selected metric: ${selectedMetric}</div>` : ``}
+                    <canvas id="plot-canvas"></canvas>
+                </div>
             </div>
         `;
         appendHTML(html);
+    } else {
+        // Kinetics / point modes
+        if (getBtnChecked("split-source")) {
+            // One section per source
+            const section = createChartSection({
+                sectionId: `source-chart-${index}-section`,
+                analysisId: `source-${index}-analysis`,
+                canvasId: `source-${index}-canvas`,
+                quantityId: `source-${index}`,
+                fullDisplayId: `full-display-source-${index}`,
+                allXColumn: allXColumn,
+                allYColumnOrArray: allYColumnOrArray,
+                labelOrLabels: labelOrLabels,
+                unit: unit,
+                index: index
+            });
+            appendHTML(section);
+        } else {
+            // Single mixed plot
+            const html = `
+                <label id="quantity-checkboxes-plot" class="hidden">
+                    <h3>Quantities to display on graphic</h3>
+                    ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
+                </label>
+                <div id="plot-chart-section">
+                    <div id="plot-analysis"></div>
+                    <canvas id="plot-canvas"></canvas>
+                </div>
+            `;
+            appendHTML(html);
+        }
     }
 }
 
