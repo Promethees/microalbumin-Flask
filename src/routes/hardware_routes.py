@@ -18,7 +18,7 @@ _RESEND_COOLDOWN = 5.0
 
 def clear_logs():
     try:
-        with open(state.log_file, 'w') as f:
+        with open(state.log_file, 'w', encoding='utf-8') as f:
             f.write("")
     except Exception:
         pass
@@ -40,6 +40,11 @@ def run_script(validated_data):
     base_name = validated_data['base_name']
     timeout_sec = validated_data['timeout_sec']
     interval_sec = validated_data['interval_sec']
+
+    if '..' in os.path.normpath(base_dir) or os.path.isabs(base_dir):
+        return jsonify({'status': 'failure', 'message': 'Invalid base directory'}), 400
+    if any(c in base_name for c in ('/', '\\', '..')):
+        return jsonify({'status': 'failure', 'message': 'Invalid base name'}), 400
     print("Interval seconds is ", interval_sec)
 
     state.last_run_params = {'timeout_sec': timeout_sec, 'interval_sec': interval_sec}
@@ -72,7 +77,7 @@ def run_script(validated_data):
             script_path = os.path.join(state.script_dir, 'log_hid_data.py')
             cmd = ['sudo', 'python3', script_path, '--base-dir', base_dir, '--base-name', base_name]
         
-        with open(state.log_file, 'a') as f:
+        with open(state.log_file, 'a', encoding='utf-8') as f:
             state.process = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
             state.subprocess_start_time = time.time()
             try:
@@ -245,7 +250,7 @@ def terminate_script():
 @hardware_bp.route('/get_logs', methods=['GET'])
 def get_logs():
     if os.path.exists(state.log_file):
-        with open(state.log_file, 'r') as f:
+        with open(state.log_file, 'r', encoding='utf-8') as f:
             logs = f.read()
         return jsonify({'status': 'success', 'logs': logs})
     return jsonify({'status': 'success', 'logs': 'No logs available'})

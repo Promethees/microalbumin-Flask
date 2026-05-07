@@ -384,12 +384,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     return `
                                         <tr>
                                             <td class="metadata-key">${key}</td>
-                                            <td 
-                                                ${isNonEditable ? '' : 'contenteditable="true"'} 
-                                                data-meta-key="${key}" 
+                                            <td
+                                                ${isNonEditable ? '' : 'contenteditable="true"'}
+                                                data-meta-key="${key}"
                                                 class="metadata-value ${isNonEditable ? 'noneditable' : ''}"
                                             >
-                                                ${value}
+                                                ${escapeHtml(value)}
                                             </td>
                                         </tr>
                                     `;
@@ -449,7 +449,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                                     ${columnName === 'Timestamp' ? 'white-space: nowrap;' : ''}
                                                     ${columnName === 'Value' || columnName === 'Concentration' ? 'text-align: right;' : ''}"
                                                     data-col="${columnName}">
-                                                    ${cell.trim()}
+                                                    ${escapeHtml(cell.trim())}
                                                 </td>
                                             `;
                     }).join('')}
@@ -563,12 +563,26 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
             function refreshGraphicUI() {
                 const container = document.querySelector('.json-graphic-container');
-                if (!container) return;
-                let parsed;
-                try { parsed = JSON.parse(originalContent); } catch (_) { return; }
-                container.innerHTML = buildGraphicUI(parsed);
+                if (!container || !workingJSON) return;
+                container.innerHTML = buildGraphicUI(workingJSON);
                 bindDynamicButtons();
+                bindInputListeners();
                 syncFitCoefLabels(document.querySelector('.swal2-popup'));
+            }
+
+            function bindInputListeners() {
+                const popup = document.querySelector('.swal2-popup');
+                if (!popup) return;
+                popup.querySelectorAll('.json-input').forEach(input => {
+                    input.addEventListener('change', () => {
+                        const path = input.dataset.path;
+                        let val;
+                        if (input.type === 'checkbox') val = input.checked;
+                        else if (input.type === 'number') val = input.value === '' ? null : parseFloat(input.value);
+                        else val = input.value;
+                        setValueByPath(path, val);
+                    });
+                });
             }
             /* --------------------------------------------------------------
             SINGLE FIT_TYPE → MULTIPLE FIT_COEF blocks (grouped)
@@ -810,6 +824,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             setupTableEvents();
                         } else if (editMode === 'graphic') {
                             syncFitCoefLabels(Swal.getPopup());
+                            bindInputListeners();
                         }
 
                         if (toggleButton) {
@@ -818,10 +833,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
                                 Swal.getHtmlContainer().innerHTML = renderContent({ content: originalContent });
                                 if (editMode === 'table') {
-                                    // Need a small delay to allow DOM to update
                                     setTimeout(setupTableEvents, 50);
                                 } else if (editMode === 'graphic') {
                                     syncFitCoefLabels(Swal.getPopup());
+                                    bindInputListeners();
                                 }
                             });
                         }

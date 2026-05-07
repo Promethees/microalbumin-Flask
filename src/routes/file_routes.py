@@ -47,23 +47,29 @@ def get_calibration_json_list():
 
 @file_bp.route('/get_json_content', methods=['GET'])
 def get_json_content():
-    selected_json = request.args.get('json_name')
-    mode = request.args.get('mode')
-    json_path = os.path.join(os.path.join(state.json_root_path, mode), selected_json)
-    print("print the json path ", json_path)
+    selected_json = request.args.get('json_name', '').strip()
+    mode = request.args.get('mode', '').strip().lower()
+    if mode not in ('kinetics', 'point'):
+        return jsonify({'status': 'error', 'message': 'Invalid mode'}), 400
+    if not selected_json or any(c in selected_json for c in ('..', '/', '\\')):
+        return jsonify({'status': 'error', 'message': 'Invalid filename'}), 400
+    json_path = os.path.join(state.json_root_path, mode, selected_json)
     if os.path.exists(json_path):
-        with open(json_path, 'r') as f:
+        with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        print("print the json data", data)
         return jsonify({'status': 'success', 'json': data, 'path': json_path})
     return jsonify({'status': 'error', 'message': 'Error in reading the json file'})
 
 @file_bp.route('/get_headers', methods=['GET'])
 def get_csv_headers():
     read_file = request.args.get('file')
-    
+
     if not read_file:
         return jsonify({'headers': [], 'error': 'No file path provided'}), 400
+    if '..' in os.path.normpath(read_file):
+        return jsonify({'headers': [], 'error': 'Invalid file path'}), 400
+    if not read_file.lower().endswith('.csv'):
+        return jsonify({'headers': [], 'error': 'Only CSV files are supported'}), 400
     if not os.path.exists(read_file):
         return jsonify({'headers': [], 'error': 'File not found'}), 404
     if not os.path.isfile(read_file):
@@ -226,7 +232,7 @@ def edit_file():
                         with open(new_file_path, 'w', encoding='utf-8') as f:
                             json.dump(cleaned_json, f, indent=2, ensure_ascii=False)
                     else:
-                        with open(new_file_path, 'w') as f:
+                        with open(new_file_path, 'w', encoding='utf-8') as f:
                             f.write(content)
                         if calibrate_mode:
                             sort_csv_file(new_file_path, calibrate_mode)
@@ -429,6 +435,10 @@ def get_data():
     selected_file = request.args.get('file')
     if not selected_file:
         return jsonify({'data': [], 'error': 'No file path provided', 'unit': 'NONE'}), 400
+    if '..' in os.path.normpath(selected_file):
+        return jsonify({'data': [], 'error': 'Invalid file path', 'unit': 'NONE'}), 400
+    if not selected_file.lower().endswith('.csv'):
+        return jsonify({'data': [], 'error': 'Only CSV files are supported', 'unit': 'NONE'}), 400
     data = get_dynamic_data(selected_file)
     return jsonify(data)
 
@@ -456,7 +466,7 @@ def get_file_content():
             return jsonify({'status': 'error', 'message': 'Only CSV and JSON files are supported'}), HTTPStatus.BAD_REQUEST
 
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             if file_name.lower().endswith('.json'):
@@ -504,7 +514,7 @@ def export_data(validated_data):
             if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):
                 return jsonify({"status": "error", "message": "Metadata inconsistency"})
 
-        with open(full_path, "a", newline='') as f:
+        with open(full_path, "a", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
                 write_metadata(f, measurement, meas_unit, time_unit, meas_mode)
@@ -513,8 +523,7 @@ def export_data(validated_data):
             if is_batch:
                 entries = [extract_single_entry(entry, meas_mode) for entry in entries]
             else:
-                raw_data = request.get_json()
-                entries = [extract_single_entry(raw_data, meas_mode)]
+                entries = [extract_single_entry(validated_data, meas_mode)]
             
             for entry in entries:
                 writer.writerow(entry)
@@ -560,7 +569,7 @@ def export_cal_coefs(validated_data):
 
         if (cal_mode == "point"):
             json_content.update({"time": time, "time-unit": time_unit})
-        with open(full_path, "w") as f:
+        with open(full_path, "w", encoding='utf-8') as f:
             json.dump(json_content, f, cls=CustomEncoder, indent=4)
         return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
     except Exception as e:
@@ -602,10 +611,14 @@ def export_to_report(validated_data):
     metadata = validated_data.get('metadata', {})
     
     try:
-        # Resolve source path
+        # Resolve source path and restrict it to the report root
         if not os.path.isabs(source_path):
-             source_path = os.path.abspath(os.path.join(state.script_dir, source_path))
-        
+            source_path = os.path.abspath(os.path.join(state.report_root_path, source_path))
+        abs_source = os.path.abspath(source_path)
+        abs_report_root = os.path.abspath(state.report_root_path)
+        if not abs_source.startswith(abs_report_root + os.sep) and abs_source != abs_report_root:
+            return jsonify({"status": "error", "message": "Source file is outside the report directory"}), 403
+
         if not os.path.exists(source_path):
             return jsonify({"status": "error", "message": f"Source file not found: {source_path}"}), 404
             

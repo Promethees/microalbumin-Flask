@@ -19,8 +19,8 @@ def ping():
 @core_bp.route('/clear_logs', methods=['POST'])
 def clear_logs():
     try:
-        with open(state.log_file, 'w') as f:
-            f.write("")  # Clear the file
+        with open(state.log_file, 'w', encoding='utf-8') as f:
+            f.write("")
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 500
@@ -51,7 +51,7 @@ def index():
     
     # Can't use clear_logs() call like main.py did easily without importing it, but let's clear it here
     try:
-        with open(state.log_file, 'w') as f:
+        with open(state.log_file, 'w', encoding='utf-8') as f:
             f.write("")
     except:
         pass
