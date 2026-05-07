@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify, request
+import json
+from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
 import ai_assistant
 
@@ -55,27 +56,21 @@ def ai_chat():
     if not settings.get('enabled', True):
         return jsonify({'status': 'failure', 'message': 'AI assistant is disabled'}), 403
 
-    # Explicit language from request takes priority, then first preferred language
     langs = settings.get('preferred_languages', ['en'])
     language = data.get('language') or (langs[0] if langs else 'en')
     model = data.get('model') or settings.get('model', 'qwen2.5:7b')
     ollama_url = settings.get('ollama_url', 'http://localhost:11434')
 
-    result = ai_assistant.chat(messages, language, ollama_url, model)
+    def generate():
+        for event in ai_assistant.chat_stream(messages, language, ollama_url, model):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
 
-    if 'error' in result:
-        err = result['error']
-        if err == 'ollama_offline':
-            msg = 'Ollama is not running. Please start Ollama first.'
-        elif err == 'timeout':
-            msg = 'Request timed out. The model may be loading — try again in a moment.'
-        elif err == 'max_iterations':
-            msg = 'Could not complete the request (tool loop limit reached).'
-        else:
-            msg = err
-        return jsonify({'status': 'failure', 'message': msg}), 500
-
-    return jsonify({'status': 'success', 'reply': result.get('reply', '')})
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+    )
 
 
 @ai_bp.route('/pull_model', methods=['POST'])

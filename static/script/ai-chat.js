@@ -235,6 +235,38 @@
         return div;
     }
 
+    function _addStreamingMsg() {
+        const container = document.getElementById('okapi-ai-messages');
+        if (!container) return null;
+        const div = document.createElement('div');
+        div.className = 'okapi-ai-msg okapi-ai-msg-assistant okapi-ai-thinking';
+        div.innerHTML = '<span></span><span></span><span></span>';
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return div;
+    }
+
+    function _updateStreamingMsg(div, content) {
+        if (!div) return;
+        div.className = 'okapi-ai-msg okapi-ai-msg-assistant';
+        div.innerHTML = _renderMarkdown(content) + '<span class="okapi-ai-cursor">&#9611;</span>';
+        const container = document.getElementById('okapi-ai-messages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    function _finalizeStreamingMsg(div, content, errorText) {
+        if (!div) return;
+        const container = document.getElementById('okapi-ai-messages');
+        if (errorText) {
+            div.className = 'okapi-ai-msg okapi-ai-msg-system';
+            div.textContent = errorText;
+        } else {
+            div.className = 'okapi-ai-msg okapi-ai-msg-assistant';
+            div.innerHTML = _renderMarkdown(content || '');
+        }
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
     function _renderMarkdown(text) {
         if (!text) return '';
         // escape HTML first
@@ -359,6 +391,20 @@
                     AI.pullTimer = null;
                 });
         }, 2000);
+    }
+
+    // ── Guide launcher ────────────────────────────────────────────────────────
+
+    function _launchGuide(workflow) {
+        if (typeof window.userGuide === 'undefined') return;
+        OkapiAI.close();
+        setTimeout(() => window.userGuide.startWorkflow(workflow), 400);
+    }
+
+    function _launchCustomSteps(steps) {
+        if (typeof window.userGuide === 'undefined') return;
+        OkapiAI.close();
+        setTimeout(() => window.userGuide.startCustomSteps(steps), 400);
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -508,7 +554,12 @@
             _addMsg('user', text);
             AI.messages.push({ role: 'user', content: text });
 
-            const thinking = _addThinkingBubble();
+            // Trim history to last 10 messages to keep prompts fast
+            const historyToSend = AI.messages.length > 10
+                ? AI.messages.slice(-10)
+                : AI.messages.slice();
+
+            const msgDiv = _addStreamingMsg();
             const sendBtn = document.getElementById('okapi-ai-send-btn');
             if (sendBtn) sendBtn.disabled = true;
             input.disabled = true;
@@ -516,35 +567,75 @@
             const lang = AI.activeLang || 'en';
             const model = AI.settings.model || 'qwen2.5:7b';
 
-            fetch('/ai/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: AI.messages.slice(),
-                    language: lang,
-                    model,
-                }),
-            })
-                .then(r => r.json())
-                .then(d => {
-                    if (thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
-                    if (d.status === 'success') {
-                        const reply = d.reply || '';
-                        AI.messages.push({ role: 'assistant', content: reply });
-                        _addMsg('assistant', reply);
-                    } else {
-                        _addSystemMsg('⚠ ' + (d.message || 'Unknown error'));
+            (async () => {
+                let fullReply = '';
+                try {
+                    const resp = await fetch('/ai/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ messages: historyToSend, language: lang, model }),
+                    });
+
+                    if (!resp.ok || !resp.body) {
+                        const err = await resp.json().catch(() => ({}));
+                        _finalizeStreamingMsg(msgDiv, null, '⚠ ' + (err.message || 'Request failed'));
+                        return;
                     }
-                })
-                .catch(err => {
-                    if (thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
-                    _addSystemMsg('⚠ Network error: ' + err.message);
-                })
-                .finally(() => {
+
+                    const reader = resp.body.getReader();
+                    const decoder = new TextDecoder();
+                    let sseBuffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        sseBuffer += decoder.decode(value, { stream: true });
+                        const lines = sseBuffer.split('\n');
+                        sseBuffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const payload = line.slice(6).trim();
+                            if (payload === '[DONE]') break;
+                            let event;
+                            try { event = JSON.parse(payload); } catch { continue; }
+
+                            if (event.type === 'chunk') {
+                                fullReply += event.content;
+                                _updateStreamingMsg(msgDiv, fullReply);
+                            } else if (event.type === 'clear') {
+                                fullReply = '';
+                                _updateStreamingMsg(msgDiv, '');
+                            } else if (event.type === 'guide') {
+                                const ga = event.guide_action;
+                                if (ga && ga.guide_workflow) {
+                                    _launchGuide(ga.guide_workflow);
+                                } else if (ga && ga.custom_steps && ga.custom_steps.length) {
+                                    _launchCustomSteps(ga.custom_steps);
+                                }
+                            } else if (event.type === 'error') {
+                                const errMsg = event.error === 'ollama_offline'
+                                    ? '⚠ Ollama is not running. Please start Ollama first.'
+                                    : event.error === 'timeout'
+                                    ? '⚠ Request timed out. The model may be loading — try again.'
+                                    : '⚠ ' + event.error;
+                                _finalizeStreamingMsg(msgDiv, null, errMsg);
+                                return;
+                            }
+                        }
+                    }
+
+                    AI.messages.push({ role: 'assistant', content: fullReply });
+                    _finalizeStreamingMsg(msgDiv, fullReply, null);
+
+                } catch (err) {
+                    _finalizeStreamingMsg(msgDiv, null, '⚠ Network error: ' + err.message);
+                } finally {
                     if (sendBtn) sendBtn.disabled = false;
                     input.disabled = false;
                     input.focus();
-                });
+                }
+            })();
         },
 
         resetSettings() {

@@ -2569,6 +2569,17 @@ body.dark .okapi-ai-uninstall-box code { background: rgba(255,255,255,0.1); }
 }
 body.dark .okapi-ai-uninstall-box button { background: rgba(185,28,28,0.25); color: #fca5a5; }
 
+.okapi-ai-cursor {
+    display: inline-block;
+    animation: okapi-cursor-blink 0.6s step-end infinite;
+    opacity: 0.7;
+    font-size: 0.85em;
+}
+@keyframes okapi-cursor-blink {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0; }
+}
+
 /* Responsive — narrow screens */
 @media (max-width: 440px) {
     #okapi-ai-panel { width: calc(100vw - 32px); right: 16px; }

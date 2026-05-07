@@ -729,6 +729,100 @@ class UserGuide {
             this.start();
         }
     }
+
+    /**
+     * Start a custom guide with AI-generated steps.
+     * Each step: { target, title, description, position }
+     */
+    startCustomSteps(aiSteps) {
+        if (!this.initialized) this.init();
+        if (!aiSteps || !aiSteps.length) return;
+
+        this.steps = aiSteps.map(s => ({
+            target:          s.target,
+            title:           s.title || 'Step',
+            description:     s.description || '',
+            position:        s.position || 'bottom',
+            skipInteraction: true,
+            scrollIntoView:  true,
+        }));
+
+        this.currentStep = 0;
+        this.isActive = true;
+        this.overlay.classList.add('active');
+        this.showStep(0);
+    }
+
+    /**
+     * Start the guide for a specific named workflow (called by the AI assistant).
+     * @param {string} workflowName - one of: general, kinetics, point,
+     *   calibrate_kinetics, calibrate_point, report
+     */
+    startWorkflow(workflowName) {
+        if (!this.initialized) this.init();
+        const steps = this._buildWorkflowSteps(workflowName);
+        if (!steps || !steps.length) {
+            this.start();
+            return;
+        }
+        this.steps = steps;
+        this.currentStep = 0;
+        this.isActive = true;
+        this.overlay.classList.add('active');
+        this.showStep(0);
+    }
+
+    /**
+     * Build a step sequence for a named workflow.
+     */
+    _buildWorkflowSteps(workflowName) {
+        const d = this.stepDefinitions;
+        switch (workflowName) {
+            case 'kinetics':
+                return [
+                    ...d.common,
+                    d.nonCalibrate,
+                    ...d.fileSelection,
+                    ...d.kinetics.part1,
+                    ...d.kinetics.secondPart,
+                    d.kinetics.measurementMode,
+                ];
+            case 'point':
+                return [
+                    ...d.common,
+                    d.nonCalibrate,
+                    ...d.fileSelection,
+                    ...d.point.part1,
+                    ...d.kinetics.secondPart,
+                    d.kinetics.measurementMode,
+                ];
+            case 'calibrate_kinetics':
+                return [
+                    ...d.common,
+                    ...d.calibrate.calmode,
+                    ...d.fileSelection,
+                    ...d.calibrate.common,
+                    ...d.calibrate.kinetics,
+                ];
+            case 'calibrate_point':
+                return [
+                    ...d.common,
+                    ...d.calibrate.calmode,
+                    ...d.fileSelection,
+                    ...d.calibrate.common,
+                    ...d.calibrate.point,
+                ];
+            case 'report':
+                return [
+                    ...d.common,
+                    ...d.fileSelection,
+                    ...d.report,
+                ];
+            default: // 'general' — use the existing context-aware defineSteps logic
+                this.defineSteps();
+                return this.steps;
+        }
+    }
 }
 
 // Create global instance

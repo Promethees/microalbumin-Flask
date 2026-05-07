@@ -19,6 +19,11 @@ _SYSTEM_PROMPTS = {
         "- Manage reports and export data\n"
         "- Troubleshoot PyBadge colorimeter hardware connection issues\n\n"
         "Use the available tools to fetch live data from the application when needed.\n"
+        "When the user asks HOW to do something, launch a guide AND provide a text reply:\n"
+        "- For broad workflows ('walk me through X'), call trigger_guide.\n"
+        "- For focused questions ('where do I set timeout?', 'how do I export?', 'which button starts recording?'), "
+        "call trigger_custom_steps with 2-5 steps targeting only the relevant UI elements.\n"
+        "In your text reply confirm the guide launched. Do NOT ask 'would you like me to guide you'.\n"
         "Always respond in English."
     ),
     "vi": (
@@ -31,6 +36,9 @@ _SYSTEM_PROMPTS = {
         "- Quản lý báo cáo và xuất dữ liệu\n"
         "- Xử lý sự cố kết nối phần cứng máy đo màu PyBadge\n\n"
         "Sử dụng các công cụ để lấy dữ liệu thực tế từ ứng dụng khi cần.\n"
+        "Khi người dùng hỏi CÁCH làm gì đó, hãy kết hợp hướng dẫn trực quan với câu trả lời:\n"
+        "- Câu hỏi rộng ('hướng dẫn quy trình X'): gọi trigger_guide.\n"
+        "- Câu hỏi cụ thể ('nút nào để bắt đầu?', 'cài timeout ở đâu?'): gọi trigger_custom_steps với 2-5 bước.\n"
         "Luôn trả lời bằng Tiếng Việt."
     ),
     "zh": (
@@ -42,6 +50,9 @@ _SYSTEM_PROMPTS = {
         "- 管理报告和导出数据\n"
         "- 排除 PyBadge 比色计硬件连接问题\n\n"
         "需要时使用可用工具从应用程序获取实时数据。\n"
+        "当用户询问如何操作时，请结合可视化引导和文字回复：\n"
+        "- 宽泛问题（'带我了解X流程'）：调用 trigger_guide。\n"
+        "- 具体问题（'哪个按钮开始录制？'、'在哪里设置超时？'）：调用 trigger_custom_steps，提供2-5个步骤。\n"
         "始终用中文（简体）回答。"
     ),
     "fr": (
@@ -54,6 +65,9 @@ _SYSTEM_PROMPTS = {
         "- Gérer les rapports et exporter les données\n"
         "- Dépanner les problèmes de connexion du colorimètre PyBadge\n\n"
         "Utilisez les outils disponibles pour récupérer des données en direct de l'application si nécessaire.\n"
+        "Quand l'utilisateur demande COMMENT faire quelque chose, combinez guide visuel et réponse texte :\n"
+        "- Question large ('guide-moi dans X') : appelez trigger_guide.\n"
+        "- Question ciblée ('quel bouton lance l'enregistrement ?') : appelez trigger_custom_steps avec 2-5 étapes.\n"
         "Répondez toujours en français."
     ),
     "ja": (
@@ -66,6 +80,9 @@ _SYSTEM_PROMPTS = {
         "- レポートの管理とデータのエクスポート\n"
         "- PyBadge 比色計のハードウェア接続トラブルシューティング\n\n"
         "必要に応じて利用可能なツールを使用して、アプリケーションからリアルタイムデータを取得してください。\n"
+        "ユーザーが操作方法を尋ねたとき、ビジュアルガイドとテキスト返答を組み合わせてください：\n"
+        "- 広範な質問（「Xのワークフローを案内して」）：trigger_guide を呼び出す。\n"
+        "- 具体的な質問（「どのボタンで記録開始？」）：trigger_custom_steps で2〜5ステップを指定。\n"
         "常に日本語で回答してください。"
     ),
     "ru": (
@@ -78,6 +95,9 @@ _SYSTEM_PROMPTS = {
         "- Управлять отчётами и экспортировать данные\n"
         "- Устранять неполадки подключения колориметра PyBadge\n\n"
         "При необходимости используйте доступные инструменты для получения актуальных данных из приложения.\n"
+        "Когда пользователь спрашивает КАК что-то сделать, сочетайте визуальный гид с текстовым ответом:\n"
+        "- Широкий вопрос («проведи по X»): вызовите trigger_guide.\n"
+        "- Конкретный вопрос («какая кнопка для записи?»): вызовите trigger_custom_steps с 2-5 шагами.\n"
         "Всегда отвечайте на русском языке."
     ),
 }
@@ -166,6 +186,85 @@ TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_guide",
+            "description": (
+                "Launch a full preset workflow guide (highlights many UI elements in sequence). "
+                "Use for broad 'walk me through X' requests. "
+                "For focused questions about specific steps, use trigger_custom_steps instead."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "workflow": {
+                        "type": "string",
+                        "enum": [
+                            "general",
+                            "kinetics",
+                            "point",
+                            "calibrate_kinetics",
+                            "calibrate_point",
+                            "report",
+                        ],
+                        "description": (
+                            "general: full app tour. "
+                            "kinetics: time-series measurement workflow. "
+                            "point: endpoint measurement workflow. "
+                            "calibrate_kinetics: standard curve from kinetics data. "
+                            "calibrate_point: standard curve from point data. "
+                            "report: report management workflow."
+                        ),
+                    },
+                },
+                "required": ["workflow"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_custom_steps",
+            "description": (
+                "Focused spotlight guide for 2-5 specific UI elements. "
+                "Use for targeted how-to questions. "
+                "Valid IDs: #log-hid-data #run-script-btn #terminate-script-btn #base-dir #base-name "
+                "#timeout-control #interval-control #log-display #go-to-btn #directory "
+                "#meas-mode-section #file-selection #cal-json-sel-section #merge-file-btn "
+                "#data-display-section #chart-container #range-display #window-size-section "
+                "#split-source-section #export-analysis #report-section #cal-mode-select "
+                "#select-quantity-section #select-regress-algo #export-coef #threshold-value "
+                "#select-time-point #report-console-section #report-items-container"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "steps": {
+                        "type": "array",
+                        "description": (
+                            "Steps to highlight. Each step: "
+                            "{\"target\": \"#element-id\", \"title\": \"short title\", "
+                            "\"description\": \"what to do / why this matters\", "
+                            "\"position\": \"right|left|top|bottom\"}"
+                        ),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "target":      {"type": "string"},
+                                "title":       {"type": "string"},
+                                "description": {"type": "string"},
+                                "position":    {"type": "string",
+                                               "enum": ["right", "left", "top", "bottom"]},
+                            },
+                            "required": ["target", "title", "description"],
+                        },
+                    },
+                },
+                "required": ["steps"],
+            },
+        },
+    },
 ]
 
 _HELP_DOCS = {
@@ -229,6 +328,17 @@ _HELP_DOCS = {
         "• Remove columns — delete Value columns from CSV\n"
         "• Export — save calibration results to new CSV/JSON"
     ),
+}
+
+# ── Guide-launched confirmation messages (one per language) ──────────────────
+
+_GUIDE_LAUNCHED = {
+    "en": "Guide launched — follow the highlighted steps.",
+    "vi": "Đã khởi động hướng dẫn — làm theo các bước được tô sáng.",
+    "zh": "指南已启动 — 请按照高亮步骤操作。",
+    "fr": "Guide lancé — suivez les étapes mises en surbrillance.",
+    "ja": "ガイドを起動しました — ハイライトされた手順に従ってください。",
+    "ru": "Руководство запущено — следуйте выделенным шагам.",
 }
 
 # ── Model pull state (module-level, single-user app) ─────────────────────────
@@ -350,6 +460,29 @@ def _run_tool(name: str, args: dict) -> str:
             doc = _HELP_DOCS.get(topic, "Topic not found.")
             return json.dumps({"topic": topic, "content": doc})
 
+        elif name == "trigger_guide":
+            valid = {"general", "kinetics", "point", "calibrate_kinetics", "calibrate_point", "report"}
+            workflow = args.get("workflow", "general")
+            if workflow not in valid:
+                workflow = "general"
+            return json.dumps({"guide_workflow": workflow})
+
+        elif name == "trigger_custom_steps":
+            raw_steps = args.get("steps", [])
+            steps = [
+                {
+                    "target":      s.get("target", ""),
+                    "title":       s.get("title", "Step"),
+                    "description": s.get("description", ""),
+                    "position":    s.get("position", "bottom"),
+                }
+                for s in raw_steps
+                if isinstance(s, dict) and s.get("target", "").startswith("#")
+            ]
+            if not steps:
+                return json.dumps({"error": "No valid steps provided (targets must start with #)"})
+            return json.dumps({"custom_steps": steps})
+
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})
 
@@ -363,6 +496,7 @@ def chat(messages: list, language: str, ollama_url: str, model: str) -> dict:
     """Send a chat request to Ollama, executing any tool calls, and return the final reply."""
     system_prompt = _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
     full_messages = [{"role": "system", "content": system_prompt}] + messages
+    guide_action = None
 
     for _ in range(6):  # guard against infinite tool loops
         try:
@@ -384,16 +518,100 @@ def chat(messages: list, language: str, ollama_url: str, model: str) -> dict:
         tool_calls = assistant_msg.get("tool_calls") or []
 
         if not tool_calls:
-            return {"reply": assistant_msg.get("content", "")}
+            out = {"reply": assistant_msg.get("content", "")}
+            if guide_action:
+                out["guide_action"] = guide_action
+            return out
 
         # Execute tool calls and feed results back
         full_messages.append(assistant_msg)
         for tc in tool_calls:
             fn = tc.get("function", {})
-            tool_result = _run_tool(fn.get("name", ""), fn.get("arguments") or {})
+            tool_name = fn.get("name", "")
+            tool_result = _run_tool(tool_name, fn.get("arguments") or {})
+            if tool_name in ("trigger_guide", "trigger_custom_steps"):
+                try:
+                    guide_action = json.loads(tool_result)
+                except Exception:
+                    pass
             full_messages.append({"role": "tool", "content": tool_result})
 
     return {"error": "max_iterations"}
+
+
+_GUIDE_TOOLS = {"trigger_guide", "trigger_custom_steps"}
+
+
+def chat_stream(messages: list, language: str, ollama_url: str, model: str):
+    """Generator yielding SSE event dicts.
+
+    Uses stream=False for all Ollama calls so that tool calling works reliably
+    on small models (qwen2.5:3b ignores tool definitions when stream=True).
+    """
+    system_prompt = _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
+    full_messages = [{"role": "system", "content": system_prompt}] + messages
+    guide_action = None
+
+    for _ in range(6):
+        try:
+            resp = requests.post(
+                f"{ollama_url}/api/chat",
+                json={
+                    "model": model,
+                    "messages": full_messages,
+                    "tools": TOOLS,
+                    "stream": False,
+                    "options": {"num_predict": 400},
+                },
+                timeout=120,
+            )
+            resp.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            yield {"type": "error", "error": "ollama_offline"}
+            return
+        except requests.exceptions.Timeout:
+            yield {"type": "error", "error": "timeout"}
+            return
+        except Exception as e:
+            yield {"type": "error", "error": str(e)}
+            return
+
+        result = resp.json()
+        assistant_msg = result.get("message", {})
+        tool_calls = assistant_msg.get("tool_calls") or []
+
+        if not tool_calls:
+            content = assistant_msg.get("content", "")
+            if content:
+                yield {"type": "chunk", "content": content}
+            if guide_action:
+                yield {"type": "guide", "guide_action": guide_action}
+            return
+
+        full_messages.append(assistant_msg)
+        only_guide_tools = True
+        for tc in tool_calls:
+            fn = tc.get("function", {})
+            tool_name = fn.get("name", "")
+            tool_result = _run_tool(tool_name, fn.get("arguments") or {})
+            if tool_name in _GUIDE_TOOLS:
+                try:
+                    guide_action = json.loads(tool_result)
+                except Exception:
+                    pass
+            else:
+                only_guide_tools = False
+            full_messages.append({"role": "tool", "content": tool_result})
+
+        # All tool calls were guide triggers — skip the second Ollama round-trip
+        # and return a brief confirmation immediately
+        if only_guide_tools and guide_action:
+            msg = _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])
+            yield {"type": "chunk", "content": msg}
+            yield {"type": "guide", "guide_action": guide_action}
+            return
+
+    yield {"type": "error", "error": "max_iterations"}
 
 
 def check_ollama(ollama_url: str) -> dict:
