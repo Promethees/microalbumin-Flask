@@ -42,7 +42,10 @@
         const fab = document.createElement('button');
         fab.id = 'okapi-ai-fab';
         fab.title = 'OKAPI Assistant';
-        fab.innerHTML = '<span class="okapi-ai-icon">&#129302;</span>';
+        fab.innerHTML = `
+            <span class="okapi-ai-label">AI Assistant</span>
+            <span class="okapi-ai-icon">&#129302;</span>
+        `;
         fab.addEventListener('click', _togglePanel);
         document.body.appendChild(fab);
 
@@ -141,7 +144,7 @@
                 _updateLangBtn();
                 _showWelcomeIfNeeded();
             })
-            .catch(() => {/* AI routes may not be registered yet */});
+            .catch(() => {/* AI routes may not be registered yet */ });
     }
 
     function _showWelcomeIfNeeded() {
@@ -150,8 +153,8 @@
             _addSystemMsg(_welcomeMsg());
             fetch('/ai/settings', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({first_run_shown: true}),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ first_run_shown: true }),
             });
             AI.settings.first_run_shown = true;
         }
@@ -382,13 +385,23 @@
             AI.settingsOpen = !AI.settingsOpen;
             const body = document.getElementById('okapi-ai-body');
             const sett = document.getElementById('okapi-ai-settings');
+            const btn = document.getElementById('okapi-ai-settings-btn');
+
             if (AI.settingsOpen) {
                 body.classList.add('okapi-hidden');
                 sett.classList.remove('okapi-hidden');
+                if (btn) {
+                    btn.innerHTML = 'Chat';
+                    btn.title = 'Back to Chat';
+                }
                 _populateSettings();
             } else {
                 body.classList.remove('okapi-hidden');
                 sett.classList.add('okapi-hidden');
+                if (btn) {
+                    btn.innerHTML = '&#9881;';
+                    btn.title = 'Settings';
+                }
                 _updateStatusBar();
             }
         },
@@ -413,7 +426,7 @@
 
             fetch('/ai/settings', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     preferred_languages: langs,
                     model,
@@ -421,18 +434,18 @@
                     enabled,
                 }),
             })
-            .then(r => r.json())
-            .then(d => {
-                if (d.status === 'success') {
-                    AI.settings = d.settings;
-                    // Keep activeLang if still preferred, else reset to first
-                    const pl = AI.settings.preferred_languages || ['en'];
-                    if (!pl.includes(AI.activeLang)) AI.activeLang = pl[0];
-                    _updateLangBtn();
-                    OkapiAI.refreshStatus();
-                    OkapiAI.toggleSettings();
-                }
-            });
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success') {
+                        AI.settings = d.settings;
+                        // Keep activeLang if still preferred, else reset to first
+                        const pl = AI.settings.preferred_languages || ['en'];
+                        if (!pl.includes(AI.activeLang)) AI.activeLang = pl[0];
+                        _updateLangBtn();
+                        OkapiAI.refreshStatus();
+                        OkapiAI.toggleSettings();
+                    }
+                });
         },
 
         refreshStatus() {
@@ -462,26 +475,26 @@
             AI.settings.model = model;
             fetch('/ai/settings', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({model}),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model }),
             });
 
             fetch('/ai/pull_model', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({model}),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model }),
             })
-            .then(r => r.json())
-            .then(d => {
-                const info = document.getElementById('okapi-ai-pull-info');
-                if (d.status !== 'success') {
-                    if (info) info.textContent = 'Error: ' + d.message;
-                    if (btn) btn.disabled = false;
-                    return;
-                }
-                if (info) info.textContent = 'Downloading…';
-                _startPullPolling();
-            });
+                .then(r => r.json())
+                .then(d => {
+                    const info = document.getElementById('okapi-ai-pull-info');
+                    if (d.status !== 'success') {
+                        if (info) info.textContent = 'Error: ' + d.message;
+                        if (btn) btn.disabled = false;
+                        return;
+                    }
+                    if (info) info.textContent = 'Downloading…';
+                    _startPullPolling();
+                });
         },
 
         send() {
@@ -496,7 +509,7 @@
 
             input.value = '';
             _addMsg('user', text);
-            AI.messages.push({role: 'user', content: text});
+            AI.messages.push({ role: 'user', content: text });
 
             const thinking = _addThinkingBubble();
             const sendBtn = document.getElementById('okapi-ai-send-btn');
@@ -508,40 +521,40 @@
 
             fetch('/ai/chat', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: AI.messages.slice(),
                     language: lang,
                     model,
                 }),
             })
-            .then(r => r.json())
-            .then(d => {
-                if (thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
-                if (d.status === 'success') {
-                    const reply = d.reply || '';
-                    AI.messages.push({role: 'assistant', content: reply});
-                    _addMsg('assistant', reply);
-                } else {
-                    _addSystemMsg('⚠ ' + (d.message || 'Unknown error'));
-                }
-            })
-            .catch(err => {
-                if (thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
-                _addSystemMsg('⚠ Network error: ' + err.message);
-            })
-            .finally(() => {
-                if (sendBtn) sendBtn.disabled = false;
-                input.disabled = false;
-                input.focus();
-            });
+                .then(r => r.json())
+                .then(d => {
+                    if (thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
+                    if (d.status === 'success') {
+                        const reply = d.reply || '';
+                        AI.messages.push({ role: 'assistant', content: reply });
+                        _addMsg('assistant', reply);
+                    } else {
+                        _addSystemMsg('⚠ ' + (d.message || 'Unknown error'));
+                    }
+                })
+                .catch(err => {
+                    if (thinking && thinking.parentNode) thinking.parentNode.removeChild(thinking);
+                    _addSystemMsg('⚠ Network error: ' + err.message);
+                })
+                .finally(() => {
+                    if (sendBtn) sendBtn.disabled = false;
+                    input.disabled = false;
+                    input.focus();
+                });
         },
 
         resetSettings() {
             if (!confirm('Reset all AI Assistant settings to defaults?')) return;
             fetch('/ai/settings', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     enabled: true,
                     preferred_languages: ['en'],
@@ -550,25 +563,18 @@
                     first_run_shown: false,
                 }),
             })
-            .then(r => r.json())
-            .then(d => {
-                if (d.status === 'success') {
-                    AI.settings = d.settings;
-                    AI.activeLang = 'en';
-                    _updateLangBtn();
-                    OkapiAI.refreshStatus();
-                    _populateSettings();
-                }
-            });
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success') {
+                        AI.settings = d.settings;
+                        AI.activeLang = 'en';
+                        _updateLangBtn();
+                        OkapiAI.refreshStatus();
+                        _populateSettings();
+                    }
+                });
         },
 
-        openManager() {
-            // Open the panel directly to the settings/management view
-            if (!AI.open) OkapiAI.open_();
-            if (!AI.settingsOpen) OkapiAI.toggleSettings();
-            // Refresh status so management options are current
-            OkapiAI.refreshStatus();
-        },
 
         clearHistory() {
             AI.messages = [];
