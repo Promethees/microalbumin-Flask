@@ -288,22 +288,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         }
     };
 
-    if (getBtnChecked("split-source")) {
-        // One section per source
-        const section = createChartSection({
-            sectionId: `source-chart-${index}-section`,
-            analysisId: `source-${index}-analysis`,
-            canvasId: `source-${index}-canvas`,
-            quantityId: `source-${index}`,
-            fullDisplayId: `full-display-source-${index}`,
-            allXColumn: allXColumn,
-            allYColumnOrArray: allYColumnOrArray,
-            labelOrLabels: labelOrLabels,
-            unit: unit,
-            index: index
-        });
-        appendHTML(section);
-    } else if (AppState.currentMeasurementMode === "calibrate") {
+    if (AppState.currentMeasurementMode === "calibrate") {
         // Calibration chart: show only the selected metric for kinetics;
         // point calibration already uses a single plot.
         const isKineticsCal = calDiv.getAttribute('data-value') === "kinetics";
@@ -321,18 +306,36 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
         `;
         appendHTML(html);
     } else {
-        // Single mixed plot
-        const html = `
-            <label id="quantity-checkboxes-plot" class="hidden">
-                <h3>Quantities to display on graphic</h3>
-                ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
-            </label>
-            <div id="plot-chart-section">
-                <div id="plot-analysis"></div>
-                <canvas id="plot-canvas"></canvas>
-            </div>
-        `;
-        appendHTML(html);
+        // Kinetics / point modes
+        if (getBtnChecked("split-source")) {
+            // One section per source
+            const section = createChartSection({
+                sectionId: `source-chart-${index}-section`,
+                analysisId: `source-${index}-analysis`,
+                canvasId: `source-${index}-canvas`,
+                quantityId: `source-${index}`,
+                fullDisplayId: `full-display-source-${index}`,
+                allXColumn: allXColumn,
+                allYColumnOrArray: allYColumnOrArray,
+                labelOrLabels: labelOrLabels,
+                unit: unit,
+                index: index
+            });
+            appendHTML(section);
+        } else {
+            // Single mixed plot
+            const html = `
+                <label id="quantity-checkboxes-plot" class="hidden">
+                    <h3>Quantities to display on graphic</h3>
+                    ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
+                </label>
+                <div id="plot-chart-section">
+                    <div id="plot-analysis"></div>
+                    <canvas id="plot-canvas"></canvas>
+                </div>
+            `;
+            appendHTML(html);
+        }
     }
 }
 
@@ -849,7 +852,7 @@ function calibrateKineticsAnalysis(data, XColumn, YColumn) {
         const results = dataMap.map(({ param, data }) => {
             const xValues = data.map(row => row[XColumn]);
             const yValues = data.map(row => row[param]);
-            
+
             // Store for report generation
             AppState.calibrationDataPoints.push({
                 metric: param,
