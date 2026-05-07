@@ -197,6 +197,11 @@
         User Guide
     </button>
 
+    <!-- AI Manager Button -->
+    <button id="ai-manager-btn" onclick="OkapiAI.openManager()" aria-label="AI Assistant Manager" title="AI Assistant — install, configure, or disable">
+        &#129302; AI Assistant
+    </button>
+
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
@@ -662,6 +667,7 @@
         <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
         <script src="{{ url_for('static', filename='script/user-guide.js') }}"></script>
         <script src="{{ url_for('static', filename='script/report.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/ai-chat.js') }}"></script>
 </body>
 
 </html>
