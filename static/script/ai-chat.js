@@ -42,10 +42,7 @@
         const fab = document.createElement('button');
         fab.id = 'okapi-ai-fab';
         fab.title = 'OKAPI Assistant';
-        fab.innerHTML = `
-            <span class="okapi-ai-label">AI Assistant</span>
-            <span class="okapi-ai-icon">&#129302;</span>
-        `;
+        fab.innerHTML = `<span class="okapi-ai-label">AI Assistant</span><span class="okapi-ai-icon">&#129302;</span>`;
         fab.addEventListener('click', _togglePanel);
         document.body.appendChild(fab);
 
