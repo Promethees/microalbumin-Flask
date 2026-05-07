@@ -81,6 +81,7 @@ _report(88, "Loading route blueprints …")
 from routes.file_routes import file_bp
 _report(93, "Loading route blueprints …")
 from routes.math_routes import math_bp
+from routes.ai_routes import ai_bp
 
 # ── Flask application ────────────────────────────────────────────────────────
 _report(95, "Configuring Flask application …")
@@ -89,6 +90,7 @@ app.register_blueprint(core_bp)
 app.register_blueprint(hardware_bp)
 app.register_blueprint(file_bp)
 app.register_blueprint(math_bp)
+app.register_blueprint(ai_bp)
 
 # Endpoints moved to their respective blueprints
 
