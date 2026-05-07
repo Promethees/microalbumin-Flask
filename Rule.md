@@ -107,7 +107,7 @@ Timestamp,Value:1,Value:2,...
 - Metadata lines start with `#` and contain `Key: Value` pairs.
 - Required metadata: `Measurement`, `MeasUnit`, `TimeUnit`, `MeasMode`.
 - Data header starts with `Timestamp` followed by `Value:n` columns (for measurement data).
-- Calibration CSVs use: `Concentration,maxRate,Slope,Sat,TimeToSat` (kinetics) or `Concentration,Value,TimePoint` (point).
+- Calibration CSVs use: `Concentration,maxRate,Slope,Sat,Time To Sat` (kinetics) or `Concentration,Value,TimePoint` (point).
 - Multi-source files have multiple `Value:` columns (`Value:1`, `Value:2`, etc.).
 
 ### 2.11 OS-Specific Behavior
