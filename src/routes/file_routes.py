@@ -427,6 +427,8 @@ def get_num_sources():
 @file_bp.route('/get_data', methods=['GET'])
 def get_data():
     selected_file = request.args.get('file')
+    if not selected_file:
+        return jsonify({'data': [], 'error': 'No file path provided', 'unit': 'NONE'}), 400
     data = get_dynamic_data(selected_file)
     return jsonify(data)
 
@@ -625,13 +627,11 @@ def export_to_report(validated_data):
         dest_path = os.path.join(subject_path, dest_filename)
         
         # Copy the file
-        import shutil
         shutil.copy2(source_path, dest_path)
-            
+
         # Also save metadata for this specific file if needed
         meta_filename = Path(dest_filename).stem + ".meta.json"
         meta_path = os.path.join(subject_path, meta_filename)
-        import json
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=4)
             
@@ -665,7 +665,6 @@ def get_report_items():
         meta = {}
         if os.path.exists(meta_p):
             with open(meta_p, 'r', encoding='utf-8') as meta_file:
-                import json
                 meta = json.load(meta_file)
 
         items.append({
@@ -678,8 +677,7 @@ def get_report_items():
     order_path = os.path.join(subject_path, 'order.json')
     if os.path.exists(order_path):
         with open(order_path, 'r', encoding='utf-8') as of:
-            import json as _json
-            saved_order = _json.load(of)
+            saved_order = json.load(of)
         order_map = {name: i for i, name in enumerate(saved_order)}
         items.sort(key=lambda x: order_map.get(x['filename'], len(saved_order)))
     else:
@@ -836,8 +834,7 @@ def save_report_item_order(validated_data):
             return jsonify({'status': 'error', 'message': 'Subject not found'}), 404
         order_path = os.path.join(subject_path, 'order.json')
         with open(order_path, 'w', encoding='utf-8') as f:
-            import json as _json
-            _json.dump(order, f)
+            json.dump(order, f)
         return jsonify({'status': 'success'})
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
