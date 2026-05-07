@@ -209,6 +209,75 @@ else
     exit 1
 fi
 
+# ── AI Assistant Setup (optional) ───────────────────────────────────────────
+AI_SETTINGS_FILE="$INSTALL_DIR/ai_settings.json"
+if [ ! -f "$AI_SETTINGS_FILE" ]; then
+
+    AI_CHOICE=$(osascript -e 'button returned of (display dialog "Optional: Install AI Assistant?\n\nAnswers questions about your data and workflow in 6 languages:\nEnglish · Tiếng Việt · 中文 · Français · 日本語 · Русский\n\nPowered by Ollama (local LLM — no internet needed after setup).\nRecommended model: qwen2.5:7b (~4.7 GB, one-time download).\n\nYou can also configure this from inside the app at any time." buttons {"Skip", "Install"} default button "Install" with title "EasyOKAPI — AI Assistant" with icon note)' 2>/dev/null || echo "Skip")
+
+    if [ "$AI_CHOICE" = "Install" ]; then
+        AI_ENABLED="true"
+
+        # Language selection (multi-select)
+        LANG_SEL=$(osascript -e 'choose from list {"en — English", "vi — Tieng Viet", "zh — Zhongwen (Jianiti)", "fr — Francais", "ja — Japanese", "ru — Russian"} with title "AI Assistant — Languages" with prompt "Choose response languages (hold Command for multiple):" default items {"en — English"} with multiple selections allowed' 2>/dev/null || echo "en — English")
+        AI_LANGS=()
+        IFS=',' read -ra SEL_ITEMS <<< "$LANG_SEL"
+        for item in "${SEL_ITEMS[@]}"; do
+            item="${item# }"
+            code="${item:0:2}"
+            [ -n "$code" ] && AI_LANGS+=("$code")
+        done
+        [ ${#AI_LANGS[@]} -eq 0 ] && AI_LANGS=("en")
+        LANG_JSON="["
+        _first=1
+        for code in "${AI_LANGS[@]}"; do
+            [ $_first -eq 0 ] && LANG_JSON+=","
+            LANG_JSON+="\"$code\""
+            _first=0
+        done
+        LANG_JSON+="]"
+
+        # Model selection
+        MODEL_SEL=$(osascript -e 'choose from list {"qwen2.5:7b — 4.7 GB  Best multilingual", "qwen2.5:3b — 1.9 GB  Lighter, still multilingual", "llama3.2:3b — 2.0 GB  Good English/French", "mistral:7b — 4.1 GB  Good European languages"} with title "AI Assistant — Model" with prompt "Choose AI model (can be changed later):" default items {"qwen2.5:7b — 4.7 GB  Best multilingual"}' 2>/dev/null || echo "qwen2.5:7b — 4.7 GB  Best multilingual")
+        AI_MODEL=$(echo "$MODEL_SEL" | awk '{print $1}')
+        [ -z "$AI_MODEL" ] && AI_MODEL="qwen2.5:7b"
+        AI_MODEL_SIZE=$(echo "$MODEL_SEL" | awk '{print $3}')
+
+        # Ollama check / pull
+        if command -v ollama &>/dev/null; then
+            if ollama list 2>/dev/null | grep -q "^${AI_MODEL}"; then
+                osascript -e "display notification \"Model $AI_MODEL is already downloaded.\" with title \"EasyOKAPI\"" 2>/dev/null
+            else
+                PULL_CHOICE=$(osascript -e "button returned of (display dialog \"Ollama is installed.\n\nDownload $AI_MODEL now? ($AI_MODEL_SIZE)\nThis may take several minutes.\n\nYou can also download it later from inside the app.\" buttons {\"Download later\", \"Download now\"} default button \"Download now\" with title \"AI Model Download\")" 2>/dev/null || echo "Download now")
+                if [ "$PULL_CHOICE" = "Download now" ]; then
+                    osascript -e "display notification \"Downloading $AI_MODEL — this may take a few minutes…\" with title \"EasyOKAPI Installer\"" 2>/dev/null
+                    if ! curl -sf http://localhost:11434/api/tags &>/dev/null; then
+                        open -a Ollama &>/dev/null || true
+                        echo "  Waiting for Ollama to start…"
+                        for _i in $(seq 1 15); do
+                            sleep 1
+                            curl -sf http://localhost:11434/api/tags &>/dev/null && break
+                        done
+                    fi
+                    ollama pull "$AI_MODEL"
+                fi
+            fi
+        else
+            osascript -e 'display dialog "Ollama is not yet installed.\n\nTo use the AI Assistant:\n1. Install Ollama from: https://ollama.com/download\n2. Launch Easy OKAPI\n3. Click the Robot AI Assistant button to download the model\n\nThis can be done after installation at any time." buttons {"OK"} default button "OK" with title "EasyOKAPI — AI Assistant" with icon caution' 2>/dev/null
+        fi
+
+    else
+        AI_ENABLED="false"
+        LANG_JSON='["en"]'
+        AI_MODEL="qwen2.5:7b"
+    fi
+
+    printf '{\n  "enabled": %s,\n  "preferred_languages": %s,\n  "model": "%s",\n  "ollama_url": "http://localhost:11434",\n  "first_run_shown": false\n}\n' \
+        "$AI_ENABLED" "$LANG_JSON" "$AI_MODEL" > "$AI_SETTINGS_FILE"
+    chown "$CURRENT_USER" "$AI_SETTINGS_FILE" 2>/dev/null || true
+    echo "AI settings saved: $AI_SETTINGS_FILE"
+fi
+
 echo "Setup complete. Application is installed in $INSTALL_DIR."
 echo "Postinstall script completed at $(date)"
 osascript -e 'display dialog "Installation complete. Run run.command to launch the application." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'

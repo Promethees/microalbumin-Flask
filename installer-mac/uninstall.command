@@ -62,6 +62,16 @@ if [ "$REMOVE_HOMEBREW" = "Yes" ]; then
     fi
 fi
 
+# ── AI Assistant (Ollama) removal guidance ───────────────────────────────────
+# ai_settings.json is inside INSTALL_DIR and was already deleted above.
+# Offer guidance on removing Ollama itself, which is a separate system install.
+if command -v ollama &>/dev/null; then
+    REMOVE_OLLAMA=$(osascript -e 'button returned of (display dialog "The AI Assistant (Ollama) is installed as a separate system tool.\n\nDo you want instructions to remove it?" buttons {"No thanks", "Show instructions"} default button "No thanks" with title "EasyOKAPI Uninstall — AI Assistant")' 2>/dev/null || echo "No thanks")
+    if [ "$REMOVE_OLLAMA" = "Show instructions" ]; then
+        osascript -e 'display dialog "To remove Ollama and its AI models:\n\n1. Open Terminal\n2. Remove downloaded models:\n     ollama list\n     ollama rm <model-name>\n3. Remove Ollama app:\n     sudo rm /usr/local/bin/ollama\n     rm -rf ~/.ollama\n\nFor full instructions: https://ollama.com" buttons {"OK"} default button "OK" with title "Remove Ollama"' 2>/dev/null
+    fi
+fi
+
 echo "Uninstallation complete."
 osascript -e 'display dialog "Uninstallation complete. EasyOKAPI has been removed." buttons {"OK"} default button "OK" with title "EasyOKAPI Uninstall"'
 exit 0

@@ -34,8 +34,24 @@ Var Dialog
 Var TokenInput
 Var GitHubToken
 
-; Custom page for token input
+; AI assistant page variables
+Var AIDialog
+Var AIEnabledCheck
+Var AILangEN
+Var AILangVI
+Var AILangZH
+Var AILangFR
+Var AILangJA
+Var AILangRU
+Var AIModelDrop
+Var AIEnabled
+Var AILangArray
+Var AIModel
+Var AIEnabledStr
+
+; Custom pages
 Page custom TokenPage TokenPageLeave
+Page custom AISetupPage AISetupPageLeave
 
 ; Define installer pages
 !insertmacro MUI_PAGE_WELCOME
@@ -52,6 +68,139 @@ Page custom TokenPage TokenPageLeave
 ; Set language
 !insertmacro MUI_LANGUAGE "English"
 
+; ── AI Assistant setup page ──────────────────────────────────────────────────
+Function AISetupPage
+  !insertmacro MUI_HEADER_TEXT "AI Assistant (Optional)" "Configure the built-in AI assistant powered by Ollama (local LLM)"
+
+  nsDialogs::Create 1018
+  Pop $AIDialog
+  ${If} $AIDialog == error
+    Abort
+  ${EndIf}
+
+  ${NSD_CreateCheckBox} 0u 0u 100% 12u "Enable AI Assistant — answers questions in 6 languages (EN/VI/ZH/FR/JA/RU)"
+  Pop $AIEnabledCheck
+  ${NSD_Check} $AIEnabledCheck
+
+  ${NSD_CreateLabel} 0u 18u 100% 10u "Languages (check all you want to use):"
+  Pop $0
+  ${NSD_CreateCheckBox} 0u 30u 110u 12u "English"
+  Pop $AILangEN
+  ${NSD_Check} $AILangEN
+  ${NSD_CreateCheckBox} 115u 30u 110u 12u "Tieng Viet"
+  Pop $AILangVI
+  ${NSD_CreateCheckBox} 0u 44u 110u 12u "Zhongwen (CN)"
+  Pop $AILangZH
+  ${NSD_CreateCheckBox} 115u 44u 110u 12u "Francais"
+  Pop $AILangFR
+  ${NSD_CreateCheckBox} 0u 58u 110u 12u "Japanese"
+  Pop $AILangJA
+  ${NSD_CreateCheckBox} 115u 58u 110u 12u "Russian"
+  Pop $AILangRU
+
+  ${NSD_CreateLabel} 0u 76u 50u 10u "Model:"
+  Pop $0
+  ${NSD_CreateDropList} 55u 74u 240u 80u ""
+  Pop $AIModelDrop
+  SendMessage $AIModelDrop ${CB_ADDSTRING} 0 "STR:qwen2.5:7b (4.7 GB) — Best multilingual"
+  SendMessage $AIModelDrop ${CB_ADDSTRING} 0 "STR:qwen2.5:3b (1.9 GB) — Lighter version"
+  SendMessage $AIModelDrop ${CB_ADDSTRING} 0 "STR:llama3.2:3b (2.0 GB) — Good English/French"
+  SendMessage $AIModelDrop ${CB_ADDSTRING} 0 "STR:mistral:7b (4.1 GB) — Good European languages"
+  SendMessage $AIModelDrop ${CB_SETCURSEL} 0 0
+
+  ${NSD_CreateLabel} 0u 92u 100% 30u "The AI model must be downloaded separately after installation.$\r$\nInstall Ollama (ollama.com), then use the Robot button inside the app to download."
+  Pop $0
+
+  nsDialogs::Show
+FunctionEnd
+
+Function AISetupPageLeave
+  ${NSD_GetState} $AIEnabledCheck $AIEnabled
+
+  ; Build preferred_languages JSON array from checked language boxes
+  StrCpy $AILangArray "["
+  StrCpy $0 "0"  ; first-item flag
+
+  ${NSD_GetState} $AILangEN $1
+  ${If} $1 == ${BST_CHECKED}
+    ${If} $0 == "0"
+      StrCpy $AILangArray '$AILangArray"en"'
+      StrCpy $0 "1"
+    ${Else}
+      StrCpy $AILangArray '$AILangArray,"en"'
+    ${EndIf}
+  ${EndIf}
+
+  ${NSD_GetState} $AILangVI $1
+  ${If} $1 == ${BST_CHECKED}
+    ${If} $0 == "0"
+      StrCpy $AILangArray '$AILangArray"vi"'
+      StrCpy $0 "1"
+    ${Else}
+      StrCpy $AILangArray '$AILangArray,"vi"'
+    ${EndIf}
+  ${EndIf}
+
+  ${NSD_GetState} $AILangZH $1
+  ${If} $1 == ${BST_CHECKED}
+    ${If} $0 == "0"
+      StrCpy $AILangArray '$AILangArray"zh"'
+      StrCpy $0 "1"
+    ${Else}
+      StrCpy $AILangArray '$AILangArray,"zh"'
+    ${EndIf}
+  ${EndIf}
+
+  ${NSD_GetState} $AILangFR $1
+  ${If} $1 == ${BST_CHECKED}
+    ${If} $0 == "0"
+      StrCpy $AILangArray '$AILangArray"fr"'
+      StrCpy $0 "1"
+    ${Else}
+      StrCpy $AILangArray '$AILangArray,"fr"'
+    ${EndIf}
+  ${EndIf}
+
+  ${NSD_GetState} $AILangJA $1
+  ${If} $1 == ${BST_CHECKED}
+    ${If} $0 == "0"
+      StrCpy $AILangArray '$AILangArray"ja"'
+      StrCpy $0 "1"
+    ${Else}
+      StrCpy $AILangArray '$AILangArray,"ja"'
+    ${EndIf}
+  ${EndIf}
+
+  ${NSD_GetState} $AILangRU $1
+  ${If} $1 == ${BST_CHECKED}
+    ${If} $0 == "0"
+      StrCpy $AILangArray '$AILangArray"ru"'
+      StrCpy $0 "1"
+    ${Else}
+      StrCpy $AILangArray '$AILangArray,"ru"'
+    ${EndIf}
+  ${EndIf}
+
+  StrCpy $AILangArray "$AILangArray]"
+  ; Ensure at least one language
+  ${If} $AILangArray == "[]"
+    StrCpy $AILangArray '["en"]'
+  ${EndIf}
+
+  ; Extract model name
+  ${NSD_GetText} $AIModelDrop $AIModel
+  ${If} $AIModel == "qwen2.5:3b (1.9 GB) — Lighter version"
+    StrCpy $AIModel "qwen2.5:3b"
+  ${ElseIf} $AIModel == "llama3.2:3b (2.0 GB) — Good English/French"
+    StrCpy $AIModel "llama3.2:3b"
+  ${ElseIf} $AIModel == "mistral:7b (4.1 GB) — Good European languages"
+    StrCpy $AIModel "mistral:7b"
+  ${Else}
+    StrCpy $AIModel "qwen2.5:7b"
+  ${EndIf}
+FunctionEnd
+
+; ── GitHub token page ─────────────────────────────────────────────────────────
 ; Custom page to prompt for GitHub token
 Function TokenPage
   !insertmacro MUI_HEADER_TEXT "GitHub Token" "Enter your GitHub Personal Access Token to clone the private repository."
@@ -110,6 +259,20 @@ Section "Install" SEC01
   ExecWait '"cmd.exe" /c "$INSTDIR\startwindow-3-python.bat"' $0
   DetailPrint "startwindow-3-python.bat completed with exit code: $0"
 
+  ; Write ai_settings.json before venv setup (startwindow-4-venv.bat skips its own prompt if file exists)
+  CreateDirectory "$INSTDIR\code"
+  ${If} $AIEnabled == ${BST_CHECKED}
+    StrCpy $AIEnabledStr "true"
+  ${Else}
+    StrCpy $AIEnabledStr "false"
+    StrCpy $AILangArray '["en"]'
+    StrCpy $AIModel "qwen2.5:7b"
+  ${EndIf}
+  DetailPrint "Writing AI settings: enabled=$AIEnabledStr langs=$AILangArray model=$AIModel"
+  FileOpen $0 "$INSTDIR\code\ai_settings.json" w
+  FileWrite $0 '{$\n  "enabled": $AIEnabledStr,$\n  "preferred_languages": $AILangArray,$\n  "model": "$AIModel",$\n  "ollama_url": "http://localhost:11434",$\n  "first_run_shown": false$\n}$\n'
+  FileClose $0
+
   DetailPrint "Running startwindow-4-venv.bat..."
   ExecWait '"cmd.exe" /c "$INSTDIR\startwindow-4-venv.bat"' $0
   DetailPrint "startwindow-4-venv.bat completed with exit code: $0"
@@ -126,6 +289,9 @@ Section "Uninstall"
   ExecWait '"$INSTDIR\nssm.exe" remove "${RUNNER_NAME}" confirm'
   Delete "$SMPROGRAMS\${APP_NAME}\*.*"
   RMDir "$SMPROGRAMS\${APP_NAME}"
+
+  ; Delete AI settings file
+  Delete "$INSTDIR\code\ai_settings.json"
 
   ; Delete installed files
   Delete "$INSTDIR\startwindow-1-git.bat"
