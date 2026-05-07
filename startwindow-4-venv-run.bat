@@ -234,8 +234,35 @@ if not exist "ai_settings.json" (
             )
         ) else (
             echo    [!] Ollama is not installed.
-            echo        Install from: https://ollama.com/download
-            echo        Then download the model from inside the app.
+            set /p OLLAMA_INSTALL="   Install Ollama now? (requires internet) [y/N]: "
+            if /i "!OLLAMA_INSTALL!"=="y" (
+                echo    Installing Ollama via winget...
+                winget install ollama.ollama
+                if !ERRORLEVEL! equ 0 (
+                    echo    [OK] Ollama installed.
+                    set /p PULL_CHOICE="   Download !AI_MODEL! now? (!AI_MODEL_SIZE!, several minutes) [Y/n]: "
+                    if not defined PULL_CHOICE set "PULL_CHOICE=y"
+                    if /i "!PULL_CHOICE!"=="n" (
+                        echo    Skipped. Download later from the robot button inside the app.
+                    ) else (
+                        echo    Ensuring Ollama is running...
+                        curl -sf http://localhost:11434/api/tags >nul 2>&1
+                        if !ERRORLEVEL! neq 0 (
+                            echo    Starting Ollama...
+                            start /min "" ollama serve
+                            timeout /t 10 /nobreak >nul
+                        )
+                        echo    Downloading !AI_MODEL! ...
+                        ollama pull !AI_MODEL!
+                        echo    [OK] Model downloaded.
+                    )
+                ) else (
+                    echo    [!] Ollama install failed.
+                    echo        Install manually from: https://ollama.com/download
+                )
+            ) else (
+                echo    Skipped. Install manually later from: https://ollama.com/download
+            )
         )
 
     ) else (

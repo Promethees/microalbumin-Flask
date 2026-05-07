@@ -263,7 +263,32 @@ if [ ! -f "$AI_SETTINGS_FILE" ]; then
                 fi
             fi
         else
-            osascript -e 'display dialog "Ollama is not yet installed.\n\nTo use the AI Assistant:\n1. Install Ollama from: https://ollama.com/download\n2. Launch Easy OKAPI\n3. Click the Robot AI Assistant button to download the model\n\nThis can be done after installation at any time." buttons {"OK"} default button "OK" with title "EasyOKAPI — AI Assistant" with icon caution' 2>/dev/null
+            OLLAMA_INSTALL=$(osascript -e 'button returned of (display dialog "Ollama is not yet installed.\n\nWould you like to install it now via Homebrew?\n(This allows the AI Assistant to work immediately.)" buttons {"Skip", "Install"} default button "Install" with title "EasyOKAPI — Install Ollama" with icon note)' 2>/dev/null || echo "Skip")
+            if [ "$OLLAMA_INSTALL" = "Install" ]; then
+                if ! command -v brew &>/dev/null; then
+                    osascript -e 'display dialog "Homebrew not found. Automated installation requires Homebrew.\n\nPlease install it first or install Ollama manually from ollama.com." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer" with icon caution' 2>/dev/null
+                else
+                    osascript -e "display notification \"Installing Ollama via Homebrew…\" with title \"EasyOKAPI Installer\"" 2>/dev/null
+                    brew install --cask ollama
+                    if [ $? -eq 0 ]; then
+                        PULL_CHOICE=$(osascript -e "button returned of (display dialog \"Ollama installed.\n\nDownload $AI_MODEL now? ($AI_MODEL_SIZE)\" buttons {\"Download later\", \"Download now\"} default button \"Download now\" with title \"AI Model Download\")" 2>/dev/null || echo "Download now")
+                        if [ "$PULL_CHOICE" = "Download now" ]; then
+                            osascript -e "display notification \"Downloading $AI_MODEL — this may take a few minutes…\" with title \"EasyOKAPI Installer\"" 2>/dev/null
+                            if ! curl -sf http://localhost:11434/api/tags &>/dev/null; then
+                                open -a Ollama &>/dev/null || true
+                                echo "  Waiting for Ollama to start…"
+                                for _i in $(seq 1 15); do
+                                    sleep 1
+                                    curl -sf http://localhost:11434/api/tags &>/dev/null && break
+                                done
+                            fi
+                            ollama pull "$AI_MODEL"
+                        fi
+                    else
+                        osascript -e 'display dialog "Ollama installation failed." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer" with icon stop' 2>/dev/null
+                    fi
+                fi
+            fi
         fi
 
     else

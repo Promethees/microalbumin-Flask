@@ -264,7 +264,102 @@ chmod 644 /usr/share/applications/EasyOKAPI.desktop
 update-desktop-database /usr/share/applications/ 2>/dev/null || true
 echo "✅ Desktop entry installed."
 
-# ── Step 12: Copy run/uninstall scripts into install dir ─────────────────────
+# ── Step 12: AI Assistant Setup (optional) ────────────────────────────────────
+AI_SETTINGS_FILE="$INSTALL_DIR/ai_settings.json"
+if [ ! -f "$AI_SETTINGS_FILE" ]; then
+    if prompt_confirm "EasyOKAPI — AI Assistant" "Optional: Install AI Assistant?\n\nAnswers questions about your data and workflow in 6 languages:\nEnglish · Tiếng Việt · 中文 · Français · 日本語 · Русский\n\nPowered by Ollama (local LLM — no internet needed after setup)."; then
+        AI_ENABLED="true"
+
+        # Language selection (simple prompt for now as monolithic might be CLI-only fallback)
+        echo ""
+        echo "  Choose languages (enter numbers separated by spaces, e.g. 1 2):"
+        echo "    1) English   2) Tiếng Việt   3) 中文 (简体)"
+        echo "    4) Français  5) 日本語        6) Русский"
+        echo ""
+        read -p "  Enter numbers [1-6, default=1]: " lang_input
+        lang_input="${lang_input:-1}"
+        AI_LANGS=()
+        for num in $lang_input; do
+            case "$num" in
+                1) AI_LANGS+=("en") ;;
+                2) AI_LANGS+=("vi") ;;
+                3) AI_LANGS+=("zh") ;;
+                4) AI_LANGS+=("fr") ;;
+                5) AI_LANGS+=("ja") ;;
+                6) AI_LANGS+=("ru") ;;
+            esac
+        done
+        [ ${#AI_LANGS[@]} -eq 0 ] && AI_LANGS=("en")
+        LANG_JSON="["
+        _first=1
+        for code in "${AI_LANGS[@]}"; do
+            [ $_first -eq 0 ] && LANG_JSON+=","
+            LANG_JSON+="\"$code\""
+            _first=0
+        done
+        LANG_JSON+="]"
+
+        # Model selection
+        echo ""
+        echo "  Choose AI model:"
+        echo "    1) qwen2.5:7b  (4.7 GB) — Best multilingual"
+        echo "    2) qwen2.5:3b  (1.9 GB) — Lighter"
+        echo ""
+        read -p "  Enter number [1-2, default=1]: " model_choice
+        case "${model_choice:-1}" in
+            2) AI_MODEL="qwen2.5:3b";  AI_MODEL_SIZE="1.9 GB" ;;
+            *) AI_MODEL="qwen2.5:7b";  AI_MODEL_SIZE="4.7 GB" ;;
+        esac
+
+        # Ollama check / install
+        echo ""
+        _ensure_ollama_running() {
+            if ! curl -sf http://localhost:11434/api/tags &>/dev/null; then
+                systemctl start ollama 2>/dev/null || su - "$CURRENT_USER" -c "ollama serve &>/dev/null &"
+                echo "  Waiting for Ollama to start…"
+                for _i in $(seq 1 15); do
+                    sleep 1
+                    curl -sf http://localhost:11434/api/tags &>/dev/null && break || true
+                done
+            fi
+        }
+        if command -v ollama &>/dev/null; then
+            echo "  ✓ Ollama is installed."
+            if ollama list 2>/dev/null | grep -q "^${AI_MODEL}"; then
+                echo "  ✓ Model $AI_MODEL is already downloaded."
+            else
+                if prompt_confirm "AI Model Download" "Download $AI_MODEL now? ($AI_MODEL_SIZE)"; then
+                    _ensure_ollama_running
+                    echo "  Downloading $AI_MODEL…"
+                    su - "$CURRENT_USER" -c "ollama pull $AI_MODEL"
+                fi
+            fi
+        else
+            if prompt_confirm "Install Ollama" "Ollama is not installed. Install it now? (requires internet)"; then
+                echo "  Installing Ollama…"
+                curl -fsSL https://ollama.com/install.sh | sh
+                if command -v ollama &>/dev/null; then
+                    echo "  ✓ Ollama installed."
+                    if prompt_confirm "AI Model Download" "Download $AI_MODEL now?"; then
+                        _ensure_ollama_running
+                        echo "  Downloading $AI_MODEL…"
+                        su - "$CURRENT_USER" -c "ollama pull $AI_MODEL"
+                    fi
+                fi
+            fi
+        fi
+    else
+        AI_ENABLED="false"
+        LANG_JSON='["en"]'
+        AI_MODEL="qwen2.5:7b"
+    fi
+
+    printf '{\n  "enabled": %s,\n  "preferred_languages": %s,\n  "model": "%s",\n  "ollama_url": "http://localhost:11434",\n  "first_run_shown": false\n}\n' \
+        "$AI_ENABLED" "$LANG_JSON" "$AI_MODEL" > "$AI_SETTINGS_FILE"
+    chown "$CURRENT_USER:$CURRENT_USER" "$AI_SETTINGS_FILE"
+fi
+
+# ── Step 13: Copy run/uninstall scripts into install dir ─────────────────────
 cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
 cp "$SCRIPT_DIR/uninstall.sh"  "$INSTALL_DIR/uninstall.sh"
 chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"

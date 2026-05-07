@@ -206,8 +206,40 @@ if [ ! -f "$AI_SETTINGS_FILE" ]; then
             fi
         else
             echo "  ⚠  Ollama is not installed."
-            echo "     → Install it from: https://ollama.com/download"
-            echo "     → After installing, download the model from inside the app (🤖 button → Settings)."
+            read -p "  Install Ollama now? (requires Homebrew) [y/N]: " ollama_install_choice
+            ollama_install_choice="${ollama_install_choice:-n}"
+            if [[ "$ollama_install_choice" =~ ^[Yy]$ ]]; then
+                echo "  Installing Ollama via Homebrew..."
+                if ! command -v brew &>/dev/null; then
+                    echo "  ❌ Homebrew is required for automated installation."
+                    echo "     Please run setup-1-install-pyenv.command first."
+                else
+                    brew install --cask ollama
+                    if [ $? -eq 0 ]; then
+                        echo "  ✓ Ollama installed."
+                        read -p "  Download $AI_MODEL now? ($AI_MODEL_SIZE, may take several minutes) [Y/n]: " pull_choice
+                        pull_choice="${pull_choice:-y}"
+                        if [[ "$pull_choice" =~ ^[Yy]$ ]]; then
+                            echo "  Ensuring Ollama is running…"
+                            if ! curl -sf http://localhost:11434/api/tags &>/dev/null; then
+                                open -a Ollama &>/dev/null || ollama serve &>/dev/null &
+                                echo "  Waiting for Ollama to start…"
+                                for _i in $(seq 1 15); do
+                                    sleep 1
+                                    curl -sf http://localhost:11434/api/tags &>/dev/null && break || true
+                                done
+                            fi
+                            echo "  Downloading $AI_MODEL…"
+                            ollama pull "$AI_MODEL"
+                            echo "  ✓ Model downloaded."
+                        fi
+                    else
+                        echo "  ⚠  Ollama install failed. You can install it manually: https://ollama.com"
+                    fi
+                fi
+            else
+                echo "  ℹ  Skipped. Install Ollama later and then download the model from inside the app."
+            fi
         fi
 
     else
