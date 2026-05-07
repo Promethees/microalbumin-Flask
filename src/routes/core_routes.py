@@ -83,7 +83,9 @@ def shutdown():
 
 @core_bp.route('/browse', methods=['POST'])
 def browse():
-    new_path = request.form['path']
+    new_path = request.form.get('path')
+    if not new_path:
+        return jsonify({'status': 'error', 'message': 'Path is required'}), 400
     if browse_directory(new_path):
         file_list = get_file_list(get_directory())
         return jsonify({'status': 'success', 'path': new_path, 'files': file_list})
