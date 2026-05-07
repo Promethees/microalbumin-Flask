@@ -391,7 +391,7 @@
                 body.classList.add('okapi-hidden');
                 sett.classList.remove('okapi-hidden');
                 if (btn) {
-                    btn.innerHTML = 'Chat';
+                    btn.innerHTML = '&#128172;';
                     btn.title = 'Back to Chat';
                 }
                 _populateSettings();
