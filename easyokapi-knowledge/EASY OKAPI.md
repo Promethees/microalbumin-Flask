@@ -3,7 +3,7 @@
 This file serves as the primary orientation for any AI agent or developer regarding the **Main** branch of the `microalbumin-Flask` project. **Before writing code, study the relationships and file structures documented here.**
 
 ## 1. Project Overview
-The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.0.4**.
+The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.0.5**.
 It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over USB/Serial connection using HID. 
 
 The application provides a Web GUI (via Flask templates and vanilla JavaScript) for users to:
@@ -53,6 +53,7 @@ graph TD
 | `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/get_calibration_json_list`, `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js`, `report.js` |
 | `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
+| `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/pull_model`, `/ai/pull_status` | `ai-chat.js` |
 
 * **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
 * **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init.
@@ -74,6 +75,8 @@ graph TD
 | `browser_mgt.py` | `open_browser`, `close_port`, `cleanup`, `ensure_host_mapping` — browser/process lifecycle |
 | `script_monitor.py` | `check_log_for_errors` — scans `log/script_logs.txt` for PyBadge errors |
 | `send_command.py` | `connect_to_device` (find PyBadge via serial), `send_command_and_wait_ack` (serial protocol) |
+| `ai_assistant.py` | Ollama HTTP client, MCP-style tool engine, multilingual system prompts, model pull manager |
+| `ai_settings.py` | Load/save `ai_settings.json`; language/model/URL defaults; SUPPORTED_LANGUAGES, AVAILABLE_MODELS catalogs |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
 | `get_next_filename.py` | Auto-naming duplicates (e.g., `file_1.csv`) |
@@ -101,6 +104,7 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 | `edit-file.js` | SweetAlert2-based file editor modal (CSV and JSON), column operations |
 | `report.js` | Report generation (`generateReport`), subject CRUD UI (create/rename/copy/delete subjects, export to subject, view items) |
 | `user-guide.js` | Interactive step-by-step user guide with spotlight overlay |
+| `ai-chat.js` | Floating AI chat widget: panel toggle, multilingual language selector, settings panel, model download progress, conversation history |
 
 ### 2.5 Templates (`templates/`)
 
@@ -140,7 +144,76 @@ Supported algorithms: `linear`, `polynomial`, `logarithmic`, `exponential`, `Mic
 
 ---
 
-## 5. Installation & Startup
+## 5. AI Assistant
+
+### 5.1 Overview
+A floating chat widget (bottom-right corner) powered by a local Ollama LLM. Settings are persisted in `ai_settings.json` at the project root.
+
+### 5.2 Supported Languages
+English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (ja), Russian (ru).
+
+### 5.3 Recommended Models
+| Model | Size | Best for |
+|---|---|---|
+| qwen2.5:7b | 4.7 GB | Best multilingual (recommended) |
+| qwen2.5:3b | 1.9 GB | Lighter, still multilingual |
+| llama3.2:3b | 2.0 GB | Good EN/FR, weaker Asian |
+| mistral:7b | 4.1 GB | Good European languages |
+
+### 5.4 MCP Tools (available to the LLM)
+| Tool | Description |
+|---|---|
+| `get_app_context` | Current directory, CSV/JSON file lists, HID subprocess status |
+| `read_csv_file` | Read a CSV file (metadata + first N rows) |
+| `read_calibration_file` | Read a JSON calibration file from `json/<mode>/` |
+| `get_hardware_status` | PyBadge subprocess running/stopped |
+| `get_help_topic` | Built-in docs for a feature topic |
+
+### 5.5 Routes
+| Route | Method | Purpose |
+|---|---|---|
+| `/ai/status` | GET | Ollama status, model availability, settings |
+| `/ai/chat` | POST | Send messages `{messages, language, model}` → `{reply}` |
+| `/ai/settings` | GET | Return current settings |
+| `/ai/settings` | POST | Update settings (language, model, url, enabled) |
+| `/ai/pull_model` | POST | Start background Ollama model download |
+| `/ai/pull_status` | GET | Poll download progress `{percent, done, error}` |
+
+### 5.6 Settings file (`ai_settings.json`)
+```json
+{
+  "enabled": true,
+  "preferred_languages": ["en", "vi"],
+  "model": "qwen2.5:7b",
+  "ollama_url": "http://localhost:11434",
+  "first_run_shown": false
+}
+```
+`preferred_languages` is an array of 1–6 language codes. The in-app language button cycles through the selected languages. Old files with the singular `preferred_language` string are migrated to an array automatically on read/write by `ai_settings.py`.
+
+### 5.7 Setup flow for new users
+**Option A — During installation (recommended):**
+- Mac: `setup-2-install-venv.command` and `installer-mac/install-venv.command` prompt for AI enable / multi-language / model; default download is **Y**; Ollama is started automatically before the pull if needed.
+- Windows: `startwindow-4-venv-run.bat` / `installer-win/startwindow-4-venv.bat` run the same prompt on first launch (guarded by `if not exist ai_settings.json`).
+- Linux: `setup-2-install-venv.sh` same flow; uses `systemctl start ollama` or `ollama serve &` before pull.
+- NSIS installer: `installer-win/setup.nsi` has a custom page with 6 language checkboxes.
+
+**Option B — After installation, from inside the app:**
+1. Click the **🤖 AI Assistant** button (fixed, top-right of the page).
+2. If Ollama not installed: follow the setup-box link to ollama.com.
+3. Select model → click **Download Model** → progress bar tracks the pull.
+
+### 5.8 AI Manager (in-app)
+The **🤖 AI Assistant** button in the top-right corner opens the full management panel:
+- Enable / disable the feature
+- Select one or more languages via checkboxes; the language button (header) cycles through the selected set
+- Switch or download models
+- Reset to defaults
+- Uninstall guide (remove model, uninstall Ollama)
+
+---
+
+## 6. Installation & Startup
 
 ### 5.1 Mac
 ```bash
@@ -221,13 +294,15 @@ microalbumin-Flask/
 │       ├── navigation.js
 │       ├── report.js           # Report generation + subject CRUD
 │       ├── short-hands.js
-│       └── user-guide.js       # Interactive user guide
+│       ├── user-guide.js       # Interactive user guide
+│       └── ai-chat.js          # Floating AI chat widget
 ├── templates/
 │   ├── index.html
 │   └── goodbye.html
 ├── json/                       # Standard curve JSON files
 ├── log/                        # Script logs directory
 ├── report/                     # Saved HTML reports (by subject subdirectory)
+├── ai_settings.json            # AI assistant settings (auto-created)
 └── sample_data/
 ```
 

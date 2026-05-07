@@ -119,6 +119,22 @@ Timestamp,Value:1,Value:2,...
 
 ---
 
+### 2.12 AI Assistant — Ollama Local LLM
+
+- The AI assistant uses **Ollama** (`http://localhost:11434` by default) — never an external cloud API.
+- Settings are stored in `ai_settings.json` at the project root via `src/ai_settings.py`.
+- All Ollama HTTP calls go through `src/ai_assistant.py` using the `requests` library.
+- The AI blueprint is `ai_bp` in `src/routes/ai_routes.py`, mounted at `/ai/*`.
+- **No streaming responses** — Ollama is called with `stream: false` for simplicity.
+- Model pull runs in a **background daemon thread** (`ai_assistant.start_model_pull`). Progress is polled via `GET /ai/pull_status`.
+- Supported languages: `en`, `vi`, `zh`, `fr`, `ja`, `ru`. System prompts for all 6 are embedded in `ai_assistant.py`.
+- `ai_settings.json` stores `preferred_languages` as a **JSON array** (e.g. `["en","vi"]`). Old single-string `preferred_language` keys are migrated to an array transparently by `ai_settings.load()` and `ai_settings.save()`. Never write the singular key in new code.
+- `AI.activeLang` in `ai-chat.js` tracks the currently active language and cycles through `preferred_languages` via the header button. Chat requests send `AI.activeLang`, not the full preference list.
+- MCP tools (`TOOLS` list in `ai_assistant.py`) give the LLM access to live app state: file list, CSV content, calibration JSON, hardware status, and built-in help docs.
+- Conversation history is **client-side only** (stored in `ai-chat.js` `AI.messages` array) — the backend is stateless, consistent with the single-user no-session rule.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.
