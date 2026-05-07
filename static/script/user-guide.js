@@ -46,7 +46,8 @@ class UserGuide {
             ],
             nonCalibrate: this.createStep('#cal-json-sel-section', 'Calibration Coefficients', 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'left', skipInteraction: true, scrollIntoView: true }),
             fileSelection: [
-                this.createStep('#file-selection', 'File Selection', 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.', { position: 'left', skipInteraction: false, scrollIntoView: true })
+                this.createStep('#file-selection', 'File Selection', 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.', { position: 'left', skipInteraction: false, scrollIntoView: true }),
+                this.createStep('#merge-file-btn', 'Merge CSV Files', 'Combine two CSV measurement files into a single multi-source file. Both files must share the same metadata (measurement type, mode, and units). The result is a new file with separate Value columns for each original source.', { position: 'right', skipInteraction: true, scrollIntoView: true })
             ],
             kinetics: {
                 part1: [
@@ -68,7 +69,8 @@ class UserGuide {
                 ],
                 secondPart: [
                     this.createStep('#select-source-to-export', 'Select Source to Export', 'Select the source to export the data. You can select multiple sources to export the data.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
-                    this.createStep('#export-analysis', 'Export Analysis', 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.', { position: 'top', skipInteraction: true, scrollIntoView: true })
+                    this.createStep('#export-analysis', 'Export Analysis', 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.', { position: 'top', skipInteraction: true, scrollIntoView: true }),
+                    this.createStep('#report-section', 'Report Generation', 'Generate an instant PDF or Excel report of the current analysis using "Generate quick Report", or click "Export Data to Report" to save this analysis snapshot into a named Report Subject — which you can later compile into a comprehensive multi-file report from the Report mode.', { position: 'top', skipInteraction: true, scrollIntoView: true })
                 ],
                 jsonTable: this.createStep('#cal-json-sel-section', 'Standard Curve Coefficients', 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
                 measurementMode: this.createStep('#measurement-mode', 'Switch to calibrate mode', 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.', { scrollIntoView: true, position: 'right', skipInteraction: true })
@@ -117,7 +119,14 @@ class UserGuide {
                     this.createStep('#export-coef', 'Export Coefficients', 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true })
                 ]
-            }
+            },
+            report: [
+                this.createStep('#report-console-section', 'Report Console', 'The Report Console lets you manage the analysis snapshots saved in the selected Report Subject, configure layout options, and compile your final report.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('.report-layout-config', 'Layout Configuration', 'Customize your report: toggle the CBB watermark and logo, set a custom report title, and choose whether to split each CSV file into a separate sheet in the Excel export.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('#report-items-container', 'Report Items', 'All analysis snapshots exported to this subject are listed here. Items are ordered as saved; you can remove individual entries before generating the final report.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('button[onclick="finalizeReportExcel()"]', 'Export as Excel', 'Download all items in this subject as a formatted Excel workbook (.xlsx). Each CSV file gets its own sheet with data tables and an embedded line chart.', { position: 'top', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('button[onclick="finalizeReport()"]', 'Generate Final PDF Report', 'Compile all snapshots in this subject into a printable HTML report. Open it in your browser, then use Print → Save as PDF to keep a permanent copy.', { position: 'top', skipInteraction: true, scrollIntoView: true })
+            ]
         };
     }
 
@@ -250,6 +259,18 @@ class UserGuide {
             return;
         }
 
+        // Report mode has its own layout — no calibration JSON panel, no data display section
+        if (currentMode === 'report') {
+            const reportConsole = document.getElementById('report-console-section');
+            const isReportConsoleVisible = reportConsole && !reportConsole.classList.contains('hidden');
+            this.steps = [...this.stepDefinitions.common];
+            this.steps.push(...this.stepDefinitions.fileSelection);
+            if (isReportConsoleVisible) {
+                this.steps.push(...this.stepDefinitions.report);
+            }
+            return;
+        }
+
         if (!isDataDisplayVisible) {
             this.steps = [...this.stepDefinitions.common];
             if (currentMode !== 'calibrate') {
@@ -284,7 +305,9 @@ class UserGuide {
             return steps;
         };
 
-        if (mode === 'kinetics') {
+        if (mode === 'report') {
+            return []; // handled in defineSteps
+        } else if (mode === 'kinetics') {
             return buildSteps(
                 this.stepDefinitions.kinetics.part1,
                 this.stepDefinitions.kinetics.deriveConPart,
