@@ -85,6 +85,18 @@
 - CSV content is validated against strict regex patterns before saving.
 - JSON content is validated as parseable before saving.
 - File names are sanitized with `werkzeug.utils.secure_filename`.
+- `measMode` parameter in `/export_data` must be validated as `kinetics` or `point` before use.
+- `mode` parameter in `/get_json_content` must be validated as `kinetics` or `point`.
+- `threshold_val` in `/export_cal_coefs` must be converted with try/except and clamped to [0, 1].
+- `/export_report_excel` enforces `len(items) <= 500` and `len(title) <= 255`.
+
+### 2.9 Frontend XSS Prevention
+
+- **Never** insert server-provided strings (filenames, subject names, JSON keys/values) into `innerHTML` or HTML attribute values via template literals without escaping.
+- Use `_escHtml(s)` (defined in `navigation.js` and `data-handling.js`) for HTML text context and HTML attribute values.
+- Use `JSON.stringify(value)` to pass string arguments inside `onclick="func(…)"` attributes — this is the safe pattern for table row buttons.
+- Prefer `textContent` over `innerHTML` whenever the content is plain text (no intentional markup).
+- Build complex DOM nodes with `document.createElement` + `textContent` instead of `innerHTML` template strings when user-controlled data is involved.
 
 ---
 
