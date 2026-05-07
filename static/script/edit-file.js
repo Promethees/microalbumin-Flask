@@ -950,9 +950,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 try {
                                     JSON.parse(content);
                                 } catch (e) {
+                                    Swal.showValidationMessage('Invalid JSON format');
                                     return false;
                                 }
-                                content = (editMode === "graphic" && finalContent) ? finalContent : originalContent;  // final string
+                            } else if (editMode === 'graphic') {
+                                content = finalContent !== null ? finalContent : originalContent;
                             }
                         }
 
