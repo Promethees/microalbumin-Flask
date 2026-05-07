@@ -5,7 +5,7 @@ from decimal import Decimal
 
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime):
+        if isinstance(obj, datetime.datetime):
             return obj.isoformat()
         elif isinstance(obj, Decimal):
             return float(obj)
@@ -27,7 +27,7 @@ def processJSONCoef(
     Args:
         cal_params: List of parameter names (used only in 2D case)
         coefficients: [v1, v2, ...] or [[v1, v2, ...], ...]
-        regress_algo: If regress_algo is "michaelis-menten", first two keys are "VMax" and "Km"
+        regress_algo: If regress_algo is "Michaelis-Menten", first two keys are "VMax" and "Km"
 
     Returns:
         dict with `fit_coef` as a **dictionary object** (not JSON string)
@@ -40,14 +40,14 @@ def processJSONCoef(
         raise ValueError("coefficients must be a list")
 
     def sanitize(v: Any) -> Union[float, str]:
-        return v if (v and v is not None) else "NONE"
+        return v if v is not None else "NONE"
 
     def build_coef_dict(coef_list: List[Any]) -> Dict[str, Any]:
         if len(coef_list) < 2:
             raise ValueError("Each coefficient set must have at least 2 values")
         sanitized = [sanitize(v) for v in coef_list]
 
-        if regress_algo == "michaelis-menten":
+        if regress_algo == "Michaelis-Menten":
             keys = ["VMax", "Km"] + [chr(ord('c') + i) for i in range(len(sanitized) - 2)]
         else:
             keys = [chr(ord('a') + i) for i in range(len(sanitized))]

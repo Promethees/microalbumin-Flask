@@ -1471,7 +1471,7 @@ function exportJSONCoef() {
                 fit_type: document.getElementById("exp-json-regress-algo").value,
                 for_meas: AppState.exp_json_content.meas,
                 coef_content: AppState.exp_json_content.analysis,
-                time: document.getElementById("regressed-time-point").value,
+                time: document.getElementById("regressed-time-point").value || null,
                 file_name: document.getElementById("save-json-file").value,
                 cal_mode: calDiv.getAttribute('data-value'),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),

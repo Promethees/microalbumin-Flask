@@ -548,8 +548,7 @@ def export_cal_coefs(validated_data):
     regress_algo = validated_data['regress_algo']
     export_path = os.path.join(state.json_root_path, cal_mode)
     
-    try: 
-        export_path = os.getenv(export_path, export_path)
+    try:
         export_path = os.path.abspath(os.path.expanduser(export_path))
         os.makedirs(export_path, exist_ok=True)
         full_path = get_next_filename(".json", export_path, file_name)
