@@ -111,12 +111,13 @@ def get_children():
 
 @core_bp.route('/get_json_cal', methods=['GET'])
 def get_json_cal():
-    mode = request.args.get('mode')
+    mode = request.args.get('mode', '').strip().lower()
+    if mode not in ('kinetics', 'point'):
+        return jsonify({'status': 'success', 'files': []})
     json_path = os.path.join(state.json_root_path, mode)
-    if os.path.exists(json_path):
-        json_files = get_file_list(json_path, "*.json")
-        return jsonify({'status': 'success', 'files': json_files})
-    return jsonify({'status': 'error', 'message': "Invalid directory"})
+    os.makedirs(json_path, exist_ok=True)
+    json_files = get_file_list(json_path, "*.json")
+    return jsonify({'status': 'success', 'files': json_files})
 
 @core_bp.route('/get_report_subjects', methods=['GET'])
 def get_report_subjects():
