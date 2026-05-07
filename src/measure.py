@@ -35,7 +35,7 @@ def sort_csv_file(file_path, meas_mode):
             # Sort by concentration (index 0), time_point (index 2), value (index 1)
             sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[2]), _safe_float(x[1])))
         else:
-            sorted_rows = sorted(rows, key=lambda x: (float(x[0])))
+            sorted_rows = sorted(rows, key=lambda x: _safe_float(x[0]))
 
         # Write sorted data back to file
         with open(file_path, 'w', newline='') as f:
@@ -45,8 +45,6 @@ def sort_csv_file(file_path, meas_mode):
             writer.writerow(headers)
             writer.writerows(sorted_rows)
 
-        f.close()
-            
     except Exception as e:
         print(f"Error sorting CSV file: {str(e)}")
         raise
