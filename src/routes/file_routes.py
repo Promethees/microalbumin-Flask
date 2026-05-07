@@ -593,10 +593,12 @@ def export_report_excel(validated_data):
     from openpyxl.utils import get_column_letter
     from datetime import datetime as _dt
 
-    title       = validated_data.get('title', 'Analysis Report')
+    title       = validated_data.get('title', 'Analysis Report')[:255]
     subject     = validated_data.get('subject', '')
     split_sheets = validated_data.get('split_sheets', True)
     items       = validated_data.get('items', [])
+    if len(items) > 500:
+        return jsonify({'status': 'error', 'message': 'Too many items (max 500)'}), 400
 
     HEADER_FILL    = PatternFill(fill_type='solid', fgColor='2980b9')
     TABLE_HDR_FILL = PatternFill(fill_type='solid', fgColor='3498db')

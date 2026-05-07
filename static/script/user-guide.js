@@ -31,6 +31,8 @@ class UserGuide {
             ],
             nonCalibrate: this.createStep('#cal-json-sel-section', 'Calibration Coefficients', 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'left', skipInteraction: true }),
             fileSelection: [
+                this.createStep('#upload-file-btn', 'Upload CSV Files', 'Upload your own CSV measurement files from your device. Click this button to select and import a .csv file into your session.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('#merge-file-btn', 'Merge CSV Files', 'Combine two single-source CSV files into one multi-source file. Useful when data from multiple sources was recorded separately.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
                 this.createStep('#file-selection', 'File Selection', 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.', { position: 'left', skipInteraction: false })
             ],
             kinetics: {
@@ -53,7 +55,8 @@ class UserGuide {
                 ],
                 secondPart: [
                     this.createStep('#select-source-to-export', 'Select Source to Export', 'Select the source to export the data. You can select multiple sources to export the data.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
-                    this.createStep('#export-analysis', 'Export Analysis', 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.', { position: 'top', skipInteraction: true, scrollIntoView: true })
+                    this.createStep('#export-analysis', 'Export Analysis', 'Export your analysis results. Set a reference point, enter a file name, and click "Export Data" to save your results.', { position: 'top', skipInteraction: true, scrollIntoView: true }),
+                    this.createStep('#report-section', 'Generate Report', 'Generate an instant HTML report of the current analysis, or save it to a report subject folder. Switch to "report" mode in the sidebar to compile multi-file Excel/PDF reports.', { position: 'top', skipInteraction: true, scrollIntoView: true })
                 ],
                 jsonTable: this.createStep('#cal-json-sel-section', 'Standard Curve Coefficients', 'Select calibrated JSON files containing standard curve coefficients. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
                 measurementMode: this.createStep('#measurement-mode', 'Switch to calibrate mode', 'Switch to calibrate mode to create standard curves from exported concentration with kinetics parameters.', { scrollIntoView: true, position: 'right', skipInteraction: true })
@@ -102,7 +105,14 @@ class UserGuide {
                     this.createStep('#export-coef', 'Export Coefficients', 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true })
                 ]
-            }
+            },
+            report: [
+                this.createStep('#report-console-section', 'Report Modification Console', 'After selecting a subject folder from the list, the Report Console appears here. It shows all measurement items collected in this subject, ready for export.', { position: 'top', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('.report-layout-config', 'Layout Configuration', 'Configure the report layout: set the report title, choose whether to include a watermark and CBB logo, and toggle split-sheet mode for Excel exports.', { position: 'bottom', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('#report-items-container', 'Report Items', 'Browse the measurement files stored in this subject. Use the Edit button on the subject row to drag-and-drop items into a new order or remove unwanted entries.', { position: 'top', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('button[onclick="finalizeReportExcel()"]', 'Export as Excel', 'Export all items in the selected subject as a structured Excel workbook (.xlsx). Each measurement file gets its own sheet with raw data and an auto-generated line chart.', { position: 'top', skipInteraction: true, scrollIntoView: true }),
+                this.createStep('button[onclick="finalizeReport()"]', 'Generate Final HTML Report', 'Compile all items into an HTML report with charts and analysis. Open it in your browser and use Print → Save as PDF to get a polished PDF document.', { position: 'top', skipInteraction: true, scrollIntoView: true })
+            ]
         };
     }
 
@@ -237,6 +247,17 @@ class UserGuide {
         const appState = (typeof AppState !== 'undefined') ? AppState : (window.AppState || {});
         const currentMode = appState.currentMeasurementMode || 'kinetics';
 
+        if (currentMode === 'report') {
+            const reportConsole = document.getElementById('report-console-section');
+            const isReportConsoleVisible = reportConsole && !reportConsole.classList.contains('hidden');
+            this.steps = [...this.stepDefinitions.common];
+            this.steps.push(...this.stepDefinitions.fileSelection);
+            if (isReportConsoleVisible) {
+                this.steps.push(...this.stepDefinitions.report);
+            }
+            return;
+        }
+
         if (!isDataDisplayVisible) {
             this.steps = [...this.stepDefinitions.common];
             if (currentMode !== 'calibrate') {
@@ -254,6 +275,7 @@ class UserGuide {
      * Get mode-specific workflow steps for data display section
      */
     getModeSpecificSteps(mode) {
+        if (mode === 'report') { return []; }
         const JSONDisplay = document.getElementById('json-display');
         const isJSONDisplayVisible = JSONDisplay && !JSONDisplay.classList.contains('hidden');
 

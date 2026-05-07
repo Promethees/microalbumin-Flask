@@ -1,3 +1,5 @@
+const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 async function selectFile(fileName, button, tableSelector = "#file-table") {
     if (typeof window.showSpinner === 'function') window.showSpinner();
     try {
@@ -104,16 +106,18 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             for (const [key, value] of Object.entries(json)) {
                                 if (["fit_type", "for_meas"].includes(key)) continue;
                                 const tr = document.createElement("tr");
-                                tr.innerHTML = AppState.currentMeasurementMode === "kinetics" ? `
-                                    <td>${key}</td>
-                                    <td>${labelCoefficients(value?.fit_coef)}</td>
-                                ` : key === "fit_coef" ? `
-                                    <td>${key}</td>
-                                    <td>${labelCoefficients(value)}</td>
-                                ` : `
-                                    <td>${key}</td>
-                                    <td>${value}</td>
-                                `;
+                                const tdKey = document.createElement("td");
+                                tdKey.textContent = key;
+                                const tdVal = document.createElement("td");
+                                if (AppState.currentMeasurementMode === "kinetics") {
+                                    tdVal.textContent = labelCoefficients(value?.fit_coef);
+                                } else if (key === "fit_coef") {
+                                    tdVal.textContent = labelCoefficients(value);
+                                } else {
+                                    tdVal.textContent = String(value ?? '');
+                                }
+                                tr.appendChild(tdKey);
+                                tr.appendChild(tdVal);
                                 tbody.appendChild(tr);
                             }
 
@@ -139,7 +143,13 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             const tbody = document.createElement("tbody");
                             for (const [key, value] of Object.entries(info)) {
                                 const tr = document.createElement("tr");
-                                tr.innerHTML = `<th style="width:30%;">${key}</th><td>${value}</td>`;
+                                const th = document.createElement("th");
+                                th.style.width = "30%";
+                                th.textContent = key;
+                                const td = document.createElement("td");
+                                td.textContent = String(value ?? '');
+                                tr.appendChild(th);
+                                tr.appendChild(td);
                                 tbody.appendChild(tr);
                             }
 
@@ -700,10 +710,14 @@ function updateConcentrationDisplay(analysisExtraction, jsonFile, conQuantityInp
 function updateSingleConcentration(element, value, fitType, coef) {
     try {
         const calculatedCon = computeFit(value, fitType, coef).toFixed(4);
-        element.innerHTML = `${calculatedCon}`;
+        element.textContent = calculatedCon;
     } catch (error) {
         console.error("Error computing derived concentration:", error);
-        element.innerHTML = `<span style="color: red;">${error.message}</span>`;
+        const span = document.createElement('span');
+        span.style.color = 'red';
+        span.textContent = error.message;
+        element.innerHTML = '';
+        element.appendChild(span);
     }
 };
 
@@ -792,15 +806,19 @@ function processPointMode(jsonFile, derived_con_text) {
         const msgDivId = `est-value-msg-source-${sourceIndex - 1}`;
         const msgDiv = document.getElementById(msgDivId);
         if (msgDiv) {
-            msgDiv.innerHTML = `The estimated ${AppState.globalAnalysis.meas} value read from source-${sourceIndex} is ${estValueRead}${unitPrinted}.`;
+            msgDiv.textContent = `The estimated ${AppState.globalAnalysis.meas} value read from source-${sourceIndex} is ${estValueRead}${unitPrinted}.`;
         }
     }
     try {
         calculated_con = computeFit(parseFloat(estValueRead), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
-        derived_con_text.innerHTML = `${calculated_con}`;
+        derived_con_text.textContent = calculated_con;
     } catch (error) {
         console.error("Error computing derived concentration:", error);
-        derived_con_text.innerHTML = `<span style="color: red;">$${error.message}</span>`;
+        const span = document.createElement('span');
+        span.style.color = 'red';
+        span.textContent = error.message;
+        derived_con_text.innerHTML = '';
+        derived_con_text.appendChild(span);
     }
 }
 
@@ -1190,7 +1208,7 @@ function showMergeModal() {
         return;
     }
 
-    let fileOptions = files.map(f => `<option value="${f}">${f}</option>`).join('');
+    let fileOptions = files.map(f => `<option value="${_escHtml(f)}">${_escHtml(f)}</option>`).join('');
 
     Swal.fire({
         title: 'Merge CSV Files',
@@ -1309,7 +1327,7 @@ async function editReportSubject(subjectName, button) {
         html: `
             <div style="text-align:left; margin-bottom:14px;">
                 <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:#666;">Rename to</label>
-                <input id="swal-rename-input" class="swal2-input" value="${subjectName}" style="width:90%; margin:0;">
+                <input id="swal-rename-input" class="swal2-input" value="${_escHtml(subjectName)}" style="width:90%; margin:0;">
             </div>
             <div style="text-align:left; margin-bottom:6px; display:flex; align-items:baseline; gap:8px;">
                 <span style="font-weight:600; font-size:0.9rem;">Items</span>
@@ -1394,23 +1412,55 @@ async function loadEditSwalItems(subjectName, container) {
             card.dataset.filename = item.filename;
             card.dataset.subject = subjectName;
             card.style.cssText = 'margin-bottom:6px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; transition: background 0.15s;';
-            card.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="drag-handle" title="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
-                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.filename}">${item.filename}</span>
-                    <span style="font-size:0.75rem; color:#6366f1; background:#eef2ff; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata?.mode || 'Measurement'}</span>
-                    <button data-card-id="${safeId}" data-filename="${item.filename}" title="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
-                </div>
-                <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid #fee2e2; text-align:right;">
-                    <span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>
-                    <button onclick="confirmSwalItemDelete(this)" style="background:#ef4444; color:#fff; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem; margin-right:4px;">Confirm</button>
-                    <button onclick="cancelSwalItemDelete(this)" style="background:#e5e7eb; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;">Cancel</button>
-                </div>
-            `;
+            const cardRow = document.createElement('div');
+            cardRow.style.cssText = 'display:flex; align-items:center; gap:8px;';
+            const dragHandle = document.createElement('span');
+            dragHandle.className = 'drag-handle';
+            dragHandle.title = 'Drag to reorder';
+            dragHandle.style.cssText = 'cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;';
+            dragHandle.textContent = '⠿';
+            const nameSpan = document.createElement('span');
+            nameSpan.style.cssText = 'flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+            nameSpan.title = item.filename;
+            nameSpan.textContent = item.filename;
+            const modeSpan = document.createElement('span');
+            modeSpan.style.cssText = 'font-size:0.75rem; color:#6366f1; background:#eef2ff; padding:1px 7px; border-radius:8px; flex-shrink:0;';
+            modeSpan.textContent = item.metadata?.mode || 'Measurement';
+            const removeBtn = document.createElement('button');
+            removeBtn.dataset.cardId = safeId;
+            removeBtn.dataset.filename = item.filename;
+            removeBtn.title = 'Remove from subject';
+            removeBtn.style.cssText = 'background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;';
+            removeBtn.textContent = '✕';
+            removeBtn.addEventListener('click', () => requestSwalItemDelete(removeBtn));
+            cardRow.appendChild(dragHandle);
+            cardRow.appendChild(nameSpan);
+            cardRow.appendChild(modeSpan);
+            cardRow.appendChild(removeBtn);
+            const deleteConfirm = document.createElement('div');
+            deleteConfirm.className = 'swal-delete-confirm';
+            deleteConfirm.style.cssText = 'display:none; margin-top:6px; padding-top:6px; border-top:1px solid #fee2e2; text-align:right;';
+            deleteConfirm.innerHTML = '<span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>';
+            const confirmBtn = document.createElement('button');
+            confirmBtn.style.cssText = 'background:#ef4444; color:#fff; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem; margin-right:4px;';
+            confirmBtn.textContent = 'Confirm';
+            confirmBtn.addEventListener('click', () => confirmSwalItemDelete(confirmBtn));
+            const cancelBtn = document.createElement('button');
+            cancelBtn.style.cssText = 'background:#e5e7eb; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.addEventListener('click', () => cancelSwalItemDelete(cancelBtn));
+            deleteConfirm.appendChild(confirmBtn);
+            deleteConfirm.appendChild(cancelBtn);
+            card.appendChild(cardRow);
+            card.appendChild(deleteConfirm);
             container.appendChild(card);
         }
     } catch (e) {
-        container.innerHTML = `<p style="color:#ef4444; margin:8px 0;">Error: ${e.message}</p>`;
+        const errP = document.createElement('p');
+        errP.style.cssText = 'color:#ef4444; margin:8px 0;';
+        errP.textContent = `Error: ${e.message}`;
+        container.innerHTML = '';
+        container.appendChild(errP);
     }
 }
 
@@ -1528,7 +1578,7 @@ function showMergeSubjectsModal() {
         return;
     }
 
-    const options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    const options = subjects.map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
     Swal.fire({
         title: 'Merge Report Subjects',
         html: `

@@ -1,3 +1,6 @@
+const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const _escAttr = s => _escHtml(String(s));
+
 async function filterFiles(files) {
     const checks = await Promise.all(
         files.map(async (fileName) => {
@@ -86,7 +89,9 @@ function updateJSONTable(files) {
     if (files && files.length > 0) {
         files.forEach(file => {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
+            const ef = _escAttr(file);
+            const et = _escHtml(file);
+            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${JSON.stringify(file)}, this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile(${JSON.stringify(file)}, this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile(${JSON.stringify(file)}, this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
@@ -104,7 +109,8 @@ function updateReportTable(subjects) {
     if (subjects && subjects.length > 0) {
         subjects.forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${subject}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${subject}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${subject}', this)">✏️ Edit</button></td></tr>`;
+            const et = _escHtml(subject);
+            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${JSON.stringify(subject)}, this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject(${JSON.stringify(subject)}, this)">❌ Delete</button></td><td><button onclick="editReportSubject(${JSON.stringify(subject)}, this)">✏️ Edit</button></td></tr>`;
         });
     } else {
         html += '<tr><td colspan="4">No report subjects found.</td></tr>';
@@ -124,7 +130,8 @@ function updateFileTable(files, deselect = false) {
             if (filteredFiles && filteredFiles.length > 0) {
                 filteredFiles.forEach(file => {
                     const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
-                    html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">✅ Select</button></td><td><button onclick="deleteFile('${file}', this)">❌ Delete</button></td><td><button onclick="editFile('${file}', this)">✏️ Edit</button></td></tr>`;
+                    const et = _escHtml(file);
+                    html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${JSON.stringify(file)}, this)">✅ Select</button></td><td><button onclick="deleteFile(${JSON.stringify(file)}, this)">❌ Delete</button></td><td><button onclick="editFile(${JSON.stringify(file)}, this)">✏️ Edit</button></td></tr>`;
                 });
             } else {
                 html += '<tr><td colspan="3">No CSV files is available.</td></tr>';
@@ -146,7 +153,7 @@ function updateFileTable(files, deselect = false) {
 function updateFileDisplay(curFile) {
     const displayElement = document.getElementById('selected-file-display');
     if (curFile) {
-        displayElement.innerHTML = `Selected File: ${curFile}`;
+        displayElement.textContent = `Selected File: ${curFile}`;
         if (AppState.currentMeasurementMode === 'report') {
             if (typeof onReportFolderSelected === 'function') onReportFolderSelected(curFile);
         }

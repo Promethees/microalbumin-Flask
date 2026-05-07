@@ -31,8 +31,12 @@ def get_json_cal():
 
 @data_bp.route('/get_json_content', methods=['GET'])
 def get_json_content():
-    selected_json = request.args.get('json_name')
-    mode = request.args.get('mode')
+    selected_json = request.args.get('json_name', '').strip()
+    mode = request.args.get('mode', '').strip().lower()
+    if mode not in ('kinetics', 'point'):
+        return jsonify({'status': 'error', 'message': 'Invalid mode'}), 400
+    if not selected_json:
+        return jsonify({'status': 'error', 'message': 'json_name is required'}), 400
     user_data = get_user_data()
     content = user_data['json'].get(mode, {}).get(selected_json, None)
     if content:
@@ -145,6 +149,8 @@ def get_file_content():
 @data_bp.route('/export_data', methods=['POST'])
 def export_data():
     data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "Invalid JSON body"}), 400
     entries = data.get('entries')
     is_batch = bool(entries)
     user_data = get_user_data()
@@ -152,6 +158,8 @@ def export_data():
     measurement = data.get('meas', 'NONE')
     meas_unit = data.get('measUnit', 'NONE')
     meas_mode = data.get('measMode')
+    if meas_mode not in ('kinetics', 'point'):
+        return jsonify({"status": "error", "message": "Invalid measMode"}), 400
     newFile = data.get('newFile', True)
     time_unit = "minute" if meas_mode == "point" else "minutes"
     full_name = f"{file_name}_{meas_mode}.csv"
@@ -192,7 +200,12 @@ def export_cal_coefs():
     file_name = data.get('file_name', 'calibrate')
     cal_mode = data.get('cal_mode', "kinetics")
     cal_params = data.get('cal_params')
-    thres_val = float(data.get('threshold_val', 0))
+    try:
+        thres_val = float(data.get('threshold_val', 0))
+        if not (0 <= thres_val <= 1):
+            thres_val = 0.0
+    except (TypeError, ValueError):
+        thres_val = 0.0
     regress_algo = data.get('regress_algo', 'linear')
     try: 
         user_data = get_user_data()
