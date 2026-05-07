@@ -407,6 +407,19 @@
         setTimeout(() => window.userGuide.startCustomSteps(steps), 400);
     }
 
+    function _getUiContext() {
+        const appState = window.AppState || {};
+        const mainContent = document.getElementById('main-content');
+        const dataDisplay = document.getElementById('data-display-section');
+        const calMode = document.getElementById('cal-mode-select');
+        return {
+            mode: appState.currentMeasurementMode || 'unknown',
+            app_started: !!(mainContent && !mainContent.classList.contains('hidden')),
+            data_loaded: !!(dataDisplay && !dataDisplay.classList.contains('hidden')),
+            cal_mode: calMode ? (calMode.getAttribute('data-value') || '') : '',
+        };
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     window.OkapiAI = {
@@ -573,7 +586,7 @@
                     const resp = await fetch('/ai/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ messages: historyToSend, language: lang, model }),
+                        body: JSON.stringify({ messages: historyToSend, language: lang, model, ui_context: _getUiContext() }),
                     });
 
                     if (!resp.ok || !resp.body) {

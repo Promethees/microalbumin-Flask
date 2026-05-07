@@ -60,9 +60,10 @@ def ai_chat():
     language = data.get('language') or (langs[0] if langs else 'en')
     model = data.get('model') or settings.get('model', 'qwen2.5:7b')
     ollama_url = settings.get('ollama_url', 'http://localhost:11434')
+    ui_context = data.get('ui_context') or {}
 
     def generate():
-        for event in ai_assistant.chat_stream(messages, language, ollama_url, model):
+        for event in ai_assistant.chat_stream(messages, language, ollama_url, model, ui_context):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
