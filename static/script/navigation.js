@@ -1,9 +1,11 @@
+const _esc = s => s.replace(/'/g, "\\'");
+
 function browseDirectory(blinkItem = false) {
     $.get('/get_parents', function (parentResponse) {
         console.log("Parent directory:", parentResponse.parent);
         let parentHtml = parentResponse.parent ?
             `${parentResponse.parent.split(DELIMITER).pop() ?
-                `<div onclick="updateDirectory('${parentResponse.parent}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` :
+                `<div onclick="updateDirectory('${_esc(parentResponse.parent)}', 'true')" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` :
                 '<div>No parent directory</div>'}` :
             '<div>No parent directory</div>';
         document.getElementById("parent-dir").innerHTML = parentHtml;
@@ -14,7 +16,7 @@ function browseDirectory(blinkItem = false) {
             // Update the child directories display
             let childHtml = sortedChildren.length > 0 ?
                 `${sortedChildren.map(dir =>
-                    `<div onclick="updateDirectory('${dir}', 'true')" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
+                    `<div onclick="updateDirectory('${_esc(dir)}', 'true')" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
                 ).join('')}` :
                 '<div>No child directories</div>';
             document.getElementById("child-dirs").innerHTML = childHtml;
@@ -120,7 +122,7 @@ function updateJSONTable(files) {
     if (files && files.length > 0) {
         files.forEach(file => {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${file}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${file}', this, '#json-table')">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${_esc(file)}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
@@ -138,7 +140,7 @@ function updateReportTable(subjects) {
     if (subjects && subjects.length > 0) {
         subjects.forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${subject}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${subject}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${subject}', this)">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${subject}</td><td><button onclick="selectFile('${_esc(subject)}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${_esc(subject)}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${_esc(subject)}', this)">✏️ Edit</button></td></tr>`;
         });
     } else {
         html += '<tr><td colspan="4">No report subjects found.</td></tr>';
@@ -157,7 +159,7 @@ function updateFileTable(files, deselect) {
         if (filteredFiles && filteredFiles.length > 0) {
             filteredFiles.forEach(file => {
                 const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
-                html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${file}', this)">✅ Select</button></td><td><button onclick="deleteFile('${file}', this)">❌ Delete</button></td><td><button onclick="editFile('${file}', this)">✏️ Edit</button></td></tr>`;
+                html += `<tr${isSelected}><td>${file}</td><td><button onclick="selectFile('${_esc(file)}', this)">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this)">✏️ Edit</button></td></tr>`;
             });
         } else {
             html += '<tr><td colspan="4">No CSV files found in the directory.</td></tr>';
