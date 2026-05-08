@@ -62,6 +62,7 @@
         guides: [],            // loaded from /ai/guides — keyed by id for O(1) lookup
         activeLang: null,      // currently active language (cycles through preferred_languages)
         pullTimer: null,
+        currentAbort: null,    // AbortController for the active /ai/chat fetch
         LANG_LABELS: {
             en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU'
         },
@@ -813,6 +814,13 @@
                 });
         },
 
+        stopGeneration() {
+            if (AI.currentAbort) {
+                AI.currentAbort.abort();
+                AI.currentAbort = null;
+            }
+        },
+
         send() {
             const input = document.getElementById('okapi-ai-input');
             const text = (input.value || '').trim();
@@ -834,11 +842,18 @@
 
             const msgDiv = _addStreamingMsg();
             const sendBtn = document.getElementById('okapi-ai-send-btn');
-            if (sendBtn) sendBtn.disabled = true;
             input.disabled = true;
+            if (sendBtn) {
+                sendBtn.innerHTML = '&#9632;';
+                sendBtn.title = 'Stop generation';
+                sendBtn.classList.add('okapi-ai-stop-mode');
+                sendBtn.onclick = () => OkapiAI.stopGeneration();
+            }
 
             const lang = AI.activeLang || 'en';
             const model = AI.settings.model || 'qwen2.5:7b';
+            const controller = new AbortController();
+            AI.currentAbort = controller;
 
             (async () => {
                 let fullReply = '';
@@ -847,6 +862,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ messages: historyToSend, language: lang, model, ui_context: _getUiContext() }),
+                        signal: controller.signal,
                     });
 
                     if (!resp.ok || !resp.body) {
@@ -902,9 +918,24 @@
                     _finalizeStreamingMsg(msgDiv, fullReply, null);
 
                 } catch (err) {
-                    _finalizeStreamingMsg(msgDiv, null, '⚠ Network error: ' + err.message);
+                    if (err.name === 'AbortError') {
+                        if (fullReply) {
+                            _finalizeStreamingMsg(msgDiv, fullReply, null);
+                        } else {
+                            msgDiv?.remove();
+                        }
+                    } else {
+                        _finalizeStreamingMsg(msgDiv, null, '⚠ Network error: ' + err.message);
+                    }
                 } finally {
-                    if (sendBtn) sendBtn.disabled = false;
+                    AI.currentAbort = null;
+                    if (sendBtn) {
+                        sendBtn.innerHTML = '&#10148;';
+                        sendBtn.title = 'Send message';
+                        sendBtn.classList.remove('okapi-ai-stop-mode');
+                        sendBtn.onclick = () => OkapiAI.send();
+                        sendBtn.disabled = false;
+                    }
                     input.disabled = false;
                     input.focus();
                 }

@@ -2360,6 +2360,11 @@ body.dark #okapi-ai-input:focus { border-color: #6366f1; }
 }
 #okapi-ai-send-btn:disabled { opacity: 0.45; cursor: default; }
 #okapi-ai-send-btn:not(:disabled):hover { opacity: 0.85; }
+#okapi-ai-send-btn.okapi-ai-stop-mode {
+    background: #ef4444;
+    font-size: 0.75rem;
+}
+#okapi-ai-send-btn.okapi-ai-stop-mode:not(:disabled):hover { opacity: 0.8; }
 
 /* Settings view */
 #okapi-ai-settings {
