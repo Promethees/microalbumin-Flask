@@ -57,6 +57,13 @@ def _translate_step(step: dict, lang: str) -> dict:
     return {**{k: v for k, v in step.items() if k != "descriptions"}, "description": desc}
 
 
+def _translate_steps(steps: list, lang: str) -> list:
+    """Apply _translate_step to every step in a list."""
+    if lang == "en":
+        return [{k: v for k, v in s.items() if k != "descriptions"} for s in steps]
+    return [_translate_step(s, lang) for s in steps]
+
+
 _STOPWORDS = frozenset({
     "how", "to", "the", "a", "an", "i", "me", "my", "do", "what",
     "where", "when", "why", "is", "it", "in", "for", "of", "and",
@@ -1040,6 +1047,13 @@ _QUICK_REPORT_STEPS = [
             "Click 'Generate quick Report' here to instantly snapshot the current chart "
             "and analysis as a standalone HTML report."
         ),
+        "descriptions": {
+            "vi": "Nhấp 'Generate quick Report' tại đây để chụp nhanh biểu đồ và phân tích hiện tại thành báo cáo HTML độc lập.",
+            "zh": "点击此处的「Generate quick Report」即时将当前图表和分析快照为独立的 HTML 报告。",
+            "fr": "Cliquez sur 'Generate quick Report' ici pour capturer instantanément le graphique et l'analyse en cours sous forme de rapport HTML autonome.",
+            "ja": "ここで「Generate quick Report」をクリックして、現在のチャートと分析を独立した HTML レポートとして即時スナップショットします。",
+            "ru": "Нажмите «Generate quick Report», чтобы мгновенно сохранить текущий график и анализ как автономный HTML-отчёт.",
+        },
         "position": "top",
         "skipInteraction": False,
     },
@@ -1051,6 +1065,13 @@ _QUICK_REPORT_STEPS_NO_DATA = [
         "target": "#file-selection",
         "title": "Load Data First",
         "description": "Select a CSV data file to load your analysis before generating a report.",
+        "descriptions": {
+            "vi": "Chọn tệp dữ liệu CSV để tải phân tích trước khi tạo báo cáo.",
+            "zh": "选择一个 CSV 数据文件以在生成报告之前加载您的分析。",
+            "fr": "Sélectionnez un fichier de données CSV pour charger votre analyse avant de générer un rapport.",
+            "ja": "レポートを生成する前に分析を読み込むため CSV データファイルを選択してください。",
+            "ru": "Выберите CSV-файл данных для загрузки анализа перед созданием отчёта.",
+        },
         "position": "left",
         "skipInteraction": False,
     },
@@ -1061,6 +1082,13 @@ _QUICK_REPORT_STEPS_NO_DATA = [
             "Once data is loaded, click 'Generate quick Report' here to snapshot the "
             "current chart and analysis."
         ),
+        "descriptions": {
+            "vi": "Khi dữ liệu đã tải, nhấp 'Generate quick Report' tại đây để chụp nhanh biểu đồ và phân tích hiện tại.",
+            "zh": "数据加载后，点击此处的「Generate quick Report」以快照当前图表和分析。",
+            "fr": "Une fois les données chargées, cliquez sur 'Generate quick Report' ici pour capturer le graphique et l'analyse.",
+            "ja": "データが読み込まれたら、ここで「Generate quick Report」をクリックして現在のチャートと分析をスナップショットします。",
+            "ru": "После загрузки данных нажмите «Generate quick Report» для снимка текущего графика и анализа.",
+        },
         "position": "top",
         "skipInteraction": True,
     },
@@ -1075,6 +1103,13 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "Click 'Export Data to Report' to save this analysis snapshot into a named "
             "report subject for later compilation."
         ),
+        "descriptions": {
+            "vi": "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo đặt tên để tổng hợp sau.",
+            "zh": "点击「Export Data to Report」将此分析快照保存到命名报告主题中，供后续汇编。",
+            "fr": "Cliquez sur 'Export Data to Report' pour enregistrer ce snapshot d'analyse dans un sujet de rapport nommé pour une compilation ultérieure.",
+            "ja": "「Export Data to Report」をクリックして、後で使うためこの分析スナップショットを名前付きレポートテーマに保存します。",
+            "ru": "Нажмите «Export Data to Report», чтобы сохранить снимок анализа в именованную тему отчёта для последующей компиляции.",
+        },
         "position": "top",
         "skipInteraction": False,
     },
@@ -1085,6 +1120,13 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "After exporting, switch to Report mode here to open the full "
             "report management interface."
         ),
+        "descriptions": {
+            "vi": "Sau khi xuất, chuyển sang chế độ Report ở đây để mở giao diện quản lý báo cáo đầy đủ.",
+            "zh": "导出后，在此切换到 Report 模式以打开完整的报告管理界面。",
+            "fr": "Après l'exportation, passez en mode Report ici pour ouvrir l'interface complète de gestion des rapports.",
+            "ja": "エクスポート後、ここで Report モードに切り替えてレポート管理インターフェイスを開きます。",
+            "ru": "После экспорта переключитесь в режим Report, чтобы открыть полный интерфейс управления отчётами.",
+        },
         "position": "right",
         "skipInteraction": False,
     },
@@ -1095,6 +1137,13 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "Manage your saved analysis snapshots here. Configure layout options "
             "and set a report title."
         ),
+        "descriptions": {
+            "vi": "Quản lý các ảnh chụp phân tích đã lưu tại đây. Cấu hình tùy chọn bố cục và đặt tiêu đề báo cáo.",
+            "zh": "在此管理已保存的分析快照。配置布局选项并设置报告标题。",
+            "fr": "Gérez vos snapshots d'analyse sauvegardés ici. Configurez les options de mise en page et définissez un titre de rapport.",
+            "ja": "ここで保存された分析スナップショットを管理します。レイアウトオプションを設定してレポートのタイトルを設定してください。",
+            "ru": "Управляйте сохранёнными снимками анализа здесь. Настройте параметры макета и задайте название отчёта.",
+        },
         "position": "right",
         "skipInteraction": True,
     },
@@ -1105,6 +1154,13 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "All saved snapshots are listed here. Remove any you don't want "
             "before generating the final report."
         ),
+        "descriptions": {
+            "vi": "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ ảnh nào bạn không muốn trước khi tạo báo cáo cuối.",
+            "zh": "所有已保存的快照都列在这里。在生成最终报告之前删除不需要的快照。",
+            "fr": "Tous les snapshots sauvegardés sont listés ici. Supprimez ceux que vous ne souhaitez pas avant de générer le rapport final.",
+            "ja": "保存されたすべてのスナップショットがここに一覧表示されます。最終レポートを生成する前に不要なものを削除してください。",
+            "ru": "Все сохранённые снимки перечислены здесь. Удалите ненужные перед созданием финального отчёта.",
+        },
         "position": "right",
         "skipInteraction": True,
     },
@@ -1115,6 +1171,13 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "Compile all items into a printable HTML report. "
             "Open in your browser, then use Print → Save as PDF."
         ),
+        "descriptions": {
+            "vi": "Tổng hợp tất cả mục thành báo cáo HTML có thể in. Mở trong trình duyệt, sau đó dùng In → Lưu thành PDF.",
+            "zh": "将所有项目编译为可打印的 HTML 报告。在浏览器中打开，然后使用打印 → 另存为 PDF。",
+            "fr": "Compilez tous les éléments en rapport HTML imprimable. Ouvrez dans votre navigateur, puis Imprimer → Enregistrer en PDF.",
+            "ja": "すべての項目を印刷可能な HTML レポートにまとめます。ブラウザで開き、印刷 → PDF として保存を使用してください。",
+            "ru": "Скомпилируйте все элементы в печатаемый HTML-отчёт. Откройте в браузере, затем Печать → Сохранить как PDF.",
+        },
         "position": "top",
         "skipInteraction": True,
     },
@@ -1128,6 +1191,13 @@ _FULL_REPORT_STEPS_IN_REPORT = [
         "description": (
             "Manage your saved analysis snapshots here. Configure layout and set a report title."
         ),
+        "descriptions": {
+            "vi": "Quản lý các ảnh chụp phân tích đã lưu tại đây. Cấu hình bố cục và đặt tiêu đề báo cáo.",
+            "zh": "在此管理已保存的分析快照。配置布局并设置报告标题。",
+            "fr": "Gérez vos snapshots d'analyse sauvegardés ici. Configurez la mise en page et définissez un titre de rapport.",
+            "ja": "ここで保存された分析スナップショットを管理します。レイアウトを設定してレポートのタイトルを設定してください。",
+            "ru": "Управляйте сохранёнными снимками анализа здесь. Настройте макет и задайте название отчёта.",
+        },
         "position": "right",
         "skipInteraction": True,
     },
@@ -1135,6 +1205,13 @@ _FULL_REPORT_STEPS_IN_REPORT = [
         "target": "#report-items-container",
         "title": "Report Items",
         "description": "All saved snapshots are listed here. Remove any before generating.",
+        "descriptions": {
+            "vi": "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ ảnh nào trước khi tạo.",
+            "zh": "所有已保存的快照都列在这里。在生成之前删除不需要的快照。",
+            "fr": "Tous les snapshots sauvegardés sont listés ici. Supprimez-en avant de générer.",
+            "ja": "保存されたすべてのスナップショットがここに一覧表示されます。生成前に不要なものを削除してください。",
+            "ru": "Все сохранённые снимки перечислены здесь. Удалите ненужные перед созданием.",
+        },
         "position": "right",
         "skipInteraction": True,
     },
@@ -1142,6 +1219,13 @@ _FULL_REPORT_STEPS_IN_REPORT = [
         "target": "button[onclick=\"finalizeReportExcel()\"]",
         "title": "Export as Excel",
         "description": "Download all items as a formatted Excel workbook with embedded charts.",
+        "descriptions": {
+            "vi": "Tải xuống tất cả mục dưới dạng bảng tính Excel được định dạng với biểu đồ nhúng.",
+            "zh": "将所有项目下载为带有嵌入图表的格式化 Excel 工作簿。",
+            "fr": "Téléchargez tous les éléments sous forme de classeur Excel formaté avec graphiques intégrés.",
+            "ja": "すべての項目を埋め込みグラフ付きのフォーマットされた Excel ワークブックとしてダウンロードします。",
+            "ru": "Загрузите все элементы как форматированную Excel-книгу со встроенными графиками.",
+        },
         "position": "top",
         "skipInteraction": True,
     },
@@ -1149,6 +1233,13 @@ _FULL_REPORT_STEPS_IN_REPORT = [
         "target": "button[onclick=\"finalizeReport()\"]",
         "title": "Generate PDF Report",
         "description": "Or compile all items into a printable HTML report.",
+        "descriptions": {
+            "vi": "Hoặc tổng hợp tất cả mục thành báo cáo HTML có thể in.",
+            "zh": "或者将所有项目编译为可打印的 HTML 报告。",
+            "fr": "Ou compilez tous les éléments en rapport HTML imprimable.",
+            "ja": "またはすべての項目を印刷可能な HTML レポートにまとめます。",
+            "ru": "Или скомпилируйте все элементы в печатаемый HTML-отчёт.",
+        },
         "position": "top",
         "skipInteraction": True,
     },
@@ -1262,14 +1353,14 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
     # Report clarification: turn 2 — user answered quick/full, dispatch guide directly
     pending_report = _get_pending_report_type(messages)
     if pending_report == "quick":
-        steps = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
+        raw = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+        yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
         return
     if pending_report == "full":
-        steps = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
+        raw = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+        yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
         return
 
     # Report clarification: turn 1 — ask user to specify quick vs full
