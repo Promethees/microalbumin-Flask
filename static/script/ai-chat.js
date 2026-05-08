@@ -27,6 +27,7 @@
         { cmd: '/live-view',     desc: 'Browse to the live measurement output folder',                   action: 'live_view' },
         { cmd: '/report',        desc: 'Create a quick or full HTML report',                             action: 'report' },
         { cmd: '/status',        desc: 'Show current app state (mode, data, device)',                    action: 'status' },
+        { cmd: '/redo',          desc: 'Replay the last guide or retry the last question',               action: 'redo' },
         { cmd: '/clear',         desc: 'Clear the conversation history',                                 action: 'clear' },
     ];
 
@@ -57,6 +58,35 @@
         ja: '回答を生成できませんでした。質問を言い換えてみてください。',
         ru: 'Не удалось сформировать ответ. Попробуйте перефразировать вопрос.',
     };
+
+    // Natural-language phrases that mean "redo the last thing"
+    const _REDO_VOCAB = new Set([
+        // English
+        'redo', 'redo that', 'redo this', 'redo last', 'redo it',
+        'do it again', 'do that again', 'do again',
+        'show that again', 'show it again', 'show again', 'show me again',
+        'show the steps again', 'show steps again',
+        'repeat', 'repeat that', 'repeat this', 'repeat last', 'repeat it',
+        'repeat the guide', 'repeat guide',
+        'replay', 'replay that', 'replay guide', 'replay the guide',
+        'run again', 'run it again', 'run that again',
+        'go through that again', 'go over that again', 'go again',
+        'once more', 'one more time', 'one more',
+        'try again', 'try that again', 'retry', 'retry that',
+        'restart guide', 'relaunch guide', 'start guide again', 'launch guide again',
+        'rerun', 'rerun that',
+        // Vietnamese
+        'làm lại', 'làm lại đi', 'thử lại', 'lặp lại', 'chạy lại',
+        'hiển thị lại', 'xem lại', 'hướng dẫn lại',
+        // Chinese
+        '再来一次', '重做', '再试一次', '重试', '再次运行', '再显示', '重新开始指南',
+        // French
+        'recommencer', 'refaire', 'répéter', 'réessayer', 'encore une fois', 'relancer',
+        // Japanese
+        'もう一度', 'やり直し', 'やり直す', 'もう一度やって', 'もう一回',
+        // Russian
+        'повтори', 'повторить', 'ещё раз', 'снова', 'заново', 'переделать',
+    ]);
 
     const _picker = { visible: false, idx: 0, list: [] };
 
@@ -98,6 +128,7 @@
         activeLang: null,      // currently active language (cycles through preferred_languages)
         pullTimer: null,
         currentAbort: null,    // AbortController for the active /ai/chat fetch
+        lastAction: null,      // { type: 'custom_steps'|'workflow'|'llm', steps?, workflow?, query? }
         LANG_LABELS: {
             en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU'
         },
@@ -513,12 +544,14 @@
     // ── Guide launcher ────────────────────────────────────────────────────────
 
     function _launchGuide(workflow) {
+        AI.lastAction = { type: 'workflow', workflow };
         if (typeof window.userGuide === 'undefined') return;
         OkapiAI.close();
         setTimeout(() => window.userGuide.startWorkflow(workflow), 400);
     }
 
     function _launchCustomSteps(steps) {
+        AI.lastAction = { type: 'custom_steps', steps };
         if (typeof window.userGuide === 'undefined') return;
         OkapiAI.close();
         setTimeout(() => window.userGuide.startCustomSteps(steps), 400);
@@ -648,6 +681,11 @@
             _runReportChoice();
             return;
         }
+
+        if (cmd.action === 'redo') {
+            _runRedoAction();
+            return;
+        }
     }
 
     // Resolve and launch a guide by training-example ID, applying UI context locally
@@ -688,6 +726,29 @@
     function _runLiveViewGuide() {
         const ctx = _getUiContext();
         _runGuideById(ctx.script_running ? 'live_view_active' : 'live_view_inactive');
+    }
+
+    function _runRedoAction() {
+        const last = AI.lastAction;
+        const lang = AI.activeLang || 'en';
+        if (!last) {
+            _addMsg('assistant', 'Nothing to redo yet — send a message or run a command first.');
+            return;
+        }
+        if (last.type === 'custom_steps') {
+            _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+            _launchCustomSteps(last.steps);
+        } else if (last.type === 'workflow') {
+            _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+            _launchGuide(last.workflow);
+        } else if (last.type === 'llm') {
+            // Remove last assistant reply from history so it isn't sent twice
+            if (AI.messages.length && AI.messages[AI.messages.length - 1].role === 'assistant') {
+                AI.messages.pop();
+            }
+            const input = document.getElementById('okapi-ai-input');
+            if (input) { input.value = last.query; OkapiAI.send(); }
+        }
     }
 
     // Show an inline quick/full choice — user clicks a button, guide launches immediately
@@ -870,6 +931,16 @@
                 _addSystemMsg('AI Assistant is disabled. Enable it in Settings.');
                 return;
             }
+
+            // Redo intent — resolve locally, don't push to conversation history
+            if (_REDO_VOCAB.has(text.toLowerCase().replace(/[!?.،。]+$/, '').trim())) {
+                input.value = '';
+                _addMsg('user', text);
+                _runRedoAction();
+                return;
+            }
+
+            AI.lastAction = { type: 'llm', query: text };
 
             input.value = '';
             _addMsg('user', text);
