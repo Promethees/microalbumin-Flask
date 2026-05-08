@@ -1384,6 +1384,454 @@
           "skipInteraction": true
         }
       ]
+    },
+    {
+      "id": "shutdown_server",
+      "queries": [
+        "shut down",
+        "shutdown server",
+        "close the server",
+        "stop the server",
+        "exit application",
+        "close application",
+        "quit the app",
+        "turn off server"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#shutdown-btn",
+          "title": "Shutdown Server",
+          "description": "Click this button to stop the Flask server and close the application. Unsaved data will be lost, so make sure you have exported anything you need first.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "open_user_guide",
+      "queries": [
+        "user guide",
+        "open guide",
+        "help button",
+        "where is the help",
+        "how to access help",
+        "show guide",
+        "open tutorial"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#user-guide-btn",
+          "title": "User Guide",
+          "description": "Click here to launch the interactive step-by-step user guide. It walks you through the main features of the app with on-screen highlights.",
+          "position": "bottom",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "base_name_input",
+      "queries": [
+        "base name",
+        "file name for measurement",
+        "what is base name",
+        "name my file",
+        "measurement file name",
+        "what to enter for name",
+        "naming the output file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#base-name",
+          "title": "Base Name — Output File Name",
+          "description": "Enter the name for the CSV file that will be created when you start a measurement. For example, entering 'sample1' will save your data as 'sample1.csv' in the saving directory.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "saving_directory",
+      "queries": [
+        "saving directory",
+        "save directory",
+        "where are files saved",
+        "where does the file go",
+        "output folder",
+        "change save location",
+        "browse saving location",
+        "save to same directory",
+        "same directory as data"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#save-same-dir",
+          "title": "Save to Same Directory",
+          "description": "When checked, measurement files are saved in the same folder as your currently browsed directory. Uncheck to specify a custom saving path.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#base-dir-label",
+          "title": "Saving Directory",
+          "description": "This shows the folder where new CSV files will be saved. Use 'Browse Saving Location' nearby to change it when the checkbox above is unchecked.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "notify_done",
+      "queries": [
+        "notify when done",
+        "notification when finished",
+        "alert when complete",
+        "notify me",
+        "get notified",
+        "how do I get an alert",
+        "sound when done"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#notify-me",
+          "title": "Notify Me When Done",
+          "description": "When checked, the app plays a sound and shows a popup notification as soon as the measurement finishes (after the timeout). Useful if you step away while the device is running.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "clear_logs",
+      "queries": [
+        "clear logs",
+        "clear the log",
+        "delete log",
+        "reset log display",
+        "empty log",
+        "how to clear console output"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#clear-logs-btn",
+          "title": "Clear Logs",
+          "description": "Click here to erase all text in the measurement log panel. This only clears the display — it does not delete any saved CSV files.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "disable_popups",
+      "queries": [
+        "disable popups",
+        "turn off popups",
+        "no popup",
+        "disable notifications",
+        "hide alerts",
+        "suppress popups",
+        "annoying popups"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#no-swal-checkbox",
+          "title": "Disable Popups",
+          "description": "Check this box to suppress confirmation and alert popups throughout the app. Useful once you are familiar with the workflow and no longer need the prompts.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "filter_sources",
+      "queries": [
+        "filter by sources",
+        "filter sources",
+        "number of sources",
+        "select number of sources",
+        "how many sources",
+        "show only one source",
+        "what is a source",
+        "filter measurements by source"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#filter-source",
+          "title": "Filter by Number of Sources",
+          "description": "A 'source' is one measurement channel inside your CSV file — each distinct sample or sensor reading. Check this box to show only files that contain a specific number of sources.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#num-sources",
+          "title": "Select Number of Sources",
+          "description": "Choose how many sources (measurement channels) a file must have to appear in the list. Helpful when you want to focus on single-source files or multi-source merged datasets.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "delete_file",
+      "queries": [
+        "delete file",
+        "remove file",
+        "how to delete",
+        "delete csv",
+        "delete calibration file",
+        "get rid of a file",
+        "remove data file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#file-selection",
+          "title": "Delete a File",
+          "description": "Find the file you want to remove in the file list. Each row has a red ❌ Delete button. Click it to permanently delete the file from disk. This action cannot be undone.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "copy_file",
+      "queries": [
+        "copy file",
+        "duplicate file",
+        "make a copy",
+        "how to copy",
+        "copy csv",
+        "copy data file"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#copy-file-btn",
+          "title": "Copy File",
+          "description": "Click here to create a duplicate of the currently selected CSV file in the same directory. The copy is named with a '_copy' suffix. Useful for experimenting without modifying the original.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "deselect_file",
+      "queries": [
+        "deselect file",
+        "unselect file",
+        "unload file",
+        "clear selection",
+        "how to deselect",
+        "remove selection"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#deselect-btn",
+          "title": "Deselect File",
+          "description": "Click here to unload the currently selected data file. The chart and analysis panels will clear. The file is not deleted — you can re-select it from the file list at any time.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "select_quantity",
+      "queries": [
+        "select quantity",
+        "which quantity",
+        "what is maxRate",
+        "what is slope quantity",
+        "what is Sat",
+        "what is Time To Sat",
+        "time to saturation",
+        "saturation value",
+        "max rate quantity",
+        "which quantity to use for concentration",
+        "quantity for calibration"
+      ],
+      "conditions": {
+        "mode": "kinetics"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#regressed-quantity",
+          "title": "Select Kinetics Quantity",
+          "description": "Choose which derived quantity to map against concentration in your standard curve:\n• maxRate — fastest absorbance change rate (ΔAbs/s) found in the linear phase; most common for enzyme kinetics.\n• Slope — overall linear slope across the full dataset.\n• Sat — saturation (plateau) absorbance value.\n• Time To Sat — time (minutes) until the signal plateaus.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "expand_collapse_analyses",
+      "queries": [
+        "expand analyses",
+        "collapse analyses",
+        "show all charts",
+        "hide all charts",
+        "expand all",
+        "collapse all",
+        "toggle analyses"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#open-all-analysis",
+          "title": "Expand / Collapse All Analyses",
+          "description": "Toggle this checkbox to expand or collapse all individual analysis sections at once. Useful for quickly scanning all sources in a multi-source file without scrolling through each one.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_saving_directory",
+      "queries": [
+        "export saving directory",
+        "where are exported files saved",
+        "change export location",
+        "export to same directory",
+        "same directory export",
+        "export output folder",
+        "where is the exported file"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#same-dir-as-data",
+          "title": "Export to Same Directory",
+          "description": "When checked, exported files (calibration data or coefficient JSON) are saved in the same folder as the currently loaded data file. Uncheck to pick a different destination.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#save-dir-label",
+          "title": "Export Saving Directory",
+          "description": "This field shows where exported files will go. It updates automatically when you browse a new location or when the 'same directory' checkbox above is toggled.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "rsquared_threshold",
+      "queries": [
+        "r squared threshold",
+        "rsquared threshold",
+        "threshold value",
+        "what is r squared",
+        "what is R2",
+        "what is a good r squared",
+        "set threshold",
+        "r squared filter",
+        "goodness of fit threshold"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#threshold-value",
+          "title": "R² Threshold",
+          "description": "R² (R-squared) measures how well the regression curve fits your standard curve data — 1.0 is a perfect fit, 0.0 means no fit. Set a minimum R² here; only regression results at or above this value will be used for concentration calculation. A value of 0.99 is recommended for reliable calibration.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "report_layout_options",
+      "queries": [
+        "report layout",
+        "include watermark",
+        "include logo",
+        "split sheets",
+        "report title",
+        "customize report",
+        "watermark in report",
+        "logo in report",
+        "report configuration",
+        "one tab per csv"
+      ],
+      "conditions": {
+        "mode": "report"
+      },
+      "steps": [
+        {
+          "target": "#console-watermark",
+          "title": "Include Watermark",
+          "description": "Check to add a CBBiotec watermark to the generated HTML report. Uncheck for a clean report without branding.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-logo",
+          "title": "Include CBB Logo",
+          "description": "Check to include the CBBiotec logo in the report header.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-split-sheets",
+          "title": "Split Sheets (Excel)",
+          "description": "When exporting to Excel, check this to place each CSV file's data on a separate tab/sheet. Uncheck to combine all data into one sheet.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "report_subject_management",
+      "queries": [
+        "report subject",
+        "manage report subjects",
+        "what is a report subject",
+        "report items",
+        "view report items",
+        "clear report subject",
+        "delete report subject",
+        "report subject name",
+        "organize reports"
+      ],
+      "conditions": {
+        "mode": "report"
+      },
+      "steps": [
+        {
+          "target": "#report-subject-name",
+          "title": "Report Subject Name",
+          "description": "A 'report subject' is a named folder that groups related analysis snapshots together. Enter a subject name here (e.g., 'Patient A', 'Batch 1') before exporting data to the report.",
+          "position": "top",
+          "skipInteraction": false
+        },
+        {
+          "target": "#report-items-container",
+          "title": "Items in This Subject",
+          "description": "All snapshots exported to the current subject are listed here. You can review and remove individual items before generating the final report.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "button[onclick=\"clearReportSubject()\"]",
+          "title": "Clear Selected Subject",
+          "description": "Click here to remove all items from the currently selected subject folder. The subject folder itself is deleted from disk. This cannot be undone.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
     }
   ]
 }
