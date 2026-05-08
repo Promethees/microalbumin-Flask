@@ -81,6 +81,11 @@ _STOPWORDS = frozenset({
     "up", "out", "on", "into", "than", "then", "so", "but", "if",
     "now", "here", "there", "some", "any", "all", "more", "very",
     "no", "not", "we", "you", "your", "its", "our",
+    # Basic multilingual stopwords
+    "của", "và", "là", "cho", "trong", "với", "để", # vi
+    "le", "la", "les", "des", "du", "de", "pour", "dans", "est", "un", "une", # fr
+    "的", "了", "和", "是", "就", "都", "而", "及", # zh
+    "и", "в", "на", "с", "что", "как", "это", "по", "для", # ru
 })
 
 
@@ -1312,6 +1317,12 @@ _IN_SCOPE_KEYWORDS = {
     "concentration", "slope", "saturation", "maxrate", "threshold", "workflow",
     "tutorial", "walkthrough", "overview", "getting started", "how to use",
     "how does this", "introduction", "guide me", "show me how",
+    # Multilingual inclusions
+    "hiệu chuẩn", "động học", "báo cáo", "nồng độ", "kết quả", # vi
+    "校准", "动力学", "测量", "报告", "浓度", # zh
+    "calibration", "cinétique", "mesure", "rapport", "concentration", # fr
+    "キャリブレーション", "キネティクス", "測定", "レポート", "濃度", # ja
+    "калибровка", "кинетика", "измерение", "отчёт", "концентрация", # ru
 }
 
 # Keywords that strongly indicate off-topic content
