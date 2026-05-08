@@ -22,29 +22,84 @@ def _load_guide_examples() -> list:
         return []
 
 
-def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, int] | tuple[None, int]:
+_STOPWORDS = frozenset({
+    "how", "to", "the", "a", "an", "i", "me", "my", "do", "what",
+    "where", "when", "why", "is", "it", "in", "for", "of", "and",
+    "or", "with", "by", "from", "at", "can", "show", "help",
+    "want", "need", "let", "make", "get", "go", "set", "use",
+    "this", "that", "these", "those", "am", "are", "was", "were",
+    "be", "been", "being", "have", "has", "had", "will", "would",
+    "could", "should", "may", "might", "shall", "also", "just",
+    "please", "tell", "give", "find", "see", "look", "about",
+    "up", "out", "on", "into", "than", "then", "so", "but", "if",
+    "now", "here", "there", "some", "any", "all", "more", "very",
+    "no", "not", "we", "you", "your", "its", "our",
+})
+
+
+def _content_words(text: str) -> frozenset:
+    """Return lowercase content words (length >= 4, not stopwords)."""
+    return frozenset(w for w in text.lower().split() if len(w) >= 4 and w not in _STOPWORDS)
+
+
+def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
+    """Score a single keyword phrase against a query.
+
+    Returns:
+      1.0  exact phrase found in query
+      0.8  stem-overlap match:
+             - single content word that is >= 5 chars (e.g. 'measure' ↔ 'measurement')
+             - OR all content words of a multi-word phrase match in the query
+      0.0  otherwise
+    """
+    if kw.lower() in q_lower:
+        return 1.0
+    kw_content = _content_words(kw)
+    if not kw_content:
+        return 0.0
+    if len(kw_content) == 1:
+        word = next(iter(kw_content))
+        # Short single-content-word phrases (e.g. "go to data" → "data") are too
+        # generic for stem-overlap; require the word to be at least 5 chars.
+        if len(word) < 5:
+            return 0.0
+        return 0.8 if any(word in qw or qw in word for qw in q_content) else 0.0
+    # Multi-word: all content words must stem-match something in the query
+    if all(
+        any(kw_word in qw or qw in kw_word for qw in q_content)
+        for kw_word in kw_content
+    ):
+        return 0.8
+    return 0.0
+
+
+def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, float] | tuple[None, float]:
     """Return (best_example, score) for the given query and UI context, or (None, 0).
 
-    Condition fields supported:
-      mode       — exact match required
-      mode_not   — excluded if mode equals this value
-      mode_in    — included only if mode is in this list
-    Examples with matching mode conditions get a +2 bonus over conditionless ones
-    so that specific variants always beat generic fallbacks with the same keyword score.
+    Scoring:
+      1.0  exact keyword phrase found in query
+      0.8  all content words of a keyword phrase stem-match words in the query
+             (e.g. 'measure' is a prefix of 'measurement')
+      +2   bonus when the example's mode condition matches the current mode
+      +1   bonus for mode_not condition (lower specificity)
+
+    Fast-path threshold is 0.7, so a single stem-match (0.8) is enough to
+    bypass Ollama, while preventing spurious matches from very short fragments.
     """
     examples = _load_guide_examples()
     if not examples:
         return None, 0
 
     q_lower = query.lower()
+    q_content = _content_words(q_lower)
     mode = (ui_context or {}).get("mode", "")
-    best_score = 0
+    best_score: float = 0
     best = None
 
     for ex in examples:
         conditions = ex.get("conditions", {})
 
-        # Hard filters
+        # Hard mode filters
         if conditions.get("mode") and mode != conditions["mode"]:
             continue
         if conditions.get("mode_not") and mode == conditions["mode_not"]:
@@ -53,11 +108,11 @@ def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, int] | tup
             continue
 
         keywords = ex.get("queries", [])
-        score = sum(1 for kw in keywords if kw.lower() in q_lower)
-        if score == 0:
+        score: float = sum(_score_keyword(kw, q_lower, q_content) for kw in keywords)
+        if score < 0.1:
             continue
 
-        # Bonus for condition specificity so mode-matched examples win ties
+        # Specificity bonus so mode-matched examples win ties
         if conditions.get("mode") and mode == conditions["mode"]:
             score += 2
         elif conditions.get("mode_in") and mode in conditions["mode_in"]:
@@ -69,7 +124,7 @@ def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, int] | tup
             best_score = score
             best = ex
 
-    return (best, best_score) if best_score > 0 else (None, 0)
+    return (best, best_score) if best_score >= 0.1 else (None, 0)
 
 
 _FILE_SELECT_STEP = {
@@ -1007,13 +1062,14 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
     matched, match_score = _match_guide_example(last_user_query, ui_context or {})
 
-    # Any training-example match → resolve steps locally, skip Ollama entirely
-    if matched and match_score >= 1:
+    # Guide match (exact phrase = 1.0, stem-word overlap = 0.8) — skip Ollama
+    if matched and match_score >= 0.7:
         steps = _format_fewshot_hint(matched, ui_context or {}, steps_only=True)
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
         yield {"type": "guide", "guide_action": {"custom_steps": steps}}
         return
 
+    # General Q&A — full LLM response with tools
     full_messages = [{"role": "system", "content": system_prompt}] + messages
     guide_action = None
 
@@ -1082,6 +1138,7 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
 
 def get_guide_examples() -> list:
     return _load_guide_examples()
+
 
 
 def prewarm_model(ollama_url: str, model: str) -> None:
