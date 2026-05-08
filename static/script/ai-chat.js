@@ -10,16 +10,44 @@
 
     const SLASH_COMMANDS = [
         { cmd: '/help',          desc: 'List all available slash commands',                       action: 'help' },
-        { cmd: '/guide',         desc: 'Launch a full step-by-step app walkthrough',              action: 'send', query: 'how does this app work' },
-        { cmd: '/calibrate',     desc: 'Create a calibration standard curve (full workflow)',     action: 'send', query: 'how to create a calibration curve' },
-        { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data',    action: 'send', query: 'how to calculate concentration' },
-        { cmd: '/start',         desc: 'Start a measurement with the connected device',           action: 'send', query: 'how to start the device' },
-        { cmd: '/stop',          desc: 'Stop the current device measurement',                     action: 'send', query: 'how to stop the device' },
-        { cmd: '/export',        desc: 'Export current data to CSV',                              action: 'send', query: 'how to export data' },
-        { cmd: '/report',        desc: 'Create a quick or full HTML report',                      action: 'send', query: 'how to create a report' },
-        { cmd: '/status',        desc: 'Show current app state (mode, data, device)',             action: 'status' },
-        { cmd: '/clear',         desc: 'Clear the conversation history',                          action: 'clear' },
+        { cmd: '/guide',         desc: 'Launch a full step-by-step app walkthrough',                     action: 'guide',      guide_id: 'app_introduction' },
+        { cmd: '/measurement',   desc: 'Guide to Kinetics mode and the Reading Colorimeter Data console', action: 'guide',      guide_id: 'measurement_guide' },
+        { cmd: '/calibrate',     desc: 'Create a calibration standard curve (full workflow)',            action: 'guide',      guide_id: 'create_calibration_curve_workflow' },
+        { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data',           action: 'concentration' },
+        { cmd: '/merge',         desc: 'Combine multiple CSV files into a single multi-source file',     action: 'guide',      guide_id: 'merge_files' },
+        { cmd: '/range',         desc: 'Set the analysis time window (start, end, unit)',                action: 'guide',      guide_id: 'set_analysis_range' },
+        { cmd: '/normalize',     desc: 'Toggle baseline subtraction to remove background absorbance',    action: 'guide',      guide_id: 'normalize_data' },
+        { cmd: '/split',         desc: 'Display each measurement source as a separate chart',            action: 'guide',      guide_id: 'split_sources' },
+        { cmd: '/window',        desc: 'Configure sliding window size for max-rate regression',          action: 'guide',      guide_id: 'window_size' },
+        { cmd: '/time-point',    desc: 'Select the time point for point-mode calibration analysis',      action: 'guide',      guide_id: 'select_time_point' },
+        { cmd: '/start',         desc: 'Start a measurement with the connected device',                  action: 'guide',      guide_id: 'start_device' },
+        { cmd: '/stop',          desc: 'Stop the current device measurement',                            action: 'guide',      guide_id: 'stop_device' },
+        { cmd: '/export',        desc: 'Export current data to CSV',                                     action: 'guide',      guide_id: 'export_data' },
+        { cmd: '/excel',         desc: 'Export report items as a formatted Excel workbook',              action: 'excel' },
+        { cmd: '/live-view',     desc: 'Browse to the live measurement output folder',                   action: 'live_view' },
+        { cmd: '/report',        desc: 'Create a quick or full HTML report',                             action: 'report' },
+        { cmd: '/status',        desc: 'Show current app state (mode, data, device)',                    action: 'status' },
+        { cmd: '/clear',         desc: 'Clear the conversation history',                                 action: 'clear' },
     ];
+
+    // File-select prepend step (mirrors Python's _FILE_SELECT_STEP)
+    const _FILE_SELECT_STEP = {
+        target: '#file-selection',
+        title: 'Select a File First',
+        description: 'No data file is loaded yet. Click here to select a CSV data file before proceeding.',
+        position: 'left',
+        skipInteraction: false,
+    };
+
+    // Confirmation messages (mirrors Python's _GUIDE_LAUNCHED)
+    const _GUIDE_LAUNCHED = {
+        en: 'Guide launched — follow the highlighted steps.',
+        vi: 'Đã khởi động hướng dẫn — làm theo các bước được tô sáng.',
+        zh: '指南已启动 — 请按照高亮步骤操作。',
+        fr: 'Guide lancé — suivez les étapes mises en surbrillance.',
+        ja: 'ガイドを起動しました — ハイライトされた手順に従ってください。',
+        ru: 'Руководство запущено — следуйте выделенным шагам.',
+    };
 
     const _picker = { visible: false, idx: 0, list: [] };
 
@@ -31,6 +59,7 @@
         messages: [],          // {role, content}[]  — conversation history
         settings: null,        // loaded from /ai/settings
         status: null,          // loaded from /ai/status
+        guides: [],            // loaded from /ai/guides — keyed by id for O(1) lookup
         activeLang: null,      // currently active language (cycles through preferred_languages)
         pullTimer: null,
         LANG_LABELS: {
@@ -179,6 +208,17 @@
                 _showWelcomeIfNeeded();
             })
             .catch(() => {/* AI routes may not be registered yet */ });
+
+        fetch('/ai/guides')
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Store as a map id→example for O(1) lookup
+                    AI.guides = {};
+                    (data.examples || []).forEach(e => { if (e.id) AI.guides[e.id] = e; });
+                }
+            })
+            .catch(() => {});
     }
 
     function _showWelcomeIfNeeded() {
@@ -454,6 +494,7 @@
             app_started: !!(mainContent && !mainContent.classList.contains('hidden')),
             data_loaded: !!(dataDisplay && !dataDisplay.classList.contains('hidden')),
             cal_mode: calMode ? (calMode.getAttribute('data-value') || '') : '',
+            script_running: !!appState.scriptRunning,
         };
     }
 
@@ -509,22 +550,20 @@
 
     function _cmdExecute(cmd) {
         const input = document.getElementById('okapi-ai-input');
+        input.value = '';
 
         if (cmd.action === 'clear') {
-            input.value = '';
             OkapiAI.clearHistory();
             return;
         }
 
         if (cmd.action === 'help') {
-            input.value = '';
             const lines = SLASH_COMMANDS.map(c => `\`${c.cmd}\` — ${c.desc}`).join('\n');
             _addMsg('assistant', '**Available commands**\n\n' + lines);
             return;
         }
 
         if (cmd.action === 'status') {
-            input.value = '';
             const ctx = _getUiContext();
             const lines = [
                 `\`mode\` ${ctx.mode || '—'}`,
@@ -538,10 +577,105 @@
             return;
         }
 
-        if (cmd.action === 'send' && cmd.query) {
-            input.value = cmd.query;
-            setTimeout(() => OkapiAI.send(), 20);
+        if (cmd.action === 'guide') {
+            _addMsg('user', cmd.cmd);
+            _runGuideById(cmd.guide_id);
+            return;
         }
+
+        if (cmd.action === 'concentration') {
+            _addMsg('user', cmd.cmd);
+            _runConcentrationGuide();
+            return;
+        }
+
+        if (cmd.action === 'excel') {
+            _addMsg('user', cmd.cmd);
+            _runExcelGuide();
+            return;
+        }
+
+        if (cmd.action === 'live_view') {
+            _addMsg('user', cmd.cmd);
+            _runLiveViewGuide();
+            return;
+        }
+
+        if (cmd.action === 'report') {
+            _addMsg('user', cmd.cmd);
+            _runReportChoice();
+            return;
+        }
+    }
+
+    // Resolve and launch a guide by training-example ID, applying UI context locally
+    function _runGuideById(guide_id) {
+        const example = AI.guides[guide_id];
+        if (!example) {
+            _addMsg('assistant', `Guide **${_esc(guide_id)}** not found. Try again after the app loads.`);
+            return;
+        }
+        const ctx = _getUiContext();
+        let steps = [...example.steps];
+        if (example.requires_data_loaded && !ctx.data_loaded) {
+            steps = [_FILE_SELECT_STEP, ...steps];
+        }
+        const lang = AI.activeLang || 'en';
+        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+        _launchCustomSteps(steps);
+    }
+
+    // Pick the correct concentration guide based on current mode
+    function _runConcentrationGuide() {
+        const mode = _getUiContext().mode;
+        let guide_id;
+        if (mode === 'kinetics')                          guide_id = 'concentration_calc_kinetics';
+        else if (mode === 'point')                        guide_id = 'concentration_calc_point';
+        else if (mode === 'calibrate' || mode === 'report') guide_id = 'concentration_calc_wrong_mode';
+        else                                              guide_id = 'concentration_calc_generic';
+        _runGuideById(guide_id);
+    }
+
+    // Route Excel export guide based on current mode
+    function _runExcelGuide() {
+        const mode = _getUiContext().mode;
+        _runGuideById(mode === 'report' ? 'export_excel_in_report' : 'export_excel_nav');
+    }
+
+    // Route live-view guide based on whether a measurement is currently running
+    function _runLiveViewGuide() {
+        const ctx = _getUiContext();
+        _runGuideById(ctx.script_running ? 'live_view_active' : 'live_view_inactive');
+    }
+
+    // Show an inline quick/full choice — user clicks a button, guide launches immediately
+    function _runReportChoice() {
+        const container = document.getElementById('okapi-ai-messages');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'okapi-ai-msg okapi-ai-msg-assistant';
+        div.innerHTML =
+            'Which type of report would you like to create?' +
+            '<div class="okapi-ai-choice-btns">' +
+            '<button class="okapi-ai-choice-btn" data-type="quick">⚡ Quick Report</button>' +
+            '<button class="okapi-ai-choice-btn" data-type="full">📄 Full Report</button>' +
+            '</div>';
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+
+        div.querySelectorAll('.okapi-ai-choice-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                div.querySelectorAll('.okapi-ai-choice-btn').forEach(b => b.disabled = true);
+                const mode = _getUiContext().mode;
+                let guide_id;
+                if (btn.dataset.type === 'quick') {
+                    guide_id = (mode === 'report') ? 'report_quick_from_report' : 'report_quick';
+                } else {
+                    guide_id = (mode === 'report') ? 'report_full_in_report' : 'report_full_from_data';
+                }
+                _runGuideById(guide_id);
+            });
+        });
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

@@ -2569,6 +2569,44 @@ body.dark .okapi-ai-uninstall-box code { background: rgba(255,255,255,0.1); }
 }
 body.dark .okapi-ai-uninstall-box button { background: rgba(185,28,28,0.25); color: #fca5a5; }
 
+/* Inline choice buttons (e.g. quick vs full report) */
+.okapi-ai-choice-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+.okapi-ai-choice-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 6px 12px;
+    border: 1px solid #6366f1;
+    border-radius: 8px;
+    background: transparent;
+    color: #6366f1;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+}
+.okapi-ai-choice-btn:hover:not(:disabled) {
+    background: #6366f1;
+    color: #fff;
+}
+.okapi-ai-choice-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+body.dark .okapi-ai-choice-btn {
+    border-color: #a5b4fc;
+    color: #a5b4fc;
+}
+body.dark .okapi-ai-choice-btn:hover:not(:disabled) {
+    background: #6366f1;
+    color: #fff;
+}
+
 /* Slash command picker */
 #okapi-ai-cmd-picker {
     margin: 0 12px 4px;
