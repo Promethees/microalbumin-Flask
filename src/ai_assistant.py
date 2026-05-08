@@ -11,15 +11,50 @@ import state
 # ── Guide training examples (few-shot injection) ──────────────────────────────
 
 _GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_training.json")
+_GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_translations")
 
 
-def _load_guide_examples() -> list:
+def _apply_overlay(examples: list, lang: str) -> list:
+    """Merge per-language description overlay onto a list of guide examples."""
+    overlay_path = os.path.join(_GUIDE_TRANSLATIONS_DIR, f"{lang}.json")
+    try:
+        with open(overlay_path, "r", encoding="utf-8") as f:
+            overlay = json.load(f)
+    except Exception:
+        return examples
+    index = {item["id"]: item["steps"] for item in overlay}
+    result = []
+    for ex in examples:
+        translated_steps = index.get(ex["id"])
+        if not translated_steps:
+            result.append(ex)
+            continue
+        new_steps = []
+        for i, step in enumerate(ex["steps"]):
+            desc = translated_steps[i] if i < len(translated_steps) and translated_steps[i] else step["description"]
+            new_steps.append({**step, "description": desc})
+        result.append({**ex, "steps": new_steps})
+    return result
+
+
+def _load_guide_examples(lang: str = "en") -> list:
     try:
         with open(_GUIDE_TRAINING_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return [e for e in data.get("examples", []) if e.get("steps")]
+        examples = [e for e in data.get("examples", []) if e.get("steps")]
     except Exception:
         return []
+    if lang and lang != "en":
+        examples = _apply_overlay(examples, lang)
+    return examples
+
+
+def _translate_step(step: dict, lang: str) -> dict:
+    """Return a copy of step with description resolved for lang (for inline constants)."""
+    if lang == "en" or "descriptions" not in step:
+        return {k: v for k, v in step.items() if k != "descriptions"}
+    desc = step["descriptions"].get(lang) or step["description"]
+    return {**{k: v for k, v in step.items() if k != "descriptions"}, "description": desc}
 
 
 _STOPWORDS = frozenset({
@@ -73,7 +108,7 @@ def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
     return 0.0
 
 
-def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, float] | tuple[None, float]:
+def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
     """Return (best_example, score) for the given query and UI context, or (None, 0).
 
     Scoring:
@@ -86,7 +121,7 @@ def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, float] | t
     Fast-path threshold is 0.7, so a single stem-match (0.8) is enough to
     bypass Ollama, while preventing spurious matches from very short fragments.
     """
-    examples = _load_guide_examples()
+    examples = _load_guide_examples(lang)
     if not examples:
         return None, 0
 
@@ -131,6 +166,13 @@ _FILE_SELECT_STEP = {
     "target": "#file-selection",
     "title": "Select a File First",
     "description": "No data file is loaded yet. Click here to select a CSV data file before proceeding.",
+    "descriptions": {
+        "vi": "Chưa có tệp dữ liệu nào được tải. Nhấp vào đây để chọn tệp CSV trước khi tiếp tục.",
+        "zh": "尚未加载数据文件。请点击此处选择 CSV 数据文件后再继续。",
+        "fr": "Aucun fichier de données n'est chargé. Cliquez ici pour sélectionner un fichier CSV avant de continuer.",
+        "ja": "データファイルがまだ読み込まれていません。続行する前にここをクリックして CSV ファイルを選択してください。",
+        "ru": "Файл данных ещё не загружен. Нажмите здесь, чтобы выбрать CSV-файл перед продолжением.",
+    },
     "position": "left",
     "skipInteraction": False,
 }
@@ -139,12 +181,19 @@ _GET_STARTED_STEP = {
     "target": "#init-button",
     "title": "Click Get Started First",
     "description": 'The app hasn\'t been initialised yet. Click "Get Started" to load the main interface before proceeding with this guide.',
+    "descriptions": {
+        "vi": 'Ứng dụng chưa được khởi tạo. Nhấp vào "Bắt đầu" để tải giao diện chính trước khi tiếp tục hướng dẫn này.',
+        "zh": '应用程序尚未初始化。请点击"开始"加载主界面后再继续本指南。',
+        "fr": "L'application n'a pas encore été initialisée. Cliquez sur \"Commencer\" pour charger l'interface principale avant de poursuivre ce guide.",
+        "ja": 'アプリはまだ初期化されていません。このガイドを続ける前に「はじめる」をクリックしてメインインターフェイスを読み込んでください。',
+        "ru": "Приложение ещё не инициализировано. Нажмите «Начать», чтобы загрузить главный интерфейс перед продолжением руководства.",
+    },
     "position": "right",
     "skipInteraction": False,
 }
 
 
-def _format_fewshot_hint(example: dict, ui_context: dict, steps_only: bool = False):
+def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
     """Format a matched example as a few-shot hint or return raw steps list.
 
     If steps_only=True, return the steps list directly (for fast-path bypass).
@@ -155,7 +204,7 @@ def _format_fewshot_hint(example: dict, ui_context: dict, steps_only: bool = Fal
     """
     steps = list(example["steps"])
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
-        steps = [_FILE_SELECT_STEP] + steps
+        steps = [_translate_step(_FILE_SELECT_STEP, language)] + steps
     if steps_only:
         return steps
     steps_json = json.dumps(steps, ensure_ascii=False)
@@ -1240,11 +1289,11 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             parts.append(f"cal_mode={cal_mode}")
         if parts:
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
-    matched, match_score = _match_guide_example(last_user_query, ui_context or {})
+    matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
 
     # Guide match (exact phrase = 1.0, stem-word overlap = 0.8) — skip Ollama
     if matched and match_score >= 0.7:
-        steps = _format_fewshot_hint(matched, ui_context or {}, steps_only=True)
+        steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
         yield {"type": "guide", "guide_action": {"custom_steps": steps}}
         return
@@ -1316,8 +1365,8 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
     yield {"type": "error", "error": "max_iterations"}
 
 
-def get_guide_examples() -> list:
-    return _load_guide_examples()
+def get_guide_examples(lang: str = "en") -> list:
+    return _load_guide_examples(lang)
 
 
 

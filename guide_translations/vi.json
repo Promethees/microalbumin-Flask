@@ -1,0 +1,423 @@
+[
+  {
+    "id": "app_introduction",
+    "steps": [
+      "Easy OKAPI có 4 chế độ: Kinetics (chuỗi thời gian), Point (điểm thời gian đơn), Calibrate (tạo đường chuẩn) và Report (xuất dữ liệu). Chúng ta bắt đầu ở chế độ Kinetics.",
+      "Bảng điều khiển này điều khiển việc ghi dữ liệu từ máy so màu PyBadge. Trong hướng dẫn này, chúng ta sẽ dùng dữ liệu mẫu thay vì thiết bị thực.",
+      "Nút này bắt đầu ghi lại độ hấp thụ trực tiếp từ máy so màu. Hiện tại, chỉ cần ghi nhớ vị trí của nó — chúng ta sẽ dùng tệp mẫu tiếp theo.",
+      "Đặt thời gian mỗi lần ghi. 'Infinite' sẽ ghi cho đến khi bạn nhấp Dừng.",
+      "Đặt khoảng thời gian giữa mỗi lần đọc. 0 lấy dữ liệu nhanh nhất có thể.",
+      "Chọn tệp CSV kinetics để khám phá ứng dụng. Các tệp mẫu có trong thư mục sample_data — chọn bất kỳ tệp nào để tiếp tục.",
+      "Dữ liệu đo của bạn được hiển thị ở đây dưới dạng biểu đồ chuỗi thời gian cho thấy độ hấp thụ theo thời gian.",
+      "Chọn nguồn đo (kênh) để xuất cho hiệu chuẩn.",
+      "Nhập nồng độ chất phân tích đã biết làm điểm tham chiếu, đặt tên tệp và nhấp 'Export Data' để tạo CSV hiệu chuẩn.",
+      "Điều hướng đến thư mục nơi CSV hiệu chuẩn vừa được lưu để bạn có thể chọn nó ở bước tiếp theo.",
+      "Tìm CSV hiệu chuẩn bạn đã xuất. Nhấp 'Edit' để kiểm tra nội dung, rồi chọn nó.",
+      "Chuyển sang chế độ Calibrate để thiết lập hồi quy và tạo hệ số đường chuẩn.",
+      "Chọn đại lượng kinetics nào (maxRate, Slope, Sat hoặc Time to Sat) để dùng cho đường chuẩn.",
+      "Chọn thuật toán khớp cho đường chuẩn: tuyến tính, đa thức, logarit, mũ hoặc Michaelis-Menten.",
+      "Nhập tên và nhấp 'Export Coefficients' để lưu đường chuẩn thành tệp JSON hiệu chuẩn.",
+      "Chuyển lại chế độ Kinetics để áp dụng hiệu chuẩn cho các phép đo mẫu của bạn.",
+      "Chọn JSON hiệu chuẩn bạn vừa xuất ở đây. Đường chuẩn hiện được áp dụng — nồng độ sẽ được tính tự động từ dữ liệu kinetics của bạn."
+    ]
+  },
+  {
+    "id": "nav_calibrate_mode",
+    "steps": [
+      "Tìm bộ chọn Chế độ Đo ở đây. Nhấp để chọn 'Calibrate'."
+    ]
+  },
+  {
+    "id": "nav_kinetics_mode",
+    "steps": [
+      "Tìm bộ chọn Chế độ Đo ở đây. Nhấp để chọn 'Kinetics'."
+    ]
+  },
+  {
+    "id": "nav_point_mode",
+    "steps": [
+      "Tìm bộ chọn Chế độ Đo ở đây. Nhấp để chọn 'Point'."
+    ]
+  },
+  {
+    "id": "start_device",
+    "steps": [
+      "Nhấp nút này để bắt đầu ghi dữ liệu từ máy so màu. Đảm bảo thiết bị đã được kết nối trước."
+    ]
+  },
+  {
+    "id": "stop_device",
+    "steps": [
+      "Nhấp nút này để dừng quá trình ghi thủ công."
+    ]
+  },
+  {
+    "id": "select_file",
+    "steps": [
+      "Chọn tệp dữ liệu CSV để phân tích ở đây. Nhấp để mở hộp chọn tệp."
+    ]
+  },
+  {
+    "id": "navigate_directory",
+    "steps": [
+      "Duyệt và điều hướng đến thư mục chứa tệp dữ liệu của bạn."
+    ]
+  },
+  {
+    "id": "load_calibration_json",
+    "steps": [
+      "Chọn tệp JSON đường chuẩn hiệu chuẩn ở đây để áp dụng chuyển đổi nồng độ."
+    ]
+  },
+  {
+    "id": "set_timeout",
+    "steps": [
+      "Đặt thời gian ghi cho mỗi lần đo ở đây. Đặt thành Vô hạn để ghi cho đến khi dừng thủ công."
+    ]
+  },
+  {
+    "id": "set_interval",
+    "steps": [
+      "Đặt khoảng thời gian giữa các lần đọc. Đặt thành 0 để lấy dữ liệu nhanh nhất có thể."
+    ]
+  },
+  {
+    "id": "export_data",
+    "steps": [
+      "Xuất kết quả phân tích ở đây. Đặt mốc tham chiếu, nhập tên tệp và nhấp Export Data."
+    ]
+  },
+  {
+    "id": "merge_files",
+    "steps": [
+      "Trước tiên, chọn các tệp CSV muốn hợp nhất từ danh sách tệp.",
+      "Nhấp vào đây để kết hợp hai tệp CSV thành một tệp đa nguồn."
+    ]
+  },
+  {
+    "id": "export_to_report_subject",
+    "steps": [
+      "Nhấp 'Export Data to Report' ở đây để lưu ảnh chụp phân tích này vào chủ đề báo cáo để tổng hợp sau."
+    ]
+  },
+  {
+    "id": "view_chart",
+    "steps": [
+      "Dữ liệu đo của bạn được hiển thị dưới dạng biểu đồ ở đây."
+    ]
+  },
+  {
+    "id": "select_regression",
+    "steps": [
+      "Chọn thuật toán hồi quy cho đường chuẩn: tuyến tính, đa thức, logarithm, hàm mũ hoặc Michaelis-Menten."
+    ]
+  },
+  {
+    "id": "export_coefficients",
+    "steps": [
+      "Nhập tên tệp và nhấp Export Coefficients để lưu dữ liệu đường chuẩn dưới dạng tệp JSON."
+    ]
+  },
+  {
+    "id": "set_threshold",
+    "steps": [
+      "Đặt giá trị R² tối thiểu chấp nhận ở đây. Các khớp dưới ngưỡng này sẽ không được xuất."
+    ]
+  },
+  {
+    "id": "window_size",
+    "steps": [
+      "Cấu hình kích thước cửa sổ trượt cho hồi quy tốc độ tối đa. Tối thiểu là 3 điểm dữ liệu."
+    ]
+  },
+  {
+    "id": "select_time_point",
+    "steps": [
+      "Chọn điểm thời gian nào để dùng cho hiệu chuẩn chế độ Point."
+    ]
+  },
+  {
+    "id": "view_log",
+    "steps": [
+      "Nhật ký thời gian thực của quá trình ghi đo. Hữu ích để khắc phục sự cố kết nối thiết bị."
+    ]
+  },
+  {
+    "id": "calibrate_kinetics_workflow",
+    "steps": [
+      "Chọn 'Calibrate' từ bộ chọn Chế độ Đo để vào chế độ hiệu chuẩn.",
+      "Trong bộ chọn loại hiệu chuẩn, chọn 'Kinetics'.",
+      "Chọn tệp CSV Kinetics đã xuất chứa nồng độ và các thông số động học.",
+      "Chọn đại lượng động học để dùng cho hiệu chuẩn: maxRate, Slope, Sat hoặc Time to Sat.",
+      "Chọn thuật toán hồi quy để khớp đường chuẩn của bạn.",
+      "Nhập tên và xuất các hệ số đường chuẩn dưới dạng tệp JSON."
+    ]
+  },
+  {
+    "id": "calibrate_point_workflow",
+    "steps": [
+      "Chọn 'Calibrate' từ bộ chọn Chế độ Đo.",
+      "Trong bộ chọn loại hiệu chuẩn, chọn 'Point'.",
+      "Chọn tệp CSV Point đã xuất chứa nồng độ và giá trị độ hấp thụ.",
+      "Chọn điểm thời gian để dùng cho đường chuẩn của bạn.",
+      "Chọn thuật toán hồi quy để khớp đường chuẩn của bạn.",
+      "Nhập tên và xuất các hệ số đường chuẩn dưới dạng tệp JSON."
+    ]
+  },
+  {
+    "id": "concentration_calc_kinetics",
+    "steps": [
+      "Chọn tệp JSON đường chuẩn ở đây. Điều này áp dụng các hệ số hồi quy để chuyển đổi kết quả đo động học thành nồng độ chất phân tích.",
+      "Chọn tệp dữ liệu CSV Kinetics bạn muốn phân tích.",
+      "Các hệ số đường chuẩn đã tải được hiển thị ở đây (trên cùng bên phải). Đây là mô hình dùng để chuyển đổi độ hấp thụ/đại lượng động học thành nồng độ.",
+      "Nồng độ chất phân tích được tính từ dữ liệu đo và đường chuẩn đã chọn được hiển thị ở đây."
+    ]
+  },
+  {
+    "id": "concentration_calc_point",
+    "steps": [
+      "Chọn tệp JSON đường chuẩn ở đây để áp dụng hệ số hồi quy chuyển đổi độ hấp thụ đo điểm thành nồng độ chất phân tích.",
+      "Chọn tệp dữ liệu CSV Point bạn muốn phân tích.",
+      "Các hệ số đường chuẩn đã tải được hiển thị ở đây (trên cùng bên phải). Đây là mô hình dùng để chuyển đổi độ hấp thụ thành nồng độ.",
+      "Nồng độ chất phân tích được tính từ phép đo điểm và đường chuẩn đã chọn được hiển thị ở đây."
+    ]
+  },
+  {
+    "id": "concentration_calc_wrong_mode",
+    "steps": [
+      "Tính nồng độ từ mẫu yêu cầu chế độ Kinetics hoặc Point. Chuyển sang một trong các chế độ đó ở đây trước.",
+      "Sau khi chuyển chế độ, chọn tệp JSON đường chuẩn ở đây để áp dụng hệ số hiệu chuẩn.",
+      "Chọn tệp dữ liệu CSV bạn muốn phân tích.",
+      "Khi tệp hiệu chuẩn được tải, các hệ số đường chuẩn của nó được hiển thị ở đây ở trên cùng bên phải.",
+      "Nồng độ chất phân tích được tính từ dữ liệu và đường chuẩn được hiển thị ở đây."
+    ]
+  },
+  {
+    "id": "create_calibration_curve_workflow",
+    "steps": [
+      "Đảm bảo chế độ Kinetics được chọn ở đây trước khi bắt đầu.",
+      "Chọn tệp CSV đo kinetics chứa dữ liệu mẫu bạn muốn dùng để hiệu chuẩn.",
+      "Chọn nguồn đo (kênh) bạn muốn xuất cho đường chuẩn.",
+      "Nhập nồng độ chất phân tích đã biết làm điểm tham chiếu, đặt tên tệp và nhấp 'Export Data' để lưu CSV hiệu chuẩn.",
+      "Điều hướng đến thư mục nơi CSV hiệu chuẩn vừa được lưu để bạn có thể tìm và chọn nó.",
+      "Tìm CSV hiệu chuẩn bạn vừa xuất. Nhấp 'Edit' để kiểm tra nội dung, rồi chọn nó.",
+      "Chuyển sang chế độ Calibrate ở đây để thiết lập hồi quy và tạo hệ số đường chuẩn.",
+      "Chọn đại lượng kinetics nào để dùng cho đường chuẩn: maxRate, Slope, Sat hoặc Time to Sat.",
+      "Chọn thuật toán khớp cho đường chuẩn: tuyến tính, đa thức, logarit, mũ hoặc Michaelis-Menten.",
+      "Nhập tên tệp và nhấp 'Export Coefficients' để lưu đường chuẩn thành tệp JSON hiệu chuẩn.",
+      "Chuyển lại chế độ Kinetics để áp dụng hiệu chuẩn cho các phép đo mẫu của bạn.",
+      "Chọn JSON hiệu chuẩn bạn vừa xuất ở đây. Đường chuẩn giờ sẽ được áp dụng để tính nồng độ chất phân tích từ dữ liệu kinetics của bạn."
+    ]
+  },
+  {
+    "id": "concentration_calc_generic",
+    "steps": [
+      "Tính nồng độ yêu cầu chế độ Kinetics hoặc Point. Đảm bảo chế độ đúng được chọn ở đây.",
+      "Chọn tệp JSON đường chuẩn ở đây để áp dụng hệ số hồi quy cho chuyển đổi nồng độ.",
+      "Chọn tệp dữ liệu CSV bạn muốn phân tích.",
+      "Các hệ số đường chuẩn đã tải được hiển thị ở đây (trên cùng bên phải), cho thấy mô hình dùng để chuyển đổi nồng độ.",
+      "Nồng độ chất phân tích được tính từ dữ liệu và đường chuẩn được hiển thị ở đây."
+    ]
+  },
+  {
+    "id": "measurement_guide",
+    "steps": [
+      "Chọn chế độ Kinetics để bắt đầu đo máy so màu theo chuỗi thời gian.",
+      "Bảng điều khiển này điều khiển thiết bị máy so màu. Đảm bảo PyBadge của bạn được kết nối qua USB trước khi bắt đầu.",
+      "Cấu hình thời gian thiết bị thu thập dữ liệu. Bật 'Vô hạn' để chạy cho đến khi dừng thủ công.",
+      "Đặt tần suất máy so màu lấy số liệu trong quá trình đo.",
+      "Nhấp 'Start reading' để bắt đầu thu thập dữ liệu từ thiết bị. Kết quả đọc sẽ xuất hiện trong nhật ký bên dưới.",
+      "Kết quả đọc từ cảm biến xuất hiện ở đây theo thời gian thực. Mỗi hàng là một phép đo có dấu thời gian từ thiết bị.",
+      "Sau khi dừng đo, tệp dữ liệu tự động được lưu. Chọn nó ở đây để xem biểu đồ và chạy phân tích."
+    ]
+  },
+  {
+    "id": "report_quick",
+    "steps": [
+      "Nhấp 'Generate quick Report' ở đây để chụp nhanh biểu đồ và phân tích hiện tại thành báo cáo HTML độc lập."
+    ]
+  },
+  {
+    "id": "report_quick_from_report",
+    "steps": [
+      "Báo cáo nhanh yêu cầu dữ liệu đo đang hoạt động. Chuyển sang chế độ Kinetics, Point hoặc Calibrate trước.",
+      "Chọn tệp dữ liệu CSV để tải phân tích trước khi tạo báo cáo.",
+      "Bây giờ nhấp 'Generate quick Report' để chụp biểu đồ và phân tích hiện tại thành báo cáo HTML độc lập."
+    ]
+  },
+  {
+    "id": "report_full_from_data",
+    "steps": [
+      "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo để tổng hợp sau.",
+      "Sau khi xuất, chuyển sang chế độ Report ở đây để mở giao diện quản lý báo cáo đầy đủ.",
+      "Quản lý ảnh chụp phân tích đã lưu ở đây. Cấu hình tùy chọn bố cục và đặt tiêu đề báo cáo.",
+      "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa những mục không cần trước khi tạo báo cáo cuối.",
+      "Tổng hợp tất cả mục thành báo cáo HTML có thể in. Mở trong trình duyệt, sau đó dùng In → Lưu dưới dạng PDF."
+    ]
+  },
+  {
+    "id": "report_full_in_report",
+    "steps": [
+      "Quản lý ảnh chụp phân tích đã lưu ở đây. Cấu hình bố cục và đặt tiêu đề báo cáo.",
+      "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ mục nào trước khi tạo báo cáo.",
+      "Tải xuống tất cả mục dưới dạng sổ làm việc Excel có biểu đồ nhúng.",
+      "Hoặc tổng hợp tất cả mục thành báo cáo HTML có thể in."
+    ]
+  },
+  {
+    "id": "normalize_data",
+    "steps": [
+      "Bật tính năng này để trừ độ hấp thụ nền (mẫu trắng) khỏi tất cả các lần đọc, cho giá trị độ hấp thụ ròng."
+    ]
+  },
+  {
+    "id": "split_sources",
+    "steps": [
+      "Bật tính năng này để hiển thị mỗi nguồn đo (kênh) trên biểu đồ riêng thay vì chồng chéo trên một đồ thị."
+    ]
+  },
+  {
+    "id": "set_analysis_range",
+    "steps": [
+      "Bảng này điều khiển cửa sổ thời gian nào của dữ liệu được dùng cho phân tích. Điều chỉnh bắt đầu và kết thúc để tập trung vào phần cụ thể.",
+      "Nhập điểm bắt đầu của cửa sổ phân tích. Dữ liệu trước điểm này sẽ bị loại trừ.",
+      "Nhập điểm kết thúc của cửa sổ phân tích. Dữ liệu sau điểm này sẽ bị loại trừ.",
+      "Chọn đơn vị (giây, phút hoặc giờ) phù hợp với giá trị phạm vi của bạn."
+    ]
+  },
+  {
+    "id": "export_excel_in_report",
+    "steps": [
+      "Nhấp vào đây để tải xuống tất cả mục báo cáo dưới dạng sổ làm việc Excel với một tab mỗi CSV và biểu đồ nhúng."
+    ]
+  },
+  {
+    "id": "export_excel_nav",
+    "steps": [
+      "Xuất Excel có trong chế độ Report. Chuyển sang đây trước, sau đó thêm ảnh chụp phân tích bằng 'Export Data to Report' từ các chế độ khác.",
+      "Nhấp vào đây để tải xuống tất cả mục báo cáo dưới dạng sổ làm việc Excel có biểu đồ nhúng."
+    ]
+  },
+  {
+    "id": "live_view_active",
+    "steps": [
+      "Nhấp vào đây để mở thư mục nơi dữ liệu đo của bạn đang được lưu theo thời gian thực."
+    ]
+  },
+  {
+    "id": "live_view_inactive",
+    "steps": [
+      "Nút 'View live data' chỉ hoạt động khi đang đo. Bắt đầu đọc từ thiết bị của bạn ở đây trước.",
+      "Khi đo đang chạy, nút này sẽ hoạt động. Nhấp để mở thư mục nơi dữ liệu đang được lưu theo thời gian thực."
+    ]
+  },
+  {
+    "id": "shutdown_server",
+    "steps": [
+      "Nhấp nút này để dừng máy chủ Flask và đóng ứng dụng. Dữ liệu chưa lưu sẽ mất, hãy xuất những gì cần trước."
+    ]
+  },
+  {
+    "id": "open_user_guide",
+    "steps": [
+      "Nhấp vào đây để khởi chạy hướng dẫn người dùng tương tác từng bước. Nó hướng dẫn các tính năng chính với điểm nổi bật trên màn hình."
+    ]
+  },
+  {
+    "id": "base_name_input",
+    "steps": [
+      "Nhập tên cho tệp CSV sẽ được tạo khi bắt đầu đo. Ví dụ: nhập 'sample1' sẽ lưu dữ liệu thành 'sample1.csv'."
+    ]
+  },
+  {
+    "id": "saving_directory",
+    "steps": [
+      "Khi được chọn, tệp đo sẽ được lưu trong cùng thư mục bạn đang duyệt. Bỏ chọn để chỉ định đường dẫn lưu tùy chỉnh.",
+      "Hiển thị thư mục nơi các tệp CSV mới sẽ được lưu. Dùng 'Browse Saving Location' gần đây để thay đổi khi hộp kiểm trên bị bỏ chọn."
+    ]
+  },
+  {
+    "id": "notify_done",
+    "steps": [
+      "Khi được chọn, ứng dụng phát âm thanh và hiện thông báo ngay khi đo xong. Hữu ích khi bạn rời xa trong khi thiết bị đang chạy."
+    ]
+  },
+  {
+    "id": "clear_logs",
+    "steps": [
+      "Nhấp vào đây để xóa tất cả văn bản trong bảng nhật ký. Chỉ xóa hiển thị — không xóa các tệp CSV đã lưu."
+    ]
+  },
+  {
+    "id": "disable_popups",
+    "steps": [
+      "Chọn hộp này để ẩn các popup xác nhận và cảnh báo trong ứng dụng. Hữu ích khi bạn đã quen với quy trình."
+    ]
+  },
+  {
+    "id": "filter_sources",
+    "steps": [
+      "'Nguồn' là một kênh đo trong tệp CSV — mỗi mẫu hoặc cảm biến riêng biệt. Chọn hộp này để chỉ hiển thị tệp có số nguồn cụ thể.",
+      "Chọn số nguồn (kênh đo) mà tệp phải có để xuất hiện trong danh sách. Hữu ích khi muốn tập trung vào tệp đơn nguồn hoặc đa nguồn."
+    ]
+  },
+  {
+    "id": "delete_file",
+    "steps": [
+      "Tìm tệp muốn xóa trong danh sách. Mỗi hàng có nút ❌ Xóa màu đỏ. Nhấp để xóa vĩnh viễn. Không thể hoàn tác."
+    ]
+  },
+  {
+    "id": "copy_file",
+    "steps": [
+      "Nhấp vào đây để tạo bản sao của tệp CSV đang chọn trong cùng thư mục. Bản sao có hậu tố '_copy'. Hữu ích để thử nghiệm mà không thay đổi bản gốc."
+    ]
+  },
+  {
+    "id": "deselect_file",
+    "steps": [
+      "Nhấp vào đây để bỏ tải tệp dữ liệu đang chọn. Biểu đồ và bảng phân tích sẽ xóa. Tệp không bị xóa — có thể chọn lại bất cứ lúc nào."
+    ]
+  },
+  {
+    "id": "select_quantity",
+    "steps": [
+      "Chọn đại lượng dẫn xuất để ánh xạ với nồng độ trong đường chuẩn:\n• maxRate — tốc độ thay đổi độ hấp thụ nhanh nhất (ΔAbs/s) trong pha tuyến tính; phổ biến nhất cho enzyme kinetics.\n• Slope — hệ số góc tuyến tính tổng thể trên toàn bộ dữ liệu.\n• Sat — giá trị độ hấp thụ bão hòa (plateau).\n• Time To Sat — thời gian (phút) đến khi tín hiệu đạt plateau."
+    ]
+  },
+  {
+    "id": "expand_collapse_analyses",
+    "steps": [
+      "Bật/tắt hộp kiểm này để mở rộng hoặc thu gọn tất cả các phần phân tích cùng lúc. Hữu ích để quét nhanh tất cả các nguồn trong tệp đa nguồn."
+    ]
+  },
+  {
+    "id": "export_saving_directory",
+    "steps": [
+      "Khi được chọn, tệp xuất (dữ liệu hiệu chuẩn hoặc JSON hệ số) được lưu cùng thư mục với tệp dữ liệu đang tải. Bỏ chọn để chọn đích khác.",
+      "Trường này hiển thị nơi tệp xuất sẽ đến. Tự động cập nhật khi bạn duyệt vị trí mới hoặc bật/tắt hộp kiểm 'cùng thư mục' ở trên."
+    ]
+  },
+  {
+    "id": "rsquared_threshold",
+    "steps": [
+      "R² đo mức độ khớp của đường hồi quy với dữ liệu đường chuẩn — 1.0 là khớp hoàn hảo, 0.0 là không khớp. Đặt R² tối thiểu ở đây; chỉ kết quả tại hoặc trên giá trị này mới được dùng. Khuyến nghị 0.99 để hiệu chuẩn đáng tin cậy."
+    ]
+  },
+  {
+    "id": "report_layout_options",
+    "steps": [
+      "Chọn để thêm hình mờ CBBiotec vào báo cáo HTML. Bỏ chọn để có báo cáo sạch không thương hiệu.",
+      "Chọn để đưa logo CBBiotec vào tiêu đề báo cáo.",
+      "Khi xuất Excel, chọn để đặt dữ liệu mỗi tệp CSV trên tab/trang riêng. Bỏ chọn để kết hợp tất cả vào một trang."
+    ]
+  },
+  {
+    "id": "report_subject_management",
+    "steps": [
+      "'Chủ đề báo cáo' là thư mục có tên nhóm các ảnh chụp phân tích liên quan. Nhập tên chủ đề ở đây (vd: 'Bệnh nhân A', 'Lô 1') trước khi xuất dữ liệu.",
+      "Tất cả ảnh chụp đã xuất vào chủ đề hiện tại được liệt kê ở đây. Bạn có thể xem lại và xóa từng mục trước khi tạo báo cáo.",
+      "Nhấp vào đây để xóa tất cả mục khỏi thư mục chủ đề đang chọn. Thư mục chủ đề bị xóa khỏi đĩa. Không thể hoàn tác."
+    ]
+  }
+]

@@ -33,3 +33,4 @@ static/vendor/
 generate_heavy_csv.py
 
 !guide_training.json
+!guide_translations/*.json

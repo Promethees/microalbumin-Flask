@@ -36,6 +36,13 @@
         target: '#file-selection',
         title: 'Select a File First',
         description: 'No data file is loaded yet. Click here to select a CSV data file before proceeding.',
+        descriptions: {
+            vi: 'Chưa có tệp dữ liệu nào được tải. Nhấp vào đây để chọn tệp CSV trước khi tiếp tục.',
+            zh: '尚未加载数据文件。请点击此处选择 CSV 数据文件后再继续。',
+            fr: 'Aucun fichier de données n\'est chargé. Cliquez ici pour sélectionner un fichier CSV avant de continuer.',
+            ja: 'データファイルがまだ読み込まれていません。続行する前にここをクリックして CSV ファイルを選択してください。',
+            ru: 'Файл данных ещё не загружен. Нажмите здесь, чтобы выбрать CSV-файл перед продолжением.',
+        },
         position: 'left',
         skipInteraction: false,
     };
@@ -45,6 +52,13 @@
         target: '#init-button',
         title: 'Click Get Started First',
         description: 'The app hasn\'t been initialised yet. Click "Get Started" to load the main interface before proceeding with this guide.',
+        descriptions: {
+            vi: 'Ứng dụng chưa được khởi tạo. Nhấp vào "Bắt đầu" để tải giao diện chính trước khi tiếp tục hướng dẫn này.',
+            zh: '应用程序尚未初始化。请点击"开始"加载主界面后再继续本指南。',
+            fr: 'L\'application n\'a pas encore été initialisée. Cliquez sur "Commencer" pour charger l\'interface principale avant de poursuivre ce guide.',
+            ja: 'アプリはまだ初期化されていません。このガイドを続ける前に「はじめる」をクリックしてメインインターフェイスを読み込んでください。',
+            ru: 'Приложение ещё не инициализировано. Нажмите «Начать», чтобы загрузить главный интерфейс перед продолжением руководства.',
+        },
         position: 'right',
         skipInteraction: false,
     };
@@ -66,6 +80,90 @@
         fr: "Je n'ai pas pu générer de réponse. Essayez de reformuler votre question.",
         ja: '回答を生成できませんでした。質問を言い換えてみてください。',
         ru: 'Не удалось сформировать ответ. Попробуйте перефразировать вопрос.',
+    };
+
+    const _NOTHING_TO_REDO = {
+        en: 'Nothing to redo yet — send a message or run a command first.',
+        vi: 'Chưa có gì để làm lại — hãy gửi tin nhắn hoặc chạy lệnh trước.',
+        zh: '暂无可重做的操作 — 请先发送消息或运行命令。',
+        fr: 'Rien à refaire pour l\'instant — envoyez d\'abord un message ou exécutez une commande.',
+        ja: 'やり直せるものがまだありません — まずメッセージを送るかコマンドを実行してください。',
+        ru: 'Нечего повторять — сначала отправьте сообщение или выполните команду.',
+    };
+
+    const _GUIDE_NOT_FOUND = {
+        en: (id) => `Guide **${id}** not found. Try again after the app loads.`,
+        vi: (id) => `Không tìm thấy hướng dẫn **${id}**. Vui lòng thử lại sau khi ứng dụng tải xong.`,
+        zh: (id) => `未找到指南 **${id}**。请在应用加载完成后重试。`,
+        fr: (id) => `Guide **${id}** introuvable. Réessayez après le chargement de l'application.`,
+        ja: (id) => `ガイド **${id}** が見つかりません。アプリの読み込み後に再試行してください。`,
+        ru: (id) => `Руководство **${id}** не найдено. Повторите попытку после загрузки приложения.`,
+    };
+
+    const _REPORT_CHOICE_PROMPT = {
+        en: 'Which type of report would you like to create?',
+        vi: 'Bạn muốn tạo loại báo cáo nào?',
+        zh: '您想要创建哪种类型的报告？',
+        fr: 'Quel type de rapport souhaitez-vous créer ?',
+        ja: 'どのタイプのレポートを作成しますか？',
+        ru: 'Какой тип отчёта вы хотите создать?',
+    };
+
+    const _REPORT_BTN_QUICK = {
+        en: '⚡ Quick Report', vi: '⚡ Báo cáo nhanh', zh: '⚡ 快速报告',
+        fr: '⚡ Rapport rapide', ja: '⚡ クイックレポート', ru: '⚡ Быстрый отчёт',
+    };
+
+    const _REPORT_BTN_FULL = {
+        en: '📄 Full Report', vi: '📄 Báo cáo đầy đủ', zh: '📄 完整报告',
+        fr: '📄 Rapport complet', ja: '📄 フルレポート', ru: '📄 Полный отчёт',
+    };
+
+    const _AI_DISABLED_MSG = {
+        en: 'AI Assistant is disabled. Enable it in Settings.',
+        vi: 'Trợ lý AI đã bị tắt. Hãy bật lại trong Cài đặt.',
+        zh: 'AI 助手已禁用，请在设置中启用。',
+        fr: 'L\'assistant IA est désactivé. Activez-le dans les Paramètres.',
+        ja: 'AIアシスタントが無効です。設定で有効にしてください。',
+        ru: 'Помощник ИИ отключён. Включите его в настройках.',
+    };
+
+    const _HELP_HEADER = {
+        en: '**Available commands**', vi: '**Các lệnh có sẵn**', zh: '**可用命令**',
+        fr: '**Commandes disponibles**', ja: '**使用可能なコマンド**', ru: '**Доступные команды**',
+    };
+
+    const _STATUS_HEADER = {
+        en: '**App status**', vi: '**Trạng thái ứng dụng**', zh: '**应用状态**',
+        fr: '**État de l\'application**', ja: '**アプリの状態**', ru: '**Состояние приложения**',
+    };
+
+    const _STATUS_LABELS = {
+        en: { mode: 'mode', app_started: 'app started', data_loaded: 'data loaded', cal_mode: 'cal mode', model: 'model', ollama: 'ollama' },
+        vi: { mode: 'chế độ', app_started: 'đã khởi động', data_loaded: 'dữ liệu đã tải', cal_mode: 'chế độ cal', model: 'mô hình', ollama: 'ollama' },
+        zh: { mode: '模式', app_started: '已启动', data_loaded: '已加载数据', cal_mode: '校准模式', model: '模型', ollama: 'ollama' },
+        fr: { mode: 'mode', app_started: 'démarré', data_loaded: 'données chargées', cal_mode: 'mode cal', model: 'modèle', ollama: 'ollama' },
+        ja: { mode: 'モード', app_started: 'アプリ起動', data_loaded: 'データ読込', cal_mode: '校正モード', model: 'モデル', ollama: 'ollama' },
+        ru: { mode: 'режим', app_started: 'запущено', data_loaded: 'данные загружены', cal_mode: 'режим кал', model: 'модель', ollama: 'ollama' },
+    };
+
+    const _STATUS_BAR_MSGS = {
+        ollama_offline: {
+            en: '⚠ Ollama offline — open Settings to install',
+            vi: '⚠ Ollama ngoại tuyến — mở Cài đặt để cài đặt',
+            zh: '⚠ Ollama 离线 — 打开设置安装',
+            fr: '⚠ Ollama hors ligne — ouvrez les Paramètres pour installer',
+            ja: '⚠ Ollama オフライン — 設定を開いてインストール',
+            ru: '⚠ Ollama не работает — откройте Настройки для установки',
+        },
+        model_missing: {
+            en: '⚠ Model not downloaded — open Settings to download',
+            vi: '⚠ Mô hình chưa tải — mở Cài đặt để tải xuống',
+            zh: '⚠ 模型未下载 — 打开设置下载',
+            fr: '⚠ Modèle non téléchargé — ouvrez les Paramètres pour télécharger',
+            ja: '⚠ モデル未ダウンロード — 設定を開いてダウンロード',
+            ru: '⚠ Модель не загружена — откройте Настройки для загрузки',
+        },
     };
 
     // Natural-language phrases that mean "redo the last thing"
@@ -289,11 +387,15 @@
             })
             .catch(() => {/* AI routes may not be registered yet */ });
 
-        fetch('/ai/guides')
+        _loadGuides();
+    }
+
+    function _loadGuides() {
+        const lang = AI.activeLang || 'en';
+        fetch(`/ai/guides?lang=${encodeURIComponent(lang)}`)
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Store as a map id→example for O(1) lookup
                     AI.guides = {};
                     (data.examples || []).forEach(e => { if (e.id) AI.guides[e.id] = e; });
                 }
@@ -348,10 +450,13 @@
     function _updateStatusBar() {
         const bar = document.getElementById('okapi-ai-status-bar');
         if (!bar || !AI.status) return;
+        const lang = AI.activeLang || 'en';
         if (!AI.status.ollama_running) {
-            bar.innerHTML = '<span class="okapi-ai-badge okapi-ai-badge-warn">&#9888; Ollama offline &mdash; open Settings to install</span>';
+            const msg = _STATUS_BAR_MSGS.ollama_offline[lang] || _STATUS_BAR_MSGS.ollama_offline.en;
+            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-warn">${_esc(msg)}</span>`;
         } else if (!AI.status.model_available) {
-            bar.innerHTML = '<span class="okapi-ai-badge okapi-ai-badge-warn">&#9888; Model not downloaded &mdash; open Settings to download</span>';
+            const msg = _STATUS_BAR_MSGS.model_missing[lang] || _STATUS_BAR_MSGS.model_missing.en;
+            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-warn">${_esc(msg)}</span>`;
         } else {
             bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; ${_esc(AI.settings.model)}</span>`;
         }
@@ -552,6 +657,15 @@
 
     // ── Guide launcher ────────────────────────────────────────────────────────
 
+    function _localizeSteps(steps) {
+        const lang = AI.activeLang || 'en';
+        if (lang === 'en') return steps;
+        return steps.map(s => {
+            const locDesc = s.descriptions && s.descriptions[lang];
+            return locDesc ? { ...s, description: locDesc } : s;
+        });
+    }
+
     function _launchGuide(workflow) {
         AI.lastAction = { type: 'workflow', workflow };
         if (typeof window.userGuide === 'undefined') return;
@@ -561,6 +675,7 @@
 
     function _launchCustomSteps(steps) {
         if (!_getUiContext().app_started) steps = [_GET_STARTED_STEP, ...steps];
+        steps = _localizeSteps(steps);
         AI.lastAction = { type: 'custom_steps', steps };
         if (typeof window.userGuide === 'undefined') return;
         OkapiAI.close();
@@ -643,22 +758,27 @@
         }
 
         if (cmd.action === 'help') {
+            const lang = AI.activeLang || 'en';
             const lines = SLASH_COMMANDS.map(c => `\`${c.cmd}\` — ${c.desc}`).join('\n');
-            _addMsg('assistant', '**Available commands**\n\n' + lines);
+            _addMsg('assistant', (_HELP_HEADER[lang] || _HELP_HEADER.en) + '\n\n' + lines);
             return;
         }
 
         if (cmd.action === 'status') {
+            const lang = AI.activeLang || 'en';
             const ctx = _getUiContext();
+            const lbl = _STATUS_LABELS[lang] || _STATUS_LABELS.en;
+            const yesNo = (v) => v ? (lang === 'vi' ? 'có' : lang === 'zh' ? '是' : lang === 'fr' ? 'oui' : lang === 'ja' ? 'はい' : lang === 'ru' ? 'да' : 'yes') : (lang === 'vi' ? 'không' : lang === 'zh' ? '否' : lang === 'fr' ? 'non' : lang === 'ja' ? 'いいえ' : lang === 'ru' ? 'нет' : 'no');
+            const onOff = (v) => v ? (lang === 'vi' ? 'đang chạy' : lang === 'zh' ? '运行中' : lang === 'fr' ? 'actif' : lang === 'ja' ? '実行中' : lang === 'ru' ? 'работает' : 'running') : (lang === 'vi' ? 'ngoại tuyến' : lang === 'zh' ? '离线' : lang === 'fr' ? 'hors ligne' : lang === 'ja' ? 'オフライン' : lang === 'ru' ? 'не работает' : 'offline');
             const lines = [
-                `\`mode\` ${ctx.mode || '—'}`,
-                `\`app started\` ${ctx.app_started ? 'yes' : 'no'}`,
-                `\`data loaded\` ${ctx.data_loaded ? 'yes' : 'no'}`,
-                `\`cal mode\` ${ctx.cal_mode || '—'}`,
-                `\`model\` ${(AI.settings && AI.settings.model) || '—'}`,
-                `\`ollama\` ${(AI.status && AI.status.ollama_running) ? 'running' : 'offline'}`,
+                `\`${lbl.mode}\` ${ctx.mode || '—'}`,
+                `\`${lbl.app_started}\` ${yesNo(ctx.app_started)}`,
+                `\`${lbl.data_loaded}\` ${yesNo(ctx.data_loaded)}`,
+                `\`${lbl.cal_mode}\` ${ctx.cal_mode || '—'}`,
+                `\`${lbl.model}\` ${(AI.settings && AI.settings.model) || '—'}`,
+                `\`${lbl.ollama}\` ${onOff(AI.status && AI.status.ollama_running)}`,
             ].join('\n');
-            _addMsg('assistant', '**App status**\n\n' + lines);
+            _addMsg('assistant', (_STATUS_HEADER[lang] || _STATUS_HEADER.en) + '\n\n' + lines);
             return;
         }
 
@@ -702,7 +822,9 @@
     function _runGuideById(guide_id) {
         const example = AI.guides[guide_id];
         if (!example) {
-            _addMsg('assistant', `Guide **${_esc(guide_id)}** not found. Try again after the app loads.`);
+            const lang = AI.activeLang || 'en';
+            const fn = _GUIDE_NOT_FOUND[lang] || _GUIDE_NOT_FOUND.en;
+            _addMsg('assistant', fn(_esc(guide_id)));
             return;
         }
         const ctx = _getUiContext();
@@ -742,7 +864,7 @@
         const last = AI.lastAction;
         const lang = AI.activeLang || 'en';
         if (!last) {
-            _addMsg('assistant', 'Nothing to redo yet — send a message or run a command first.');
+            _addMsg('assistant', _NOTHING_TO_REDO[lang] || _NOTHING_TO_REDO.en);
             return;
         }
         if (last.type === 'custom_steps') {
@@ -765,13 +887,14 @@
     function _runReportChoice() {
         const container = document.getElementById('okapi-ai-messages');
         if (!container) return;
+        const lang = AI.activeLang || 'en';
         const div = document.createElement('div');
         div.className = 'okapi-ai-msg okapi-ai-msg-assistant';
         div.innerHTML =
-            'Which type of report would you like to create?' +
+            _esc(_REPORT_CHOICE_PROMPT[lang] || _REPORT_CHOICE_PROMPT.en) +
             '<div class="okapi-ai-choice-btns">' +
-            '<button class="okapi-ai-choice-btn" data-type="quick">⚡ Quick Report</button>' +
-            '<button class="okapi-ai-choice-btn" data-type="full">📄 Full Report</button>' +
+            `<button class="okapi-ai-choice-btn" data-type="quick">${_esc(_REPORT_BTN_QUICK[lang] || _REPORT_BTN_QUICK.en)}</button>` +
+            `<button class="okapi-ai-choice-btn" data-type="full">${_esc(_REPORT_BTN_FULL[lang] || _REPORT_BTN_FULL.en)}</button>` +
             '</div>';
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
@@ -841,6 +964,7 @@
             const idx = pl.indexOf(AI.activeLang);
             AI.activeLang = pl[(idx + 1) % pl.length];
             _updateLangBtn();
+            _loadGuides();
         },
 
         saveSettings() {
@@ -938,7 +1062,8 @@
             if (!text) return;
 
             if (!AI.settings || !AI.settings.enabled) {
-                _addSystemMsg('AI Assistant is disabled. Enable it in Settings.');
+                const lang = AI.activeLang || 'en';
+                _addSystemMsg(_AI_DISABLED_MSG[lang] || _AI_DISABLED_MSG.en);
                 return;
             }
 

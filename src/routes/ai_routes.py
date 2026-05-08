@@ -83,9 +83,10 @@ def ai_chat():
 
 @ai_bp.route('/guides', methods=['GET'])
 def get_guides():
+    lang = request.args.get('lang', 'en')
     return jsonify({
         'status': 'success',
-        'examples': ai_assistant.get_guide_examples(),
+        'examples': ai_assistant.get_guide_examples(lang),
     })
 
 
