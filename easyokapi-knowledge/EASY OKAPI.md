@@ -308,6 +308,16 @@ microalbumin-Flask/
 
 ---
 
+## 6. RAG User Guide Subsystem
+
+A local Retrieval-Augmented Generation pipeline is planned to replace the current keyword-based few-shot injection for the AI-driven user guide. Full architecture, data-flow diagrams, component map, and phased implementation plan are in:
+
+**`easyokapi-knowledge/RAG-USER-GUIDE.md`**
+
+Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25`) reading `guide_training.json`. Planned replacement: semantic vector search via ChromaDB + `nomic-embed-text` through Ollama, implemented in `src/rag_guide.py` (not yet created).
+
+---
+
 ## 7. Key Differences from `online` Branch (Summary)
 
 | Aspect | `main` branch | `online` branch |
