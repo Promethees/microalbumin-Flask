@@ -9,26 +9,26 @@
     // ── Slash commands ────────────────────────────────────────────────────────
 
     const SLASH_COMMANDS = [
-        { cmd: '/help',          desc: 'List all available slash commands',                       action: 'help' },
-        { cmd: '/guide',         desc: 'Launch a full step-by-step app walkthrough',                     action: 'guide',      guide_id: 'app_introduction' },
-        { cmd: '/measurement',   desc: 'Guide to Kinetics mode and the Reading Colorimeter Data console', action: 'guide',      guide_id: 'measurement_guide' },
-        { cmd: '/calibrate',     desc: 'Create a calibration standard curve (full workflow)',            action: 'guide',      guide_id: 'create_calibration_curve_workflow' },
-        { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data',           action: 'concentration' },
-        { cmd: '/merge',         desc: 'Combine multiple CSV files into a single multi-source file',     action: 'guide',      guide_id: 'merge_files' },
-        { cmd: '/range',         desc: 'Set the analysis time window (start, end, unit)',                action: 'guide',      guide_id: 'set_analysis_range' },
-        { cmd: '/normalize',     desc: 'Toggle baseline subtraction to remove background absorbance',    action: 'guide',      guide_id: 'normalize_data' },
-        { cmd: '/split',         desc: 'Display each measurement source as a separate chart',            action: 'guide',      guide_id: 'split_sources' },
-        { cmd: '/window',        desc: 'Configure sliding window size for max-rate regression',          action: 'guide',      guide_id: 'window_size' },
-        { cmd: '/time-point',    desc: 'Select the time point for point-mode calibration analysis',      action: 'guide',      guide_id: 'select_time_point' },
-        { cmd: '/start',         desc: 'Start a measurement with the connected device',                  action: 'guide',      guide_id: 'start_device' },
-        { cmd: '/stop',          desc: 'Stop the current device measurement',                            action: 'guide',      guide_id: 'stop_device' },
-        { cmd: '/export',        desc: 'Export current data to CSV',                                     action: 'guide',      guide_id: 'export_data' },
-        { cmd: '/excel',         desc: 'Export report items as a formatted Excel workbook',              action: 'excel' },
-        { cmd: '/live-view',     desc: 'Browse to the live measurement output folder',                   action: 'live_view' },
-        { cmd: '/report',        desc: 'Create a quick or full HTML report',                             action: 'report' },
-        { cmd: '/status',        desc: 'Show current app state (mode, data, device)',                    action: 'status' },
-        { cmd: '/redo',          desc: 'Replay the last guide or retry the last question',               action: 'redo' },
-        { cmd: '/clear',         desc: 'Clear the conversation history',                                 action: 'clear' },
+        { cmd: '/help', desc: 'List all available slash commands', action: 'help' },
+        { cmd: '/guide', desc: 'Launch a full step-by-step app walkthrough', action: 'guide', guide_id: 'app_introduction' },
+        { cmd: '/measurement', desc: 'Guide to Kinetics mode and the Reading Colorimeter Data console', action: 'guide', guide_id: 'measurement_guide' },
+        { cmd: '/calibrate', desc: 'Create a calibration standard curve (full workflow)', action: 'guide', guide_id: 'create_calibration_curve_workflow' },
+        { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data', action: 'concentration' },
+        { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file', action: 'guide', guide_id: 'merge_files' },
+        { cmd: '/range', desc: 'Set the analysis time window (start, end, unit)', action: 'guide', guide_id: 'set_analysis_range' },
+        { cmd: '/normalize', desc: 'Toggle baseline subtraction to remove background absorbance', action: 'guide', guide_id: 'normalize_data' },
+        { cmd: '/split', desc: 'Display each measurement source as a separate chart', action: 'guide', guide_id: 'split_sources' },
+        { cmd: '/window', desc: 'Configure sliding window size for max-rate regression', action: 'guide', guide_id: 'window_size' },
+        { cmd: '/time-point', desc: 'Select the time point for point-mode calibration analysis', action: 'guide', guide_id: 'select_time_point' },
+        { cmd: '/start', desc: 'Start a measurement with the connected device', action: 'guide', guide_id: 'start_device' },
+        { cmd: '/stop', desc: 'Stop the current device measurement', action: 'guide', guide_id: 'stop_device' },
+        { cmd: '/export', desc: 'Export current data to CSV', action: 'guide', guide_id: 'export_data' },
+        { cmd: '/excel', desc: 'Export report items as a formatted Excel workbook', action: 'excel' },
+        { cmd: '/live-view', desc: 'Browse to the live measurement output folder', action: 'live_view' },
+        { cmd: '/report', desc: 'Create a quick or full HTML report', action: 'report' },
+        { cmd: '/status', desc: 'Show current app state (mode, data, device)', action: 'status' },
+        { cmd: '/redo', desc: 'Replay the last guide or retry the last question', action: 'redo' },
+        { cmd: '/clear', desc: 'Clear the conversation history', action: 'clear' },
     ];
 
     // File-select prepend step (mirrors Python's _FILE_SELECT_STEP)
@@ -37,6 +37,15 @@
         title: 'Select a File First',
         description: 'No data file is loaded yet. Click here to select a CSV data file before proceeding.',
         position: 'left',
+        skipInteraction: false,
+    };
+
+    // Get-started prepend step (mirrors Python's _GET_STARTED_STEP)
+    const _GET_STARTED_STEP = {
+        target: '#init-button',
+        title: 'Click Get Started First',
+        description: 'The app hasn\'t been initialised yet. Click "Get Started" to load the main interface before proceeding with this guide.',
+        position: 'right',
         skipInteraction: false,
     };
 
@@ -241,10 +250,10 @@
         // send on Enter (Shift+Enter = newline); navigate picker with arrow keys
         inputEl.addEventListener('keydown', (e) => {
             if (_picker.visible) {
-                if (e.key === 'ArrowUp')   { e.preventDefault(); _pickerMove(-1); return; }
-                if (e.key === 'ArrowDown') { e.preventDefault(); _pickerMove(1);  return; }
-                if (e.key === 'Escape')    { e.preventDefault(); _pickerHide();   return; }
-                if (e.key === 'Tab')       { e.preventDefault(); _pickerConfirm(); return; }
+                if (e.key === 'ArrowUp') { e.preventDefault(); _pickerMove(-1); return; }
+                if (e.key === 'ArrowDown') { e.preventDefault(); _pickerMove(1); return; }
+                if (e.key === 'Escape') { e.preventDefault(); _pickerHide(); return; }
+                if (e.key === 'Tab') { e.preventDefault(); _pickerConfirm(); return; }
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _pickerConfirm(); return; }
             }
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); OkapiAI.send(); }
@@ -289,7 +298,7 @@
                     (data.examples || []).forEach(e => { if (e.id) AI.guides[e.id] = e; });
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }
 
     function _showWelcomeIfNeeded() {
@@ -551,6 +560,7 @@
     }
 
     function _launchCustomSteps(steps) {
+        if (!_getUiContext().app_started) steps = [_GET_STARTED_STEP, ...steps];
         AI.lastAction = { type: 'custom_steps', steps };
         if (typeof window.userGuide === 'undefined') return;
         OkapiAI.close();
@@ -709,10 +719,10 @@
     function _runConcentrationGuide() {
         const mode = _getUiContext().mode;
         let guide_id;
-        if (mode === 'kinetics')                          guide_id = 'concentration_calc_kinetics';
-        else if (mode === 'point')                        guide_id = 'concentration_calc_point';
+        if (mode === 'kinetics') guide_id = 'concentration_calc_kinetics';
+        else if (mode === 'point') guide_id = 'concentration_calc_point';
         else if (mode === 'calibrate' || mode === 'report') guide_id = 'concentration_calc_wrong_mode';
-        else                                              guide_id = 'concentration_calc_generic';
+        else guide_id = 'concentration_calc_generic';
         _runGuideById(guide_id);
     }
 
@@ -1017,8 +1027,8 @@
                                 const errMsg = event.error === 'ollama_offline'
                                     ? '⚠ Ollama is not running. Please start Ollama first.'
                                     : event.error === 'timeout'
-                                    ? '⚠ Request timed out. The model may be loading — try again.'
-                                    : '⚠ ' + event.error;
+                                        ? '⚠ Request timed out. The model may be loading — try again.'
+                                        : '⚠ ' + event.error;
                                 _finalizeStreamingMsg(msgDiv, null, errMsg);
                                 return;
                             }

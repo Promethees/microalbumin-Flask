@@ -230,7 +230,7 @@
           "title": "Start Measurement",
           "description": "Click this button to begin recording data from the colorimeter. Make sure the device is connected first.",
           "position": "bottom",
-          "skipInteraction": false
+          "skipInteraction": true
         }
       ]
     },
@@ -1066,7 +1066,7 @@
           "title": "Start Reading",
           "description": "Click 'Start reading' to begin collecting colorimeter data from the device. Readings will appear in the log below.",
           "position": "top",
-          "skipInteraction": false
+          "skipInteraction": true
         },
         {
           "target": "#log-display",

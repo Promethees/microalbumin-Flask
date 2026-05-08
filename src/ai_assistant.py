@@ -135,14 +135,23 @@ _FILE_SELECT_STEP = {
     "skipInteraction": False,
 }
 
+_GET_STARTED_STEP = {
+    "target": "#init-button",
+    "title": "Click Get Started First",
+    "description": 'The app hasn\'t been initialised yet. Click "Get Started" to load the main interface before proceeding with this guide.',
+    "position": "right",
+    "skipInteraction": False,
+}
+
 
 def _format_fewshot_hint(example: dict, ui_context: dict, steps_only: bool = False):
     """Format a matched example as a few-shot hint or return raw steps list.
 
     If steps_only=True, return the steps list directly (for fast-path bypass).
     Otherwise return a string hint appended to the system prompt.
-    If the example requires data to be loaded but data_loaded is False,
-    prepend a file-selection step.
+    Prepends a file-selection step when data is required but not loaded.
+    The get-started step is prepended by the JS layer (_launchCustomSteps) so
+    it is not added here to avoid duplication on the fast-path.
     """
     steps = list(example["steps"])
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
