@@ -535,6 +535,8 @@
                 _pickerConfirm();
             });
         });
+        const active = el.querySelector('.okapi-ai-cmd-active');
+        if (active) active.scrollIntoView({ block: 'nearest' });
     }
 
     function _pickerMove(dir) {

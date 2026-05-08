@@ -2613,7 +2613,8 @@ body.dark .okapi-ai-choice-btn:hover:not(:disabled) {
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
-    overflow: hidden;
+    max-height: 180px;
+    overflow-y: auto;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
     flex-shrink: 0;
 }
