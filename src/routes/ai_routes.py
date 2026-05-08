@@ -1,4 +1,5 @@
 import json
+import threading
 from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
 import ai_assistant
@@ -11,6 +12,12 @@ def ai_status():
     settings = ai_settings.load()
     ollama_info = ai_assistant.check_ollama(settings['ollama_url'])
     model_available = settings['model'] in ollama_info.get('models', [])
+    if model_available:
+        threading.Thread(
+            target=ai_assistant.prewarm_model,
+            args=(settings['ollama_url'], settings['model']),
+            daemon=True,
+        ).start()
     return jsonify({
         'status': 'success',
         'ollama_running': ollama_info['running'],

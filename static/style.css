@@ -2569,6 +2569,54 @@ body.dark .okapi-ai-uninstall-box code { background: rgba(255,255,255,0.1); }
 }
 body.dark .okapi-ai-uninstall-box button { background: rgba(185,28,28,0.25); color: #fca5a5; }
 
+/* Slash command picker */
+#okapi-ai-cmd-picker {
+    margin: 0 12px 4px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
+}
+body.dark #okapi-ai-cmd-picker {
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+}
+.okapi-ai-cmd-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.okapi-ai-cmd-item:hover,
+.okapi-ai-cmd-active {
+    background: rgba(99, 102, 241, 0.1);
+}
+body.dark .okapi-ai-cmd-item:hover,
+body.dark .okapi-ai-cmd-active {
+    background: rgba(99, 102, 241, 0.2);
+}
+.okapi-ai-cmd-name {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #6366f1;
+    min-width: 108px;
+    flex-shrink: 0;
+    letter-spacing: -0.01em;
+}
+body.dark .okapi-ai-cmd-name { color: #a5b4fc; }
+.okapi-ai-cmd-desc {
+    font-size: 0.775rem;
+    color: #6b7280;
+    line-height: 1.3;
+}
+body.dark .okapi-ai-cmd-desc { color: #9ca3af; }
+
 .okapi-ai-cursor {
     display: inline-block;
     animation: okapi-cursor-blink 0.6s step-end infinite;

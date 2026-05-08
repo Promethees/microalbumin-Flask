@@ -6,6 +6,23 @@
 (function () {
     'use strict';
 
+    // ── Slash commands ────────────────────────────────────────────────────────
+
+    const SLASH_COMMANDS = [
+        { cmd: '/help',          desc: 'List all available slash commands',                       action: 'help' },
+        { cmd: '/guide',         desc: 'Launch a full step-by-step app walkthrough',              action: 'send', query: 'how does this app work' },
+        { cmd: '/calibrate',     desc: 'Create a calibration standard curve (full workflow)',     action: 'send', query: 'how to create a calibration curve' },
+        { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data',    action: 'send', query: 'how to calculate concentration' },
+        { cmd: '/start',         desc: 'Start a measurement with the connected device',           action: 'send', query: 'how to start the device' },
+        { cmd: '/stop',          desc: 'Stop the current device measurement',                     action: 'send', query: 'how to stop the device' },
+        { cmd: '/export',        desc: 'Export current data to CSV',                              action: 'send', query: 'how to export data' },
+        { cmd: '/report',        desc: 'Create a quick or full HTML report',                      action: 'send', query: 'how to create a report' },
+        { cmd: '/status',        desc: 'Show current app state (mode, data, device)',             action: 'status' },
+        { cmd: '/clear',         desc: 'Clear the conversation history',                          action: 'clear' },
+    ];
+
+    const _picker = { visible: false, idx: 0, list: [] };
+
     // ── State ────────────────────────────────────────────────────────────────
 
     const AI = {
@@ -62,8 +79,9 @@
 <div id="okapi-ai-body">
   <div id="okapi-ai-messages"></div>
   <div id="okapi-ai-status-bar"></div>
+  <div id="okapi-ai-cmd-picker" class="okapi-hidden"></div>
   <div id="okapi-ai-input-row">
-    <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything…"></textarea>
+    <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything… (type / for commands)"></textarea>
     <button id="okapi-ai-send-btn" onclick="OkapiAI.send()">&#10148;</button>
   </div>
 </div>
@@ -118,10 +136,29 @@
 </div>`;
         document.body.appendChild(panel);
 
-        // send on Enter (Shift+Enter = newline)
-        document.getElementById('okapi-ai-input').addEventListener('keydown', (e) => {
+        const inputEl = document.getElementById('okapi-ai-input');
+
+        // send on Enter (Shift+Enter = newline); navigate picker with arrow keys
+        inputEl.addEventListener('keydown', (e) => {
+            if (_picker.visible) {
+                if (e.key === 'ArrowUp')   { e.preventDefault(); _pickerMove(-1); return; }
+                if (e.key === 'ArrowDown') { e.preventDefault(); _pickerMove(1);  return; }
+                if (e.key === 'Escape')    { e.preventDefault(); _pickerHide();   return; }
+                if (e.key === 'Tab')       { e.preventDefault(); _pickerConfirm(); return; }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _pickerConfirm(); return; }
+            }
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); OkapiAI.send(); }
         });
+
+        // show picker when text starts with /
+        inputEl.addEventListener('input', () => {
+            const val = inputEl.value;
+            if (val.startsWith('/')) _pickerShow(val.slice(1));
+            else _pickerHide();
+        });
+
+        // delay hide so clicks register before blur fires
+        inputEl.addEventListener('blur', () => { setTimeout(_pickerHide, 150); });
     }
 
     // ── Load status & settings ────────────────────────────────────────────────
@@ -418,6 +455,93 @@
             data_loaded: !!(dataDisplay && !dataDisplay.classList.contains('hidden')),
             cal_mode: calMode ? (calMode.getAttribute('data-value') || '') : '',
         };
+    }
+
+    // ── Slash command picker ──────────────────────────────────────────────────
+
+    function _pickerShow(query) {
+        const q = query.toLowerCase();
+        _picker.list = SLASH_COMMANDS.filter(c =>
+            q === '' || c.cmd.slice(1).startsWith(q) || c.desc.toLowerCase().includes(q)
+        );
+        if (_picker.list.length === 0) { _pickerHide(); return; }
+        _picker.idx = Math.min(_picker.idx, _picker.list.length - 1);
+        _picker.visible = true;
+        _pickerRender();
+        document.getElementById('okapi-ai-cmd-picker').classList.remove('okapi-hidden');
+    }
+
+    function _pickerHide() {
+        _picker.visible = false;
+        _picker.idx = 0;
+        const el = document.getElementById('okapi-ai-cmd-picker');
+        if (el) el.classList.add('okapi-hidden');
+    }
+
+    function _pickerRender() {
+        const el = document.getElementById('okapi-ai-cmd-picker');
+        if (!el) return;
+        el.innerHTML = _picker.list.map((c, i) =>
+            `<div class="okapi-ai-cmd-item${i === _picker.idx ? ' okapi-ai-cmd-active' : ''}" data-i="${i}">` +
+            `<span class="okapi-ai-cmd-name">${_esc(c.cmd)}</span>` +
+            `<span class="okapi-ai-cmd-desc">${_esc(c.desc)}</span>` +
+            `</div>`
+        ).join('');
+        el.querySelectorAll('.okapi-ai-cmd-item').forEach(item => {
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                _picker.idx = parseInt(item.dataset.i, 10);
+                _pickerConfirm();
+            });
+        });
+    }
+
+    function _pickerMove(dir) {
+        _picker.idx = (_picker.idx + dir + _picker.list.length) % _picker.list.length;
+        _pickerRender();
+    }
+
+    function _pickerConfirm() {
+        const cmd = _picker.list[_picker.idx];
+        _pickerHide();
+        if (cmd) _cmdExecute(cmd);
+    }
+
+    function _cmdExecute(cmd) {
+        const input = document.getElementById('okapi-ai-input');
+
+        if (cmd.action === 'clear') {
+            input.value = '';
+            OkapiAI.clearHistory();
+            return;
+        }
+
+        if (cmd.action === 'help') {
+            input.value = '';
+            const lines = SLASH_COMMANDS.map(c => `\`${c.cmd}\` — ${c.desc}`).join('\n');
+            _addMsg('assistant', '**Available commands**\n\n' + lines);
+            return;
+        }
+
+        if (cmd.action === 'status') {
+            input.value = '';
+            const ctx = _getUiContext();
+            const lines = [
+                `\`mode\` ${ctx.mode || '—'}`,
+                `\`app started\` ${ctx.app_started ? 'yes' : 'no'}`,
+                `\`data loaded\` ${ctx.data_loaded ? 'yes' : 'no'}`,
+                `\`cal mode\` ${ctx.cal_mode || '—'}`,
+                `\`model\` ${(AI.settings && AI.settings.model) || '—'}`,
+                `\`ollama\` ${(AI.status && AI.status.ollama_running) ? 'running' : 'offline'}`,
+            ].join('\n');
+            _addMsg('assistant', '**App status**\n\n' + lines);
+            return;
+        }
+
+        if (cmd.action === 'send' && cmd.query) {
+            input.value = cmd.query;
+            setTimeout(() => OkapiAI.send(), 20);
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

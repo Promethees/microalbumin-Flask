@@ -22,8 +22,8 @@ def _load_guide_examples() -> list:
         return []
 
 
-def _match_guide_example(query: str, ui_context: dict) -> dict | None:
-    """Return the best matching training example for the given query and UI context, or None.
+def _match_guide_example(query: str, ui_context: dict) -> tuple[dict, int] | tuple[None, int]:
+    """Return (best_example, score) for the given query and UI context, or (None, 0).
 
     Condition fields supported:
       mode       — exact match required
@@ -34,7 +34,7 @@ def _match_guide_example(query: str, ui_context: dict) -> dict | None:
     """
     examples = _load_guide_examples()
     if not examples:
-        return None
+        return None, 0
 
     q_lower = query.lower()
     mode = (ui_context or {}).get("mode", "")
@@ -69,7 +69,7 @@ def _match_guide_example(query: str, ui_context: dict) -> dict | None:
             best_score = score
             best = ex
 
-    return best if best_score > 0 else None
+    return (best, best_score) if best_score > 0 else (None, 0)
 
 
 _FILE_SELECT_STEP = {
@@ -81,15 +81,19 @@ _FILE_SELECT_STEP = {
 }
 
 
-def _format_fewshot_hint(example: dict, ui_context: dict) -> str:
-    """Format a matched example as a few-shot hint appended to the system prompt.
+def _format_fewshot_hint(example: dict, ui_context: dict, steps_only: bool = False):
+    """Format a matched example as a few-shot hint or return raw steps list.
 
+    If steps_only=True, return the steps list directly (for fast-path bypass).
+    Otherwise return a string hint appended to the system prompt.
     If the example requires data to be loaded but data_loaded is False,
-    prepend a file-selection step so the model tells the user to load a file first.
+    prepend a file-selection step.
     """
     steps = list(example["steps"])
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
         steps = [_FILE_SELECT_STEP] + steps
+    if steps_only:
+        return steps
     steps_json = json.dumps(steps, ensure_ascii=False)
     sample_query = example["queries"][0] if example["queries"] else ""
     return (
@@ -1001,7 +1005,17 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             parts.append(f"cal_mode={cal_mode}")
         if parts:
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
-    matched = _match_guide_example(last_user_query, ui_context or {})
+    matched, match_score = _match_guide_example(last_user_query, ui_context or {})
+
+    # Fast-path: high-confidence match → skip Ollama entirely
+    if matched:
+        force = matched.get("force_fast_path", False)
+        if match_score >= 2 or (force and match_score >= 1):
+            steps = _format_fewshot_hint(matched, ui_context or {}, steps_only=True)
+            yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+            yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+            return
+
     if matched:
         system_prompt += _format_fewshot_hint(matched, ui_context or {})
 
@@ -1017,7 +1031,8 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
                     "messages": full_messages,
                     "tools": TOOLS,
                     "stream": False,
-                    "options": {"num_predict": 400},
+                    "keep_alive": -1,
+                    "options": {"num_predict": 400, "num_ctx": 2048, "temperature": 0.1},
                 },
                 timeout=120,
             )
@@ -1068,6 +1083,18 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             return
 
     yield {"type": "error", "error": "max_iterations"}
+
+
+def prewarm_model(ollama_url: str, model: str) -> None:
+    """Fire-and-forget POST to keep the model loaded in Ollama memory."""
+    try:
+        requests.post(
+            f"{ollama_url}/api/generate",
+            json={"model": model, "prompt": "", "keep_alive": -1},
+            timeout=30,
+        )
+    except Exception:
+        pass
 
 
 def check_ollama(ollama_url: str) -> dict:

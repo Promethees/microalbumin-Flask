@@ -5,6 +5,7 @@
 
     {
       "id": "app_introduction",
+      "force_fast_path": true,
       "queries": [
         "how does this app work",
         "how this app works",
