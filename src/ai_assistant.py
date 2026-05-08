@@ -15,25 +15,30 @@ _GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)
 
 
 def _apply_overlay(examples: list, lang: str) -> list:
-    """Merge per-language description overlay onto a list of guide examples."""
+    """Merge per-language description and query overlay onto a list of guide examples."""
     overlay_path = os.path.join(_GUIDE_TRANSLATIONS_DIR, f"{lang}.json")
     try:
         with open(overlay_path, "r", encoding="utf-8") as f:
             overlay = json.load(f)
     except Exception:
         return examples
-    index = {item["id"]: item["steps"] for item in overlay}
+    index = {item["id"]: item for item in overlay}
     result = []
     for ex in examples:
-        translated_steps = index.get(ex["id"])
-        if not translated_steps:
+        item = index.get(ex["id"])
+        if not item:
             result.append(ex)
             continue
+        # Merge step descriptions
+        translated_steps = item.get("steps", [])
         new_steps = []
         for i, step in enumerate(ex["steps"]):
             desc = translated_steps[i] if i < len(translated_steps) and translated_steps[i] else step["description"]
             new_steps.append({**step, "description": desc})
-        result.append({**ex, "steps": new_steps})
+        # Append translated queries to English ones (union for broader matching)
+        extra_queries = [q for q in item.get("queries", []) if q]
+        new_queries = ex["queries"] + extra_queries
+        result.append({**ex, "steps": new_steps, "queries": new_queries})
     return result
 
 
