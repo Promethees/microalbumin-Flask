@@ -2,7 +2,6 @@
   "_note": "Few-shot training examples for OKAPI AI guide injection. 'steps' are injected as a hint when the query matches. Fill in or correct element IDs and descriptions. skipInteraction=false means the guide waits for the user to interact with the element before advancing. Restart not needed — file reloads on every request.",
   "version": "1.0",
   "examples": [
-
     {
       "id": "app_introduction",
       "queries": [
@@ -148,7 +147,6 @@
         }
       ]
     },
-
     {
       "id": "nav_calibrate_mode",
       "queries": [
@@ -702,16 +700,24 @@
         }
       ]
     },
-
     {
       "id": "concentration_calc_kinetics",
       "queries": [
-        "calculate concentration", "get concentration", "derive concentration",
-        "measure concentration", "find concentration", "how to get concentration",
-        "concentration from sample", "apply standard curve", "calibration calculation",
-        "what is the concentration", "show concentration"
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
       ],
-      "conditions": { "mode": "kinetics" },
+      "conditions": {
+        "mode": "kinetics"
+      },
       "steps": [
         {
           "target": "#cal-json-sel-section",
@@ -743,16 +749,24 @@
         }
       ]
     },
-
     {
       "id": "concentration_calc_point",
       "queries": [
-        "calculate concentration", "get concentration", "derive concentration",
-        "measure concentration", "find concentration", "how to get concentration",
-        "concentration from sample", "apply standard curve", "calibration calculation",
-        "what is the concentration", "show concentration"
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
       ],
-      "conditions": { "mode": "point" },
+      "conditions": {
+        "mode": "point"
+      },
       "steps": [
         {
           "target": "#cal-json-sel-section",
@@ -784,16 +798,27 @@
         }
       ]
     },
-
     {
       "id": "concentration_calc_wrong_mode",
       "queries": [
-        "calculate concentration", "get concentration", "derive concentration",
-        "measure concentration", "find concentration", "how to get concentration",
-        "concentration from sample", "apply standard curve", "calibration calculation",
-        "what is the concentration", "show concentration"
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
       ],
-      "conditions": { "mode_in": ["calibrate", "report"] },
+      "conditions": {
+        "mode_in": [
+          "calibrate",
+          "report"
+        ]
+      },
       "steps": [
         {
           "target": "#meas-mode-section",
@@ -832,7 +857,6 @@
         }
       ]
     },
-
     {
       "id": "create_calibration_curve_workflow",
       "queries": [
@@ -938,14 +962,20 @@
         }
       ]
     },
-
     {
       "id": "concentration_calc_generic",
       "queries": [
-        "calculate concentration", "get concentration", "derive concentration",
-        "measure concentration", "find concentration", "how to get concentration",
-        "concentration from sample", "apply standard curve", "calibration calculation",
-        "what is the concentration", "show concentration"
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
       ],
       "conditions": {},
       "steps": [
@@ -986,7 +1016,6 @@
         }
       ]
     },
-
     {
       "id": "measurement_guide",
       "queries": [
@@ -999,7 +1028,8 @@
         "how to use the device",
         "kinetics measurement",
         "run a measurement",
-        "take a reading"
+        "take a reading",
+        "capture data"
       ],
       "conditions": {},
       "steps": [
@@ -1054,7 +1084,6 @@
         }
       ]
     },
-
     {
       "id": "report_quick",
       "queries": [],
@@ -1070,7 +1099,6 @@
         }
       ]
     },
-
     {
       "id": "report_quick_from_report",
       "queries": [],
@@ -1099,7 +1127,6 @@
         }
       ]
     },
-
     {
       "id": "report_full_from_data",
       "queries": [],
@@ -1142,11 +1169,12 @@
         }
       ]
     },
-
     {
       "id": "report_full_in_report",
       "queries": [],
-      "conditions": { "mode": "report" },
+      "conditions": {
+        "mode": "report"
+      },
       "steps": [
         {
           "target": "#report-console-section",
@@ -1178,10 +1206,16 @@
         }
       ]
     },
-
     {
       "id": "normalize_data",
-      "queries": ["normalize", "remove background", "subtract blank", "baseline", "background absorbance", "net absorbance"],
+      "queries": [
+        "normalize",
+        "remove background",
+        "subtract blank",
+        "baseline",
+        "background absorbance",
+        "net absorbance"
+      ],
       "conditions": {},
       "requires_data_loaded": true,
       "steps": [
@@ -1194,10 +1228,17 @@
         }
       ]
     },
-
     {
       "id": "split_sources",
-      "queries": ["split source", "split by source", "separate chart", "separate channel", "split channel", "multi source", "multiple source"],
+      "queries": [
+        "split source",
+        "split by source",
+        "separate chart",
+        "separate channel",
+        "split channel",
+        "multi source",
+        "multiple source"
+      ],
       "conditions": {},
       "requires_data_loaded": true,
       "steps": [
@@ -1210,10 +1251,20 @@
         }
       ]
     },
-
     {
       "id": "set_analysis_range",
-      "queries": ["set range", "analysis range", "time range", "time window", "start time", "end time", "filter range", "trim data", "cut data", "narrow down"],
+      "queries": [
+        "set range",
+        "analysis range",
+        "time range",
+        "time window",
+        "start time",
+        "end time",
+        "filter range",
+        "trim data",
+        "cut data",
+        "narrow down"
+      ],
       "conditions": {},
       "requires_data_loaded": true,
       "steps": [
@@ -1247,11 +1298,12 @@
         }
       ]
     },
-
     {
       "id": "export_excel_in_report",
       "queries": [],
-      "conditions": { "mode": "report" },
+      "conditions": {
+        "mode": "report"
+      },
       "steps": [
         {
           "target": "button[onclick=\"finalizeReportExcel()\"]",
@@ -1262,10 +1314,16 @@
         }
       ]
     },
-
     {
       "id": "export_excel_nav",
-      "queries": ["export excel", "download excel", "excel workbook", "excel export", "export to excel", "save as excel"],
+      "queries": [
+        "export excel",
+        "download excel",
+        "excel workbook",
+        "excel export",
+        "export to excel",
+        "save as excel"
+      ],
       "conditions": {},
       "steps": [
         {
@@ -1284,7 +1342,6 @@
         }
       ]
     },
-
     {
       "id": "live_view_active",
       "queries": [],
@@ -1299,10 +1356,17 @@
         }
       ]
     },
-
     {
       "id": "live_view_inactive",
-      "queries": ["live data", "view live", "go to data", "browse data folder", "open data folder", "where is my data", "live folder"],
+      "queries": [
+        "live data",
+        "view live",
+        "go to data",
+        "browse data folder",
+        "open data folder",
+        "where is my data",
+        "live folder"
+      ],
       "conditions": {},
       "steps": [
         {
@@ -1321,6 +1385,5 @@
         }
       ]
     }
-
   ]
 }

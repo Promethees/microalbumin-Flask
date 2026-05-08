@@ -49,6 +49,15 @@
         ru: 'Руководство запущено — следуйте выделенным шагам.',
     };
 
+    const _EMPTY_REPLY = {
+        en: "I couldn't generate a response. Please try rephrasing your question.",
+        vi: 'Tôi không thể tạo phản hồi. Hãy thử diễn đạt lại câu hỏi của bạn.',
+        zh: '我无法生成回复，请尝试换一种方式提问。',
+        fr: "Je n'ai pas pu générer de réponse. Essayez de reformuler votre question.",
+        ja: '回答を生成できませんでした。質問を言い換えてみてください。',
+        ru: 'Не удалось сформировать ответ. Попробуйте перефразировать вопрос.',
+    };
+
     const _picker = { visible: false, idx: 0, list: [] };
 
     // ── Tab title notification ────────────────────────────────────────────────
@@ -945,9 +954,14 @@
                         }
                     }
 
-                    AI.messages.push({ role: 'assistant', content: fullReply });
-                    _finalizeStreamingMsg(msgDiv, fullReply, null);
-                    if (document.hidden || !AI.open) _notifyTabTitle();
+                    if (fullReply) {
+                        AI.messages.push({ role: 'assistant', content: fullReply });
+                        _finalizeStreamingMsg(msgDiv, fullReply, null);
+                        if (document.hidden || !AI.open) _notifyTabTitle();
+                    } else {
+                        const fallback = _EMPTY_REPLY[AI.activeLang] || _EMPTY_REPLY.en;
+                        _finalizeStreamingMsg(msgDiv, null, fallback);
+                    }
 
                 } catch (err) {
                     if (err.name === 'AbortError') {
