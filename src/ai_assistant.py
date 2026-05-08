@@ -156,6 +156,67 @@ def _format_fewshot_hint(example: dict, ui_context: dict, steps_only: bool = Fal
         f"call trigger_custom_steps with exactly these steps:\n{steps_json}"
     )
 
+# ── Greetings fast-path ───────────────────────────────────────────────────────
+
+_GREETING_TOKENS = frozenset({
+    "hi", "hey", "hello", "hiya", "howdy", "sup", "yo",
+    "good morning", "good afternoon", "good evening", "good night",
+    "greetings", "what's up", "whats up", "how are you", "how r u",
+    "xin chào", "chào", "bonjour", "salut", "こんにちは", "おはよう",
+    "привет", "здравствуйте", "你好", "早上好",
+})
+
+_GREETING_RESPONSE = {
+    "en": (
+        "Hi! I'm OKAPI Assistant. I can help with Easy OKAPI — "
+        "data analysis, calibration, hardware setup, or app navigation. "
+        "What would you like to do?"
+    ),
+    "vi": (
+        "Xin chào! Tôi là OKAPI Assistant. Tôi có thể hỗ trợ bạn về Easy OKAPI — "
+        "phân tích dữ liệu, hiệu chuẩn, cài đặt phần cứng hoặc điều hướng ứng dụng. "
+        "Bạn cần giúp gì?"
+    ),
+    "zh": (
+        "你好！我是 OKAPI Assistant，可以帮助您使用 Easy OKAPI — "
+        "数据分析、校准、硬件设置或应用导航。请问有什么可以帮您的？"
+    ),
+    "fr": (
+        "Bonjour ! Je suis OKAPI Assistant. Je peux vous aider avec Easy OKAPI — "
+        "analyse de données, calibration, configuration matérielle ou navigation dans l'application. "
+        "Que puis-je faire pour vous ?"
+    ),
+    "ja": (
+        "こんにちは！OKAPI Assistant です。Easy OKAPI に関することをお手伝いします — "
+        "データ分析、キャリブレーション、ハードウェア設定、アプリの操作など。"
+        "何かご質問はありますか？"
+    ),
+    "ru": (
+        "Привет! Я OKAPI Assistant. Могу помочь с Easy OKAPI — "
+        "анализ данных, калибровка, настройка оборудования или навигация по приложению. "
+        "Чем могу помочь?"
+    ),
+}
+
+
+def _is_greeting(query: str) -> bool:
+    """True if the query is a standalone greeting with no app-related content."""
+    q = query.strip().lower().rstrip("!.,?")
+    if q in _GREETING_TOKENS:
+        return True
+    # Short query (≤ 5 words) whose every token is a greeting or filler word
+    tokens = q.split()
+    if len(tokens) <= 5 and all(
+        t in _GREETING_TOKENS or t in {
+            "there", "you", "ya", "r", "u", "it", "its", "ok", "okay",
+            "how", "are", "doing", "going", "been", "today",
+        }
+        for t in tokens
+    ):
+        return True
+    return False
+
+
 # ── Multilingual system prompts ───────────────────────────────────────────────
 
 _OUT_OF_SCOPE = {
@@ -1024,6 +1085,11 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
     )
     mode = (ui_context or {}).get("mode", "")
     data_loaded = (ui_context or {}).get("data_loaded", False)
+
+    # Greeting fast-path — respond instantly without touching Ollama
+    if _is_greeting(last_user_query):
+        yield {"type": "chunk", "content": _GREETING_RESPONSE.get(language, _GREETING_RESPONSE["en"])}
+        return
 
     # Fast pre-filter: bail out immediately for clearly off-topic queries
     if _is_out_of_scope(last_user_query):
