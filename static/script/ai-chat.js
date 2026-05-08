@@ -51,6 +51,32 @@
 
     const _picker = { visible: false, idx: 0, list: [] };
 
+    // ── Tab title notification ────────────────────────────────────────────────
+
+    let _origTitle = document.title;
+    let _tabBlinkTimer = null;
+    let _tabHasNotification = false;
+
+    function _notifyTabTitle() {
+        if (_tabHasNotification) return;
+        _tabHasNotification = true;
+        _origTitle = document.title;
+        let alt = false;
+        document.title = '• New reply — ' + _origTitle;
+        _tabBlinkTimer = setInterval(() => {
+            document.title = alt ? '• New reply — ' + _origTitle : _origTitle;
+            alt = !alt;
+        }, 1200);
+    }
+
+    function _clearTabNotification() {
+        if (!_tabHasNotification) return;
+        _tabHasNotification = false;
+        clearInterval(_tabBlinkTimer);
+        _tabBlinkTimer = null;
+        document.title = _origTitle;
+    }
+
     // ── State ────────────────────────────────────────────────────────────────
 
     const AI = {
@@ -81,6 +107,10 @@
     document.addEventListener('DOMContentLoaded', () => {
         _injectWidget();
         _loadStatus();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && AI.open) _clearTabNotification();
     });
 
     // ── DOM injection ────────────────────────────────────────────────────────
@@ -687,6 +717,7 @@
 
         open_() {
             AI.open = true;
+            _clearTabNotification();
             const panel = document.getElementById('okapi-ai-panel');
             if (panel) panel.classList.add('okapi-ai-panel-open');
             if (!AI.settings) _loadStatus();
@@ -916,6 +947,7 @@
 
                     AI.messages.push({ role: 'assistant', content: fullReply });
                     _finalizeStreamingMsg(msgDiv, fullReply, null);
+                    if (document.hidden || !AI.open) _notifyTabTitle();
 
                 } catch (err) {
                     if (err.name === 'AbortError') {
