@@ -29,7 +29,7 @@
         {
           "target": "#meas-mode-section",
           "title": "Measurement Modes",
-          "description": "Easy OKAPI has 3 modes: Kinetics (time-series), Point (single time-point), and Calibrate (standard curve creation). We start in Kinetics mode.",
+          "description": "Easy OKAPI has 4 modes: Kinetics (time-series), Point (single time-point), Calibrate (standard curve creation), and Report (data export). We start in Kinetics mode.",
           "position": "right",
           "skipInteraction": true
         },

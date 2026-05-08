@@ -87,7 +87,7 @@ This document provides instruction on deploying a web interface that helps visua
 	<img src="/images/browse.png" width="600">
 </div>
 
-* ***Set measurement Modes*** The Applicatiob has 3 modes: `kinetics`, `point`, `calibrate`
+* ***Set measurement Modes*** The Applicatiob has 4 modes: `kinetics`, `point`, `calibrate`, `report`
 
 * ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
