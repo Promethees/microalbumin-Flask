@@ -81,6 +81,14 @@ def ai_chat():
     )
 
 
+@ai_bp.route('/guides', methods=['GET'])
+def get_guides():
+    return jsonify({
+        'status': 'success',
+        'examples': ai_assistant.get_guide_examples(),
+    })
+
+
 @ai_bp.route('/pull_model', methods=['POST'])
 def pull_model():
     data = request.get_json(silent=True) or {}

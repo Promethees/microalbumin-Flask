@@ -1007,17 +1007,12 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
     matched, match_score = _match_guide_example(last_user_query, ui_context or {})
 
-    # Fast-path: high-confidence match → skip Ollama entirely
-    if matched:
-        force = matched.get("force_fast_path", False)
-        if match_score >= 2 or (force and match_score >= 1):
-            steps = _format_fewshot_hint(matched, ui_context or {}, steps_only=True)
-            yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-            yield {"type": "guide", "guide_action": {"custom_steps": steps}}
-            return
-
-    if matched:
-        system_prompt += _format_fewshot_hint(matched, ui_context or {})
+    # Any training-example match → resolve steps locally, skip Ollama entirely
+    if matched and match_score >= 1:
+        steps = _format_fewshot_hint(matched, ui_context or {}, steps_only=True)
+        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+        yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+        return
 
     full_messages = [{"role": "system", "content": system_prompt}] + messages
     guide_action = None
@@ -1083,6 +1078,10 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             return
 
     yield {"type": "error", "error": "max_iterations"}
+
+
+def get_guide_examples() -> list:
+    return _load_guide_examples()
 
 
 def prewarm_model(ollama_url: str, model: str) -> None:

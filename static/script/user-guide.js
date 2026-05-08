@@ -46,7 +46,7 @@ class UserGuide {
             ],
             nonCalibrate: this.createStep('#cal-json-sel-section', 'Calibration Coefficients', 'Select calibrated JSON files containing standard curve coefficients, which can be selected to calculate Analyte concentration from measurement sources. Click on Edit button of the sample file to understand expected format of calibratation standard curve JSON files.', { position: 'left', skipInteraction: true, scrollIntoView: true }),
             fileSelection: [
-                this.createStep('#file-selection', 'File Selection', 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.', { position: 'left', skipInteraction: false, scrollIntoView: true }),
+                this.createStep('#file-selection', 'File Selection', 'Select CSV data files to analyze. Click on Edit button of the sample file to understand expected format of data files.', { position: 'left', skipInteraction: true, scrollIntoView: true }),
                 this.createStep('#merge-file-btn', 'Merge CSV Files', 'Combine two CSV measurement files into a single multi-source file. Both files must share the same metadata (measurement type, mode, and units). The result is a new file with separate Value columns for each original source.', { position: 'right', skipInteraction: true, scrollIntoView: true })
             ],
             kinetics: {
@@ -211,13 +211,30 @@ class UserGuide {
             e.stopPropagation();
             if (this.currentTargetElement && this.currentStepData && !this.currentStepData.skipInteraction) {
                 const targetElement = this.currentTargetElement;
-                this.handleInteraction({ currentTarget: targetElement, type: 'click' }); // Simulate click handling
+                const { isContainer } = this.determineElementType(targetElement);
 
-                // Try to forward click to the actual element if it's not a direct interaction handled by us
+                if (isContainer) {
+                    // Briefly lift pointer blocking from guide layers so elementFromPoint
+                    // resolves to the real child element the user clicked on, not the overlay.
+                    this.spotlight.style.pointerEvents = 'none';
+                    this.overlay.style.pointerEvents = 'none';
+                    const realTarget = document.elementFromPoint(e.clientX, e.clientY);
+                    this.spotlight.style.pointerEvents = '';
+                    this.overlay.style.pointerEvents = '';
+
+                    if (realTarget) {
+                        realTarget.dispatchEvent(new MouseEvent('click', {
+                            bubbles: true, cancelable: true, view: window, detail: 1
+                        }));
+                    }
+                    // handleInteraction fires via the click bubbling up to the container's listener
+                    return;
+                }
+
+                this.handleInteraction({ currentTarget: targetElement, type: 'click' });
+
                 try {
-                    // Check if we should manually trigger click on element
-                    // Logic adapted from original: some elements need focus, some need click dispatch
-                    const { tagName, isInput, isSelect, isCheckbox, isTextInput } = this.determineElementType(targetElement);
+                    const { isCheckbox, isSelect, isTextInput } = this.determineElementType(targetElement);
 
                     if (isCheckbox) {
                         targetElement.checked = !targetElement.checked;
@@ -225,16 +242,10 @@ class UserGuide {
                     } else if (isSelect || isTextInput) {
                         targetElement.focus();
                     } else {
-                        // Default click dispatch
-                        const clickEvent = new MouseEvent('click', {
-                            bubbles: true,
-                            cancelable: true,
-                            view: window,
-                            detail: 1
-                        });
-                        targetElement.dispatchEvent(clickEvent);
+                        targetElement.dispatchEvent(new MouseEvent('click', {
+                            bubbles: true, cancelable: true, view: window, detail: 1
+                        }));
                     }
-
                 } catch (err) {
                     console.warn('Error triggering element click:', err);
                 }
@@ -739,12 +750,12 @@ class UserGuide {
         if (!aiSteps || !aiSteps.length) return;
 
         this.steps = aiSteps.map(s => ({
-            target:          s.target,
-            title:           s.title || 'Step',
-            description:     s.description || '',
-            position:        s.position || 'bottom',
+            target: s.target,
+            title: s.title || 'Step',
+            description: s.description || '',
+            position: s.position || 'bottom',
             skipInteraction: s.skipInteraction !== false,
-            scrollIntoView:  true,
+            scrollIntoView: true,
         }));
 
         this.currentStep = 0;
