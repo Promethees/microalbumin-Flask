@@ -6,7 +6,128 @@ from file_path import get_directory
 from file import get_file_list
 import state
 
+# ── Guide training examples (few-shot injection) ──────────────────────────────
+
+_GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_training.json")
+
+
+def _load_guide_examples() -> list:
+    try:
+        with open(_GUIDE_TRAINING_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return [e for e in data.get("examples", []) if e.get("steps")]
+    except Exception:
+        return []
+
+
+def _match_guide_example(query: str, ui_context: dict) -> dict | None:
+    """Return the best matching training example for the given query and UI context, or None.
+
+    Condition fields supported:
+      mode       — exact match required
+      mode_not   — excluded if mode equals this value
+      mode_in    — included only if mode is in this list
+    Examples with matching mode conditions get a +2 bonus over conditionless ones
+    so that specific variants always beat generic fallbacks with the same keyword score.
+    """
+    examples = _load_guide_examples()
+    if not examples:
+        return None
+
+    q_lower = query.lower()
+    mode = (ui_context or {}).get("mode", "")
+    best_score = 0
+    best = None
+
+    for ex in examples:
+        conditions = ex.get("conditions", {})
+
+        # Hard filters
+        if conditions.get("mode") and mode != conditions["mode"]:
+            continue
+        if conditions.get("mode_not") and mode == conditions["mode_not"]:
+            continue
+        if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
+            continue
+
+        keywords = ex.get("queries", [])
+        score = sum(1 for kw in keywords if kw.lower() in q_lower)
+        if score == 0:
+            continue
+
+        # Bonus for condition specificity so mode-matched examples win ties
+        if conditions.get("mode") and mode == conditions["mode"]:
+            score += 2
+        elif conditions.get("mode_in") and mode in conditions["mode_in"]:
+            score += 2
+        elif conditions.get("mode_not"):
+            score += 1
+
+        if score > best_score:
+            best_score = score
+            best = ex
+
+    return best if best_score > 0 else None
+
+
+_FILE_SELECT_STEP = {
+    "target": "#file-selection",
+    "title": "Select a File First",
+    "description": "No data file is loaded yet. Click here to select a CSV data file before proceeding.",
+    "position": "left",
+    "skipInteraction": False,
+}
+
+
+def _format_fewshot_hint(example: dict, ui_context: dict) -> str:
+    """Format a matched example as a few-shot hint appended to the system prompt.
+
+    If the example requires data to be loaded but data_loaded is False,
+    prepend a file-selection step so the model tells the user to load a file first.
+    """
+    steps = list(example["steps"])
+    if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
+        steps = [_FILE_SELECT_STEP] + steps
+    steps_json = json.dumps(steps, ensure_ascii=False)
+    sample_query = example["queries"][0] if example["queries"] else ""
+    return (
+        f'\n\nFEW-SHOT EXAMPLE — for queries like "{sample_query}", '
+        f"call trigger_custom_steps with exactly these steps:\n{steps_json}"
+    )
+
 # ── Multilingual system prompts ───────────────────────────────────────────────
+
+_OUT_OF_SCOPE = {
+    "en": (
+        "I'm only able to help with Easy OKAPI — colorimeter data analysis, "
+        "calibration, hardware setup, and app navigation. "
+        "I can't assist with that topic. Is there something about Easy OKAPI I can help you with?"
+    ),
+    "vi": (
+        "Tôi chỉ có thể hỗ trợ về Easy OKAPI — phân tích dữ liệu máy so màu, "
+        "hiệu chuẩn, cài đặt phần cứng và điều hướng ứng dụng. "
+        "Tôi không thể hỗ trợ chủ đề này. Bạn có câu hỏi nào về Easy OKAPI không?"
+    ),
+    "zh": (
+        "我只能协助解答 Easy OKAPI 相关问题——比色计数据分析、校准、硬件设置和应用导航。"
+        "我无法帮助您解答该话题。请问您有关于 Easy OKAPI 的问题吗？"
+    ),
+    "fr": (
+        "Je suis uniquement en mesure d'aider avec Easy OKAPI — analyse de données colorimètre, "
+        "calibration, configuration matérielle et navigation dans l'application. "
+        "Je ne peux pas vous aider sur ce sujet. Avez-vous une question sur Easy OKAPI ?"
+    ),
+    "ja": (
+        "私が対応できるのは Easy OKAPI に関する内容のみです — 比色計データ分析、"
+        "キャリブレーション、ハードウェア設定、アプリナビゲーション。"
+        "そのトピックについてはお手伝いできません。Easy OKAPI について何かご質問はありますか？"
+    ),
+    "ru": (
+        "Я могу помочь только с Easy OKAPI — анализ данных колориметра, "
+        "калибровка, настройка оборудования и навигация по приложению. "
+        "Я не могу помочь по этой теме. Есть ли у вас вопросы об Easy OKAPI?"
+    ),
+}
 
 _SYSTEM_PROMPTS = {
     "en": (
@@ -14,11 +135,17 @@ _SYSTEM_PROMPTS = {
         "You help users with: CSV data (absorbance, kinetics, calibration), app navigation, "
         "standard curves, R² values, Michaelis-Menten kinetics, reports, hardware troubleshooting.\n"
         "Use tools to fetch live data when needed.\n\n"
+        "SCOPE RULE (highest priority):\n"
+        "If the question is NOT about Easy OKAPI, colorimetry, biosensor data, or this application, "
+        "reply ONLY with: \"I'm only able to help with Easy OKAPI — colorimeter data analysis, "
+        "calibration, hardware setup, and app navigation. I can't assist with that topic. "
+        "Is there something about Easy OKAPI I can help you with?\"\n"
+        "Do NOT attempt to answer off-topic questions (coding help, general science, cooking, news, math, etc.).\n\n"
         "MANDATORY GUIDE RULE:\n"
         "When a user asks HOW to navigate or find a UI element, you MUST call trigger_custom_steps "
         "— do NOT answer with plain text only.\n"
         "Examples:\n"
-        "• 'how to go to calibrate mode' → call trigger_custom_steps with target #cal-mode-select\n"
+        "• 'how to go to calibrate mode' → call trigger_custom_steps with target #meas-mode-section\n"
         "• 'where is the timeout setting?' → call trigger_custom_steps with target #timeout-control\n"
         "• 'how do I export?' → call trigger_custom_steps with target #export-analysis\n"
         "• 'how do I start the device?' → call trigger_custom_steps with target #run-script-btn\n"
@@ -32,11 +159,17 @@ _SYSTEM_PROMPTS = {
         "dữ liệu máy so màu cục bộ dành cho thí nghiệm cảm biến sinh học.\n\n"
         "Bạn hỗ trợ: dữ liệu CSV, điều hướng ứng dụng, đường chuẩn, R², động học, báo cáo, phần cứng.\n"
         "Sử dụng các công cụ để lấy dữ liệu thực tế khi cần.\n\n"
+        "QUY TẮC PHẠM VI (ưu tiên cao nhất):\n"
+        "Nếu câu hỏi KHÔNG liên quan đến Easy OKAPI, đo màu, dữ liệu cảm biến sinh học hoặc ứng dụng này, "
+        "chỉ trả lời: \"Tôi chỉ có thể hỗ trợ về Easy OKAPI — phân tích dữ liệu máy so màu, "
+        "hiệu chuẩn, cài đặt phần cứng và điều hướng ứng dụng. "
+        "Tôi không thể hỗ trợ chủ đề này. Bạn có câu hỏi nào về Easy OKAPI không?\"\n"
+        "KHÔNG trả lời các câu hỏi ngoài phạm vi (lập trình, khoa học chung, nấu ăn, tin tức, toán học, v.v.).\n\n"
         "QUY TẮC HƯỚNG DẪN BẮT BUỘC:\n"
         "Khi người dùng hỏi CÁCH điều hướng hoặc tìm thành phần giao diện, BẮT BUỘC gọi trigger_custom_steps "
         "— không trả lời chỉ bằng văn bản.\n"
         "Ví dụ:\n"
-        "• 'cách chuyển sang chế độ calibrate' → gọi trigger_custom_steps với target #cal-mode-select\n"
+        "• 'cách chuyển sang chế độ calibrate' → gọi trigger_custom_steps với target #meas-mode-section\n"
         "• 'timeout ở đâu?' → gọi trigger_custom_steps với target #timeout-control\n"
         "• 'cách xuất dữ liệu?' → gọi trigger_custom_steps với target #export-analysis\n"
         "Chỉ gọi trigger_guide khi người dùng yêu cầu hướng dẫn TOÀN BỘ quy trình từ đầu đến cuối.\n"
@@ -48,10 +181,15 @@ _SYSTEM_PROMPTS = {
         "您是 OKAPI Assistant，Easy OKAPI 内置的 AI 助手——本地比色计数据分析应用程序。\n\n"
         "您协助用户：CSV数据、应用导航、标准曲线、R²值、动力学、报告、硬件故障排除。\n"
         "需要时使用工具获取实时数据。\n\n"
+        "范围规则（最高优先级）：\n"
+        "如果问题与 Easy OKAPI、比色法、生物传感器数据或本应用无关，"
+        "仅回复：\"我只能协助解答 Easy OKAPI 相关问题——比色计数据分析、校准、硬件设置和应用导航。"
+        "我无法帮助您解答该话题。请问您有关于 Easy OKAPI 的问题吗？\"\n"
+        "不要回答题外问题（编程帮助、通用科学、烹饪、新闻、数学等）。\n\n"
         "强制引导规则：\n"
         "当用户询问如何导航或找到UI元素时，必须调用 trigger_custom_steps——不得仅用文字回答。\n"
         "示例：\n"
-        "• '如何切换到校准模式' → 调用 trigger_custom_steps，目标 #cal-mode-select\n"
+        "• '如何切换到校准模式' → 调用 trigger_custom_steps，目标 #meas-mode-section\n"
         "• '超时设置在哪里？' → 调用 trigger_custom_steps，目标 #timeout-control\n"
         "• '如何导出？' → 调用 trigger_custom_steps，目标 #export-analysis\n"
         "仅当用户明确要求完整端到端流程演示时才调用 trigger_guide。\n"
@@ -63,11 +201,17 @@ _SYSTEM_PROMPTS = {
         "Vous êtes OKAPI Assistant, un assistant IA intégré dans Easy OKAPI — application locale d'analyse colorimétrique.\n\n"
         "Vous aidez avec : données CSV, navigation, courbes étalon, R², cinétique, rapports, matériel.\n"
         "Utilisez les outils pour récupérer des données en direct si nécessaire.\n\n"
+        "RÈGLE DE PORTÉE (priorité maximale) :\n"
+        "Si la question n'est PAS liée à Easy OKAPI, à la colorimétrie, aux données de biocapteurs ou à cette application, "
+        "répondez UNIQUEMENT : \"Je suis uniquement en mesure d'aider avec Easy OKAPI — analyse de données colorimètre, "
+        "calibration, configuration matérielle et navigation dans l'application. "
+        "Je ne peux pas vous aider sur ce sujet. Avez-vous une question sur Easy OKAPI ?\"\n"
+        "Ne répondez PAS aux questions hors sujet (aide en programmation, sciences générales, cuisine, actualités, mathématiques, etc.).\n\n"
         "RÈGLE DE GUIDE OBLIGATOIRE :\n"
         "Quand l'utilisateur demande COMMENT naviguer ou trouver un élément d'interface, "
         "vous DEVEZ appeler trigger_custom_steps — ne répondez pas uniquement par du texte.\n"
         "Exemples :\n"
-        "• 'comment aller en mode calibration' → appeler trigger_custom_steps, cible #cal-mode-select\n"
+        "• 'comment aller en mode calibration' → appeler trigger_custom_steps, cible #meas-mode-section\n"
         "• 'où est le délai d'attente ?' → appeler trigger_custom_steps, cible #timeout-control\n"
         "• 'comment exporter ?' → appeler trigger_custom_steps, cible #export-analysis\n"
         "N'appelez trigger_guide que pour un parcours complet de bout en bout explicitement demandé.\n"
@@ -79,11 +223,17 @@ _SYSTEM_PROMPTS = {
         "あなたは OKAPI Assistant — Easy OKAPI に内蔵された AI アシスタントです（ローカル比色計アプリ）。\n\n"
         "サポート内容：CSVデータ、アプリナビゲーション、標準曲線、R²、反応速度論、レポート、ハードウェア。\n"
         "必要に応じてツールを使用してリアルタイムデータを取得してください。\n\n"
+        "スコープルール（最優先）：\n"
+        "質問が Easy OKAPI、比色法、バイオセンサーデータ、またはこのアプリに関係しない場合、"
+        "次のメッセージのみ返信してください：\"私が対応できるのは Easy OKAPI に関する内容のみです — "
+        "比色計データ分析、キャリブレーション、ハードウェア設定、アプリナビゲーション。"
+        "そのトピックについてはお手伝いできません。Easy OKAPI について何かご質問はありますか？\"\n"
+        "スコープ外の質問（コーディング支援、一般科学、料理、ニュース、数学など）には回答しないこと。\n\n"
         "必須ガイドルール：\n"
         "ユーザーがUI要素への移動方法を尋ねた場合、必ず trigger_custom_steps を呼び出してください "
         "— テキストのみで回答しないこと。\n"
         "例：\n"
-        "• 'キャリブレーションモードへの行き方' → target #cal-mode-select で trigger_custom_steps を呼び出す\n"
+        "• 'キャリブレーションモードへの行き方' → target #meas-mode-section で trigger_custom_steps を呼び出す\n"
         "• 'タイムアウト設定はどこ？' → target #timeout-control で trigger_custom_steps を呼び出す\n"
         "• 'エクスポートの方法' → target #export-analysis で trigger_custom_steps を呼び出す\n"
         "明示的な完全ワークフローツアーのリクエストのみ trigger_guide を使用してください。\n"
@@ -95,11 +245,17 @@ _SYSTEM_PROMPTS = {
         "Вы — OKAPI Assistant, встроенный ИИ-помощник в Easy OKAPI — локальное приложение колориметра.\n\n"
         "Помощь: данные CSV, навигация, стандартные кривые, R², кинетика, отчёты, оборудование.\n"
         "При необходимости используйте инструменты для получения актуальных данных.\n\n"
+        "ПРАВИЛО ОБЛАСТИ (наивысший приоритет):\n"
+        "Если вопрос НЕ связан с Easy OKAPI, колориметрией, данными биосенсоров или этим приложением, "
+        "отвечайте ТОЛЬКО: \"Я могу помочь только с Easy OKAPI — анализ данных колориметра, "
+        "калибровка, настройка оборудования и навигация по приложению. "
+        "Я не могу помочь по этой теме. Есть ли у вас вопросы об Easy OKAPI?\"\n"
+        "НЕ отвечайте на вопросы не по теме (помощь в программировании, общая наука, кулинария, новости, математика и т.д.).\n\n"
         "ОБЯЗАТЕЛЬНОЕ ПРАВИЛО ГИДА:\n"
         "Когда пользователь спрашивает КАК перейти к элементу интерфейса, "
         "вы ОБЯЗАНЫ вызвать trigger_custom_steps — не отвечайте только текстом.\n"
         "Примеры:\n"
-        "• 'как перейти в режим калибровки' → вызвать trigger_custom_steps с target #cal-mode-select\n"
+        "• 'как перейти в режим калибровки' → вызвать trigger_custom_steps с target #meas-mode-section\n"
         "• 'где настройка таймаута?' → вызвать trigger_custom_steps с target #timeout-control\n"
         "• 'как экспортировать?' → вызвать trigger_custom_steps с target #export-analysis\n"
         "Вызывайте trigger_guide только для явного полного обзора рабочего процесса.\n"
@@ -258,11 +414,20 @@ TOOLS = [
                         "items": {
                             "type": "object",
                             "properties": {
-                                "target":      {"type": "string"},
-                                "title":       {"type": "string"},
-                                "description": {"type": "string"},
-                                "position":    {"type": "string",
-                                               "enum": ["right", "left", "top", "bottom"]},
+                                "target":          {"type": "string"},
+                                "title":           {"type": "string"},
+                                "description":     {"type": "string"},
+                                "position":        {"type": "string",
+                                                   "enum": ["right", "left", "top", "bottom"]},
+                                "skipInteraction": {
+                                    "type": "boolean",
+                                    "description": (
+                                        "true = informational step, user clicks Next manually. "
+                                        "false = interactive step, guide waits for user to click the element. "
+                                        "Use false for action steps (clicking a button, selecting a dropdown). "
+                                        "Use true for observation steps. Default: true."
+                                    ),
+                                },
                             },
                             "required": ["target", "title", "description"],
                         },
@@ -476,16 +641,19 @@ def _run_tool(name: str, args: dict) -> str:
 
         elif name == "trigger_custom_steps":
             raw_steps = args.get("steps", [])
-            steps = [
-                {
+            steps = []
+            for s in raw_steps:
+                if not (isinstance(s, dict) and s.get("target", "").startswith("#")):
+                    continue
+                step = {
                     "target":      s.get("target", ""),
                     "title":       s.get("title", "Step"),
                     "description": s.get("description", ""),
                     "position":    s.get("position", "bottom"),
                 }
-                for s in raw_steps
-                if isinstance(s, dict) and s.get("target", "").startswith("#")
-            ]
+                if "skipInteraction" in s:
+                    step["skipInteraction"] = bool(s["skipInteraction"])
+                steps.append(step)
             if not steps:
                 return json.dumps({"error": "No valid steps provided (targets must start with #)"})
             return json.dumps({"custom_steps": steps})
@@ -548,6 +716,241 @@ def chat(messages: list, language: str, ollama_url: str, model: str) -> dict:
 
 _GUIDE_TOOLS = {"trigger_guide", "trigger_custom_steps"}
 
+# ── Report clarification flow ─────────────────────────────────────────────────
+
+_REPORT_CLARIFY_PROMPTS = {
+    "en": (
+        "Would you like a **quick report** (instant snapshot of the current chart and analysis) "
+        "or a **full report** (export data to a subject and compile a comprehensive multi-snapshot report)?"
+    ),
+    "vi": (
+        "Bạn muốn tạo **báo cáo nhanh** (chụp nhanh biểu đồ và phân tích hiện tại) "
+        "hay **báo cáo đầy đủ** (xuất dữ liệu vào chủ đề và tổng hợp báo cáo toàn diện)?"
+    ),
+    "zh": (
+        "您想要**快速报告**（即时快照当前图表和分析）"
+        "还是**完整报告**（将数据导出到主题并编译综合多快照报告）？"
+    ),
+    "fr": (
+        "Souhaitez-vous un **rapport rapide** (instantané du graphique et de l'analyse en cours) "
+        "ou un **rapport complet** (exporter les données vers un sujet et compiler un rapport multi-snapshot) ?"
+    ),
+    "ja": (
+        "**クイックレポート**（現在のチャートと分析の即時スナップショット）と"
+        "**フルレポート**（データをエクスポートして包括的なマルチスナップショットレポートを作成）、"
+        "どちらをご希望ですか？"
+    ),
+    "ru": (
+        "Вам нужен **быстрый отчёт** (мгновенный снимок текущего графика и анализа) "
+        "или **полный отчёт** (экспорт данных в тему и компиляция комплексного отчёта)?"
+    ),
+}
+
+# Quick report: snapshot current chart — only shown when data is loaded
+_QUICK_REPORT_STEPS = [
+    {
+        "target": "#report-section",
+        "title": "Generate Quick Report",
+        "description": (
+            "Click 'Generate quick Report' here to instantly snapshot the current chart "
+            "and analysis as a standalone HTML report."
+        ),
+        "position": "top",
+        "skipInteraction": False,
+    },
+]
+
+# Quick report when no data is loaded yet — prepend file selection
+_QUICK_REPORT_STEPS_NO_DATA = [
+    {
+        "target": "#file-selection",
+        "title": "Load Data First",
+        "description": "Select a CSV data file to load your analysis before generating a report.",
+        "position": "left",
+        "skipInteraction": False,
+    },
+    {
+        "target": "#report-section",
+        "title": "Generate Quick Report",
+        "description": (
+            "Once data is loaded, click 'Generate quick Report' here to snapshot the "
+            "current chart and analysis."
+        ),
+        "position": "top",
+        "skipInteraction": True,
+    },
+]
+
+# Full report starting from a data mode (kinetics / point / calibrate)
+_FULL_REPORT_STEPS_FROM_DATA = [
+    {
+        "target": "#report-section",
+        "title": "Export Data to Report",
+        "description": (
+            "Click 'Export Data to Report' to save this analysis snapshot into a named "
+            "report subject for later compilation."
+        ),
+        "position": "top",
+        "skipInteraction": False,
+    },
+    {
+        "target": "#meas-mode-section",
+        "title": "Switch to Report Mode",
+        "description": (
+            "After exporting, switch to Report mode here to open the full "
+            "report management interface."
+        ),
+        "position": "right",
+        "skipInteraction": False,
+    },
+    {
+        "target": "#report-console-section",
+        "title": "Report Console",
+        "description": (
+            "Manage your saved analysis snapshots here. Configure layout options "
+            "and set a report title."
+        ),
+        "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "#report-items-container",
+        "title": "Report Items",
+        "description": (
+            "All saved snapshots are listed here. Remove any you don't want "
+            "before generating the final report."
+        ),
+        "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "button[onclick=\"finalizeReport()\"]",
+        "title": "Generate PDF Report",
+        "description": (
+            "Compile all items into a printable HTML report. "
+            "Open in your browser, then use Print → Save as PDF."
+        ),
+        "position": "top",
+        "skipInteraction": True,
+    },
+]
+
+# Full report when already in report mode
+_FULL_REPORT_STEPS_IN_REPORT = [
+    {
+        "target": "#report-console-section",
+        "title": "Report Console",
+        "description": (
+            "Manage your saved analysis snapshots here. Configure layout and set a report title."
+        ),
+        "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "#report-items-container",
+        "title": "Report Items",
+        "description": "All saved snapshots are listed here. Remove any before generating.",
+        "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "button[onclick=\"finalizeReportExcel()\"]",
+        "title": "Export as Excel",
+        "description": "Download all items as a formatted Excel workbook with embedded charts.",
+        "position": "top",
+        "skipInteraction": True,
+    },
+    {
+        "target": "button[onclick=\"finalizeReport()\"]",
+        "title": "Generate PDF Report",
+        "description": "Or compile all items into a printable HTML report.",
+        "position": "top",
+        "skipInteraction": True,
+    },
+]
+
+_REPORT_SPECIFIC_KEYWORDS = {
+    "quick", "fast", "snapshot", "nhanh", "rapide", "schnell", "быстро",
+    "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
+    "đầy đủ", "toàn", "complet", "полный",
+    "export to report", "save to report", "export data to report",
+}
+
+
+def _needs_report_clarification(query: str, messages: list) -> bool:
+    """True when the query is about reports but doesn't specify quick vs full."""
+    q = query.lower()
+    if "report" not in q:
+        return False
+    if any(kw in q for kw in _REPORT_SPECIFIC_KEYWORDS):
+        return False
+    # Don't re-ask if the last assistant turn already asked the clarification
+    for msg in reversed(messages[:-1]):
+        if msg.get("role") == "assistant":
+            c = msg.get("content", "").lower()
+            if "quick report" in c and "full report" in c:
+                return False
+            break
+    return True
+
+
+def _get_pending_report_type(messages: list) -> str | None:
+    """If the previous assistant turn was the quick/full clarification question,
+    return 'quick' or 'full' based on the latest user answer, or None."""
+    if len(messages) < 2:
+        return None
+    prev_assistant = None
+    for msg in reversed(messages[:-1]):
+        if msg.get("role") == "assistant":
+            prev_assistant = msg
+            break
+    if not prev_assistant:
+        return None
+    c = prev_assistant.get("content", "").lower()
+    if "quick report" not in c or "full report" not in c:
+        return None
+    user_answer = messages[-1].get("content", "").lower()
+    quick_kws = {"quick", "fast", "snapshot", "nhanh", "rapide", "schnell", "быстро", "instant"}
+    full_kws = {
+        "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
+        "đầy đủ", "toàn", "complet", "полный",
+    }
+    if any(kw in user_answer for kw in quick_kws):
+        return "quick"
+    if any(kw in user_answer for kw in full_kws):
+        return "full"
+    return None
+
+
+# Keywords that strongly indicate the question is about Easy OKAPI
+_IN_SCOPE_KEYWORDS = {
+    "okapi", "colorimeter", "absorbance", "kinetics", "calibrat", "csv",
+    "measurement", "pybadge", "hid", "regression", "standard curve", "r squared",
+    "michaelis", "menten", "export", "report", "timeout", "interval", "biosensor",
+    "mode", "chart", "graph", "file", "directory", "hardware", "device", "sensor",
+    "concentration", "slope", "saturation", "maxrate", "threshold", "workflow",
+    "tutorial", "walkthrough", "overview", "getting started", "how to use",
+    "how does this", "introduction", "guide me", "show me how",
+}
+
+# Keywords that strongly indicate off-topic content
+_OUT_OF_SCOPE_KEYWORDS = {
+    "recipe", "cooking", "weather", "stock", "bitcoin", "crypto", "football",
+    "movie", "music", "song", "game", "politics", "election", "president",
+    "write a poem", "tell me a joke", "tell a story", "translate this",
+    "who is", "what is the capital", "how old is", "population of",
+}
+
+
+def _is_out_of_scope(query: str) -> bool:
+    """Fast keyword pre-filter. Returns True only for clearly off-topic queries."""
+    q = query.lower()
+    if any(kw in q for kw in _IN_SCOPE_KEYWORDS):
+        return False
+    if any(kw in q for kw in _OUT_OF_SCOPE_KEYWORDS):
+        return True
+    return False
+
 
 def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_context: dict = None):
     """Generator yielding SSE event dicts.
@@ -555,19 +958,51 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
     Uses stream=False for all Ollama calls so that tool calling works reliably
     on small models (qwen2.5:3b ignores tool definitions when stream=True).
     """
+    last_user_query = next(
+        (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
+    )
+    mode = (ui_context or {}).get("mode", "")
+    data_loaded = (ui_context or {}).get("data_loaded", False)
+
+    # Fast pre-filter: bail out immediately for clearly off-topic queries
+    if _is_out_of_scope(last_user_query):
+        yield {"type": "chunk", "content": _OUT_OF_SCOPE.get(language, _OUT_OF_SCOPE["en"])}
+        return
+
+    # Report clarification: turn 2 — user answered quick/full, dispatch guide directly
+    pending_report = _get_pending_report_type(messages)
+    if pending_report == "quick":
+        steps = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
+        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+        yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+        return
+    if pending_report == "full":
+        steps = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
+        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+        yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+        return
+
+    # Report clarification: turn 1 — ask user to specify quick vs full
+    if _needs_report_clarification(last_user_query, messages):
+        yield {"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}
+        return
+
     system_prompt = _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
     if ui_context:
         parts = []
-        mode = ui_context.get("mode", "")
         if mode and mode != "unknown":
             parts.append(f"mode={mode}")
         parts.append("app_started=" + ("yes" if ui_context.get("app_started") else "no"))
-        parts.append("data_loaded=" + ("yes" if ui_context.get("data_loaded") else "no"))
+        parts.append("data_loaded=" + ("yes" if data_loaded else "no"))
         cal_mode = ui_context.get("cal_mode", "")
         if cal_mode:
             parts.append(f"cal_mode={cal_mode}")
         if parts:
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
+    matched = _match_guide_example(last_user_query, ui_context or {})
+    if matched:
+        system_prompt += _format_fewshot_hint(matched, ui_context or {})
+
     full_messages = [{"role": "system", "content": system_prompt}] + messages
     guide_action = None
 

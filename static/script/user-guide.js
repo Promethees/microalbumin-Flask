@@ -743,7 +743,7 @@ class UserGuide {
             title:           s.title || 'Step',
             description:     s.description || '',
             position:        s.position || 'bottom',
-            skipInteraction: true,
+            skipInteraction: s.skipInteraction !== false,
             scrollIntoView:  true,
         }));
 

@@ -31,3 +31,5 @@ static/vendor/
 *.dmg
 
 generate_heavy_csv.py
+
+!guide_training.json
