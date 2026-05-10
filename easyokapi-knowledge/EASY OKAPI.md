@@ -50,6 +50,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | Auth | `src/routes/auth_routes.py` | Google Drive OAuth2 flow and sync operations |
 | File Ops | `src/routes/file_routes.py` | CSV/JSON CRUD operations (Edit, Delete, Copy, Upload, Merge) |
 | Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export |
+| AI | `src/routes/ai_routes.py` | AI assistant: chat, settings, guides (`/ai/*`) |
 | Extensions | `src/extensions.py` | Centralized SocketIO instance to avoid circular imports |
 
 ### 2.2 Backend Modules (`src/`)
@@ -58,7 +59,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | [[src/user_data.py\|user_data.py]]                       | In-memory per-session storage (`USER_DATA` dict), session management, Drive state helpers |
 | [[src/google_drive_service.py\|google_drive_service.py]] | OAuth 2.0 flow, Drive CRUD operations (folders, files), session-to-Drive sync             |
-| `config.py`                                              | Configuration class (`Config`): secret keys, Google API settings, PRODUCTION_MODE         |
+| `config.py`                                              | Configuration class (`Config`): secret keys, Google/AI API settings, PRODUCTION_MODE      |
 | `export_data.py`                                         | CSV metadata parsing, header writing, export utilities with thread locks                  |
 | [[src/export_cal_json.py\|export_cal_json.py]]           | Standard curve coefficient processing, JSON export for calibration data                   |
 | [[src/file_merge.py\|file_merge.py]]                     | Merging CSV contents from two files                                                       |
@@ -67,8 +68,10 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `mode.py`                                                | Returns available measurement modes: `kinetics`, `point`, `calibrate`                     |
 | `quantity.py`                                            | Returns available quantity options for kinetics analysis                                  |
 | `range.py`                                               | Returns display range input configuration                                                 |
+| `ai_assistant.py`                                        | Groq API client, guide training, MCP tools, chat_stream generator (multilingual)          |
+| `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
 
-### 2.3 Frontend (`static/script/` — 11 JS files)
+### 2.3 Frontend (`static/script/` — 12 JS files)
 
 | File | Responsibility |
 |---|---|

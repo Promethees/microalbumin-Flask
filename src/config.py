@@ -24,6 +24,10 @@ class Config:
     GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')
     
+    # AI Assistant (Groq)
+    GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+    AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
+
     # Automatic Production Detection (Heroku uses 'DYNO', generic servers often use 'PORT')
     _prod_env = os.environ.get('PRODUCTION_MODE')
     if _prod_env is not None:

@@ -56,7 +56,10 @@ const MANUAL_RESERVED_NAMES = [
   'settingDerivedCon', 'updateDerivedSections', 'updateMultiSourceExportOptions',
   
   // External Libraries
-  'Chart', 'Swal', 'MathJax', 'jQuery', '$'
+  'Chart', 'Swal', 'MathJax', 'jQuery', '$',
+
+  // AI Assistant
+  'OkapiAI',
 ];
 
 function getReservedNames() {

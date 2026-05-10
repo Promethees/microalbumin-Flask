@@ -100,6 +100,26 @@
 
 ---
 
+### 2.10 AI Assistant — Groq Cloud LLM
+
+- The AI assistant uses **Groq API** (`https://api.groq.com`) — never Ollama or a local LLM.
+- `GROQ_API_KEY` and `AI_MODEL` are read from environment variables via `src/config.py` (`Config.GROQ_API_KEY`, `Config.AI_MODEL`).
+- Default model: `llama-3.1-8b-instant`. Override via `AI_MODEL` env var on Heroku.
+- Settings are stored **per-session** in Flask `session['ai_settings']` via `src/ai_settings.py`. No file-based persistence.
+- The AI blueprint is `ai_bp` in `src/routes/ai_routes.py`, mounted at `/ai/*`.
+- Routes: `GET /ai/status`, `GET|POST /ai/settings`, `POST /ai/chat`, `GET /ai/guides`.
+- **No pull_model/pull_status routes** — model management is handled by Groq, not the app.
+- Chat uses **SSE streaming** (`text/event-stream`). The generator in `chat_stream()` emits `{"type": "chunk"|"guide"|"error", ...}` events; the final event is `[DONE]`.
+- Tool execution uses `user_data` from `get_user_data()` (in-memory per-session CSV/JSON store). Never reads from local filesystem.
+- `get_hardware_status` tool is **absent** from the online TOOLS list (no hardware in online).
+- `trigger_custom_steps` valid CSS IDs match the online UI — no hardware IDs (`#run-script-btn`, `#log-hid-data`, etc.).
+- `guide_training.json` and `guide_translations/*.json` are committed to the repo (gitignored by `*.json`, but explicitly un-ignored in `.gitignore`).
+- Conversation history is **client-side only** (`AI.messages` array in `ai-chat.js`).
+- Supported languages: `en`, `vi`, `zh`, `fr`, `ja`, `ru`. Active language sent per request as `language` field.
+- `ai-chat.js` in production is built to `static/dist/ai-chat.min.js` via `npm run build`. `OkapiAI` is in `MANUAL_RESERVED_NAMES` in `build.js`.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.

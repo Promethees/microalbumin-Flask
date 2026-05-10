@@ -1,0 +1,1837 @@
+{
+  "_note": "Few-shot training examples for OKAPI AI guide injection. 'steps' are injected as a hint when the query matches. Fill in or correct element IDs and descriptions. skipInteraction=false means the guide waits for the user to interact with the element before advancing. Restart not needed — file reloads on every request.",
+  "version": "1.0",
+  "examples": [
+    {
+      "id": "app_introduction",
+      "queries": [
+        "how does this app work",
+        "how this app works",
+        "how this application works",
+        "how to use this app",
+        "how to use the app",
+        "getting started",
+        "introduction to the app",
+        "tutorial",
+        "walkthrough",
+        "overview of the app",
+        "explain the app",
+        "beginner guide",
+        "start from scratch",
+        "first time using",
+        "what can this app do",
+        "teach me the app",
+        "guide me through the app",
+        "how to get started"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Measurement Modes",
+          "description": "Easy OKAPI has 4 modes: Kinetics (time-series), Point (single time-point), Calibrate (standard curve creation), and Report (data export). We start in Kinetics mode.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#log-hid-data",
+          "title": "Colorimeter Control Panel",
+          "description": "This panel controls data recording from your PyBadge colorimeter. In this tutorial we will use sample data instead of a live device.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#run-script-btn",
+          "title": "Start Recording",
+          "description": "This button starts live absorbance recording from the colorimeter. For now, just note its location — we will use a sample file next.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#timeout-control",
+          "title": "Measurement Duration",
+          "description": "Set how long each recording lasts. 'Infinite' records until you click Stop.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#interval-control",
+          "title": "Sampling Interval",
+          "description": "Set the time between each reading. 0 fetches data as fast as available.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#file-selection",
+          "title": "Load Sample Data",
+          "description": "Select a kinetics CSV file to explore the app. Sample files are available in the sample_data folder — pick any to continue.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#chart-container",
+          "title": "Data Chart",
+          "description": "Your measurement data is visualised here as a time-series chart showing absorbance over time.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#select-source-to-export",
+          "title": "Select Source to Export",
+          "description": "Choose which measurement source (channel) to export for calibration.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#con-value-read-source-0",
+          "title": "Enter Concentration & Export",
+          "description": "Enter the known analyte concentration as the reference point, set a file name, and click 'Export Data' to create a calibration CSV.",
+          "position": "top",
+          "skipInteraction": false
+        },
+        {
+          "target": "#directory",
+          "title": "Browse to Saving Location",
+          "description": "Navigate to the directory where the calibration CSV was just saved so you can select it in the next step.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select the Calibration CSV",
+          "description": "Find the calibration CSV you exported. Click 'Edit' to verify its contents, then select it.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Calibrate Mode",
+          "description": "Switch to Calibrate mode to set up the regression and generate the standard curve coefficients.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-quantity-section",
+          "title": "Select Kinetics Quantity",
+          "description": "Choose which kinetics quantity (maxRate, Slope, Sat, or Time to Sat) to use for the calibration curve.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-regress-algo",
+          "title": "Choose Regression Algorithm",
+          "description": "Select the fitting algorithm for your standard curve: linear, polynomial, logarithmic, exponential, or Michaelis-Menten.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#export-coef",
+          "title": "Export Coefficients",
+          "description": "Enter a name and click 'Export Coefficients' to save the standard curve as a calibration JSON file.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#meas-mode-section",
+          "title": "Return to Kinetics Mode",
+          "description": "Switch back to Kinetics mode to apply the calibration to your sample measurements.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Select Calibration JSON",
+          "description": "Select the calibration JSON you just exported here. The standard curve is now applied — concentration will be calculated automatically from your kinetics data.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "nav_calibrate_mode",
+      "queries": [
+        "calibrate mode",
+        "go to calibrate",
+        "switch to calibrate",
+        "calibration mode",
+        "how calibrate"
+      ],
+      "conditions": {
+        "mode_not": "calibrate"
+      },
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Measurement Mode",
+          "description": "Find the Measurement Mode selector here. Click to select 'Calibrate'.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "nav_kinetics_mode",
+      "queries": [
+        "kinetics mode",
+        "go to kinetics",
+        "switch to kinetics",
+        "time series mode"
+      ],
+      "conditions": {
+        "mode_not": "kinetics"
+      },
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Measurement Mode",
+          "description": "Find the Measurement Mode selector here. Click to select 'Kinetics'.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "nav_point_mode",
+      "queries": [
+        "point mode",
+        "go to point",
+        "switch to point",
+        "endpoint mode",
+        "single point"
+      ],
+      "conditions": {
+        "mode_not": "point"
+      },
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Measurement Mode",
+          "description": "Find the Measurement Mode selector here. Click to select 'Point'.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "start_device",
+      "queries": [
+        "start measuring",
+        "run device",
+        "start device",
+        "begin measurement",
+        "start colorimeter",
+        "run script",
+        "launch device"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#run-script-btn",
+          "title": "Start Measurement",
+          "description": "Click this button to begin recording data from the colorimeter. Make sure the device is connected first.",
+          "position": "bottom",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "stop_device",
+      "queries": [
+        "stop measuring",
+        "stop device",
+        "terminate",
+        "stop colorimeter",
+        "end measurement",
+        "kill script"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#terminate-script-btn",
+          "title": "Stop Measurement",
+          "description": "Click this button to stop the recording process manually.",
+          "position": "bottom",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "select_file",
+      "queries": [
+        "select file",
+        "choose file",
+        "load file",
+        "open file",
+        "pick csv",
+        "select csv",
+        "browse file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#file-selection",
+          "title": "File Selection",
+          "description": "Select a CSV data file to analyze here. Click to open the file picker.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "navigate_directory",
+      "queries": [
+        "change directory",
+        "browse directory",
+        "navigate folder",
+        "change folder",
+        "select folder",
+        "go to folder",
+        "base directory"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#directory",
+          "title": "Directory Browser",
+          "description": "Browse and navigate to the directory containing your data files.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "load_calibration_json",
+      "queries": [
+        "load calibration",
+        "select calibration json",
+        "calibration file",
+        "load json",
+        "choose calibration",
+        "calibration curve file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Calibration JSON",
+          "description": "Select a calibration standard curve JSON file here to apply concentration conversion.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "set_timeout",
+      "queries": [
+        "timeout",
+        "time out",
+        "set timeout",
+        "where is timeout",
+        "change timeout",
+        "timeout setting"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#timeout-control",
+          "title": "Timeout Control",
+          "description": "Set the duration for each measurement recording here. Set to Infinite to record until manually stopped.",
+          "position": "bottom",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "set_interval",
+      "queries": [
+        "interval",
+        "set interval",
+        "where is interval",
+        "change interval",
+        "measurement interval",
+        "sampling interval"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#interval-control",
+          "title": "Interval Control",
+          "description": "Set the time interval between measurement readings. Set to 0 to fetch data as fast as available.",
+          "position": "bottom",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "export_data",
+      "queries": [
+        "export",
+        "export data",
+        "save data",
+        "download data",
+        "export analysis",
+        "export results"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#export-analysis",
+          "title": "Export Analysis",
+          "description": "Export your analysis results here. Set a reference point, enter a file name, and click Export Data.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "merge_files",
+      "queries": [
+        "merge",
+        "combine files",
+        "merge csv",
+        "merge files",
+        "join files"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#file-selection",
+          "title": "Select Files to Merge",
+          "description": "First select the CSV files you want to merge from the file list.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#merge-file-btn",
+          "title": "Merge CSV Files",
+          "description": "Click here to combine two CSV files into a single multi-source file.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_to_report_subject",
+      "queries": [
+        "export to report",
+        "save to report",
+        "export data to report",
+        "add to report subject",
+        "save analysis to report"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#report-section",
+          "title": "Export Data to Report",
+          "description": "Click 'Export Data to Report' here to save this analysis snapshot into a named report subject for later compilation.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "view_chart",
+      "queries": [
+        "chart",
+        "graph",
+        "plot",
+        "view chart",
+        "see chart",
+        "display chart",
+        "show graph"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#chart-container",
+          "title": "Chart View",
+          "description": "Your measurement data is visualized as a chart here.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "select_regression",
+      "queries": [
+        "regression",
+        "curve fit",
+        "algorithm",
+        "select regression",
+        "choose algorithm",
+        "fitting method"
+      ],
+      "conditions": {
+        "mode": "calibrate"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#select-regress-algo",
+          "title": "Regression Algorithm",
+          "description": "Choose the regression algorithm for your standard curve: linear, polynomial, logarithmic, exponential, or Michaelis-Menten.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_coefficients",
+      "queries": [
+        "export coefficients",
+        "save coefficients",
+        "save curve",
+        "export curve",
+        "save standard curve",
+        "export standard curve"
+      ],
+      "conditions": {
+        "mode": "calibrate"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#export-coef",
+          "title": "Export Coefficients",
+          "description": "Enter a file name and click Export Coefficients to save your standard curve data as a JSON file.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "set_threshold",
+      "queries": [
+        "threshold",
+        "r squared threshold",
+        "r2 threshold",
+        "set threshold",
+        "filter threshold"
+      ],
+      "conditions": {
+        "mode": "calibrate"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#threshold-value",
+          "title": "R² Threshold",
+          "description": "Set the minimum accepted R² value here. Fits below this threshold will not be exported.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "window_size",
+      "queries": [
+        "window size",
+        "sliding window",
+        "set window",
+        "change window size"
+      ],
+      "conditions": {
+        "mode": "kinetics"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#window-size-section",
+          "title": "Window Size",
+          "description": "Configure the sliding window size for max rate regression. Minimum is 3 data points.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "select_time_point",
+      "queries": [
+        "time point",
+        "select time",
+        "choose time point",
+        "time selection"
+      ],
+      "conditions": {
+        "mode": "calibrate"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#select-time-point",
+          "title": "Select Time Point",
+          "description": "Choose which time point to use for point-mode calibration.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "view_log",
+      "queries": [
+        "log",
+        "view log",
+        "see log",
+        "hid log",
+        "device log",
+        "show log",
+        "log data"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#log-display",
+          "title": "Measurement Log",
+          "description": "Real-time log of the measurement recording process. Useful for troubleshooting device connection issues.",
+          "position": "bottom",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "calibrate_kinetics_workflow",
+      "queries": [
+        "calibrate kinetics",
+        "kinetics standard curve",
+        "build kinetics calibration",
+        "standard curve kinetics"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Calibrate Mode",
+          "description": "Select 'Calibrate' from the Measurement Mode selector to enter calibration mode.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#cal-mode-select",
+          "title": "Select Kinetics Calibration",
+          "description": "In the calibration type selector, choose 'Kinetics'.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Data File",
+          "description": "Select the exported kinetics CSV file containing concentration and kinetic parameters.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-quantity-section",
+          "title": "Select Quantity",
+          "description": "Choose which kinetic quantity to use for calibration: maxRate, Slope, Sat, or Time to Sat.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-regress-algo",
+          "title": "Choose Regression",
+          "description": "Select a regression algorithm to fit your standard curve.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#export-coef",
+          "title": "Export Coefficients",
+          "description": "Enter a name and export the standard curve coefficients as a JSON file.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "calibrate_point_workflow",
+      "queries": [
+        "calibrate point",
+        "point standard curve",
+        "build point calibration",
+        "standard curve point"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Calibrate Mode",
+          "description": "Select 'Calibrate' from the Measurement Mode selector.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#cal-mode-select",
+          "title": "Select Point Calibration",
+          "description": "In the calibration type selector, choose 'Point'.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Data File",
+          "description": "Select the exported point CSV file containing concentration and absorbance values.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-time-point",
+          "title": "Select Time Point",
+          "description": "Choose the time point to use for your standard curve.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-regress-algo",
+          "title": "Choose Regression",
+          "description": "Select a regression algorithm to fit your standard curve.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#export-coef",
+          "title": "Export Coefficients",
+          "description": "Enter a name and export the standard curve coefficients as a JSON file.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "concentration_calc_kinetics",
+      "queries": [
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
+      ],
+      "conditions": {
+        "mode": "kinetics"
+      },
+      "steps": [
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Select Calibration File",
+          "description": "Select a standard curve JSON file here. This applies the regression coefficients used to convert your kinetics measurements into analyte concentration.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Data File",
+          "description": "Choose the kinetics CSV data file you want to analyse.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#json-display",
+          "title": "Calibration Curve Details",
+          "description": "The loaded standard curve coefficients are shown here (top right). This is the model used to convert absorbance / kinetics quantities into concentration.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#con-value-read-source-0",
+          "title": "Concentration Value",
+          "description": "The analyte concentration calculated from your measurement data and the selected standard curve is displayed here.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "concentration_calc_point",
+      "queries": [
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
+      ],
+      "conditions": {
+        "mode": "point"
+      },
+      "steps": [
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Select Calibration File",
+          "description": "Select a standard curve JSON file here. This applies the regression coefficients used to convert your point measurement absorbance into analyte concentration.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Data File",
+          "description": "Choose the point CSV data file you want to analyse.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#json-display",
+          "title": "Calibration Curve Details",
+          "description": "The loaded standard curve coefficients are shown here (top right). This is the model used to convert absorbance into concentration.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#con-value-read-source-0",
+          "title": "Concentration Value",
+          "description": "The analyte concentration calculated from your point measurement and the selected standard curve is displayed here.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "concentration_calc_wrong_mode",
+      "queries": [
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
+      ],
+      "conditions": {
+        "mode_in": [
+          "calibrate",
+          "report"
+        ]
+      },
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Kinetics or Point Mode",
+          "description": "Concentration calculation from a sample requires Kinetics or Point measurement mode. Switch to one of those modes here first.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Select Calibration File",
+          "description": "After switching mode, select a standard curve JSON file here to apply the calibration coefficients.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Data File",
+          "description": "Choose the CSV data file you want to analyse.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#json-display",
+          "title": "Calibration Curve Details",
+          "description": "Once a calibration file is loaded, its standard curve coefficients are shown here at the top right.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#con-value-read-source-0",
+          "title": "Concentration Value",
+          "description": "The calculated analyte concentration derived from your data and the standard curve is displayed here.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "create_calibration_curve_workflow",
+      "queries": [
+        "gather regression metrics",
+        "create calibration curve",
+        "create standard curve",
+        "build standard curve",
+        "make calibration curve",
+        "calibration from measurements",
+        "how to create calibrated curve",
+        "calibration workflow",
+        "regression for calibration",
+        "export for calibration",
+        "how to calibrate from data",
+        "build calibration from kinetics",
+        "setup standard curve"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Confirm Kinetics Mode",
+          "description": "Make sure Kinetics mode is selected here before starting.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Measurement File",
+          "description": "Select a kinetics measurement CSV file containing the sample data you want to use for calibration.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-source-to-export",
+          "title": "Select Source",
+          "description": "Choose the measurement source (channel) you want to export for the calibration curve.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#con-value-read-source-0",
+          "title": "Enter Concentration & Export",
+          "description": "Enter the known analyte concentration as the reference point, set a file name, and click 'Export Data' to save a calibration CSV.",
+          "position": "top",
+          "skipInteraction": false
+        },
+        {
+          "target": "#directory",
+          "title": "Browse to Saving Location",
+          "description": "Navigate to the directory where the calibration CSV was just saved so you can find and select it.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select the Calibration CSV",
+          "description": "Find the calibration CSV you just exported. Click 'Edit' on it to verify its contents, then select it.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Calibrate Mode",
+          "description": "Switch to Calibrate mode here to set up the regression and generate the standard curve coefficients.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-quantity-section",
+          "title": "Select Kinetics Quantity",
+          "description": "Choose which kinetics quantity to use for the calibration curve: maxRate, Slope, Sat, or Time to Sat.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-regress-algo",
+          "title": "Choose Regression Algorithm",
+          "description": "Select the fitting algorithm for your standard curve: linear, polynomial, logarithmic, exponential, or Michaelis-Menten.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#export-coef",
+          "title": "Export Coefficients",
+          "description": "Enter a file name and click 'Export Coefficients' to save the standard curve as a calibration JSON file.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#meas-mode-section",
+          "title": "Return to Kinetics Mode",
+          "description": "Switch back to Kinetics mode to apply the calibration to your sample measurements.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Select Calibration JSON",
+          "description": "Select the calibration JSON you just exported here. The standard curve will now be applied to calculate analyte concentration from your kinetics data.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "concentration_calc_generic",
+      "queries": [
+        "calculate concentration",
+        "get concentration",
+        "derive concentration",
+        "measure concentration",
+        "find concentration",
+        "how to get concentration",
+        "concentration from sample",
+        "apply standard curve",
+        "calibration calculation",
+        "what is the concentration",
+        "show concentration"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Select Kinetics or Point Mode",
+          "description": "Concentration calculation requires Kinetics or Point mode. Make sure the correct mode is selected here.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#cal-json-sel-section",
+          "title": "Select Calibration File",
+          "description": "Select a standard curve JSON file here to apply the regression coefficients for concentration conversion.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select Data File",
+          "description": "Choose the CSV data file you want to analyse.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#json-display",
+          "title": "Calibration Curve Details",
+          "description": "The loaded standard curve coefficients are displayed here (top right), showing the model used for concentration conversion.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#con-value-read-source-0",
+          "title": "Concentration Value",
+          "description": "The analyte concentration calculated from your data and the standard curve is displayed here.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "measurement_guide",
+      "queries": [
+        "how to measure",
+        "how to read",
+        "reading colorimeter",
+        "start measurement",
+        "collect data",
+        "record data",
+        "how to use the device",
+        "kinetics measurement",
+        "run a measurement",
+        "take a reading",
+        "capture data"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Kinetics Mode",
+          "description": "Select Kinetics mode to begin a time-series colorimeter measurement.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#log-hid-data",
+          "title": "Reading Colorimeter Data Console",
+          "description": "This console controls the colorimeter device. Make sure your PyBadge is connected via USB before starting.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#timeout-control",
+          "title": "Set Measurement Timeout",
+          "description": "Configure how long the device collects data. Enable 'Infinite' to run until you manually stop it.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#interval-control",
+          "title": "Set Sampling Interval",
+          "description": "Set how frequently the colorimeter takes a reading during the measurement.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#run-script-btn",
+          "title": "Start Reading",
+          "description": "Click 'Start reading' to begin collecting colorimeter data from the device. Readings will appear in the log below.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#log-display",
+          "title": "Live Data Log",
+          "description": "Incoming sensor readings appear here in real time. Each row is a timestamped measurement from the device.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#file-selection",
+          "title": "Load Your Data",
+          "description": "After stopping the measurement, your data file is automatically saved. Select it here to view charts and run analysis.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "report_quick",
+      "queries": [],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#report-section",
+          "title": "Generate Quick Report",
+          "description": "Click 'Generate quick Report' here to instantly snapshot the current chart and analysis as a standalone HTML report.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "report_quick_from_report",
+      "queries": [],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to a Data Mode",
+          "description": "Quick Report requires active measurement data. Switch to Kinetics, Point, or Calibrate mode first.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select a Data File",
+          "description": "Select a CSV data file to load your analysis before generating the report.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#report-section",
+          "title": "Generate Quick Report",
+          "description": "Now click 'Generate quick Report' to snapshot the current chart and analysis as a standalone HTML report.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "report_full_from_data",
+      "queries": [],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#report-section",
+          "title": "Export Data to Report",
+          "description": "Click 'Export Data to Report' to save this analysis snapshot into a named report subject for later compilation.",
+          "position": "top",
+          "skipInteraction": false
+        },
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Report Mode",
+          "description": "After exporting, switch to Report mode here to open the full report management interface.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#report-console-section",
+          "title": "Report Console",
+          "description": "Manage your saved analysis snapshots here. Configure layout options and set a report title.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#report-items-container",
+          "title": "Report Items",
+          "description": "All saved snapshots are listed here. Remove any you don't want before generating the final report.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "button[onclick=\"finalizeReport()\"]",
+          "title": "Generate PDF Report",
+          "description": "Compile all items into a printable HTML report. Open in your browser, then use Print → Save as PDF.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "report_full_in_report",
+      "queries": [],
+      "conditions": {
+        "mode": "report"
+      },
+      "steps": [
+        {
+          "target": "#report-console-section",
+          "title": "Report Console",
+          "description": "Manage your saved analysis snapshots here. Configure layout and set a report title.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#report-items-container",
+          "title": "Report Items",
+          "description": "All saved snapshots are listed here. Remove any before generating.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "button[onclick=\"finalizeReportExcel()\"]",
+          "title": "Export as Excel",
+          "description": "Download all items as a formatted Excel workbook with embedded charts.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "button[onclick=\"finalizeReport()\"]",
+          "title": "Generate PDF Report",
+          "description": "Or compile all items into a printable HTML report.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "normalize_data",
+      "queries": [
+        "normalize",
+        "remove background",
+        "subtract blank",
+        "baseline",
+        "background absorbance",
+        "net absorbance"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#normalize-mode",
+          "title": "Normalize Data",
+          "description": "Toggle this to subtract the baseline absorbance (blank sample) from all readings, giving net absorbance values relative to background.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "split_sources",
+      "queries": [
+        "split source",
+        "split by source",
+        "separate chart",
+        "separate channel",
+        "split channel",
+        "multi source",
+        "multiple source"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#split-source",
+          "title": "Split by Sources",
+          "description": "Toggle this to display each measurement source (channel) as its own separate chart instead of overlaying them on a single graph.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "set_analysis_range",
+      "queries": [
+        "set range",
+        "analysis range",
+        "time range",
+        "time window",
+        "start time",
+        "end time",
+        "filter range",
+        "trim data",
+        "cut data",
+        "narrow down"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#range-display",
+          "title": "Analysis Time Range",
+          "description": "This panel controls which time window of your data is used for analysis. Adjust start and end to focus on a specific portion.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#range-value-start",
+          "title": "Start Time",
+          "description": "Enter the start of your analysis window. Data before this point will be excluded.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#range-value-end",
+          "title": "End Time",
+          "description": "Enter the end of your analysis window. Data after this point will be excluded.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#time-unit",
+          "title": "Time Unit",
+          "description": "Select the unit (seconds, minutes, or hours) that matches your range values.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_excel_in_report",
+      "queries": [],
+      "conditions": {
+        "mode": "report"
+      },
+      "steps": [
+        {
+          "target": "button[onclick=\"finalizeReportExcel()\"]",
+          "title": "Export as Excel",
+          "description": "Click here to download all your report items as a formatted Excel workbook with one tab per CSV and embedded charts.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_excel_nav",
+      "queries": [
+        "export excel",
+        "download excel",
+        "excel workbook",
+        "excel export",
+        "export to excel",
+        "save as excel"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#meas-mode-section",
+          "title": "Switch to Report Mode",
+          "description": "Excel export is available in Report mode. Switch here first, then add your analysis snapshots using 'Export Data to Report' from other modes.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "button[onclick=\"finalizeReportExcel()\"]",
+          "title": "Export as Excel",
+          "description": "Click here to download all report items as a formatted Excel workbook with embedded charts.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "live_view_active",
+      "queries": [],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#go-to-btn",
+          "title": "View Live Data Folder",
+          "description": "Click here to open the folder where your measurement data is being saved in real time.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "live_view_inactive",
+      "queries": [
+        "live data",
+        "view live",
+        "go to data",
+        "browse data folder",
+        "open data folder",
+        "where is my data",
+        "live folder"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#run-script-btn",
+          "title": "Start a Measurement First",
+          "description": "The 'View live data' button is only active during an ongoing measurement. Start reading from your device here first.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#go-to-btn",
+          "title": "View Live Data Folder",
+          "description": "Once a measurement is running, this button becomes active. Click it to open the folder where data is being saved in real time.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "shutdown_server",
+      "queries": [
+        "shut down",
+        "shutdown server",
+        "close the server",
+        "stop the server",
+        "exit application",
+        "close application",
+        "quit the app",
+        "turn off server"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#shutdown-btn",
+          "title": "Shutdown Server",
+          "description": "Click this button to stop the Flask server and close the application. Unsaved data will be lost, so make sure you have exported anything you need first.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "open_user_guide",
+      "queries": [
+        "user guide",
+        "open guide",
+        "help button",
+        "where is the help",
+        "how to access help",
+        "show guide",
+        "open tutorial"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#user-guide-btn",
+          "title": "User Guide",
+          "description": "Click here to launch the interactive step-by-step user guide. It walks you through the main features of the app with on-screen highlights.",
+          "position": "bottom",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "base_name_input",
+      "queries": [
+        "base name",
+        "file name for measurement",
+        "what is base name",
+        "name my file",
+        "measurement file name",
+        "what to enter for name",
+        "naming the output file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#base-name",
+          "title": "Base Name — Output File Name",
+          "description": "Enter the name for the CSV file that will be created when you start a measurement. For example, entering 'sample1' will save your data as 'sample1.csv' in the saving directory.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "saving_directory",
+      "queries": [
+        "saving directory",
+        "save directory",
+        "where are files saved",
+        "where does the file go",
+        "output folder",
+        "change save location",
+        "browse saving location",
+        "save to same directory",
+        "same directory as data"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#save-same-dir",
+          "title": "Save to Same Directory",
+          "description": "When checked, measurement files are saved in the same folder as your currently browsed directory. Uncheck to specify a custom saving path.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#base-dir-label",
+          "title": "Saving Directory",
+          "description": "This shows the folder where new CSV files will be saved. Use 'Browse Saving Location' nearby to change it when the checkbox above is unchecked.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "notify_done",
+      "queries": [
+        "notify when done",
+        "notification when finished",
+        "alert when complete",
+        "notify me",
+        "get notified",
+        "how do I get an alert",
+        "sound when done"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#notify-me",
+          "title": "Notify Me When Done",
+          "description": "When checked, the app plays a sound and shows a popup notification as soon as the measurement finishes (after the timeout). Useful if you step away while the device is running.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "clear_logs",
+      "queries": [
+        "clear logs",
+        "clear the log",
+        "delete log",
+        "reset log display",
+        "empty log",
+        "how to clear console output"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#clear-logs-btn",
+          "title": "Clear Logs",
+          "description": "Click here to erase all text in the measurement log panel. This only clears the display — it does not delete any saved CSV files.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "disable_popups",
+      "queries": [
+        "disable popups",
+        "turn off popups",
+        "no popup",
+        "disable notifications",
+        "hide alerts",
+        "suppress popups",
+        "annoying popups"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#no-swal-checkbox",
+          "title": "Disable Popups",
+          "description": "Check this box to suppress confirmation and alert popups throughout the app. Useful once you are familiar with the workflow and no longer need the prompts.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "filter_sources",
+      "queries": [
+        "filter by sources",
+        "filter sources",
+        "number of sources",
+        "select number of sources",
+        "how many sources",
+        "show only one source",
+        "what is a source",
+        "filter measurements by source"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#filter-source",
+          "title": "Filter by Number of Sources",
+          "description": "A 'source' is one measurement channel inside your CSV file — each distinct sample or sensor reading. Check this box to show only files that contain a specific number of sources.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#num-sources",
+          "title": "Select Number of Sources",
+          "description": "Choose how many sources (measurement channels) a file must have to appear in the list. Helpful when you want to focus on single-source files or multi-source merged datasets.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "delete_file",
+      "queries": [
+        "delete file",
+        "remove file",
+        "how to delete",
+        "delete csv",
+        "delete calibration file",
+        "get rid of a file",
+        "remove data file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#file-selection",
+          "title": "Delete a File",
+          "description": "Find the file you want to remove in the file list. Each row has a red ❌ Delete button. Click it to permanently delete the file from disk. This action cannot be undone.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "copy_file",
+      "queries": [
+        "copy file",
+        "duplicate file",
+        "make a copy",
+        "how to copy",
+        "copy csv",
+        "copy data file"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#copy-file-btn",
+          "title": "Copy File",
+          "description": "Click here to create a duplicate of the currently selected CSV file in the same directory. The copy is named with a '_copy' suffix. Useful for experimenting without modifying the original.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "deselect_file",
+      "queries": [
+        "deselect file",
+        "unselect file",
+        "unload file",
+        "clear selection",
+        "how to deselect",
+        "remove selection"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#deselect-btn",
+          "title": "Deselect File",
+          "description": "Click here to unload the currently selected data file. The chart and analysis panels will clear. The file is not deleted — you can re-select it from the file list at any time.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "select_quantity",
+      "queries": [
+        "select quantity",
+        "which quantity",
+        "what is maxRate",
+        "what is slope quantity",
+        "what is Sat",
+        "what is Time To Sat",
+        "time to saturation",
+        "saturation value",
+        "max rate quantity",
+        "which quantity to use for concentration",
+        "quantity for calibration"
+      ],
+      "conditions": {
+        "mode": "kinetics"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#regressed-quantity",
+          "title": "Select Kinetics Quantity",
+          "description": "Choose which derived quantity to map against concentration in your standard curve:\n• maxRate — fastest absorbance change rate (ΔAbs/s) found in the linear phase; most common for enzyme kinetics.\n• Slope — overall linear slope across the full dataset.\n• Sat — saturation (plateau) absorbance value.\n• Time To Sat — time (minutes) until the signal plateaus.",
+          "position": "left",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "expand_collapse_analyses",
+      "queries": [
+        "expand analyses",
+        "collapse analyses",
+        "show all charts",
+        "hide all charts",
+        "expand all",
+        "collapse all",
+        "toggle analyses"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#open-all-analysis",
+          "title": "Expand / Collapse All Analyses",
+          "description": "Toggle this checkbox to expand or collapse all individual analysis sections at once. Useful for quickly scanning all sources in a multi-source file without scrolling through each one.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "export_saving_directory",
+      "queries": [
+        "export saving directory",
+        "where are exported files saved",
+        "change export location",
+        "export to same directory",
+        "same directory export",
+        "export output folder",
+        "where is the exported file"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#same-dir-as-data",
+          "title": "Export to Same Directory",
+          "description": "When checked, exported files (calibration data or coefficient JSON) are saved in the same folder as the currently loaded data file. Uncheck to pick a different destination.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#save-dir-label",
+          "title": "Export Saving Directory",
+          "description": "This field shows where exported files will go. It updates automatically when you browse a new location or when the 'same directory' checkbox above is toggled.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "rsquared_threshold",
+      "queries": [
+        "r squared threshold",
+        "rsquared threshold",
+        "threshold value",
+        "what is r squared",
+        "what is R2",
+        "what is a good r squared",
+        "set threshold",
+        "r squared filter",
+        "goodness of fit threshold"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#threshold-value",
+          "title": "R² Threshold",
+          "description": "R² (R-squared) measures how well the regression curve fits your standard curve data — 1.0 is a perfect fit, 0.0 means no fit. Set a minimum R² here; only regression results at or above this value will be used for concentration calculation. A value of 0.99 is recommended for reliable calibration.",
+          "position": "top",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "report_layout_options",
+      "queries": [
+        "report layout",
+        "include watermark",
+        "include logo",
+        "split sheets",
+        "report title",
+        "customize report",
+        "watermark in report",
+        "logo in report",
+        "report configuration",
+        "one tab per csv"
+      ],
+      "conditions": {
+        "mode": "report"
+      },
+      "steps": [
+        {
+          "target": "#console-watermark",
+          "title": "Include Watermark",
+          "description": "Check to add a CBBiotec watermark to the generated HTML report. Uncheck for a clean report without branding.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-logo",
+          "title": "Include CBB Logo",
+          "description": "Check to include the CBBiotec logo in the report header.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-split-sheets",
+          "title": "Split Sheets (Excel)",
+          "description": "When exporting to Excel, check this to place each CSV file's data on a separate tab/sheet. Uncheck to combine all data into one sheet.",
+          "position": "right",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "report_subject_management",
+      "queries": [
+        "report subject",
+        "manage report subjects",
+        "what is a report subject",
+        "report items",
+        "view report items",
+        "clear report subject",
+        "delete report subject",
+        "report subject name",
+        "organize reports"
+      ],
+      "conditions": {
+        "mode": "report"
+      },
+      "steps": [
+        {
+          "target": "#report-subject-name",
+          "title": "Report Subject Name",
+          "description": "A 'report subject' is a named folder that groups related analysis snapshots together. Enter a subject name here (e.g., 'Patient A', 'Batch 1') before exporting data to the report.",
+          "position": "top",
+          "skipInteraction": false
+        },
+        {
+          "target": "#report-items-container",
+          "title": "Items in This Subject",
+          "description": "All snapshots exported to the current subject are listed here. You can review and remove individual items before generating the final report.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "button[onclick=\"clearReportSubject()\"]",
+          "title": "Clear Selected Subject",
+          "description": "Click here to remove all items from the currently selected subject folder. The subject folder itself is deleted from disk. This cannot be undone.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    }
+  ]
+}
