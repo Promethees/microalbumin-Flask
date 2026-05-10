@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import curve_fit
 
 def compute_r_squared(actual, predicted):
     if len(actual) != len(predicted) or len(actual) < 1:
@@ -75,7 +76,6 @@ def calculate_coef_and_rsquared(x, y, regress_algo="linear"):
     coefficients = None
     
     try:
-        from scipy.optimize import curve_fit
         if regress_algo == "linear":
             coeffs, _ = curve_fit(linear_func, x, y)
             a, b = coeffs
