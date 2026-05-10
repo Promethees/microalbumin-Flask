@@ -1,5 +1,3 @@
-const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
 async function selectFile(fileName, button, tableSelector = "#file-table") {
     if (typeof window.showSpinner === 'function') window.showSpinner();
     try {
