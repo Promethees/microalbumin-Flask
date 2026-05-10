@@ -2232,6 +2232,12 @@ body.dark .download-tagline { color: #9ca3af; }
     box-shadow: 0 4px 12px rgba(0, 120, 212, 0.45);
 }
 
+.linux-btn { background: #E95420; color: #ffffff !important; }
+.linux-btn:hover {
+    background: #c94115;
+    box-shadow: 0 4px 12px rgba(233, 84, 32, 0.45);
+}
+
 .download-btn-icon { font-size: 1.3rem; flex-shrink: 0; }
 
 .download-btn-text {
