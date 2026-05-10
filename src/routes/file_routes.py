@@ -11,7 +11,7 @@ from get_next_filename import get_next_filename
 from export_cal_json import replace_empty
 from file_merge import merge_csv_contents
 from extensions import socketio
-from validators import validate_csv_content, validate_json_content
+from validators import validate_csv_content, validate_json_content, validate_json
 
 file_bp = Blueprint('file', __name__)
 
