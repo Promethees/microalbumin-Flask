@@ -252,7 +252,7 @@
                         {% endif %}
                     </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
+                <button id="deselect-json-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
                     class="utility-btn">Deselect</button>
                 <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
                     class="utility-btn">Copy</button>
@@ -289,7 +289,7 @@
                         {% endif %}
                     </table>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;"
+                <button id="deselect-file-btn" onclick="deselectFile()" style="cursor: pointer;"
                     class="utility-btn">Deselect</button>
                 <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
                     class="utility-btn">Copy</button>
@@ -336,7 +336,7 @@
                 <div class="section" id="point-json-exp-section">
                     Reference point is at <span type="number" id="cal-point"></span>
                     <span id="cal-time-unit" style="font-weight: bold;">second</span>
-                    </br>
+                    <br />
                     <span id="add-json-section"></span>
                 </div>
                 <div class="section" id="window-size-section">
@@ -437,7 +437,7 @@
                 <div id="export-coef">
                     <h3>Export coefficients for standard curve</h3>
                     <div>
-                        <label for="save-file">File Name: </label>
+                        <label for="save-json-file">File Name: </label>
                         <input type="text" id="save-json-file"
                             placeholder="Enter json file name to save coefficients to" style="width: 50%">
                         <span id="save-json-file-error" class="error"></span>
@@ -479,22 +479,14 @@
             if (!ref || !target) return;
 
             const rect = ref.getBoundingClientRect();
-            const offsetTop = rect.top; // Get absolute top position relative to page
-            console.log('Offset top is ', offsetTop);
+            const offsetTop = rect.top;
             // Update CSS variable dynamically
             target.style.setProperty('--dynamic-top', `${offsetTop}px`);
         }
         alignTopWithReference();
-        const rootPath = {{ directory | tojson | safe}};
         const csvPath = {{ csv_path | tojson | safe }}
         const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
         const temp_quantity_input = {{ quantity_input | tojson | safe}};
-
-        function getNativePath(...paths) {
-            const isWindows = navigator.userAgent.includes('Windows');
-            const joined = paths.map(p => p.replace(/\\/g, '/')).join('/');
-            return isWindows ? joined.replace(/\//g, '\\') : joined;
-        }
         $.get('/get_csv', { request: true }, function (response) {
             updateFileTable(response.files, true);
         }).fail(function (jqXHR, textStatus, errorThrown) {

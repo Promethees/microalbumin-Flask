@@ -923,7 +923,7 @@ function exportData() {
     const saveFile = document.getElementById("save-file").value.trim() || "results";
 
     // Bind button to export path
-    bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
+    bindButtonToString("#go-to-exp-btn");
 
     // Export data based on measurement mode
     const analysisData = generateAnalysisData();
@@ -931,7 +931,7 @@ function exportData() {
         return;
     }
 
-    sendExportDataToSources(AppState.processedExpPath, saveFile, analysisData);
+    sendExportDataToSources(saveFile, analysisData);
 }
 
 // Validate concentration values based on source mode
@@ -1023,9 +1023,8 @@ function generatePointData() {
 
 // Send export data to sources
 // Send export data to sources
-function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
+function sendExportDataToSources(saveFile, analysisData) {
     const commonData = {
-        save_dir: processedExpPath,
         save_file: saveFile,
         measMode: AppState.currentMeasurementMode,
         meas: analysisData[0]?.measurement || "NONE",  // Assume same for all; fallback to "NONE"

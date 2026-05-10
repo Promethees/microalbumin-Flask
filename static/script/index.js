@@ -30,8 +30,6 @@ const AppState = {
     globalAnalysis: null,
     prevDropdownEntries: null,
     exp_json_content: null,
-    processedExpPath: getNativePath(csvPath),
-    jsonPath: getNativePath(rootPath, 'json'),
     chartInstances: {},
     responseData: null,
     metaData: null,
@@ -129,7 +127,7 @@ input.addEventListener("keydown", function (e) {
 
 const clickHandlers = new Map();
 
-function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr = AppState.processedExpPath, changeToCalibrate = true) {
+function bindButtonToString(buttonId = "#go-to-exp-btn", changeToCalibrate = true) {
     const selector = buttonId.startsWith('#') ? buttonId.slice(1) : buttonId;
     const el = document.getElementById(selector);
     if (!el) return;
@@ -139,7 +137,6 @@ function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr = AppState.proc
     }
 
     const handler = function () {
-        console.log(`${buttonId} clicked, using path:`, pathStr);
         updateDirectory(true, changeToCalibrate);
     };
 
@@ -221,7 +218,7 @@ window.addEventListener('load', function () {
     document.getElementById('data-display-section')
         .classList.toggle('hidden', !AppState.currentFile);
 
-    bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
+    bindButtonToString("#go-to-exp-btn");
 
     // Initialize dynamic widths for range inputs
     ['range-value-start', 'range-value-end'].forEach(id => {
@@ -279,7 +276,6 @@ function kineticsModeBehaviour() {
         'json-display',
         'export-analysis',
         'range-display',
-        'log-hid-data',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -309,7 +305,6 @@ function reportModeBehaviour() {
         'json-display',
         'export-analysis',
         'range-display',
-        'log-hid-data',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -352,7 +347,6 @@ function pointModeBehaviour() {
         'export-analysis',
         'set-exp-point-section',
         'range-display',
-        'log-hid-data',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -378,7 +372,6 @@ function calModeBehaviour() {
         'range-display',
         'full-display-section',
         'split-source-section',
-        'log-hid-data',
         'window-size-section',
         'source-options',
         'normalize-mode-section',
