@@ -739,6 +739,37 @@ class UserGuide {
     /**
      * Toggle the guide on/off
      */
+    startWorkflow(workflowId) {
+        if (!this.initialized) {
+            this.init();
+        }
+        const workflowMap = {
+            'create_calibration_curve_workflow': () => this.getModeSpecificSteps('calibrate'),
+        };
+        const stepsFn = workflowMap[workflowId];
+        if (stepsFn) {
+            this.steps = stepsFn();
+        }
+        if (!this.steps || this.steps.length === 0) {
+            this.defineSteps();
+        }
+        this.currentStep = 0;
+        this.isActive = true;
+        this.overlay.classList.add('active');
+        this.showStep(this.currentStep);
+    }
+
+    startCustomSteps(steps) {
+        if (!this.initialized) {
+            this.init();
+        }
+        this.steps = steps;
+        this.currentStep = 0;
+        this.isActive = true;
+        this.overlay.classList.add('active');
+        this.showStep(this.currentStep);
+    }
+
     toggle() {
         if (this.isActive) {
             this.stop();
