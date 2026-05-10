@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import threading
-import requests
+import urllib.error
+import urllib.request
 from file_path import get_directory
 from file import get_file_list
 import state
@@ -844,27 +846,30 @@ def start_model_pull(ollama_url: str, model: str) -> None:
 
     def _pull():
         try:
-            resp = requests.post(
+            body = json.dumps({"name": model, "stream": True}).encode()
+            req = urllib.request.Request(
                 f"{ollama_url}/api/pull",
-                json={"name": model, "stream": True},
-                stream=True,
-                timeout=600,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
-            for line in resp.iter_lines():
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line.decode("utf-8"))
-                except Exception:
-                    continue
-                with _pull_lock:
-                    _pull_state["status"] = data.get("status", _pull_state["status"])
-                    if "total" in data:
-                        _pull_state["total"] = data["total"]
-                    if "completed" in data:
-                        _pull_state["completed"] = data["completed"]
-                    if data.get("status") == "success":
-                        _pull_state["done"] = True
+            with urllib.request.urlopen(req, timeout=600) as resp:
+                for raw in resp:
+                    line = raw.rstrip(b"\n")
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line.decode("utf-8"))
+                    except Exception:
+                        continue
+                    with _pull_lock:
+                        _pull_state["status"] = data.get("status", _pull_state["status"])
+                        if "total" in data:
+                            _pull_state["total"] = data["total"]
+                        if "completed" in data:
+                            _pull_state["completed"] = data["completed"]
+                        if data.get("status") == "success":
+                            _pull_state["done"] = True
         except Exception as e:
             with _pull_lock:
                 _pull_state["error"] = str(e)
@@ -977,20 +982,21 @@ def chat(messages: list, language: str, ollama_url: str, model: str) -> dict:
 
     for _ in range(6):  # guard against infinite tool loops
         try:
-            resp = requests.post(
+            body = json.dumps({"model": model, "messages": full_messages, "tools": TOOLS, "stream": False}).encode()
+            req = urllib.request.Request(
                 f"{ollama_url}/api/chat",
-                json={"model": model, "messages": full_messages, "tools": TOOLS, "stream": False},
-                timeout=120,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
-            resp.raise_for_status()
-        except requests.exceptions.ConnectionError:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode())
+        except urllib.error.URLError:
             return {"error": "ollama_offline"}
-        except requests.exceptions.Timeout:
+        except socket.timeout:
             return {"error": "timeout"}
         except Exception as e:
             return {"error": str(e)}
-
-        result = resp.json()
         assistant_msg = result.get("message", {})
         tool_calls = assistant_msg.get("tool_calls") or []
 
@@ -1411,30 +1417,31 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
 
     for _ in range(6):
         try:
-            resp = requests.post(
+            body = json.dumps({
+                "model": model,
+                "messages": full_messages,
+                "tools": TOOLS,
+                "stream": False,
+                "keep_alive": -1,
+                "options": {"num_predict": 400, "num_ctx": 2048, "temperature": 0.1},
+            }).encode()
+            req = urllib.request.Request(
                 f"{ollama_url}/api/chat",
-                json={
-                    "model": model,
-                    "messages": full_messages,
-                    "tools": TOOLS,
-                    "stream": False,
-                    "keep_alive": -1,
-                    "options": {"num_predict": 400, "num_ctx": 2048, "temperature": 0.1},
-                },
-                timeout=120,
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
             )
-            resp.raise_for_status()
-        except requests.exceptions.ConnectionError:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = json.loads(resp.read().decode())
+        except urllib.error.URLError:
             yield {"type": "error", "error": "ollama_offline"}
             return
-        except requests.exceptions.Timeout:
+        except socket.timeout:
             yield {"type": "error", "error": "timeout"}
             return
         except Exception as e:
             yield {"type": "error", "error": str(e)}
             return
-
-        result = resp.json()
         assistant_msg = result.get("message", {})
         tool_calls = assistant_msg.get("tool_calls") or []
 
@@ -1480,11 +1487,14 @@ def get_guide_examples(lang: str = "en") -> list:
 def prewarm_model(ollama_url: str, model: str) -> None:
     """Fire-and-forget POST to keep the model loaded in Ollama memory."""
     try:
-        requests.post(
+        body = json.dumps({"model": model, "prompt": "", "keep_alive": -1}).encode()
+        req = urllib.request.Request(
             f"{ollama_url}/api/generate",
-            json={"model": model, "prompt": "", "keep_alive": -1},
-            timeout=30,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
+        urllib.request.urlopen(req, timeout=30)
     except Exception:
         pass
 
@@ -1492,9 +1502,9 @@ def prewarm_model(ollama_url: str, model: str) -> None:
 def check_ollama(ollama_url: str) -> dict:
     """Return {'running': bool, 'models': [...]} for the given Ollama URL."""
     try:
-        resp = requests.get(f"{ollama_url}/api/tags", timeout=3)
-        resp.raise_for_status()
-        models = [m["name"] for m in resp.json().get("models", [])]
+        with urllib.request.urlopen(f"{ollama_url}/api/tags", timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+        models = [m["name"] for m in data.get("models", [])]
         return {"running": True, "models": models}
     except Exception:
         return {"running": False, "models": []}
