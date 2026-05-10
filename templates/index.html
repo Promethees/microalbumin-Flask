@@ -176,26 +176,33 @@
                     </div>
                 </div>
             </div>
-        <div class="section" style="position: static;" id="download-section">
-            <h3>⬇️ Get Offline Version</h3>
-            <p class="download-tagline">Run Easy OKAPI locally, connected directly to your colorimeter device.</p>
-            <div class="download-btn-group">
-                <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
-                    <span class="download-btn-icon">🍎</span>
-                    <span class="download-btn-text">
-                        <strong>macOS</strong>
-                        <small>.dmg installer</small>
-                    </span>
-                </a>
-                <a href="/download/win" class="download-btn win-btn" id="download-win-btn">
-                    <span class="download-btn-icon">🪟</span>
-                    <span class="download-btn-text">
-                        <strong>Windows</strong>
-                        <small>.exe installer</small>
-                    </span>
-                </a>
+            <div class="section" style="position: static;" id="download-section">
+                <h3>⬇️ Get Offline Version</h3>
+                <p class="download-tagline">Run Easy OKAPI locally, connected directly to your colorimeter device.</p>
+                <div class="download-btn-group">
+                    <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
+                        <span class="download-btn-icon">🍎</span>
+                        <span class="download-btn-text">
+                            <strong>macOS</strong>
+                            <small>.dmg installer</small>
+                        </span>
+                    </a>
+                    <a href="/download/win" class="download-btn win-btn" id="download-win-btn">
+                        <span class="download-btn-icon">🪟</span>
+                        <span class="download-btn-text">
+                            <strong>Windows</strong>
+                            <small>.exe installer</small>
+                        </span>
+                    </a>
+                    <a href="/download/linux" class="download-btn linux-btn" id="download-linux-btn">
+                        <span class="download-btn-icon">🪟</span>
+                        <span class="download-btn-text">
+                            <strong>Linux</strong>
+                            <small>.deb installer</small>
+                        </span>
+                    </a>
+                </div>
             </div>
-        </div>
         </div>
         <div class="top-right hidden" id="top-right">
             <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
@@ -207,7 +214,7 @@
             // Global Loader Controls explicitly manually triggered
             document.addEventListener("DOMContentLoaded", () => {
                 const spinner = document.getElementById('global-spinner');
-                
+
                 window.showSpinner = () => {
                     if (spinner) spinner.classList.remove('hidden');
                 };
@@ -220,7 +227,9 @@
         <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2>Select Coefficients for standard curve</h2>
-                <input type="text" id="json-search" oninput="filterTable('json-table', this.value)" placeholder="Search Calibrated JSON..." style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
+                <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
+                    placeholder="Search Calibrated JSON..."
+                    style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                 <div class="scrollbar-style file-table-container">
                     <table id="json-table" class="table">
                         <tr>
@@ -255,7 +264,9 @@
             <div id="error-message"></div>
             <div class="section" id="file-selection" tabindex="-1">
                 <h2 id="file-selection-header">File Selection</h2>
-                <input type="text" id="file-search" oninput="filterTable('file-table', this.value)" placeholder="Search CSV files..." style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
+                <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
+                    placeholder="Search CSV files..."
+                    style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                 <div class="scrollbar-style file-table-container">
                     <table id="file-table" class="table">
                         <tr>
@@ -298,8 +309,10 @@
                     <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
                         <label><input type="checkbox" id="console-watermark" checked> Include Watermark</label>
                         <label><input type="checkbox" id="console-logo" checked> Include CBB Logo</label>
-                        <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report" style="width: 250px;"></label>
-                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per CSV)</label>
+                        <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report"
+                                style="width: 250px;"></label>
+                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per
+                            CSV)</label>
                     </div>
                 </div>
                 <h3>Items in this Report Subject</h3>
@@ -311,7 +324,8 @@
                     <button class="utility-btn" onclick="clearReportItems()">🗑️ Clear Selected Subject</button>
                     <button class="utility-btn" onclick="finalizeReportExcel()"
                         style="padding: 10px 20px; font-size: 1.1rem;">📊 Export as Excel</button>
-                    <button class="primary-btn" onclick="finalizeReport()" style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
+                    <button class="primary-btn" onclick="finalizeReport()"
+                        style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
                 </div>
             </div>
 
