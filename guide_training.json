@@ -83,7 +83,7 @@
           "skipInteraction": false
         },
         {
-          "target": "#export-analysis",
+          "target": "#con-value-read-source-0",
           "title": "Enter Concentration & Export",
           "description": "Enter the known analyte concentration as the reference point, set a file name, and click 'Export Data' to create a calibration CSV.",
           "position": "top",
@@ -898,7 +898,7 @@
           "skipInteraction": false
         },
         {
-          "target": "#export-analysis",
+          "target": "#con-value-read-source-0",
           "title": "Enter Concentration & Export",
           "description": "Enter the known analyte concentration as the reference point, set a file name, and click 'Export Data' to save a calibration CSV.",
           "position": "top",
