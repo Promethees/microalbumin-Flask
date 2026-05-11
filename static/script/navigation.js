@@ -91,7 +91,7 @@ function updateJSONTable(files) {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
             const ef = _escAttr(file);
             const et = _escHtml(file);
-            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${JSON.stringify(file)}, this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile(${JSON.stringify(file)}, this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile(${JSON.stringify(file)}, this, '#json-table')">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
@@ -110,7 +110,7 @@ function updateReportTable(subjects) {
         subjects.forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
             const et = _escHtml(subject);
-            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${JSON.stringify(subject)}, this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject(${JSON.stringify(subject)}, this)">❌ Delete</button></td><td><button onclick="editReportSubject(${JSON.stringify(subject)}, this)">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(subject))}, this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject(${_escAttr(JSON.stringify(subject))}, this)">❌ Delete</button></td><td><button onclick="editReportSubject(${_escAttr(JSON.stringify(subject))}, this)">✏️ Edit</button></td></tr>`;
         });
     } else {
         html += '<tr><td colspan="4">No report subjects found.</td></tr>';
@@ -131,7 +131,7 @@ function updateFileTable(files, deselect = false) {
                 filteredFiles.forEach(file => {
                     const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
                     const et = _escHtml(file);
-                    html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${JSON.stringify(file)}, this)">✅ Select</button></td><td><button onclick="deleteFile(${JSON.stringify(file)}, this)">❌ Delete</button></td><td><button onclick="editFile(${JSON.stringify(file)}, this)">✏️ Edit</button></td></tr>`;
+                    html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(file))}, this)">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this)">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this)">✏️ Edit</button></td></tr>`;
                 });
             } else {
                 html += '<tr><td colspan="3">No CSV files is available.</td></tr>';
