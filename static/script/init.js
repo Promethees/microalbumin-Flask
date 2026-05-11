@@ -11,11 +11,11 @@ document.getElementById("year").textContent = new Date().getFullYear();
         const data = await resp.json();
         if (versionEl) {
             versionEl.textContent = data.version && data.version !== 'unknown'
-                ? `Latest build: ${data.version}`
+                ? `Latest version available: ${data.version}`
                 : '';
         }
         ['mac', 'win', 'linux'].forEach(platform => {
-            const btn   = document.getElementById(`download-${platform}-btn`);
+            const btn = document.getElementById(`download-${platform}-btn`);
             const small = document.getElementById(`download-${platform}-small`);
             if (!btn) return;
             if (!data.available?.[platform]) {
