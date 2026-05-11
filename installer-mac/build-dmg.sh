@@ -80,7 +80,7 @@ if [ $? -eq 0 ]; then
     
     # Update version in README.md (Static Badge)
     echo "📝 Updating version in README.md..."
-    # Update the badge URL: https://img.shields.io/badge/latest-v1.0.4-blue
+    # Update the badge URL: https://img.shields.io/badge/latest-v1.0.5-blue
     # This regex looks for the dynamic github release badge OR the static one and replaces it.
     sed -i '' "s|img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
     sed -i '' "s|img.shields.io/badge/latest-v[0-9.]*beta-blue|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
