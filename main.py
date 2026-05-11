@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, jsonify, make_response, send_from_directory
+from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, redirect
 import os
 import sys
+import time
+import requests as http_requests
 from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -87,23 +89,91 @@ def index():
                          production_mode= app.config['PRODUCTION_MODE']))
     return response
 
-_OFFLINE_DOWNLOADS = {
-    'mac': ('EasyOKAPI.dmg',         'EasyOKAPI.dmg'),
-    'win': ('EasyOKAPI-Setup.exe',   'EasyOKAPI-Setup.exe'),
-}
+# ------------------------------------------------------------------
+# GitHub Artifact Downloads
+# ------------------------------------------------------------------
+_GITHUB_REPO     = 'Promethees/microalbumin-Flask'
+_GITHUB_WORKFLOW = 'main.yml'
+_ARTIFACT_PREFIX = {'mac': 'EasyOKAPI-mac-', 'win': 'EasyOKAPI-win-', 'linux': 'EasyOKAPI-linux-'}
+
+# Shared cache: stores artifact list from the latest successful run
+_artifact_cache: dict = {'artifacts': None, 'ts': 0.0}
+_ARTIFACT_CACHE_TTL = 900  # 15 minutes
+
+def _gh_headers() -> dict:
+    h = {'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
+    token = os.environ.get('GITHUB_TOKEN')
+    if token:
+        h['Authorization'] = f'Bearer {token}'
+    return h
+
+def _get_cached_artifacts() -> list:
+    now = time.time()
+    if _artifact_cache['artifacts'] is not None and now - _artifact_cache['ts'] < _ARTIFACT_CACHE_TTL:
+        return _artifact_cache['artifacts']
+    # Fetch latest successful run on main
+    run_resp = http_requests.get(
+        f'https://api.github.com/repos/{_GITHUB_REPO}/actions/workflows/{_GITHUB_WORKFLOW}/runs',
+        params={'branch': 'main', 'status': 'success', 'per_page': 1},
+        headers=_gh_headers(), timeout=10
+    )
+    run_resp.raise_for_status()
+    runs = run_resp.json().get('workflow_runs', [])
+    if not runs:
+        return []
+    art_resp = http_requests.get(
+        f'https://api.github.com/repos/{_GITHUB_REPO}/actions/runs/{runs[0]["id"]}/artifacts',
+        headers=_gh_headers(), timeout=10
+    )
+    art_resp.raise_for_status()
+    artifacts = art_resp.json().get('artifacts', [])
+    _artifact_cache['artifacts'] = artifacts
+    _artifact_cache['ts'] = now
+    return artifacts
+
+@app.route('/api/release-info')
+def api_release_info():
+    try:
+        artifacts = _get_cached_artifacts()
+        version, available = None, {p: False for p in _ARTIFACT_PREFIX}
+        for art in artifacts:
+            if art.get('expired'):
+                continue
+            for platform, prefix in _ARTIFACT_PREFIX.items():
+                if art['name'].startswith(prefix):
+                    available[platform] = True
+                    if version is None:
+                        version = art['name'][len(prefix):]  # e.g. "v1.0.4"
+        return jsonify({'version': version or 'unknown', 'available': available})
+    except Exception as e:
+        return jsonify({'error': str(e), 'version': None, 'available': {}}), 502
 
 @app.route('/download/<platform>')
 def download_offline(platform):
-    if platform not in _OFFLINE_DOWNLOADS:
+    if platform not in _ARTIFACT_PREFIX:
         return jsonify({'status': 'error', 'message': 'Unknown platform'}), 404
-    filename, download_name = _OFFLINE_DOWNLOADS[platform]
+    if not os.environ.get('GITHUB_TOKEN'):
+        return jsonify({'status': 'error', 'message': 'GITHUB_TOKEN not configured on server'}), 503
     try:
-        return send_from_directory('static/downloads', filename,
-                                   as_attachment=True,
-                                   download_name=download_name)
-    except FileNotFoundError:
-        return jsonify({'status': 'error',
-                        'message': 'Download not yet available — check back soon.'}), 404
+        artifacts = _get_cached_artifacts()
+        prefix = _ARTIFACT_PREFIX[platform]
+        artifact = next(
+            (a for a in artifacts if a['name'].startswith(prefix) and not a.get('expired')),
+            None
+        )
+        if not artifact:
+            return jsonify({'status': 'error', 'message': f'No {platform} build available yet'}), 404
+        # Ask GitHub for the presigned S3 URL (returns 302)
+        dl = http_requests.get(
+            f'https://api.github.com/repos/{_GITHUB_REPO}/actions/artifacts/{artifact["id"]}/zip',
+            headers=_gh_headers(), allow_redirects=False, timeout=10
+        )
+        location = dl.headers.get('Location')
+        if not location:
+            return jsonify({'status': 'error', 'message': 'Could not resolve download URL'}), 502
+        return redirect(location)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 502
 
 @app.route("/api/current_output", methods=["GET"])
 def api_current_output():

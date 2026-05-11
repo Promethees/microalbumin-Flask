@@ -2196,6 +2196,22 @@ body.dark .report-analysis td {
 
 body.dark .download-tagline { color: #9ca3af; }
 
+.download-version {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin: -4px 0 10px 0;
+    font-variant-numeric: tabular-nums;
+    min-height: 1em;
+}
+
+body.dark .download-version { color: #9ca3af; }
+
+.download-btn--unavailable {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .download-btn-group {
     display: flex;
     flex-direction: column;
