@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Verification — Easy OKAPI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f1;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.1);
+      width: 100%;
+      max-width: 440px;
+      overflow: hidden;
+      text-align: center;
+    }
+    .card-header {
+      padding: 28px 32px;
+      background: {{ '#2d6a4f' if success else '#991b1b' }};
+    }
+    .card-header h1 { color: #fff; font-size: 20px; }
+    .icon { font-size: 52px; margin: 32px 0 16px; }
+    .card-body { padding: 8px 32px 36px; }
+    .card-body p { color: #444; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+    a.btn {
+      display: inline-block;
+      padding: 10px 24px;
+      background: #2d6a4f;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    a.btn:hover { background: #1b4332; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <h1>Easy OKAPI</h1>
+    </div>
+    <div class="card-body">
+      {% if success %}
+        <div class="icon">✅</div>
+        <p>{{ message }}</p>
+        <a href="/account/login" class="btn">Log in &amp; download</a>
+      {% else %}
+        <div class="icon">❌</div>
+        <p>{{ message }}</p>
+        <a href="/account/signup" class="btn">Sign up again</a>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

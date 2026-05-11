@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log In — Easy OKAPI</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f1;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.1);
+      width: 100%;
+      max-width: 420px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #2d6a4f;
+      padding: 28px 32px;
+    }
+    .card-header h1 { color: #fff; font-size: 20px; margin-bottom: 4px; }
+    .card-header p  { color: #b7e4c7; font-size: 13px; }
+    .card-body { padding: 28px 32px; }
+    label { display: block; font-size: 13px; color: #444; font-weight: 600; margin-bottom: 6px; }
+    input[type=email], input[type=password] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 7px;
+      font-size: 14px;
+      color: #111;
+      outline: none;
+      transition: border-color .15s;
+      margin-bottom: 18px;
+    }
+    input:focus { border-color: #2d6a4f; }
+    button[type=submit] {
+      width: 100%;
+      padding: 11px;
+      background: #2d6a4f;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button[type=submit]:hover { background: #1b4332; }
+    button[type=submit]:disabled { background: #74b49b; cursor: not-allowed; }
+    .msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      display: none;
+    }
+    .msg.success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+    .msg.error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .download-box {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      background: #ecfdf5;
+      border: 1px solid #6ee7b7;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #065f46;
+    }
+    .download-box code {
+      display: block;
+      margin-top: 8px;
+      background: #d1fae5;
+      padding: 8px 10px;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+    .footer-link { text-align: center; margin-top: 20px; font-size: 13px; color: #666; }
+    .footer-link a { color: #2d6a4f; text-decoration: none; font-weight: 600; }
+    .footer-link a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <h1>Log in to Easy OKAPI</h1>
+      <p>Authenticate to download the application</p>
+    </div>
+    <div class="card-body">
+      <form id="login-form" novalidate>
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="jane@example.com" required autocomplete="email">
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+
+        <button type="submit" id="submit-btn">Log in</button>
+        <div class="msg" id="msg"></div>
+      </form>
+
+      <div class="download-box" id="download-box">
+        <strong>Download token generated.</strong> Your installer will use it automatically.<br>
+        If you are installing manually, copy the token below:
+        <code id="token-display"></code>
+      </div>
+
+      <p class="footer-link">Don't have an account? <a href="/account/signup">Sign up</a></p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const msg = document.getElementById('msg');
+      btn.disabled = true;
+      btn.textContent = 'Logging in…';
+      msg.style.display = 'none';
+      document.getElementById('download-box').style.display = 'none';
+
+      const body = {
+        email:    document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value
+      };
+
+      try {
+        const res = await fetch('/api/account/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          msg.style.display = 'block';
+          msg.className = 'msg success';
+          msg.textContent = 'Login successful! Your token is valid for 30 minutes.';
+          document.getElementById('token-display').textContent = data.download_token;
+          document.getElementById('download-box').style.display = 'block';
+        } else {
+          msg.style.display = 'block';
+          msg.className = 'msg error';
+          msg.textContent = data.message || 'Login failed. Please try again.';
+        }
+      } catch (err) {
+        msg.style.display = 'block';
+        msg.className = 'msg error';
+        msg.textContent = 'Network error. Please try again.';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Log in';
+      }
+    });
+  </script>
+</body>
+</html>

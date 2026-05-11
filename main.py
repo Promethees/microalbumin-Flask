@@ -21,6 +21,8 @@ from routes.file_routes import file_bp
 from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
+from routes.account_routes import account_bp
+from account import db
 
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
@@ -34,8 +36,13 @@ if not app.debug:
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
 
-# Initialize SocketIO with app
+# Initialize SocketIO and SQLAlchemy with app
 socketio.init_app(app)
+db.init_app(app)
+
+# Create account tables on first run
+with app.app_context():
+    db.create_all()
 
 # Register Blueprints
 app.register_blueprint(auth_bp)
@@ -43,6 +50,7 @@ app.register_blueprint(file_bp)
 app.register_blueprint(data_bp)
 app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
+app.register_blueprint(account_bp)
 
 delimiter = "/"
 

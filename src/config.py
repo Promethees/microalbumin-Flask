@@ -28,6 +28,31 @@ class Config:
     GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
     AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
 
+    # Account / download auth
+    # SQLite by default; set DATABASE_URL to a PostgreSQL URL in production.
+    # Render provides postgres:// URLs — rewrite to postgresql:// for SQLAlchemy.
+    _db_url = os.environ.get('DATABASE_URL', 'sqlite:///accounts.db')
+    if _db_url.startswith('postgres://'):
+        _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _db_url
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # SMTP settings (e.g. Gmail app password)
+    SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+    SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+    SMTP_USER = os.environ.get('SMTP_USER', '')
+    SMTP_PASS = os.environ.get('SMTP_PASS', '')
+
+    # Public base URL of this service (used in verification emails)
+    APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
+
+    # GitHub details for proxying the source tarball to authenticated users
+    GITHUB_PAT  = os.environ.get('GITHUB_PAT', os.environ.get('GITHUB_TOKEN', ''))
+    GITHUB_OWNER = os.environ.get('GITHUB_OWNER', 'Promethees')
+    GITHUB_REPO  = os.environ.get('GITHUB_REPO', 'microalbumin-Flask')
+    # Release tag to serve when users download (e.g. "v1.0.5")
+    APP_RELEASE_TAG = os.environ.get('APP_RELEASE_TAG', 'latest')
+
     # Automatic Production Detection (Heroku uses 'DYNO', generic servers often use 'PORT')
     _prod_env = os.environ.get('PRODUCTION_MODE')
     if _prod_env is not None:
