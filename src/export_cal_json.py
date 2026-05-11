@@ -21,7 +21,7 @@ def processJSONCoef(
     """
     Process coefficients into a JSON-compatible structure where `fit_coef` is a **dict**.
 
-    - 1D coefficients → {"fit_coef": {"VMax": ..., "Km": ..., "c": ...}}  (if is_menten)
+    - 1D coefficients → {"fit_coef": {"VMax": ..., "Km": ...}}  (if is_menten)
     - 2D coefficients → {param: {"fit_coef": {"a": ..., "b": ..., ...}}, ...}
 
     Args:
@@ -48,7 +48,9 @@ def processJSONCoef(
         sanitized = [sanitize(v) for v in coef_list]
 
         if regress_algo == "Michaelis-Menten":
-            keys = ["VMax", "Km"] + [chr(ord('c') + i) for i in range(len(sanitized) - 2)]
+            if len(sanitized) != 2:
+                raise ValueError("Michaelis-Menten requires exactly 2 coefficients (VMax, Km)")
+            keys = ["VMax", "Km"]
         else:
             keys = [chr(ord('a') + i) for i in range(len(sanitized))]
 

@@ -89,8 +89,11 @@ def test_export_cal_json_logic():
     assert res['fit_coef']['b'] == 2.0
     assert res['fit_coef']['c'] == 3.0
     
-    # Michaelis-Menten
-    res_mm = export_cal_json.processJSONCoef(["p1"], coefs, "michaelis-menten")
+    # Michaelis-Menten positive: exactly 2 coefficients
+    res_mm = export_cal_json.processJSONCoef(["p1"], [1.0, 2.0], "Michaelis-Menten")
     assert res_mm['fit_coef']['VMax'] == 1.0
     assert res_mm['fit_coef']['Km'] == 2.0
-    assert res_mm['fit_coef']['c'] == 3.0
+
+    # Michaelis-Menten negative: 3 coefficients must be rejected
+    with pytest.raises(ValueError, match="Michaelis-Menten requires exactly 2 coefficients"):
+        export_cal_json.processJSONCoef(["p1"], [1.0, 2.0, 3.0], "Michaelis-Menten")
