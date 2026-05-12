@@ -2229,6 +2229,22 @@ body.dark .account-nav-label { color: #9ca3af; }
 .login-btn:hover { background: #f0fdf4; }
 body.dark .login-btn { color: #6ee7b7; border-color: #6ee7b7; }
 body.dark .login-btn:hover { background: #064e3b33; }
+.logout-btn {
+    background: transparent;
+    color: #b91c1c;
+    border: 1.5px solid #b91c1c;
+    cursor: pointer;
+}
+.logout-btn:hover { background: #fef2f2; }
+body.dark .logout-btn { color: #fca5a5; border-color: #fca5a5; }
+body.dark .logout-btn:hover { background: #450a0a33; }
+.token-btn {
+    background: #1d4ed8;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+.token-btn:hover { background: #1e40af; }
 
 .download-version {
     font-size: 0.78rem;

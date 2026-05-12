@@ -1,6 +1,6 @@
 import os
-from datetime import datetime
-from flask import Blueprint, request, jsonify, render_template, Response, stream_with_context
+from datetime import datetime, timedelta
+from flask import Blueprint, request, jsonify, render_template, Response, stream_with_context, session
 import jwt as pyjwt
 
 from account import db, User
@@ -101,13 +101,47 @@ def login():
             'message': 'Email not verified. Please check your inbox and click the verification link.'
         }), 403
 
+    # Establish a persistent web session so the main app recognises this user
+    session.permanent = True
+    session['account_user_id'] = user.id
+    session['account_user_name'] = user.name
+    session['account_user_email'] = user.email
+
     download_token = generate_download_token(user.id, user.email)
     return jsonify({
         'status': 'success',
         'download_token': download_token,
         'expires_in': 1800,
-        'message': 'Login successful'
+        'message': 'Login successful',
+        'user': {'name': user.name, 'email': user.email}
     })
+
+
+@account_bp.route('/api/account/token', methods=['POST'])
+def get_token():
+    """Generate a fresh download token for the currently logged-in user."""
+    account_id = session.get('account_user_id')
+    if not account_id:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
+    user = User.query.get(account_id)
+    if not user or not user.is_verified:
+        return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+
+    download_token = generate_download_token(user.id, user.email)
+    return jsonify({
+        'status': 'success',
+        'download_token': download_token,
+        'expires_in': 1800
+    })
+
+
+@account_bp.route('/api/account/logout', methods=['POST'])
+def logout():
+    session.pop('account_user_id', None)
+    session.pop('account_user_name', None)
+    session.pop('account_user_email', None)
+    return jsonify({'status': 'success', 'message': 'Logged out'})
 
 
 @account_bp.route('/api/download')

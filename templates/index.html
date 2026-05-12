@@ -179,11 +179,21 @@
             <div class="section" style="position: static;" id="download-section">
                 <h3>⬇️ Get Offline Version</h3>
                 <p class="download-tagline">Run Easy OKAPI locally, connected directly to your colorimeter device.</p>
+                {% if account_user %}
+                <div class="account-nav">
+                    <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
+                    <button class="account-nav-btn logout-btn" onclick="accountLogout()">Log Out</button>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <button class="account-nav-btn token-btn" onclick="revealDownloadToken()">🔑 Get Download Token</button>
+                </div>
+                {% else %}
                 <div class="account-nav">
                     <span class="account-nav-label">Register to download a local version?</span>
                     <a href="/account/signup" class="account-nav-btn signup-btn">Sign Up</a>
                     <a href="/account/login" class="account-nav-btn login-btn">Log In</a>
                 </div>
+                {% endif %}
                 <p id="download-version" class="download-version"></p>
                 <div class="download-btn-group">
                     <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
@@ -490,6 +500,45 @@
             target.style.setProperty('--dynamic-top', `${offsetTop}px`);
         }
         alignTopWithReference();
+
+        async function revealDownloadToken() {
+            try {
+                const res = await fetch('/api/account/token', { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Could not generate token' });
+                    return;
+                }
+                Swal.fire({
+                    title: 'Download Token',
+                    html: `
+                        <p style="font-size:13px;color:#555;margin-bottom:12px;">
+                            Copy this token and paste it into the installer when prompted.<br>
+                            It expires in <strong>30 minutes</strong>.
+                        </p>
+                        <div style="position:relative;">
+                            <code id="swal-token" style="display:block;background:#f3f4f6;padding:10px 12px;
+                                border-radius:6px;font-size:12px;word-break:break-all;text-align:left;
+                                border:1px solid #d1d5db;">${data.download_token}</code>
+                            <button onclick="navigator.clipboard.writeText('${data.download_token}').then(()=>{
+                                this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);
+                            })" style="margin-top:8px;padding:5px 14px;background:#2d6a4f;color:#fff;
+                                border:none;border-radius:5px;cursor:pointer;font-size:13px;">Copy</button>
+                        </div>`,
+                    showConfirmButton: false,
+                    showCloseButton: true,
+                    width: 480
+                });
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Network error', text: 'Could not reach the server.' });
+            }
+        }
+
+        async function accountLogout() {
+            await fetch('/api/account/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+
         const csvPath = {{ csv_path | tojson | safe }}
         const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
         const temp_quantity_input = {{ quantity_input | tojson | safe}};

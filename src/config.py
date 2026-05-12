@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -52,6 +53,9 @@ class Config:
     GITHUB_REPO  = os.environ.get('GITHUB_REPO', 'microalbumin-Flask')
     # Release tag to serve when users download (e.g. "v1.0.5")
     APP_RELEASE_TAG = os.environ.get('APP_RELEASE_TAG', 'latest')
+
+    # Persistent login session lifetime (30 days)
+    PERMANENT_SESSION_LIFETIME = timedelta(days=30)
 
     # Automatic Production Detection (Heroku uses 'DYNO', generic servers often use 'PORT')
     _prod_env = os.environ.get('PRODUCTION_MODE')

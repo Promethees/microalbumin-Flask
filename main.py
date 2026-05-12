@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, redirect
+from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, redirect, session
 import os
 import sys
 import time
@@ -84,7 +84,15 @@ def index():
     file_list = list(user_data['csv'].keys())
     cal_json_list = list(user_data['json'].get('kinetics', {}).keys())
     
-    response = make_response(render_template('index.html', 
+    account_user = None
+    if session.get('account_user_id'):
+        account_user = {
+            'id': session['account_user_id'],
+            'name': session.get('account_user_name', ''),
+            'email': session.get('account_user_email', '')
+        }
+
+    response = make_response(render_template('index.html',
                          title="Easy OKAPI",
                          directory= '/',
                          csv_path = '/csv',
@@ -94,7 +102,8 @@ def index():
                          file_list=file_list,
                          cal_json_list=cal_json_list,
                          delimiter=delimiter,
-                         production_mode= app.config['PRODUCTION_MODE']))
+                         production_mode= app.config['PRODUCTION_MODE'],
+                         account_user=account_user))
     return response
 
 # ------------------------------------------------------------------
