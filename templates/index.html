@@ -519,17 +519,24 @@
                     Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'Could not generate token' });
                     return;
                 }
+                const dark = document.body.classList.contains('dark');
+                const codeStyle = dark
+                    ? 'background:#111827;border:1px solid #374151;color:#f3f4f6;'
+                    : 'background:#f3f4f6;border:1px solid #d1d5db;color:#1f2937;';
+                const descColor = dark ? '#9ca3af' : '#555';
                 Swal.fire({
                     title: 'Download Token',
+                    background: dark ? '#1f2937' : '#fff',
+                    color: dark ? '#f3f4f6' : '#1f2937',
                     html: `
-                        <p style="font-size:13px;color:#555;margin-bottom:12px;">
+                        <p style="font-size:13px;color:${descColor};margin-bottom:12px;">
                             Copy this token and paste it into the installer when prompted.<br>
                             It expires in <strong>30 minutes</strong>.
                         </p>
                         <div style="position:relative;">
-                            <code id="swal-token" style="display:block;background:#f3f4f6;padding:10px 12px;
-                                border-radius:6px;font-size:12px;word-break:break-all;text-align:left;
-                                border:1px solid #d1d5db;">${data.download_token}</code>
+                            <code style="display:block;${codeStyle}padding:10px 12px;
+                                border-radius:6px;font-size:12px;word-break:break-all;text-align:left;">
+                                ${data.download_token}</code>
                             <button onclick="navigator.clipboard.writeText('${data.download_token}').then(()=>{
                                 this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1500);
                             })" style="margin-top:8px;padding:5px 14px;background:#2d6a4f;color:#fff;
