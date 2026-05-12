@@ -5,6 +5,9 @@
 
 // Check Drive status on page load
 window.addEventListener('load', function () {
+    // Skip all Drive initialisation for logged-in users — Firebase handles persistence
+    if (typeof IS_LOGGED_IN !== 'undefined' && IS_LOGGED_IN) return;
+
     // Check if this is an OAuth callback
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('code') && urlParams.has('state')) {

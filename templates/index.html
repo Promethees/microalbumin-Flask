@@ -95,6 +95,15 @@
             <div class="section" style="position: static;" id="drive-section">
                 <h3>☁️ Google Drive Storage</h3>
 
+                {% if account_user %}
+                <!-- Drive disabled for logged-in users — Firebase handles persistence -->
+                <div style="padding: 10px 12px; background: #f0fdf4; border: 1px solid #6ee7b7;
+                            border-radius: 7px; font-size: 0.85em; color: #065f46; line-height: 1.5;">
+                    ✅ Your data is saved automatically to your account.<br>
+                    Google Drive sync is disabled while signed in.
+                </div>
+                {% else %}
+
                 <!-- Mode Indicator -->
                 <div id="drive-mode-indicator" style="margin-bottom: 10px;">
                     <span id="drive-mode-badge" class="badge-guest"
@@ -175,6 +184,7 @@
                         Last synced: <span id="last-sync-time">Never</span>
                     </div>
                 </div>
+                {% endif %}
             </div>
             <div class="section" style="position: static;" id="download-section">
                 <h3>⬇️ Get Offline Version</h3>
@@ -539,6 +549,7 @@
             window.location.href = '/';
         }
 
+        const IS_LOGGED_IN = {{ 'true' if account_user else 'false' }};
         const csvPath = {{ csv_path | tojson | safe }}
         const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
         const temp_quantity_input = {{ quantity_input | tojson | safe}};

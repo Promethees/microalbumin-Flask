@@ -107,6 +107,26 @@ def login():
     session['account_user_name'] = user.name
     session['account_user_email'] = user.email
 
+    # Disconnect Google Drive — session is now set so get_user_id() returns
+    # the account-based key, ensuring we reset the right user's drive state.
+    # We only clear the drive portion; CSV/JSON data is preserved from Firebase.
+    try:
+        from user_data import user_data_session
+        with user_data_session() as ud:
+            ud['drive'] = {
+                'mode': 'guest',
+                'authenticated': False,
+                'folder_id': None,
+                'folder_name': None,
+                'credentials': None,
+                'last_sync': None,
+                'auto_sync_on_close': False,
+                'file_mapping': {},
+                'pending_oauth_state': None
+            }
+    except Exception as e:
+        print(f'[login] Drive reset failed (non-fatal): {e}')
+
     download_token = generate_download_token(user.id, user.email)
     return jsonify({
         'status': 'success',
