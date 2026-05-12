@@ -45,12 +45,8 @@ with app.app_context():
     db.create_all()
     run_migrations(db.engine)
 
-# Kick off Firebase background initialisation now so the gRPC channel is
-# likely ready by the time the first authenticated request arrives.
-# prewarm() is non-blocking: it returns immediately and initialises in a
-# real OS thread, so the eventlet hub is never stalled during startup.
 import firebase_service as _fb
-_fb.prewarm()
+_fb.prewarm()  # builds credentials object only; no network call at startup
 
 # Register Blueprints
 app.register_blueprint(auth_bp)
