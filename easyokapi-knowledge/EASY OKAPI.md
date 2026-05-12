@@ -48,6 +48,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 |---|---|---|
 | Core | `main.py` | App initialization, SocketIO setup, Base routes (`/`, `/ping`) |
 | Auth | `src/routes/auth_routes.py` | Google Drive OAuth2 flow and sync operations |
+| Account | `src/routes/account_routes.py` | User registration, login, password reset, account deletion, download |
 | File Ops | `src/routes/file_routes.py` | CSV/JSON CRUD operations (Edit, Delete, Copy, Upload, Merge) |
 | Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export |
 | AI | `src/routes/ai_routes.py` | AI assistant: chat, settings, guides (`/ai/*`) |
@@ -96,6 +97,79 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 
 ---
 
+## 2.5 Account System (User Login & Registration)
+
+The app includes a persistent account system backed by a **PostgreSQL** database (Heroku Postgres in production, SQLite locally). Users register to gain a time-limited download token for the Easy OKAPI desktop application.
+
+### Data Model — `users` table (`src/account.py`)
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | Integer PK | |
+| `email` | String(255), unique | Lowercased on write |
+| `name` | String(255) | Display name |
+| `password_hash` | String(255) | bcrypt hash |
+| `is_verified` | Boolean | Must be `TRUE` before login is allowed |
+| `verification_token` | String(128) | Expires in 24 hours |
+| `verification_expires` | DateTime | |
+| `reset_token` | String(128) | Expires in 1 hour |
+| `reset_expires` | DateTime | |
+| `created_at` | DateTime | UTC |
+| `last_download` | DateTime | Updated on each `/api/download` call |
+
+### User Flows & Routes (`src/routes/account_routes.py`)
+
+| Flow | Method | Route | Notes |
+|---|---|---|---|
+| Sign-up page | GET | `/account/signup` | Renders `signup.html` |
+| Register | POST | `/api/account/register` | Creates user, sends verification email |
+| Verify email | GET | `/api/account/verify/<token>` | Token expires in 24 h; sets `is_verified = TRUE` |
+| Login page | GET | `/account/login` | Renders `login.html` |
+| Login | POST | `/api/account/login` | Returns JWT download token (30 min); sets `account_user_id` in session |
+| Forgot password | GET/POST | `/account/forgot-password`, `/api/account/forgot-password` | Sends reset email if account is verified |
+| Reset password | GET | `/account/reset-password/<token>` | Renders reset form; token expires in 1 h |
+| Reset password | POST | `/api/account/reset-password` | Updates password hash |
+| Get token | POST | `/api/account/token` | Refreshes download token for logged-in user |
+| Logout | POST | `/api/account/logout` | Clears session keys |
+| Delete account | POST | `/api/account/delete` | Requires password; wipes Firebase data, Redis cache, DB row |
+| Download | GET | `/api/download` | Validates JWT token; proxies GitHub release tarball to user |
+
+### Session Keys
+
+When a user logs in, three keys are written to the Flask `session`:
+- `account_user_id` — integer DB primary key
+- `account_user_name` — display name
+- `account_user_email` — email address
+
+The `index` route checks `session['account_user_id']` to pass an `account_user` dict to the template.
+
+### Email Service
+
+Transactional emails are sent via SMTP (configured through `SMTP_*` env vars). Two templates are used:
+- **Verification email** — sent on registration; links to `/api/account/verify/<token>`
+- **Password reset email** — sent on forgot-password; links to `/account/reset-password/<token>`
+
+### Useful Database Commands (Heroku)
+
+```bash
+# List all users
+heroku pg:psql --app easysensor-kit -c "SELECT id, email, name, is_verified, created_at, last_download FROM users;"
+
+# Check a specific user
+heroku pg:psql --app easysensor-kit -c "SELECT * FROM users WHERE email = 'user@example.com';"
+
+# Manually verify a user (e.g. when verification email was missed)
+heroku pg:psql --app easysensor-kit -c "UPDATE users SET is_verified = TRUE WHERE email = 'user@example.com';"
+
+# Count registered users
+heroku pg:psql --app easysensor-kit -c "SELECT COUNT(*) FROM users;"
+
+# Check database connection and plan info
+heroku addons:info heroku-postgresql --app easysensor-kit
+```
+
+---
+
 ## 3. Build & Deployment Pipeline
 
 ### 3.1 Build Process (`npm run build` → `node build.js`)
@@ -126,8 +200,17 @@ git push heroku online:main
 | Variable | Purpose |
 |---|---|
 | `SECRET_KEY` | Flask session encryption |
+| `DATABASE_URL` | PostgreSQL URL (Heroku Postgres add-on sets this automatically) |
 | `GOOGLE_ENCRYPTION_KEY` | Decrypts `credentials.enc` for Google Drive OAuth |
 | `GOOGLE_REDIRECT_URI` | OAuth callback URL (defaults to `http://localhost:5003/auth/google/callback`) |
+| `GROQ_API_KEY` | Groq API key for the AI assistant |
+| `SMTP_HOST` | SMTP server for sending emails (default: `smtp.gmail.com`) |
+| `SMTP_PORT` | SMTP port (default: `587`) |
+| `SMTP_USER` | Sender email address |
+| `SMTP_PASS` | SMTP app password |
+| `APP_BASE_URL` | Public URL used in verification/reset emails |
+| `APP_RELEASE_TAG` | GitHub release tag to serve on download (default: `latest`) |
+| `GITHUB_PAT` | GitHub Personal Access Token for proxying the release tarball |
 
 ---
 

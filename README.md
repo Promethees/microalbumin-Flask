@@ -29,6 +29,64 @@ The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](
   - The `heroku-postbuild` script in `package.json` will automatically run the obfuscation during every deployment.
   - You no longer need to run `npm run build` manually on your local machine.
 
+### Environment Variables (Heroku)
+
+Set these on Heroku with `heroku config:set VAR=value -a easysensor-kit`:
+
+| Variable | Required | Description |
+|---|---|---|
+| `SECRET_KEY` | Yes | Flask session encryption key |
+| `DATABASE_URL` | Yes | PostgreSQL URL (auto-set by Heroku Postgres add-on) |
+| `GOOGLE_ENCRYPTION_KEY` | Yes | Decrypts `credentials.enc` for Google Drive OAuth |
+| `GOOGLE_REDIRECT_URI` | Yes | OAuth callback, e.g. `https://www.easysensorkit.cbbiotec.vn/auth/google/callback` |
+| `GROQ_API_KEY` | Yes | Groq API key for the AI assistant |
+| `SMTP_HOST` | Yes | SMTP server (default: `smtp.gmail.com`) |
+| `SMTP_PORT` | No | SMTP port (default: `587`) |
+| `SMTP_USER` | Yes | Sender email address |
+| `SMTP_PASS` | Yes | SMTP app password |
+| `APP_BASE_URL` | Yes | Public URL of the app, e.g. `https://www.easysensorkit.cbbiotec.vn` |
+| `APP_RELEASE_TAG` | No | GitHub release tag to serve on download (default: `latest`) |
+| `GITHUB_PAT` | Yes | GitHub Personal Access Token for proxying the source release |
+
+### Account System (User Login & Registration)
+
+The app includes a full account system backed by **Heroku Postgres** (`DATABASE_URL`). Users must create an account to download Easy OKAPI.
+
+**User flows:**
+
+| Flow | URL | Notes |
+|---|---|---|
+| Sign up | `/account/signup` | Requires name, email, password (≥ 8 chars). Sends a verification email. |
+| Email verification | `/api/account/verify/<token>` | Link sent in the registration email; token expires in 24 hours. |
+| Log in | `/account/login` | Email + password. Returns a 30-minute download token on success. |
+| Forgot password | `/account/forgot-password` | Sends a reset link to the registered email. |
+| Reset password | `/account/reset-password/<token>` | Token expires in 1 hour. |
+| Delete account | (from account settings on main page) | Requires password confirmation; wipes all user data. |
+
+**Key points:**
+- Email must be verified before a user can log in and download.
+- Sessions persist for **30 days** (`PERMANENT_SESSION_LIFETIME`).
+- Passwords are hashed with **bcrypt** — never stored in plaintext.
+- The download endpoint (`/api/download`) requires a valid JWT download token.
+
+**Verify users in the database (Heroku Postgres):**
+```bash
+# List all registered users
+heroku pg:psql --app easysensor-kit -c "SELECT * FROM users;"
+
+# Check a specific user
+heroku pg:psql --app easysensor-kit -c "SELECT id, email, name, is_verified, created_at, last_download FROM users WHERE email = 'user@example.com';"
+
+# Manually verify a user (if the verification email was missed)
+heroku pg:psql --app easysensor-kit -c "UPDATE users SET is_verified = TRUE WHERE email = 'user@example.com';"
+
+# Count total registered users
+heroku pg:psql --app easysensor-kit -c "SELECT COUNT(*) FROM users;"
+```
+
+> [!TIP]
+> Run `heroku addons:info heroku-postgresql --app easysensor-kit` to check the database plan and connection status.
+
 > [!NOTE]  
 > **Offline Obfuscation**: If you still wish to obfuscate files locally (e.g., for testing or other platforms):
 > 1. Ensure Node.js is installed.
