@@ -56,6 +56,7 @@ async function generateReport() {
     let chartImageSrc = "";
     let concentrationResults = "";
     let analysisSummaries = "";
+    let derivedConcentrationHtml = "";
 
     if (isCalibrate && AppState.calibrationDataPoints && AppState.lastAnalyses) {
         // Specialized Calibration Quad-Report
@@ -218,7 +219,6 @@ async function generateReport() {
         }
 
         // Gather Derived Concentrations
-        let derivedConcentrationHtml = '';
         if (AppState.currentJSON && (measMode === 'kinetics' || measMode === 'point')) {
             const visibleTraces = Array.from({ length: AppState.numSources }, (_, i) => i + 1);
             const windowSize = getValInt('window-size');
