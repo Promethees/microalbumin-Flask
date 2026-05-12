@@ -51,6 +51,24 @@ def prewarm():
     _get_db()
 
 
+def shutdown():
+    """Close the Firestore gRPC channel so its background threads exit cleanly.
+    Call this from gunicorn's worker_exit hook to avoid R12 (exit timeout)."""
+    global _db
+    if _db is not None:
+        try:
+            _db.close()
+        except Exception as e:
+            print(f"[Firebase] Error closing Firestore client: {e}")
+    try:
+        import firebase_admin
+        if firebase_admin._apps:
+            firebase_admin.delete_app(firebase_admin.get_app())
+    except Exception as e:
+        print(f"[Firebase] Error deleting Firebase app: {e}")
+    print("[Firebase] Shutdown complete.")
+
+
 def load_user_data(account_id: int) -> Optional[dict]:
     db = _get_db()
     if not db:

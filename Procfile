@@ -1,1 +1,1 @@
-web: gunicorn -k eventlet --workers 1 main:app
+web: gunicorn -k eventlet --workers 1 -c gunicorn.conf.py main:app
