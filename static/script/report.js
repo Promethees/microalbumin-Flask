@@ -218,13 +218,32 @@ async function generateReport() {
         }
 
         // Gather Derived Concentrations
-        const derConSections = document.querySelectorAll('[id^="derived-concentration-section-source-"]');
-        derConSections.forEach((sec, idx) => {
-            if (!sec.classList.contains('hidden')) {
-                const val = sec.querySelector('.der-con-value')?.innerText || "--";
-                concentrationResults += `<div style="margin-bottom:8px; font-size: 1.1rem;">Concentration (Source ${idx + 1}): <strong style="color:#2980b9;">${val} ng/µL</strong></div>`;
-            }
-        });
+        let derivedConcentrationHtml = '';
+        if (AppState.currentJSON && (measMode === 'kinetics' || measMode === 'point')) {
+            const visibleTraces = Array.from({ length: AppState.numSources }, (_, i) => i + 1);
+            const windowSize = getValInt('window-size');
+            const derivedQuantity = measMode === 'kinetics'
+                ? (document.getElementById('regressed-quantity')?.value || 'maxrate')
+                : null;
+            const unit = getMetaUnit(AppState.metaData);
+            derivedConcentrationHtml = await buildDerivedConcentrationForReport({
+                mode: measMode,
+                calFile: AppState.currentJSON,
+                renderData: AppState.responseData,
+                visibleTraces,
+                unit,
+                windowSize,
+                derivedQuantity
+            });
+        } else {
+            const derConSections = document.querySelectorAll('[id^="derived-concentration-section-source-"]');
+            derConSections.forEach((sec, idx) => {
+                if (!sec.classList.contains('hidden')) {
+                    const val = sec.querySelector('.der-con-value')?.innerText || "--";
+                    concentrationResults += `<div style="margin-bottom:8px; font-size: 1.1rem;">Concentration (Source ${idx + 1}): <strong style="color:#2980b9;">${val} ng/µL</strong></div>`;
+                }
+            });
+        }
 
         const chartKeys = Object.keys(AppState.chartInstances);
         if (chartKeys.length > 0) {
@@ -259,11 +278,11 @@ async function generateReport() {
                 <img src="${chartImageSrc}" style="width:100%; border:1px solid #eee;"/>
             </div>` : ''}
 
-            ${concentrationResults ? `
+            ${derivedConcentrationHtml || (concentrationResults ? `
             <div class="report-results" style="background:#f0f7ff; padding:20px; border-radius:8px; border:1px solid #d0e7ff; margin-bottom:20px;">
                 <h3 style="margin-top:0; color:#2980b9; border-bottom:1px solid #d0e7ff; padding-bottom:10px;">Analytical Results</h3>
                 ${concentrationResults}
-            </div>` : ''}
+            </div>` : '')}
 
             ${analysisSummaries ? `
             <div class="report-analysis" style="background:#fff; border:1px solid #eee; padding:20px; border-radius:8px;">

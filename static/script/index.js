@@ -49,6 +49,8 @@ const AppState = {
     ],
     quantity_input: temp_quantity_input,
     currentReportSubject: null,
+    lastAnalyses: null,
+    calibrationDataPoints: null,
 
     reset: function () {
         this.myChart = null;
@@ -66,6 +68,8 @@ const AppState = {
         this.multiSource = false;
         this.numSources = 1;
         this.currentReportSubject = null;
+        this.lastAnalyses = null;
+        this.calibrationDataPoints = null;
         if (this.chartInstances) {
             Object.keys(this.chartInstances).forEach(key => delete this.chartInstances[key]);
         }

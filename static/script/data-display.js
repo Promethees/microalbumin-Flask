@@ -5,6 +5,8 @@ function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     const chartContainer = document.getElementById('chart-container');
     const scrollPosition = chartContainer.scrollTop;
 
+    AppState.lastAnalyses = null;
+    AppState.calibrationDataPoints = null;
     destroyCharts();
     while (chartContainer.firstChild) {
         chartContainer.removeChild(chartContainer.firstChild);
@@ -369,6 +371,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
     }
 
     AppState.sourceCharts = charts;
+    AppState.lastAnalyses = analyses;
 
     return extractMultiSourceResultSummary(AppState.metaData, analyses);
 
@@ -381,6 +384,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     const XColumnVals = extractColumnAndConvert(filteredData, XColumn, true);
     const YColumnVals = YColumn.map(yCol => extractColumnAndNormalize(filteredData, yCol));
     const analyses = allGroups.allYColumn.map(yCol => calculateKineticsQuantities(allGroups.allXColumn, yCol, getValInt("window-size")));
+    AppState.lastAnalyses = analyses;
     const labels = YColumn.map(y => getLabel(y, measUnit));
 
     // Format analysis info for all sources
@@ -505,6 +509,14 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     YColumnVals = Array.isArray(YColumn) ? YColumn.map(y => extractColumnAndNormalize(allGroups.allData, y)) : [extractColumnAndNormalize(allGroups.allData, YColumn)];
     if (calDiv.getAttribute('data-value') === "kinetics") {
         mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
+        const dataMap = preprocessDataCalParams(rawData, XColumn, YColumn);
+        AppState.calibrationDataPoints = dataMap
+            ? dataMap.map(({ param, data }) => ({
+                metric: param,
+                x: data.map(row => row[XColumn]),
+                y: data.map(row => row[param])
+            }))
+            : null;
     } else if (calDiv.getAttribute('data-value') === "point") {
         mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allData, YColumn), extractColumnAndConvert(allGroups.allData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
     }
