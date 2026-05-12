@@ -79,42 +79,62 @@ if ! pyenv versions | grep -q "3.8.10"; then
     fi
 fi
 
-# Prompt for GitHub token using osascript
-GITHUB_TOKEN=$(osascript -e 'Tell application "System Events" to display dialog "Please enter your GitHub personal access token:" default answer "" with title "EasyOKAPI Installer" with hidden answer' -e 'text returned of result' 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ Error: GitHub token is required. User cancelled or provided empty input."
-    osascript -e 'display dialog "GitHub token is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+# Auth service base URL (substituted at build time, or set manually)
+AUTH_BASE_URL="__AUTH_BASE_URL__"
+
+# Prompt for account email
+ACCOUNT_EMAIL=$(osascript -e 'Tell application "System Events" to display dialog "Enter your Easy OKAPI account email:" default answer "" with title "EasyOKAPI Installer"' -e 'text returned of result' 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_EMAIL" ]; then
+    echo "❌ Email is required. Installation aborted."
+    osascript -e 'display dialog "Email is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
-# Define repository details
-REPO_URL="https://github.com/Promethees/microalbumin-Flask.git"  # Replace with actual repository URL
+# Prompt for account password
+ACCOUNT_PASSWORD=$(osascript -e 'Tell application "System Events" to display dialog "Enter your Easy OKAPI account password:" default answer "" with title "EasyOKAPI Installer" with hidden answer' -e 'text returned of result' 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_PASSWORD" ]; then
+    echo "❌ Password is required. Installation aborted."
+    osascript -e 'display dialog "Password is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    exit 1
+fi
+
+# Authenticate and get download token
+echo "Authenticating with Easy OKAPI service..."
+LOGIN_RESPONSE=$(curl -s -X POST "$AUTH_BASE_URL/api/account/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\": \"$ACCOUNT_EMAIL\", \"password\": \"$ACCOUNT_PASSWORD\"}" 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$LOGIN_RESPONSE" ]; then
+    echo "❌ Failed to reach the authentication server."
+    osascript -e 'display dialog "Could not reach the authentication server. Check your internet connection." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    exit 1
+fi
+
+DOWNLOAD_TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('download_token',''))" 2>/dev/null)
+if [ -z "$DOWNLOAD_TOKEN" ]; then
+    LOGIN_MSG=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message','Login failed.'))" 2>/dev/null)
+    echo "❌ Authentication failed: $LOGIN_MSG"
+    osascript -e "display dialog \"Login failed: $LOGIN_MSG\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
+    exit 1
+fi
+echo "Authentication successful."
+
+# Define install directory
 REPO_NAME="microalbumin-Flask"
 INSTALL_DIR="/Applications/$REPO_NAME"
 
 # Check if installation directory is not empty
 if [ -d "$INSTALL_DIR" ]; then
-    # Count items in the directory
     ITEM_COUNT=$(find "$INSTALL_DIR" -maxdepth 1 -type f -o -type d | wc -l)
-    
-    if [ "$ITEM_COUNT" -gt 1 ]; then  # More than 1 because the directory itself counts as 1
+    if [ "$ITEM_COUNT" -gt 1 ]; then
         echo "An existing installation was found at: $INSTALL_DIR"
-        
-        # Check if version file exists to display current version
         if [ -f "$INSTALL_DIR/VERSION.txt" ]; then
             CURRENT_VERSION=$(cat "$INSTALL_DIR/VERSION.txt")
-            echo "Current version: $CURRENT_VERSION"
         else
-            echo "Current version: Unknown (no version file found)"
             CURRENT_VERSION="Unknown"
         fi
-        
+        echo "Current version: $CURRENT_VERSION"
         echo "New version: $VERSION_TAG"
-        echo ""
-        
-        # Prompt user using osascript with better formatting
         CHOICE=$(osascript -e 'Tell application "System Events" to display dialog "An existing installation was found.\n\nCurrent version: '$CURRENT_VERSION'\nNew version: '$VERSION_TAG'\n\nWould you like to overwrite it?" buttons {"Cancel", "Overwrite"} default button "Cancel" with title "EasyOKAPI Installer"' -e 'button returned of result' 2>/dev/null)
-        
         if [ "$CHOICE" = "Overwrite" ]; then
             echo "Removing existing installation..."
             rm -rf "$INSTALL_DIR"
@@ -132,68 +152,45 @@ if [ -d "$INSTALL_DIR" ]; then
     fi
 fi
 
-# Clone the repository
-echo "Cloning repository to $INSTALL_DIR..."
-su - "$CURRENT_USER" -c "git clone \"https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git\" \"$INSTALL_DIR\""
-if [ $? -ne 0 ]; then
-    echo "❌ Error: Failed to clone repository."
-    osascript -e 'display dialog "Failed to clone repository. Check your GitHub token and network connection." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+# Download the application archive
+ARCHIVE_TMP="/tmp/easyokapi_app.tar.gz"
+echo "Downloading application to $INSTALL_DIR..."
+curl -L -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$DOWNLOAD_TOKEN"
+if [ $? -ne 0 ] || [ ! -s "$ARCHIVE_TMP" ]; then
+    echo "❌ Error: Failed to download the application."
+    osascript -e 'display dialog "Failed to download the application. Please try again." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
 
-# Checkout specific tag
-echo "Checking out tag $VERSION_TAG..."
-cd "$INSTALL_DIR"
-su - "$CURRENT_USER" -c "git checkout tags/$VERSION_TAG"
+# Extract archive to install directory
+mkdir -p "$INSTALL_DIR"
+tar -xzf "$ARCHIVE_TMP" -C "$INSTALL_DIR" --strip-components=1
 if [ $? -ne 0 ]; then
-    echo "❌ Error: Failed to checkout tag $VERSION_TAG."
-    osascript -e "display dialog \"Failed to checkout tag $VERSION_TAG. Check if the tag exists.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
+    echo "❌ Error: Failed to extract the application."
+    osascript -e 'display dialog "Failed to extract the application archive." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    rm -f "$ARCHIVE_TMP"
     exit 1
 fi
+rm -f "$ARCHIVE_TMP"
+chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
 
-# Remove unwanted files and directories (adapted from Windows batch approach)
-echo "Cleaning up unwanted files and directories..."
-
-# Remove Git history
-rm -rf "$INSTALL_DIR/.git" 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "⚠️  Warning: Failed to remove .git history."
-fi
-
-# Remove .gitignore
-rm -f "$INSTALL_DIR/.gitignore" 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "⚠️  Warning: Failed to remove .gitignore."
-fi
-
-# Remove Windows-specific installer scripts
-rm -f "$INSTALL_DIR"/*.bat 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "⚠️  Warning: Failed to remove .bat files."
-fi
-
-
-# Remove development/build files
-[ -d "$INSTALL_DIR/tests" ] && rm -rf "$INSTALL_DIR/tests"
-[ -d "$INSTALL_DIR/.github" ] && rm -rf "$INSTALL_DIR/.github"
-[ -d "$INSTALL_DIR/mac" ] && rm -rf "$INSTALL_DIR/mac"
-[ -d "$INSTALL_DIR/easyokapi-knowledge" ] && rm -rf "$INSTALL_DIR/easyokapi-knowledge"
-[ -d "$INSTALL_DIR/images" ] && rm -rf "$INSTALL_DIR/images"
-[ -d "$INSTALL_DIR/installer-mac" ] && rm -rf "$INSTALL_DIR/installer-mac"
-[ -d "$INSTALL_DIR/installer-win" ] && rm -rf "$INSTALL_DIR/installer-win"
-
-# Remove development/documentation files
-rm -f "$INSTALL_DIR/log_hid_data_pyusb.py" 2>/dev/null
-rm -f "$INSTALL_DIR/requirements.txt" 2>/dev/null
-rm -f "$INSTALL_DIR/requirements-win.txt" 2>/dev/null
-rm -f "$INSTALL_DIR/generate-tree.sh" 2>/dev/null
-rm -f "$INSTALL_DIR/BUILD_MAC.md" 2>/dev/null
-rm -f "$INSTALL_DIR/Rule.md" 2>/dev/null
+# Cleanup: the GitHub tarball includes dev-only directories and files; remove them
+echo "Cleaning up development files..."
+rm -rf "$INSTALL_DIR/.git" "$INSTALL_DIR/.gitignore" 2>/dev/null
+rm -f  "$INSTALL_DIR"/*.bat 2>/dev/null
+for dir in tests .github mac easyokapi-knowledge images installer-mac installer-win installer-linux; do
+    [ -d "$INSTALL_DIR/$dir" ] && rm -rf "$INSTALL_DIR/$dir"
+done
+rm -f "$INSTALL_DIR/log_hid_data_pyusb.py" \
+      "$INSTALL_DIR/requirements-win.txt" \
+      "$INSTALL_DIR/generate-tree.sh" \
+      "$INSTALL_DIR/BUILD_MAC.md" \
+      "$INSTALL_DIR/Rule.md" 2>/dev/null
 
 # Save version information for future checks
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
-echo "Repository cloned successfully to $INSTALL_DIR with tag $VERSION_TAG."
+echo "Application downloaded successfully to $INSTALL_DIR ($VERSION_TAG)."
 echo "Preinstall script completed at $(date)"
 osascript -e "display dialog \"Installation step 1 complete. Please run install-venv.command to continue.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
 exit 0

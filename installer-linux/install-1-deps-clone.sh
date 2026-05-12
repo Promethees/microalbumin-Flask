@@ -61,6 +61,7 @@ CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 # ── Configuration ─────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSION_TAG="__APP_VERSION__"
+AUTH_BASE_URL="__AUTH_BASE_URL__"
 INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
@@ -117,13 +118,38 @@ if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/
 fi
 echo "✅ Python $PYTHON_VERSION available."
 
-# ── Step 4: Prompt for GitHub token ───────────────────────────────────────────
-prompt_input "EasyOKAPI Installer" "Enter your GitHub personal access token:" "true"
-GITHUB_TOKEN="$PROMPT_RESULT"
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ GitHub token is required. Installation aborted."
+# ── Step 4: Prompt for account credentials ────────────────────────────────────
+prompt_input "EasyOKAPI Installer" "Enter your Easy OKAPI account email:" "false"
+ACCOUNT_EMAIL="$PROMPT_RESULT"
+if [ -z "$ACCOUNT_EMAIL" ]; then
+    echo "❌ Email is required. Installation aborted."
     exit 1
 fi
+
+prompt_input "EasyOKAPI Installer" "Enter your Easy OKAPI account password:" "true"
+ACCOUNT_PASSWORD="$PROMPT_RESULT"
+if [ -z "$ACCOUNT_PASSWORD" ]; then
+    echo "❌ Password is required. Installation aborted."
+    exit 1
+fi
+
+# Authenticate and get download token
+echo "Authenticating with Easy OKAPI service..."
+LOGIN_RESPONSE=$(curl -s -X POST "$AUTH_BASE_URL/api/account/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\": \"$ACCOUNT_EMAIL\", \"password\": \"$ACCOUNT_PASSWORD\"}" 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$LOGIN_RESPONSE" ]; then
+    echo "❌ Failed to reach the authentication server. Check your internet connection."
+    exit 1
+fi
+
+DOWNLOAD_TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('download_token',''))" 2>/dev/null)
+if [ -z "$DOWNLOAD_TOKEN" ]; then
+    LOGIN_MSG=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message','Login failed.'))" 2>/dev/null)
+    echo "❌ Authentication failed: $LOGIN_MSG"
+    exit 1
+fi
+echo "✅ Authentication successful."
 
 # ── Step 5: Handle existing installation ──────────────────────────────────────
 if [ -d "$INSTALL_DIR" ] && [ "$(find "$INSTALL_DIR" -maxdepth 1 | wc -l)" -gt 1 ]; then
@@ -139,20 +165,23 @@ if [ -d "$INSTALL_DIR" ] && [ "$(find "$INSTALL_DIR" -maxdepth 1 | wc -l)" -gt 1
     fi
 fi
 
-# ── Step 6: Clone the repository ──────────────────────────────────────────────
-echo "Cloning repository to $INSTALL_DIR..."
-git clone "https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git" "$INSTALL_DIR"
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to clone repository. Check your token and network connection."
+# ── Step 6: Download the application ──────────────────────────────────────────
+ARCHIVE_TMP="/tmp/easyokapi_app.tar.gz"
+echo "Downloading application to $INSTALL_DIR..."
+curl -L -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$DOWNLOAD_TOKEN"
+if [ $? -ne 0 ] || [ ! -s "$ARCHIVE_TMP" ]; then
+    echo "❌ Failed to download the application. Please try again."
     exit 1
 fi
 
-cd "$INSTALL_DIR"
-git checkout "tags/$VERSION_TAG"
+mkdir -p "$INSTALL_DIR"
+tar -xzf "$ARCHIVE_TMP" -C "$INSTALL_DIR" --strip-components=1
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to checkout tag $VERSION_TAG."
+    echo "❌ Failed to extract the application archive."
+    rm -f "$ARCHIVE_TMP"
     exit 1
 fi
+rm -f "$ARCHIVE_TMP"
 
 # ── Step 7: Clean up dev-only files ───────────────────────────────────────────
 echo "Cleaning up development files..."
@@ -160,8 +189,8 @@ rm -rf "$INSTALL_DIR/.git" "$INSTALL_DIR/.gitignore"
 rm -rf "$INSTALL_DIR/tests" "$INSTALL_DIR/.github"
 rm -rf "$INSTALL_DIR/installer-mac" "$INSTALL_DIR/installer-win" "$INSTALL_DIR/installer-linux"
 rm -rf "$INSTALL_DIR/easyokapi-knowledge" "$INSTALL_DIR/images"
-rm -f  "$INSTALL_DIR/log_hid_data_pyusb.py" "$INSTALL_DIR/generate-tree.sh"
-rm -f  "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR/Rule.md"
+rm -f  "$INSTALL_DIR/log_hid_data_pyusb.py" "$INSTALL_DIR/requirements-win.txt"
+rm -f  "$INSTALL_DIR/generate-tree.sh" "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR/Rule.md"
 rm -f  "$INSTALL_DIR"/*.bat
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 

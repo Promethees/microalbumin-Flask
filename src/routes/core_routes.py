@@ -56,7 +56,7 @@ def index():
     except:
         pass
 
-    response = make_response(render_template('index.html', 
+    response = make_response(render_template('index.html',
                          title="Easy OKAPI",
                          directory= os.path.abspath(directory),
                          range_input=range_input,
@@ -65,7 +65,8 @@ def index():
                          file_list=file_list,
                          cal_json_list=cal_json_list,
                          delimiter=state.delimiter,
-                         production_mode=state.PRODUCTION_MODE))
+                         production_mode=state.PRODUCTION_MODE,
+                         app_version=state.APP_VERSION))
     return response
 
 def delayed_termination():

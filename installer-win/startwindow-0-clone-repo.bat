@@ -2,32 +2,20 @@
 cd /d "%~dp0"
 setlocal EnableDelayedExpansion
 
-:: Check if installation directory and token are provided
+:: Check if installation directory is provided
 if "%~1"=="" (
     echo ERROR: Installation directory not provided.
-    echo Usage: %0 "install_dir" "github_token"
-    echo Please provide the installation directory and GitHub token.
-    pause >nul
-    exit /b 1
-)
-if "%~2"=="" (
-    echo ERROR: GitHub token not provided.
-    echo Usage: %0 "install_dir" "github_token"
-    echo Please provide the GitHub token.
+    echo Usage: %0 "install_dir"
     pause >nul
     exit /b 1
 )
 
-:: Version is substituted by the GitHub Actions build before packaging
+:: Version and auth service URL are substituted by the GitHub Actions build before packaging
 set "VERSION_TAG=__APP_VERSION__"
+set "AUTH_BASE_URL=__AUTH_BASE_URL__"
 
-:: Set installation directory and token
+:: Set installation directory
 set "INSTALL_DIR=%~1"
-set "GITHUB_TOKEN=%~2"
-
-:: Define GitHub repository URL
-set "REPO_BASE=https://github.com/Promethees/microalbumin-Flask.git"
-set "REPO_URL=https://!GITHUB_TOKEN!@github.com/Promethees/microalbumin-Flask.git"
 
 :: Check if installation directory exists and is not empty
 echo.
@@ -36,7 +24,7 @@ echo       EasyOKAPI - Installation Check
 echo    ============================================
 echo.
 
-:: If installation directory doesn't exist, proceed directly to cloning
+:: If installation directory doesn't exist, proceed directly to download
 if not exist "!INSTALL_DIR!" (
     echo [*] Installation directory does not exist. Proceeding with new installation...
     echo.
@@ -51,7 +39,7 @@ if !item_count! gtr 0 (
     echo [*] An existing installation was found at:
     echo     !INSTALL_DIR!
     echo.
-    
+
     :: Check if version file exists to display current version
     if exist "!INSTALL_DIR!\VERSION.txt" (
         set /p CURRENT_VERSION=<"!INSTALL_DIR!\VERSION.txt"
@@ -60,16 +48,16 @@ if !item_count! gtr 0 (
         echo     Current version: Unknown (no version file found)
         set "CURRENT_VERSION=Unknown"
     )
-    
+
     echo     New version: !VERSION_TAG!
     echo.
     echo Options:
     echo   [1] Overwrite existing installation (recommended for updates)
     echo   [2] Cancel and keep existing installation
     echo.
-    
+
     set /p "CHOICE=Enter your choice [1 or 2]: "
-    
+
     if "!CHOICE!"=="1" (
         echo.
         echo Removing existing installation...
@@ -80,7 +68,6 @@ if !item_count! gtr 0 (
             pause >nul
             exit /b 1
         )
-        :: Recreate the empty directory
         mkdir "!INSTALL_DIR!"
         echo Existing installation removed successfully.
     ) else if "!CHOICE!"=="2" (
@@ -102,126 +89,103 @@ if !item_count! gtr 0 (
 
 :skip_menu
 
-:: Check if Git is installed
-where git >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Git is not installed or not found in PATH.
-    echo Please install Git and ensure it is in your PATH.
+:: Prompt for account credentials
+echo.
+set /p "ACCOUNT_EMAIL=Enter your Easy OKAPI account email: "
+if "!ACCOUNT_EMAIL!"=="" (
+    echo ERROR: Email is required.
     pause >nul
     exit /b 1
 )
+for /f "delims=" %%P in ('powershell -Command "$p = Read-Host \"Enter your Easy OKAPI account password\" -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "ACCOUNT_PASSWORD=%%P"
+if "!ACCOUNT_PASSWORD!"=="" (
+    echo ERROR: Password is required.
+    pause >nul
+    exit /b 1
+)
+
+:: Check if curl is available (Windows 10+ has curl built-in)
+where curl >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: curl is not installed or not found in PATH.
+    echo Please install curl and ensure it is in your PATH.
+    pause >nul
+    exit /b 1
+)
+
+:: Authenticate and obtain download token
+echo.
+echo Authenticating with Easy OKAPI service...
+set "LOGIN_BODY={\"email\":\"!ACCOUNT_EMAIL!\",\"password\":\"!ACCOUNT_PASSWORD!\"}"
+curl -s -X POST "!AUTH_BASE_URL!/api/account/login" ^
+     -H "Content-Type: application/json" ^
+     -d "!LOGIN_BODY!" ^
+     -o "%TEMP%\easyokapi_login.json" 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Failed to reach the authentication server.
+    pause >nul
+    exit /b 1
+)
+
+for /f "delims=" %%T in ('powershell -Command "(Get-Content '%TEMP%\easyokapi_login.json' | ConvertFrom-Json).download_token"') do set "DOWNLOAD_TOKEN=%%T"
+if "!DOWNLOAD_TOKEN!"=="" (
+    for /f "delims=" %%M in ('powershell -Command "(Get-Content '%TEMP%\easyokapi_login.json' | ConvertFrom-Json).message"') do set "LOGIN_MSG=%%M"
+    echo ERROR: Authentication failed: !LOGIN_MSG!
+    del /q "%TEMP%\easyokapi_login.json" >nul 2>&1
+    pause >nul
+    exit /b 1
+)
+del /q "%TEMP%\easyokapi_login.json" >nul 2>&1
+echo Authentication successful.
 
 :: Create installation directory if it doesn't exist
 if not exist "!INSTALL_DIR!" (
     mkdir "!INSTALL_DIR!"
     if !ERRORLEVEL! neq 0 (
         echo ERROR: Failed to create directory "!INSTALL_DIR!".
-        echo Please check permissions and try again.
         pause >nul
         exit /b 1
     )
 )
 
-:: Clone the repository and capture output
-echo Cloning repository to "!INSTALL_DIR!"...
-git clone "!REPO_URL!" "!INSTALL_DIR!" 2>&1 | findstr /V "Cloning into"
-
-:: Change to the installation directory
-cd /d "!INSTALL_DIR!"
+:: Download the application archive
+set "ARCHIVE_TMP=%TEMP%\easyokapi_app.tar.gz"
+echo Downloading application to "!INSTALL_DIR!"...
+curl -L -o "!ARCHIVE_TMP!" "!AUTH_BASE_URL!/api/download?token=!DOWNLOAD_TOKEN!"
 if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to change to directory "!INSTALL_DIR!".
-    echo Please check the directory path and try again.
+    echo ERROR: Failed to download the application.
     pause >nul
     exit /b 1
 )
 
-:: Checkout specific tag
-echo Checking out tag "!VERSION_TAG!"...
-git checkout tags/"!VERSION_TAG!"
+:: Extract archive (requires tar, available on Windows 10 1803+)
+echo Extracting application...
+tar -xzf "!ARCHIVE_TMP!" -C "!INSTALL_DIR!" --strip-components=1
 if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to checkout tag "!VERSION_TAG!".
-    echo Please check if the tag exists.
+    echo ERROR: Failed to extract the application archive.
+    del /q "!ARCHIVE_TMP!" >nul 2>&1
     pause >nul
     exit /b 1
 )
+del /q "!ARCHIVE_TMP!" >nul 2>&1
 
-:: Remove Git history
-echo Removing Git history...
-rd /s /q ".git"
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to remove Git history.
-    pause >nul
-    exit /b 1
-)
-
-:: Remove Git ignore file if it exists
-if exist ".gitignore" (
-    del /q ".gitignore"
-    if %ERRORLEVEL% neq 0 (
-        echo WARNING: Failed to remove .gitignore file.
-    )
-)
-
-:: Remove unwanted files (customize this list as needed)
-echo Removing unwanted files...
+:: Remove dev-only files from the extracted archive
+echo Removing development files...
 del /s /q "!INSTALL_DIR!\*.command" >nul 2>&1
 del /s /q "!INSTALL_DIR!\*.bat" >nul 2>&1
 del /s /q "!INSTALL_DIR!\log_hid_data.py" >nul 2>&1
-del /s /q "!INSTALL_DIR!\requirements.txt" >nul 2>&1
+del /s /q "!INSTALL_DIR!\requirements-win.txt" >nul 2>&1
 del /s /q "!INSTALL_DIR!\generate-tree.sh" >nul 2>&1
 del /s /q "!INSTALL_DIR!\BUILD_MAC.md" >nul 2>&1
 del /s /q "!INSTALL_DIR!\Rule.md" >nul 2>&1
-if exist "!INSTALL_DIR!\mac" (
-    rmdir /s /q "!INSTALL_DIR!\mac"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove "mac" directory.
-    )
+for %%D in (mac easyokapi-knowledge images installer-mac installer-win installer-linux tests .github) do (
+    if exist "!INSTALL_DIR!\%%D" rmdir /s /q "!INSTALL_DIR!\%%D" >nul 2>&1
 )
-if exist "!INSTALL_DIR!\easyokapi-knowledge" (
-    rmdir /s /q "!INSTALL_DIR!\easyokapi-knowledge"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove "easyokapi-knowledge" directory.
-    )
-)
-if exist "!INSTALL_DIR!\images" (
-    rmdir /s /q "!INSTALL_DIR!\images"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove "images" directory.
-    )
-)
-if exist "!INSTALL_DIR!\installer-mac" (
-    rmdir /s /q "!INSTALL_DIR!\installer-mac"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove "installer-mac" directory.
-    )
-)
-if exist "!INSTALL_DIR!\installer-win" (
-    rmdir /s /q "!INSTALL_DIR!\installer-win"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove "installer-win" directory.
-    )
-)
-if exist "!INSTALL_DIR!\tests" (
-    rmdir /s /q "!INSTALL_DIR!\tests"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove "tests" directory.
-    )
-)
-if exist "!INSTALL_DIR!\.github" (
-    rmdir /s /q "!INSTALL_DIR!\.github"
-    if !ERRORLEVEL! neq 0 (
-        echo WARNING: Failed to remove ".github" directory.
-    )
-)
-
-:: Add more file patterns or directories to exclude here, e.g.:
-:: del /s /q "!INSTALL_DIR!\*.txt" >nul 2>&1
-:: rmdir /s /q "!INSTALL_DIR!\test" >nul 2>&1
 
 :: Save version information for future checks
 echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
 
-echo Repository cloned successfully to "!INSTALL_DIR!" with tag "!VERSION_TAG!".
+echo Application downloaded successfully to "!INSTALL_DIR!" (!VERSION_TAG!).
 echo You can now proceed with the next steps in the setup process.
 echo Press any key to continue...
 pause >nul

@@ -572,6 +572,14 @@ body.dark .top-right {
     color: var(--text-color-dark);
 }
 
+.app-version-badge {
+    font-size: 0.7rem;
+    font-family: Arial, sans-serif;
+    color: #888;
+    letter-spacing: 0.03em;
+    margin-top: 1px;
+}
+
 /* ==========================================================================
    Theme Toggle Component
    ========================================================================== */
