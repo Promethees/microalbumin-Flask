@@ -151,11 +151,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-          msg.style.display = 'block';
-          msg.className = 'msg success';
-          msg.textContent = 'Login successful! Your token is valid for 30 minutes.';
-          document.getElementById('token-display').textContent = data.download_token;
-          document.getElementById('download-box').style.display = 'block';
+          window.location.href = '/';
         } else {
           msg.style.display = 'block';
           msg.className = 'msg error';
