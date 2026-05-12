@@ -11,7 +11,7 @@ services:
       - key: APP_BASE_URL
         value: https://easyokapi-auth.onrender.com
       - key: APP_RELEASE_TAG
-        value: v1.0.5
+        value: v1.0.6
       - key: GITHUB_PAT
         sync: false       # set manually in Render dashboard
       - key: GITHUB_OWNER
