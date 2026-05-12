@@ -45,14 +45,12 @@ with app.app_context():
     db.create_all()
     run_migrations(db.engine)
 
-# Establish the Firestore gRPC connection in the background so the first
-# HTTP request is not blocked by the ~30 s cold-start handshake.
-import threading as _threading
-_threading.Thread(
-    target=lambda: __import__('firebase_service').prewarm(),
-    daemon=True,
-    name='firebase-prewarm'
-).start()
+# Kick off Firebase background initialisation now so the gRPC channel is
+# likely ready by the time the first authenticated request arrives.
+# prewarm() is non-blocking: it returns immediately and initialises in a
+# real OS thread, so the eventlet hub is never stalled during startup.
+import firebase_service as _fb
+_fb.prewarm()
 
 # Register Blueprints
 app.register_blueprint(auth_bp)

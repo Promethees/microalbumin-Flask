@@ -4,13 +4,13 @@ import threading
 from typing import Optional
 
 _db = None
-_initialized = False
-_lock = threading.Lock()
+_initialized = False  # True only after init completes (success or failure)
+_lock = threading.Lock()  # held for the duration of background init
 
 
 def _tpool(fn, *args, **kwargs):
-    """Run a blocking gRPC call in eventlet's real-thread pool so the
-    eventlet hub is never frozen by a long-running Firebase/gRPC call."""
+    """Run a blocking gRPC call via eventlet tpool when in a green-thread
+    context so the hub stays free; falls back to a direct call otherwise."""
     try:
         from eventlet import tpool
         return tpool.execute(fn, *args, **kwargs)
@@ -19,17 +19,22 @@ def _tpool(fn, *args, **kwargs):
 
 
 def _get_db():
+    """Return the Firestore client, or None if not yet initialised.
+
+    Always non-blocking: the first call triggers background initialisation
+    in a real OS thread and returns None immediately. Callers should treat
+    None as 'Firebase temporarily unavailable' and fall back to Redis/cache.
+    """
     global _db, _initialized
     if _initialized:
         return _db
-    # Non-blocking: if another thread is already initialising, skip Firebase
-    # for this call rather than blocking the eventlet hub.
+
+    # Try to be the one thread that starts initialisation.
     if not _lock.acquire(blocking=False):
-        return _db
-    try:
-        if _initialized:
-            return _db
-        _initialized = True
+        return None  # init already in progress
+
+    def _do_init():
+        global _db, _initialized
         try:
             import firebase_admin
             from firebase_admin import credentials, firestore
@@ -37,29 +42,40 @@ def _get_db():
             creds_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
             if not creds_json:
                 print("[Firebase] FIREBASE_CREDENTIALS_JSON not set; Firebase persistence disabled.")
-                return None
+                return
 
             creds_dict = json.loads(creds_json)
             if not firebase_admin._apps:
                 cred = credentials.Certificate(creds_dict)
                 firebase_admin.initialize_app(cred)
 
-            # firestore.client() establishes the gRPC channel (~30 s cold start).
-            # Run in a real OS thread via tpool so it doesn't freeze the eventlet hub.
-            _db = _tpool(firestore.client)
+            # This gRPC call can take ~30 s on a cold Heroku dyno.
+            # Running it here (real OS thread) keeps the eventlet hub free.
+            _db = firestore.client()
             print("[Firebase] Connected to Firestore.")
         except ImportError:
             print("[Firebase] firebase-admin package not installed.")
         except Exception as e:
             print(f"[Firebase] Initialization failed: {e}")
-        return _db
-    finally:
-        _lock.release()
+        finally:
+            _initialized = True
+            _lock.release()
+
+    # Use the original (non-monkey-patched) Thread so this is a real OS
+    # thread that never needs the eventlet hub to make progress.
+    try:
+        import eventlet.patcher
+        RealThread = eventlet.patcher.original('threading').Thread
+    except Exception:
+        RealThread = threading.Thread
+
+    RealThread(target=_do_init, daemon=True, name='firebase-init').start()
+    return None  # not ready yet; callers should handle gracefully
 
 
 def prewarm():
-    """Call once at app startup to establish the Firestore gRPC connection
-    before user requests arrive. Safe to call from a green thread."""
+    """Trigger Firebase background initialisation early so it is likely ready
+    by the time the first user request needs it. Returns immediately."""
     _get_db()
 
 
@@ -100,7 +116,7 @@ def load_user_data(account_id: int) -> Optional[dict]:
 def save_user_data(account_id: int, user_data: dict):
     db = _get_db()
     if not db:
-        print(f"[Firebase] Save skipped for account {account_id}: no database connection (check FIREBASE_CREDENTIALS_JSON).")
+        print(f"[Firebase] Save skipped for account {account_id}: Firebase not ready yet.")
         return
     try:
         ref = db.collection('users').document(str(account_id))
@@ -123,7 +139,7 @@ def delete_user_data(account_id: int):
 
 
 def save_user_data_async(account_id: int, user_data: dict):
-    """Fire-and-forget Firebase write so it doesn't block HTTP responses."""
+    """Fire-and-forget Firebase write so it does not block HTTP responses."""
     import copy
     snapshot = copy.deepcopy(user_data)
     print(f"[Firebase] Queued async save for account {account_id}.")
