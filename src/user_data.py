@@ -106,6 +106,7 @@ def _save_to_redis(uid: str, data: dict):
     # For logged-in users, also persist asynchronously to Firebase
     account_id = _extract_account_id(uid)
     if account_id is not None:
+        print(f"[user_data] Triggering Firebase save for uid={uid!r}.")
         try:
             from firebase_service import save_user_data_async
             save_user_data_async(account_id, data)

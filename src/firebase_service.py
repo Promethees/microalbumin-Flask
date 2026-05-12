@@ -57,12 +57,14 @@ def load_user_data(account_id: int) -> Optional[dict]:
 def save_user_data(account_id: int, user_data: dict):
     db = _get_db()
     if not db:
+        print(f"[Firebase] Save skipped for account {account_id}: no database connection (check FIREBASE_CREDENTIALS_JSON).")
         return
     try:
         db.collection('users').document(str(account_id)).set(
             {'working_data': json.dumps(user_data)},
             merge=True
         )
+        print(f"[Firebase] Saved data for account {account_id}.")
     except Exception as e:
         print(f"[Firebase] Save error for account {account_id}: {e}")
 
@@ -82,5 +84,6 @@ def save_user_data_async(account_id: int, user_data: dict):
     """Fire-and-forget Firebase write so it doesn't block HTTP responses."""
     import copy
     snapshot = copy.deepcopy(user_data)
+    print(f"[Firebase] Queued async save for account {account_id}.")
     t = threading.Thread(target=save_user_data, args=(account_id, snapshot), daemon=True)
     t.start()
