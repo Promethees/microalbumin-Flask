@@ -8,12 +8,22 @@ _initialized = False
 _lock = threading.Lock()
 
 
+def _tpool(fn, *args, **kwargs):
+    """Run a blocking gRPC call in eventlet's real-thread pool so the
+    eventlet hub is never frozen by a long-running Firebase/gRPC call."""
+    try:
+        from eventlet import tpool
+        return tpool.execute(fn, *args, **kwargs)
+    except ImportError:
+        return fn(*args, **kwargs)
+
+
 def _get_db():
     global _db, _initialized
     if _initialized:
         return _db
-    # Non-blocking acquire: if another thread is already initialising Firebase,
-    # skip it for this request rather than hanging the HTTP worker for ~30 s.
+    # Non-blocking: if another thread is already initialising, skip Firebase
+    # for this call rather than blocking the eventlet hub.
     if not _lock.acquire(blocking=False):
         return _db
     try:
@@ -34,7 +44,9 @@ def _get_db():
                 cred = credentials.Certificate(creds_dict)
                 firebase_admin.initialize_app(cred)
 
-            _db = firestore.client()
+            # firestore.client() establishes the gRPC channel (~30 s cold start).
+            # Run in a real OS thread via tpool so it doesn't freeze the eventlet hub.
+            _db = _tpool(firestore.client)
             print("[Firebase] Connected to Firestore.")
         except ImportError:
             print("[Firebase] firebase-admin package not installed.")
@@ -46,14 +58,14 @@ def _get_db():
 
 
 def prewarm():
-    """Call once at app startup in a background thread to establish the
-    Firestore gRPC connection before any HTTP request arrives."""
+    """Call once at app startup to establish the Firestore gRPC connection
+    before user requests arrive. Safe to call from a green thread."""
     _get_db()
 
 
 def shutdown():
     """Close the Firestore gRPC channel so its background threads exit cleanly.
-    Call this from gunicorn's worker_exit hook to avoid R12 (exit timeout)."""
+    Called from gunicorn's worker_exit hook to avoid R12 (exit timeout)."""
     global _db
     if _db is not None:
         try:
@@ -74,7 +86,8 @@ def load_user_data(account_id: int) -> Optional[dict]:
     if not db:
         return None
     try:
-        doc = db.collection('users').document(str(account_id)).get()
+        ref = db.collection('users').document(str(account_id))
+        doc = _tpool(ref.get)
         if doc.exists:
             raw = doc.to_dict().get('working_data')
             if raw:
@@ -90,10 +103,8 @@ def save_user_data(account_id: int, user_data: dict):
         print(f"[Firebase] Save skipped for account {account_id}: no database connection (check FIREBASE_CREDENTIALS_JSON).")
         return
     try:
-        db.collection('users').document(str(account_id)).set(
-            {'working_data': json.dumps(user_data)},
-            merge=True
-        )
+        ref = db.collection('users').document(str(account_id))
+        _tpool(ref.set, {'working_data': json.dumps(user_data)}, merge=True)
         print(f"[Firebase] Saved data for account {account_id}.")
     except Exception as e:
         print(f"[Firebase] Save error for account {account_id}: {e}")
@@ -104,7 +115,8 @@ def delete_user_data(account_id: int):
     if not db:
         return
     try:
-        db.collection('users').document(str(account_id)).delete()
+        ref = db.collection('users').document(str(account_id))
+        _tpool(ref.delete)
         print(f"[Firebase] Deleted data for account {account_id}.")
     except Exception as e:
         print(f"[Firebase] Delete error for account {account_id}: {e}")
