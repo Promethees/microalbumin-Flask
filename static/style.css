@@ -2196,6 +2196,40 @@ body.dark .report-analysis td {
 
 body.dark .download-tagline { color: #9ca3af; }
 
+.account-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px 0;
+    flex-wrap: wrap;
+}
+.account-nav-label {
+    font-size: 0.82rem;
+    color: #6b7280;
+}
+body.dark .account-nav-label { color: #9ca3af; }
+.account-nav-btn {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+.signup-btn {
+    background: #2d6a4f;
+    color: #fff;
+}
+.signup-btn:hover { background: #1b4332; }
+.login-btn {
+    background: transparent;
+    color: #2d6a4f;
+    border: 1.5px solid #2d6a4f;
+}
+.login-btn:hover { background: #f0fdf4; }
+body.dark .login-btn { color: #6ee7b7; border-color: #6ee7b7; }
+body.dark .login-btn:hover { background: #064e3b33; }
+
 .download-version {
     font-size: 0.78rem;
     color: #6b7280;
