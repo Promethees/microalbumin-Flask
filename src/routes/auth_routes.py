@@ -83,6 +83,10 @@ def auth_google_status():
 @auth_bp.route('/auth/google/logout', methods=['POST'])
 def auth_google_logout():
     """Disconnect Google Drive and return to guest mode."""
+    # Account users don't use Google Drive sync — their data lives in Firebase.
+    # Reaching this endpoint as an account user is a no-op to prevent data loss.
+    if session.get('account_user_id'):
+        return jsonify({'status': 'success', 'message': 'Not applicable for account users'})
     from extensions import socketio
     try:
         disconnect_drive()

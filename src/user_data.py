@@ -143,7 +143,7 @@ def get_user_data(user_id: str = None) -> dict:
     """Return user data dict, creating if needed."""
     uid = user_id or get_user_id()
     data = _get_from_redis(uid)
-    
+
     if data is None:
         data = {
             'csv': {},
@@ -151,7 +151,7 @@ def get_user_data(user_id: str = None) -> dict:
                 'kinetics': {},
                 'point': {}
             },
-            'metadata_cache': {},  # Cache for file metadata (e.g., source counts)
+            'metadata_cache': {},
             'drive': {
                 'mode': 'guest',
                 'authenticated': False,
@@ -163,8 +163,21 @@ def get_user_data(user_id: str = None) -> dict:
                 'file_mapping': {}
             }
         }
-        _save_to_redis(uid, data)
-    
+        # For account users, don't write the empty structure back to Firebase —
+        # the Firebase load may have failed transiently and overwriting would destroy
+        # real data. Cache locally so the next request retries Firebase normally.
+        if _extract_account_id(uid) is not None:
+            if not redis_client:
+                USER_DATA[uid] = data
+            else:
+                try:
+                    redis_client.setex(f"user:{uid}", 86400, json.dumps(data))
+                except Exception as e:
+                    print(f"[ERROR] Redis error on cache for {uid}: {e}")
+                    USER_DATA[uid] = data
+        else:
+            _save_to_redis(uid, data)
+
     return data
 
 @contextmanager
@@ -243,17 +256,24 @@ def update_file_metadata(filename: str, content: str, user_id: str = None):
 def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", clear_existing: bool = False) -> dict:
     csv_dir = Path(csv_dir)
     json_dir = Path(json_dir)
-    
+
+    # Account users persist their data in Firebase — never load guest demo files
+    # into their workspace and never treat an empty Firebase response as "no data".
+    # Return their current cached data without touching Firebase.
+    uid = get_user_id()
+    if _extract_account_id(uid) is not None and not clear_existing:
+        return get_user_data(uid)
+
     with user_data_session() as user_data:
         if clear_existing:
             user_data['csv'].clear()
             user_data['json']['kinetics'].clear()
             user_data['json']['point'].clear()
             user_data['metadata_cache'].clear()
-        
+
         if user_data['csv'] or user_data['json']['kinetics'] or user_data['json']['point']:
             return user_data
-        
+
         if get_drive_mode() == 'connected' and not clear_existing:
             return user_data
 
@@ -316,7 +336,8 @@ def is_auto_sync_enabled(user_id: str = None):
     return user_data.get('drive', {}).get('auto_sync_on_close', False)
 
 def disconnect_drive(user_id: str = None):
-    with user_data_session(user_id) as user_data:
+    uid = user_id or get_user_id()
+    with user_data_session(uid) as user_data:
         user_data['drive'] = {
             'mode': 'guest',
             'authenticated': False,
@@ -328,7 +349,10 @@ def disconnect_drive(user_id: str = None):
             'file_mapping': {},
             'pending_oauth_state': None
         }
-    init_user_data(clear_existing=True)
+    # Only reset to demo defaults for guest users. Account users' CSV/JSON data
+    # lives in Firebase and must not be wiped just because Drive is disconnected.
+    if _extract_account_id(uid) is None:
+        init_user_data(clear_existing=True)
 
 def set_pending_oauth_state(state: str, user_id: str = None):
     with user_data_session(user_id) as user_data:

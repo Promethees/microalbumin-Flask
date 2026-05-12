@@ -13,13 +13,16 @@ class TestRedisIntegration(unittest.TestCase):
         self.mock_redis = MagicMock()
         self.patcher = patch('redis.from_url', return_value=self.mock_redis)
         self.mock_from_url = self.patcher.start()
-        
-        # We need to reload user_data to pick up the mocked redis
-        if 'user_data' in sys.modules:
-            del sys.modules['user_data']
-    
+
+        # Reload user_data AND config so the REDIS_URL patch.dict takes effect.
+        # Other test modules may have stubbed config with REDIS_URL=None.
+        for mod in ('user_data', 'config'):
+            sys.modules.pop(mod, None)
+
     def tearDown(self):
         self.patcher.stop()
+        for mod in ('user_data', 'config'):
+            sys.modules.pop(mod, None)
 
     def test_save_load_redis(self):
         with patch.dict('os.environ', {'REDIS_URL': 'redis://localhost:6379'}):
