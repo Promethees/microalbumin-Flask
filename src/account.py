@@ -31,6 +31,9 @@ class User(db.Model):
             self.password_hash.encode('utf-8')
         )
 
+    reset_token = db.Column(db.String(128), nullable=True)
+    reset_expires = db.Column(db.DateTime, nullable=True)
+
     def generate_verification_token(self):
         self.verification_token = secrets.token_urlsafe(32)
         self.verification_expires = datetime.utcnow() + timedelta(hours=24)
@@ -42,3 +45,32 @@ class User(db.Model):
             and self.verification_expires is not None
             and datetime.utcnow() < self.verification_expires
         )
+
+    def generate_reset_token(self):
+        self.reset_token = secrets.token_urlsafe(32)
+        self.reset_expires = datetime.utcnow() + timedelta(hours=1)
+        return self.reset_token
+
+    def is_reset_token_valid(self, token: str) -> bool:
+        return (
+            self.reset_token == token
+            and self.reset_expires is not None
+            and datetime.utcnow() < self.reset_expires
+        )
+
+
+def run_migrations(engine):
+    """Add columns introduced after the initial schema was created."""
+    from sqlalchemy import text
+    dialect = engine.dialect.name
+    cols = [('reset_token', 'VARCHAR(128)'), ('reset_expires', 'TIMESTAMP' if dialect == 'postgresql' else 'DATETIME')]
+    with engine.connect() as conn:
+        for col, col_type in cols:
+            try:
+                if dialect == 'postgresql':
+                    conn.execute(text(f'ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {col_type}'))
+                else:
+                    conn.execute(text(f'ALTER TABLE users ADD COLUMN {col} {col_type}'))
+                conn.commit()
+            except Exception:
+                conn.rollback()

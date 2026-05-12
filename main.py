@@ -22,7 +22,7 @@ from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
-from account import db
+from account import db, run_migrations
 
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
@@ -40,9 +40,10 @@ if not app.debug:
 socketio.init_app(app)
 db.init_app(app)
 
-# Create account tables on first run
+# Create account tables on first run, then apply any schema migrations
 with app.app_context():
     db.create_all()
+    run_migrations(db.engine)
 
 # Register Blueprints
 app.register_blueprint(auth_bp)

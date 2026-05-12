@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify, render_template, Response, stream
 import jwt as pyjwt
 
 from account import db, User
-from email_service import send_verification_email
+from email_service import send_verification_email, send_password_reset_email
 from download_service import generate_download_token, validate_download_token, fetch_github_release
 
 account_bp = Blueprint('account', __name__)
@@ -23,6 +23,18 @@ def signup_page():
 @account_bp.route('/account/login')
 def login_page():
     return render_template('login.html')
+
+
+@account_bp.route('/account/forgot-password')
+def forgot_password_page():
+    return render_template('forgot_password.html')
+
+
+@account_bp.route('/account/reset-password/<token>')
+def reset_password_page(token):
+    user = User.query.filter_by(reset_token=token).first()
+    valid = user is not None and user.is_reset_token_valid(token)
+    return render_template('reset_password.html', token=token, valid=valid)
 
 
 # ── API ────────────────────────────────────────────────────────────────────────
@@ -80,6 +92,52 @@ def verify_email(token):
 
     return render_template('verify_email.html', success=True,
                            message='Your email has been verified. You can now log in and download Easy OKAPI.')
+
+
+@account_bp.route('/api/account/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({'status': 'error', 'message': 'Email is required'}), 400
+
+    user = User.query.filter_by(email=email).first()
+    # Always return success to avoid revealing whether the email exists
+    if user and user.is_verified:
+        token = user.generate_reset_token()
+        db.session.commit()
+        try:
+            send_password_reset_email(email, user.name, token, _APP_BASE_URL)
+        except Exception as e:
+            print(f'[email] Failed to send reset email to {email}: {e}')
+
+    return jsonify({
+        'status': 'success',
+        'message': 'If that email is registered, you will receive a reset link shortly.'
+    })
+
+
+@account_bp.route('/api/account/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    token = (data.get('token') or '').strip()
+    new_password = data.get('password') or ''
+
+    if not token or not new_password:
+        return jsonify({'status': 'error', 'message': 'Token and new password are required'}), 400
+    if len(new_password) < 8:
+        return jsonify({'status': 'error', 'message': 'Password must be at least 8 characters'}), 400
+
+    user = User.query.filter_by(reset_token=token).first()
+    if not user or not user.is_reset_token_valid(token):
+        return jsonify({'status': 'error', 'message': 'Reset link is invalid or has expired'}), 400
+
+    user.set_password(new_password)
+    user.reset_token = None
+    user.reset_expires = None
+    db.session.commit()
+
+    return jsonify({'status': 'success', 'message': 'Password updated. You can now log in.'})
 
 
 @account_bp.route('/api/account/login', methods=['POST'])
