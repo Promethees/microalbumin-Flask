@@ -60,37 +60,84 @@ USER_DATA: _BoundedDict = _BoundedDict(maxsize=100)
 # 2. Core Redis Helpers
 # ------------------------------------------------------------------
 def _get_from_redis(uid: str) -> Optional[dict]:
+    # 1. Try fast in-process / Redis cache
     if not redis_client:
-        return USER_DATA.get(uid)
-    
-    try:
-        data_str = redis_client.get(f"user:{uid}")
-        if data_str:
-            return json.loads(data_str)
-    except Exception as e:
-        print(f"[ERROR] Redis error on get for {uid}: {e}")
-    return USER_DATA.get(uid)
+        cached = USER_DATA.get(uid)
+    else:
+        cached = None
+        try:
+            data_str = redis_client.get(f"user:{uid}")
+            if data_str:
+                cached = json.loads(data_str)
+        except Exception as e:
+            print(f"[ERROR] Redis error on get for {uid}: {e}")
+        if cached is None:
+            cached = USER_DATA.get(uid)
+
+    if cached is not None:
+        return cached
+
+    # 2. For logged-in users, fall back to Firebase when cache is cold
+    account_id = _extract_account_id(uid)
+    if account_id is not None:
+        try:
+            from firebase_service import load_user_data as fb_load
+            firebase_data = fb_load(account_id)
+            if firebase_data is not None:
+                # Warm the local cache so subsequent requests are fast
+                _save_to_redis(uid, firebase_data)
+                return firebase_data
+        except Exception as e:
+            print(f"[ERROR] Firebase fallback failed for {uid}: {e}")
+
+    return None
 
 def _save_to_redis(uid: str, data: dict):
+    # Always write to Redis / in-memory cache
     if not redis_client:
         USER_DATA[uid] = data
-        return
+    else:
+        try:
+            redis_client.setex(f"user:{uid}", 86400, json.dumps(data))
+        except Exception as e:
+            print(f"[ERROR] Redis error on save for {uid}: {e}")
+            USER_DATA[uid] = data
 
-    try:
-        # Save to Redis with 24h expiration
-        redis_client.setex(f"user:{uid}", 86400, json.dumps(data))
-    except Exception as e:
-        print(f"[ERROR] Redis error on save for {uid}: {e}")
-        USER_DATA[uid] = data  # Fallback to memory on failure
+    # For logged-in users, also persist asynchronously to Firebase
+    account_id = _extract_account_id(uid)
+    if account_id is not None:
+        try:
+            from firebase_service import save_user_data_async
+            save_user_data_async(account_id, data)
+        except Exception as e:
+            print(f"[ERROR] Firebase async save failed for {uid}: {e}")
 
 # ------------------------------------------------------------------
 # 3. Core helpers – defined in the same module as the data
 # ------------------------------------------------------------------
 def get_user_id() -> str:
-    """Generate or retrieve session-based user_id."""
+    """Return a stable key for the current user.
+
+    Logged-in account users get a persistent 'account_{id}' key so their
+    data survives session expiry (backed by Firebase).  Guests get a
+    random UUID that lives only as long as Redis/memory holds it.
+    """
+    account_id = session.get('account_user_id')
+    if account_id:
+        return f'account_{account_id}'
     if 'user_id' not in session:
         session['user_id'] = str(uuid.uuid4())
     return session['user_id']
+
+
+def _extract_account_id(uid: str) -> Optional[int]:
+    """Return the integer account ID from an 'account_N' uid, else None."""
+    if uid.startswith('account_'):
+        try:
+            return int(uid[len('account_'):])
+        except ValueError:
+            pass
+    return None
 
 def get_user_data(user_id: str = None) -> dict:
     """Return user data dict, creating if needed."""
