@@ -67,6 +67,17 @@ def save_user_data(account_id: int, user_data: dict):
         print(f"[Firebase] Save error for account {account_id}: {e}")
 
 
+def delete_user_data(account_id: int):
+    db = _get_db()
+    if not db:
+        return
+    try:
+        db.collection('users').document(str(account_id)).delete()
+        print(f"[Firebase] Deleted data for account {account_id}.")
+    except Exception as e:
+        print(f"[Firebase] Delete error for account {account_id}: {e}")
+
+
 def save_user_data_async(account_id: int, user_data: dict):
     """Fire-and-forget Firebase write so it doesn't block HTTP responses."""
     import copy

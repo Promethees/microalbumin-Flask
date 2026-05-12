@@ -2245,6 +2245,16 @@ body.dark .logout-btn:hover { background: #450a0a33; }
     cursor: pointer;
 }
 .token-btn:hover { background: #1e40af; }
+.delete-account-btn {
+    background: transparent;
+    color: #b91c1c;
+    border: 1.5px solid #b91c1c;
+    cursor: pointer;
+    font-size: 0.78rem;
+}
+.delete-account-btn:hover { background: #fef2f2; }
+body.dark .delete-account-btn { color: #fca5a5; border-color: #fca5a5; }
+body.dark .delete-account-btn:hover { background: #450a0a33; }
 
 .download-version {
     font-size: 0.78rem;

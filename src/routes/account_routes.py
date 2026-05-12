@@ -222,6 +222,47 @@ def logout():
     return jsonify({'status': 'success', 'message': 'Logged out'})
 
 
+@account_bp.route('/api/account/delete', methods=['POST'])
+def delete_account():
+    account_id = session.get('account_user_id')
+    if not account_id:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+
+    data = request.get_json(silent=True) or {}
+    password = data.get('password') or ''
+
+    user = User.query.get(account_id)
+    if not user:
+        return jsonify({'status': 'error', 'message': 'Account not found'}), 404
+    if not user.check_password(password):
+        return jsonify({'status': 'error', 'message': 'Incorrect password'}), 401
+
+    uid = f'account_{account_id}'
+
+    # 1. Wipe Firebase data
+    try:
+        from firebase_service import delete_user_data as fb_delete
+        fb_delete(account_id)
+    except Exception as e:
+        print(f'[delete] Firebase cleanup failed (non-fatal): {e}')
+
+    # 2. Wipe Redis / memory cache
+    try:
+        from user_data import purge_user_data
+        purge_user_data(uid)
+    except Exception as e:
+        print(f'[delete] Cache purge failed (non-fatal): {e}')
+
+    # 3. Remove from database
+    db.session.delete(user)
+    db.session.commit()
+
+    # 4. Clear session
+    session.clear()
+
+    return jsonify({'status': 'success', 'message': 'Account deleted successfully'})
+
+
 @account_bp.route('/api/download')
 def download():
     token = request.args.get('token') or request.headers.get('X-Download-Token')

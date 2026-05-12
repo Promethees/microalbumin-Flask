@@ -194,8 +194,11 @@
                     <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
                     <button class="account-nav-btn logout-btn" onclick="accountLogout()">Log Out</button>
                 </div>
-                <div style="margin-bottom: 12px;">
+                <div style="margin-bottom: 8px;">
                     <button class="account-nav-btn token-btn" onclick="revealDownloadToken()">🔑 Get Download Token</button>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()">🗑 Delete Account</button>
                 </div>
                 {% else %}
                 <div class="account-nav">
@@ -554,6 +557,95 @@
         async function accountLogout() {
             await fetch('/api/account/logout', { method: 'POST' });
             window.location.href = '/';
+        }
+
+        async function deleteAccount() {
+            // Step 1 — explain what will be destroyed
+            const step1 = await Swal.fire({
+                title: 'Delete your account?',
+                icon: 'warning',
+                html: `
+                    <p style="text-align:left;font-size:14px;color:#374151;line-height:1.6;">
+                        This will <strong>permanently</strong> delete:
+                    </p>
+                    <ul style="text-align:left;font-size:13px;color:#6b7280;margin:10px 0 0 16px;line-height:2;">
+                        <li>Your account and login credentials</li>
+                        <li>All your saved CSV files and calibration data</li>
+                        <li>All your reports and analysis results</li>
+                        <li>Your cloud storage on Firebase</li>
+                    </ul>
+                    <p style="text-align:left;font-size:13px;color:#b91c1c;margin-top:12px;font-weight:600;">
+                        ⚠️ This action cannot be undone.
+                    </p>`,
+                showCancelButton: true,
+                confirmButtonText: 'Yes, proceed',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#b91c1c',
+                cancelButtonColor: '#6b7280',
+                reverseButtons: true
+            });
+
+            if (!step1.isConfirmed) return;
+
+            // Step 2 — require password confirmation
+            const step2 = await Swal.fire({
+                title: 'Confirm with your password',
+                html: `
+                    <p style="font-size:13px;color:#6b7280;margin-bottom:12px;">
+                        Enter your password to permanently delete your account.
+                    </p>
+                    <input type="password" id="swal-delete-pw" class="swal2-input"
+                        placeholder="Your password" autocomplete="current-password">
+                    <p id="swal-delete-err" style="color:#b91c1c;font-size:12px;margin-top:6px;display:none;"></p>`,
+                showCancelButton: true,
+                confirmButtonText: 'Delete My Account',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#b91c1c',
+                cancelButtonColor: '#6b7280',
+                reverseButtons: true,
+                focusConfirm: false,
+                preConfirm: () => {
+                    const pw = document.getElementById('swal-delete-pw').value;
+                    if (!pw) {
+                        Swal.showValidationMessage('Password is required');
+                        return false;
+                    }
+                    return pw;
+                }
+            });
+
+            if (!step2.isConfirmed) return;
+
+            // Step 3 — call the API
+            try {
+                const res = await fetch('/api/account/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: step2.value })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Account deleted',
+                        text: 'Your account and all associated data have been permanently removed.',
+                        showConfirmButton: true,
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#2d6a4f'
+                    });
+                    window.location.href = '/';
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Could not delete account',
+                        text: data.message || 'Please try again.',
+                        confirmButtonColor: '#2d6a4f'
+                    });
+                }
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'Network error', text: 'Could not reach the server.' });
+            }
         }
 
         const IS_LOGGED_IN = {{ 'true' if account_user else 'false' }};

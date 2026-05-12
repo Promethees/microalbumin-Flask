@@ -187,6 +187,18 @@ def save_user_data(data: dict, user_id: str = None):
     uid = user_id or get_user_id()
     _save_to_redis(uid, data)
 
+def purge_user_data(uid: str):
+    """Remove all cached data for a uid — called on account deletion."""
+    if redis_client:
+        try:
+            redis_client.delete(f"user:{uid}")
+        except Exception as e:
+            print(f"[ERROR] Redis delete failed for {uid}: {e}")
+    try:
+        del USER_DATA._data[uid]
+    except (KeyError, AttributeError):
+        pass
+
 # ------------------------------------------------------------------
 # 4. File loaders
 # ------------------------------------------------------------------
