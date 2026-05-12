@@ -45,6 +45,15 @@ with app.app_context():
     db.create_all()
     run_migrations(db.engine)
 
+# Establish the Firestore gRPC connection in the background so the first
+# HTTP request is not blocked by the ~30 s cold-start handshake.
+import threading as _threading
+_threading.Thread(
+    target=lambda: __import__('firebase_service').prewarm(),
+    daemon=True,
+    name='firebase-prewarm'
+).start()
+
 # Register Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(file_bp)

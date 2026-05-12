@@ -12,7 +12,11 @@ def _get_db():
     global _db, _initialized
     if _initialized:
         return _db
-    with _lock:
+    # Non-blocking acquire: if another thread is already initialising Firebase,
+    # skip it for this request rather than hanging the HTTP worker for ~30 s.
+    if not _lock.acquire(blocking=False):
+        return _db
+    try:
         if _initialized:
             return _db
         _initialized = True
@@ -37,6 +41,14 @@ def _get_db():
         except Exception as e:
             print(f"[Firebase] Initialization failed: {e}")
         return _db
+    finally:
+        _lock.release()
+
+
+def prewarm():
+    """Call once at app startup in a background thread to establish the
+    Firestore gRPC connection before any HTTP request arrives."""
+    _get_db()
 
 
 def load_user_data(account_id: int) -> Optional[dict]:
