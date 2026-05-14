@@ -49,12 +49,14 @@ function clearStatusCheck() {
 }
 
 function resetUI({ goToEnabled }) {
-    const saveSameDir = document.getElementById('save-same-dir');
     const infTimeout = document.getElementById('inf-timeout');
 
-    if (!saveSameDir.checked) {
-    document.getElementById('base-dir').disabled = false;
-    }
+    // Re-enable subfolder selection controls
+    document.querySelectorAll('input[name="hid-save-mode"]').forEach(r => (r.disabled = false));
+    const existingSel = document.getElementById('hid-subfolder-select');
+    if (existingSel) existingSel.disabled = false;
+    const newInput = document.getElementById('hid-new-folder-name');
+    if (newInput) newInput.disabled = false;
 
     const baseEnabled = ['base-name', 'run-script-btn', 'inf-timeout', 'interval', 'interval-unit'];
     baseEnabled.forEach(id => (document.getElementById(id).disabled = false));
@@ -78,33 +80,66 @@ function resetUIAfterError() {
 }
 
 function resetUIAfterCompletion() {
-    resetUI({ goToEnabled: true });     
+    resetUI({ goToEnabled: true });
+    // Refresh folder picker so any newly-created subfolder is visible
+    if (typeof loadDataFolders === 'function') loadDataFolders();
+}
+
+// HID save-mode toggle handlers
+function onHidSaveModeChange() {
+    const mode = document.querySelector('input[name="hid-save-mode"]:checked')?.value || 'existing';
+    const existingRow = document.getElementById('hid-existing-row');
+    const newRow = document.getElementById('hid-new-row');
+    if (existingRow) existingRow.style.display = mode === 'existing' ? 'flex' : 'none';
+    if (newRow) newRow.style.display = mode === 'new' ? 'flex' : 'none';
+}
+
+function onHidSubfolderChange(select) {
+    AppState.processedHidPath = select.value ? getNativePath(DATA_ROOT, select.value) : DATA_ROOT;
 }
 
 // Main script runner
 async function runScript() {
-    if (!validateFileName("base-name") || !validatePathName("base-dir") || !validateTimeoutInterval()) return;
+    if (!validateFileName("base-name") || !validateTimeoutInterval()) return;
 
-    const baseDir = $id("base-dir").value.trim();
+    const saveMode = document.querySelector('input[name="hid-save-mode"]:checked')?.value || 'existing';
+    let subfolder = '';
+
+    if (saveMode === 'existing') {
+        subfolder = (document.getElementById('hid-subfolder-select') || {}).value || '';
+    } else {
+        if (!validateFileName("hid-new-folder-name")) return;
+        subfolder = ($id("hid-new-folder-name").value || '').trim();
+        if (!subfolder) {
+            alert('Please enter a name for the new subfolder.');
+            return;
+        }
+    }
+
     const baseName = $id("base-name").value.trim();
     const timeoutEl = $id("timeout");
     const intervalEl = $id("interval");
     const infTimeout = $id("inf-timeout").checked;
 
-    AppState.processedHidPath = baseDir;
-    clearStatusCheck();
+    AppState.processedHidPath = subfolder ? getNativePath(DATA_ROOT, subfolder) : DATA_ROOT;
 
+    clearStatusCheck();
     blinkingItem("log-display", 3000);
 
-    // Disable inputs
-    $disable(["base-dir", "base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit"]);
+    // Disable inputs while running
+    document.querySelectorAll('input[name="hid-save-mode"]').forEach(r => (r.disabled = true));
+    const existingSel = document.getElementById('hid-subfolder-select');
+    if (existingSel) existingSel.disabled = true;
+    const newInput = document.getElementById('hid-new-folder-name');
+    if (newInput) newInput.disabled = true;
+    $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit"]);
     $toggleClass("run-script-btn", "blinking", false);
     modeButtons.forEach(btn => btn.disabled = true);
 
     const timeoutValue = timeoutEl.value.trim();
     const intervalValue = intervalEl.value.trim();
     const payload = {
-        base_dir: baseDir,
+        subfolder: subfolder,
         base_name: baseName,
         inf_checked: infTimeout,
         timeout_sec: timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier($id("timeout-unit").value) : null,
@@ -188,7 +223,12 @@ function handleScriptTermination(message) {
     $toggleClass("run-script-btn", "blinking", true);
     $disable(["terminate-script-btn", "go-to-btn"]);
     ["terminate-script-btn", "go-to-btn"].forEach(id => $toggleClass(id, "blinking", false));
-    if (!document.getElementById("save-same-dir").checked) $id("base-dir").disabled = false;
+    // Re-enable subfolder selection
+    document.querySelectorAll('input[name="hid-save-mode"]').forEach(r => (r.disabled = false));
+    const existingSel = document.getElementById('hid-subfolder-select');
+    if (existingSel) existingSel.disabled = false;
+    const newInput = document.getElementById('hid-new-folder-name');
+    if (newInput) newInput.disabled = false;
     ["base-name", "inf-timeout", "interval", "interval-unit"].forEach(id => $id(id).disabled = false);
     const timeoutDisabled = $id("inf-timeout").checked;
     $id("timeout").disabled = timeoutDisabled;

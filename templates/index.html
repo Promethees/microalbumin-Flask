@@ -22,10 +22,6 @@
     </script>
     <script src="{{ url_for('static', filename='vendor/mathjax-tex-mml-chtml.js') }}"></script>
     <script>
-        // Predefine window[inputId + 'Handle'] for the input field
-        window['base-dirHandle'] = null;
-        window['save-dirHandle'] = null;
-
         // Initialize by enforcing selection of the main.py directory
         async function init() {
             try {
@@ -124,7 +120,7 @@
 
                 // Normalize paths
                 let currentPath = await normalizePath(pathDisplay.value || '', DELIMITER.replace('\\\\', '\\'));
-                let basePath = await normalizePath('{{ directory | tojson }}' || '', DELIMITER.replace('\\\\', '\\'));
+                let basePath = await normalizePath('{{ data_root | tojson }}' || '', DELIMITER.replace('\\\\', '\\'));
 
                 // Set default path if empty
                 if (!currentPath) {
@@ -220,18 +216,15 @@
             <div id="top-left-scrollable">
                 <div class="section hidden" style="position: static;" id="meas-mode-section">
                     <div class="section" id="top-left-dir-section">
-                        <h2>Directory</h2>
-                        <div style="display: block; justify-content: space-between; align-items: center;">
-                            <input type="text" id="directory-top" value="{{ directory | safe}}"
-                                onchange="updateDirectory(this.value, true)" style="width: 85%;">
-                            <button onclick="browseDirectory()">Browse Path</button>
+                        <h2>Data Folder</h2>
+
+                        <div style="display:flex; gap:4px; margin-top:5px; align-items:center;">
+                            <input type="text" id="folder-search-top" placeholder="Search folders…"
+                                oninput="filterDataFolderList('data-folder-list-top', this.value)"
+                                style="flex:1; padding:3px 5px;">
+                            <button onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
                         </div>
-                        <div id="dir-suggestions-top">
-                            <h3>Go back</h3>
-                            <div id="parent-dir-top" class="dir-blocks scrollbar-style"></div>
-                            <h3>Go forward</h3>
-                            <div id="child-dirs-top" class="dir-blocks scrollbar-style"></div>
-                        </div>
+                        <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                     </div>
                     <h2>{{ mode_input.title }}</h2>
                     <div id="measurement-mode" class="button-group" data-value="">
@@ -307,7 +300,7 @@
             <!-- <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;"> -->
             <!-- <p id="prompt-message">
                     Please select the directory containing <code>main.py</code> to get started.<br>
-                    <small style="color: #95a5a6;">(expected: {{ directory }})</small>
+                    <small style="color: #95a5a6;">(expected: {{ data_root }})</small>
                 </p> -->
 
             <!-- <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
@@ -323,29 +316,47 @@
         </div>
         <div id="main-content" class="hidden">
             <div class="section" id="main-directory-section">
-                <h2>Directory</h2>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <input type="text" id="directory" value="{{ directory | safe}}"
-                        onchange="updateDirectory(this.value, true)" style="width: 85%;">
-                    <button onclick="browseDirectory()" style="width: 15%;">Browse Path</button>
+                <h2>Data Folder</h2>
+
+                <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                    <input type="text" id="folder-search-main" placeholder="Search folders…"
+                        oninput="filterDataFolderList('data-folder-list', this.value)" style="flex:1; padding:4px 6px;">
+                    <button onclick="loadDataFolders()" title="Refresh folder list">↻ Refresh</button>
                 </div>
-                <div id="dir-suggestions">
-                    <h3>Go back</h3>
-                    <div id="parent-dir" class="dir-blocks scrollbar-style"></div>
-                    <h3>Go forward</h3>
-                    <div id="child-dirs" class="dir-blocks scrollbar-style"></div>
+                <div id="data-folder-list" class="dir-blocks scrollbar-style">
+                    <div style="color:#999; padding:6px;">Loading folders…</div>
                 </div>
                 <div id="error-message"></div>
             </div>
             <div class="section script-controls" id="log-hid-data">
                 <h2>Reading Colorimetric Data</h2>
-                <div>
-                    <label id="base-dir-label" for="base-dir">Saving Directory:
-                        <input type="text" id="base-dir" value="{{ directory | default('') }}" disabled>
-                    </label>
-                    <span id="base-dir-error" class="error"></span>
+
+                <div id="hid-save-section" style="margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <label style="font-weight:600; white-space:nowrap;">Save to:</label>
+                        <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
+                            <input type="radio" name="hid-save-mode" id="hid-mode-existing" value="existing" checked
+                                onchange="onHidSaveModeChange()"> Existing
+                        </label>
+                        <div id="hid-existing-row" style="display:flex; gap:5px; align-items:center;">
+                            <select id="hid-subfolder-select" onchange="onHidSubfolderChange(this)"
+                                style="max-width:280px;">
+                                <option value="">— data root —</option>
+                            </select>
+                            <button type="button" onclick="loadDataFolders()" title="Refresh list"
+                                style="padding:2px 6px;">↻</button>
+                        </div>
+                        <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
+                            <input type="radio" name="hid-save-mode" id="hid-mode-new" value="new"
+                                onchange="onHidSaveModeChange()"> New
+                        </label>
+                        <div id="hid-new-row" style="display:none; align-items:center; gap:4px;">
+                            <input type="text" id="hid-new-folder-name" placeholder="New subfolder name"
+                                style="width:200px;" oninput="validateFileName('hid-new-folder-name')">
+                            <span id="hid-new-folder-name-error" class="error"></span>
+                        </div>
+                    </div>
                 </div>
-                <input type="checkbox" id="save-same-dir" checked>Save to same browsed directory</input>
                 <div>
                     <label for="base-name">Base Name: </label>
                     <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
@@ -458,7 +469,8 @@
                         <label><input type="checkbox" id="console-logo" checked> Include CBB Logo</label>
                         <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report"
                                 style="width: 250px;"></label>
-                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per CSV)</label>
+                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per
+                            CSV)</label>
                     </div>
                 </div>
 
@@ -568,15 +580,24 @@
                             <span id="est-val-error" class="error"></span>
                             <span id="est-val-exp"></span>
                         </div>
-                        <label id="save-dir-label" for="save-dir">Saving Directory:
-                            <input type="text" id="save-dir" value="{{ directory | default('') }}" disabled>
-                            <!-- <button onclick="pickDirectory('save-dir')">Select Directory</button> -->
-                        </label>
-                        <span id="save-dir-error" class="error"></span>
+
+                        <div style="margin-bottom:6px;">
+                            <label style="display:flex; align-items:center; gap:6px;">
+                                <input type="checkbox" id="same-dir-as-data" checked>
+                                Export to the same directory as this data file
+                            </label>
+                        </div>
+                        <div id="exp-subfolder-row"
+                            style="display:none; margin-bottom:6px; align-items:center; gap:6px;">
+                            <label style="font-weight:600;">Save to subfolder:</label>
+                            <select id="exp-subfolder-select" onchange="onExpSubfolderChange(this)"
+                                style="flex:1; max-width:280px;">
+                                <option value="" data-path="">— data root —</option>
+                            </select>
+                            <button type="button" onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
+                        </div>
                     </div>
                     <div class="export-row">
-                        <input type="checkbox" id="same-dir-as-data" checked>Export to the same directory as this data
-                        file</input>
                         <label for="save-file">File Name: </label>
                         <input type="text" id="save-file"
                             placeholder="Enter calibrate file name to save analysis data to (e.g., results)"
@@ -593,10 +614,30 @@
                 <div id="export-coef">
                     <h3>Export coefficients for standard curve</h3>
                     <div>
-                        <label for="save-file">File Name: </label>
-                        <input type="text" id="save-json-file"
-                            placeholder="Enter json file name to save coefficients to" style="width: 50%">
-                        <span id="save-json-file-error" class="error"></span>
+                        <div style="display:flex; gap:16px; margin-bottom:6px;">
+                            <label style="display:flex; align-items:center; gap:4px;">
+                                <input type="radio" name="json-export-mode" id="json-mode-new" value="new" checked
+                                    onchange="onJsonExportModeChange()"> New file
+                            </label>
+                            <label style="display:flex; align-items:center; gap:4px;">
+                                <input type="radio" name="json-export-mode" id="json-mode-overwrite" value="overwrite"
+                                    onchange="onJsonExportModeChange()"> Overwrite existing calibrate file
+                            </label>
+                        </div>
+                        <div id="json-new-row">
+                            <label for="save-json-file">File Name: </label>
+                            <input type="text" id="save-json-file"
+                                placeholder="Enter JSON file name to save coefficients to" style="width: 50%">
+                            <span id="save-json-file-error" class="error"></span>
+                        </div>
+                        <div id="json-overwrite-row" style="display:none; align-items:center; gap:6px;">
+                            <label style="font-weight:600;">Existing file:</label>
+                            <select id="json-overwrite-select" style="flex:1; max-width:300px;">
+                                <option value="">— select a calibrate file —</option>
+                            </select>
+                            <button type="button" onclick="loadExistingJsonFiles()" style="padding:3px 7px;">↻</button>
+                        </div>
+                        <br>
                         <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
                         <br />
                         Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
@@ -641,8 +682,9 @@
                 // Update CSS variable dynamically
                 target.style.setProperty('--dynamic-top', `${offsetTop}px`);
             }
-            // const rootPath = JSON.parse('{{ directory | tojson }}');
-            const rootPath = {{ directory | tojson | safe}};
+            const DATA_ROOT = {{ data_root | tojson | safe }};
+            const REPORT_ROOT = {{ report_root | tojson | safe }};
+            const JSON_ROOT = {{ json_root | tojson | safe }};
             const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
 

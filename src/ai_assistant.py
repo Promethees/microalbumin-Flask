@@ -6,7 +6,7 @@ import socket
 import threading
 import urllib.error
 import urllib.request
-from file_path import get_directory
+from file_path import DATA_ROOT
 from file import get_file_list
 import state
 
@@ -696,8 +696,8 @@ TOOLS = [
             "description": (
                 "Focused spotlight guide for 2-5 specific UI elements. "
                 "Use for targeted how-to questions. "
-                "Valid IDs: #log-hid-data #run-script-btn #terminate-script-btn #base-dir #base-name "
-                "#timeout-control #interval-control #log-display #go-to-btn #directory "
+                "Valid IDs: #log-hid-data #run-script-btn #terminate-script-btn #base-name "
+                "#timeout-control #interval-control #log-display #go-to-btn "
                 "#meas-mode-section #file-selection #cal-json-sel-section #merge-file-btn "
                 "#data-display-section #chart-container #range-display #window-size-section "
                 "#split-source-section #export-analysis #report-section #cal-mode-select "
@@ -886,13 +886,12 @@ def start_model_pull(ollama_url: str, model: str) -> None:
 def _run_tool(name: str, args: dict) -> str:
     try:
         if name == "get_app_context":
-            directory = get_directory()
-            csv_files = get_file_list(directory)
+            csv_files = get_file_list(DATA_ROOT)
             json_k = get_file_list(os.path.join(state.json_root_path, "kinetics"), "*.json")
             json_p = get_file_list(os.path.join(state.json_root_path, "point"), "*.json")
             running = state.process is not None and state.process.poll() is None
             return json.dumps({
-                "current_directory": os.path.abspath(directory),
+                "data_directory": DATA_ROOT,
                 "csv_files": csv_files,
                 "json_calibration_kinetics": json_k,
                 "json_calibration_point": json_p,
@@ -902,7 +901,7 @@ def _run_tool(name: str, args: dict) -> str:
         elif name == "read_csv_file":
             filename = args.get("filename", "")
             max_rows = min(int(args.get("max_rows", 30)), 100)
-            filepath = os.path.join(get_directory(), filename)
+            filepath = os.path.join(DATA_ROOT, filename)
             if not os.path.exists(filepath):
                 return json.dumps({"error": f"'{filename}' not found in current directory."})
             lines = []

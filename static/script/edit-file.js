@@ -465,7 +465,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }
             return html;
         }
-        const filePath = tableSelector === '#file-table' ? document.getElementById("directory").value : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
+        const filePath = tableSelector === '#file-table' ? AppState.currentDirectory : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
         console.log("File Path is ", filePath);
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function (content) {
@@ -1009,7 +1009,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 if (getBtnChecked("no-swal-checkbox")) {
                                     console.log(textMsg);
                                     if (tableSelector === "#file-table") {
-                                        updateDirectory(document.getElementById("directory").value);
+                                        updateDirectory(AppState.currentDirectory);
                                     } else if (tableSelector === "#json-table") {
                                         updateJSONTable();
                                     }

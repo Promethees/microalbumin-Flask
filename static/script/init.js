@@ -50,7 +50,7 @@ document.getElementById('shutdown-btn').addEventListener('click', function () {
 document.getElementById('filter-source').addEventListener('change', function () {
     const numSourcesSelect = document.getElementById('num-sources-section');
     const splitBySource = document.getElementById('split-source-section');
-    updateDirectory(true);
+    updateDirectory(AppState.currentDirectory, true);
     deselectFile();
     deselectFile("#json-table");
     AppState.responseData = null;
@@ -61,7 +61,7 @@ document.getElementById('filter-source').addEventListener('change', function () 
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
-        $.get('/get_num_sources?path=' + document.getElementById("directory").value, { request: true }, function (response) {
+        $.get('/get_num_sources?path=' + AppState.currentDirectory, { request: true }, function (response) {
             const select = document.getElementById('num-sources');
             select.innerHTML = ''; // clear existing options (optional)
             response.num_sources.forEach(num => {
@@ -89,28 +89,19 @@ document.getElementById('filter-source').addEventListener('change', function () 
 document.getElementById('num-sources').addEventListener('change', function () {
     AppState.numSources = parseInt(this.value);
     console.log("Number of sources set to:", AppState.numSources);
-    const currentDir = document.getElementById("directory").value;
-    if (currentDir) {
-        updateDirectory(currentDir, true);
-    }
+    updateDirectory(AppState.currentDirectory, true);
     updateMultiSourceExportOptions();
     deselectFile();
 });
 
-const sameBaseDirCheckbox = document.getElementById("save-same-dir");
-const baseDirInput = document.getElementById("base-dir");
-
-sameBaseDirCheckbox.addEventListener("change", function () {
-    // Enable if unchecked, disable if checked
-    baseDirInput.disabled = this.checked;
-});
-
 const sameDirCheckbox = document.getElementById("same-dir-as-data");
-const saveDirInput = document.getElementById("save-dir");
 
 sameDirCheckbox.addEventListener("change", function () {
-    // Enable if unchecked, disable if checked
-    saveDirInput.disabled = this.checked;
+    const subfolderRow = document.getElementById("exp-subfolder-row");
+    if (subfolderRow) subfolderRow.style.display = this.checked ? "none" : "flex";
+    if (this.checked) {
+        AppState.exportPath = AppState.currentDirectory;
+    }
 });
 
 document.getElementById('range-value-start').addEventListener('input', validateRangeInput);
@@ -126,12 +117,7 @@ document.getElementById('save-json-file').addEventListener('input', function () 
     validateFileName('save-json-file');
 });
 
-document.getElementById('base-dir').addEventListener('input', function () {
-    validatePathName('base-dir');
-});
-saveDirInput.addEventListener('input', function () {
-    validatePathName('save-dir');
-});
+// base-dir is now a hidden field managed by JS; no user-input validation needed.
 
 const expPoint = document.getElementById('exp-json-time-value');
 expPoint.addEventListener('change', updatePointEstimate);
@@ -435,44 +421,26 @@ document.getElementById('inf-timeout').addEventListener('change', function () {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    const mainDirSection = document.querySelector("#main-content .section"); // Main Directory section
-    const topLeftDirSection = document.querySelector("#top-left-dir-section");  // Top-left Directory section
+    const mainDirSection = document.querySelector("#main-directory-section");
+    const topLeftDirSection = document.querySelector("#top-left-dir-section");
 
-    const mainDirInput = document.getElementById("directory");
-    const topDirInput = document.getElementById("directory-top");
+    if (topLeftDirSection) topLeftDirSection.style.display = "none";
 
-    const parentDirMain = document.getElementById("parent-dir");
-    const childDirMain = document.getElementById("child-dirs");
-    const parentDirTop = document.getElementById("parent-dir-top");
-    const childDirTop = document.getElementById("child-dirs-top");
-
-    // Hide top-left on load
-    topLeftDirSection.style.display = "none";
-
-    // Keep inputs synced both ways
-    mainDirInput.addEventListener("input", () => {
-        topDirInput.value = mainDirInput.value;
-    });
-    topDirInput.addEventListener("input", () => {
-        mainDirInput.value = topDirInput.value;
-    });
-
-    // Observer to toggle top-left visibility
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                // Main visible → hide top-left
-                topLeftDirSection.style.display = "none";
-            } else {
-                // Main scrolled away → show top-left
-                topLeftDirSection.style.display = "block";
-                parentDirTop.innerHTML = parentDirMain.innerHTML;
-                childDirTop.innerHTML = childDirMain.innerHTML;
-            }
-        });
-    }, { threshold: 0 });
-
-    observer.observe(mainDirSection);
+    if (mainDirSection && topLeftDirSection) {
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    topLeftDirSection.style.display = "none";
+                } else {
+                    topLeftDirSection.style.display = "block";
+                    const mainList = document.getElementById("data-folder-list");
+                    const topList = document.getElementById("data-folder-list-top");
+                    if (mainList && topList) topList.innerHTML = mainList.innerHTML;
+                }
+            });
+        }, { threshold: 0 });
+        observer.observe(mainDirSection);
+    }
 });
 
 const modeDiv = document.getElementById('measurement-mode');

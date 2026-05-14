@@ -205,13 +205,11 @@ function copyFile(tableSelector = "#file-table") {
         return;
     }
 
-    const filePath = tableSelector === "#file-table" ? document.getElementById("directory").value : currentFile;
-
     $.ajax({
         url: '/copy_file',
         method: 'POST',
         data: {
-            filepath: filePath,
+            path: AppState.currentDirectory,
             filename: currentFile,
             mode: AppState.currentMeasurementMode,
             tabletype: tableSelector
@@ -221,7 +219,7 @@ function copyFile(tableSelector = "#file-table") {
                 if (getBtnChecked("no-swal-checkbox")) {
                     console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
-                        updateDirectory(document.getElementById("directory").value);
+                        updateDirectory(AppState.currentDirectory);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -236,7 +234,7 @@ function copyFile(tableSelector = "#file-table") {
                     showConfirmButton: false
                 }).then(() => {
                     if (tableSelector === "#file-table") {
-                        updateDirectory(document.getElementById("directory").value);
+                        updateDirectory(AppState.currentDirectory);
                     } else if (tableSelector === "#json-table") {
                         updateJSONTable();
                     }
@@ -358,7 +356,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
 
                 $.post('/delete_file', {
                     filename: fileName,
-                    path: document.getElementById("directory").value,
+                    path: AppState.currentDirectory,
                     tabletype: tableSelector
                 }, handleResponse).fail(handleError);
             } else if (tableSelector === "#json-table") {
@@ -498,10 +496,8 @@ const fetchData = async (filename, jsonFile) => {
 };
 
 const fetchDataFromServer = async (filename) => {
-    const directory = document.getElementById("directory").value;
-
     return await $.get('/get_data', {
-        file: `${directory}${DELIMITER}${filename}`
+        file: `${AppState.currentDirectory}${DELIMITER}${filename}`
     }).fail((xhr, status, errorThrown) => {
         // Create a custom error object with all the details
         const enhancedError = new Error(`Fetch failed for ${filename}`);
@@ -1114,13 +1110,13 @@ function showMergeModal() {
                     file1: file1,
                     file2: file2,
                     output_name: output_name,
-                    path: document.getElementById("directory").value
+                    path: AppState.currentDirectory
                 },
                 success: function (response) {
                     if (response.status === 'success') {
                         if (getBtnChecked("no-swal-checkbox")) {
                             console.log("Merge successful:", response.message);
-                            updateDirectory(document.getElementById("directory").value);
+                            updateDirectory(AppState.currentDirectory);
                             return;
                         }
                         Swal.fire({
@@ -1130,7 +1126,7 @@ function showMergeModal() {
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
-                            updateDirectory(document.getElementById("directory").value);
+                            updateDirectory(AppState.currentDirectory);
                         });
                     } else {
                         Swal.fire({
@@ -1231,7 +1227,7 @@ function showMergeSubjectsModal() {
 
 function exportData() {
     // Validate file name and path
-    if (!validateFileName("save-file") || !validatePathName("save-dir")) {
+    if (!validateFileName("save-file")) {
         return;
     }
 
@@ -1240,10 +1236,19 @@ function exportData() {
         return;
     }
 
-    // Set export path
-    const processedExpPath = getBtnChecked("same-dir-as-data")
-        ? (document.getElementById("directory").value.trim() || "")
-        : (document.getElementById("save-dir").value.trim() || "");
+    // Set export path: same-dir-as-data → current directory; otherwise use subfolder selection
+    let processedExpPath;
+    if (getBtnChecked("same-dir-as-data")) {
+        processedExpPath = AppState.currentDirectory || DATA_ROOT;
+    } else {
+        const subSel = document.getElementById('exp-subfolder-select');
+        if (subSel && subSel.value) {
+            const opt = subSel.options[subSel.selectedIndex];
+            processedExpPath = (opt && opt.dataset.path) ? opt.dataset.path : AppState.exportPath || DATA_ROOT;
+        } else {
+            processedExpPath = AppState.exportPath || DATA_ROOT;
+        }
+    }
     const saveFile = document.getElementById("save-file").value.trim() || "results";
 
     // Bind button to export path
@@ -1460,48 +1465,109 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile 
     }
 }
 
+// ── Export subfolder handlers ────────────────────────────────────────────────
+
+function onExpSubfolderChange(select) {
+    const opt = select.options[select.selectedIndex];
+    AppState.exportPath = opt ? (opt.dataset.path || DATA_ROOT) : DATA_ROOT;
+}
+
+function onJsonExportModeChange() {
+    const mode = document.querySelector('input[name="json-export-mode"]:checked')?.value || 'new';
+    const newRow = document.getElementById('json-new-row');
+    const overwriteRow = document.getElementById('json-overwrite-row');
+    if (newRow) newRow.style.display = mode === 'new' ? 'block' : 'none';
+    if (overwriteRow) overwriteRow.style.display = mode === 'overwrite' ? 'flex' : 'none';
+    if (mode === 'overwrite') loadExistingJsonFiles();
+}
+
+async function loadExistingJsonFiles() {
+    const calMode = calDiv.getAttribute('data-value') || 'kinetics';
+    try {
+        const res = await fetch(`/get_json_cal?mode=${encodeURIComponent(calMode)}`);
+        const data = await res.json();
+        const files = data.files || [];
+        const sel = document.getElementById('json-overwrite-select');
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">— select a calibrate file —</option>';
+        files.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = f;
+            sel.appendChild(opt);
+        });
+        if (prev) sel.value = prev;
+    } catch (e) {
+        console.error('loadExistingJsonFiles error:', e);
+    }
+}
+
+// ── JSON coefficient export ──────────────────────────────────────────────────
+
 function exportJSONCoef() {
-    if (!validateFileName("save-json-file")) {
-        return; // Stop if validation fails
+    const exportMode = document.querySelector('input[name="json-export-mode"]:checked')?.value || 'new';
+
+    if (exportMode === 'new' && !validateFileName("save-json-file")) {
+        return;
     }
 
     const selectElement = document.getElementById('regressed-quantity');
     if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)) {
         alert("Please set time point to regress data from");
         return null;
-    } else {
-        if (AppState.exp_json_content) {
-            const data = {
-                fit_type: document.getElementById("exp-json-regress-algo").value,
-                for_meas: AppState.exp_json_content.meas,
-                coef_content: AppState.exp_json_content.analysis,
-                time: document.getElementById("regressed-time-point").value || null,
-                file_name: document.getElementById("save-json-file").value,
-                cal_mode: calDiv.getAttribute('data-value'),
-                cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),
-                threshold_val: getValFloat("threshold-value"),
-                numSources: AppState.numSources,
-                regress_algo: document.getElementById("exp-json-regress-algo").value
-            }
-            $.ajax({
-                url: '/export_cal_coefs',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(data),
-                success: function (response) {
-                    if (response.status === 'success') {
-                        alert(`Success: ${response.message}!`);
-                    } else {
-                        alert(`Error: ${response.message}`);
-                    }
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.log("AJAX error:", textStatus, errorThrown);
-                    alert("Error exporting data");
-                }
-            });
-        } else {
-            alert("Error! No analysis data available to export.");
-        }
     }
+
+    if (!AppState.exp_json_content) {
+        alert("Error! No analysis data available to export.");
+        return;
+    }
+
+    let fileName;
+    if (exportMode === 'overwrite') {
+        const sel = document.getElementById('json-overwrite-select');
+        fileName = sel ? sel.value : '';
+        if (!fileName) {
+            alert("Please select an existing calibrate file to overwrite.");
+            return;
+        }
+        // Strip .json extension so backend adds it consistently
+        if (fileName.toLowerCase().endsWith('.json')) {
+            fileName = fileName.slice(0, -5);
+        }
+    } else {
+        fileName = document.getElementById("save-json-file").value;
+    }
+
+    const data = {
+        fit_type: document.getElementById("exp-json-regress-algo").value,
+        for_meas: AppState.exp_json_content.meas,
+        coef_content: AppState.exp_json_content.analysis,
+        time: document.getElementById("regressed-time-point").value || null,
+        file_name: fileName,
+        cal_mode: calDiv.getAttribute('data-value'),
+        cal_params: Array.from(selectElement.options).map(option => option.dataset.original),
+        threshold_val: getValFloat("threshold-value"),
+        numSources: AppState.numSources,
+        regress_algo: document.getElementById("exp-json-regress-algo").value
+    };
+
+    $.ajax({
+        url: '/export_cal_coefs',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function (response) {
+            if (response.status === 'success') {
+                alert(`Success: ${response.message}!`);
+                if (exportMode === 'overwrite') loadExistingJsonFiles();
+            } else {
+                alert(`Error: ${response.message}`);
+            }
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log("AJAX error:", textStatus, errorThrown);
+            alert("Error exporting data");
+        }
+    });
 }

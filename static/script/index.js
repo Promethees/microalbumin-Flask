@@ -31,9 +31,11 @@ const AppState = {
     globalAnalysis: null,
     prevDropdownEntries: null,
     exp_json_content: null,
-    processedExpPath: getNativePath(rootPath, 'export_data'),
-    processedHidPath: getNativePath(rootPath, 'data'),
-    jsonPath: getNativePath(rootPath, 'json'),
+    currentDirectory: DATA_ROOT,
+    exportPath: DATA_ROOT,
+    processedExpPath: DATA_ROOT,
+    processedHidPath: DATA_ROOT,
+    jsonPath: JSON_ROOT,
     chartInstances: {},
     responseData: null,
     metaData: null,
@@ -60,7 +62,7 @@ const AppState = {
         'rgba(216, 191, 216, 1)'
     ],
     quantity_input: temp_quantity_input,
-    report_root_path: getNativePath(rootPath, 'report'),
+    report_root_path: REPORT_ROOT,
 
     currentReportSubject: null,
     reset: function () {
@@ -78,6 +80,8 @@ const AppState = {
         this.responseData = null;
         this.metaData = null;
         this.globalEstimatedValue = null;
+        this.currentDirectory = DATA_ROOT;
+        this.exportPath = DATA_ROOT;
         this.multiSource = false;
         this.numSources = 1;
         if (this.chartInstances) {
@@ -199,33 +203,8 @@ $(document).ready(function () {
     // Apply button text shrinking on page load
     setTimeout(() => shrinkAllButtonsToFit(), 100);
 
-    $.get('/get_parents', function (parentResponse) {
-        console.log("Parent directory:", parentResponse.parent);
-        let parentHtml = parentResponse.parent ?
-            (parentResponse.parent.split(DELIMITER).pop() ?
-                `<div onclick="updateDirectory('${parentResponse.parent}', true)" ondblclick="browseDirectory(true)">${parentResponse.parent.split(DELIMITER).pop()}</div>` :
-                '<div>No parent directory</div>') :
-            '<div>No parent directory</div>';
-        document.getElementById("parent-dir").innerHTML = parentHtml;
-
-        $.get('/get_children', function (childResponse) {
-            console.log("Child directories:", childResponse.children);
-            const sortedChildren = childResponse.children.sort((a, b) => a.localeCompare(b));
-            // Update the child directories display
-            let childHtml = sortedChildren.length > 0 ?
-                sortedChildren.map(dir =>
-                    `<div onclick="updateDirectory('${dir}', true)" ondblclick="browseDirectory(true)">${dir.split(DELIMITER).pop()}</div>`
-                ).join('') :
-                '<div>No child directories</div>';
-            document.getElementById("child-dirs").innerHTML = childHtml;
-        }).fail(function (jqXHR, textStatus, errorThrown) {
-            console.log("Error fetching child directories:", textStatus, errorThrown);
-            $showText("error-message", "Error fetching child directories");
-        });
-    }).fail(function (jqXHR, textStatus, errorThrown) {
-        console.log("Error fetching parent directory:", textStatus, errorThrown);
-        $showText("error-message", "Error fetching parent directory");
-    });
+    // Load data subfolders into the picker and selects
+    loadDataFolders();
 
     // Poll logs every 2 seconds if script is running
     logInterval = setInterval(function () {
@@ -238,10 +217,7 @@ $(document).ready(function () {
     // Periodically update file table every 0.5 seconds
     updateInterval = setInterval(function () {
         if (!serverAvailable) return;
-        const currentDir = document.getElementById("directory").value;
-        if (currentDir) {
-            updateDirectory(currentDir, false);
-        }
+        updateDirectory(AppState.currentDirectory, false);
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
@@ -551,24 +527,14 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
     }
 
     const browsePromise = new Promise((resolve) => {
-        let browsePath = path;
-        if (AppState.currentMeasurementMode === 'report' && !path) {
-            // Fetch report root from state if possible, but we'll try to let backend handle it
-            // Actually, let's just use whatever path is passed or default
-        }
         $.post('/browse', { path: path }, function (response) {
             if (response.status === 'success') {
-                document.getElementById("directory").value = response.path;
-                if (document.getElementById("directory-top")) {
-                    document.getElementById("directory-top").value = response.path;
-                }
+                AppState.currentDirectory = response.path;
                 if (getBtnChecked("same-dir-as-data")) {
-                    document.getElementById("save-dir").value = response.path;
-                    validatePathName('save-dir');
+                    AppState.exportPath = response.path;
                 }
-                if (getBtnChecked("save-same-dir")) {
-                    document.getElementById("base-dir").value = response.path;
-                    validatePathName('base-dir');
+                if (typeof updateFolderListSelection === 'function') {
+                    updateFolderListSelection(response.path);
                 }
                 $hidden(["error-message"]);
 
@@ -632,11 +598,11 @@ function updateMultiSourceExportOptions() {
 }
 
 function switchingModes(mode) {
-    const currentDir = document.getElementById("directory").value;
+    const currentDir = AppState.currentDirectory;
     const prevMode = AppState.currentMeasurementMode;
     AppState.currentMeasurementMode = mode;
     if (mode !== 'report' && currentDir) {
-        const targetDir = prevMode === 'report' ? rootPath : currentDir;
+        const targetDir = prevMode === 'report' ? DATA_ROOT : currentDir;
         updateDirectory(targetDir, true);
     }
     AppState.currentJSON = null;

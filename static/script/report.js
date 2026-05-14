@@ -329,7 +329,7 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
             Swal.fire('No File', 'Please select a file first.', 'warning');
             return;
         }
-        const dir      = document.getElementById('directory').value;
+        const dir      = AppState.currentDirectory;
         const fullPath = dir + (dir.endsWith(DELIMITER) ? '' : DELIMITER) + currentFile;
 
         // Fetch raw CSV data from server
@@ -550,7 +550,7 @@ async function exportToReport() {
     }
 
     const measMode = AppState.currentMeasurementMode || "Unknown";
-    const dir = document.getElementById("directory").value;
+    const dir = AppState.currentDirectory;
     const fullPath = dir + (dir.endsWith(DELIMITER) ? '' : DELIMITER) + currentFile;
 
     const metadata = {
