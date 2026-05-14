@@ -205,6 +205,7 @@ $(document).ready(function () {
 
     // Load data subfolders into the picker and selects
     loadDataFolders();
+    if (typeof loadReportSubjectsForPicker === 'function') loadReportSubjectsForPicker();
 
     // Poll logs every 2 seconds if script is running
     logInterval = setInterval(function () {
