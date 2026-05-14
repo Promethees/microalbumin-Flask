@@ -807,6 +807,7 @@ async function refreshReportSubjects() {
 }
 
 async function editReportSubject(subjectName, button) {
+    const _isDark = document.body.classList.contains('dark');
     const { value: result } = await Swal.fire({
         title: `Edit Subject: "${subjectName}"`,
         html: `
@@ -818,7 +819,7 @@ async function editReportSubject(subjectName, button) {
                 <span style="font-weight:600; font-size:0.9rem;">Items</span>
                 <span style="font-size:0.75rem; color:#94a3b8;">drag ⠿ to reorder · ✕ to remove</span>
             </div>
-            <div id="swal-items-container" style="max-height:320px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fafafa;">
+            <div id="swal-items-container" style="max-height:320px; overflow-y:auto; border:1px solid ${_isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; padding:8px; background:${_isDark ? '#111827' : '#fafafa'};">
                 <p style="color:#94a3b8; margin:8px 0; text-align:center;">Loading items…</p>
             </div>
         `,
@@ -887,6 +888,7 @@ async function loadEditSwalItems(subjectName, container) {
             return;
         }
 
+        const isDark = document.body.classList.contains('dark');
         container.innerHTML = '';
         for (const item of dataFiles) {
             const safeId = `swal-card-${item.filename.replace(/[^a-z0-9]/gi, '_')}`;
@@ -897,18 +899,18 @@ async function loadEditSwalItems(subjectName, container) {
             card.dataset.itemFilename = item.filename;
             card.dataset.filename = item.filename;
             card.dataset.subject = subjectName;
-            card.style.cssText = 'margin-bottom:6px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; transition: background 0.15s;';
+            card.style.cssText = `margin-bottom:6px; padding:8px 10px; background:${isDark ? '#1f2937' : '#fff'}; border:1px solid ${isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; transition: background 0.15s; color:${isDark ? '#f3f4f6' : 'inherit'};`;
             card.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span class="drag-handle" title="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
                     <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.filename}">${item.filename}</span>
-                    <span style="font-size:0.75rem; color:#6366f1; background:#eef2ff; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata.mode || 'Measurement'}</span>
+                    <span style="font-size:0.75rem; color:${isDark ? '#a5b4fc' : '#6366f1'}; background:${isDark ? '#312e81' : '#eef2ff'}; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata.mode || 'Measurement'}</span>
                     <button data-card-id="${safeId}" data-filename="${item.filename}" title="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
                 </div>
-                <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid #fee2e2; text-align:right;">
+                <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid ${isDark ? '#7f1d1d' : '#fee2e2'}; text-align:right;">
                     <span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>
                     <button onclick="confirmSwalItemDelete(this)" style="background:#ef4444; color:#fff; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem; margin-right:4px;">Confirm</button>
-                    <button onclick="cancelSwalItemDelete(this)" style="background:#e5e7eb; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;">Cancel</button>
+                    <button onclick="cancelSwalItemDelete(this)" style="${isDark ? 'background:#374151; color:#d1d5db;' : 'background:#e5e7eb;'} border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;">Cancel</button>
                 </div>
             `;
             container.appendChild(card);
@@ -921,7 +923,8 @@ async function loadEditSwalItems(subjectName, container) {
 function requestSwalItemDelete(btn) {
     const card = btn.closest('[data-item-filename]');
     if (!card) return;
-    card.style.background = '#fff5f5';
+    const isDark = document.body.classList.contains('dark');
+    card.style.background = isDark ? '#450a0a' : '#fff5f5';
     card.style.borderColor = '#fca5a5';
     card.querySelector('.swal-delete-confirm').style.display = 'block';
     btn.disabled = true;
@@ -930,8 +933,9 @@ function requestSwalItemDelete(btn) {
 function cancelSwalItemDelete(btn) {
     const card = btn.closest('[data-item-filename]');
     if (!card) return;
-    card.style.background = '#fff';
-    card.style.borderColor = '#e2e8f0';
+    const isDark = document.body.classList.contains('dark');
+    card.style.background = isDark ? '#1f2937' : '#fff';
+    card.style.borderColor = isDark ? '#374151' : '#e2e8f0';
     card.querySelector('.swal-delete-confirm').style.display = 'none';
     card.querySelector('button[title="Remove from subject"]').disabled = false;
 }
