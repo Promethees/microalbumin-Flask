@@ -281,6 +281,79 @@ def merge_csv():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'An unexpected error occurred while merging the files: {str(e)}'}), 500
 
+@file_bp.route('/save_range_csv', methods=['POST'])
+@validate_json({
+    'file': str,
+    'range_start': (float, 0.0, False),
+    'range_end': (float, None, False),
+    'save_name': str,
+})
+def save_range_csv(validated_data):
+    import csv as csv_mod
+    from io import StringIO
+    file_name = os.path.basename(validated_data['file'].strip())
+    range_start = validated_data['range_start']
+    range_end = validated_data['range_end']
+    save_name = os.path.basename(validated_data['save_name'].strip())
+    if not save_name:
+        return jsonify({'status': 'error', 'message': 'Save name is required'})
+    if not save_name.lower().endswith('.csv'):
+        save_name += '.csv'
+
+    try:
+        user_data = get_user_data()
+        content = user_data['csv'].get(file_name)
+        if content is None:
+            return jsonify({'status': 'error', 'message': f"File '{file_name}' not found"})
+
+        meta_lines = []
+        data_lines = []
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                meta_lines.append(line)
+            elif stripped:
+                data_lines.append(stripped)
+
+        if not data_lines:
+            return jsonify({'status': 'error', 'message': 'Source file has no data'})
+
+        header_list = [h.strip() for h in next(csv_mod.reader([data_lines[0]]))]
+        if 'Timestamp' not in header_list:
+            return jsonify({'status': 'error', 'message': 'Source file has no Timestamp column'})
+
+        filtered_rows = []
+        for line in data_lines[1:]:
+            parsed = next(csv_mod.reader([line]))
+            row_dict = dict(zip(header_list, parsed))
+            try:
+                ts = float(row_dict['Timestamp'])
+                if ts >= range_start and (range_end is None or ts <= range_end):
+                    filtered_rows.append(parsed)
+            except (ValueError, KeyError):
+                pass
+
+        out = StringIO()
+        for line in meta_lines:
+            out.write(line + '\n')
+        writer = csv_mod.writer(out)
+        writer.writerow(header_list)
+        writer.writerows(filtered_rows)
+
+        with user_data_session() as ud:
+            ud['csv'][save_name] = out.getvalue()
+
+        socketio.emit('update_csv')
+        return jsonify({
+            'status': 'success',
+            'message': f'Saved {len(filtered_rows)} rows as {save_name}',
+            'count': len(filtered_rows),
+            'save_name': save_name
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
 
 # ── Report helpers ─────────────────────────────────────────────────────────────
 
