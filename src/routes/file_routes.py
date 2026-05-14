@@ -10,7 +10,7 @@ from filelock import FileLock, Timeout
 import shutil
 
 import state
-from file_path import DATA_ROOT, is_multi_value_timeseries_csv_header
+from file_path import DATA_ROOT, validate_in_data_root, is_multi_value_timeseries_csv_header
 from file import get_dynamic_data, replace_empty, merge_csv_files
 from file_operations import remove_csv_columns
 from measure import sort_csv_file
@@ -345,25 +345,33 @@ def merge_csv():
         if state.process and state.process.poll() is None:
             return jsonify({'status': 'error', 'message': 'Cannot merge files while the data collection process is running'}), HTTPStatus.LOCKED
 
-        file1 = request.form.get('file1')
-        file2 = request.form.get('file2')
+        folder_paths = request.form.getlist('folder_paths')
+        file_names = request.form.getlist('file_names')
         output_name = request.form.get('output_name')
-        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
+        output_dir = request.form.get('output_path') or DATA_ROOT
 
-        if not file1 or not file2 or not output_name:
-            return jsonify({'status': 'error', 'message': 'Both files and output name are required'}), HTTPStatus.BAD_REQUEST
+        if len(folder_paths) < 2 or len(folder_paths) != len(file_names) or not output_name:
+            return jsonify({'status': 'error', 'message': 'At least two files and an output name are required'}), HTTPStatus.BAD_REQUEST
 
         if not output_name.endswith('.csv'):
             output_name += '.csv'
 
-        file1_path = os.path.join(path, file1)
-        file2_path = os.path.join(path, file2)
-        output_path = os.path.join(path, output_name)
+        file_paths = []
+        for folder, fname in zip(folder_paths, file_names):
+            if not fname:
+                return jsonify({'status': 'error', 'message': 'Each slot must have a file selected'}), HTTPStatus.BAD_REQUEST
+            validated = validate_in_data_root(os.path.join(folder, fname))
+            if not validated:
+                return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+            file_paths.append(validated)
 
-        if '..' in os.path.normpath(file1_path) or '..' in os.path.normpath(file2_path) or '..' in os.path.normpath(output_path):
-            return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+        validated_out_dir = validate_in_data_root(output_dir)
+        if not validated_out_dir:
+            return jsonify({'status': 'error', 'message': 'Invalid output path'}), HTTPStatus.BAD_REQUEST
 
-        success, result = merge_csv_files(file1_path, file2_path, output_path)
+        output_full = os.path.join(validated_out_dir, output_name)
+
+        success, result = merge_csv_files(file_paths, output_full)
         if success:
             return jsonify({'status': 'success', 'message': f'Files merged successfully into {result}'}), HTTPStatus.OK
         else:

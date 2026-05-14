@@ -116,9 +116,9 @@ def replace_empty(obj):
     else:
         return obj
 
-def merge_csv_files(file1_path, file2_path, output_path):
+def merge_csv_files(file_paths, output_path):
     """
-    Merge two CSV files based on Timestamp or Concentration.
+    Merge multiple CSV files based on Timestamp or Concentration.
     Handles measured data (Value:n) and calibration data.
     """
     def parse_csv_with_metadata(path):
@@ -139,86 +139,81 @@ def merge_csv_files(file1_path, file2_path, output_path):
                 raw_headers_line = next(line_generator)
                 raw_headers = next(csv.reader([raw_headers_line]))
                 headers = [h.strip() for h in raw_headers]
-                
                 data = list(csv.DictReader(line_generator, fieldnames=headers))
             except StopIteration:
                 data = []
 
         return metadata, data
 
-    meta1, rows1 = parse_csv_with_metadata(file1_path)
-    meta2, rows2 = parse_csv_with_metadata(file2_path)
+    parsed = [parse_csv_with_metadata(p) for p in file_paths]
 
-    if rows1 is None or rows2 is None:
-        return False, "One or both files not found"
+    if any(meta is None for meta, _ in parsed):
+        return False, "One or more files not found"
 
-    if not rows1 and not rows2:
-        return False, "Both files are empty"
-        
-    # Get headers
-    headers1 = list(rows1[0].keys()) if rows1 else []
-    headers2 = list(rows2[0].keys()) if rows2 else []
+    if all(not rows for _, rows in parsed):
+        return False, "All files are empty"
 
-    # Identify key column
-    if 'Timestamp' in headers1 and 'Timestamp' in headers2:
+    all_headers = [list(rows[0].keys()) if rows else [] for _, rows in parsed]
+
+    if all('Timestamp' in h for h in all_headers):
         join_key = 'Timestamp'
-    elif 'Concentration' in headers1 and 'Concentration' in headers2:
+    elif all('Concentration' in h for h in all_headers):
         join_key = 'Concentration'
     else:
         return False, "Could not find common key column (Timestamp or Concentration)"
 
-    # Merge logic
     if join_key == 'Timestamp':
-        # Measured data
-        df1_value_cols = [c for c in headers1 if c.startswith('Value:')]
-        df2_value_cols = [c for c in headers2 if c.startswith('Value:')]
-        n = len(df1_value_cols)
-        
-        # Create a combined data structure
-        combined = {} # key -> combined_row
-        
-        for r in rows1:
-            combined[r[join_key]] = r.copy()
-            
-        for r in rows2:
-            key = r[join_key]
-            if key not in combined:
-                combined[key] = {join_key: key}
-            
-            # Map Value:i in rows2 to Value:n+i
-            for i, col in enumerate(df2_value_cols, 1):
-                combined[key][f"Value:{n + i}"] = r.get(col, "NONE")
+        combined = {}
+        value_offset = 0
 
-        # Resulting rows
+        for _, rows in parsed:
+            if not rows:
+                continue
+            headers = list(rows[0].keys())
+            value_cols = [c for c in headers if c.startswith('Value:')]
+
+            for r in rows:
+                key = r[join_key]
+                if key not in combined:
+                    combined[key] = {join_key: key}
+                for i, col in enumerate(value_cols, 1):
+                    combined[key][f"Value:{value_offset + i}"] = r.get(col, "NONE")
+
+            value_offset += len(value_cols)
+
         merged_rows = list(combined.values())
-        
-        # New headers
-        all_val_cols = df1_value_cols + [f"Value:{n + i}" for i in range(1, len(df2_value_cols) + 1)]
-        new_headers = [join_key] + all_val_cols
+        new_headers = [join_key] + [f"Value:{i + 1}" for i in range(value_offset)]
     else:
-        # Calibration data: Concatenate
-        merged_rows = rows1 + rows2
-        new_headers = list(dict.fromkeys(headers1 + headers2))
+        # Calibration data: concatenate rows, union headers
+        merged_rows = []
+        seen = {}
+        for h_list in all_headers:
+            for h in h_list:
+                if h not in seen:
+                    seen[h] = True
+        new_headers = list(seen.keys())
+        for _, rows in parsed:
+            merged_rows.extend(rows)
 
-    # Sort merged rows
     def _safe_float(val):
         try:
             return float(val)
         except (ValueError, TypeError):
-            return val # fall back to string comparison if not float
+            return val
 
     merged_rows.sort(key=lambda x: _safe_float(x.get(join_key, "")))
 
-    # Fill NONEs for missing keys across all rows
     for row in merged_rows:
         for h in new_headers:
             if h not in row or row[h] == "" or row[h] is None:
                 row[h] = "NONE"
 
-    # Combine metadata (unique lines)
-    combined_meta = list(dict.fromkeys(meta1 + meta2))
+    combined_meta = []
+    for meta, _ in parsed:
+        for line in meta:
+            if line not in combined_meta:
+                combined_meta.append(line)
 
-    # Write to file
     with open(output_path, 'w', encoding='utf-8', newline='') as f:
         for line in combined_meta:
             f.write(f"{line}\n")

@@ -42,15 +42,31 @@ def test_merge_csv_files(tmp_path):
     f2 = tmp_path / "f2.csv"
     f2.write_text("# Measurement: ABS\nTimestamp,Value:1\n0,0.2\n")
     out = tmp_path / "out.csv"
-    
-    success, msg = file.merge_csv_files(str(f1), str(f2), str(out))
+
+    success, msg = file.merge_csv_files([str(f1), str(f2)], str(out))
     assert success is True
-    
-    # Read output
+
     merged_content = out.read_text()
     assert "Value:1" in merged_content
     assert "Value:2" in merged_content
     assert "0,0.1,0.2" in merged_content or "0,0.1,0.2" in merged_content.replace(" ", "")
+
+def test_merge_csv_files_three(tmp_path):
+    f1 = tmp_path / "f1.csv"
+    f1.write_text("# Measurement: ABS\nTimestamp,Value:1\n0,0.1\n1,0.2\n")
+    f2 = tmp_path / "f2.csv"
+    f2.write_text("# Measurement: ABS\nTimestamp,Value:1\n0,0.3\n1,0.4\n")
+    f3 = tmp_path / "f3.csv"
+    f3.write_text("# Measurement: ABS\nTimestamp,Value:1\n0,0.5\n1,0.6\n")
+    out = tmp_path / "out.csv"
+
+    success, msg = file.merge_csv_files([str(f1), str(f2), str(f3)], str(out))
+    assert success is True
+
+    merged_content = out.read_text()
+    assert "Value:1" in merged_content
+    assert "Value:2" in merged_content
+    assert "Value:3" in merged_content
 
 def test_remove_csv_columns(tmp_path):
     csv_content = "# Meta\nTimestamp,Value:1,Value:2\n0,0.1,0.2\n"
