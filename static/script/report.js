@@ -552,6 +552,14 @@ async function loadReportItems(subject) {
                                         <option value="individual">Separate plots per trace</option>
                                     </select>
                                 </div>
+                                ${(isKinetics || item.metadata.mode === 'point') ? `
+                                <div class="control-group">
+                                    <label style="cursor: pointer;">
+                                        <input type="checkbox" class="item-normalize-checkbox" data-item="${item.filename}">
+                                        Normalize Data
+                                    </label>
+                                </div>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -976,6 +984,10 @@ async function finalizeReport() {
                 const unit = (config.metadata && config.metadata.Unit) ? config.metadata.Unit : 'NONE';
                 const isPoint = config.metadata.mode === 'point';
                 const derivedQuantity = isKinetics ? (config.derivedQuantity || 'maxrate') : null;
+                const shouldNormalize = card.querySelector('.item-normalize-checkbox')?.checked || false;
+                const displayData = (shouldNormalize && (isKinetics || isPoint))
+                    ? _normalizeTraces(renderData, visibleTraces)
+                    : renderData;
                 const derivedHtml = (calFile && (isKinetics || isPoint))
                     ? await buildDerivedConcentrationForReport({
                         mode: isKinetics ? 'kinetics' : 'point',
@@ -1016,7 +1028,7 @@ async function finalizeReport() {
                         data: {
                             datasets: visibleTraces.map(t => ({
                                 label: `Source ${t}`,
-                                data: renderData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })),
+                                data: displayData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })),
                                 borderColor: colors[(t - 1) % colors.length],
                                 tension: 0.1,
                                 pointRadius: 0
@@ -1030,14 +1042,14 @@ async function finalizeReport() {
                             },
                             scales: {
                                 x: { title: { display: true, text: 'Time (s)' } },
-                                y: { title: { display: true, text: 'Value' } }
+                                y: { title: { display: true, text: shouldNormalize ? 'Value (normalized)' : 'Value' } }
                             }
                         }
                     });
 
                     const img = tempCanvas.toDataURL('image/png');
                     const analysisHtml = isKinetics
-                        ? buildKineticsAnalysisForReport(renderData, visibleTraces, unit, windowSize)
+                        ? buildKineticsAnalysisForReport(displayData, visibleTraces, unit, windowSize)
                         : '';
                     finalHtmlContent += `
                         <div style="margin-bottom: 30px;">
@@ -1064,7 +1076,7 @@ async function finalizeReport() {
                             data: {
                                 datasets: [{
                                     label: `Source ${traceIdx}`,
-                                    data: renderData.map(row => ({ x: row.Timestamp, y: row[`Value:${traceIdx}`] })),
+                                    data: displayData.map(row => ({ x: row.Timestamp, y: row[`Value:${traceIdx}`] })),
                                     borderColor: '#6366f1',
                                     tension: 0.1,
                                     pointRadius: 0
@@ -1078,7 +1090,7 @@ async function finalizeReport() {
 
                         const img = tempCanvas.toDataURL('image/png');
                         const analysisHtml = isKinetics
-                            ? buildKineticsAnalysisForReport(renderData, [traceIdx], unit, windowSize)
+                            ? buildKineticsAnalysisForReport(displayData, [traceIdx], unit, windowSize)
                             : '';
                         finalHtmlContent += `
                             <div style="margin-bottom: 20px;">
@@ -1263,6 +1275,26 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
 function _unitDisplayForReport(unit) {
     if (!unit || unit === 'NONE') return '';
     return unit;
+}
+
+function _normalizeTraces(renderData, traceIndices) {
+    const normalized = renderData.map(row => ({ ...row }));
+    for (const t of traceIndices) {
+        const key = `Value:${t}`;
+        const validVals = renderData
+            .map(r => r[key])
+            .filter(v => v !== null && v !== undefined && v !== 'NONE' && v !== 'OVFL' && Number.isFinite(Number(v)))
+            .map(Number);
+        if (validVals.length === 0) continue;
+        const min = Math.min(...validVals);
+        normalized.forEach((row, i) => {
+            const raw = renderData[i][key];
+            if (raw !== null && raw !== undefined && raw !== 'NONE' && raw !== 'OVFL' && Number.isFinite(Number(raw))) {
+                row[key] = Number(raw) - min;
+            }
+        });
+    }
+    return normalized;
 }
 
 function _extractValidXYForTrace(renderData, traceIdx) {
@@ -1825,10 +1857,14 @@ async function finalizeReportExcel() {
                 const windowSize    = isKinetics ? (config.windowSize || 4) : null;
                 const unit          = (config.metadata && config.metadata.Unit) ? config.metadata.Unit : 'NONE';
                 const derivedQty    = isKinetics ? (config.derivedQuantity || 'maxrate') : null;
+                const shouldNormalize = card.querySelector('.item-normalize-checkbox')?.checked || false;
+                const displayData   = (shouldNormalize && (isKinetics || isPoint))
+                    ? _normalizeTraces(renderData, visibleTraces)
+                    : renderData;
 
                 const csvCols = ['Timestamp', ...visibleTraces.map(t => `Value:${t}`)];
                 itemData.csv_columns = csvCols;
-                itemData.csv_rows    = renderData.map(row => {
+                itemData.csv_rows    = displayData.map(row => {
                     const r = {};
                     csvCols.forEach(col => { r[col] = row[col]; });
                     return r;
@@ -1836,7 +1872,7 @@ async function finalizeReportExcel() {
 
                 if (isKinetics) {
                     for (const t of visibleTraces) {
-                        const { x, y } = _extractValidXYForTrace(renderData, t);
+                        const { x, y } = _extractValidXYForTrace(displayData, t);
                         if (x.length < 4) continue;
                         const a  = calculateKineticsQuantities(x, y, windowSize || 4);
                         const ut = _unitDisplayForReport(unit);
@@ -1887,14 +1923,14 @@ async function finalizeReportExcel() {
                         data: {
                             datasets: visibleTraces.map(t => ({
                                 label: `Source ${t}`,
-                                data: renderData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })),
+                                data: displayData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })),
                                 borderColor: COLORS[(t - 1) % COLORS.length], tension: 0.1, pointRadius: 0
                             }))
                         },
                         options: {
                             responsive: false, animation: false,
                             plugins: { title: { display: true, text: filename, font: { size: 18 } }, legend: { display: true, position: 'bottom' } },
-                            scales: { x: { title: { display: true, text: 'Time (s)' } }, y: { title: { display: true, text: 'Value' } } }
+                            scales: { x: { title: { display: true, text: 'Time (s)' } }, y: { title: { display: true, text: shouldNormalize ? 'Value (normalized)' : 'Value' } } }
                         }
                     });
                     await new Promise(r => setTimeout(r, 250));
@@ -1906,7 +1942,7 @@ async function finalizeReportExcel() {
                         cv.width = 1600; cv.height = 800;
                         const tc = new Chart(cv.getContext('2d'), {
                             type: 'line',
-                            data: { datasets: [{ label: `Source ${t}`, data: renderData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })), borderColor: '#6366f1', tension: 0.1, pointRadius: 0 }] },
+                            data: { datasets: [{ label: `Source ${t}`, data: displayData.map(row => ({ x: row.Timestamp, y: row[`Value:${t}`] })), borderColor: '#6366f1', tension: 0.1, pointRadius: 0 }] },
                             options: { responsive: false, animation: false, plugins: { title: { display: true, text: `${filename} – Source ${t}`, font: { size: 16 } } } }
                         });
                         await new Promise(r => setTimeout(r, 250));
