@@ -233,6 +233,7 @@ function handleScriptTermination(message) {
     const timeoutDisabled = $id("inf-timeout").checked;
     $id("timeout").disabled = timeoutDisabled;
     $id("timeout-unit").disabled = timeoutDisabled;
+    modeButtons.forEach(btn => btn.disabled = false);
 }
 
 // --- Fetch logs ---
