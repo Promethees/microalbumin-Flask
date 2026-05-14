@@ -31,7 +31,7 @@
 - **All CSV and JSON operations use `os.path`, `open()`, `Path`, `glob`, `shutil`, `pandas`.**
 - There is **no** in-memory `USER_DATA` dict, no session-based storage.
 - Files are read from and written to the user's local disk directly.
-- The current browsed directory is tracked in `file_path.py`'s global `current_directory`.
+- The current browsed directory is tracked in `file_path.py`'s global `current_directory`, always within `DATA_ROOT` (`data/`).
 - Modifications to files (`edit_file`, `delete_file`, `copy_file`) operate directly on the filesystem.
 
 ### 2.2 Single-User — No Session Isolation
@@ -63,13 +63,20 @@
 - No `drive-integration.js` on this branch.
 - No `src/google_drive_service.py`, no `src/user_data.py`, no `src/config.py`.
 
-### 2.6 Directory Browsing
+### 2.6 Data Folder Management
 
-- Users browse their **local filesystem** via the UI.
-- Routes: `/browse`, `/get_parents`, `/get_children`, `/browse_export`
-- The server navigates directories using `file_path.py`'s `browse_directory`, `get_parent_directory`, `get_child_directories`.
-- Path delimiter: `\\\\` on Windows, `/` on Mac/Linux.
+- Users are **restricted to the `data/` directory** (project root). Free filesystem browsing is no longer allowed.
+- A **subfolder picker** UI lists immediate subdirectories of `data/` with search and sort by name.
+- `src/file_path.py` exports `DATA_ROOT` constant, `validate_in_data_root(path)`, and `get_data_subfolders()`. There is **no mutable `current_directory` state** — the backend is stateless; directory tracking is owned by the frontend.
+- `src/state.py` tracks `data_root_path`, `report_root_path`, `json_root_path` (all auto-created on startup).
+- Route `GET /get_data_folders` returns `[{"name": "...", "path": "..."}, ...]`.
+- Route `POST /browse` is **stateless**: validates path is within `data_root_path` or `report_root_path`, returns files, and never writes to backend state. Removed routes: `/get_parents`, `/get_children`.
+- Template variables passed from `index()`: `data_root`, `report_root`, `json_root` (replaces `directory`).
+- JS constants: `DATA_ROOT`, `REPORT_ROOT`, `JSON_ROOT` (replaces `rootPath`). Defined inline in `index.html` before external scripts are loaded.
+- Path delimiter: `\\` on Windows, `/` on Mac/Linux.
 - Hidden directories (starting with `.` or `_`) are filtered out.
+- **Anti-pattern**: Do **not** restore `get_directory()`, `browse_directory()`, `get_parent_directory()`, or `current_directory` global in `file_path.py` — these have been permanently removed.
+- `/run_script` payload uses `subfolder` (folder name only, no slashes) instead of `base_dir`; backend constructs `data/<subfolder>` and creates it if needed.
 
 ### 2.7 Shutdown Endpoint
 

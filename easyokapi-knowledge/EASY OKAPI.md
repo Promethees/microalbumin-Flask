@@ -49,7 +49,7 @@ graph TD
 
 | Blueprint | File | Routes | Frontend Consumer |
 |---|---|---|---|
-| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_parents`, `/get_children`, `/get_json_cal`, `/get_report_subjects` | `index.js`, `report.js` |
+| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_data_folders`, `/get_json_cal`, `/get_report_subjects` | `index.js`, `navigation.js`, `report.js` |
 | `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/get_calibration_json_list`, `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js`, `report.js` |
 | `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
@@ -68,7 +68,7 @@ graph TD
 | `state.py` | **Global state singleton**: `process`, `monitor_thread`, `args`, `script_dir`, `log_file`, `json_root_path`, `report_root_path`, `os_name`, `delimiter`, `PRODUCTION_MODE` |
 | `validators.py` | `@validate_json(schema)` decorator — validates and coerces JSON request payloads; injects `validated_data` kwarg into route handlers |
 | `math_ops.py` | Server-side regression: `calculate_coef_and_rsquared`, `calculate_kinetics_quantities`, `map_duplicates`, `get_rsquared_threshold` — uses `scipy.optimize.curve_fit` and `numpy` |
-| `file_path.py` | Filesystem directory browsing: `get_directory`, `browse_directory`, `get_parent_directory`, `get_child_directories` |
+| `file_path.py` | Data-folder constants and helpers: `DATA_ROOT`, `validate_in_data_root(path)`, `get_data_subfolders()`, `is_multi_value_timeseries_csv_header()`. No mutable state — all directory tracking is frontend-side. |
 | `file.py` | File operations: `get_file_list` (glob), `get_dynamic_data` (parse CSV/JSON from disk), `merge_csv_files`, `replace_empty` |
 | `file_operations.py` | `remove_csv_columns` — removes columns from CSV files on disk, renumbers `Value:` columns |
 | `measure.py` | `sort_csv_file` — sorts calibration CSV data on disk by concentration |
@@ -95,7 +95,7 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 | `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, etc.) |
 | `init.js` | Page initialization, event listeners, mode/filter setup |
 | `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus` |
-| `navigation.js` | File table population (CSV and JSON), **directory browsing** (parent/child navigation) |
+| `navigation.js` | File table population (CSV and JSON), **data subfolder picker** (`loadDataFolders`, `selectDataFolder`, `filterDataFolderList`, `updateFolderListSelection`) |
 | `hid-logging.js` | **PyBadge control UI**: `runScript`, `terminateScript`, `checkScriptStatus`, log display |
 | `data-handling.js` | File select/deselect/delete/copy, data fetching, export logic |
 | `data-display.js` | Chart rendering orchestration, multi-source handling, calibration routines |
@@ -110,7 +110,7 @@ Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB c
 
 | File | Purpose |
 |---|---|
-| `index.html` | Main SPA template. Jinja2-rendered with server-side data (directory, file list, mode, etc.) |
+| `index.html` | Main SPA template. Jinja2-rendered with server-side data: `data_root`, `report_root`, `json_root` path constants (instead of `directory`), plus file list, mode, quantity, delimiter, etc. |
 | `goodbye.html` | Displayed on `/shutdown` — shows farewell screen before process termination |
 
 ---
@@ -299,6 +299,8 @@ microalbumin-Flask/
 ├── templates/
 │   ├── index.html
 │   └── goodbye.html
+├── data/                       # All user CSV data (auto-created); browsing restricted to here
+│   └── <subfolder>/            # User-named subfolders (created on HID run or manually)
 ├── json/                       # Standard curve JSON files
 ├── log/                        # Script logs directory
 ├── report/                     # Saved HTML reports (by subject subdirectory)
