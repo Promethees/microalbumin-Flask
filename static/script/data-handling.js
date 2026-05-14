@@ -1319,6 +1319,7 @@ async function refreshReportSubjects() {
 }
 
 async function editReportSubject(subjectName, button) {
+    const _isDark = document.body.classList.contains('dark');
     const { value: result } = await Swal.fire({
         title: `Edit Subject: "${subjectName}"`,
         html: `
@@ -1330,7 +1331,7 @@ async function editReportSubject(subjectName, button) {
                 <span style="font-weight:600; font-size:0.9rem;">Items</span>
                 <span style="font-size:0.75rem; color:#94a3b8;">drag ⠿ to reorder · ✕ to remove</span>
             </div>
-            <div id="swal-items-container" style="max-height:320px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fafafa;">
+            <div id="swal-items-container" style="max-height:320px; overflow-y:auto; border:1px solid ${_isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; padding:8px; background:${_isDark ? '#111827' : '#fafafa'};">
                 <p style="color:#94a3b8; margin:8px 0; text-align:center;">Loading items…</p>
             </div>
         `,
@@ -1398,6 +1399,7 @@ async function loadEditSwalItems(subjectName, container) {
             return;
         }
 
+        const isDark = document.body.classList.contains('dark');
         container.innerHTML = '';
         for (const item of dataFiles) {
             const safeId = `swal-card-${item.filename.replace(/[^a-z0-9]/gi, '_')}`;
@@ -1408,7 +1410,7 @@ async function loadEditSwalItems(subjectName, container) {
             card.dataset.itemFilename = item.filename;
             card.dataset.filename = item.filename;
             card.dataset.subject = subjectName;
-            card.style.cssText = 'margin-bottom:6px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:6px; transition: background 0.15s;';
+            card.style.cssText = `margin-bottom:6px; padding:8px 10px; background:${isDark ? '#1f2937' : '#fff'}; border:1px solid ${isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; transition: background 0.15s; color:${isDark ? '#f3f4f6' : 'inherit'};`;
             const cardRow = document.createElement('div');
             cardRow.style.cssText = 'display:flex; align-items:center; gap:8px;';
             const dragHandle = document.createElement('span');
@@ -1421,7 +1423,9 @@ async function loadEditSwalItems(subjectName, container) {
             nameSpan.title = item.filename;
             nameSpan.textContent = item.filename;
             const modeSpan = document.createElement('span');
-            modeSpan.style.cssText = 'font-size:0.75rem; color:#6366f1; background:#eef2ff; padding:1px 7px; border-radius:8px; flex-shrink:0;';
+            modeSpan.style.cssText = isDark
+                ? 'font-size:0.75rem; color:#a5b4fc; background:#312e81; padding:1px 7px; border-radius:8px; flex-shrink:0;'
+                : 'font-size:0.75rem; color:#6366f1; background:#eef2ff; padding:1px 7px; border-radius:8px; flex-shrink:0;';
             modeSpan.textContent = item.metadata?.mode || 'Measurement';
             const removeBtn = document.createElement('button');
             removeBtn.dataset.cardId = safeId;
@@ -1436,14 +1440,16 @@ async function loadEditSwalItems(subjectName, container) {
             cardRow.appendChild(removeBtn);
             const deleteConfirm = document.createElement('div');
             deleteConfirm.className = 'swal-delete-confirm';
-            deleteConfirm.style.cssText = 'display:none; margin-top:6px; padding-top:6px; border-top:1px solid #fee2e2; text-align:right;';
+            deleteConfirm.style.cssText = `display:none; margin-top:6px; padding-top:6px; border-top:1px solid ${isDark ? '#7f1d1d' : '#fee2e2'}; text-align:right;`;
             deleteConfirm.innerHTML = '<span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>';
             const confirmBtn = document.createElement('button');
             confirmBtn.style.cssText = 'background:#ef4444; color:#fff; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem; margin-right:4px;';
             confirmBtn.textContent = 'Confirm';
             confirmBtn.addEventListener('click', () => confirmSwalItemDelete(confirmBtn));
             const cancelBtn = document.createElement('button');
-            cancelBtn.style.cssText = 'background:#e5e7eb; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;';
+            cancelBtn.style.cssText = isDark
+                ? 'background:#374151; color:#d1d5db; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;'
+                : 'background:#e5e7eb; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;';
             cancelBtn.textContent = 'Cancel';
             cancelBtn.addEventListener('click', () => cancelSwalItemDelete(cancelBtn));
             deleteConfirm.appendChild(confirmBtn);
@@ -1464,7 +1470,8 @@ async function loadEditSwalItems(subjectName, container) {
 function requestSwalItemDelete(btn) {
     const card = btn.closest('[data-item-filename]');
     if (!card) return;
-    card.style.background = '#fff5f5';
+    const isDark = document.body.classList.contains('dark');
+    card.style.background = isDark ? '#450a0a' : '#fff5f5';
     card.style.borderColor = '#fca5a5';
     card.querySelector('.swal-delete-confirm').style.display = 'block';
     btn.disabled = true;
@@ -1473,8 +1480,9 @@ function requestSwalItemDelete(btn) {
 function cancelSwalItemDelete(btn) {
     const card = btn.closest('[data-item-filename]');
     if (!card) return;
-    card.style.background = '#fff';
-    card.style.borderColor = '#e2e8f0';
+    const isDark = document.body.classList.contains('dark');
+    card.style.background = isDark ? '#1f2937' : '#fff';
+    card.style.borderColor = isDark ? '#374151' : '#e2e8f0';
     card.querySelector('.swal-delete-confirm').style.display = 'none';
     card.querySelector('button[title="Remove from subject"]').disabled = false;
 }
