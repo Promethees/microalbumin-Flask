@@ -582,6 +582,11 @@ async function loadReportItems(subject) {
 
                 // Initialize preview for this item
                 initItemPreview(item, itemID);
+
+                const normCb = card.querySelector('.item-normalize-checkbox');
+                if (normCb) {
+                    normCb.addEventListener('change', () => refreshPreviewNormalization(item.filename));
+                }
             }
         } else {
             container.innerHTML = `<p style="color: red;">Error: ${result.message}</p>`;
@@ -764,6 +769,27 @@ function updateMetricAlgo(filename, metric, algo) {
     const config = window.ReportItemConfig[filename];
     if (!config) return;
     config.metricAlgos[metric] = algo;
+}
+
+function refreshPreviewNormalization(filename) {
+    const config = window.ReportItemConfig[filename];
+    if (!config || !config.chart) return;
+
+    const card = document.querySelector(`.report-item-card[data-filename="${filename}"]`);
+    const shouldNormalize = card?.querySelector('.item-normalize-checkbox')?.checked || false;
+
+    const allTraces = Array.from({ length: config.num_sources }, (_, i) => i + 1);
+    const displayData = shouldNormalize ? _normalizeTraces(config.data, allTraces) : config.data;
+
+    config.chart.data.datasets.forEach((dataset, idx) => {
+        const traceIdx = idx + 1;
+        dataset.data = displayData.map(row => ({ x: row.Timestamp, y: row[`Value:${traceIdx}`] }));
+    });
+
+    const yAxis = config.chart.options.scales.y;
+    if (yAxis?.title) yAxis.title.text = shouldNormalize ? 'Value (normalized)' : 'Value';
+
+    config.chart.update();
 }
 
 function updateReportPreview(filename, sourceIdx, visible) {
