@@ -10,7 +10,7 @@ from filelock import FileLock, Timeout
 import shutil
 
 import state
-from file_path import get_directory, is_multi_value_timeseries_csv_header
+from file_path import DATA_ROOT, is_multi_value_timeseries_csv_header
 from file import get_dynamic_data, replace_empty, merge_csv_files
 from file_operations import remove_csv_columns
 from measure import sort_csv_file
@@ -130,7 +130,7 @@ def edit_file():
 
         file_name = request.form.get('filename')
         new_file_name = request.form.get('new_filename', file_name)
-        path = request.form.get('path') if request.form.get('path') else get_directory()
+        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
         content = request.form.get('content')
         calibrate_mode = request.form.get('calibrate_mode')
 
@@ -267,7 +267,7 @@ def delete_file():
         file_name = request.form.get('filename')
         tabletype = request.form.get('tabletype')
         mode = request.form.get('mode')
-        path = request.form.get('path') if request.form.get('path') else get_directory()
+        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
 
         if not file_name or not tabletype:
             return jsonify({'status': 'error', 'message': 'Filename and tabletype are required'}), HTTPStatus.BAD_REQUEST
@@ -306,7 +306,7 @@ def copy_file():
         file_name = request.form.get('filename')
         mode = request.form.get('mode')
         tabletype = request.form.get('tabletype')
-        path = request.form.get('path') if request.form.get('path') else get_directory()
+        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
 
         if not file_name or not tabletype:
             return jsonify({'status': 'error', 'message': 'Filename and tabletype are required'}), HTTPStatus.BAD_REQUEST
@@ -348,7 +348,7 @@ def merge_csv():
         file1 = request.form.get('file1')
         file2 = request.form.get('file2')
         output_name = request.form.get('output_name')
-        path = request.form.get('path') if request.form.get('path') else get_directory()
+        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
 
         if not file1 or not file2 or not output_name:
             return jsonify({'status': 'error', 'message': 'Both files and output name are required'}), HTTPStatus.BAD_REQUEST
@@ -403,7 +403,7 @@ def remove_columns(validated_data):
 
 @file_bp.route('/get_num_sources', methods=['GET'])
 def get_num_sources():
-    directory = request.args.get('path') if request.args.get('path') else get_directory()
+    directory = request.args.get('path') if request.args.get('path') else DATA_ROOT
     possible_counts = set()
 
     for filename in os.listdir(directory):
@@ -446,7 +446,7 @@ def get_data():
 def get_file_content():
     try:
         file_name = request.args.get('file')
-        path = request.args.get('path') if request.args.get('path') else get_directory()
+        path = request.args.get('path') if request.args.get('path') else DATA_ROOT
         if not file_name:
             return jsonify({'status': 'error', 'message': 'Filename is required'}), HTTPStatus.BAD_REQUEST
 

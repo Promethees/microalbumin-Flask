@@ -54,7 +54,7 @@ else:                  # Linux, macOS
 
 # ── Project file-path / utility modules ─────────────────────────────────────
 _report(30, "Loading file-path utilities …")
-from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories, is_multi_value_timeseries_csv_header
+from file_path import is_multi_value_timeseries_csv_header
 from range import get_range_input
 _report(40, "Loading measurement modules …")
 from mode import get_mode_input

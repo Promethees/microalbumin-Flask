@@ -4,7 +4,7 @@ import time
 import signal
 import threading
 import state
-from file_path import get_directory, browse_directory, get_parent_directory, get_child_directories
+from file_path import DATA_ROOT, get_data_subfolders
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
@@ -42,14 +42,12 @@ def clear_cache():
 
 @core_bp.route('/')
 def index():
-    directory = get_directory()
     range_input = get_range_input()
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
-    file_list = get_file_list(directory)
+    file_list = get_file_list(DATA_ROOT)
     cal_json_list = get_file_list(os.path.join(state.json_root_path, "kinetics"), "*.json")
-    
-    # Can't use clear_logs() call like main.py did easily without importing it, but let's clear it here
+
     try:
         with open(state.log_file, 'w', encoding='utf-8') as f:
             f.write("")
@@ -58,7 +56,9 @@ def index():
 
     response = make_response(render_template('index.html',
                          title="Easy OKAPI",
-                         directory= os.path.abspath(directory),
+                         data_root=DATA_ROOT,
+                         report_root=state.report_root_path,
+                         json_root=state.json_root_path,
                          range_input=range_input,
                          mode_input=mode_input,
                          quantity_input=quantity_input,
@@ -87,10 +87,22 @@ def browse():
     new_path = request.form.get('path')
     if not new_path:
         return jsonify({'status': 'error', 'message': 'Path is required'}), 400
-    if browse_directory(new_path):
-        file_list = get_file_list(get_directory())
-        return jsonify({'status': 'success', 'path': new_path, 'files': file_list})
-    return jsonify({'status': 'error', 'message': 'Invalid directory'})
+    abs_path = os.path.abspath(new_path)
+    data_root = state.data_root_path
+    report_root = state.report_root_path
+    in_data = abs_path == data_root or abs_path.startswith(data_root + os.sep)
+    in_report = abs_path == report_root or abs_path.startswith(report_root + os.sep)
+    if not (in_data or in_report):
+        return jsonify({'status': 'error', 'message': 'Invalid directory'})
+    if not os.path.isdir(abs_path):
+        return jsonify({'status': 'error', 'message': 'Directory not found'})
+    file_list = get_file_list(abs_path)
+    return jsonify({'status': 'success', 'path': abs_path, 'files': file_list})
+
+@core_bp.route('/get_data_folders', methods=['GET'])
+def get_data_folders():
+    folders = get_data_subfolders()
+    return jsonify({'status': 'success', 'folders': folders})
 
 @core_bp.route('/browse_export', methods=['GET'])
 def browse_export():
@@ -99,18 +111,6 @@ def browse_export():
         return jsonify({'exists': False, 'error': 'No path provided'}), 400
     exists = os.path.exists(path)
     return jsonify({'exists': exists})
-
-@core_bp.route('/get_parents', methods=['GET'])
-def get_parents():
-    current_dir = get_directory()
-    parent_dir = get_parent_directory(current_dir)
-    return jsonify({'parent': parent_dir})
-
-@core_bp.route('/get_children', methods=['GET'])
-def get_children():
-    current_dir = get_directory()
-    child_dirs = get_child_directories(current_dir)
-    return jsonify({'children': child_dirs})
 
 @core_bp.route('/get_json_cal', methods=['GET'])
 def get_json_cal():

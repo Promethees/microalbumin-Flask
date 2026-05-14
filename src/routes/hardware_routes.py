@@ -25,26 +25,41 @@ def clear_logs():
 
 @hardware_bp.route('/run_script', methods=['POST'])
 @validate_json({
-    'base_dir': (str, 'data', False),
+    'subfolder': (str, '', False),
     'base_name': (str, 'colorimeter_data', False),
     'timeout_sec': (float, None, False),
     'interval_sec': (float, None, False)
 })
 def run_script(validated_data):
     os_name = platform.system().lower()
-    
+
     if state.process and state.process.poll() is None:
         return jsonify({'status': 'failure', 'message': 'A script is already running'})
-    
-    base_dir = validated_data['base_dir']
+
+    subfolder = validated_data['subfolder'].strip()
     base_name = validated_data['base_name']
     timeout_sec = validated_data['timeout_sec']
     interval_sec = validated_data['interval_sec']
 
-    if '..' in os.path.normpath(base_dir) or os.path.isabs(base_dir):
-        return jsonify({'status': 'failure', 'message': 'Invalid base directory'}), 400
+    # Subfolder must be a simple name with no path traversal
+    if subfolder and any(c in subfolder for c in ('/', '\\', '..')):
+        return jsonify({'status': 'failure', 'message': 'Invalid subfolder name'}), 400
     if any(c in base_name for c in ('/', '\\', '..')):
         return jsonify({'status': 'failure', 'message': 'Invalid base name'}), 400
+
+    # Resolve and create the target directory under data/
+    data_root = os.path.join(state.script_dir, 'data')
+    if subfolder:
+        abs_dir = os.path.normpath(os.path.join(data_root, subfolder))
+        # Guard against path traversal that somehow escaped the name check
+        if not abs_dir.startswith(data_root + os.sep) and abs_dir != data_root:
+            return jsonify({'status': 'failure', 'message': 'Invalid subfolder'}), 400
+        base_dir = os.path.join('data', subfolder)
+    else:
+        abs_dir = data_root
+        base_dir = 'data'
+
+    os.makedirs(abs_dir, exist_ok=True)
     print("Interval seconds is ", interval_sec)
 
     state.last_run_params = {'timeout_sec': timeout_sec, 'interval_sec': interval_sec}

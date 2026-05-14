@@ -12,7 +12,9 @@ log_file = os.path.join(script_dir, "log", "script_logs.txt")
 os.makedirs(os.path.dirname(log_file), exist_ok=True)
 json_root_path = os.path.join(script_dir, "json")
 report_root_path = os.path.join(script_dir, "report")
+data_root_path = os.path.join(script_dir, "data")
 os.makedirs(report_root_path, exist_ok=True)
+os.makedirs(data_root_path, exist_ok=True)
 
 
 os_name = platform.system().lower()
