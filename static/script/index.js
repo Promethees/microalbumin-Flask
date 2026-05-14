@@ -191,6 +191,7 @@ window.addEventListener('load', function () {
     serverCheckInterval = setInterval(checkServerStatus, 5000);
 
     initDefaultState();
+    if (typeof loadReportSubjectsForPicker === 'function') loadReportSubjectsForPicker();
 
     // Polling removed in favor of event-driven updates (SocketIO and selectFile)
 

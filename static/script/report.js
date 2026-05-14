@@ -337,10 +337,44 @@ async function generateReport() {
     }, 1000);
 }
 
+function loadReportSubjectsForPicker() {
+    $.get('/get_report_subjects', function(response) {
+        const sel = document.getElementById('report-subject-select');
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">— select subject —</option>';
+        if (response.status === 'success') {
+            response.subjects.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                sel.appendChild(opt);
+            });
+        }
+        if (prev) sel.value = prev;
+    }).fail(() => console.error('Failed to load report subjects for picker'));
+}
+
+function onReportSaveModeChange() {
+    const mode = document.querySelector('input[name="report-save-mode"]:checked')?.value || 'existing';
+    const existingRow = document.getElementById('report-existing-row');
+    const newRow = document.getElementById('report-new-row');
+    if (existingRow) existingRow.style.display = mode === 'existing' ? 'flex' : 'none';
+    if (newRow) newRow.style.display = mode === 'new' ? 'flex' : 'none';
+    if (mode === 'existing') loadReportSubjectsForPicker();
+}
+
 async function exportToReport() {
-    const subject = document.getElementById('report-subject-name').value.trim();
+    const saveMode = document.querySelector('input[name="report-save-mode"]:checked')?.value || 'existing';
+    const subject = saveMode === 'existing'
+        ? (document.getElementById('report-subject-select')?.value || '').trim()
+        : (document.getElementById('report-subject-name')?.value || '').trim();
     if (!subject) {
-        Swal.fire('Subject Required', 'Please enter a subject name for this report.', 'warning');
+        Swal.fire(
+            'Subject Required',
+            saveMode === 'existing' ? 'Please select an existing subject.' : 'Please enter a name for the new subject.',
+            'warning'
+        );
         return;
     }
 
@@ -377,6 +411,7 @@ async function exportToReport() {
         const result = await response.json();
         if (result.status === 'success') {
             Swal.fire('Export Successful', result.message, 'success');
+            if (saveMode === 'new') loadReportSubjectsForPicker();
         } else {
             throw new Error(result.message);
         }
