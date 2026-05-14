@@ -122,6 +122,24 @@ function updateReportTable(subjects) {
     }
 }
 
+function filterTable(tableId, query) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const trs = table.getElementsByTagName("tr");
+    const lowerQuery = query.toLowerCase();
+    for (let i = 1; i < trs.length; i++) {
+        const tds = trs[i].getElementsByTagName("td");
+        if (tds.length > 0) {
+            const textValue = tds[0].textContent || tds[0].innerText;
+            if (textValue.toLowerCase().indexOf(lowerQuery) > -1) {
+                trs[i].style.display = "";
+            } else {
+                trs[i].style.display = "none";
+            }
+        }
+    }
+}
+
 function updateFileTable(files, deselect = false) {
 
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
