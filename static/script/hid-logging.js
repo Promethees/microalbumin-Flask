@@ -160,7 +160,7 @@ async function runScript() {
             $disable(["go-to-btn"], false);
             $toggleClass("go-to-btn", "blinking", true);
             $text("log-display", "Script started...\n");
-            // bindButtonToString("#go-to-btn", baseDir, false);
+            if (saveMode === 'new' && typeof loadDataFolders === 'function') loadDataFolders();
             statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
         } else if (response.status === "device_not_found") {
             handleDeviceNotFound(response);
