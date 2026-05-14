@@ -87,7 +87,7 @@ function arraysEqual(a, b) {
 function updateJSONTable(files) {
     let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
     if (files && files.length > 0) {
-        files.forEach(file => {
+        files.slice().sort((a, b) => a.localeCompare(b)).forEach(file => {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
             const ef = _escAttr(file);
             const et = _escHtml(file);
@@ -107,7 +107,7 @@ function updateReportTable(subjects) {
     let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="3">Action</th></tr>';
     document.getElementById("file-search").placeholder = "Search subject folders...";
     if (subjects && subjects.length > 0) {
-        subjects.forEach(subject => {
+        subjects.slice().sort((a, b) => a.localeCompare(b)).forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
             const et = _escHtml(subject);
             html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(subject))}, this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject(${_escAttr(JSON.stringify(subject))}, this)">❌ Delete</button></td><td><button onclick="editReportSubject(${_escAttr(JSON.stringify(subject))}, this)">✏️ Edit</button></td></tr>`;
@@ -146,7 +146,7 @@ function updateFileTable(files, deselect = false) {
     if (files) {
         filterFiles(files).then((filteredFiles) => {
             if (filteredFiles && filteredFiles.length > 0) {
-                filteredFiles.forEach(file => {
+                filteredFiles.slice().sort((a, b) => a.localeCompare(b)).forEach(file => {
                     const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
                     const et = _escHtml(file);
                     html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(file))}, this)">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this)">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this)">✏️ Edit</button></td></tr>`;
