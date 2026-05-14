@@ -56,6 +56,7 @@ function _populateFolderSelect(selectId, folders, includeRootOption) {
 
 async function selectDataFolder(name, path) {
     await updateDirectory(path, true);
+    scrollWhenVisible('file-selection');
 }
 
 function updateFolderListSelection(path) {
