@@ -481,6 +481,84 @@ def get_file_content():
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
+@file_bp.route('/save_range_csv', methods=['POST'])
+@validate_json({
+    'file': str,
+    'range_start': (float, 0.0, False),
+    'range_end': (float, None, False),
+    'save_name': str,
+    'save_dir': str
+})
+def save_range_csv(validated_data):
+    source_file = validated_data['file']
+    range_start = validated_data['range_start']
+    range_end = validated_data['range_end']
+    save_name = os.path.basename(validated_data['save_name'].strip())
+    save_dir = validated_data['save_dir']
+
+    if '..' in os.path.normpath(source_file) or '..' in os.path.normpath(save_dir):
+        return jsonify({'status': 'error', 'message': 'Invalid path'})
+    if not source_file.lower().endswith('.csv'):
+        return jsonify({'status': 'error', 'message': 'Source must be a CSV file'})
+    if not os.path.isfile(source_file):
+        return jsonify({'status': 'error', 'message': 'Source file not found'})
+    if not save_name:
+        return jsonify({'status': 'error', 'message': 'Save name is required'})
+
+    try:
+        meta_lines = []
+        data_lines = []
+
+        with open(source_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    meta_lines.append(line.rstrip('\n'))
+                elif stripped:
+                    data_lines.append(stripped)
+
+        if not data_lines:
+            return jsonify({'status': 'error', 'message': 'Source file has no data'})
+
+        header_list = [h.strip() for h in next(csv.reader([data_lines[0]]))]
+        if 'Timestamp' not in header_list:
+            return jsonify({'status': 'error', 'message': 'Source file has no Timestamp column'})
+
+        filtered_rows = []
+        for line in data_lines[1:]:
+            parsed = next(csv.reader([line]))
+            row_dict = dict(zip(header_list, parsed))
+            try:
+                ts = float(row_dict['Timestamp'])
+                if ts >= range_start and (range_end is None or ts <= range_end):
+                    filtered_rows.append(parsed)
+            except (ValueError, KeyError):
+                pass
+
+        save_dir_abs = os.path.abspath(os.path.expanduser(save_dir))
+        os.makedirs(save_dir_abs, exist_ok=True)
+
+        if not save_name.lower().endswith('.csv'):
+            save_name += '.csv'
+        out_path = os.path.join(save_dir_abs, save_name)
+
+        with open(out_path, 'w', newline='', encoding='utf-8') as f:
+            for line in meta_lines:
+                f.write(line + '\n')
+            writer = csv.writer(f)
+            writer.writerow(header_list)
+            writer.writerows(filtered_rows)
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Saved {len(filtered_rows)} rows to {out_path}',
+            'count': len(filtered_rows),
+            'path': out_path
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
 @file_bp.route('/export_data', methods=['POST'])
 @validate_json({
     'entries': (list, [], False),

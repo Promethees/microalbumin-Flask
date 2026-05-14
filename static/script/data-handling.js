@@ -1571,3 +1571,52 @@ function exportJSONCoef() {
         }
     });
 }
+
+async function saveRangeCsv() {
+    if (!AppState.currentFile) {
+        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        return;
+    }
+
+    const unit = getTimeUnitValue() || 'seconds';
+    const rangeStart = getValFloat('range-value-start');
+    const rangeEnd = getValFloat('range-value-end');
+    const unitLabel = unit.slice(0, -1);
+
+    const { value: saveName } = await Swal.fire({
+        title: 'Save Range to CSV',
+        input: 'text',
+        inputLabel: `Rows from ${rangeStart} to ${rangeEnd} ${unitLabel} — save as:`,
+        inputPlaceholder: 'filename (without .csv)',
+        showCancelButton: true,
+        inputValidator: v => (!v || !v.trim()) ? 'Filename is required' : null
+    });
+
+    if (!saveName) return;
+
+    const multiplier = getTimeUnitMultiplier(unit);
+    const sourceFile = AppState.currentDirectory + DELIMITER + AppState.currentFile;
+
+    try {
+        const res = await fetch('/save_range_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file: sourceFile,
+                range_start: rangeStart * multiplier,
+                range_end: rangeEnd * multiplier,
+                save_name: saveName.trim(),
+                save_dir: AppState.currentDirectory
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved to ${data.path}` });
+            updateDirectory(AppState.currentDirectory);
+        } else {
+            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+    }
+}
