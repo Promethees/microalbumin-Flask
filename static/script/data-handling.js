@@ -1205,104 +1205,150 @@ function showMergeModal() {
         return;
     }
 
-    let fileOptions = files.map(f => `<option value="${_escHtml(f)}">${_escHtml(f)}</option>`).join('');
+    const fileOptions = files.map(f => `<option value="${_escHtml(f)}">${_escHtml(f)}</option>`).join('');
+
+    const makeFileRow = () => `
+        <div class="merge-file-row" style="display:grid; grid-template-columns:30px 1fr 30px; gap:5px; align-items:center; padding:7px 8px; border:1px solid #ddd; border-radius:6px; margin-bottom:6px;">
+            <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                <button type="button" class="merge-up-btn" title="Move up"
+                    style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▲</button>
+                <button type="button" class="merge-dn-btn" title="Move down"
+                    style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▼</button>
+            </div>
+            <select class="merge-file-select swal2-input" style="margin:0; width:100%; box-sizing:border-box;">${fileOptions}</select>
+            <button type="button" class="merge-remove-btn" title="Remove"
+                style="background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
+        </div>`;
 
     Swal.fire({
         title: 'Merge CSV Files',
+        width: 480,
         html: `
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
-                <label for="swal-file1">First File:</label>
-                <select id="swal-file1" class="swal2-input" style="margin: 0; width: 100%;">
-                    ${fileOptions}
-                </select>
-                <label for="swal-file2">Second File:</label>
-                <select id="swal-file2" class="swal2-input" style="margin: 0; width: 100%;">
-                    ${fileOptions}
-                </select>
-                <label for="swal-output">Output Name:</label>
-                <input id="swal-output" class="swal2-input" style="margin: 0; width: 100%;" placeholder="merged_output">
+            <div style="text-align:left; display:flex; flex-direction:column; gap:6px;">
+                <div id="merge-file-list">${makeFileRow()}${makeFileRow()}</div>
+                <button type="button" id="merge-add-btn"
+                    style="background:#2980b9; color:#fff; border:none; border-radius:4px; padding:7px; cursor:pointer; width:100%; font-size:0.9rem;">+ Add File</button>
+                <label style="margin-top:2px; font-size:0.85rem;">Output Name:</label>
+                <input id="swal-output" class="swal2-input" style="margin:0; width:100%;" placeholder="merged_output">
             </div>
         `,
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Merge',
         didOpen: () => {
-            const file1Select = document.getElementById('swal-file1');
-            const file2Select = document.getElementById('swal-file2');
+            const list = document.getElementById('merge-file-list');
             const outputInput = document.getElementById('swal-output');
 
-            const updateDefaultOutput = () => {
-                const f1 = file1Select.value.replace('.csv', '');
-                const f2 = file2Select.value.replace('.csv', '');
-                outputInput.value = `${f1}_${f2}_merged`;
+            const selects = list.querySelectorAll('.merge-file-select');
+            if (AppState.currentFile && files.includes(AppState.currentFile)) {
+                selects[0].value = AppState.currentFile;
+                const idx = files.indexOf(AppState.currentFile);
+                selects[1].value = files[(idx + 1) % files.length];
+            }
+
+            const updateRemoveBtns = () => {
+                const btns = list.querySelectorAll('.merge-remove-btn');
+                btns.forEach(btn => { btn.style.display = btns.length > 2 ? '' : 'none'; });
             };
 
-            file1Select.addEventListener('change', updateDefaultOutput);
-            file2Select.addEventListener('change', updateDefaultOutput);
+            const updateOrderBtns = () => {
+                const fileRows = list.querySelectorAll('.merge-file-row');
+                fileRows.forEach((row, i) => {
+                    row.querySelector('.merge-up-btn').disabled = (i === 0);
+                    row.querySelector('.merge-dn-btn').disabled = (i === fileRows.length - 1);
+                });
+            };
 
-            if (AppState.currentFile && files.includes(AppState.currentFile)) {
-                file1Select.value = AppState.currentFile;
-            }
+            const updateDefaultOutput = () => {
+                const names = Array.from(list.querySelectorAll('.merge-file-select'))
+                    .map(s => s.value.replace('.csv', '')).filter(Boolean);
+                if (!names.length) return;
+                outputInput.value = names.length <= 3
+                    ? names.join('_') + '_merged'
+                    : `${names[0]}_${names.length}_files_merged`;
+            };
+
+            list.addEventListener('change', updateDefaultOutput);
+
+            list.addEventListener('click', (e) => {
+                const row = e.target.closest('.merge-file-row');
+                if (!row) return;
+                if (e.target.classList.contains('merge-remove-btn')) {
+                    row.remove();
+                    updateRemoveBtns();
+                    updateOrderBtns();
+                    updateDefaultOutput();
+                } else if (e.target.classList.contains('merge-up-btn')) {
+                    const prev = row.previousElementSibling;
+                    if (prev) list.insertBefore(row, prev);
+                    updateOrderBtns();
+                    updateDefaultOutput();
+                } else if (e.target.classList.contains('merge-dn-btn')) {
+                    const next = row.nextElementSibling;
+                    if (next) list.insertBefore(next, row);
+                    updateOrderBtns();
+                    updateDefaultOutput();
+                }
+            });
+
+            document.getElementById('merge-add-btn').addEventListener('click', () => {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = makeFileRow();
+                list.appendChild(tmp.firstElementChild);
+                updateRemoveBtns();
+                updateOrderBtns();
+                updateDefaultOutput();
+            });
+
+            updateRemoveBtns();
+            updateOrderBtns();
             updateDefaultOutput();
         },
         preConfirm: () => {
-            const file1 = document.getElementById('swal-file1').value;
-            const file2 = document.getElementById('swal-file2').value;
-            const output_name = document.getElementById('swal-output').value;
+            const list = document.getElementById('merge-file-list');
+            const selectedFiles = Array.from(list.querySelectorAll('.merge-file-select')).map(s => s.value);
+            const output_name = document.getElementById('swal-output').value.trim();
 
-            if (file1 === file2) {
-                Swal.showValidationMessage('Please select two different files');
+            if (new Set(selectedFiles).size < selectedFiles.length) {
+                Swal.showValidationMessage('Please select a different file for each slot');
                 return false;
             }
             if (!output_name) {
                 Swal.showValidationMessage('Please enter an output name');
                 return false;
             }
-
-            return { file1, file2, output_name };
+            return { selectedFiles, output_name };
         }
     }).then((result) => {
-        if (result.isConfirmed) {
-            const { file1, file2, output_name } = result.value;
+        if (!result.isConfirmed) return;
+        const { selectedFiles, output_name } = result.value;
 
-            const formData = new URLSearchParams();
-            formData.append('file1', file1);
-            formData.append('file2', file2);
-            formData.append('output_name', output_name);
+        const formData = new URLSearchParams();
+        selectedFiles.forEach(f => formData.append('file_names', f));
+        formData.append('output_name', output_name);
 
-            fetch('/merge_csv', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: formData
-            })
-                .then(response => response.json())
-                .then(response => {
-                    if (response.status === 'success') {
-                        Swal.fire({
-                            title: 'Success!',
-                            text: response.message,
-                            icon: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Error!',
-                            text: response.message,
-                            icon: 'error'
-                        });
-                    }
-                })
-                .catch(error => {
+        fetch('/merge_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(response => {
+                if (response.status === 'success') {
                     Swal.fire({
-                        title: 'Error!',
-                        text: error.message || 'Failed to merge files',
-                        icon: 'error'
+                        title: 'Success!',
+                        text: response.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
                     });
-                });
-        }
+                } else {
+                    Swal.fire({ title: 'Error!', text: response.message, icon: 'error' });
+                }
+            })
+            .catch(error => {
+                Swal.fire({ title: 'Error!', text: error.message || 'Failed to merge files', icon: 'error' });
+            });
     });
 }
 

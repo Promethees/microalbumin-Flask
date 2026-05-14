@@ -249,29 +249,26 @@ def upload_file():
 @file_bp.route('/merge_csv', methods=['POST'])
 def merge_csv():
     try:
-        file1 = request.form.get('file1')
-        file2 = request.form.get('file2')
+        file_names = request.form.getlist('file_names')
         output_name = request.form.get('output_name')
 
-        if not file1 or not file2 or not output_name:
-            return jsonify({'status': 'error', 'message': 'Both files and output name are required'}), HTTPStatus.BAD_REQUEST
+        if len(file_names) < 2 or not output_name:
+            return jsonify({'status': 'error', 'message': 'At least two files and an output name are required'}), HTTPStatus.BAD_REQUEST
 
         if not output_name.endswith('.csv'):
             output_name += '.csv'
 
         user_data = get_user_data()
-        content1 = user_data['csv'].get(file1)
-        content2 = user_data['csv'].get(file2)
+        contents = []
+        for fname in file_names:
+            content = user_data['csv'].get(fname)
+            if not content:
+                return jsonify({'status': 'error', 'message': f'File {fname} not found'}), HTTPStatus.NOT_FOUND
+            contents.append(content)
 
-        if not content1:
-            return jsonify({'status': 'error', 'message': f'File {file1} not found'}), HTTPStatus.NOT_FOUND
-        if not content2:
-            return jsonify({'status': 'error', 'message': f'File {file2} not found'}), HTTPStatus.NOT_FOUND
-
-        success, result = merge_csv_contents(content1, content2)
+        success, result = merge_csv_contents(contents)
         if success:
             user_data['csv'][output_name] = result
-            # Update cache
             update_file_metadata(output_name, result)
             socketio.emit('update_csv')
             save_user_data(user_data)

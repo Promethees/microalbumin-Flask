@@ -1,9 +1,10 @@
 import pandas as pd
 import io
 
-def merge_csv_contents(content1, content2):
+def merge_csv_contents(contents):
     """
-    Merges two CSV contents (passed as strings) with optional metadata.
+    Merges multiple CSV contents (list of strings) with optional metadata.
+    Handles measured data (Value:n via outer join) and calibration data (concat).
     """
     def parse_with_metadata(content):
         metadata = []
@@ -13,59 +14,53 @@ def merge_csv_contents(content1, content2):
                 metadata.append(line)
             else:
                 data_lines.append(line)
-        
         if not data_lines:
             return metadata, pd.DataFrame()
-            
         df = pd.read_csv(io.StringIO('\n'.join(data_lines)))
         return metadata, df
 
-    meta1, df1 = parse_with_metadata(content1)
-    meta2, df2 = parse_with_metadata(content2)
+    parsed = [parse_with_metadata(c) for c in contents]
 
-    if df1.empty: return False, "File 1 is empty or invalid"
-    if df2.empty: return False, "File 2 is empty or invalid"
+    for i, (_, df) in enumerate(parsed):
+        if df.empty:
+            return False, f"File {i + 1} is empty or invalid"
 
-    # Identify join key
-    if 'Timestamp' in df1.columns and 'Timestamp' in df2.columns:
+    if all('Timestamp' in df.columns for _, df in parsed):
         join_key = 'Timestamp'
-    elif 'Concentration' in df1.columns and 'Concentration' in df2.columns:
+    elif all('Concentration' in df.columns for _, df in parsed):
         join_key = 'Concentration'
     else:
         return False, "Could not find common key column (Timestamp or Concentration)"
 
-    # Merge logic based on the detected key
     if join_key == 'Timestamp':
-        # Measured data: Rename Value:x columns and perform outer join
-        df1_value_cols = [c for c in df1.columns if c.startswith('Value:')]
-        df2_value_cols = [c for c in df2.columns if c.startswith('Value:')]
-        
-        n = len(df1_value_cols)
-        rename_map = {}
-        for i, col in enumerate(df2_value_cols, 1):
-            rename_map[col] = f"Value:{n + i}"
-        df2 = df2.rename(columns=rename_map)
-        
-        merged_df = pd.merge(df1, df2, on='Timestamp', how='outer')
+        value_offset = 0
+        dfs_renamed = []
+        for _, df in parsed:
+            value_cols = [c for c in df.columns if c.startswith('Value:')]
+            rename_map = {col: f"Value:{value_offset + i + 1}" for i, col in enumerate(value_cols)}
+            dfs_renamed.append(df.rename(columns=rename_map))
+            value_offset += len(value_cols)
+
+        merged_df = dfs_renamed[0]
+        for df in dfs_renamed[1:]:
+            merged_df = pd.merge(merged_df, df, on='Timestamp', how='outer')
     else:
-        # Calibration data: Concatenate rows to maintain format
-        merged_df = pd.concat([df1, df2], ignore_index=True)
+        merged_df = pd.concat([df for _, df in parsed], ignore_index=True)
 
     merged_df = merged_df.sort_values(by=join_key)
     merged_df = merged_df.fillna("NONE")
 
-    # Metadata Combination (Unique lines)
     combined_meta = []
     seen_meta = set()
-    for line in meta1 + meta2:
-        if line not in seen_meta:
-            combined_meta.append(line)
-            seen_meta.add(line)
+    for meta, _ in parsed:
+        for line in meta:
+            if line not in seen_meta:
+                combined_meta.append(line)
+                seen_meta.add(line)
 
-    # Convert to CSV string
     output = io.StringIO()
     for line in combined_meta:
         output.write(line + '\n')
     merged_df.to_csv(output, index=False)
-    
+
     return True, output.getvalue()
