@@ -715,10 +715,11 @@ function preprocessDataCalParams(data, XColumn, YColumn) {
 
 function extractColumnAndNormalize(data, colName) {
     const columnData = data.map(row => row[colName]);
-    const min = Math.min(...columnData);
     const normalizeMode = document.getElementById('normalize-mode');
     const shouldNormalize = normalizeMode.style.display !== 'none' && normalizeMode.checked;
-    return shouldNormalize ? columnData.map(value => (value - min)) : columnData;
+    if (!shouldNormalize) return columnData;
+    const min = Math.min(...columnData.filter(v => v !== null && v !== undefined));
+    return columnData.map(value => (value !== null && value !== undefined ? value - min : null));
 }
 
 function extractColumnAndConvert(data, colName, convert = false) {
