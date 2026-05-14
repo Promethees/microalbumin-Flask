@@ -1545,6 +1545,7 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
     try {
         const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
         const isKinetics  = AppState.currentMeasurementMode === 'kinetics';
+        const isPoint     = AppState.currentMeasurementMode === 'point';
 
         const currentFile = AppState.currentFile;
         if (!currentFile) {
@@ -1556,6 +1557,7 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
         const dataResp   = await $.get('/get_data', { file: currentFile });
         const renderData = dataResp.data || [];
         const numSources = dataResp.num_sources || AppState.numSources || 1;
+        const shouldNormalize = (isKinetics || isPoint) && (document.getElementById('normalize-mode')?.checked || false);
 
         const itemData = {
             filename:      currentFile,
@@ -1648,9 +1650,10 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
 
         } else {
             const visibleTraces = Array.from({ length: numSources }, (_, i) => i + 1);
+            const displayData = shouldNormalize ? _normalizeTraces(renderData, visibleTraces) : renderData;
             const csvCols = ['Timestamp', ...visibleTraces.map(t => `Value:${t}`)];
             itemData.csv_columns = csvCols;
-            itemData.csv_rows    = renderData.map(row => {
+            itemData.csv_rows    = displayData.map(row => {
                 const r = {};
                 csvCols.forEach(col => { r[col] = row[col]; });
                 return r;
