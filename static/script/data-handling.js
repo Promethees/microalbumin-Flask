@@ -505,7 +505,6 @@ const fetchDataFromServer = async (filename) => {
         enhancedError.status = status;
         enhancedError.errorThrown = errorThrown;
         enhancedError.filename = filename;
-        enhancedError.directory = directory;
 
         throw enhancedError;
     });
@@ -1072,7 +1071,7 @@ function showMergeModal() {
                 folderOpts = folders.map(f =>
                     `<option value="${_esc(f.path)}">${_escHtml(f.name)}</option>`
                 ).join('');
-            } catch (e) {}
+            } catch (e) { }
 
             // Populate output folder selector
             outputFolderSel.innerHTML = folderOpts || '<option value="">No folders found</option>';

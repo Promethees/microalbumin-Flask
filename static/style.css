@@ -952,6 +952,16 @@ body.dark  .folder-item.selected {
     max-height: 0;
     opacity: 0;
 }
+.section-collapse {
+    overflow: hidden;
+    max-height: 2000px;
+    transition: max-height 0.5s ease, opacity 0.3s ease;
+    opacity: 1;
+}
+.section-collapse.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
 
 .file-table-container {
     overflow-y: auto;

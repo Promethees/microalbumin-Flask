@@ -342,132 +342,144 @@
                 <div id="error-message"></div>
             </div>
             <div class="section script-controls" id="log-hid-data">
-                <h2>Reading Colorimetric Data</h2>
-
-                <div id="hid-save-section" style="margin-bottom:8px;">
-                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <label style="font-weight:600; white-space:nowrap;">Save to:</label>
-                        <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
-                            <input type="radio" name="hid-save-mode" id="hid-mode-existing" value="existing" checked
-                                onchange="onHidSaveModeChange()"> Existing
-                        </label>
-                        <div id="hid-existing-row" style="display:flex; gap:5px; align-items:center;">
-                            <select id="hid-subfolder-select" onchange="onHidSubfolderChange(this)"
-                                style="max-width:280px;">
-                                <option value="">— data root —</option>
-                            </select>
-                            <button type="button" onclick="loadDataFolders()" title="Refresh list"
-                                style="padding:2px 6px;">↻</button>
-                        </div>
-                        <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
-                            <input type="radio" name="hid-save-mode" id="hid-mode-new" value="new"
-                                onchange="onHidSaveModeChange()"> New
-                        </label>
-                        <div id="hid-new-row" style="display:none; align-items:center; gap:4px;">
-                            <input type="text" id="hid-new-folder-name" placeholder="New subfolder name"
-                                style="width:200px;" oninput="validateFileName('hid-new-folder-name')">
-                            <span id="hid-new-folder-name-error" class="error"></span>
+                <h2 class="folder-section-toggle" onclick="toggleFolderList('hid-collapse', 'hid-chevron')">Reading
+                    Colorimetric Data <span id="hid-chevron" class="folder-chevron">▼</span></h2>
+                <div id="hid-collapse" class="section-collapse">
+                    <div id="hid-save-section" style="margin-bottom:8px;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <label style="font-weight:600; white-space:nowrap;">Save to:</label>
+                            <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
+                                <input type="radio" name="hid-save-mode" id="hid-mode-existing" value="existing" checked
+                                    onchange="onHidSaveModeChange()"> Existing
+                            </label>
+                            <div id="hid-existing-row" style="display:flex; gap:5px; align-items:center;">
+                                <select id="hid-subfolder-select" onchange="onHidSubfolderChange(this)"
+                                    style="max-width:280px;">
+                                    <option value="">— data root —</option>
+                                </select>
+                                <button type="button" onclick="loadDataFolders()" title="Refresh list"
+                                    style="padding:2px 6px;">↻</button>
+                            </div>
+                            <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
+                                <input type="radio" name="hid-save-mode" id="hid-mode-new" value="new"
+                                    onchange="onHidSaveModeChange()"> New
+                            </label>
+                            <div id="hid-new-row" style="display:none; align-items:center; gap:4px;">
+                                <input type="text" id="hid-new-folder-name" placeholder="New subfolder name"
+                                    style="width:200px;" oninput="validateFileName('hid-new-folder-name')">
+                                <span id="hid-new-folder-name-error" class="error"></span>
+                            </div>
                         </div>
                     </div>
+                    <div>
+                        <label for="base-name">Base Name: </label>
+                        <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
+                        <span id="base-name-error" class="error"></span>
+                    </div>
+                    <div id="timeout-control">
+                        <label>Timeout: </label>
+                        <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input>
+                        <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
+                        <select id="timeout-unit">
+                            {% for unit in range_input.units %}
+                            <option value="{{ unit }}">{{ unit }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="interval-control">
+                        <label>Interval: </label>
+                        <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
+                        <select id="interval-unit">
+                            {% for unit in range_input.units %}
+                            <option value="{{ unit }}">{{ unit }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <span id="timeout-interval-error" class="error"></span>
+                    <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
+                    <br />
+                    <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
+                    <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
+                    <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
+                    <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live data</button>
+                    <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
-                <div>
-                    <label for="base-name">Base Name: </label>
-                    <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
-                    <span id="base-name-error" class="error"></span>
-                </div>
-                <div id="timeout-control">
-                    <label>Timeout: </label>
-                    <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input>
-                    <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
-                    <select id="timeout-unit">
-                        {% for unit in range_input.units %}
-                        <option value="{{ unit }}">{{ unit }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div id="interval-control">
-                    <label>Interval: </label>
-                    <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
-                    <select id="interval-unit">
-                        {% for unit in range_input.units %}
-                        <option value="{{ unit }}">{{ unit }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <span id="timeout-interval-error" class="error"></span>
-                <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
-                <br />
-                <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
-                <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
-                <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live data</button>
-                <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
             </div>
             <div class="section" id="cal-json-sel-section">
-                <h2>Select Coefficients for standard curve</h2>
-                <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
-                    placeholder="Search Calibrated JSON..."
-                    style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
-                <div class="scrollbar-style file-table-container">
-                    <table id="json-table" class="table">
-                        <tr>
-                            <th>Calibrated JSON</th>
-                            <th colspan="3">Action</th>
-                        </tr>
-                        {% if cal_json_list %}
-                        {% for file in cal_json_list %}
-                        <tr>
-                            <td>{{ file }}</td>
-                            <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button></td>
-                            <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button></td>
-                            <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
-                        </tr>
-                        {% endfor %}
-                        {% else %}
-                        <tr>
-                            <td colspan="3">No Calibrated JSON is available.</td>
-                        </tr>
-                        {% endif %}
-                    </table>
+                <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
+                    Select Coefficients for standard curve <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                </h2>
+                <div id="json-sel-collapse" class="section-collapse collapsed">
+                    <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
+                        placeholder="Search Calibrated JSON..."
+                        style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
+                    <div class="scrollbar-style file-table-container">
+                        <table id="json-table" class="table">
+                            <tr>
+                                <th>Calibrated JSON</th>
+                                <th colspan="3">Action</th>
+                            </tr>
+                            {% if cal_json_list %}
+                            {% for file in cal_json_list %}
+                            <tr>
+                                <td>{{ file }}</td>
+                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button>
+                                </td>
+                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button>
+                                </td>
+                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="3">No Calibrated JSON is available.</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
+                        class="utility-btn">Deselect</button>
+                    <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
+                        class="utility-btn">Copy</button>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                    class="utility-btn">Deselect</button>
-                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                    class="utility-btn">Copy</button>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
-                <h2 id="file-selection-header">File Selection</h2>
-                <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
-                    placeholder="Search CSV files..."
-                    style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
-                <div class="scrollbar-style file-table-container">
-                    <table id="file-table" class="table">
-                        <tr>
-                            <th id="file-table-header-name">File Name</th>
-                            <th colspan="3">Action</th>
-                        </tr>
-                        {% if file_list %}
-                        {% for file in file_list %}
-                        <tr>
-                            <td>{{ file }}</td>
-                            <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
-                            <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
-                            <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
-                        </tr>
-                        {% endfor %}
-                        {% else %}
-                        <tr>
-                            <td colspan="3">No CSV files found in the directory.</td>
-                        </tr>
-                        {% endif %}
-                    </table>
+                <h2 id="file-selection-header" class="folder-section-toggle"
+                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span id="file-selection-label">File Selection</span> <span
+                        id="file-sel-chevron" class="folder-chevron">▼</span></h2>
+                <div id="file-sel-collapse" class="section-collapse">
+                    <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
+                        placeholder="Search CSV files..."
+                        style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
+                    <div class="scrollbar-style file-table-container">
+                        <table id="file-table" class="table">
+                            <tr>
+                                <th id="file-table-header-name">File Name</th>
+                                <th colspan="3">Action</th>
+                            </tr>
+                            {% if file_list %}
+                            {% for file in file_list %}
+                            <tr>
+                                <td>{{ file }}</td>
+                                <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
+                                <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
+                                <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="3">No CSV files found in the directory.</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;"
+                        class="utility-btn">Deselect</button>
+                    <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
+                        class="utility-btn">Copy</button>
+                    <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
+                        class="utility-btn">Merge Files</button>
                 </div>
-                <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;"
-                    class="utility-btn">Deselect</button>
-                <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
-                    class="utility-btn">Copy</button>
-                <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
-                    class="utility-btn">Merge Files</button>
             </div>
 
             <div class="section hidden" id="report-console-section" tabindex="-1">
@@ -545,23 +557,26 @@
                 </div>
                 <div id="func-desc" class="hidden"></div>
                 <div class="section" id="range-display">
-                    <h3>{{ range_input.title }}</h3>
-                    From
-                    <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
-                        onchange="toggleMode()" oninput="adjustInputWidth(this)"
-                        style="width: {{ [6, range_input.value_start|string|length + 5]|max }}ch;">
-                    To
-                    <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
-                        onchange="toggleMode()" oninput="adjustInputWidth(this)"
-                        style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
-                    <select id="time-unit" onchange="toggleMode()">
-                        {% for unit in range_input.units %}
-                        <option value="{{ unit }}">{{ unit }}</option>
-                        {% endfor %}
-                    </select>
-                    <span id="range-value-error" class="error"></span>
-                    <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
-                        title="Save the rows in this time range to a new CSV file">💾 Save Range</button>
+                    <h3 class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')">{{
+                        range_input.title }} <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <div id="range-collapse" class="section-collapse collapsed">
+                        From
+                        <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
+                            onchange="toggleMode()" oninput="adjustInputWidth(this)"
+                            style="width: {{ [6, range_input.value_start|string|length + 5]|max }}ch;">
+                        To
+                        <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
+                            onchange="toggleMode()" oninput="adjustInputWidth(this)"
+                            style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
+                        <select id="time-unit" onchange="toggleMode()">
+                            {% for unit in range_input.units %}
+                            <option value="{{ unit }}">{{ unit }}</option>
+                            {% endfor %}
+                        </select>
+                        <span id="range-value-error" class="error"></span>
+                        <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
+                            title="Save the rows in this time range to a new CSV file">💾 Save Range</button>
+                    </div>
                 </div>
                 <div id="mode-toggle">
                     <label id="split-source-section">
@@ -586,8 +601,10 @@
                     </select>
                 </div>
                 <div id="export-analysis">
-                    <div>
-                        <h3>Export analysis</h3>
+                    <h3 class="folder-section-toggle"
+                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')">Export
+                        analysis <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <div id="export-analysis-collapse" class="section-collapse collapsed">
                         <div class="section" id="set-exp-point-section">
                             Set reference point to export: <input type="number" id="exp-json-time-value"
                                 style="width: 5em;"> <span style="font-weight: bold;"> minute. </span>
@@ -611,24 +628,26 @@
                             </select>
                             <button type="button" onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
                         </div>
+                        <div class="export-row">
+                            <label for="save-file">File Name: </label>
+                            <input type="text" id="save-file"
+                                placeholder="Enter calibrate file name to save analysis data to (e.g., results)"
+                                style="width: 70%">
+                            <span id="save-file-error" class="error"></span>
+                        </div>
+                        <button id="export-btn" onclick="exportData()">Export Data to Calibrate</button>
+                        <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)">Browse Saving
+                            Location</button>
+                        <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
+                            Exporting data will automatically convert the kinetics quantities to per <span
+                                style="font-weight: bold;">"minutes"!</span></p>
                     </div>
-                    <div class="export-row">
-                        <label for="save-file">File Name: </label>
-                        <input type="text" id="save-file"
-                            placeholder="Enter calibrate file name to save analysis data to (e.g., results)"
-                            style="width: 70%">
-                        <span id="save-file-error" class="error"></span>
-                    </div>
-                    <button id="export-btn" onclick="exportData()">Export Data to Calibrate</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)">Browse Saving
-                        Location</button>
-                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
-                        Exporting data will automatically convert the kinetics quantities to per <span
-                            style="font-weight: bold;">"minutes"!</span></p>
                 </div>
                 <div id="export-coef">
-                    <h3>Export coefficients for standard curve</h3>
-                    <div>
+                    <h3 class="folder-section-toggle"
+                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')">Export coefficients
+                        for standard curve <span id="export-coef-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <div id="export-coef-collapse" class="section-collapse collapsed">
                         <div style="display:flex; gap:16px; margin-bottom:6px;">
                             <label style="display:flex; align-items:center; gap:4px;">
                                 <input type="radio" name="json-export-mode" id="json-mode-new" value="new" checked
@@ -660,8 +679,9 @@
                     </div>
                 </div>
                 <div id="report-section">
-                    <h3>Report</h3>
-                    <div>
+                    <h3 class="folder-section-toggle" onclick="toggleFolderList('report-collapse', 'report-chevron')">
+                        Report <span id="report-chevron" class="folder-chevron">▼</span></h3>
+                    <div id="report-collapse" class="section-collapse">
                         <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
                             style="margin-top: 5px;">📋 Generate quick Report</button>
                         <div style="margin-top: 10px;">

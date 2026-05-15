@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.optimize import curve_fit
 
 def compute_r_squared(actual, predicted):
     if len(actual) != len(predicted) or len(actual) < 1:
@@ -62,6 +61,8 @@ def map_duplicates(x, y, keep_gaps=False):
     return processed_x, processed_y
 
 def calculate_coef_and_rsquared(x, y, regress_algo="linear"):
+    from scipy.optimize import curve_fit
+
     px, py = map_duplicates(x, y)
     valid = [(xi, yi) for xi, yi in zip(px, py) if yi is not None]
     

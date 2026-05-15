@@ -338,8 +338,8 @@ function kineticsModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-    const header = document.getElementById("file-selection-header");
-    if (header) header.innerText = "File Selection";
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "File Selection";
     const tableHeader = document.getElementById("file-table-header-name");
     if (tableHeader) tableHeader.innerText = "File Name";
     const searchInput = document.getElementById("file-search");
@@ -387,7 +387,8 @@ function reportModeBehaviour() {
     document.getElementById("report-console-section").classList.add('hidden');
 
     // Update Header
-    document.getElementById("file-selection-header").innerText = "Folder Selection";
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "Folder Selection";
     document.getElementById("file-search").placeholder = "Search subject folders...";
 }
 
@@ -422,8 +423,8 @@ function pointModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-    const header = document.getElementById("file-selection-header");
-    if (header) header.innerText = "File Selection";
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "File Selection";
     const tableHeader = document.getElementById("file-table-header-name");
     if (tableHeader) tableHeader.innerText = "File Name";
     const searchInput = document.getElementById("file-search");
@@ -464,8 +465,8 @@ function calModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-    const header = document.getElementById("file-selection-header");
-    if (header) header.innerText = "File Selection";
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "File Selection";
     const tableHeader = document.getElementById("file-table-header-name");
     if (tableHeader) tableHeader.innerText = "File Name";
     const searchInput = document.getElementById("file-search");
