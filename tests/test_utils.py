@@ -1,42 +1,25 @@
 import pytest
 import os
-from src import file_path, mode, quantity, range, get_next_filename
+from unittest.mock import patch
+import file_path
+import mode
+import quantity
+import range
+import get_next_filename
 
-def test_file_path_directory():
-    # Test getting directory (should be root by default in src/file_path.py)
-    # The current_directory is set at import time.
-    directory = file_path.get_directory()
-    assert os.path.isabs(directory)
-
-def test_browse_directory(tmp_path):
-    # Create a test directory
-    test_dir = tmp_path / "test_dir"
-    test_dir.mkdir()
-    
-    result = file_path.browse_directory(str(test_dir))
-    assert result == str(test_dir).replace('\\', '\\\\')
-    assert file_path.get_directory() == str(test_dir)
-
-def test_get_parent_directory():
-    path = "/path/to/parent/child"
-    # Note: os.path.abspath will normalize the path based on current OS
-    parent = file_path.get_parent_directory(path)
-    assert "parent" in parent
-    assert "child" not in parent
-
-def test_get_child_directories(tmp_path):
-    # Create children
+def test_get_data_subfolders(tmp_path):
     (tmp_path / "child1").mkdir()
     (tmp_path / "child2").mkdir()
     (tmp_path / ".hidden").mkdir()
     (tmp_path / "_internal").mkdir()
-    
-    children = file_path.get_child_directories(str(tmp_path))
-    assert len(children) == 2
-    assert any("child1" in c for c in children)
-    assert any("child2" in c for c in children)
-    assert not any(".hidden" in c for c in children)
-    assert not any("_internal" in c for c in children)
+
+    with patch.object(file_path, 'DATA_ROOT', str(tmp_path)):
+        subfolders = file_path.get_data_subfolders()
+    names = [f["name"] for f in subfolders]
+    assert "child1" in names
+    assert "child2" in names
+    assert ".hidden" not in names
+    assert "_internal" not in names
 
 def test_is_multi_value_header():
     valid = "Timestamp, Value:1, Value:2 "

@@ -16,25 +16,16 @@ def client():
 # Core Routes Tests
 def test_index_page(client):
     """Test that the index page loads."""
-    with patch('routes.core_routes.get_directory', return_value='/tmp'):
-        with patch('routes.core_routes.get_file_list', return_value=[]):
-            rv = client.get('/')
-            assert rv.status_code == 200
-            assert b'Easy OKAPI' in rv.data
+    with patch('routes.core_routes.get_file_list', return_value=[]):
+        rv = client.get('/')
+        assert rv.status_code == 200
+        assert b'Easy OKAPI' in rv.data
 
 def test_ping(client):
     """Test the ping endpoint."""
     rv = client.get('/ping')
     assert rv.status_code == 200
     assert rv.get_json() == {'status': 'success'}
-
-def test_get_parents(client):
-    """Test the get_parents endpoint."""
-    with patch('routes.core_routes.get_directory', return_value='/tmp/test'):
-        with patch('routes.core_routes.get_parent_directory', return_value='/tmp'):
-            rv = client.get('/get_parents')
-            assert rv.status_code == 200
-            assert rv.get_json() == {'parent': '/tmp'}
 
 # Hardware Routes Tests
 def test_run_script_already_running(client):
