@@ -55,7 +55,9 @@ function _populateFolderSelect(selectId, folders, includeRootOption) {
 }
 
 async function selectDataFolder(name, path) {
+    if (typeof window.showSpinner === 'function') window.showSpinner();
     await updateDirectory(path, true);
+    if (typeof window.hideSpinner === 'function') window.hideSpinner();
     scrollWhenVisible('file-selection');
 }
 
