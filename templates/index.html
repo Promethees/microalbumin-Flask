@@ -56,215 +56,222 @@
                 </div>
             </div>
             <div id="top-left-scrollable">
-            <div class="section" style="position: static;" id="meas-mode-section">
-                <h2>{{ mode_input.title }}</h2>
-                <div id="measurement-mode" class="button-group" data-value="">
-                    {% for mode in mode_input.modes %}
-                    <button data-mode="{{ mode }}">{{ mode }}</button>
-                    {% endfor %}
+                <div class="section" style="position: static;" id="meas-mode-section">
+                    <h2>{{ mode_input.title }}</h2>
+                    <div id="measurement-mode" class="button-group" data-value="">
+                        {% for mode in mode_input.modes %}
+                        <button data-mode="{{ mode }}">{{ mode }}</button>
+                        {% endfor %}
+                    </div>
                 </div>
-            </div>
-            <div class="section hidden" style="position: static;" id="cal-json-exp-section">
-                <h3>Calibrating for:</h3>
-                <div id="cal-mode-select" class="button-group" data-value="">
-                    <button data-mode="kinetics">kinetics</button>
-                    <button data-mode="point">point</button>
+                <div class="section hidden" style="position: static;" id="cal-json-exp-section">
+                    <h3>Calibrating for:</h3>
+                    <div id="cal-mode-select" class="button-group" data-value="">
+                        <button data-mode="kinetics">kinetics</button>
+                        <button data-mode="point">point</button>
+                    </div>
                 </div>
-            </div>
-            <div class="section" style="position: static;" id="options-section">
-                <h3>Options</h3>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" id="no-swal-checkbox">
-                        Disable popups
-                    </label>
-
-                    <div id="source-options">
+                <div class="section" style="position: static;" id="options-section">
+                    <h3>Options</h3>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
-                            <input type="checkbox" id="filter-source">
-                            Filter by number of sources
+                            <input type="checkbox" id="no-swal-checkbox">
+                            Disable popups
                         </label>
 
-                        <div id="num-sources-section" class="hidden">
-                            <label for="num-sources">Number of sources:</label>
-                            <select id="num-sources">
-                            </select>
+                        <div id="source-options">
+                            <label style="display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="filter-source">
+                                Filter by number of sources
+                            </label>
+
+                            <div id="num-sources-section" class="hidden">
+                                <label for="num-sources">Number of sources:</label>
+                                <select id="num-sources">
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="section" style="position: static;" id="drive-section">
-                <h3>☁️ Google Drive Storage</h3>
+                <div class="section" style="position: static;" id="drive-section">
+                    <h3>☁️ Google Drive Storage</h3>
 
-                {% if account_user %}
-                <!-- Drive disabled for logged-in users — Firebase handles persistence -->
-                <div style="padding: 10px 12px; background: #f0fdf4; border: 1px solid #6ee7b7;
+                    {% if account_user %}
+                    <!-- Drive disabled for logged-in users — Firebase handles persistence -->
+                    <div style="padding: 10px 12px; background: #f0fdf4; border: 1px solid #6ee7b7;
                             border-radius: 7px; font-size: 0.85em; color: #065f46; line-height: 1.5;">
-                    ✅ Your data is saved automatically to your account.<br>
-                    Google Drive sync is disabled while signed in.
-                </div>
-                {% else %}
+                        ✅ Your data is saved automatically to your account.<br>
+                        Google Drive sync is disabled while signed in.
+                    </div>
+                    {% else %}
 
-                <!-- Mode Indicator -->
-                <div id="drive-mode-indicator" style="margin-bottom: 10px;">
-                    <span id="drive-mode-badge" class="badge-guest"
-                        style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">Guest
-                        Mode</span>
-                    <span id="drive-mode-description" style="margin-left: 8px; font-size: 0.9em; color: #cccccc;">Data
-                        will not be saved</span>
-                </div>
-
-                <!-- Connect/Disconnect Controls -->
-                <div id="drive-connection-controls" style="margin-bottom: 15px;">
-                    <button id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
-                        style="padding: 8px 16px;">
-                        🔗 Connect Google Drive
-                    </button>
-                    <button id="drive-disconnect-btn" onclick="disconnectGoogleDrive()" class="hidden danger-btn"
-                        style="padding: 8px 16px;">
-                        🔌 Disconnect Drive
-                    </button>
-                </div>
-
-                <!-- Folder Selection (shown when connected) -->
-                <div id="drive-folder-section" class="hidden">
-                    <h4 style="margin-top: 15px;">Select Storage Folder</h4>
-                    <div class="folder-selection-group" style="margin-bottom: 10px;">
-                        <label style="margin-right: 15px;">
-                            <input type="radio" name="folder-choice" value="existing" checked
-                                onchange="toggleFolderChoice()">
-                            Use existing folder
-                        </label>
-                        <label>
-                            <input type="radio" name="folder-choice" value="new" onchange="toggleFolderChoice()">
-                            Create new folder
-                        </label>
+                    <!-- Mode Indicator -->
+                    <div id="drive-mode-indicator" style="margin-bottom: 10px;">
+                        <span id="drive-mode-badge" class="badge-guest"
+                            style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">Guest
+                            Mode</span>
+                        <span id="drive-mode-description"
+                            style="margin-left: 8px; font-size: 0.9em; color: #cccccc;">Data
+                            will not be saved</span>
                     </div>
 
-                    <!-- Existing folder dropdown -->
-                    <div id="existing-folder-select" style="margin-bottom: 10px;">
-                        <select id="drive-folder-dropdown" onchange="selectDriveFolder()"
-                            style="width: 70%; margin-right: 5px;">
-                            <option value="">Loading folders...</option>
-                        </select>
-                        <button onclick="refreshFolderList()" class="icon-btn" style="padding: 6px 12px;">🔄</button>
-                    </div>
-
-                    <!-- New folder creation -->
-                    <div id="new-folder-create" class="hidden" style="margin-bottom: 10px;">
-                        <input type="text" id="new-folder-name" placeholder="Easy OKAPI Data"
-                            style="width: 60%; margin-right: 5px;" />
-                        <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;">Create
-                            Folder</button>
-                    </div>
-
-                    <div id="selected-folder-display" class="hidden"
-                        style="margin-top: 10px; padding: 8px; background: #ecf0f1; border-radius: 4px;">
-                        📁 <strong id="current-folder-name" style="color: #111111"></strong>
-                    </div>
-                    <div>
-                        <label for="base-name">Base Name: </label>
-                        <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
-                        <span id="base-name-error" class="error"></span>
-                    </div>
-                    <div id="timeout-control">
-                        <label>Timeout: </label>
-                        <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input>
-                        <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
-                        <select id="timeout-unit">
-                            {% for unit in range_input.units %}
-                            <option value="{{ unit }}">{{ unit }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div id="interval-control">
-                        <label>Interval: </label>
-                        <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
-                        <select id="interval-unit">
-                            {% for unit in range_input.units %}
-                            <option value="{{ unit }}">{{ unit }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <span id="timeout-interval-error" class="error"></span>
-                    <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
-                    <br />
-                    <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
-                    <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
-                    <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                    <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live data</button>
-                    <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
-                </div>
-
-                <!-- Sync Controls (shown when folder selected) -->
-                <div id="drive-sync-section" class="hidden">
-                    <h4 style="margin-top: 15px;">Sync Settings</h4>
-                    <label class="checkbox-label" style="display: block; margin-bottom: 10px;">
-                        <input type="checkbox" id="auto-sync-checkbox" onchange="updateAutoSyncPreference()">
-                        Auto-sync when closing browser
-                    </label>
-
-                    <div class="sync-buttons" style="margin-bottom: 10px;">
-                        <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;">
-                            ⬆️ Push to Drive
+                    <!-- Connect/Disconnect Controls -->
+                    <div id="drive-connection-controls" style="margin-bottom: 15px;">
+                        <button id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
+                            style="padding: 8px 16px;">
+                            🔗 Connect Google Drive
                         </button>
-                        <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;">
-                            ⬇️ Pull from Drive
+                        <button id="drive-disconnect-btn" onclick="disconnectGoogleDrive()" class="hidden danger-btn"
+                            style="padding: 8px 16px;">
+                            🔌 Disconnect Drive
                         </button>
                     </div>
 
-                    <div id="last-sync-info" class="sync-info hidden" style="font-size: 0.85em; color: #7f8c8d;">
-                        Last synced: <span id="last-sync-time">Never</span>
+                    <!-- Folder Selection (shown when connected) -->
+                    <div id="drive-folder-section" class="hidden">
+                        <h4 style="margin-top: 15px;">Select Storage Folder</h4>
+                        <div class="folder-selection-group" style="margin-bottom: 10px;">
+                            <label style="margin-right: 15px;">
+                                <input type="radio" name="folder-choice" value="existing" checked
+                                    onchange="toggleFolderChoice()">
+                                Use existing folder
+                            </label>
+                            <label>
+                                <input type="radio" name="folder-choice" value="new" onchange="toggleFolderChoice()">
+                                Create new folder
+                            </label>
+                        </div>
+
+                        <!-- Existing folder dropdown -->
+                        <div id="existing-folder-select" style="margin-bottom: 10px;">
+                            <select id="drive-folder-dropdown" onchange="selectDriveFolder()"
+                                style="width: 70%; margin-right: 5px;">
+                                <option value="">Loading folders...</option>
+                            </select>
+                            <button onclick="refreshFolderList()" class="icon-btn"
+                                style="padding: 6px 12px;">🔄</button>
+                        </div>
+
+                        <!-- New folder creation -->
+                        <div id="new-folder-create" class="hidden" style="margin-bottom: 10px;">
+                            <input type="text" id="new-folder-name" placeholder="Easy OKAPI Data"
+                                style="width: 60%; margin-right: 5px;" />
+                            <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;">Create
+                                Folder</button>
+                        </div>
+
+                        <div id="selected-folder-display" class="hidden"
+                            style="margin-top: 10px; padding: 8px; background: #ecf0f1; border-radius: 4px;">
+                            📁 <strong id="current-folder-name" style="color: #111111"></strong>
+                        </div>
+                        <div>
+                            <label for="base-name">Base Name: </label>
+                            <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
+                            <span id="base-name-error" class="error"></span>
+                        </div>
+                        <div id="timeout-control">
+                            <label>Timeout: </label>
+                            <input type="checkbox" id="inf-timeout"><span
+                                style="font-weight: bold;">Infinite</span></input>
+                            <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
+                            <select id="timeout-unit">
+                                {% for unit in range_input.units %}
+                                <option value="{{ unit }}">{{ unit }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="interval-control">
+                            <label>Interval: </label>
+                            <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
+                            <select id="interval-unit">
+                                {% for unit in range_input.units %}
+                                <option value="{{ unit }}">{{ unit }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <span id="timeout-interval-error" class="error"></span>
+                        <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
+                        <br />
+                        <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
+                        <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
+                        <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
+                        <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live
+                            data</button>
+                        <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
+                    </div>
+
+                    <!-- Sync Controls (shown when folder selected) -->
+                    <div id="drive-sync-section" class="hidden">
+                        <h4 style="margin-top: 15px;">Sync Settings</h4>
+                        <label class="checkbox-label" style="display: block; margin-bottom: 10px;">
+                            <input type="checkbox" id="auto-sync-checkbox" onchange="updateAutoSyncPreference()">
+                            Auto-sync when closing browser
+                        </label>
+
+                        <div class="sync-buttons" style="margin-bottom: 10px;">
+                            <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;">
+                                ⬆️ Push to Drive
+                            </button>
+                            <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;">
+                                ⬇️ Pull from Drive
+                            </button>
+                        </div>
+
+                        <div id="last-sync-info" class="sync-info hidden" style="font-size: 0.85em; color: #7f8c8d;">
+                            Last synced: <span id="last-sync-time">Never</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="section" style="position: static;" id="download-section">
+                    <h3>⬇️ Get Offline Version</h3>
+                    <p class="download-tagline">Run Easy OKAPI locally, connected directly to your colorimeter device.
+                    </p>
+                    {% if account_user %}
+                    <div class="account-nav">
+                        <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
+                        <button class="account-nav-btn logout-btn" onclick="accountLogout()">Log Out</button>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <button class="account-nav-btn token-btn" onclick="revealDownloadToken()">🔑 Get Download
+                            Token</button>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()">🗑 Delete
+                            Account</button>
+                    </div>
+                    {% else %}
+                    <div class="account-nav">
+                        <span class="account-nav-label">Register to download a local version?</span>
+                        <a href="/account/signup" class="account-nav-btn signup-btn">Sign Up</a>
+                        <a href="/account/login" class="account-nav-btn login-btn">Log In</a>
+                    </div>
+                    {% endif %}
+                    <p id="download-version" class="download-version"></p>
+                    <div class="download-btn-group">
+                        <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
+                            <span class="download-btn-icon">🍎</span>
+                            <span class="download-btn-text">
+                                <strong>macOS</strong>
+                                <small id="download-mac-small">.dmg installer</small>
+                            </span>
+                        </a>
+                        <a href="/download/win" class="download-btn win-btn" id="download-win-btn">
+                            <span class="download-btn-icon">🪟</span>
+                            <span class="download-btn-text">
+                                <strong>Windows</strong>
+                                <small id="download-win-small">.exe installer</small>
+                            </span>
+                        </a>
+                        <a href="/download/linux" class="download-btn linux-btn" id="download-linux-btn">
+                            <span class="download-btn-icon">🐧</span>
+                            <span class="download-btn-text">
+                                <strong>Linux</strong>
+                                <small id="download-linux-small">.tar.gz installer</small>
+                            </span>
+                        </a>
                     </div>
                 </div>
-                {% endif %}
-            </div>
-            <div class="section" style="position: static;" id="download-section">
-                <h3>⬇️ Get Offline Version</h3>
-                <p class="download-tagline">Run Easy OKAPI locally, connected directly to your colorimeter device.</p>
-                {% if account_user %}
-                <div class="account-nav">
-                    <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
-                    <button class="account-nav-btn logout-btn" onclick="accountLogout()">Log Out</button>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <button class="account-nav-btn token-btn" onclick="revealDownloadToken()">🔑 Get Download Token</button>
-                </div>
-                <div style="margin-bottom: 12px;">
-                    <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()">🗑 Delete Account</button>
-                </div>
-                {% else %}
-                <div class="account-nav">
-                    <span class="account-nav-label">Register to download a local version?</span>
-                    <a href="/account/signup" class="account-nav-btn signup-btn">Sign Up</a>
-                    <a href="/account/login" class="account-nav-btn login-btn">Log In</a>
-                </div>
-                {% endif %}
-                <p id="download-version" class="download-version"></p>
-                <div class="download-btn-group">
-                    <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
-                        <span class="download-btn-icon">🍎</span>
-                        <span class="download-btn-text">
-                            <strong>macOS</strong>
-                            <small id="download-mac-small">.dmg installer</small>
-                        </span>
-                    </a>
-                    <a href="/download/win" class="download-btn win-btn" id="download-win-btn">
-                        <span class="download-btn-icon">🪟</span>
-                        <span class="download-btn-text">
-                            <strong>Windows</strong>
-                            <small id="download-win-small">.exe installer</small>
-                        </span>
-                    </a>
-                    <a href="/download/linux" class="download-btn linux-btn" id="download-linux-btn">
-                        <span class="download-btn-icon">🐧</span>
-                        <span class="download-btn-text">
-                            <strong>Linux</strong>
-                            <small id="download-linux-small">.tar.gz installer</small>
-                        </span>
-                    </a>
-                </div>
-            </div>
             </div><!-- #top-left-scrollable -->
         </div>
         <div class="top-right hidden" id="top-right">
@@ -290,7 +297,8 @@
         <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
-                    Select Coefficients for standard curve <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    Select Coefficients for standard curve <span id="json-sel-chevron"
+                        class="folder-chevron collapsed-chevron">▼</span>
                 </h2>
                 <div id="json-sel-collapse" class="section-collapse collapsed">
                     <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
@@ -320,25 +328,22 @@
                             {% endif %}
                         </table>
                     </div>
-                    <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
+                    <button id="deselect-json-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
                         class="utility-btn">Deselect</button>
                     <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
                         class="utility-btn">Copy</button>
+                    <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;"
+                        class="utility-btn">Upload</button>
+                    <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;"
+                        disabled class="utility-btn">Download</button>
                 </div>
-                <button id="deselect-json-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                    class="utility-btn">Deselect</button>
-                <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                    class="utility-btn">Copy</button>
-                <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;"
-                    class="utility-btn">Upload</button>
-                <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;" disabled
-                    class="utility-btn">Download</button>
             </div>
             <div id="error-message"></div>
             <div class="section" id="file-selection" tabindex="-1">
                 <h2 id="file-selection-header" class="folder-section-toggle"
-                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span id="file-selection-label">File Selection</span> <span
-                        id="file-sel-chevron" class="folder-chevron">▼</span></h2>
+                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span
+                        id="file-selection-label">File Selection</span> <span id="file-sel-chevron"
+                        class="folder-chevron">▼</span></h2>
                 <div id="file-sel-collapse" class="section-collapse">
                     <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
                         placeholder="Search CSV files..."
@@ -449,7 +454,8 @@
                 <div id="func-desc" class="hidden"></div>
                 <div class="section" id="range-display">
                     <h3 class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')">{{
-                        range_input.title }} <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                        range_input.title }} <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    </h3>
                     <div id="range-collapse" class="section-collapse collapsed">
                         From
                         <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
@@ -494,7 +500,8 @@
                 <div id="export-analysis">
                     <h3 class="folder-section-toggle"
                         onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')">Export
-                        analysis <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                        analysis <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    </h3>
                     <div id="export-analysis-collapse" class="section-collapse collapsed">
                         <div class="section" id="set-exp-point-section">
                             Set reference point to export: <input type="number" id="exp-json-time-value"
@@ -521,7 +528,8 @@
                 <div id="export-coef">
                     <h3 class="folder-section-toggle"
                         onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')">Export coefficients
-                        for standard curve <span id="export-coef-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                        for standard curve <span id="export-coef-chevron"
+                            class="folder-chevron collapsed-chevron">▼</span></h3>
                     <div id="export-coef-collapse" class="section-collapse collapsed">
                         <div>
                             <label for="save-json-file">File Name: </label>
