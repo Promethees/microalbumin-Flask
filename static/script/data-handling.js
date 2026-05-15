@@ -1037,7 +1037,7 @@ function showMergeModal() {
                 <select class="merge-file-select swal2-input" style="margin:0; width:100%; box-sizing:border-box;"></select>
             </div>
             <button type="button" class="merge-remove-btn" title="Remove"
-                style="background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
+                style="display:none; background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
         </div>`;
 
     Swal.fire({
@@ -1063,6 +1063,10 @@ function showMergeModal() {
             const outputFolderSel = document.getElementById('merge-output-folder');
 
             // Fetch data subfolders once
+            const loadingOpt = '<option value="">Loading…</option>';
+            outputFolderSel.innerHTML = loadingOpt;
+            list.querySelectorAll('.merge-folder-select').forEach(s => { s.innerHTML = loadingOpt; });
+
             let folderOpts = '';
             try {
                 const res = await fetch('/get_data_folders');
@@ -1111,7 +1115,7 @@ function showMergeModal() {
 
             const updateRemoveBtns = () => {
                 const btns = list.querySelectorAll('.merge-remove-btn');
-                btns.forEach(btn => { btn.style.display = btns.length > 2 ? '' : 'none'; });
+                btns.forEach(btn => { btn.style.display = btns.length > 2 ? 'block' : 'none'; });
             };
 
             const updateOrderBtns = () => {
@@ -1130,6 +1134,10 @@ function showMergeModal() {
                     ? names.join('_') + '_merged'
                     : `${names[0]}_${names.length}_files_merged`;
             };
+
+            // Set initial button states before async fetches so they don't flash visible
+            updateRemoveBtns();
+            updateOrderBtns();
 
             // Populate folder selects in initial rows, then load files
             const initRows = list.querySelectorAll('.merge-file-row');
@@ -1179,9 +1187,9 @@ function showMergeModal() {
                 list.appendChild(newRow);
                 newRow.querySelector('.merge-folder-select').innerHTML = folderOpts;
                 if (AppState.currentDirectory) newRow.querySelector('.merge-folder-select').value = AppState.currentDirectory;
-                await loadFilesForRow(newRow);
                 updateRemoveBtns();
                 updateOrderBtns();
+                await loadFilesForRow(newRow);
             });
 
             updateRemoveBtns();
