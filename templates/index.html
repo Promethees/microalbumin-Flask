@@ -216,15 +216,20 @@
             <div id="top-left-scrollable">
                 <div class="section hidden" style="position: static;" id="meas-mode-section">
                     <div class="section" id="top-left-dir-section">
-                        <h2>Data Folder</h2>
+                        <h2 class="folder-section-toggle" onclick="toggleFolderList('top-folder-collapse', 'top-folder-chevron')">
+                            Data Folder
+                            <span id="top-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                        </h2>
 
-                        <div style="display:flex; gap:4px; margin-top:5px; align-items:center;">
-                            <input type="text" id="folder-search-top" placeholder="Search folders…"
-                                oninput="filterDataFolderList('data-folder-list-top', this.value)"
-                                style="flex:1; padding:3px 5px;">
-                            <button onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
+                        <div id="top-folder-collapse" class="folder-list-collapse collapsed">
+                            <div style="display:flex; gap:4px; margin-top:5px; align-items:center;">
+                                <input type="text" id="folder-search-top" placeholder="Search folders…"
+                                    oninput="filterDataFolderList('data-folder-list-top', this.value)"
+                                    style="flex:1; padding:3px 5px;">
+                                <button onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
+                            </div>
+                            <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                         </div>
-                        <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                     </div>
                     <h2>{{ mode_input.title }}</h2>
                     <div id="measurement-mode" class="button-group" data-value="">
@@ -316,15 +321,20 @@
         </div>
         <div id="main-content" class="hidden">
             <div class="section" id="main-directory-section">
-                <h2>Data Folder</h2>
+                <h2 class="folder-section-toggle" onclick="toggleFolderList('main-folder-collapse', 'main-folder-chevron')">
+                    Data Folder
+                    <span id="main-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                </h2>
 
-                <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-                    <input type="text" id="folder-search-main" placeholder="Search folders…"
-                        oninput="filterDataFolderList('data-folder-list', this.value)" style="flex:1; padding:4px 6px;">
-                    <button onclick="loadDataFolders()" title="Refresh folder list">↻ Refresh</button>
-                </div>
-                <div id="data-folder-list" class="dir-blocks scrollbar-style">
-                    <div style="color:#999; padding:6px;">Loading folders…</div>
+                <div id="main-folder-collapse" class="folder-list-collapse collapsed">
+                    <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                        <input type="text" id="folder-search-main" placeholder="Search folders…"
+                            oninput="filterDataFolderList('data-folder-list', this.value)" style="flex:1; padding:4px 6px;">
+                        <button onclick="loadDataFolders()" title="Refresh folder list">↻ Refresh</button>
+                    </div>
+                    <div id="data-folder-list" class="dir-blocks scrollbar-style">
+                        <div style="color:#999; padding:6px;">Loading folders…</div>
+                    </div>
                 </div>
                 <div id="error-message"></div>
             </div>

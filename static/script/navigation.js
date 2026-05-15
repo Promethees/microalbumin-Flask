@@ -1,6 +1,16 @@
 const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const _esc = s => _escHtml(String(s)).replace(/"/g, '&quot;').replace(/'/g, "\\'");
 
+// ── Data-folder collapse toggle ──────────────────────────────────────────────
+
+function toggleFolderList(collapseId, chevronId) {
+    const collapse = document.getElementById(collapseId);
+    const chevron = document.getElementById(chevronId);
+    if (!collapse) return;
+    const isNowCollapsed = collapse.classList.toggle('collapsed');
+    if (chevron) chevron.classList.toggle('collapsed-chevron', isNowCollapsed);
+}
+
 // ── Data-folder picker ──────────────────────────────────────────────────────
 
 async function loadDataFolders() {

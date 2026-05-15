@@ -921,6 +921,35 @@ body.dark  .folder-item.selected {
     font-weight: 600;
 }
 
+.folder-section-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+.folder-chevron {
+    font-size: 0.65em;
+    display: inline-block;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+.folder-chevron.collapsed-chevron {
+    transform: rotate(-90deg);
+}
+.folder-list-collapse {
+    overflow: hidden;
+    max-height: 400px;
+    transition: max-height 0.3s ease, opacity 0.25s ease;
+    opacity: 1;
+}
+.folder-list-collapse.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
 .file-table-container {
     overflow-y: auto;
     max-height: 240px;
