@@ -82,41 +82,13 @@ fi
 # Auth service base URL (substituted at build time, or set manually)
 AUTH_BASE_URL="__AUTH_BASE_URL__"
 
-# Prompt for account email
-ACCOUNT_EMAIL=$(osascript -e 'Tell application "System Events" to display dialog "Enter your Easy OKAPI account email:" default answer "" with title "EasyOKAPI Installer"' -e 'text returned of result' 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$ACCOUNT_EMAIL" ]; then
-    echo "❌ Email is required. Installation aborted."
-    osascript -e 'display dialog "Email is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+# Prompt for EasyOKAPI download token (obtained from the EasyOKAPI web app)
+DOWNLOAD_TOKEN=$(osascript -e 'Tell application "System Events" to display dialog "Enter your Generated EasyOKAPI Token:" default answer "" with title "EasyOKAPI Installer" with hidden answer' -e 'text returned of result' 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$DOWNLOAD_TOKEN" ]; then
+    echo "❌ EasyOKAPI token is required. Installation aborted."
+    osascript -e 'display dialog "EasyOKAPI token is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
     exit 1
 fi
-
-# Prompt for account password
-ACCOUNT_PASSWORD=$(osascript -e 'Tell application "System Events" to display dialog "Enter your Easy OKAPI account password:" default answer "" with title "EasyOKAPI Installer" with hidden answer' -e 'text returned of result' 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$ACCOUNT_PASSWORD" ]; then
-    echo "❌ Password is required. Installation aborted."
-    osascript -e 'display dialog "Password is required. Installation aborted." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
-    exit 1
-fi
-
-# Authenticate and get download token
-echo "Authenticating with Easy OKAPI service..."
-LOGIN_RESPONSE=$(curl -s -X POST "$AUTH_BASE_URL/api/account/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"email\": \"$ACCOUNT_EMAIL\", \"password\": \"$ACCOUNT_PASSWORD\"}" 2>/dev/null)
-if [ $? -ne 0 ] || [ -z "$LOGIN_RESPONSE" ]; then
-    echo "❌ Failed to reach the authentication server."
-    osascript -e 'display dialog "Could not reach the authentication server. Check your internet connection." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
-    exit 1
-fi
-
-DOWNLOAD_TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('download_token',''))" 2>/dev/null)
-if [ -z "$DOWNLOAD_TOKEN" ]; then
-    LOGIN_MSG=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message','Login failed.'))" 2>/dev/null)
-    echo "❌ Authentication failed: $LOGIN_MSG"
-    osascript -e "display dialog \"Login failed: $LOGIN_MSG\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
-    exit 1
-fi
-echo "Authentication successful."
 
 # Define install directory
 REPO_NAME="microalbumin-Flask"
@@ -146,7 +118,6 @@ if [ -d "$INSTALL_DIR" ]; then
             echo "Existing installation removed successfully."
         else
             echo "Installation cancelled. Keeping existing installation."
-            osascript -e 'display dialog "Installation cancelled. Keeping existing installation." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
             exit 0
         fi
     fi
@@ -192,5 +163,4 @@ echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
 echo "Application downloaded successfully to $INSTALL_DIR ($VERSION_TAG)."
 echo "Preinstall script completed at $(date)"
-osascript -e "display dialog \"Installation step 1 complete. Please run install-venv.command to continue.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
 exit 0

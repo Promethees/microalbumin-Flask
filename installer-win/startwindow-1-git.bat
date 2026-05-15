@@ -17,8 +17,6 @@ net session >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo ERROR: This script must be run as Administrator to modify system PATH.
     echo Please right-click the script and select "Run as administrator".
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -28,8 +26,6 @@ git --version >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     echo Git is already installed and available in PATH.
     git --version
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 0
 )
 
@@ -53,23 +49,17 @@ if exist "%INSTALL_PATH%\cmd\git.exe" (
         if !PATH_LENGTH! GTR 1024 (
             echo WARNING: PATH length exceeds 1024 characters, which may cause issues with setx.
             echo Please shorten the existing PATH manually before proceeding.
-            echo Press any key to continue . . .
-            pause >nul
             exit /b 1
         )
         setx PATH "!NEW_PATH!" /M
         if !ERRORLEVEL! neq 0 (
             echo ERROR: Failed to update PATH. Please check permissions.
-            echo Press any key to continue . . .
-            pause >nul
             exit /b 1
         )
         echo Git added to PATH. Please restart Command Prompt to use Git.
     ) else (
         echo Git path already exists in PATH. Skipping PATH update.
     )
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 0
 )
 
@@ -91,15 +81,13 @@ echo Downloading Git installer from %GIT_URL%...
 curl -L -o "%DOWNLOAD_PATH%\%GIT_INSTALLER%" "%GIT_URL%"
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to download Git installer from %GIT_URL%.
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
 if exist "%DOWNLOAD_PATH%\%GIT_INSTALLER%" (
     echo Installing Git to %INSTALL_PATH%...
     start /wait "" "%DOWNLOAD_PATH%\%GIT_INSTALLER%" /VERYSILENT /NORESTART /DIR="%INSTALL_PATH%" /COMPONENTS="icons,ext,ext\shellhere,ext\guihere,gitlfs,console,console\gitbash,console\gitgui"
-    
+
     :: Check if Git was installed successfully
     if exist "%INSTALL_PATH%\cmd\git.exe" (
         echo Git installed successfully at %INSTALL_PATH%
@@ -117,8 +105,6 @@ if exist "%DOWNLOAD_PATH%\%GIT_INSTALLER%" (
         curl -L -o "%DOWNLOAD_PATH%\%GIT_INSTALLER%" "%GIT_URL%"
         if %ERRORLEVEL% neq 0 (
             echo ERROR: Failed to download alternative Git installer.
-            echo Press any key to continue . . .
-            pause >nul
             exit /b 1
         )
         if exist "%DOWNLOAD_PATH%\%GIT_INSTALLER%" (
@@ -129,20 +115,16 @@ if exist "%DOWNLOAD_PATH%\%GIT_INSTALLER%" (
             ) else (
                 echo ERROR: Failed to install Git with both installers. Please check compatibility and try again.
                 del "%DOWNLOAD_PATH%\%GIT_INSTALLER%"
-                echo Press any key to continue . . .
-                pause >nul
                 exit /b 1
             )
         )
     )
-    
+
     :: Clean up
     echo Cleaning up...
     del "%DOWNLOAD_PATH%\%GIT_INSTALLER%"
 ) else (
     echo ERROR: Failed to download Git installer.
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -164,15 +146,11 @@ if !ERRORLEVEL! neq 0 (
     if !PATH_LENGTH! GTR 1024 (
         echo WARNING: PATH length exceeds 1024 characters, which may cause issues with setx.
         echo Please shorten the existing PATH manually before proceeding.
-        echo Press any key to continue . . .
-        pause >nul
         exit /b 1
     )
     setx PATH "!NEW_PATH!" /M
     if !ERRORLEVEL! neq 0 (
         echo ERROR: Failed to update PATH. Please check permissions.
-        echo Press any key to continue . . .
-        pause >nul
         exit /b 1
     )
     echo Git added to PATH.
@@ -181,7 +159,4 @@ if !ERRORLEVEL! neq 0 (
 )
 
 echo Setup complete. Git installed at %INSTALL_PATH%.
-echo Proceed to install pyenv-win and Python with "startwindow-2-pyenv-python.bat"
-echo Press any key to continue . . .
-pause >nul
 endlocal

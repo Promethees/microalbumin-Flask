@@ -1,5 +1,5 @@
 :: Install Python 3.8.10 or 3.9.13
-@echo off   
+@echo off
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
 setlocal EnableDelayedExpansion
@@ -20,8 +20,6 @@ if %ERRORLEVEL% equ 0 (
 )
 ) else (
     echo ERROR: Failed to verify pyenv-win installation. Ensure the repository was cloned correctly.
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -44,21 +42,19 @@ if %ERRORLEVEL% equ 0 (
 )
 
 :: Install preferred Python version
-echo Neither Python %PREFERRED_PYTHON% nor %FALLBACK_PYTHON% found. 
+echo Neither Python %PREFERRED_PYTHON% nor %FALLBACK_PYTHON% found.
 echo Installing Python %PREFERRED_PYTHON%... | pyenv install %PREFERRED_PYTHON%
 if %ERRORLEVEL% equ 0 (
     echo Python %PREFERRED_PYTHON% installed successfully.
     set "PYTHON_VERSION=%PREFERRED_PYTHON%"
 ) else (
-    echo Failed to install Python %PREFERRED_PYTHON%. 
+    echo Failed to install Python %PREFERRED_PYTHON%.
     echo Attempting to install Python %FALLBACK_PYTHON%... | pyenv install %FALLBACK_PYTHON%
     if %ERRORLEVEL% equ 0 (
         echo Python %FALLBACK_PYTHON% installed successfully.
         set "PYTHON_VERSION=%FALLBACK_PYTHON%"
     ) else (
         echo ERROR: Failed to install Python %FALLBACK_PYTHON%. Please check pyenv configuration and try again.
-        echo Press any key to continue . . .
-        pause >nul
         exit /b 1
     )
 )
@@ -68,12 +64,8 @@ if %ERRORLEVEL% equ 0 (
 if %ERRORLEVEL% equ 0 (
     echo Setting Python %PYTHON_VERSION% as global version...
     pyenv global %PYTHON_VERSION% | echo Python %PYTHON_VERSION% is now set as the global version.
-    @REM echo Verifying Python version...
-    @REM python --version || echo Python %PYTHON_VERSION% is set as the global version.
 ) else (
     echo ERROR: No Python version was set. Please check pyenv configuration.
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -81,8 +73,4 @@ if %ERRORLEVEL% equ 0 (
 echo Updating pyenv shims... | pyenv rehash
 
 echo Setup complete. Current Python Version: %PYTHON_VERSION%. Current Pyenv Version: %PYENV_VERSION%.
-echo Git and Python are ready to use on C:\ drive.
-echo Proceed to install dependencies with in the venv and run main program: with "startwindow-4-venv-run.bat"
-echo Press any key to continue . . .
-pause >nul
 endlocal

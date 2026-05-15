@@ -1,4 +1,4 @@
-@echo off   
+@echo off
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
 setlocal EnableDelayedExpansion
@@ -13,8 +13,6 @@ net session >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo ERROR: This script must be run as Administrator to modify system PATH.
     echo Please right-click the script and select "Run as administrator".
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -31,8 +29,6 @@ echo pyenv-win not found. Cloning pyenv-win repository to %PYENV_PATH_CLONE%...
 git clone https://github.com/pyenv-win/pyenv-win.git "%PYENV_PATH_CLONE%"
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to clone pyenv-win repository. Ensure Git is installed and try again.
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -44,8 +40,6 @@ setx PYENV_ROOT "%PYENV_PATH%" /M
 setx PYENV_HOME "%PYENV_PATH%" /M
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to set pyenv environment variables. Please check permissions.
-    echo Press any key to continue . . .
-    pause >nul
     exit /b 1
 )
 
@@ -67,15 +61,11 @@ if !ERRORLEVEL! neq 0 (
     if !PATH_LENGTH! GTR 1024 (
         echo WARNING: PATH length exceeds 1024 characters, which may cause issues with setx.
         echo Please shorten the existing PATH manually before proceeding.
-        echo Press any key to continue . . .
-        pause >nul
         exit /b 1
     )
     setx PATH "!NEW_PATH!" /M
     if !ERRORLEVEL! neq 0 (
         echo ERROR: Failed to update PATH. Please check permissions.
-        echo Press any key to continue . . .
-        pause >nul
         exit /b 1
     )
     echo Added pyenv-win paths to PATH.
@@ -84,7 +74,4 @@ if !ERRORLEVEL! neq 0 (
 )
 
 echo Pyenv is ready to use on C:\ drive.
-echo Proceed to install Python in pyenv with "startwindow-3-python.bat"
-echo Press any key to continue . . .
-pause >nul
 endlocal

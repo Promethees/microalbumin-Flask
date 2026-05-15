@@ -5,8 +5,13 @@ setlocal EnableDelayedExpansion
 :: Check if installation directory is provided
 if "%~1"=="" (
     echo ERROR: Installation directory not provided.
-    echo Usage: %0 "install_dir"
-    pause >nul
+    echo Usage: %0 "install_dir" "easyokapi_token"
+    exit /b 1
+)
+
+:: Check if EasyOKAPI token is provided
+if "%~2"=="" (
+    echo ERROR: EasyOKAPI token not provided.
     exit /b 1
 )
 
@@ -14,8 +19,9 @@ if "%~1"=="" (
 set "VERSION_TAG=__APP_VERSION__"
 set "AUTH_BASE_URL=__AUTH_BASE_URL__"
 
-:: Set installation directory
+:: Set installation directory and use the provided token directly
 set "INSTALL_DIR=%~1"
+set "DOWNLOAD_TOKEN=%~2"
 
 :: Check if installation directory exists and is not empty
 echo.
@@ -65,7 +71,6 @@ if !item_count! gtr 0 (
         if !ERRORLEVEL! neq 0 (
             echo ERROR: Failed to remove existing installation.
             echo Please check permissions and try again.
-            pause >nul
             exit /b 1
         )
         mkdir "!INSTALL_DIR!"
@@ -73,12 +78,10 @@ if !item_count! gtr 0 (
     ) else if "!CHOICE!"=="2" (
         echo.
         echo Installation cancelled. Keeping existing installation.
-        pause >nul
         exit /b 0
     ) else (
         echo.
         echo ERROR: Invalid choice. Please enter 1 or 2.
-        pause >nul
         exit /b 1
     )
     echo.
@@ -89,72 +92,29 @@ if !item_count! gtr 0 (
 
 :skip_menu
 
-:: Prompt for account credentials
-echo.
-set /p "ACCOUNT_EMAIL=Enter your Easy OKAPI account email: "
-if "!ACCOUNT_EMAIL!"=="" (
-    echo ERROR: Email is required.
-    pause >nul
-    exit /b 1
-)
-for /f "delims=" %%P in ('powershell -Command "$p = Read-Host \"Enter your Easy OKAPI account password\" -AsSecureString; [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($p))"') do set "ACCOUNT_PASSWORD=%%P"
-if "!ACCOUNT_PASSWORD!"=="" (
-    echo ERROR: Password is required.
-    pause >nul
-    exit /b 1
-)
-
 :: Check if curl is available (Windows 10+ has curl built-in)
 where curl >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo ERROR: curl is not installed or not found in PATH.
     echo Please install curl and ensure it is in your PATH.
-    pause >nul
     exit /b 1
 )
-
-:: Authenticate and obtain download token
-echo.
-echo Authenticating with Easy OKAPI service...
-set "LOGIN_BODY={\"email\":\"!ACCOUNT_EMAIL!\",\"password\":\"!ACCOUNT_PASSWORD!\"}"
-curl -s -X POST "!AUTH_BASE_URL!/api/account/login" ^
-     -H "Content-Type: application/json" ^
-     -d "!LOGIN_BODY!" ^
-     -o "%TEMP%\easyokapi_login.json" 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to reach the authentication server.
-    pause >nul
-    exit /b 1
-)
-
-for /f "delims=" %%T in ('powershell -Command "(Get-Content '%TEMP%\easyokapi_login.json' | ConvertFrom-Json).download_token"') do set "DOWNLOAD_TOKEN=%%T"
-if "!DOWNLOAD_TOKEN!"=="" (
-    for /f "delims=" %%M in ('powershell -Command "(Get-Content '%TEMP%\easyokapi_login.json' | ConvertFrom-Json).message"') do set "LOGIN_MSG=%%M"
-    echo ERROR: Authentication failed: !LOGIN_MSG!
-    del /q "%TEMP%\easyokapi_login.json" >nul 2>&1
-    pause >nul
-    exit /b 1
-)
-del /q "%TEMP%\easyokapi_login.json" >nul 2>&1
-echo Authentication successful.
 
 :: Create installation directory if it doesn't exist
 if not exist "!INSTALL_DIR!" (
     mkdir "!INSTALL_DIR!"
     if !ERRORLEVEL! neq 0 (
         echo ERROR: Failed to create directory "!INSTALL_DIR!".
-        pause >nul
         exit /b 1
     )
 )
 
-:: Download the application archive
+:: Download the application archive using the EasyOKAPI token
 set "ARCHIVE_TMP=%TEMP%\easyokapi_app.tar.gz"
 echo Downloading application to "!INSTALL_DIR!"...
 curl -L -o "!ARCHIVE_TMP!" "!AUTH_BASE_URL!/api/download?token=!DOWNLOAD_TOKEN!"
 if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to download the application.
-    pause >nul
+    echo ERROR: Failed to download the application. Check your token and network connection.
     exit /b 1
 )
 
@@ -164,7 +124,6 @@ tar -xzf "!ARCHIVE_TMP!" -C "!INSTALL_DIR!" --strip-components=1
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to extract the application archive.
     del /q "!ARCHIVE_TMP!" >nul 2>&1
-    pause >nul
     exit /b 1
 )
 del /q "!ARCHIVE_TMP!" >nul 2>&1
@@ -186,7 +145,4 @@ for %%D in (mac easyokapi-knowledge images installer-mac installer-win installer
 echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
 
 echo Application downloaded successfully to "!INSTALL_DIR!" (!VERSION_TAG!).
-echo You can now proceed with the next steps in the setup process.
-echo Press any key to continue...
-pause >nul
 exit /b 0
