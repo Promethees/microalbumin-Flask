@@ -120,11 +120,11 @@ if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/
 fi
 echo "✅ Python $PYTHON_VERSION available."
 
-# ── Step 4: Prompt for GitHub token ───────────────────────────────────────────
-prompt_input "EasyOKAPI Installer" "Enter your GitHub personal access token:" "true"
-GITHUB_TOKEN="$PROMPT_RESULT"
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "❌ GitHub token is required. Installation aborted."
+# ── Step 4: Prompt for EasyOKAPI token ────────────────────────────────────────
+prompt_input "EasyOKAPI Installer" "Enter your Generated EasyOKAPI Token:" "true"
+EASYOKAPI_TOKEN="$PROMPT_RESULT"
+if [ -z "$EASYOKAPI_TOKEN" ]; then
+    echo "❌ EasyOKAPI token is required. Installation aborted."
     exit 1
 fi
 
@@ -144,7 +144,7 @@ fi
 
 # ── Step 6: Clone the repository ──────────────────────────────────────────────
 echo "Cloning repository to $INSTALL_DIR..."
-git clone "https://$GITHUB_TOKEN@github.com/Promethees/microalbumin-Flask.git" "$INSTALL_DIR"
+git clone "https://$EASYOKAPI_TOKEN@github.com/Promethees/microalbumin-Flask.git" "$INSTALL_DIR"
 if [ $? -ne 0 ]; then
     echo "❌ Failed to clone repository. Check your token and network connection."
     exit 1

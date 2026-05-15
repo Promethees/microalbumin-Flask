@@ -32,7 +32,7 @@ ShowUninstDetails show
 ; Variables
 Var Dialog
 Var TokenInput
-Var GitHubToken
+Var EasyOKAPIToken
 
 ; AI assistant page variables
 Var AIDialog
@@ -200,17 +200,17 @@ Function AISetupPageLeave
   ${EndIf}
 FunctionEnd
 
-; ── GitHub token page ─────────────────────────────────────────────────────────
-; Custom page to prompt for GitHub token
+; ── EasyOKAPI token page ──────────────────────────────────────────────────────
+; Custom page to prompt for EasyOKAPI token
 Function TokenPage
-  !insertmacro MUI_HEADER_TEXT "GitHub Token" "Enter your GitHub Personal Access Token to clone the private repository."
+  !insertmacro MUI_HEADER_TEXT "EasyOKAPI Token" "Enter your Generated EasyOKAPI Token to clone the private repository."
   nsDialogs::Create 1018
   Pop $Dialog
   ${If} $Dialog == error
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 24u "Please enter your GitHub Personal Access Token:"
+  ${NSD_CreateLabel} 0 0 100% 24u "Please enter your Generated EasyOKAPI Token:"
   Pop $0
   ${NSD_CreateText} 0 26u 100% 12u ""
   Pop $TokenInput
@@ -218,9 +218,9 @@ Function TokenPage
 FunctionEnd
 
 Function TokenPageLeave
-  ${NSD_GetText} $TokenInput $GitHubToken
-  ${If} $GitHubToken == ""
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Please enter a valid GitHub token."
+  ${NSD_GetText} $TokenInput $EasyOKAPIToken
+  ${If} $EasyOKAPIToken == ""
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Please enter a valid EasyOKAPI token."
     Abort
   ${EndIf}
 FunctionEnd
@@ -247,8 +247,7 @@ Section "Install" SEC01
   DetailPrint "startwindow-1-git.bat completed with exit code: $0"
   
   DetailPrint "Running startwindow-0-clone-repo.bat..."
-  ExecWait '"$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code" "$GitHubToken"' $0
-  DetailPrint "Github token used was $GitHubToken $0"
+  ExecWait '"$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code" "$EasyOKAPIToken"' $0
   DetailPrint "startwindow-0-clone-repo.bat completed with exit code: $0"
   
   DetailPrint "Running startwindow-2-pyenv.bat..."
