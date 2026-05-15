@@ -34,7 +34,7 @@ def fetch_github_release(version_tag: str):
     Returns a streaming requests.Response for the GitHub tarball of version_tag.
     Caller is responsible for closing the response.
     """
-    github_token = os.environ.get('GITHUB_PAT', '')
+    github_token = os.environ.get('GITHUB_PAT') or os.environ.get('GITHUB_TOKEN', '')
     owner = os.environ.get('GITHUB_OWNER', 'Promethees')
     repo = os.environ.get('GITHUB_REPO', 'microalbumin-Flask')
 
