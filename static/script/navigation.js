@@ -1,5 +1,102 @@
 const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const _escAttr = s => _escHtml(String(s));
+const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, "\\'");
+
+// ── Data-folder collapse toggle ──────────────────────────────────────────────
+
+function toggleFolderList(collapseId, chevronId) {
+    const collapse = document.getElementById(collapseId);
+    const chevron = document.getElementById(chevronId);
+    if (!collapse) return;
+    const isNowCollapsed = collapse.classList.toggle('collapsed');
+    if (chevron) chevron.classList.toggle('collapsed-chevron', isNowCollapsed);
+}
+
+// ── Data-folder picker ──────────────────────────────────────────────────────
+
+async function loadDataFolders() {
+    try {
+        const res = await fetch('/get_data_folders');
+        const data = await res.json();
+        const folders = data.folders || [];
+        _renderFolderList('data-folder-list', folders);
+        _renderFolderList('data-folder-list-top', folders);
+        _populateFolderSelect('hid-subfolder-select', folders, true);
+        _populateFolderSelect('exp-subfolder-select', folders, false);
+    } catch (e) {
+        console.error('loadDataFolders error:', e);
+    }
+}
+
+function _renderFolderList(containerId, folders) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const currentDir = AppState.currentDirectory || '';
+    if (folders.length === 0) {
+        container.innerHTML = '<div style="color:#999; padding:6px;">No subfolders in data/ yet.</div>';
+        return;
+    }
+    container.innerHTML = folders.map(f => {
+        const isSelected = currentDir && (currentDir === f.path || currentDir.replace(/\\\\/g, '\\') === f.path);
+        return `<div class="folder-item${isSelected ? ' selected' : ''}"
+                     data-path="${_esc(f.path)}"
+                     data-name="${_esc(f.name.toLowerCase())}"
+                     onclick="selectDataFolder('${_esc(f.name)}', '${_esc(f.path)}')"
+                     title="${_escHtml(f.path)}">${_escHtml(f.name)}</div>`;
+    }).join('');
+}
+
+function _populateFolderSelect(selectId, folders, includeRootOption) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const prev = sel.value;
+    if (includeRootOption) {
+        sel.innerHTML = '<option value="">— data root (no subfolder) —</option>';
+    } else {
+        sel.innerHTML = '<option value="" data-path="">— data root —</option>';
+    }
+    folders.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.name;
+        opt.dataset.path = f.path;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+    });
+    if (prev) sel.value = prev;
+}
+
+async function selectDataFolder(name, path) {
+    if (typeof window.showSpinner === 'function') window.showSpinner();
+    await updateDirectory(path, true);
+    if (typeof window.hideSpinner === 'function') window.hideSpinner();
+    scrollWhenVisible('file-selection');
+}
+
+function updateFolderListSelection(path) {
+    ['data-folder-list', 'data-folder-list-top'].forEach(id => {
+        const container = document.getElementById(id);
+        if (!container) return;
+        container.querySelectorAll('div[data-path]').forEach(el => {
+            const elPath = el.dataset.path.replace(/\\\\/g, '\\');
+            el.classList.toggle('selected', elPath === path || el.dataset.path === path);
+        });
+    });
+}
+
+function filterDataFolderList(listId, query) {
+    const container = document.getElementById(listId);
+    if (!container) return;
+    const lq = query.toLowerCase();
+    container.querySelectorAll('div[data-name]').forEach(el => {
+        el.style.display = el.dataset.name.includes(lq) ? '' : 'none';
+    });
+}
+
+// Keep browseDirectory as an alias so any existing callers still work.
+function browseDirectory(blinkItem = false) {
+    loadDataFolders();
+    if (blinkItem) blinkingItem("file-selection", 5000);
+}
 
 async function filterFiles(files) {
     const checks = await Promise.all(

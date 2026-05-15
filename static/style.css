@@ -860,6 +860,67 @@ body.dark #swal-edit-table tr.selected td {
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
+.folder-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.88em;
+    transition: background 0.12s, border-color 0.12s;
+    border: 1px solid transparent;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.folder-item::before {
+    content: "📁";
+    flex-shrink: 0;
+    font-size: 1em;
+}
+body.light .folder-item:hover { background: #e8f0fe; }
+body.dark  .folder-item:hover { background: #2a3a4a; }
+body.light .folder-item.selected {
+    background: #d0e4ff;
+    border-color: #4a90d9;
+    font-weight: 600;
+}
+body.dark  .folder-item.selected {
+    background: #1e3a5f;
+    border-color: #5b9bd5;
+    font-weight: 600;
+}
+
+.folder-section-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+.folder-chevron {
+    font-size: 0.65em;
+    display: inline-block;
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+.folder-chevron.collapsed-chevron {
+    transform: rotate(-90deg);
+}
+.folder-list-collapse {
+    overflow: hidden;
+    max-height: 400px;
+    transition: max-height 0.3s ease, opacity 0.25s ease;
+    opacity: 1;
+}
+.folder-list-collapse.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
 .file-table-container {
     overflow-y: auto;
     max-height: 240px;
