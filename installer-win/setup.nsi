@@ -247,7 +247,7 @@ Section "Install" SEC01
   DetailPrint "startwindow-1-git.bat completed with exit code: $0"
   
   DetailPrint "Running startwindow-0-clone-repo.bat..."
-  ExecWait '"$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code" "$EasyOKAPIToken"' $0
+  ExecWait '"cmd.exe" /c ""$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code" "$EasyOKAPIToken""' $0
   DetailPrint "startwindow-0-clone-repo.bat completed with exit code: $0"
   
   DetailPrint "Running startwindow-2-pyenv.bat..."

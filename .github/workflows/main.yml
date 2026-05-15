@@ -100,6 +100,7 @@ jobs:
       - name: Inject version and auth URL into installer scripts
         run: |
           sed -i "s/__APP_VERSION__/v${{ env.APP_VERSION }}/g" installer-linux/install.sh
+          sed -i "s|__AUTH_BASE_URL__|${{ env.AUTH_BASE_URL }}|g" installer-linux/install.sh
           sed -i "s/__APP_VERSION__/v${{ env.APP_VERSION }}/g" installer-linux/install-1-deps-clone.sh
           sed -i "s|__AUTH_BASE_URL__|${{ env.AUTH_BASE_URL }}|g" installer-linux/install-1-deps-clone.sh
 

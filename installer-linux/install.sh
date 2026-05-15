@@ -64,8 +64,8 @@ CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 # ── Configuration ─────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSION_TAG="__APP_VERSION__"
+AUTH_BASE_URL="__AUTH_BASE_URL__"
 INSTALL_DIR="/opt/EasyOKAPI"
-REPO_URL="https://github.com/Promethees/microalbumin-Flask.git"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
 
@@ -120,10 +120,10 @@ if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/
 fi
 echo "✅ Python $PYTHON_VERSION available."
 
-# ── Step 4: Prompt for EasyOKAPI token ────────────────────────────────────────
+# ── Step 4: Prompt for EasyOKAPI download token ───────────────────────────────
 prompt_input "EasyOKAPI Installer" "Enter your Generated EasyOKAPI Token:" "true"
-EASYOKAPI_TOKEN="$PROMPT_RESULT"
-if [ -z "$EASYOKAPI_TOKEN" ]; then
+DOWNLOAD_TOKEN="$PROMPT_RESULT"
+if [ -z "$DOWNLOAD_TOKEN" ]; then
     echo "❌ EasyOKAPI token is required. Installation aborted."
     exit 1
 fi
@@ -142,20 +142,23 @@ if [ -d "$INSTALL_DIR" ] && [ "$(find "$INSTALL_DIR" -maxdepth 1 | wc -l)" -gt 1
     fi
 fi
 
-# ── Step 6: Clone the repository ──────────────────────────────────────────────
-echo "Cloning repository to $INSTALL_DIR..."
-git clone "https://$EASYOKAPI_TOKEN@github.com/Promethees/microalbumin-Flask.git" "$INSTALL_DIR"
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to clone repository. Check your token and network connection."
+# ── Step 6: Download the application ──────────────────────────────────────────
+ARCHIVE_TMP="/tmp/easyokapi_app.tar.gz"
+echo "Downloading application to $INSTALL_DIR..."
+curl -L -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$DOWNLOAD_TOKEN"
+if [ $? -ne 0 ] || [ ! -s "$ARCHIVE_TMP" ]; then
+    echo "❌ Failed to download the application. Check your token and network connection."
     exit 1
 fi
 
-cd "$INSTALL_DIR"
-git checkout "tags/$VERSION_TAG"
+mkdir -p "$INSTALL_DIR"
+tar -xzf "$ARCHIVE_TMP" -C "$INSTALL_DIR" --strip-components=1
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to checkout tag $VERSION_TAG."
+    echo "❌ Failed to extract the application archive."
+    rm -f "$ARCHIVE_TMP"
     exit 1
 fi
+rm -f "$ARCHIVE_TMP"
 
 # ── Step 7: Clean up dev-only files ───────────────────────────────────────────
 echo "Cleaning up development files..."

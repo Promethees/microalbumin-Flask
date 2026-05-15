@@ -133,7 +133,6 @@ echo Removing development files...
 del /s /q "!INSTALL_DIR!\*.command" >nul 2>&1
 del /s /q "!INSTALL_DIR!\*.bat" >nul 2>&1
 del /s /q "!INSTALL_DIR!\log_hid_data.py" >nul 2>&1
-del /s /q "!INSTALL_DIR!\requirements-win.txt" >nul 2>&1
 del /s /q "!INSTALL_DIR!\generate-tree.sh" >nul 2>&1
 del /s /q "!INSTALL_DIR!\BUILD_MAC.md" >nul 2>&1
 del /s /q "!INSTALL_DIR!\Rule.md" >nul 2>&1

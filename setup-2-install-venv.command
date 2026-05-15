@@ -16,7 +16,8 @@ sudo pyenv global 3.8.10
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
 if [ "$PY_VER" != "3.8.10" ]; then
     echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
-    pyenv local 3.8.10 | echo "Setting Python 3.8.10 via pyenv..."
+    echo "Setting Python 3.8.10 via pyenv..."
+    pyenv local 3.8.10
     pyenv shell 3.8.10
 fi
 

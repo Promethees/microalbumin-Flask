@@ -11,7 +11,7 @@ This guide explains how to build the `EasyOKAPI.dmg` installer from the source f
 1.  Open the **Terminal** app.
 2.  Navigate to the repository root directory:
     ```bash
-    cd /Users/tqmthong/Desktop/Documents/BioInfo/colorimeter/microalbumin-Flask/microalbumin-Flask
+    cd /path/to/microalbumin-Flask
     ```
 3.  Run the build script located in the `installer-mac` folder:
     ```bash

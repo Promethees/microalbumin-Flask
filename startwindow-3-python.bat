@@ -13,7 +13,8 @@ set "FALLBACK_PYTHON=3.9.13"
 set "PYTHON_VERSION="
 
 :: Verify pyenv-win installation
-"%BIN_PATH%\pyenv" --version >nul 2>&1 | echo Verifying pyenv-win installation...
+echo Verifying pyenv-win installation...
+"%BIN_PATH%\pyenv" --version >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     for /f "delims=" %%v in ('"%BIN_PATH%\pyenv" --version') do (
     echo pyenv-win installed and configured successfully. Version: %%v
@@ -67,7 +68,8 @@ if %ERRORLEVEL% equ 0 (
 :set_python
 if %ERRORLEVEL% equ 0 (
     echo Setting Python %PYTHON_VERSION% as global version...
-    pyenv global %PYTHON_VERSION% | echo Python %PYTHON_VERSION% is now set as the global version.
+    pyenv global %PYTHON_VERSION%
+    echo Python %PYTHON_VERSION% is now set as the global version.
     @REM echo Verifying Python version...
     @REM python --version || echo Python %PYTHON_VERSION% is set as the global version.
 ) else (
