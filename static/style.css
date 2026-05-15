@@ -498,13 +498,18 @@ body.dark .button-group button.selected {
     max-width: 23.5vw;
     max-height: calc(100vh - 40px);
     box-sizing: border-box;
+}
+
+#top-left-scrollable {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb-light) transparent;
 }
 
-body.dark .top-left {
+body.dark #top-left-scrollable {
     scrollbar-color: var(--scrollbar-thumb-dark) transparent;
 }
 
@@ -1386,7 +1391,11 @@ body.dark .swal2-container.swal2-backdrop-show {
         max-height: none;
         margin-bottom: 0px;
         order: 1;
-        /* Reset scrolling for mobile flow */
+    }
+
+    #top-left-scrollable {
+        flex: none;
+        min-height: unset;
         max-height: none;
         overflow-y: visible;
     }
