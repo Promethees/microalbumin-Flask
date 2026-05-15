@@ -291,8 +291,12 @@ function kineticsModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-    document.getElementById("file-selection-header").innerText = "File Selection";
-    document.getElementById("file-search").placeholder = "Search files...";
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "File Selection";
+    const tableHeader = document.getElementById("file-table-header-name");
+    if (tableHeader) tableHeader.innerText = "File Name";
+    const searchInput = document.getElementById("file-search");
+    if (searchInput) searchInput.placeholder = "Search CSV files...";
 }
 
 function reportModeBehaviour() {
@@ -327,7 +331,10 @@ function reportModeBehaviour() {
     $hidden(removeHidden, false);
 
     document.getElementById("report-console-section").classList.add('hidden');
-    document.getElementById("file-selection-header").innerText = "Folder Selection";
+
+    // Update Header
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "Folder Selection";
     document.getElementById("file-search").placeholder = "Search subject folders...";
 }
 
@@ -362,8 +369,12 @@ function pointModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
-    document.getElementById("file-selection-header").innerText = "File Selection";
-    document.getElementById("file-search").placeholder = "Search files...";
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "File Selection";
+    const tableHeader = document.getElementById("file-table-header-name");
+    if (tableHeader) tableHeader.innerText = "File Name";
+    const searchInput = document.getElementById("file-search");
+    if (searchInput) searchInput.placeholder = "Search CSV files...";
 }
 
 
@@ -397,6 +408,12 @@ function calModeBehaviour() {
 
     $hidden(addHidden, true);
     $hidden(removeHidden, false);
+    const label = document.getElementById("file-selection-label");
+    if (label) label.textContent = "File Selection";
+    const tableHeader = document.getElementById("file-table-header-name");
+    if (tableHeader) tableHeader.innerText = "File Name";
+    const searchInput = document.getElementById("file-search");
+    if (searchInput) searchInput.placeholder = "Search CSV files...";
 
     // Configure range input
     const rangeValue = document.getElementById('range-value');

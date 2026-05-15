@@ -910,6 +910,542 @@ function toggleMode() {
     if (typeof updateReportChartsTheme === 'function') updateReportChartsTheme();
 }
 
+async function refreshReportSubjects() {
+    const res = await fetch('/get_report_subjects');
+    const data = await res.json();
+    if (data.status === 'success') {
+        updateReportTable(data.subjects || []);
+    } else {
+        console.warn("Failed to refresh report subjects:", data.message);
+    }
+}
+
+async function editReportSubject(subjectName, button) {
+    const _isDark = document.body.classList.contains('dark');
+    const { value: result } = await Swal.fire({
+        title: `Edit Subject: "${subjectName}"`,
+        html: `
+            <div style="text-align:left; margin-bottom:14px;">
+                <label style="display:block; margin-bottom:4px; font-size:0.85rem; color:#666;">Rename to</label>
+                <input id="swal-rename-input" class="swal2-input" value="${subjectName}" style="width:90%; margin:0;">
+            </div>
+            <div style="text-align:left; margin-bottom:6px; display:flex; align-items:baseline; gap:8px;">
+                <span style="font-weight:600; font-size:0.9rem;">Items</span>
+                <span style="font-size:0.75rem; color:#94a3b8;">drag ⠿ to reorder · ✕ to remove</span>
+            </div>
+            <div id="swal-items-container" style="max-height:320px; overflow-y:auto; border:1px solid ${_isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; padding:8px; background:${_isDark ? '#111827' : '#fafafa'};">
+                <p style="color:#94a3b8; margin:8px 0; text-align:center;">Loading items…</p>
+            </div>
+        `,
+        width: '680px',
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        cancelButtonText: 'Cancel',
+        focusConfirm: false,
+        didOpen: async () => {
+            const container = document.getElementById('swal-items-container');
+            await loadEditSwalItems(subjectName, container);
+            initSortableCards(container);
+        },
+        preConfirm: () => {
+            const newName = document.getElementById('swal-rename-input').value.trim();
+            const order = Array.from(
+                document.querySelectorAll('#swal-items-container [data-item-filename]')
+            ).map(el => el.dataset.itemFilename);
+            return { newName, order };
+        }
+    });
+
+    if (!result) return;
+
+    const { newName, order } = result;
+    try {
+        if (order.length > 0) {
+            await fetch('/save_report_item_order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subjectName, order })
+            });
+        }
+        const effectiveName = newName && newName !== subjectName ? newName : subjectName;
+        if (newName && newName !== subjectName) {
+            const resp = await fetch('/rename_report_subject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_subject: subjectName, new_subject: newName })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Rename failed');
+            if (AppState.currentReportSubject === subjectName) {
+                AppState.currentReportSubject = newName;
+            }
+        }
+        await refreshReportSubjects();
+        // Reload the Init Preview console if this subject is currently open
+        if (AppState.currentReportSubject === effectiveName) {
+            loadReportItems(effectiveName);
+        }
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
+}
+
+async function loadEditSwalItems(subjectName, container) {
+    try {
+        const res = await fetch(`/get_report_items?subject=${encodeURIComponent(subjectName)}`);
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        const dataFiles = data.items.filter(i => i.filename.toLowerCase().endsWith('.csv'));
+        if (dataFiles.length === 0) {
+            container.innerHTML = '<p style="color:#94a3b8; margin:8px 0; text-align:center;">No CSV items in this subject.</p>';
+            return;
+        }
+
+        const isDark = document.body.classList.contains('dark');
+        container.innerHTML = '';
+        for (const item of dataFiles) {
+            const safeId = `swal-card-${item.filename.replace(/[^a-z0-9]/gi, '_')}`;
+            const card = document.createElement('div');
+            card.className = 'report-item-card';
+            card.id = safeId;
+            card.draggable = true;
+            card.dataset.itemFilename = item.filename;
+            card.dataset.filename = item.filename;
+            card.dataset.subject = subjectName;
+            card.style.cssText = `margin-bottom:6px; padding:8px 10px; background:${isDark ? '#1f2937' : '#fff'}; border:1px solid ${isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; transition: background 0.15s; color:${isDark ? '#f3f4f6' : 'inherit'};`;
+            card.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="drag-handle" title="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
+                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.filename}">${item.filename}</span>
+                    <span style="font-size:0.75rem; color:${isDark ? '#a5b4fc' : '#6366f1'}; background:${isDark ? '#312e81' : '#eef2ff'}; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata.mode || 'Measurement'}</span>
+                    <button data-card-id="${safeId}" data-filename="${item.filename}" title="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
+                </div>
+                <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid ${isDark ? '#7f1d1d' : '#fee2e2'}; text-align:right;">
+                    <span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>
+                    <button onclick="confirmSwalItemDelete(this)" style="background:#ef4444; color:#fff; border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem; margin-right:4px;">Confirm</button>
+                    <button onclick="cancelSwalItemDelete(this)" style="${isDark ? 'background:#374151; color:#d1d5db;' : 'background:#e5e7eb;'} border:none; cursor:pointer; padding:3px 12px; border-radius:4px; font-size:0.8rem;">Cancel</button>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+    } catch (e) {
+        container.innerHTML = `<p style="color:#ef4444; margin:8px 0;">Error: ${e.message}</p>`;
+    }
+}
+
+function requestSwalItemDelete(btn) {
+    const card = btn.closest('[data-item-filename]');
+    if (!card) return;
+    const isDark = document.body.classList.contains('dark');
+    card.style.background = isDark ? '#450a0a' : '#fff5f5';
+    card.style.borderColor = '#fca5a5';
+    card.querySelector('.swal-delete-confirm').style.display = 'block';
+    btn.disabled = true;
+}
+
+function cancelSwalItemDelete(btn) {
+    const card = btn.closest('[data-item-filename]');
+    if (!card) return;
+    const isDark = document.body.classList.contains('dark');
+    card.style.background = isDark ? '#1f2937' : '#fff';
+    card.style.borderColor = isDark ? '#374151' : '#e2e8f0';
+    card.querySelector('.swal-delete-confirm').style.display = 'none';
+    card.querySelector('button[title="Remove from subject"]').disabled = false;
+}
+
+async function confirmSwalItemDelete(btn) {
+    const card = btn.closest('[data-item-filename]');
+    if (!card) return;
+    const filename = card.dataset.filename;
+    const subject = card.dataset.subject;
+    const cardId = card.id;
+
+    try {
+        const response = await fetch('/delete_report_item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, filename })
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        card.remove();
+
+        // Also remove from the Init Preview console if it's currently loaded
+        const config = window.ReportItemConfig?.[filename];
+        if (config) {
+            if (config.chart) config.chart.destroy();
+            if (config.charts) Object.values(config.charts).forEach(c => c.destroy());
+            delete window.ReportItemConfig[filename];
+        }
+        const consoleCard = document.querySelector(`#report-items-container [data-filename="${filename}"]`)
+            ?.closest('.report-item-card');
+        consoleCard?.remove();
+        const consoleContainer = document.getElementById('report-items-container');
+        if (consoleContainer && !consoleContainer.querySelector('.report-item-card')) {
+            consoleContainer.innerHTML = '<p style="color:#666;">No items found in this subject folder.</p>';
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+        cancelSwalItemDelete(btn);
+    }
+}
+
+function deleteReportSubject(subjectName, button) {
+    Swal.fire({
+        title: 'Delete subject?',
+        text: `This will permanently delete '${subjectName}' and all its items.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete'
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        try {
+            const resp = await fetch('/delete_report_subject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: subjectName })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Delete failed');
+
+            if (AppState.currentReportSubject === subjectName) {
+                AppState.currentReportSubject = null;
+                document.getElementById('report-console-section')?.classList.add('hidden');
+            }
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    });
+}
+
+async function copyReportSubject(subjectName) {
+    try {
+        const resp = await fetch('/copy_report_subject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject: subjectName })
+        });
+        const data = await resp.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Copy failed');
+        await refreshReportSubjects();
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
+}
+
+function showMergeModal() {
+    if (AppState.currentMeasurementMode === "report") {
+        return showMergeSubjectsModal();
+    }
+
+    // Bare row — folder/file selects are populated async in didOpen
+    const makeFileRow = () => `
+        <div class="merge-file-row" style="display:grid; grid-template-columns:30px 1fr 30px; gap:5px; align-items:center; padding:7px 8px; border:1px solid #ddd; border-radius:6px; margin-bottom:6px;">
+            <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                <button type="button" class="merge-up-btn" title="Move up"
+                    style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▲</button>
+                <button type="button" class="merge-dn-btn" title="Move down"
+                    style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▼</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <select class="merge-folder-select swal2-input" style="margin:0; font-size:0.8rem; height:30px; width:100%; box-sizing:border-box;"></select>
+                <select class="merge-file-select swal2-input" style="margin:0; width:100%; box-sizing:border-box;"></select>
+            </div>
+            <button type="button" class="merge-remove-btn" title="Remove"
+                style="background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
+        </div>`;
+
+    Swal.fire({
+        title: 'Merge CSV Files',
+        width: 520,
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:6px;">
+                <div id="merge-file-list">${makeFileRow()}${makeFileRow()}</div>
+                <button type="button" id="merge-add-btn"
+                    style="background:#2980b9; color:#fff; border:none; border-radius:4px; padding:7px; cursor:pointer; width:100%; font-size:0.9rem;">+ Add File</button>
+                <label style="margin-top:2px; font-size:0.85rem;">Output Name:</label>
+                <input id="swal-output" class="swal2-input" style="margin:0; width:100%;" placeholder="merged_output">
+                <label style="font-size:0.85rem;">Output Folder:</label>
+                <select id="merge-output-folder" class="swal2-input" style="margin:0; width:100%; font-size:0.85rem; height:34px;"></select>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Merge',
+        didOpen: async () => {
+            const list = document.getElementById('merge-file-list');
+            const outputInput = document.getElementById('swal-output');
+            const outputFolderSel = document.getElementById('merge-output-folder');
+
+            // Fetch data subfolders once
+            let folderOpts = '';
+            try {
+                const res = await fetch('/get_data_folders');
+                const data = await res.json();
+                const folders = data.folders || [];
+                folderOpts = folders.map(f =>
+                    `<option value="${_esc(f.path)}">${_escHtml(f.name)}</option>`
+                ).join('');
+            } catch (e) { }
+
+            // Populate output folder selector
+            outputFolderSel.innerHTML = folderOpts || '<option value="">No folders found</option>';
+            if (AppState.currentDirectory) outputFolderSel.value = AppState.currentDirectory;
+
+            // Fetch CSV files for a row from its selected folder
+            const loadFilesForRow = async (row, preselectFile = null) => {
+                const folderSel = row.querySelector('.merge-folder-select');
+                const fileSel = row.querySelector('.merge-file-select');
+                const folderPath = folderSel.value;
+                if (!folderPath) {
+                    fileSel.innerHTML = '<option value="">Select a folder first</option>';
+                    return;
+                }
+                fileSel.innerHTML = '<option value="">Loading…</option>';
+                try {
+                    const fd = new FormData();
+                    fd.append('path', folderPath);
+                    const res = await fetch('/browse', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    const csvFiles = (data.files || []).filter(f => f.endsWith('.csv'));
+                    if (csvFiles.length === 0) {
+                        fileSel.innerHTML = '<option value="">No CSV files in folder</option>';
+                    } else {
+                        fileSel.innerHTML = csvFiles.map(f =>
+                            `<option value="${_esc(f)}">${_escHtml(f)}</option>`
+                        ).join('');
+                        if (preselectFile && csvFiles.includes(preselectFile)) {
+                            fileSel.value = preselectFile;
+                        }
+                    }
+                } catch (e) {
+                    fileSel.innerHTML = '<option value="">Error loading files</option>';
+                }
+                updateDefaultOutput();
+            };
+
+            const updateRemoveBtns = () => {
+                const btns = list.querySelectorAll('.merge-remove-btn');
+                btns.forEach(btn => { btn.style.display = btns.length > 2 ? '' : 'none'; });
+            };
+
+            const updateOrderBtns = () => {
+                const fileRows = list.querySelectorAll('.merge-file-row');
+                fileRows.forEach((row, i) => {
+                    row.querySelector('.merge-up-btn').disabled = (i === 0);
+                    row.querySelector('.merge-dn-btn').disabled = (i === fileRows.length - 1);
+                });
+            };
+
+            const updateDefaultOutput = () => {
+                const names = Array.from(list.querySelectorAll('.merge-file-select'))
+                    .map(s => s.value.replace('.csv', '')).filter(Boolean);
+                if (!names.length) return;
+                outputInput.value = names.length <= 3
+                    ? names.join('_') + '_merged'
+                    : `${names[0]}_${names.length}_files_merged`;
+            };
+
+            // Populate folder selects in initial rows, then load files
+            const initRows = list.querySelectorAll('.merge-file-row');
+            initRows.forEach(row => {
+                row.querySelector('.merge-folder-select').innerHTML = folderOpts;
+                if (AppState.currentDirectory) row.querySelector('.merge-folder-select').value = AppState.currentDirectory;
+            });
+            await loadFilesForRow(initRows[0], AppState.currentFile);
+            await loadFilesForRow(initRows[1]);
+
+            // Event delegation: folder change reloads file list; file change updates output name
+            list.addEventListener('change', async (e) => {
+                if (e.target.classList.contains('merge-folder-select')) {
+                    await loadFilesForRow(e.target.closest('.merge-file-row'));
+                } else if (e.target.classList.contains('merge-file-select')) {
+                    updateDefaultOutput();
+                }
+            });
+
+            // Event delegation: reorder (▲/▼) and remove (✕)
+            list.addEventListener('click', (e) => {
+                const row = e.target.closest('.merge-file-row');
+                if (!row) return;
+                if (e.target.classList.contains('merge-remove-btn')) {
+                    row.remove();
+                    updateRemoveBtns();
+                    updateOrderBtns();
+                    updateDefaultOutput();
+                } else if (e.target.classList.contains('merge-up-btn')) {
+                    const prev = row.previousElementSibling;
+                    if (prev) list.insertBefore(row, prev);
+                    updateOrderBtns();
+                    updateDefaultOutput();
+                } else if (e.target.classList.contains('merge-dn-btn')) {
+                    const next = row.nextElementSibling;
+                    if (next) list.insertBefore(next, row);
+                    updateOrderBtns();
+                    updateDefaultOutput();
+                }
+            });
+
+            // Add File button
+            document.getElementById('merge-add-btn').addEventListener('click', async () => {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = makeFileRow();
+                const newRow = tmp.firstElementChild;
+                list.appendChild(newRow);
+                newRow.querySelector('.merge-folder-select').innerHTML = folderOpts;
+                if (AppState.currentDirectory) newRow.querySelector('.merge-folder-select').value = AppState.currentDirectory;
+                await loadFilesForRow(newRow);
+                updateRemoveBtns();
+                updateOrderBtns();
+            });
+
+            updateRemoveBtns();
+            updateOrderBtns();
+        },
+        preConfirm: () => {
+            const list = document.getElementById('merge-file-list');
+            const fileRows = list.querySelectorAll('.merge-file-row');
+            const folderPaths = Array.from(fileRows).map(r => r.querySelector('.merge-folder-select').value);
+            const fileNames = Array.from(fileRows).map(r => r.querySelector('.merge-file-select').value);
+            const output_name = document.getElementById('swal-output').value.trim();
+            const output_path = document.getElementById('merge-output-folder').value;
+
+            if (fileNames.some(f => !f)) {
+                Swal.showValidationMessage('Please select a valid file for each slot');
+                return false;
+            }
+            const keys = folderPaths.map((fp, i) => `${fp}|||${fileNames[i]}`);
+            if (new Set(keys).size < keys.length) {
+                Swal.showValidationMessage('Please select different files for each slot');
+                return false;
+            }
+            if (!output_name) {
+                Swal.showValidationMessage('Please enter an output name');
+                return false;
+            }
+            if (!output_path) {
+                Swal.showValidationMessage('Please select an output folder');
+                return false;
+            }
+            return { folderPaths, fileNames, output_name, output_path };
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const { folderPaths, fileNames, output_name, output_path } = result.value;
+
+        $.ajax({
+            url: '/merge_csv',
+            method: 'POST',
+            traditional: true,
+            data: { folder_paths: folderPaths, file_names: fileNames, output_name, output_path },
+            success: function (response) {
+                if (response.status === 'success') {
+                    if (getBtnChecked("no-swal-checkbox")) {
+                        console.log("Merge successful:", response.message);
+                        updateDirectory(output_path);
+                        return;
+                    }
+                    Swal.fire({
+                        title: 'Success!',
+                        text: response.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        updateDirectory(output_path);
+                    });
+                } else {
+                    Swal.fire({ title: 'Error!', text: response.message, icon: 'error' });
+                }
+            },
+            error: function (xhr) {
+                Swal.fire({ title: 'Error!', text: xhr.responseJSON?.message || 'Failed to merge files', icon: 'error' });
+            }
+        });
+    });
+}
+
+function showMergeSubjectsModal() {
+    // Read subjects from current table
+    const table = document.getElementById("file-table");
+    const rows = table.querySelectorAll("tr");
+    const subjects = [];
+    rows.forEach((row, index) => {
+        if (index === 0) return;
+        const cell = row.querySelector("td");
+        if (cell && cell.textContent.trim()) subjects.push(cell.textContent.trim());
+    });
+
+    if (subjects.length < 2) {
+        Swal.fire('Not enough subjects', 'You need at least two subjects to merge.', 'info');
+        return;
+    }
+
+    const options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    Swal.fire({
+        title: 'Merge Report Subjects',
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
+                <label>First Subject:</label>
+                <select id="swal-sub1" class="swal2-input" style="margin:0; width:100%;">${options}</select>
+                <label>Second Subject:</label>
+                <select id="swal-sub2" class="swal2-input" style="margin:0; width:100%;">${options}</select>
+                <label>New Subject Name:</label>
+                <input id="swal-sub-out" class="swal2-input" style="margin:0; width:100%;" placeholder="merged_subject">
+                <div style="font-size:0.8rem; color:#666;">
+                    Items will be copied into the new subject (sources are kept).
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Merge',
+        didOpen: () => {
+            const s1 = document.getElementById('swal-sub1');
+            const s2 = document.getElementById('swal-sub2');
+            const out = document.getElementById('swal-sub-out');
+            const updateDefault = () => {
+                out.value = `${s1.value}_${s2.value}_merged`;
+            };
+            s1.addEventListener('change', updateDefault);
+            s2.addEventListener('change', updateDefault);
+            updateDefault();
+        },
+        preConfirm: () => {
+            const s1 = document.getElementById('swal-sub1').value;
+            const s2 = document.getElementById('swal-sub2').value;
+            const out = document.getElementById('swal-sub-out').value.trim();
+            if (s1 === s2) {
+                Swal.showValidationMessage('Please select two different subjects');
+                return false;
+            }
+            if (!out) {
+                Swal.showValidationMessage('Please enter a new subject name');
+                return false;
+            }
+            return { s1, s2, out };
+        }
+    }).then(async (result) => {
+        if (!result.isConfirmed) return;
+        const { s1, s2, out } = result.value;
+        try {
+            const resp = await fetch('/merge_report_subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subjects: [s1, s2], output_subject: out })
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Merge failed');
+            await refreshReportSubjects();
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+        }
+    });
+}
+
 function exportData() {
     // Validate file name and path
     if (!validateFileName("save-file")) {
