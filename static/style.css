@@ -489,19 +489,22 @@ body.dark .button-group button.selected {
    Header & Navigation Components
    ========================================================================== */
 .top-left {
-    display: block;
+    display: flex;
+    flex-direction: column;
     position: fixed;
     top: 20px;
     left: 1.3vw;
     max-width: 23.5vw;
+    max-height: calc(100vh - 20px);
     box-sizing: border-box;
 }
 
 .top-left .flex-group {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 5px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .top-left>*:not(.flex-group) {
@@ -509,8 +512,8 @@ body.dark .button-group button.selected {
 }
 
 #top-left-scrollable {
-    max-height: calc(100vh - 140px) !important;
-    /* 150px ≈ logo + title + margins + shutdown button */
+    flex: 1;
+    min-height: 0;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     padding-right: 6px;
@@ -1445,13 +1448,22 @@ body.dark .swal2-container.swal2-backdrop-show {
 @media (max-width: 768px) {
     .top-left {
         position: relative;
-        /* no longer fixed */
         top: auto;
         left: auto;
         max-width: 100%;
+        max-height: none;
         margin-bottom: 0px;
         order: 1;
-        /* appear above main-content */
+    }
+
+    .top-left .flex-group {
+        flex-wrap: wrap;
+    }
+
+    #top-left-scrollable {
+        flex: none;
+        min-height: unset;
+        max-height: none;
     }
 
     .top-left>*:not(.flex-group) {
