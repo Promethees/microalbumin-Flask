@@ -1412,7 +1412,7 @@
       "steps": [
         {
           "target": "#shutdown-btn",
-          "title": "Shutdown Server",
+          "title": "Shutdown Program",
           "description": "Click this button to stop the Flask server and close the application. Unsaved data will be lost, so make sure you have exported anything you need first.",
           "position": "left",
           "skipInteraction": false
