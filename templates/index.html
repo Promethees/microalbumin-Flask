@@ -216,7 +216,8 @@
             <div id="top-left-scrollable">
                 <div class="section hidden" style="position: static;" id="meas-mode-section">
                     <div class="section" id="top-left-dir-section">
-                        <h2 class="folder-section-toggle" onclick="toggleFolderList('top-folder-collapse', 'top-folder-chevron')">
+                        <h2 class="folder-section-toggle"
+                            onclick="toggleFolderList('top-folder-collapse', 'top-folder-chevron')">
                             Data Folder
                             <span id="top-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
                         </h2>
@@ -321,7 +322,8 @@
         </div>
         <div id="main-content" class="hidden">
             <div class="section" id="main-directory-section">
-                <h2 class="folder-section-toggle" onclick="toggleFolderList('main-folder-collapse', 'main-folder-chevron')">
+                <h2 class="folder-section-toggle"
+                    onclick="toggleFolderList('main-folder-collapse', 'main-folder-chevron')">
                     Data Folder
                     <span id="main-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
                 </h2>
@@ -329,7 +331,8 @@
                 <div id="main-folder-collapse" class="folder-list-collapse collapsed">
                     <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
                         <input type="text" id="folder-search-main" placeholder="Search folders…"
-                            oninput="filterDataFolderList('data-folder-list', this.value)" style="flex:1; padding:4px 6px;">
+                            oninput="filterDataFolderList('data-folder-list', this.value)"
+                            style="flex:1; padding:4px 6px;">
                         <button onclick="loadDataFolders()" title="Refresh folder list">↻ Refresh</button>
                     </div>
                     <div id="data-folder-list" class="dir-blocks scrollbar-style">
@@ -678,8 +681,8 @@
                                         style="padding:3px 7px;">↻</button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
-                                    <input type="radio" name="report-save-mode" id="report-mode-new"
-                                        value="new" onchange="onReportSaveModeChange()"> New
+                                    <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
+                                        onchange="onReportSaveModeChange()"> New
                                 </label>
                                 <div id="report-new-row" style="display:none; align-items:center; gap:4px;">
                                     <input type="text" id="report-subject-name" placeholder="new subject name"
