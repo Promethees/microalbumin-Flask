@@ -11,7 +11,7 @@ _TOKEN_TTL = 30 * 60  # 30 minutes
 def generate_download_token(user_id: int, email: str) -> str:
     secret = os.environ.get('SECRET_KEY', 'change-me')
     payload = {
-        'sub': user_id,
+        'sub': str(user_id),
         'email': email,
         'purpose': _DOWNLOAD_PURPOSE,
         'iat': int(time.time()),

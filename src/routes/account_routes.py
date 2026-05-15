@@ -276,7 +276,7 @@ def download():
     except pyjwt.InvalidTokenError as e:
         return jsonify({'status': 'error', 'message': f'Invalid token: {e}'}), 401
 
-    user = User.query.get(payload['sub'])
+    user = User.query.get(int(payload['sub']))
     if not user or not user.is_verified:
         return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
 
