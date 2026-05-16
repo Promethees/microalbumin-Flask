@@ -8,7 +8,7 @@ import argparse
 import signal
 import sys
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(_SCRIPT_DIR, 'code', 'src'))
+sys.path.append(os.path.join(_SCRIPT_DIR, 'src'))
 from get_next_filename import get_next_filename
 
 # PyBadge USB VID and PID (Adafruit PyBadge)
