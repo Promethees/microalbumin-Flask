@@ -40,7 +40,7 @@ function _renderFolderList(containerId, folders) {
         return `<div class="folder-item${isSelected ? ' selected' : ''}"
                      data-path="${_esc(f.path)}"
                      data-name="${_esc(f.name.toLowerCase())}"
-                     onclick="selectDataFolder('${_esc(f.name)}', '${_esc(f.path)}')"
+                     onclick="selectDataFolder('${_esc(f.name)}', this.dataset.path)"
                      title="${_escHtml(f.path)}">${_escHtml(f.name)}</div>`;
     }).join('');
 }
