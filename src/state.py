@@ -7,7 +7,19 @@ monitor_thread = None
 args = None
 
 # Paths
-script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _find_project_root():
+    # Walk up from src/ (or code/src/ on Windows installs) until main.py is found.
+    d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for _ in range(3):
+        if os.path.isfile(os.path.join(d, 'main.py')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return d
+
+script_dir = _find_project_root()
 log_file = os.path.join(script_dir, "log", "script_logs.txt")
 os.makedirs(os.path.dirname(log_file), exist_ok=True)
 json_root_path = os.path.join(script_dir, "json")

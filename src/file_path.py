@@ -3,7 +3,18 @@ from pathlib import Path
 import re
 
 # All user data is confined to the data/ directory under the project root.
-DATA_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+def _find_project_root():
+    d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for _ in range(3):
+        if os.path.isfile(os.path.join(d, 'main.py')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return d
+
+DATA_ROOT = os.path.join(_find_project_root(), 'data')
 os.makedirs(DATA_ROOT, exist_ok=True)
 
 
