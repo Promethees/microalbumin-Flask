@@ -7,7 +7,8 @@ import re
 import argparse
 import signal
 import sys
-sys.path.append('code\src')
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(_SCRIPT_DIR, 'code', 'src'))
 from get_next_filename import get_next_filename
 
 # PyBadge USB VID and PID (Adafruit PyBadge)
@@ -54,7 +55,7 @@ class HIDDataCollector:
         self.interface = None
 
         # Logging setup
-        self.log_dir = os.path.join(os.getcwd(), "code/log")
+        self.log_dir = os.path.join(_SCRIPT_DIR, "log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.log_file_path = os.path.join(self.log_dir, "script_logs.txt")
         self.log_file = open(self.log_file_path, 'a', encoding='utf-8')

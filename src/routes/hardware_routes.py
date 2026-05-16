@@ -54,10 +54,10 @@ def run_script(validated_data):
         # Guard against path traversal that somehow escaped the name check
         if not abs_dir.startswith(data_root + os.sep) and abs_dir != data_root:
             return jsonify({'status': 'failure', 'message': 'Invalid subfolder'}), 400
-        base_dir = os.path.join('data', subfolder)
+        base_dir = abs_dir
     else:
         abs_dir = data_root
-        base_dir = 'data'
+        base_dir = abs_dir
 
     os.makedirs(abs_dir, exist_ok=True)
     print("Interval seconds is ", interval_sec)
