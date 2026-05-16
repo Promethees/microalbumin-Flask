@@ -190,6 +190,21 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         analysis,
         index
     );
+
+    // Keep analysis table values in sync with the freshly computed analysis
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        const unitDisp = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
+        const timeUnit = getTimeUnitValue().slice(0, -1);
+        const analyses = Array.isArray(analysis) ? analysis : [analysis];
+        const labels = Array.isArray(labelOrLabels) ? labelOrLabels : [labelOrLabels];
+        analyses.forEach((a, i) => {
+            const sourceIndex = index !== null ? index : i;
+            const contentDiv = document.getElementById(`analysis-content-plot-analysis-source-${sourceIndex}`);
+            if (contentDiv) {
+                contentDiv.innerHTML = buildKineticsTableHtml(formatAnalysisInfo(a, labels[i] || labels[0]), unitDisp, timeUnit);
+            }
+        });
+    }
 }
 
 function createChartSection({
@@ -675,7 +690,7 @@ function getCalibrationAnalysisString(analysis, fitType, mode) {
             break;
     }
 
-    const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
+    const initDisplay = getAnalysisOpenState(analysisId) ? "block" : "none";
 
     const generateBlock = (coef, rSquared, label = '') => `
         <span>
@@ -758,11 +773,17 @@ function unitDisplay(unit) {
     return unit !== "NONE" ? `(${unit})` : "";
 }
 
+function getAnalysisOpenState(analysisId) {
+    const saved = localStorage.getItem(`analysis-open-${analysisId}`);
+    if (saved !== null) return saved === 'true';
+    return getBtnChecked("open-all-analysis");
+}
+
 function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
     const buttonId = analysisId.replace("analysis", "button");
-    const allOpen = getBtnChecked("open-all-analysis");
-    const initialSymbol = allOpen ? '-' : '+';
-    const initialTooltipText = allOpen ? hideText : showText;
+    const isOpen = getAnalysisOpenState(analysisId);
+    const initialSymbol = isOpen ? '-' : '+';
+    const initialTooltipText = isOpen ? hideText : showText;
     return `
     <div style="position: relative; display: inline-block;">
         <button
@@ -774,6 +795,7 @@ function createToggleButton(analysisId = "plot-analysis", showText = 'See the an
             let tooltip = this.nextElementSibling;
             tooltip.innerText = this.innerHTML === '-' ? '${hideText}' : '${showText}';
             this.title = this.innerHTML === '-' ? '${hideText}' : '${showText}';
+            localStorage.setItem('analysis-open-${analysisId}', this.innerHTML === '-' ? 'true' : 'false');
             if (this.innerHTML === '-') {
                 contentDiv.style.display = 'block';
             } else {
@@ -791,39 +813,45 @@ function createToggleButton(analysisId = "plot-analysis", showText = 'See the an
     `;
 }
 
-function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId = "plot-analysis") {
+function buildKineticsTableHtml(analysisInfo, unitDisp, timeUnit) {
     if (!analysisInfo) return '';
-    const unitDisplay = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
-    const timeUnit = getTimeUnitValue().slice(0, -1);
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";
     const displayTimeSat = (!isNaN(analysisInfo.timeToSaturation)) ? analysisInfo.timeToSaturation : "--";
-    const initDisplay = getBtnChecked("open-all-analysis") ? "block" : "none";
+    return `
+        <table style="border-collapse: collapse;">
+            <tr>
+                <td style="font-weight: bold;" class="analysis-cell">Slope</td>
+                <td style="font-weight: bold;" class="analysis-cell">Linear start</td>
+                <td style="font-weight: bold;" class="analysis-cell">Linear end</td>
+                <td style="font-weight: bold;" class="analysis-cell">maxRate</td>
+                <td style="font-weight: bold;" class="analysis-cell">maxRateStart</td>
+                <td style="font-weight: bold;" class="analysis-cell">maxRateEnd</td>
+                <td style="font-weight: bold;" class="analysis-cell">Saturation</td>
+                <td style="font-weight: bold;" class="analysis-cell">Reacting Time taken to Saturation</td>
+            </tr>
+            <tr>
+                <td class="analysis-cell">${analysisInfo.slope}${unitDisp}/${timeUnit}</td>
+                <td class="analysis-cell">${analysisInfo.linearStart} ${timeUnit}</td>
+                <td class="analysis-cell">${analysisInfo.linearEnd} ${timeUnit}</td>
+                <td class="analysis-cell">${analysisInfo.maxRate}${unitDisp}/${timeUnit}</td>
+                <td class="analysis-cell">${analysisInfo.maxRateStart} ${timeUnit}</td>
+                <td class="analysis-cell">${analysisInfo.maxRateEnd} ${timeUnit}</td>
+                <td class="analysis-cell">${displaySat}${unitDisp}</td>
+                <td class="analysis-cell">${displayTimeSat} ${timeUnit}</td>
+            </tr>
+        </table>`;
+}
+
+function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId = "plot-analysis") {
+    if (!analysisInfo) return '';
+    const unitDisp = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
+    const timeUnit = getTimeUnitValue().slice(0, -1);
+    const initDisplay = getAnalysisOpenState(analysisId) ? "block" : "none";
     const html = `<span ${color ? `style="color: ${color};"` : ''}>
         ${label ? `${label}: ` : ''}
         ${createToggleButton(analysisId = analysisId)}
-        <div style="display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto; scrollbar-width:thin;" class="scrollbar-style">
-            <table style="border-collapse: collapse;">
-                <tr>
-                    <td style="font-weight: bold;" class="analysis-cell">Slope</td>
-                    <td style="font-weight: bold;" class="analysis-cell">Linear start</td>
-                    <td style="font-weight: bold;" class="analysis-cell">Linear end</td>
-                    <td style="font-weight: bold;" class="analysis-cell">maxRate</td>
-                    <td style="font-weight: bold;" class="analysis-cell">maxRateStart</td>
-                    <td style="font-weight: bold;" class="analysis-cell">maxRateEnd</td>
-                    <td style="font-weight: bold;" class="analysis-cell">Saturation</td>
-                    <td style="font-weight: bold;" class="analysis-cell">Reacting Time taken to Saturation</td>
-                </tr>
-                <tr>
-                    <td class="analysis-cell">${analysisInfo.slope}${unitDisplay}/${timeUnit}</td>
-                    <td class="analysis-cell">${analysisInfo.linearStart} ${timeUnit}</td>
-                    <td class="analysis-cell">${analysisInfo.linearEnd} ${timeUnit}</td>
-                    <td class="analysis-cell">${analysisInfo.maxRate}${unitDisplay}/${timeUnit}</td>
-                    <td class="analysis-cell">${analysisInfo.maxRateStart} ${timeUnit}</td>
-                    <td class="analysis-cell">${analysisInfo.maxRateEnd} ${timeUnit}</td>
-                    <td class="analysis-cell">${displaySat}${unitDisplay}</td>
-                    <td class="analysis-cell">${displayTimeSat} ${timeUnit}</td>
-                </tr>
-            </table>
+        <div id="analysis-content-${analysisId}" style="display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto; scrollbar-width:thin;" class="scrollbar-style">
+            ${buildKineticsTableHtml(analysisInfo, unitDisp, timeUnit)}
         </div>
     </span>`;
     return html;
