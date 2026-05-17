@@ -82,7 +82,7 @@ def test_remove_csv_columns(tmp_path):
     assert "0,0.2" in new_content
 
 def test_sort_csv_file(tmp_path):
-    csv_content = "Concentration,maxRate,Slope,Sat,TimeToSat\n10,0.5,0.1,1.0,20\n5,0.2,0.05,0.5,10\n"
+    csv_content = "Concentration,maxRate,Slope,Sat,Time To Sat\n10,0.5,0.1,1.0,20\n5,0.2,0.05,0.5,10\n"
     csv_file = tmp_path / "test.csv"
     csv_file.write_text(csv_content)
     

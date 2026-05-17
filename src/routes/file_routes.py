@@ -161,7 +161,7 @@ def edit_file():
         else:
             pattern_sets = [
                 {
-                    'header': r"^Concentration,maxRate,Slope,Sat,TimeToSat$",
+                    'header': r"^Concentration,maxRate,Slope,Sat,Time To Sat$",
                     'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
                     'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
                     'error': 'Invalid format (Kinetics calibration).'
@@ -190,7 +190,7 @@ def edit_file():
             if not data_lines:
                 return jsonify({'status': 'error', 'message': 'CSV must contain at least a header row after metadata'}), HTTPStatus.BAD_REQUEST
 
-            header_line = data_lines[0].replace(" ", "")
+            header_line = data_lines[0].strip()
             matched_pattern = None
             for pattern in pattern_sets:
                 if 'header_test' in pattern:
