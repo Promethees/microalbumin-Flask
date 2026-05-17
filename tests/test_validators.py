@@ -13,7 +13,7 @@ class TestValidators(unittest.TestCase):
 # MeasUnit: AU
 # TimeUnit: minute
 # MeasMode: kinetics
-Concentration,maxRate,Slope,Sat,TimeToSat
+Concentration,maxRate,Slope,Sat,Time To Sat
 0,0.1,0.01,0.5,10
 10,0.2,0.02,0.6,20
 """
@@ -50,7 +50,7 @@ Timestamp,Value:1,Value:2
         self.assertIn("Invalid CSV header", result)
 
     def test_validate_csv_missing_metadata(self):
-        missing_meta = "Concentration,maxRate,Slope,Sat,TimeToSat\n0,0.1,0.01,0.5,10"
+        missing_meta = "Concentration,maxRate,Slope,Sat,Time To Sat\n0,0.1,0.01,0.5,10"
         success, result = validate_csv_content(missing_meta)
         self.assertFalse(success)
         self.assertIn("Metadata must include", result)
