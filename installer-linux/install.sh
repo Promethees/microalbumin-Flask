@@ -68,6 +68,7 @@ AUTH_BASE_URL="__AUTH_BASE_URL__"
 INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
+BACKUP_DIR=""
 
 # ── Step 1: Install system dependencies ───────────────────────────────────────
 echo "Installing system dependencies..."
@@ -134,6 +135,12 @@ if [ -d "$INSTALL_DIR" ] && [ "$(find "$INSTALL_DIR" -maxdepth 1 | wc -l)" -gt 1
     [ -f "$INSTALL_DIR/VERSION.txt" ] && CURRENT_VERSION=$(cat "$INSTALL_DIR/VERSION.txt")
     echo "Existing installation found: $CURRENT_VERSION → $VERSION_TAG"
     if prompt_confirm "EasyOKAPI Installer" "Existing installation found.\n\nCurrent: $CURRENT_VERSION\nNew: $VERSION_TAG\n\nOverwrite?"; then
+        echo "Backing up user data (data/, json/, report/)..."
+        BACKUP_DIR="/tmp/easyokapi_userdata_backup_$$"
+        mkdir -p "$BACKUP_DIR"
+        for _dir in data json report; do
+            [ -d "$INSTALL_DIR/$_dir" ] && cp -r "$INSTALL_DIR/$_dir" "$BACKUP_DIR/$_dir"
+        done
         echo "Removing existing installation..."
         rm -rf "$INSTALL_DIR"
     else
@@ -281,6 +288,18 @@ fi
 cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
 cp "$SCRIPT_DIR/uninstall.sh"  "$INSTALL_DIR/uninstall.sh"
 chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"
+
+# Restore user data preserved from the previous installation
+if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
+    echo "Restoring user data (data/, json/, report/)..."
+    for _dir in data json report; do
+        if [ -d "$BACKUP_DIR/$_dir" ]; then
+            cp -r "$BACKUP_DIR/$_dir" "$INSTALL_DIR/$_dir"
+        fi
+    done
+    rm -rf "$BACKUP_DIR"
+    echo "✅ User data restored."
+fi
 
 # Fix ownership
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"

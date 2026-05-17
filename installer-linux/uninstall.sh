@@ -9,6 +9,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 CURRENT_USER="${SUDO_USER:-}"
+CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 INSTALL_DIR="/opt/EasyOKAPI"
 UDEV_RULE="/etc/udev/rules.d/99-easyokapi-hid.rules"
 DESKTOP_ENTRY="/usr/share/applications/EasyOKAPI.desktop"
@@ -28,6 +29,23 @@ prompt_confirm() {
         return $?
     fi
 }
+
+# ── Preserve user data before removing application directory ──────────────────
+if [ -d "$INSTALL_DIR" ]; then
+    USER_DATA_DEST="$CURRENT_HOME/EasyOKAPI_data"
+    DATA_SAVED=0
+    for _dir in data json report; do
+        if [ -d "$INSTALL_DIR/$_dir" ]; then
+            mkdir -p "$USER_DATA_DEST"
+            cp -r "$INSTALL_DIR/$_dir" "$USER_DATA_DEST/$_dir"
+            chown -R "$CURRENT_USER:$CURRENT_USER" "$USER_DATA_DEST"
+            DATA_SAVED=1
+        fi
+    done
+    if [ "$DATA_SAVED" -eq 1 ]; then
+        echo "✅ User data (data/, json/, report/) preserved at $USER_DATA_DEST"
+    fi
+fi
 
 # ── Remove application directory ──────────────────────────────────────────────
 if [ -d "$INSTALL_DIR" ]; then
@@ -58,7 +76,6 @@ if [ -f "$DESKTOP_ENTRY" ]; then
 fi
 
 # ── Optionally remove Python 3.8.10 from pyenv ───────────────────────────────
-CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYENV_BIN="$PYENV_ROOT/bin/pyenv"
 if [ -x "$PYENV_BIN" ] && su - "$CURRENT_USER" -c "$PYENV_BIN versions 2>/dev/null | grep -q 3.8.10"; then

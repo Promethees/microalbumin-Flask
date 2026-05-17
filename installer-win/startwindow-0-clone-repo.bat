@@ -2,6 +2,9 @@
 cd /d "%~dp0"
 setlocal EnableDelayedExpansion
 
+set "BACKUP_DIR="
+set "HAS_BACKUP=0"
+
 :: Check if installation directory is provided
 if "%~1"=="" (
     echo ERROR: Installation directory not provided.
@@ -66,6 +69,17 @@ if !item_count! gtr 0 (
 
     if "!CHOICE!"=="1" (
         echo.
+        echo Backing up user data (data, json, report)...
+        set "BACKUP_DIR=%TEMP%\easyokapi_backup_%RANDOM%"
+        for %%D in (data json report) do (
+            if exist "!INSTALL_DIR!\%%D\" (
+                if "!HAS_BACKUP!"=="0" (
+                    mkdir "!BACKUP_DIR!" >nul 2>&1
+                    set "HAS_BACKUP=1"
+                )
+                xcopy /e /i /q "!INSTALL_DIR!\%%D" "!BACKUP_DIR!\%%D\" >nul 2>&1
+            )
+        )
         echo Removing existing installation...
         rmdir /s /q "!INSTALL_DIR!"
         if !ERRORLEVEL! neq 0 (
@@ -127,6 +141,18 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 del /q "!ARCHIVE_TMP!" >nul 2>&1
+
+:: Restore user data preserved from the previous installation
+if "!HAS_BACKUP!"=="1" (
+    echo Restoring user data (data, json, report)...
+    for %%D in (data json report) do (
+        if exist "!BACKUP_DIR!\%%D\" (
+            xcopy /e /i /q "!BACKUP_DIR!\%%D" "!INSTALL_DIR!\%%D\" >nul 2>&1
+        )
+    )
+    rmdir /s /q "!BACKUP_DIR!" >nul 2>&1
+    echo User data restored successfully.
+)
 
 :: Remove dev-only files from the extracted archive
 echo Removing development files...

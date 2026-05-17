@@ -289,6 +289,16 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\*.*"
   RMDir "$SMPROGRAMS\${APP_NAME}"
 
+  ; Preserve user data (data/, json/, report/) to Documents\EasyOKAPI_data before wiping
+  CreateDirectory "$DOCUMENTS\EasyOKAPI_data"
+  IfFileExists "$INSTDIR\code\data\*.*" 0 +2
+    CopyFiles /SILENT "$INSTDIR\code\data" "$DOCUMENTS\EasyOKAPI_data\data"
+  IfFileExists "$INSTDIR\code\json\*.*" 0 +2
+    CopyFiles /SILENT "$INSTDIR\code\json" "$DOCUMENTS\EasyOKAPI_data\json"
+  IfFileExists "$INSTDIR\code\report\*.*" 0 +2
+    CopyFiles /SILENT "$INSTDIR\code\report" "$DOCUMENTS\EasyOKAPI_data\report"
+  MessageBox MB_OK "Your measurement data, calibration curves, and reports have been saved to:$\r$\n$DOCUMENTS\EasyOKAPI_data"
+
   ; Delete AI settings file
   Delete "$INSTDIR\code\ai_settings.json"
 
@@ -304,7 +314,7 @@ Section "Uninstall"
   ; Delete desktop shortcut
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$INSTDIR\Uninstall.exe"
-  
+
   ; Delete installation directory
   RMDir /r "$INSTDIR"
 SectionEnd

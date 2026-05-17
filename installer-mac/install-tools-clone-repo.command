@@ -93,6 +93,7 @@ fi
 # Define install directory
 REPO_NAME="microalbumin-Flask"
 INSTALL_DIR="/Applications/$REPO_NAME"
+BACKUP_DIR=""
 
 # Check if installation directory is not empty
 if [ -d "$INSTALL_DIR" ]; then
@@ -108,6 +109,12 @@ if [ -d "$INSTALL_DIR" ]; then
         echo "New version: $VERSION_TAG"
         CHOICE=$(osascript -e 'Tell application "System Events" to display dialog "An existing installation was found.\n\nCurrent version: '$CURRENT_VERSION'\nNew version: '$VERSION_TAG'\n\nWould you like to overwrite it?" buttons {"Cancel", "Overwrite"} default button "Cancel" with title "EasyOKAPI Installer"' -e 'button returned of result' 2>/dev/null)
         if [ "$CHOICE" = "Overwrite" ]; then
+            echo "Backing up user data (data/, json/, report/)..."
+            BACKUP_DIR="/tmp/easyokapi_userdata_backup_$$"
+            mkdir -p "$BACKUP_DIR"
+            for _dir in data json report; do
+                [ -d "$INSTALL_DIR/$_dir" ] && cp -r "$INSTALL_DIR/$_dir" "$BACKUP_DIR/$_dir"
+            done
             echo "Removing existing installation..."
             rm -rf "$INSTALL_DIR"
             if [ $? -ne 0 ]; then
@@ -160,6 +167,19 @@ rm -f "$INSTALL_DIR/log_hid_data_pyusb.py" \
 
 # Save version information for future checks
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
+
+# Restore user data preserved from the previous installation
+if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
+    echo "Restoring user data (data/, json/, report/)..."
+    for _dir in data json report; do
+        if [ -d "$BACKUP_DIR/$_dir" ]; then
+            cp -r "$BACKUP_DIR/$_dir" "$INSTALL_DIR/$_dir"
+            chown -R "$CURRENT_USER:staff" "$INSTALL_DIR/$_dir"
+        fi
+    done
+    rm -rf "$BACKUP_DIR"
+    echo "User data restored successfully."
+fi
 
 echo "Application downloaded successfully to $INSTALL_DIR ($VERSION_TAG)."
 echo "Preinstall script completed at $(date)"
