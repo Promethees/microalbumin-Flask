@@ -93,7 +93,7 @@ def test_sort_csv_file(tmp_path):
     assert lines[1].startswith("5.0") or lines[1].startswith("5,")
 
 def test_export_data_helpers():
-    meta = "# Measurement: ABS\n# MeasUnit: AU\n"
+    meta = {'Measurement': 'ABS', 'MeasUnit': 'AU', 'TimeUnit': None, 'MeasMode': None}
     assert export_data.is_metadata_consistent(meta, "ABS", "AU", None, None) is True
 
 def test_export_cal_json_logic():
