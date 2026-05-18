@@ -69,6 +69,7 @@ async function selectDataFolder(name, path) {
     if (typeof window.showSpinner === 'function') window.showSpinner();
     await updateDirectory(path, true);
     if (typeof window.hideSpinner === 'function') window.hideSpinner();
+    blinkingItem("file-selection", 5000);
     scrollWhenVisible('file-selection');
 }
 
