@@ -33,30 +33,27 @@
     --scrollbar-thumb-dark: #4b5563;
     --scrollbar-thumb-hover-light: #9ca3af;
     --scrollbar-thumb-hover-dark: #6b7280;
+
+    /* Resolved aliases used by scrollbar-color and .scrollbar-style */
+    --scrollbar-thumb: var(--scrollbar-thumb-light);
+    --scrollbar-track: var(--scrollbar-track-light);
 }
 
-/* ==========================================================================
-   Custom Scrollbar (Global or Focused)
-   ========================================================================== */
 /* ==========================================================================
    Custom Scrollbar (Global or Focused)
    ========================================================================== */
 #drive-section::-webkit-scrollbar {
     width: 6px;
-    /* Width of the scrollbar */
     height: 6px;
-    /* Height of the scrollbar (for horizontal) */
 }
 
 #drive-section::-webkit-scrollbar-track {
     background: transparent;
-    /* Make track transparent or matching bg */
 }
 
 #drive-section::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb-light);
     border-radius: 10px;
-    /* Rounded corners */
 }
 
 #drive-section::-webkit-scrollbar-thumb:hover {
@@ -89,7 +86,6 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    /* allows reordering */
 }
 
 .section {
@@ -120,11 +116,8 @@ body.dark .section {
 }
 
 .okapi-line {
-    /* Enables Flexbox on the <h1> element */
     display: flex;
-    /* Centers items vertically within the h1's line */
     align-items: center;
-    /* Ensures the image doesn't wrap to the next line if the h1 is narrow */
     white-space: nowrap;
 }
 
@@ -137,21 +130,15 @@ body.dark .section {
 #base-dir-label,
 #save-dir-label {
     display: flex;
-    /* make label a flexbox */
     align-items: center;
-    /* align text + input vertically */
     width: 100%;
-    /* span full parent width */
     gap: 8px;
-    /* optional spacing between text and input */
 }
 
 input#base-dir,
 input#save-dir {
     flex: 1;
-    /* take remaining space */
     min-width: 0;
-    /* prevent flex overflow */
 }
 
 /* Light Theme */
@@ -269,7 +256,6 @@ select {
     outline: none;
     cursor: pointer;
     appearance: none;
-    /* remove default arrow */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
@@ -314,9 +300,9 @@ body.light select:disabled {
     opacity: 0.7;
 }
 
-/* Light Theme Checkbox & Radio */
-body.light input[type="checkbox"],
-body.light input[type="radio"] {
+/* Checkbox & Radio — shared base */
+input[type="checkbox"],
+input[type="radio"] {
     accent-color: var(--primary-color);
     width: 18px;
     height: 18px;
@@ -330,7 +316,7 @@ body.light input[type="radio"]:hover:enabled {
 }
 
 /* Button Group Styling */
-body.light .button-group {
+.button-group {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
@@ -368,6 +354,8 @@ body.light option {
 body.dark {
     background-color: #111827;
     color: var(--text-color-dark);
+    --scrollbar-thumb: var(--scrollbar-thumb-dark);
+    --scrollbar-track: var(--scrollbar-track-dark);
 }
 
 body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
@@ -378,10 +366,6 @@ body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
 
 body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
     background-color: #374151;
-}
-
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):enabled {
-    opacity: 1;
 }
 
 body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
@@ -430,15 +414,6 @@ body.dark select:disabled {
 }
 
 /* Dark Theme Checkbox & Radio */
-body.dark input[type="checkbox"],
-body.dark input[type="radio"] {
-    accent-color: var(--primary-color);
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-}
-
 body.dark input[type="checkbox"]:hover:enabled,
 body.dark input[type="radio"]:hover:enabled {
     transform: scale(1.1);
@@ -456,12 +431,6 @@ body.dark option {
 }
 
 /* Button Group Styling - Dark */
-body.dark .button-group {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
 body.dark .button-group button {
     padding: 8px 16px;
     border: 1px solid #374151;
@@ -545,7 +514,6 @@ body.dark .top-right {
 
 #json-display {
     overflow: auto !important;
-    /* Handle both X and Y overflow */
     border-radius: 8px;
 }
 
@@ -644,20 +612,10 @@ body.dark .toggle-container {
     text-align: center;
 }
 
-#init-prompt.hidden {
-    display: none;
-}
-
 #init-prompt button {
     padding: 10px 20px;
     font-size: 16px;
     cursor: pointer;
-}
-
-#init-button:hover {
-    background: #2980b9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 #prompt-message {
@@ -677,7 +635,6 @@ body.dark .toggle-container {
     max-width: 50vw;
     width: 100%;
     margin: 0 auto;
-    /* center it */
     box-sizing: border-box;
 }
 
@@ -866,7 +823,6 @@ body.dark #swal-edit-table tr.selected td {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* required for ellipsis to show */
 }
 
 #swal-edit-table th {
@@ -969,7 +925,6 @@ body.dark  .folder-item.selected {
     width: 100%;
     margin: 20px auto;
     scrollbar-width: thin;
-    /* Firefox */
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
@@ -1031,7 +986,6 @@ body.dark  .folder-item.selected {
     position: relative;
     max-height: 600px;
     scrollbar-width: thin;
-    /* Firefox */
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
@@ -1116,7 +1070,6 @@ body.dark #plot-analysis {
     transition: all 0.3s ease;
     box-shadow: none;
     display: block;
-    /* ensure it's block-level for margin: auto alternative if needed */
 }
 
 .swal2-input:focus {
@@ -1199,11 +1152,14 @@ body.dark #plot-analysis {
 }
 
 /* Blinking Elements */
+.blinking {
+    animation: blink 1s infinite;
+    border: 2px solid var(--blink-color, transparent);
+}
+
 #run-script-btn.blinking,
 #terminate-script-btn.blinking {
-    border: 2px solid #ff0000;
     --blink-color: #ff0000;
-    animation: blink 1s infinite;
 }
 
 #go-to-btn.blinking,
@@ -1213,21 +1169,15 @@ body.dark #plot-analysis {
 #measurement-mode.blinking,
 #cal-mode-select.blinking,
 [id^="con-value-read"].blinking {
-    border: 2px solid #00ff00;
     --blink-color: #00ff00;
-    animation: blink 1s infinite;
 }
 
 body.light .der-con-value.blinking {
-    border: 2px solid darkviolet;
     --blink-color: darkviolet;
-    animation: blink 1s infinite;
 }
 
 body.dark .der-con-value.blinking {
-    border: 2px solid #DA70D6;
     --blink-color: #DA70D6;
-    animation: blink 1s infinite;
 }
 
 /* ==========================================================================
@@ -1280,21 +1230,16 @@ body.dark #swal-input-content {
     box-sizing: border-box;
     width: 90%;
     padding: 4px 8px 4px 4px;
-    /* left/right padding + tiny right for arrow */
     margin: 0;
-    /* remove any default margin */
     font-family: monospace;
     line-height: 1.4;
-    /* same height */
     border-radius: 2px;
 }
 
 /* Noneditable metadata cells */
 .light #swal-metadata-table tbody td.noneditable {
     background: #f5f5f5;
-    /* slightly different than editable white */
     color: #777;
-    /* dimmed text */
     font-style: italic;
     pointer-events: none;
     user-select: none;
@@ -1328,9 +1273,7 @@ body.dark #swal-input-content {
 
 .dark #swal-metadata-table tbody td.noneditable {
     background: #252525;
-    /* slightly lighter than editable dark */
     color: #999;
-    /* dimmed text */
     font-style: italic;
     pointer-events: none;
     user-select: none;
@@ -1860,7 +1803,6 @@ body.dark .tooltip-finish-btn {
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
     z-index: 15000;
-    /* above swal */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -2179,7 +2121,6 @@ body.dark .report-analysis td {
     z-index: 9000;
     height: 52px;
     border-radius: 26px;
-    /* pill shape when expanded */
     background: var(--primary-gradient);
     border: none;
     cursor: pointer;
@@ -2191,7 +2132,6 @@ body.dark .report-analysis td {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     width: 52px;
-    /* collapsed by default */
 }
 
 #okapi-ai-fab:hover {
@@ -2209,7 +2149,6 @@ body.dark .report-analysis td {
     align-items: center;
     justify-content: center;
     width: 52px;
-    /* Match FAB height for a perfect square */
     height: 52px;
     line-height: 1;
 }
@@ -2247,6 +2186,7 @@ body.dark .report-analysis td {
     border-radius: 16px;
     background: var(--surface-light);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     box-shadow: var(--shadow-lg), 0 0 0 1px rgba(99, 102, 241, 0.15);
     display: flex;
     flex-direction: column;
@@ -2517,10 +2457,6 @@ body.dark #okapi-ai-input {
     background: #111827;
     color: #f3f4f6;
     border-color: #374151;
-}
-
-body.dark #okapi-ai-input:focus {
-    border-color: #6366f1;
 }
 
 #okapi-ai-send-btn {
