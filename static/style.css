@@ -199,6 +199,7 @@ button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
 #init-button:hover:enabled {
     filter: brightness(1.1);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    transform: translateY(-2px);
 }
 
 /* Utility/Secondary Buttons */
@@ -2457,6 +2458,10 @@ body.dark #okapi-ai-input {
     background: #111827;
     color: #f3f4f6;
     border-color: #374151;
+}
+
+body.dark #okapi-ai-input:focus {
+    border-color: #6366f1;
 }
 
 #okapi-ai-send-btn {
