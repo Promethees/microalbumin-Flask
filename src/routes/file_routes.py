@@ -10,7 +10,9 @@ from filelock import FileLock, Timeout
 import shutil
 
 import state
-from file_path import DATA_ROOT, validate_in_data_root, is_multi_value_timeseries_csv_header
+from file_path import (DATA_ROOT, validate_in_data_root,
+                       parse_csv_metadata, detect_csv_schema,
+                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL)
 from file import get_dynamic_data, replace_empty, merge_csv_files
 from file_operations import remove_csv_columns
 from measure import sort_csv_file
@@ -20,6 +22,24 @@ from export_data import is_metadata_consistent, write_metadata, write_headers, e
 from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
+
+_SCHEMA_VALIDATORS = {
+    CSV_SCHEMA_KINETICS_CAL: {
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
+        'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+        'error': 'Invalid format (Kinetics calibration).'
+    },
+    CSV_SCHEMA_POINT_CAL: {
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
+        'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+        'error': 'Invalid format (Point calibration).'
+    },
+    CSV_SCHEMA_TIMESERIES: {
+        'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
+        'meta': ["Measurement", "Unit", "Concentration"],
+        'error': 'Invalid format (Pattern 4).'
+    },
+}
 
 @file_bp.route('/get_calibration_json_list', methods=['GET'])
 def get_calibration_json_list():
@@ -159,27 +179,6 @@ def edit_file():
             except json.JSONDecodeError as e:
                 return jsonify({'status': 'error', 'message': f'Invalid JSON format: {str(e)}'}), HTTPStatus.BAD_REQUEST
         else:
-            pattern_sets = [
-                {
-                    'header': r"^Concentration,maxRate,Slope,Sat,Time To Sat$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
-                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Kinetics calibration).'
-                },
-                {
-                    'header': r"^Concentration,Value,TimePoint$",
-                    'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
-                    'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
-                    'error': 'Invalid format (Point calibration).'
-                },
-                {
-                    'header_test': is_multi_value_timeseries_csv_header,
-                    'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
-                    'meta': ["Measurement", "Unit", "Concentration"],
-                    'error': 'Invalid format (Pattern 4).'
-                }
-            ]
-
             lines = content.strip().split('\n')
             if not lines:
                 return jsonify({'status': 'error', 'message': 'Content cannot be empty'}), HTTPStatus.BAD_REQUEST
@@ -190,27 +189,14 @@ def edit_file():
             if not data_lines:
                 return jsonify({'status': 'error', 'message': 'CSV must contain at least a header row after metadata'}), HTTPStatus.BAD_REQUEST
 
-            header_line = data_lines[0].strip()
-            matched_pattern = None
-            for pattern in pattern_sets:
-                if 'header_test' in pattern:
-                    if pattern['header_test'](header_line):
-                        matched_pattern = pattern
-                        break
-                if 'header' in pattern and re.match(pattern['header'], header_line):
-                    matched_pattern = pattern
-                    break
-
+            schema = detect_csv_schema(data_lines[0])
+            matched_pattern = _SCHEMA_VALIDATORS.get(schema)
             if not matched_pattern:
                 return jsonify({'status': 'error', 'message': 'Invalid CSV header.'}), 400
 
             required_meta = matched_pattern.get("meta", [])
             if required_meta:
-                meta_dict = {}
-                for line in metadata_lines:
-                    if ":" in line:
-                        key, value = line.lstrip("#").split(":", 1)
-                        meta_dict[key.strip()] = value.strip()
+                meta_dict = parse_csv_metadata(metadata_lines)
                 missing_meta = [m for m in required_meta if m not in meta_dict]
                 if missing_meta:
                     return jsonify({'status': 'error', 'message': f'Missing metadata fields: {", ".join(missing_meta)}'}), HTTPStatus.BAD_REQUEST
@@ -427,7 +413,7 @@ def get_num_sources():
                     line = line.strip()
                     if not line or line.startswith('#'):
                         continue
-                    if is_multi_value_timeseries_csv_header(line):
+                    if detect_csv_schema(line) == CSV_SCHEMA_TIMESERIES:
                         columns = [c.strip() for c in line.split(',')]
                         value_count = sum(1 for c in columns[1:] if c.startswith('Value:'))
                         if value_count > 0:

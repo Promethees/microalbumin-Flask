@@ -51,3 +51,43 @@ def is_multi_value_timeseries_csv_header(header_line: str) -> bool:
         return False
     value_parts = parts[1:]
     return all(part.startswith('Value:') for part in value_parts)
+
+
+# ---------------------------------------------------------------------------
+# CSV schema constants
+# ---------------------------------------------------------------------------
+CSV_SCHEMA_TIMESERIES = 'timeseries'       # Timestamp,Value:1[,Value:2,...]
+CSV_SCHEMA_KINETICS_CAL = 'kinetics_cal'   # Concentration,maxRate,Slope,Sat,Time To Sat
+CSV_SCHEMA_POINT_CAL = 'point_cal'         # Concentration,Value,TimePoint
+
+
+def parse_csv_metadata(lines) -> dict:
+    """
+    Parse ``# Key: Value`` metadata from an iterable of CSV lines.
+    Non-metadata lines (no leading ``#``) are silently skipped.
+    Returns a plain dict of {key: value} strings.
+    """
+    meta = {}
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('#') and ':' in stripped:
+            key, value = stripped[1:].split(':', 1)
+            meta[key.strip()] = value.strip()
+    return meta
+
+
+def detect_csv_schema(header_line: str):
+    """
+    Identify the CSV schema from the header line.
+    Returns one of the ``CSV_SCHEMA_*`` constants, or ``None`` for an
+    unrecognised header.
+    """
+    header = header_line.strip()
+    if is_multi_value_timeseries_csv_header(header):
+        return CSV_SCHEMA_TIMESERIES
+    header_norm = re.sub(r'\s*,\s*', ',', header)
+    if header_norm == 'Concentration,maxRate,Slope,Sat,Time To Sat':
+        return CSV_SCHEMA_KINETICS_CAL
+    if header_norm == 'Concentration,Value,TimePoint':
+        return CSV_SCHEMA_POINT_CAL
+    return None

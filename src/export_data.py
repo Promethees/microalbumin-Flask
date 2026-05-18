@@ -1,15 +1,5 @@
-# Helper: Parse metadata from content
 import csv
 import io
-
-def parse_metadata(content):
-    meta_dict = {}
-    for line in content.split('\n'):
-        if line.startswith('# '):
-            if ':' in line:
-                key, val = line[2:].split(':', 1)
-                meta_dict[key.strip()] = val.strip()
-    return meta_dict
 
 # Helper: Check metadata consistency
 def is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):

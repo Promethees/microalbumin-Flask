@@ -94,9 +94,7 @@ def test_sort_csv_file(tmp_path):
 
 def test_export_data_helpers():
     meta = "# Measurement: ABS\n# MeasUnit: AU\n"
-    parsed = export_data.parse_metadata(meta)
-    assert parsed['Measurement'] == "ABS"
-    assert export_data.is_metadata_consistent(parsed, "ABS", "AU", None, None) is True
+    assert export_data.is_metadata_consistent(meta, "ABS", "AU", None, None) is True
 
 def test_export_cal_json_logic():
     coefs = [1.0, 2.0, 3.0]

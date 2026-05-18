@@ -2,7 +2,9 @@ import os
 import glob
 import json
 import csv
-from collections import MutableMapping, Sequence
+from collections.abc import MutableMapping, Sequence
+
+from file_path import parse_csv_metadata
 
 def get_file_list(directory, fileType="*.csv"):
     try:
@@ -16,52 +18,50 @@ def get_file_list(directory, fileType="*.csv"):
     except Exception as e:
         print(f"Error listing files in {directory}: {e}")
         return []
-    
+
+
+def _read_csv_raw(path):
+    """
+    Read a CSV file, separating raw metadata lines from data rows.
+    Returns (meta_lines, headers, rows) where:
+      - meta_lines: list of stripped raw '# ...' strings
+      - headers:    list of column name strings (empty list if no data)
+      - rows:       list of dicts from csv.DictReader
+    Returns (None, None, None) if the file does not exist.
+    """
+    if not os.path.exists(path):
+        return None, None, None
+    with open(path, 'r', encoding='utf-8') as f:
+        all_lines = f.readlines()
+    meta_lines = [line.strip() for line in all_lines if line.strip().startswith('#')]
+    data_lines = [line for line in all_lines if line.strip() and not line.strip().startswith('#')]
+    if not data_lines:
+        return meta_lines, [], []
+    headers = [h.strip() for h in next(csv.reader([data_lines[0]]))]
+    rows = list(csv.DictReader(iter(data_lines[1:]), fieldnames=headers))
+    return meta_lines, headers, rows
+
+
 def get_dynamic_data(file_path):
     if not os.path.exists(file_path):
         return {'data': [], 'error': 'File not found', 'unit': "NONE"}
 
     try:
         if file_path.lower().endswith('.csv'):
-            metadata = {}
-            data = []
+            meta_lines, headers, rows = _read_csv_raw(file_path)
+            metadata = parse_csv_metadata(meta_lines)
 
-            def valid_data_lines(file_obj):
-                for line in file_obj:
-                    stripped = line.strip()
-                    if stripped.startswith("#"):
-                        if ":" in line:
-                            parts = line[1:].split(":", 1)
-                            if len(parts) == 2:
-                                key, value = parts
-                                metadata[key.strip()] = value.strip()
-                    elif stripped:
-                        yield line
+            if headers:
+                data = [
+                    {k: (v if v is not None and v != "" else "NONE") for k, v in row.items()}
+                    for row in rows
+                ]
+                num_sources = sum(1 for h in headers if h.startswith('Value:'))
+            else:
+                data = []
+                num_sources = 1
 
-            with open(file_path, "r", encoding='utf-8') as f:
-                line_generator = valid_data_lines(f)
-                try:
-                    raw_headers_line = next(line_generator)
-                    raw_headers = next(csv.reader([raw_headers_line]))
-                    headers = [h.strip() for h in raw_headers]
-
-                    reader = csv.DictReader(line_generator, fieldnames=headers)
-                    data = []
-                    for row in reader:
-                        cleaned_row = {k: (v if v is not None and v != "" else "NONE") for k, v in row.items()}
-                        data.append(cleaned_row)
-                    num_sources = sum(1 for h in headers if h.startswith('Value:'))
-                except StopIteration:
-                    data = []
-                    num_sources = 1
-
-            # Unit resolution priority: check metadata keys
-            unit = "NONE"
-            for possible_name in ['Unit', 'MeasUnit']:
-                if possible_name in metadata:
-                    unit = metadata[possible_name]
-                    break
-
+            unit = next((metadata[n] for n in ('Unit', 'MeasUnit') if n in metadata), "NONE")
             return {
                 'data': data,
                 'unit': unit,
@@ -73,10 +73,9 @@ def get_dynamic_data(file_path):
         elif file_path.lower().endswith('.json'):
             with open(file_path, 'r', encoding='utf-8') as f:
                 json_data = json.load(f)
-            
+
             data = json_data if isinstance(json_data, list) else [json_data]
-            
-            # Attempt to find a unit field in JSON data
+
             unit = "NONE"
             if data and isinstance(data[0], dict):
                 for possible_name in ['Unit', 'MeasUnit', 'unit', 'measUnit']:
@@ -96,7 +95,8 @@ def get_dynamic_data(file_path):
         return {'data': [], 'error': f'Invalid JSON format: {str(e)}', 'unit': "NONE"}
     except Exception as e:
         return {'data': [], 'error': f'Error processing file: {str(e)}', 'unit': "NONE"}
-    
+
+
 def replace_empty(obj):
     """
     Recursively replace empty values with "NONE".
@@ -108,7 +108,7 @@ def replace_empty(obj):
     """
     if obj in ('', [], {}, None):
         return "NONE"
-    
+
     if isinstance(obj, MutableMapping):               # dict-like
         return {k: replace_empty(v) for k, v in obj.items()}
     elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
@@ -116,44 +116,25 @@ def replace_empty(obj):
     else:
         return obj
 
+
 def merge_csv_files(file_paths, output_path):
     """
     Merge multiple CSV files based on Timestamp or Concentration.
     Handles measured data (Value:n) and calibration data.
     """
-    def parse_csv_with_metadata(path):
-        metadata = []
-        if not os.path.exists(path):
-            return None, None
+    parsed = [_read_csv_raw(p) for p in file_paths]
 
-        def iter_data_lines(f):
-            for line in f:
-                if line.strip().startswith('#'):
-                    metadata.append(line.strip())
-                elif line.strip():
-                    yield line
-
-        with open(path, 'r', encoding='utf-8') as f:
-            line_generator = iter_data_lines(f)
-            try:
-                raw_headers_line = next(line_generator)
-                raw_headers = next(csv.reader([raw_headers_line]))
-                headers = [h.strip() for h in raw_headers]
-                data = list(csv.DictReader(line_generator, fieldnames=headers))
-            except StopIteration:
-                data = []
-
-        return metadata, data
-
-    parsed = [parse_csv_with_metadata(p) for p in file_paths]
-
-    if any(meta is None for meta, _ in parsed):
+    if any(meta is None for meta, _, _ in parsed):
         return False, "One or more files not found"
 
-    if all(not rows for _, rows in parsed):
+    if all(not rows for _, _, rows in parsed):
         return False, "All files are empty"
 
-    all_headers = [list(rows[0].keys()) if rows else [] for _, rows in parsed]
+    for i, (_, hdrs, rows) in enumerate(parsed):
+        if hdrs and not rows:
+            return False, f"File '{os.path.basename(file_paths[i])}' has no data rows"
+
+    all_headers = [hdrs for _, hdrs, _ in parsed]
 
     if all('Timestamp' in h for h in all_headers):
         join_key = 'Timestamp'
@@ -166,11 +147,10 @@ def merge_csv_files(file_paths, output_path):
         combined = {}
         value_offset = 0
 
-        for _, rows in parsed:
+        for _, hdrs, rows in parsed:
             if not rows:
                 continue
-            headers = list(rows[0].keys())
-            value_cols = [c for c in headers if c.startswith('Value:')]
+            value_cols = [c for c in hdrs if c.startswith('Value:')]
 
             for r in rows:
                 key = r[join_key]
@@ -192,7 +172,7 @@ def merge_csv_files(file_paths, output_path):
                 if h not in seen:
                     seen[h] = True
         new_headers = list(seen.keys())
-        for _, rows in parsed:
+        for _, _, rows in parsed:
             merged_rows.extend(rows)
 
     def _safe_float(val):
@@ -209,7 +189,7 @@ def merge_csv_files(file_paths, output_path):
                 row[h] = "NONE"
 
     combined_meta = []
-    for meta, _ in parsed:
+    for meta, _, _ in parsed:
         for line in meta:
             if line not in combined_meta:
                 combined_meta.append(line)
