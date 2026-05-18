@@ -102,7 +102,7 @@ def test_copy_file(client, tmp_path):
     """Test copying a file."""
     csv_file = tmp_path / "test.csv"
     csv_file.write_text("data")
-    
+
     with patch('routes.file_routes.get_next_filename', return_value=str(tmp_path / "test_1.csv")):
         rv = client.post('/copy_file', data={
             'filename': 'test.csv',
@@ -111,3 +111,270 @@ def test_copy_file(client, tmp_path):
         })
         assert rv.status_code == 200
         assert (tmp_path / "test_1.csv").exists()
+
+
+# ---------------------------------------------------------------------------
+# edit_file Route Tests
+# ---------------------------------------------------------------------------
+
+_KINETICS_CAL = (
+    "# Measurement: ABS\n"
+    "# MeasUnit: AU\n"
+    "# TimeUnit: minutes\n"
+    "# MeasMode: kinetics\n"
+    "Concentration,maxRate,Slope,Sat,Time To Sat\n"
+    "1,0.5,0.1,1.0,20\n"
+)
+
+_POINT_CAL = (
+    "# Measurement: ABS\n"
+    "# MeasUnit: AU\n"
+    "# TimeUnit: minute\n"
+    "# MeasMode: point\n"
+    "Concentration,Value,TimePoint\n"
+    "1,0.5,2.0\n"
+)
+
+_TIMESERIES = (
+    "# Measurement: ABS\n"
+    "# Unit: AU\n"
+    "# Concentration: 10\n"
+    "Timestamp,Value:1\n"
+    "0,0.5\n"
+    "1,0.6\n"
+)
+
+
+def test_edit_file_missing_filename(client):
+    rv = client.post('/edit_file', data={'content': _KINETICS_CAL})
+    assert rv.status_code == 400
+    assert rv.get_json()['status'] == 'error'
+
+
+def test_edit_file_missing_content(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_KINETICS_CAL)
+    rv = client.post('/edit_file', data={'filename': 'test.csv', 'path': str(tmp_path)})
+    assert rv.status_code == 400
+    assert rv.get_json()['status'] == 'error'
+
+
+def test_edit_file_invalid_extension(client, tmp_path):
+    f = tmp_path / "test.txt"
+    f.write_text("data")
+    rv = client.post('/edit_file', data={
+        'filename': 'test.txt',
+        'new_filename': 'test.txt',
+        'path': str(tmp_path),
+        'content': 'data',
+    })
+    assert rv.status_code == 400
+    assert 'must end with' in rv.get_json()['message']
+
+
+def test_edit_file_path_traversal_rejected(client):
+    # Relative 'path' causes normpath to retain '..' — the guard fires before the
+    # existence check, so no real file is needed.
+    rv = client.post('/edit_file', data={
+        'filename': '../../etc/passwd.csv',
+        'path': 'data',
+        'content': _KINETICS_CAL,
+    })
+    assert rv.status_code == 400
+    assert rv.get_json()['status'] == 'error'
+
+
+def test_edit_file_file_not_found(client, tmp_path):
+    rv = client.post('/edit_file', data={
+        'filename': 'nonexistent.csv',
+        'path': str(tmp_path),
+        'content': _KINETICS_CAL,
+    })
+    assert rv.status_code == 404
+    assert rv.get_json()['status'] == 'error'
+
+
+def test_edit_file_process_running_returns_locked(client):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'content': _KINETICS_CAL,
+    })
+    assert rv.status_code == 423
+
+
+def test_edit_file_rename_conflict(client, tmp_path):
+    (tmp_path / "original.csv").write_text(_KINETICS_CAL)
+    (tmp_path / "existing.csv").write_text(_KINETICS_CAL)
+    rv = client.post('/edit_file', data={
+        'filename': 'original.csv',
+        'new_filename': 'existing.csv',
+        'path': str(tmp_path),
+        'content': _KINETICS_CAL,
+    })
+    assert rv.status_code == 409
+    assert rv.get_json()['status'] == 'error'
+
+
+def test_edit_file_invalid_json_content(client, tmp_path):
+    f = tmp_path / "cal.json"
+    f.write_text('{"key": "value"}')
+    rv = client.post('/edit_file', data={
+        'filename': 'cal.json',
+        'path': str(tmp_path),
+        'content': '{not valid json}',
+    })
+    assert rv.status_code == 400
+    assert 'Invalid JSON' in rv.get_json()['message']
+
+
+def test_edit_file_json_success(client, tmp_path):
+    f = tmp_path / "cal.json"
+    f.write_text('{"key": "old"}')
+    rv = client.post('/edit_file', data={
+        'filename': 'cal.json',
+        'path': str(tmp_path),
+        'content': '{"key": "updated"}',
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert json.loads(f.read_text())['key'] == 'updated'
+
+
+def test_edit_file_csv_no_data_lines(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_KINETICS_CAL)
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': '# Measurement: ABS\n# MeasUnit: AU\n',
+    })
+    assert rv.status_code == 400
+    assert 'header row' in rv.get_json()['message']
+
+
+def test_edit_file_csv_unknown_schema(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_KINETICS_CAL)
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': '# Measurement: ABS\nUnknownCol1,UnknownCol2\n1,2\n',
+    })
+    assert rv.status_code == 400
+    assert 'Invalid CSV header' in rv.get_json()['message']
+
+
+def test_edit_file_csv_missing_metadata_fields(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_KINETICS_CAL)
+    # kinetics_cal header present but MeasUnit/TimeUnit/MeasMode metadata absent
+    content = (
+        "# Measurement: ABS\n"
+        "Concentration,maxRate,Slope,Sat,Time To Sat\n"
+        "1,0.5,0.1,1.0,20\n"
+    )
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': content,
+    })
+    assert rv.status_code == 400
+    assert 'Missing metadata' in rv.get_json()['message']
+
+
+def test_edit_file_csv_invalid_data_row(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_KINETICS_CAL)
+    content = (
+        "# Measurement: ABS\n# MeasUnit: AU\n# TimeUnit: minutes\n# MeasMode: kinetics\n"
+        "Concentration,maxRate,Slope,Sat,Time To Sat\n"
+        "not_a_number,bad,data,row,here\n"
+    )
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': content,
+    })
+    assert rv.status_code == 400
+    assert 'Invalid data in row' in rv.get_json()['message']
+
+
+def test_edit_file_csv_kinetics_cal_success(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_KINETICS_CAL)
+    new_content = (
+        "# Measurement: ABS\n# MeasUnit: AU\n# TimeUnit: minutes\n# MeasMode: kinetics\n"
+        "Concentration,maxRate,Slope,Sat,Time To Sat\n"
+        "2,0.8,0.2,2.0,30\n"
+    )
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': new_content,
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert '2,0.8,0.2,2.0,30' in f.read_text()
+
+
+def test_edit_file_csv_point_cal_success(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_POINT_CAL)
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': _POINT_CAL,
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+
+
+def test_edit_file_csv_timeseries_success(client, tmp_path):
+    f = tmp_path / "test.csv"
+    f.write_text(_TIMESERIES)
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': _TIMESERIES,
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+
+
+def test_edit_file_csv_calibrate_mode_sorts_rows(client, tmp_path):
+    f = tmp_path / "test.csv"
+    # Write rows out of order — calibrate_mode should sort by concentration ascending.
+    content = (
+        "# Measurement: ABS\n# MeasUnit: AU\n# TimeUnit: minutes\n# MeasMode: kinetics\n"
+        "Concentration,maxRate,Slope,Sat,Time To Sat\n"
+        "5,0.8,0.2,2.0,30\n"
+        "1,0.5,0.1,1.0,20\n"
+    )
+    f.write_text(content)
+    rv = client.post('/edit_file', data={
+        'filename': 'test.csv',
+        'path': str(tmp_path),
+        'content': content,
+        'calibrate_mode': 'kinetics',
+    })
+    assert rv.status_code == 200
+    lines = [l for l in f.read_text().splitlines() if l and not l.startswith('#')]
+    assert lines[1].startswith('1')  # concentration 1 sorted before 5
+    assert lines[2].startswith('5')
+
+
+def test_edit_file_rename_success(client, tmp_path):
+    f_orig = tmp_path / "original.csv"
+    f_orig.write_text(_KINETICS_CAL)
+    rv = client.post('/edit_file', data={
+        'filename': 'original.csv',
+        'new_filename': 'renamed.csv',
+        'path': str(tmp_path),
+        'content': _KINETICS_CAL,
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert not f_orig.exists()
+    assert (tmp_path / 'renamed.csv').exists()
