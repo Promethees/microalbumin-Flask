@@ -29,7 +29,11 @@ def mm_func(x, vmax, km):
     # [S] = (Km * x) / (Vmax - x) -> Wait, JS formula is:
     # predicted = x.map(xi => coefficients[1] * xi / (coefficients[0] - xi))
     # where coefficients[0] = Vmax, [1] = Km. So predicted = (Km * x) / (Vmax - x)
-    return (km * x) / (vmax - x)
+    denom = vmax - x
+    # Guard: scalar zero-denominator raises ZeroDivisionError; numpy arrays produce inf naturally.
+    if np.isscalar(denom) and denom == 0:
+        return np.inf
+    return (km * x) / denom
 
 def map_duplicates(x, y, keep_gaps=False):
     x_map = {}
@@ -149,6 +153,11 @@ def get_rsquared_threshold(window_size, data_length):
     min_window = 3
     max_r_squared = 0.97
     min_r_squared = 0.9
+
+    # Guard: when data_length == min_window the denominator is 0; the window
+    # spans the entire dataset so use the strictest threshold.
+    if data_length <= min_window:
+        return max_r_squared
 
     slope = (min_r_squared - max_r_squared) / (data_length - min_window)
     r_squared = max_r_squared + slope * (window_size - min_window)
