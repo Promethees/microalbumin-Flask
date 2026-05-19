@@ -38,7 +38,7 @@ fill_to() {
 clear
 echo ""
 echo -e "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
-echo -e "  ${BOLD}${CYAN}║        EasyOKAPI  ·  Launching …         ║${RESET}"
+echo -e "  ${BOLD}${CYAN}║  ⬡  HTBiotec · EasyOKAPI · Launching …   ║${RESET}"
 echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
 echo ""
 

@@ -1,109 +1,113 @@
 #!/bin/bash
 
+# ── ANSI colours ──────────────────────────────────────────────────────────────
+RESET="\033[0m"
+BOLD="\033[1m"
+GREEN="\033[32m"
+CYAN="\033[36m"
+RED="\033[31m"
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+print_step() { echo -e "\n  ${BOLD}${CYAN}▶  $1${RESET}"; }
+print_ok()   { echo -e "  ${GREEN}✔  $1${RESET}"; }
+print_fail() { echo -e "  ${RED}✗  $1${RESET}"; }
+
+# ── Banner ────────────────────────────────────────────────────────────────────
+clear
+echo ""
+echo -e "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${CYAN}║  ⬡  HTBiotec · EasyOKAPI · Step 2/2      ║${RESET}"
+echo -e "  ${BOLD}${CYAN}║     Setup Environment                     ║${RESET}"
+echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+
 # Log all output to a file for debugging
 exec > >(tee -a /tmp/install-venv.log) 2>&1
 echo "Starting install-venv script at $(date)"
 
-# Check if running as root
+# ── Okapi mascot icon (bundled in the DMG alongside this script) ──────────────
+OKAPI_ICON="$(dirname "$0")/okapi.png"
+_dialog_icon() {
+    if [ -f "$OKAPI_ICON" ]; then
+        echo "with icon POSIX file \"$OKAPI_ICON\""
+    else
+        echo "with icon note"
+    fi
+}
+
+# ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
-    echo "❌ This script must be run as root (sudo)."
+    print_fail "This script must be run as root (sudo)."
     exit 1
 fi
 
-# Define installation directory
 REPO_NAME="microalbumin-Flask"
 INSTALL_DIR="/Applications/$REPO_NAME"
 
-# Check if installation directory exists
+# ── Step 1 / 4 : Preflight ────────────────────────────────────────────────────
+print_step "1 / 4  Preflight checks"
 if [ ! -d "$INSTALL_DIR" ]; then
-    echo "❌ Installation directory $INSTALL_DIR does not exist."
-    osascript -e 'display dialog "Installation directory not found. Please run install-homebrew-and-clone.command first." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    print_fail "Installation directory $INSTALL_DIR not found."
+    osascript -e "display dialog \"Installation directory not found. Please run install-tools-clone-repo.command first.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
     exit 1
 fi
-
-# Change to the installation directory
 cd "$INSTALL_DIR"
+print_ok "Installation directory found."
 
-# Initialize pyenv
+# ── Step 2 / 4 : Python virtual environment ───────────────────────────────────
+print_step "2 / 4  Setting up Python virtual environment"
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
-
-# Verify Python 3.8.10
 pyenv global 3.8.10
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
 if [ "$PY_VER" != "3.8.10" ]; then
-    echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
-    osascript -e 'display dialog "Python 3.8.10 is required but not found. Current version: '$PY_VER'" buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    print_fail "Python 3.8.10 required, but found: $PY_VER"
+    osascript -e "display dialog \"Python 3.8.10 is required but not found ($PY_VER). Run install-tools-clone-repo.command first.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
     exit 1
 fi
 
-# Create virtual environment if activate script is missing
 if [ ! -f "venv/bin/activate" ]; then
-    echo "Creating virtual environment..."
+    echo "  Creating virtual environment…"
     rm -rf venv
     python3 -m venv venv
     if [ ! -f "venv/bin/activate" ]; then
-        echo "❌ Failed to create virtual environment (venv/bin/activate not found)."
-        osascript -e 'display dialog "Failed to create virtual environment." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+        print_fail "Failed to create virtual environment."
+        osascript -e "display dialog \"Failed to create virtual environment.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
         exit 1
     fi
 fi
-
-# Activate virtual environment
 source venv/bin/activate
 
-# Ensure pip is installed
-echo "Checking pip..."
+echo "  Upgrading pip…"
 python3 -m ensurepip --upgrade
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to ensure pip."
-    osascript -e 'display dialog "Failed to ensure pip." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
-    exit 1
-fi
-
-# Install required libraries
-echo "Installing requirements..."
 pip install --upgrade pip
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to upgrade pip."
-    osascript -e 'display dialog "Failed to upgrade pip." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    print_fail "Failed to upgrade pip."
+    osascript -e "display dialog \"Failed to upgrade pip.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
     exit 1
 fi
 
+echo "  Installing Python requirements (this may take a few minutes)…"
 if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install requirements from requirements.txt."
-        osascript -e 'display dialog "Failed to install requirements from requirements.txt." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+        print_fail "Failed to install requirements."
+        osascript -e "display dialog \"Failed to install requirements from requirements.txt.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
         exit 1
     fi
 else
-    echo "❌ requirements.txt not found in $INSTALL_DIR."
-    osascript -e 'display dialog "requirements.txt not found in '$INSTALL_DIR'." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    print_fail "requirements.txt not found in $INSTALL_DIR."
+    osascript -e "display dialog \"requirements.txt not found in $INSTALL_DIR.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
     exit 1
 fi
+print_ok "Virtual environment ready."
 
-pip install flask
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to install Flask."
-    osascript -e 'display dialog "Failed to install Flask." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
-    exit 1
-fi
-
-pip install pandas
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to install pandas."
-    osascript -e 'display dialog "Failed to install pandas." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
-    exit 1
-fi
-
-# Pre-compile bytecode for scipy/numpy so first app launch is not slow
-echo "Pre-compiling Python bytecode for scientific libraries..."
+echo "  Pre-compiling bytecode for scientific libraries…"
 python3 -m compileall -q venv/lib/python3.8/site-packages/scipy venv/lib/python3.8/site-packages/numpy 2>/dev/null || true
-echo "✅ Bytecode pre-compilation complete."
+print_ok "Bytecode pre-compilation complete."
 
-# Download front-end vendor libraries into static/vendor/
-echo "Downloading front-end vendor libraries..."
+# ── Step 3 / 4 : Front-end vendor libraries ───────────────────────────────────
+print_step "3 / 4  Downloading front-end vendor libraries"
 VENDOR_DIR="$INSTALL_DIR/static/vendor"
 FONT_DIR="$VENDOR_DIR/mathjax-fonts"
 mkdir -p "$FONT_DIR"
@@ -120,11 +124,11 @@ VENDOR_URLS=(
 for entry in "${VENDOR_URLS[@]}"; do
     url="${entry%%|*}"
     file="${entry##*|}"
-    echo "  Downloading $file..."
+    echo "    $file"
     curl -fsSL "$url" -o "$VENDOR_DIR/$file"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download $file from $url"
-        osascript -e "display dialog \"Failed to download vendor library: $file\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
+        print_fail "Failed to download $file."
+        osascript -e "display dialog \"Failed to download vendor library: $file\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
         exit 1
     fi
 done
@@ -140,20 +144,21 @@ MATHJAX_FONTS=(
 )
 
 for font in "${MATHJAX_FONTS[@]}"; do
-    echo "  Downloading font ${font}.woff..."
+    echo "    ${font}.woff"
     curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/${font}.woff" -o "$FONT_DIR/${font}.woff"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download MathJax font: ${font}.woff"
-        osascript -e "display dialog \"Failed to download MathJax font: ${font}.woff\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\""
+        print_fail "Failed to download MathJax font: ${font}.woff"
+        osascript -e "display dialog \"Failed to download MathJax font: ${font}.woff\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
         exit 1
     fi
 done
-echo "✅ Vendor libraries downloaded successfully."
+print_ok "Vendor libraries downloaded."
 
-# Ensure libhidapi.dylib is present
+# ── Step 4 / 4 : HID library ──────────────────────────────────────────────────
+print_step "4 / 4  Configuring HID library"
 if [ ! -f "mac/libhidapi.dylib" ]; then
-    echo "❌ libhidapi.dylib not found in mac folder."
-    osascript -e 'display dialog "libhidapi.dylib not found in mac folder." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    print_fail "libhidapi.dylib not found in mac folder."
+    osascript -e "display dialog \"libhidapi.dylib not found in mac folder.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
     exit 1
 fi
 
@@ -198,18 +203,23 @@ if [ -f "$HID_INIT_PATH" ]; then
     sed -i '' '/hidapi = None/,/raise ImportError(/d' "$TEMP_FILE"
     mv "$TEMP_FILE" "$HID_INIT_PATH"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to modify hid/__init__.py."
-        osascript -e 'display dialog "Failed to modify hid/__init__.py." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+        print_fail "Failed to modify hid/__init__.py."
+        osascript -e "display dialog \"Failed to modify hid/__init__.py.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
         exit 1
     fi
-    echo "Modified hid/__init__.py to load libhidapi.dylib"
+    print_ok "hid/__init__.py configured to load libhidapi.dylib."
 else
-    echo "❌ Could not find hid/__init__.py."
-    osascript -e 'display dialog "Could not find hid/__init__.py." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+    print_fail "Could not find hid/__init__.py."
+    osascript -e "display dialog \"Could not find hid/__init__.py.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
     exit 1
 fi
 
-echo "Setup complete. Application is installed in $INSTALL_DIR."
+# ── Done ──────────────────────────────────────────────────────────────────────
+echo ""
+echo -e "  ${BOLD}${GREEN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${GREEN}║  Installation complete — run run.command  ║${RESET}"
+echo -e "  ${BOLD}${GREEN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
 echo "Postinstall script completed at $(date)"
-osascript -e 'display dialog "Installation complete. Run run.command to launch the application." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'
+osascript -e "display dialog \"Installation complete!\n\nEasyOKAPI is ready to use.\n\nOpen run.command (or the EasyOKAPI app in the DMG) to launch.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Installer\" $(_dialog_icon)"
 exit 0
