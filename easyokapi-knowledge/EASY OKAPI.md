@@ -30,14 +30,22 @@ graph TD
     Routes --> Auth[[auth_routes.py]]
     Routes --> File[[file_routes.py]]
     Routes --> Data[[data_routes.py]]
+    Routes --> Math[[math_routes.py]]
+    Routes --> AI[[ai_routes.py]]
+    Routes --> Account[[account_routes.py]]
     
     Main --> UserData[[src/user_data.py]]
     Main --> DriveSvc[[src/google_drive_service.py]]
     Main --> FileMerge[[src/file_merge.py]]
     Main --> ExpData[[src/export_data.py]]
+    Main --> AccountMod[[src/account.py]]
+    Main --> FirebaseSvc[[src/firebase_service.py]]
     
-    UserData --> MemoryStore[(Session Memory Store)]
+    UserData -->|guests| Redis[(Redis / LRU Cache)]
+    UserData -->|account users| Firebase[(Firebase Firestore)]
+    AccountMod --> Postgres[(PostgreSQL)]
     DriveSvc --> GoogleCloud[(Google Drive API)]
+    AI --> Groq[(Groq API)]
 ```
 
 ### 2.1 Backend (`main.py` — entry point)
@@ -66,10 +74,15 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | [[src/file_merge.py\|file_merge.py]]                     | Merging CSV contents from two files                                                       |
 | `file_path.py`                                           | File path utilities                                                                       |
 | `get_next_filename.py`                                   | Auto-naming duplicates (e.g., `file_1.csv`, `file_2.csv`)                                 |
-| `mode.py`                                                | Returns available measurement modes: `kinetics`, `point`, `calibrate`                     |
+| `mode.py`                                                | Returns available measurement modes: `kinetics`, `point`, `calibrate`, `report`           |
 | `quantity.py`                                            | Returns available quantity options for kinetics analysis                                  |
 | `range.py`                                               | Returns display range input configuration                                                 |
-| `ai_assistant.py`                                        | Groq API client, guide training, MCP tools, chat_stream generator (multilingual)          |
+| `math_ops.py`                                            | Server-side math: regression via `scipy.optimize.curve_fit` (linear, polynomial, log, exp, Michaelis-Menten); sliding-window kinetics quantities (maxRate, slope, saturation, time-to-sat) |
+| `validators.py`                                          | `@validate_json` decorator for route input validation                                     |
+| `account.py`                                             | `User` SQLAlchemy model (bcrypt passwords, verification/reset tokens); `run_migrations()` |
+| `firebase_service.py`                                    | Firebase Firestore persistence via REST API (not gRPC/firebase-admin, avoids eventlet conflicts); async background saves via `threading.Thread` |
+| `email_service.py`                                       | SMTP transactional emails: verification and password-reset messages                       |
+| `ai_assistant.py`                                        | Groq API client; `chat_stream()` generator (6-iteration agentic loop); guide keyword matching (`_match_guide_example`); greeting/OOS fast-paths; report clarification flow; multilingual system prompts |
 | `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
 | `download_service.py`                                    | JWT helpers: generate/validate download tokens (30 min) and activation tokens (permanent) |
 
@@ -87,18 +100,48 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `calculate.js` | Math: regression (linear, polynomial, logarithmic, exponential, Michaelis-Menten), kinetics quantities, R² |
 | `edit-file.js` | SweetAlert2-based file editor modal (CSV and JSON), column operations, JSON graphic UI |
 | `drive-integration.js` | Google Drive OAuth UI, folder selection, sync/load operations, auto-sync on close |
-| `user-guide.js` | Interactive step-by-step user guide with spotlight overlay |
+| `user-guide.js` | Interactive step-by-step user guide with spotlight overlay; `UserGuide` class with `startWorkflow(id)` and `startCustomSteps(steps)` |
+| `ai-chat.js` | Floating AI chat widget; language dropdown (`toggleLangMenu`/`setLang`); SSE consumer; dispatches `guide_action` events to `window.userGuide` |
+| `report.js` | Report management UI: subject CRUD, item ordering, Excel/HTML export (`finalizeReportExcel`, `finalizeReport`) |
 
 ### 2.4 Templates (`templates/`)
 
 | File | Purpose |
 |---|---|
-| [[templates/index.html\|index.html]] | Main SPA template (~419 lines). Jinja2-rendered with server-side data. Contains all UI sections. |
-| `goodbye.html` | Displayed on shutdown (not used in online version) |
+| [[templates/index.html\|index.html]] | Main SPA template. Jinja2-rendered with server-side data. Contains all UI sections. |
+| `login.html` | Account login page |
+| `signup.html` | Account registration page |
+| `forgot_password.html` | Forgot password page |
+| `reset_password.html` | Password reset form (receives `token` + `valid` from server) |
+| `verify_email.html` | Email verification result page (success/failure) |
+| `callback.html` | Google Drive OAuth callback result page |
 
 ---
 
-## 2.5 Account System (User Login & Registration)
+## 2.5 Data Storage Layer (`src/user_data.py`)
+
+All user data (CSV files, JSON calibrations, Drive state, reports) is held in a per-user dict. Storage tiers:
+
+| Tier | Users | Implementation | TTL |
+|---|---|---|---|
+| Redis (`REDIS_URL`) | All | Primary; key `user:{uid}` | 24 h |
+| Bounded LRU dict (`_BoundedDict`, max 100) | All | Fallback when Redis unavailable | Process lifetime |
+| Firebase Firestore (REST) | Account users only | Persistent; field `working_data` (JSON string) | Permanent |
+| PostgreSQL (SQLAlchemy) | Account users only | Account metadata only (no CSV/JSON data) | Permanent |
+
+**User identity:**
+- Guests: random UUID in `session['user_id']` → uid = UUID
+- Logged-in: `session['account_user_id']` → uid = `account_{id}`
+
+Account users' data loads from Firebase on cache miss and writes back asynchronously via a background thread on every save. Demo CSV/JSON files (`csv/multi.csv`, `csv/single.csv`, `json/exp_kinetics.json`, `json/exp_point.json`) are loaded only for guests with empty sessions — never for account users.
+
+**User data dict top-level keys:** `csv`, `json` (`kinetics` / `point` sub-dicts), `metadata_cache`, `drive`, `report`, `reports`.
+
+> **Note:** `firebase_service.py` uses `google-auth` + `requests` (not `firebase-admin` / gRPC) to stay compatible with eventlet's monkey-patched sockets and avoid cold-start hangs.
+
+---
+
+## 2.6 Account System (User Login & Registration)
 
 The app includes a persistent account system backed by a **PostgreSQL** database (Heroku Postgres in production, SQLite locally). Users register to gain a time-limited download token for the Easy OKAPI desktop application.
 
@@ -203,6 +246,8 @@ git push heroku online:main
 |---|---|
 | `SECRET_KEY` | Flask session encryption |
 | `DATABASE_URL` | PostgreSQL URL (Heroku Postgres add-on sets this automatically) |
+| `REDIS_URL` | Redis connection URL for session data caching (Heroku Redis add-on) |
+| `FIREBASE_CREDENTIALS_JSON` | Service account JSON string for Firestore persistence (account users) |
 | `GOOGLE_ENCRYPTION_KEY` | Decrypts `credentials.enc` for Google Drive OAuth |
 | `GOOGLE_REDIRECT_URI` | OAuth callback URL (defaults to `http://localhost:5003/auth/google/callback`) |
 | `GROQ_API_KEY` | Groq API key for the AI assistant |
@@ -220,33 +265,58 @@ git push heroku online:main
 
 ```
 microalbumin-Flask/
-├── main.py                     # Flask app entry point (all routes)
-├── Procfile                    # Heroku process config
-├── runtime.txt                 # Python version for Heroku
+├── main.py                     # Flask app entry point + GitHub artifact download routes
+├── Procfile                    # Heroku: gunicorn -k eventlet --workers 1 main:app
+├── gunicorn.conf.py            # Gunicorn config (worker_exit hook calls firebase_service.shutdown)
+├── runtime.txt                 # python-3.12.11
 ├── requirements.txt            # Python dependencies
-├── package.json                # Node.js build config
+├── package.json                # Node.js build config (heroku-postbuild: npm run build)
 ├── build.js                    # Obfuscation + minification build script
-├── credentials.enc             # Encrypted Google OAuth credentials
-├── .env                        # Environment variables (local dev)
-├── .gitignore
+├── credentials.enc             # Encrypted Google OAuth credentials (Fernet)
+├── guide_training.json         # English master guide definitions (57 guides)
+├── guide_translations/         # Step description overlays by language
+│   ├── vi.json
+│   ├── zh.json
+│   ├── fr.json
+│   ├── ja.json
+│   └── ru.json
+├── easyokapi-knowledge/        # AI agent knowledge base
+│   └── EASY OKAPI.md
 ├── src/
-│   ├── config.py               # App configuration
-│   ├── user_data.py            # In-memory per-session data store
-│   ├── google_drive_service.py # Google Drive API integration
-│   ├── export_data.py          # CSV export utilities
-│   ├── export_cal_json.py      # Calibration JSON export
-│   ├── file_merge.py           # CSV merge logic
+│   ├── config.py               # Config class: all env vars + PRODUCTION_MODE auto-detection
+│   ├── extensions.py           # Centralized SocketIO instance (avoids circular imports)
+│   ├── user_data.py            # Per-session data store: Redis + LRU + Firebase
+│   ├── account.py              # User SQLAlchemy model (bcrypt, tokens, migrations)
+│   ├── firebase_service.py     # Firestore REST persistence (no gRPC)
+│   ├── email_service.py        # SMTP verification + reset emails
+│   ├── download_service.py     # JWT download/activation token helpers
+│   ├── google_drive_service.py # Google Drive OAuth + CRUD
+│   ├── ai_assistant.py         # Groq chat_stream, guide matching, tool execution
+│   ├── ai_settings.py          # Flask session-based AI settings
+│   ├── math_ops.py             # scipy regression + sliding-window kinetics
+│   ├── validators.py           # @validate_json decorator
+│   ├── export_data.py          # CSV metadata parsing + export with thread locks
+│   ├── export_cal_json.py      # Calibration JSON coefficient processing
+│   ├── file_merge.py           # Multi-source CSV merge logic
 │   ├── file_path.py            # Path utilities
-│   ├── get_next_filename.py    # Auto-naming for duplicates
-│   ├── mode.py                 # Measurement mode definitions
-│   ├── quantity.py             # Quantity input definitions
-│   └── range.py                # Display range definitions
+│   ├── get_next_filename.py    # Auto-naming duplicates (file_1.csv, file_2.csv …)
+│   ├── mode.py                 # 4 measurement modes: kinetics, point, calibrate, report
+│   ├── quantity.py             # Quantity options for kinetics
+│   ├── range.py                # Display range input config
+│   └── routes/
+│       ├── __init__.py
+│       ├── auth_routes.py      # Google Drive OAuth + folder/sync ops
+│       ├── file_routes.py      # CSV/JSON CRUD, merge, report management, Excel export
+│       ├── data_routes.py      # Data fetching, export measurement + cal coefficients
+│       ├── math_routes.py      # /calculate_coef_and_rsquared, /calculate_kinetics_quantities
+│       ├── ai_routes.py        # /ai/chat, /ai/proxy/chat, /ai/guides, /ai/settings
+│       └── account_routes.py   # Register/login/verify/reset/delete/download/activate
 ├── static/
-│   ├── style.css               # Source CSS (development)
-│   ├── script/                 # Source JS (development)
+│   ├── style.css               # Source CSS
+│   ├── script/                 # Source JS (12 files)
 │   │   ├── short-hands.js
 │   │   ├── init.js
-│   │   ├── index.js
+│   │   ├── index.js            # AppState global singleton
 │   │   ├── navigation.js
 │   │   ├── data-handling.js
 │   │   ├── data-display.js
@@ -254,13 +324,21 @@ microalbumin-Flask/
 │   │   ├── calculate.js
 │   │   ├── edit-file.js
 │   │   ├── drive-integration.js
-│   │   └── user-guide.js
-│   └── dist/                   # Built/minified assets (auto-generated)
+│   │   ├── user-guide.js       # UserGuide class with spotlight overlay
+│   │   ├── ai-chat.js          # AI chat widget + SSE consumer
+│   │   └── report.js           # Report subject/item management + Excel/HTML export
+│   └── dist/                   # Built/minified assets (auto-generated by npm run build)
 ├── templates/
-│   ├── index.html              # Main SPA template
-│   └── goodbye.html
-├── csv/                        # Default sample CSV data
-├── json/                       # Default sample JSON data
+│   ├── index.html              # Main SPA template (Jinja2)
+│   ├── login.html
+│   ├── signup.html
+│   ├── forgot_password.html
+│   ├── reset_password.html
+│   ├── verify_email.html
+│   └── callback.html           # Google Drive OAuth result
+├── tests/                      # pytest test suite
+├── csv/                        # Default sample CSV data (guests only)
+├── json/                       # Default sample JSON calibration data (guests only)
 └── images/                     # README screenshots
 ```
 
@@ -370,7 +448,7 @@ activation.json  →  license_token present?
 
 | Aspect | `online` branch | `main` branch (expected) |
 |---|---|---|
-| Data storage | In-memory `USER_DATA` dict | Local filesystem |
+| Data storage | Redis (primary) + LRU in-memory (fallback) + Firebase (account users) | Local filesystem |
 | Directory browsing | N/A (upload-based) | OS directory picker |
 | HID logging | Disabled | Enabled (PyBadge USB) |
 | Users | Multi-user with sessions | Single user |
@@ -378,7 +456,7 @@ activation.json  →  license_token present?
 | Static serving | From `static/dist/` (obfuscated) | From `static/` (source) |
 | Build step | Required (`npm run build`) | Not required |
 | Deployment | Heroku | Local machine |
-| `static_folder` | `'static/dist'` | `'static'` |
+| `static_folder` | `'static'` (dist files served from `static/dist/` path) | `'static'` |
 | Shutdown endpoint | Not applicable | Present |
 | `PRODUCTION_MODE` | `True` | `False` |
 | AI backend | Direct Groq call (`chat_stream`) | Proxy to Heroku (`proxy_chat_stream`), falls back to direct if `GROQ_API_KEY` in `.env` |
