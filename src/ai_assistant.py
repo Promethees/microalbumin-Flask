@@ -1235,6 +1235,35 @@ def _is_out_of_scope(query: str) -> bool:
     return False
 
 
+# Phrases that indicate the user wants a conceptual explanation, not UI navigation.
+# Queries containing these should go to Groq rather than be short-circuited to a guide.
+_CONCEPTUAL_MARKERS = frozenset({
+    # English — explanatory starters ("how to" is intentionally absent; it signals navigation)
+    "what is", "what are", "what does", "what do", "what's",
+    "why", "why is", "why does", "why do",
+    "explain", "describe", "tell me about", "what does it mean",
+    "meaning of", "definition of", "difference between",
+    "how does", "how do", "how is",
+    # Vietnamese
+    "là gì", "nghĩa là", "tại sao", "giải thích", "khác nhau",
+    # Chinese
+    "什么是", "为什么", "解释", "区别", "意思",
+    # French
+    "qu'est-ce", "pourquoi", "expliquer", "signifie", "différence",
+    # Japanese
+    "とは", "なぜ", "説明", "違い", "意味",
+    # Russian
+    "что такое", "почему", "объясни", "разница", "значит",
+})
+
+
+def _has_nav_intent(query: str) -> bool:
+    """True when query is navigation/how-to, False when it's a conceptual question.
+    Conceptual questions bypass the guide short-circuit and go to Groq."""
+    q = query.lower()
+    return not any(marker in q for marker in _CONCEPTUAL_MARKERS)
+
+
 def chat_stream(messages: list, language: str, api_key: str, model: str, ui_context: dict = None):
     """Generator yielding SSE event dicts."""
     last_user_query = next(
@@ -1281,7 +1310,7 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
 
     matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
-    if matched and match_score >= 0.7:
+    if matched and match_score >= 0.7 and _has_nav_intent(last_user_query):
         steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
         yield {"type": "guide", "guide_action": {"custom_steps": steps}}
