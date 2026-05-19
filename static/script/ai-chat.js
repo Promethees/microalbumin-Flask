@@ -509,7 +509,9 @@
     }
 
     function _launchCustomSteps(steps) {
-        if (!_getUiContext().app_started) steps = [_GET_STARTED_STEP, ...steps];
+        if (!_getUiContext().app_started && document.getElementById('init-button')) {
+            steps = [_GET_STARTED_STEP, ...steps];
+        }
         steps = _localizeSteps(steps);
         AI.lastAction = { type: 'custom_steps', steps };
         if (typeof window.userGuide === 'undefined') return;
