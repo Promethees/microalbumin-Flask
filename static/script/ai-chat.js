@@ -328,11 +328,7 @@
             .then(data => {
                 if (data.status !== 'success') return;
                 AI.status = data;
-                AI.settings = data.settings;
-                const pl = AI.settings.preferred_languages
-                    || (AI.settings.preferred_language ? [AI.settings.preferred_language] : null)
-                    || ['en'];
-                AI.activeLang = pl[0] || 'en';
+                AI.activeLang = localStorage.getItem('okapi_ai_lang') || 'en';
                 _updateLangBtn();
                 _showWelcomeIfNeeded();
             })
@@ -355,15 +351,10 @@
     }
 
     function _showWelcomeIfNeeded() {
-        if (!AI.status || !AI.settings) return;
-        if (!AI.settings.first_run_shown) {
+        if (!AI.status) return;
+        if (!localStorage.getItem('okapi_ai_first_run')) {
             _addSystemMsg(_welcomeMsg());
-            fetch('/ai/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ first_run_shown: true }),
-            });
-            AI.settings.first_run_shown = true;
+            localStorage.setItem('okapi_ai_first_run', '1');
         }
         _updateStatusBar();
     }
@@ -814,16 +805,7 @@
             _updateLangBtn();
             _langMenuHide();
             _loadGuides();
-            if (AI.settings) {
-                AI.settings.preferred_languages = [lang];
-                fetch('/ai/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ preferred_languages: [lang] }),
-                }).then(r => r.json()).then(d => {
-                    if (d.status === 'success') AI.settings = d.settings;
-                }).catch(() => {});
-            }
+            localStorage.setItem('okapi_ai_lang', lang);
         },
 
         refreshStatus() {
@@ -832,10 +814,8 @@
                 .then(data => {
                     if (data.status !== 'success') return;
                     AI.status = data;
-                    AI.settings = data.settings;
-                    const pl = AI.settings.preferred_languages || ['en'];
-                    if (!AI.activeLang || !pl.includes(AI.activeLang)) {
-                        AI.activeLang = pl[0] || 'en';
+                    if (!AI.activeLang) {
+                        AI.activeLang = localStorage.getItem('okapi_ai_lang') || 'en';
                     }
                     _updateLangBtn();
                     _updateStatusBar();
