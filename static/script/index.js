@@ -33,7 +33,7 @@ const AppState = {
     chartInstances: {},
     responseData: null,
     metaData: null,
-    lightDisplay: true,
+    lightDisplay: !document.body.classList.contains('dark'),
     globalEstimatedValue: null,
     multiSource: false,
     numSources: 1,

@@ -631,6 +631,11 @@ body.dark .toggle-button::before {
     content: '🌙';
 }
 
+.toggle-button[data-theme-mode="auto"]::before {
+    content: '🖥️';
+    font-size: 16px;
+}
+
 body.dark .toggle-button {
     background-color: #1e3a8a;
 }
