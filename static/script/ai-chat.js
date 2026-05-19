@@ -115,15 +115,6 @@
         fr: '📄 Rapport complet', ja: '📄 フルレポート', ru: '📄 Полный отчёт',
     };
 
-    const _AI_DISABLED_MSG = {
-        en: 'AI Assistant is disabled. Enable it in Settings.',
-        vi: 'Trợ lý AI đã bị tắt. Hãy bật lại trong Cài đặt.',
-        zh: 'AI 助手已禁用，请在设置中启用。',
-        fr: 'L\'assistant IA est désactivé. Activez-le dans les Paramètres.',
-        ja: 'AIアシスタントが無効です。設定で有効にしてください。',
-        ru: 'Помощник ИИ отключён. Включите его в настройках.',
-    };
-
     const _AI_UNAVAILABLE_MSG = {
         en: '⚠ AI Assistant is not configured on this server.',
         vi: '⚠ Trợ lý AI chưa được cấu hình trên máy chủ này.',
@@ -255,13 +246,22 @@
 <div id="okapi-ai-header">
   <span id="okapi-ai-title">&#129302; OKAPI Assistant</span>
   <div id="okapi-ai-header-btns">
-    <button id="okapi-ai-lang-btn" title="Cycle language" onclick="OkapiAI.cycleLang()"></button>
-    <button id="okapi-ai-settings-btn" title="Settings" onclick="OkapiAI.toggleSettings()">&#9881;</button>
+    <div id="okapi-ai-lang-select">
+      <button id="okapi-ai-lang-btn" title="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
+      <div id="okapi-ai-lang-menu" class="okapi-hidden">
+        <button class="okapi-ai-lang-opt" data-lang="en">English</button>
+        <button class="okapi-ai-lang-opt" data-lang="vi">Ti&#7871;ng Vi&#7879;t</button>
+        <button class="okapi-ai-lang-opt" data-lang="zh">&#20013;&#25991; (&#31616;&#20307;)</button>
+        <button class="okapi-ai-lang-opt" data-lang="fr">Fran&#231;ais</button>
+        <button class="okapi-ai-lang-opt" data-lang="ja">&#26085;&#26412;&#35486;</button>
+        <button class="okapi-ai-lang-opt" data-lang="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</button>
+      </div>
+    </div>
     <button id="okapi-ai-close-btn" title="Close" onclick="OkapiAI.close()">&#10005;</button>
   </div>
 </div>
 
-<!-- Main chat view -->
+<!-- Chat view -->
 <div id="okapi-ai-body">
   <div id="okapi-ai-messages"></div>
   <div id="okapi-ai-status-bar"></div>
@@ -270,32 +270,17 @@
     <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything… (type / for commands)"></textarea>
     <button id="okapi-ai-send-btn" onclick="OkapiAI.send()">&#10148;</button>
   </div>
-</div>
-
-<!-- Settings view (hidden by default) -->
-<div id="okapi-ai-settings" class="okapi-hidden">
-  <h4>&#129302; AI Assistant Settings</h4>
-  <div class="okapi-ai-set-group">
-    <div class="okapi-ai-set-label">Languages <span class="okapi-ai-set-hint">(select one or more; cycle with button)</span></div>
-    <div id="okapi-ai-lang-checks">
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="en"> English</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="vi"> Ti&#7871;ng Vi&#7879;t</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="zh"> &#20013;&#25991; (&#31616;&#20307;)</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="fr"> Fran&#231;ais</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="ja"> &#26085;&#26412;&#35486;</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="ru"> &#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</label>
-    </div>
-  </div>
-  <label class="okapi-ai-toggle-row">
-    <span>Enable AI Assistant</span>
-    <input type="checkbox" id="okapi-ai-set-enabled">
-  </label>
-  <div id="okapi-ai-settings-actions">
-    <button onclick="OkapiAI.saveSettings()">Save</button>
-    <button onclick="OkapiAI.toggleSettings()">Back</button>
-  </div>
 </div>`;
         document.body.appendChild(panel);
+
+        document.querySelectorAll('.okapi-ai-lang-opt').forEach(btn => {
+            btn.addEventListener('click', () => OkapiAI.setLang(btn.dataset.lang));
+        });
+
+        document.addEventListener('click', (e) => {
+            const langSelect = document.getElementById('okapi-ai-lang-select');
+            if (langSelect && !langSelect.contains(e.target)) _langMenuHide();
+        });
 
         const inputEl = document.getElementById('okapi-ai-input');
 
@@ -481,15 +466,11 @@
             .replace(/"/g, '&quot;');
     }
 
-    // ── Settings panel ────────────────────────────────────────────────────────
+    // ── Language menu ─────────────────────────────────────────────────────────
 
-    function _populateSettings() {
-        if (!AI.settings) return;
-        const preferredLangs = AI.settings.preferred_languages || ['en'];
-        document.querySelectorAll('.okapi-ai-lang-cb').forEach(cb => {
-            cb.checked = preferredLangs.includes(cb.value);
-        });
-        document.getElementById('okapi-ai-set-enabled').checked = !!AI.settings.enabled;
+    function _langMenuHide() {
+        const menu = document.getElementById('okapi-ai-lang-menu');
+        if (menu) menu.classList.add('okapi-hidden');
     }
 
     // ── Guide launcher ────────────────────────────────────────────────────────
@@ -750,62 +731,35 @@
             if (panel) panel.classList.remove('okapi-ai-panel-open');
         },
 
-        toggleSettings() {
-            AI.settingsOpen = !AI.settingsOpen;
-            const body = document.getElementById('okapi-ai-body');
-            const sett = document.getElementById('okapi-ai-settings');
-            const btn = document.getElementById('okapi-ai-settings-btn');
-
-            if (AI.settingsOpen) {
-                body.classList.add('okapi-hidden');
-                sett.classList.remove('okapi-hidden');
-                if (btn) {
-                    btn.innerHTML = '&#128172;';
-                    btn.title = 'Back to Chat';
-                }
-                _populateSettings();
+        toggleLangMenu() {
+            const menu = document.getElementById('okapi-ai-lang-menu');
+            if (!menu) return;
+            if (menu.classList.contains('okapi-hidden')) {
+                const lang = AI.activeLang || 'en';
+                menu.querySelectorAll('.okapi-ai-lang-opt').forEach(btn => {
+                    btn.classList.toggle('okapi-ai-lang-active', btn.dataset.lang === lang);
+                });
+                menu.classList.remove('okapi-hidden');
             } else {
-                body.classList.remove('okapi-hidden');
-                sett.classList.add('okapi-hidden');
-                if (btn) {
-                    btn.innerHTML = '&#9881;';
-                    btn.title = 'Settings';
-                }
-                _updateStatusBar();
+                _langMenuHide();
             }
         },
 
-        cycleLang() {
-            if (!AI.settings) return;
-            const pl = AI.settings.preferred_languages || ['en'];
-            if (pl.length <= 1) return;
-            const idx = pl.indexOf(AI.activeLang);
-            AI.activeLang = pl[(idx + 1) % pl.length];
+        setLang(lang) {
+            AI.activeLang = lang;
             _updateLangBtn();
+            _langMenuHide();
             _loadGuides();
-        },
-
-        saveSettings() {
-            const langBoxes = document.querySelectorAll('.okapi-ai-lang-cb:checked');
-            let langs = Array.from(langBoxes).map(cb => cb.value);
-            if (langs.length === 0) langs = ['en'];
-            const enabled = document.getElementById('okapi-ai-set-enabled').checked;
-
-            fetch('/ai/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ preferred_languages: langs, enabled }),
-            })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.status === 'success') {
-                        AI.settings = d.settings;
-                        const pl = AI.settings.preferred_languages || ['en'];
-                        if (!pl.includes(AI.activeLang)) AI.activeLang = pl[0];
-                        _updateLangBtn();
-                        OkapiAI.toggleSettings();
-                    }
-                });
+            if (AI.settings) {
+                AI.settings.preferred_languages = [lang];
+                fetch('/ai/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preferred_languages: [lang] }),
+                }).then(r => r.json()).then(d => {
+                    if (d.status === 'success') AI.settings = d.settings;
+                }).catch(() => {});
+            }
         },
 
         refreshStatus() {
@@ -835,12 +789,6 @@
             const input = document.getElementById('okapi-ai-input');
             const text = (input.value || '').trim();
             if (!text) return;
-
-            if (!AI.settings || !AI.settings.enabled) {
-                const lang = AI.activeLang || 'en';
-                _addSystemMsg(_AI_DISABLED_MSG[lang] || _AI_DISABLED_MSG.en);
-                return;
-            }
 
             if (AI.status && !AI.status.api_ready) {
                 const lang = AI.activeLang || 'en';
