@@ -5,7 +5,7 @@ import jwt as pyjwt
 
 from account import db, User
 from email_service import send_verification_email, send_password_reset_email
-from download_service import generate_download_token, validate_download_token, fetch_github_release
+from download_service import generate_download_token, validate_download_token, fetch_github_release, issue_activation_token
 
 account_bp = Blueprint('account', __name__)
 
@@ -261,6 +261,29 @@ def delete_account():
     session.clear()
 
     return jsonify({'status': 'success', 'message': 'Account deleted successfully'})
+
+
+@account_bp.route('/api/activate', methods=['POST'])
+def activate():
+    """Exchange a fresh download token for a permanent activation token (AI access)."""
+    data = request.get_json(silent=True) or {}
+    token = (data.get('token') or '').strip()
+    if not token:
+        return jsonify({'status': 'error', 'message': 'Token is required'}), 400
+
+    try:
+        payload = validate_download_token(token)
+    except pyjwt.ExpiredSignatureError:
+        return jsonify({'status': 'error', 'message': 'Download token has expired. Please log in again to get a new one.'}), 401
+    except pyjwt.InvalidTokenError as e:
+        return jsonify({'status': 'error', 'message': f'Invalid token: {e}'}), 401
+
+    user = User.query.get(int(payload['sub']))
+    if not user or not user.is_verified:
+        return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+
+    activation_token = issue_activation_token(payload)
+    return jsonify({'status': 'success', 'license_token': activation_token})
 
 
 @account_bp.route('/api/download')

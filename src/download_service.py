@@ -7,6 +7,21 @@ import requests
 _DOWNLOAD_PURPOSE = 'app_download'
 _TOKEN_TTL = 30 * 60  # 30 minutes
 
+def issue_activation_token(validated_payload: dict) -> str:
+    """Re-sign a validated download token without expiry for permanent AI access."""
+    secret = os.environ.get('SECRET_KEY', 'change-me')
+    payload = {k: v for k, v in validated_payload.items() if k != 'exp'}
+    return jwt.encode(payload, secret, algorithm='HS256')
+
+
+def validate_activation_token(token: str) -> dict:
+    """Validate a stored activation token (no expiry check). Raises on bad signature."""
+    secret = os.environ.get('SECRET_KEY', 'change-me')
+    payload = jwt.decode(token, secret, algorithms=['HS256'], options={'verify_exp': False})
+    if payload.get('purpose') != _DOWNLOAD_PURPOSE:
+        raise jwt.InvalidTokenError('Token not valid for AI access')
+    return payload
+
 
 def generate_download_token(user_id: int, email: str) -> str:
     secret = os.environ.get('SECRET_KEY', 'change-me')

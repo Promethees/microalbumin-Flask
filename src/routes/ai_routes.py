@@ -3,6 +3,9 @@ from flask import Blueprint, jsonify, request, Response, stream_with_context
 from user_data import get_user_data
 import ai_settings
 import ai_assistant
+import jwt as pyjwt
+from account import User
+from download_service import validate_activation_token
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
@@ -64,6 +67,48 @@ def ai_chat():
 
     def generate():
         for event in ai_assistant.chat_stream(messages, language, Config.GROQ_API_KEY, model, ui_context, user_data):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+    )
+
+
+@ai_bp.route('/proxy/chat', methods=['POST'])
+def proxy_chat():
+    """AI proxy for desktop app instances. Validates activation token + active account."""
+    from config import Config
+    data = request.get_json(silent=True) or {}
+
+    license_token = (data.get('license_token') or '').strip()
+    if not license_token:
+        return jsonify({'status': 'failure', 'message': 'License token required'}), 401
+
+    try:
+        payload = validate_activation_token(license_token)
+    except pyjwt.InvalidTokenError as e:
+        return jsonify({'status': 'failure', 'message': f'Invalid license token: {e}'}), 401
+
+    user = User.query.get(int(payload['sub']))
+    if not user or not user.is_verified:
+        return jsonify({'status': 'failure', 'message': 'Account not found or not verified'}), 403
+
+    messages = data.get('messages', [])
+    if not messages:
+        return jsonify({'status': 'failure', 'message': 'No messages provided'}), 400
+
+    if not Config.GROQ_API_KEY:
+        return jsonify({'status': 'failure', 'message': 'AI not configured on server'}), 503
+
+    language = data.get('language', 'en')
+    model = data.get('model') or Config.AI_MODEL
+    ui_context = data.get('ui_context') or {}
+
+    def generate():
+        for event in ai_assistant.chat_stream(messages, language, Config.GROQ_API_KEY, model, ui_context):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
