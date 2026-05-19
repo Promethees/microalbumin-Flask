@@ -430,17 +430,6 @@
         container.scrollTop = container.scrollHeight;
     }
 
-    function _addThinkingBubble() {
-        const container = document.getElementById('okapi-ai-messages');
-        if (!container) return null;
-        const div = document.createElement('div');
-        div.className = 'okapi-ai-msg okapi-ai-msg-assistant okapi-ai-thinking';
-        div.innerHTML = '<span></span><span></span><span></span>';
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-        return div;
-    }
-
     function _addStreamingMsg() {
         const container = document.getElementById('okapi-ai-messages');
         if (!container) return null;
