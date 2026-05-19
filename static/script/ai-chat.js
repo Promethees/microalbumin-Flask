@@ -689,6 +689,13 @@
             if (AI.messages.length && AI.messages[AI.messages.length - 1].role === 'assistant') {
                 AI.messages.pop();
             }
+            // Also remove the original user turn so OkapiAI.send() can re-add it cleanly,
+            // preventing the same user message appearing twice in history.
+            if (AI.messages.length &&
+                AI.messages[AI.messages.length - 1].role === 'user' &&
+                AI.messages[AI.messages.length - 1].content === last.query) {
+                AI.messages.pop();
+            }
             const input = document.getElementById('okapi-ai-input');
             if (input) { input.value = last.query; OkapiAI.send(); }
         }
