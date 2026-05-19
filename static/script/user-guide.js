@@ -16,7 +16,6 @@ class UserGuide {
         this.currentTargetElement = null;
         this.currentStepData = null;
         this.resizeObserver = null;
-        this.resizeObserver = null;
         this.pollingInterval = null;
         this.waitInterval = null;
 
@@ -484,7 +483,7 @@ class UserGuide {
                     if (checkCount >= maxChecks) {
                         clearInterval(checkInterval);
                         console.error(`Target element still not found after waiting: ${step.target}`);
-                        // Optional: skip to next step or show error
+                        if (this.isActive) this.nextStep();
                     }
                 }
             }, 100);
@@ -745,6 +744,12 @@ class UserGuide {
         }
         const workflowMap = {
             'create_calibration_curve_workflow': () => this.getModeSpecificSteps('calibrate'),
+            'kinetics':           () => this.getModeSpecificSteps('kinetics'),
+            'point':              () => this.getModeSpecificSteps('point'),
+            'calibrate_kinetics': () => this.getModeSpecificSteps('calibrate'),
+            'calibrate_point':    () => this.getModeSpecificSteps('calibrate'),
+            'report':             () => { this.defineSteps(); return this.steps; },
+            'general':            () => { this.defineSteps(); return this.steps; },
         };
         const stepsFn = workflowMap[workflowId];
         if (stepsFn) {

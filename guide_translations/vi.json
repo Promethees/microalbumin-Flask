@@ -590,7 +590,6 @@
       "Chọn tệp CSV đo kinetics chứa dữ liệu mẫu bạn muốn dùng để hiệu chuẩn.",
       "Chọn nguồn đo (kênh) bạn muốn xuất cho đường chuẩn.",
       "Nhập nồng độ chất phân tích đã biết làm điểm tham chiếu, đặt tên tệp và nhấp 'Export Data' để lưu CSV hiệu chuẩn.",
-      "Điều hướng đến thư mục nơi CSV hiệu chuẩn vừa được lưu để bạn có thể tìm và chọn nó.",
       "Tìm CSV hiệu chuẩn bạn vừa xuất. Nhấp 'Edit' để kiểm tra nội dung, rồi chọn nó.",
       "Chuyển sang chế độ Calibrate ở đây để thiết lập hồi quy và tạo hệ số đường chuẩn.",
       "Chọn đại lượng kinetics nào để dùng cho đường chuẩn: maxRate, Slope, Sat hoặc Time to Sat.",

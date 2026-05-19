@@ -520,7 +520,6 @@
       "Sélectionnez un fichier CSV de mesure cinétique contenant les données d'échantillon à utiliser pour la calibration.",
       "Choisissez la source de mesure (canal) à exporter pour la courbe étalon.",
       "Entrez la concentration connue de l'analyte comme point de référence, définissez un nom de fichier et cliquez sur 'Export Data' pour enregistrer un CSV de calibration.",
-      "Naviguez jusqu'au répertoire où le CSV de calibration vient d'être sauvegardé pour le trouver et le sélectionner.",
       "Trouvez le CSV de calibration que vous venez d'exporter. Cliquez sur 'Edit' pour vérifier son contenu, puis sélectionnez-le.",
       "Passez en mode Calibrate ici pour configurer la régression et générer les coefficients de la courbe étalon.",
       "Choisissez quelle grandeur cinétique utiliser pour la courbe étalon : maxRate, Slope, Sat ou Time to Sat.",

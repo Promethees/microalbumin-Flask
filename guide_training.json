@@ -870,13 +870,6 @@
           "skipInteraction": false
         },
         {
-          "target": "#directory",
-          "title": "Browse to Saving Location",
-          "description": "Navigate to the directory where the calibration CSV was just saved so you can find and select it.",
-          "position": "right",
-          "skipInteraction": true
-        },
-        {
           "target": "#file-selection",
           "title": "Select the Calibration CSV",
           "description": "Find the calibration CSV you just exported. Click 'Edit' on it to verify its contents, then select it.",
@@ -1003,7 +996,7 @@
           "title": "Switch to Kinetics Mode",
           "description": "Select Kinetics mode to begin a time-series colorimeter measurement.",
           "position": "right",
-          "skipInteraction": false
+          "skipInteraction": true
         },
         {
           "target": "#file-selection",
@@ -1146,7 +1139,12 @@
         "background absorbance",
         "net absorbance"
       ],
-      "conditions": {},
+      "conditions": {
+        "mode_not_in": [
+          "calibrate",
+          "report"
+        ]
+      },
       "requires_data_loaded": true,
       "steps": [
         {
@@ -1154,7 +1152,7 @@
           "title": "Normalize Data",
           "description": "Toggle this to subtract the baseline absorbance (blank sample) from all readings, giving net absorbance values relative to background.",
           "position": "left",
-          "skipInteraction": false
+          "skipInteraction": true
         }
       ]
     },
@@ -1169,7 +1167,12 @@
         "multi source",
         "multiple source"
       ],
-      "conditions": {},
+      "conditions": {
+        "mode_not_in": [
+          "calibrate",
+          "report"
+        ]
+      },
       "requires_data_loaded": true,
       "steps": [
         {
@@ -1177,7 +1180,7 @@
           "title": "Split by Sources",
           "description": "Toggle this to display each measurement source (channel) as its own separate chart instead of overlaying them on a single graph.",
           "position": "left",
-          "skipInteraction": false
+          "skipInteraction": true
         }
       ]
     },

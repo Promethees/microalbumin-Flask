@@ -9,8 +9,12 @@ import threading
 _GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_training.json")
 _GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_translations")
 
+VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru'}
+
 
 def _apply_overlay(examples: list, lang: str) -> list:
+    if lang not in VALID_LANGS:
+        return examples
     overlay_path = os.path.join(_GUIDE_TRANSLATIONS_DIR, f"{lang}.json")
     try:
         with open(overlay_path, "r", encoding="utf-8") as f:
@@ -120,6 +124,8 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
         if conditions.get("mode_not") and mode == conditions["mode_not"]:
             continue
         if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
+            continue
+        if conditions.get("mode_not_in") and mode in conditions["mode_not_in"]:
             continue
 
         keywords = ex.get("queries", [])
@@ -544,7 +550,7 @@ TOOLS = [
             "description": (
                 "Focused spotlight guide for 2-5 specific UI elements. "
                 "Use for targeted how-to questions. "
-                "Valid IDs: #go-to-btn #directory "
+                "Valid IDs: "
                 "#meas-mode-section #file-selection #cal-json-sel-section #merge-file-btn "
                 "#data-display-section #chart-container #range-display #window-size-section "
                 "#split-source-section #export-analysis #report-section #cal-mode-select "
@@ -955,6 +961,7 @@ _REPORT_SPECIFIC_KEYWORDS = {
     "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
     "đầy đủ", "toàn", "complet", "полный",
     "export to report", "save to report", "export data to report",
+    "快速", "快", "すぐ", "クイック", "速い",
 }
 
 

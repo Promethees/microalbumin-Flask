@@ -461,7 +461,7 @@
         t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
         t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         t = t.replace(/^[•·]\s+(.+)$/gm, '<li>$1</li>');
-        t = t.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        t = t.replace(/(<li>[\s\S]*?<\/li>(\s*<li>[\s\S]*?<\/li>)*)/g, '<ul>$1</ul>');
         t = t.replace(/\n/g, '<br>');
         return t;
     }
@@ -626,6 +626,7 @@
 
         if (cmd.action === 'report') {
             _addMsg('user', cmd.cmd);
+            AI.lastAction = { type: 'report_choice' };
             _runReportChoice();
             return;
         }
@@ -682,6 +683,8 @@
         } else if (last.type === 'workflow') {
             _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
             _launchGuide(last.workflow);
+        } else if (last.type === 'report_choice') {
+            _runReportChoice();
         } else if (last.type === 'llm') {
             if (AI.messages.length && AI.messages[AI.messages.length - 1].role === 'assistant') {
                 AI.messages.pop();
