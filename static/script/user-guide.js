@@ -469,6 +469,9 @@ class UserGuide {
         }
 
         const step = this.steps[stepIndex];
+        // Update tooltip content first so positionTooltip reads the correct dimensions.
+        this.updateTooltip(step, stepIndex);
+
         // Helper to setup step once element is found
         const setupStepWithElement = (target) => {
             this.currentTargetElement = target;
@@ -530,7 +533,6 @@ class UserGuide {
             this.waitInterval = checkInterval;
         }
 
-        this.updateTooltip(step, stepIndex);
     }
 
     /**
