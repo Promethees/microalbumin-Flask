@@ -1226,7 +1226,12 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
             })
 
         if only_guide_tools and guide_action:
-            yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+            # Prefer any text the LLM included alongside the tool call; fall back to canned message.
+            llm_text = (result.get("content") or "").strip()
+            yield {
+                "type": "chunk",
+                "content": llm_text or _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"]),
+            }
             yield {"type": "guide", "guide_action": guide_action}
             return
 
