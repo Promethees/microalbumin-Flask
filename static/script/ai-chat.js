@@ -608,18 +608,21 @@
 
         if (cmd.action === 'guide') {
             _addMsg('user', cmd.cmd);
+            AI.messages.push({ role: 'user', content: cmd.cmd });
             _runGuideById(cmd.guide_id);
             return;
         }
 
         if (cmd.action === 'concentration') {
             _addMsg('user', cmd.cmd);
+            AI.messages.push({ role: 'user', content: cmd.cmd });
             _runConcentrationGuide();
             return;
         }
 
         if (cmd.action === 'excel') {
             _addMsg('user', cmd.cmd);
+            AI.messages.push({ role: 'user', content: cmd.cmd });
             _runExcelGuide();
             return;
         }
