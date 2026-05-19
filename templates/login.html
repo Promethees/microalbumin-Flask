@@ -4,131 +4,359 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log In — Easy OKAPI</title>
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const dark = saved !== null ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f3f4f6;
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.5);
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --label: #374151;
+      --input-bg: rgba(255, 255, 255, 0.8);
+      --input-border: #e5e7eb;
+      --shadow: 0 24px 64px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06);
+      --link: #6366f1;
+      --divider: rgba(0,0,0,0.08);
+    }
+    html.dark {
+      --bg: #111827;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --label: #d1d5db;
+      --input-bg: rgba(31, 41, 55, 0.7);
+      --input-border: rgba(255, 255, 255, 0.1);
+      --shadow: 0 24px 64px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+      --link: #a5b4fc;
+      --divider: rgba(255,255,255,0.07);
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f0f4f1;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
     }
+
+    /* Animated background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(72px);
+      z-index: 0;
+      animation: blob-float 9s ease-in-out infinite;
+    }
+    .blob-1 {
+      width: 420px; height: 420px;
+      background: rgba(99, 102, 241, 0.22);
+      top: -140px; left: -100px;
+    }
+    .blob-2 {
+      width: 320px; height: 320px;
+      background: rgba(168, 85, 247, 0.18);
+      bottom: -100px; right: -80px;
+      animation-delay: -4.5s;
+    }
+    .blob-3 {
+      width: 220px; height: 220px;
+      background: rgba(45, 212, 191, 0.12);
+      top: 50%; left: 55%;
+      animation-delay: -2s;
+    }
+    @keyframes blob-float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50%       { transform: translateY(-24px) scale(1.06); }
+    }
+
+    /* Card */
     .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,.1);
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
       width: 100%;
       max-width: 420px;
+      position: relative;
+      z-index: 1;
       overflow: hidden;
     }
+
+    /* Header */
     .card-header {
-      background: #2d6a4f;
-      padding: 28px 32px;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      padding: 28px 32px 26px;
+      position: relative;
+      overflow: hidden;
     }
-    .card-header h1 { color: #fff; font-size: 20px; margin-bottom: 4px; }
-    .card-header p  { color: #b7e4c7; font-size: 13px; }
-    .card-body { padding: 28px 32px; }
-    label { display: block; font-size: 13px; color: #444; font-weight: 600; margin-bottom: 6px; }
-    input[type=email], input[type=password] {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1.5px solid #d1d5db;
-      border-radius: 7px;
+    .card-header::before {
+      content: '';
+      position: absolute;
+      width: 180px; height: 180px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 50%;
+      top: -70px; right: -50px;
+    }
+    .card-header::after {
+      content: '';
+      position: absolute;
+      width: 90px; height: 90px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 50%;
+      bottom: -24px; right: 72px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .brand-icon {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .brand-name {
       font-size: 14px;
-      color: #111;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .brand-name em { font-style: normal; color: rgba(255,255,255,0.65); }
+
+    .card-header h1 {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .card-header p {
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      position: relative;
+    }
+
+    /* Body */
+    .card-body { padding: 28px 32px; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--label);
+      margin-bottom: 6px;
+    }
+
+    input[type=email],
+    input[type=password] {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--input-bg);
+      border: 1.5px solid var(--input-border);
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--text);
       outline: none;
-      transition: border-color .15s;
+      transition: border-color .2s, box-shadow .2s, background .2s;
       margin-bottom: 18px;
     }
-    input:focus { border-color: #2d6a4f; }
+    input::placeholder { color: var(--text-muted); }
+    input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.14);
+    }
+
+    .forgot-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -10px;
+      margin-bottom: 20px;
+    }
+    .forgot-row a {
+      font-size: 12px;
+      color: var(--link);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .forgot-row a:hover { text-decoration: underline; }
+
     button[type=submit] {
       width: 100%;
-      padding: 11px;
-      background: #2d6a4f;
+      padding: 12px;
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
       color: #fff;
       border: none;
-      border-radius: 7px;
+      border-radius: 10px;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
-      transition: background .15s;
+      letter-spacing: -0.01em;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+      transition: opacity .15s, transform .15s, box-shadow .15s;
     }
-    button[type=submit]:hover { background: #1b4332; }
-    button[type=submit]:disabled { background: #74b49b; cursor: not-allowed; }
+    button[type=submit]:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+    }
+    button[type=submit]:active:not(:disabled) { transform: translateY(0); }
+    button[type=submit]:disabled { opacity: 0.5; cursor: not-allowed; }
+
     .msg {
       margin-top: 14px;
-      padding: 10px 14px;
-      border-radius: 7px;
+      padding: 11px 14px;
+      border-radius: 9px;
       font-size: 13px;
       display: none;
     }
-    .msg.success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
-    .msg.error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .msg.success {
+      background: rgba(16,185,129,0.1);
+      color: #059669;
+      border: 1px solid rgba(16,185,129,0.28);
+    }
+    .msg.error {
+      background: rgba(239,68,68,0.1);
+      color: #dc2626;
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+    html.dark .msg.success { color: #34d399; }
+    html.dark .msg.error   { color: #f87171; }
+
     .download-box {
       display: none;
-      margin-top: 20px;
+      margin-top: 18px;
       padding: 16px;
-      background: #ecfdf5;
-      border: 1px solid #6ee7b7;
-      border-radius: 8px;
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.25);
+      border-radius: 10px;
       font-size: 13px;
-      color: #065f46;
+      color: #059669;
     }
+    html.dark .download-box { color: #34d399; }
     .download-box code {
       display: block;
       margin-top: 8px;
-      background: #d1fae5;
+      background: rgba(16,185,129,0.1);
       padding: 8px 10px;
-      border-radius: 5px;
+      border-radius: 6px;
       font-family: monospace;
       font-size: 12px;
       word-break: break-all;
+      color: inherit;
     }
-    .footer-link { text-align: center; margin-top: 20px; font-size: 13px; color: #666; }
-    .footer-link a { color: #2d6a4f; text-decoration: none; font-weight: 600; }
+    .go-btn {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 9px 20px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--divider);
+      margin: 22px 0;
+    }
+
+    .footer-link {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .footer-link a {
+      color: var(--link);
+      text-decoration: none;
+      font-weight: 600;
+    }
     .footer-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
   <div class="card">
     <div class="card-header">
-      <h1>Log in to Easy OKAPI</h1>
-      <p>Authenticate to download the application</p>
+      <div class="brand">
+        <div class="brand-icon">🔬</div>
+        <div class="brand-name"><em>CB</em>Biotec · Easy OKAPI</div>
+      </div>
+      <h1>Welcome back</h1>
+      <p>Log in to access your account</p>
     </div>
+
     <div class="card-body">
       <form id="login-form" novalidate>
         <label for="email">Email address</label>
-        <input type="email" id="email" name="email" placeholder="jane@example.com" required autocomplete="email">
+        <input type="email" id="email" name="email"
+               placeholder="jane@example.com" required autocomplete="email">
 
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+        <input type="password" id="password" name="password"
+               placeholder="••••••••" required autocomplete="current-password">
+
+        <div class="forgot-row">
+          <a href="/account/forgot-password">Forgot password?</a>
+        </div>
 
         <button type="submit" id="submit-btn">Log in</button>
-        <div style="text-align:right;margin-top:8px;">
-          <a href="/account/forgot-password" style="font-size:12px;color:#2d6a4f;text-decoration:none;">Forgot password?</a>
-        </div>
         <div class="msg" id="msg"></div>
       </form>
 
       <div class="download-box" id="download-box">
         <strong>Download token generated.</strong> Your installer will use it automatically.<br>
-        If you are installing manually, copy the token below:
+        If installing manually, copy the token below:
         <code id="token-display"></code>
-        <div style="margin-top:14px;">
-          <a id="go-to-app-btn" href="/" style="display:inline-block;padding:9px 20px;background:#2d6a4f;
-            color:#fff;border-radius:7px;font-size:14px;font-weight:600;text-decoration:none;">
-            Go to App →
-          </a>
-        </div>
+        <a id="go-to-app-btn" href="/" class="go-btn">Go to App →</a>
       </div>
 
+      <hr class="divider">
       <p class="footer-link">Don't have an account? <a href="/account/signup">Sign up</a></p>
     </div>
   </div>
 
   <script>
+    // Follow live system preference changes (only when no manual override)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      if (!localStorage.getItem('theme')) {
+        document.documentElement.classList.toggle('dark', e.matches);
+      }
+    });
+
     document.getElementById('login-form').addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('submit-btn');
@@ -138,16 +366,14 @@
       msg.style.display = 'none';
       document.getElementById('download-box').style.display = 'none';
 
-      const body = {
-        email:    document.getElementById('email').value.trim(),
-        password: document.getElementById('password').value
-      };
-
       try {
         const res = await fetch('/api/account/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify({
+            email:    document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+          })
         });
         const data = await res.json();
         if (res.ok) {
