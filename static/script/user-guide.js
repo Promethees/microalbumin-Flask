@@ -317,7 +317,7 @@ class UserGuide {
             // Update common step description for point mode if needed or just use generic
             let commonSteps = this.stepDefinitions.calibrate.common.map(step => ({ ...step })); // clone
             if (calMode === 'point') {
-                commonSteps[1].description = 'After selecting a file, the Data Display section will appear here. In calibration mode (point), you can create standard curves.';
+                commonSteps[0].description = 'After selecting a file, the Data Display section will appear here. In calibration mode (point), you can create standard curves.';
             }
 
             if (calMode === 'kinetics') {
