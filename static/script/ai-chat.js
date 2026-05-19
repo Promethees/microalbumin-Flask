@@ -273,13 +273,21 @@
 </div>`;
         document.body.appendChild(panel);
 
+        // Move lang menu to <body> so position:fixed escapes the panel's transform
+        // (any non-none transform creates a new containing block for fixed descendants)
+        const langMenu = panel.querySelector('#okapi-ai-lang-menu');
+        if (langMenu) document.body.appendChild(langMenu);
+
         document.querySelectorAll('.okapi-ai-lang-opt').forEach(btn => {
             btn.addEventListener('click', () => OkapiAI.setLang(btn.dataset.lang));
         });
 
         document.addEventListener('click', (e) => {
-            const langSelect = document.getElementById('okapi-ai-lang-select');
-            if (langSelect && !langSelect.contains(e.target)) _langMenuHide();
+            const langBtn = document.getElementById('okapi-ai-lang-btn');
+            const menu = document.getElementById('okapi-ai-lang-menu');
+            if (menu && langBtn && !langBtn.contains(e.target) && !menu.contains(e.target)) {
+                _langMenuHide();
+            }
         });
 
         const inputEl = document.getElementById('okapi-ai-input');
