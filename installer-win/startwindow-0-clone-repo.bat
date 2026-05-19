@@ -169,5 +169,8 @@ for %%D in (mac easyokapi-knowledge images installer-mac installer-win installer
 :: Save version information for future checks
 echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
 
+:: Write activation.json — the download token doubles as the license token for the AI proxy
+(echo {& echo   "license_token": "!DOWNLOAD_TOKEN!"& echo }) > "!INSTALL_DIR!\activation.json"
+
 echo Application downloaded successfully to "!INSTALL_DIR!" (!VERSION_TAG!).
 exit /b 0

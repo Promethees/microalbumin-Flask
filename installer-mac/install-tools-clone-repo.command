@@ -168,6 +168,10 @@ rm -f "$INSTALL_DIR/log_hid_data_pyusb.py" \
 # Save version information for future checks
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
+# Write activation.json — the download token doubles as the license token for the AI proxy
+printf '{\n  "license_token": "%s"\n}\n' "$DOWNLOAD_TOKEN" > "$INSTALL_DIR/activation.json"
+chown "$CURRENT_USER:staff" "$INSTALL_DIR/activation.json"
+
 # Restore user data preserved from the previous installation
 if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
     echo "Restoring user data (data/, json/, report/)..."

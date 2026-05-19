@@ -178,6 +178,9 @@ rm -f  "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR/Rule.md"
 rm -f  "$INSTALL_DIR"/*.bat
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
+# Write activation.json — the download token doubles as the license token for the AI proxy
+printf '{\n  "license_token": "%s"\n}\n' "$DOWNLOAD_TOKEN" > "$INSTALL_DIR/activation.json"
+
 # ── Step 8: Create and populate virtual environment ───────────────────────────
 echo "Setting up Python virtual environment..."
 PYTHON_BIN="$PYENV_ROOT/versions/$PYTHON_VERSION/bin/python"

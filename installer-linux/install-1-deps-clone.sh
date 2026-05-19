@@ -169,6 +169,9 @@ rm -f  "$INSTALL_DIR/generate-tree.sh" "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR
 rm -f  "$INSTALL_DIR"/*.bat
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
+# Write activation.json — the download token doubles as the license token for the AI proxy
+printf '{\n  "license_token": "%s"\n}\n' "$DOWNLOAD_TOKEN" > "$INSTALL_DIR/activation.json"
+
 # Fix ownership so the user can write to the app dir
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
 

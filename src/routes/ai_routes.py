@@ -68,28 +68,13 @@ def save_settings():
 
 @ai_bp.route('/activate', methods=['POST'])
 def activate():
-    """Exchange an Easy OKAPI download token for a local license token."""
+    """Save the Easy OKAPI download token as the local license token."""
     data = request.get_json(silent=True) or {}
     token = (data.get('token') or '').strip()
     if not token:
         return jsonify({'status': 'failure', 'message': 'Token is required'}), 400
 
-    try:
-        import requests as http_req
-        resp = http_req.post(
-            f"{activation_mod.AI_SERVICE_URL}/api/activate",
-            json={'token': token},
-            timeout=15,
-        )
-        body = resp.json()
-    except Exception as e:
-        return jsonify({'status': 'failure', 'message': f'Could not reach AI service: {e}'}), 502
-
-    if resp.status_code != 200 or body.get('status') != 'success':
-        return jsonify({'status': 'failure', 'message': body.get('message', 'Activation failed')}), 400
-
-    license_token = body.get('license_token', '')
-    if not license_token or not activation_mod.save(license_token):
+    if not activation_mod.save(token):
         return jsonify({'status': 'failure', 'message': 'Could not save activation token'}), 500
 
     return jsonify({'status': 'success', 'message': 'AI assistant activated'})
