@@ -1570,7 +1570,7 @@
       "requires_data_loaded": true,
       "steps": [
         {
-          "target": "#deselect-btn",
+          "target": "#deselect-file-btn",
           "title": "Deselect File",
           "description": "Click here to unload the currently selected data file. The chart and analysis panels will clear. The file is not deleted — you can re-select it from the file list at any time.",
           "position": "top",

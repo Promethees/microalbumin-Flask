@@ -273,7 +273,7 @@ class UserGuide {
     /**
      * Get mode-specific workflow steps for data display section
      */
-    getModeSpecificSteps(mode) {
+    getModeSpecificSteps(mode, forcedCalMode = null) {
         if (mode === 'report') { return []; }
         const JSONDisplay = document.getElementById('json-display');
         const isJSONDisplayVisible = JSONDisplay && !JSONDisplay.classList.contains('hidden');
@@ -294,28 +294,25 @@ class UserGuide {
 
         if (mode === 'kinetics') {
             return buildSteps(
-                this.stepDefinitions.kinetics.part1,
+                this._resolveKineticsPointPart1(this.stepDefinitions.kinetics.part1),
                 this.stepDefinitions.kinetics.deriveConPart,
                 this.stepDefinitions.kinetics.secondPart,
                 this.stepDefinitions.kinetics.jsonTable,
                 this.stepDefinitions.kinetics.measurementMode
             );
         } else if (mode === 'point') {
-            // Reuse secondPart and others from kinetics where they are identical in content
             return buildSteps(
-                this.stepDefinitions.point.part1,
-                this.stepDefinitions.kinetics.deriveConPart, // Same content
-                this.stepDefinitions.kinetics.secondPart, // Same content
-                this.stepDefinitions.kinetics.jsonTable, // Same content
-                this.stepDefinitions.kinetics.measurementMode // Same content
+                this._resolveKineticsPointPart1(this.stepDefinitions.point.part1),
+                this.stepDefinitions.kinetics.deriveConPart,
+                this.stepDefinitions.kinetics.secondPart,
+                this.stepDefinitions.kinetics.jsonTable,
+                this.stepDefinitions.kinetics.measurementMode
             );
         } else if (mode === 'calibrate') {
             const calModeDiv = document.getElementById('cal-mode-select');
-            const calMode = (calModeDiv && calModeDiv.getAttribute('data-value')) || 'kinetics';
+            const calMode = forcedCalMode || (calModeDiv && calModeDiv.getAttribute('data-value')) || 'kinetics';
 
-            // Common calibrate steps + specific
-            // Update common step description for point mode if needed or just use generic
-            let commonSteps = this.stepDefinitions.calibrate.common.map(step => ({ ...step })); // clone
+            let commonSteps = this.stepDefinitions.calibrate.common.map(step => ({ ...step }));
             if (calMode === 'point') {
                 commonSteps[0].description = 'After selecting a file, the Data Display section will appear here. In calibration mode (point), you can create standard curves.';
             }
@@ -327,6 +324,29 @@ class UserGuide {
             }
         }
         return [];
+    }
+
+    /**
+     * Resolve plot-button and full-display step targets at guide-start time.
+     * The generated IDs depend on split-source mode and source count, so they
+     * cannot be hardcoded in the constructor's step definitions.
+     */
+    _resolveKineticsPointPart1(part1Steps) {
+        const isSplit = !!document.getElementById('split-source')?.checked;
+        return part1Steps.map(step => {
+            if (step.target === '#plot-button-source-0') {
+                // split: source-0-button; multi-source non-split: plot-button-source-0; single-source: plot-button
+                const id = isSplit ? 'source-0-button'
+                    : (document.getElementById('plot-button-source-0') ? 'plot-button-source-0' : 'plot-button');
+                return { ...step, target: '#' + id };
+            }
+            if (step.target === '#full-display-source-0') {
+                // full-display checkbox only exists in split-source mode
+                if (!isSplit) return null;
+                return step;
+            }
+            return step;
+        }).filter(Boolean);
     }
 
     /**
@@ -746,8 +766,8 @@ class UserGuide {
             'create_calibration_curve_workflow': () => this.getModeSpecificSteps('calibrate'),
             'kinetics':           () => this.getModeSpecificSteps('kinetics'),
             'point':              () => this.getModeSpecificSteps('point'),
-            'calibrate_kinetics': () => this.getModeSpecificSteps('calibrate'),
-            'calibrate_point':    () => this.getModeSpecificSteps('calibrate'),
+            'calibrate_kinetics': () => this.getModeSpecificSteps('calibrate', 'kinetics'),
+            'calibrate_point':    () => this.getModeSpecificSteps('calibrate', 'point'),
             'report':             () => { this.defineSteps(); return this.steps; },
             'general':            () => { this.defineSteps(); return this.steps; },
         };
