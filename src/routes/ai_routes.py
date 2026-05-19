@@ -15,7 +15,7 @@ if os.path.exists(_env_path):
             _line = _line.strip()
             if _line and not _line.startswith('#') and '=' in _line:
                 _k, _, _v = _line.partition('=')
-                os.environ.setdefault(_k.strip(), _v.strip())
+                os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 _DEV_GROQ_KEY = os.environ.get('GROQ_API_KEY', '')
 _AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
