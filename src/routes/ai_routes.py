@@ -1,31 +1,47 @@
 import json
-import threading
+import os
 from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
 import ai_assistant
+import activation as activation_mod
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+
+# Load .env for dev-mode override (GROQ_API_KEY in .env bypasses activation — dev only)
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')
+if os.path.exists(_env_path):
+    with open(_env_path, encoding='utf-8') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _, _v = _line.partition('=')
+                os.environ.setdefault(_k.strip(), _v.strip())
+
+_DEV_GROQ_KEY = os.environ.get('GROQ_API_KEY', '')
+_AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
+
+
+def _get_api_mode():
+    """Return ('proxy', license_token), ('dev', api_key), or (None, None)."""
+    token = activation_mod.get_license_token()
+    if token:
+        return 'proxy', token
+    if _DEV_GROQ_KEY:
+        return 'dev', _DEV_GROQ_KEY
+    return None, None
 
 
 @ai_bp.route('/status', methods=['GET'])
 def ai_status():
     settings = ai_settings.load()
-    ollama_info = ai_assistant.check_ollama(settings['ollama_url'])
-    model_available = settings['model'] in ollama_info.get('models', [])
-    if model_available:
-        threading.Thread(
-            target=ai_assistant.prewarm_model,
-            args=(settings['ollama_url'], settings['model']),
-            daemon=True,
-        ).start()
+    mode, _ = _get_api_mode()
     return jsonify({
         'status': 'success',
-        'ollama_running': ollama_info['running'],
-        'model_available': model_available,
-        'available_models': ollama_info.get('models', []),
+        'api_ready': mode is not None,
+        'activated': mode == 'proxy',
+        'dev_mode': mode == 'dev',
         'settings': settings,
         'supported_languages': ai_settings.SUPPORTED_LANGUAGES,
-        'available_models_catalog': ai_settings.AVAILABLE_MODELS,
     })
 
 
@@ -35,7 +51,6 @@ def get_settings():
         'status': 'success',
         'settings': ai_settings.load(),
         'supported_languages': ai_settings.SUPPORTED_LANGUAGES,
-        'available_models_catalog': ai_settings.AVAILABLE_MODELS,
     })
 
 
@@ -43,13 +58,41 @@ def get_settings():
 def save_settings():
     data = request.get_json(silent=True) or {}
     current = ai_settings.load()
-    allowed = {'enabled', 'preferred_languages', 'preferred_language',
-               'model', 'ollama_url', 'first_run_shown'}
+    allowed = {'enabled', 'preferred_languages', 'preferred_language', 'first_run_shown'}
     updates = {k: v for k, v in data.items() if k in allowed}
     merged = {**current, **updates}
     if ai_settings.save(merged):
         return jsonify({'status': 'success', 'settings': ai_settings.load()})
     return jsonify({'status': 'failure', 'message': 'Could not save settings'}), 500
+
+
+@ai_bp.route('/activate', methods=['POST'])
+def activate():
+    """Exchange an Easy OKAPI download token for a local license token."""
+    data = request.get_json(silent=True) or {}
+    token = (data.get('token') or '').strip()
+    if not token:
+        return jsonify({'status': 'failure', 'message': 'Token is required'}), 400
+
+    try:
+        import requests as http_req
+        resp = http_req.post(
+            f"{activation_mod.AI_SERVICE_URL}/api/activate",
+            json={'token': token},
+            timeout=15,
+        )
+        body = resp.json()
+    except Exception as e:
+        return jsonify({'status': 'failure', 'message': f'Could not reach AI service: {e}'}), 502
+
+    if resp.status_code != 200 or body.get('status') != 'success':
+        return jsonify({'status': 'failure', 'message': body.get('message', 'Activation failed')}), 400
+
+    license_token = body.get('license_token', '')
+    if not license_token or not activation_mod.save(license_token):
+        return jsonify({'status': 'failure', 'message': 'Could not save activation token'}), 500
+
+    return jsonify({'status': 'success', 'message': 'AI assistant activated'})
 
 
 @ai_bp.route('/chat', methods=['POST'])
@@ -63,16 +106,27 @@ def ai_chat():
     if not settings.get('enabled', True):
         return jsonify({'status': 'failure', 'message': 'AI assistant is disabled'}), 403
 
+    mode, credential = _get_api_mode()
+    if not mode:
+        return jsonify({'status': 'failure', 'message': 'AI assistant is not activated'}), 503
+
     langs = settings.get('preferred_languages', ['en'])
     language = data.get('language') or (langs[0] if langs else 'en')
-    model = data.get('model') or settings.get('model', 'qwen2.5:7b')
-    ollama_url = settings.get('ollama_url', 'http://localhost:11434')
     ui_context = data.get('ui_context') or {}
 
-    def generate():
-        for event in ai_assistant.chat_stream(messages, language, ollama_url, model, ui_context):
-            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-        yield "data: [DONE]\n\n"
+    if mode == 'proxy':
+        def generate():
+            for event in ai_assistant.proxy_chat_stream(
+                messages, language, credential,
+                activation_mod.AI_SERVICE_URL, _AI_MODEL, ui_context,
+            ):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+    else:
+        def generate():
+            for event in ai_assistant.chat_stream(messages, language, credential, _AI_MODEL, ui_context):
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
 
     return Response(
         stream_with_context(generate()),
@@ -84,43 +138,9 @@ def ai_chat():
 @ai_bp.route('/guides', methods=['GET'])
 def get_guides():
     lang = request.args.get('lang', 'en')
+    if lang not in ai_settings.SUPPORTED_LANGUAGES:
+        lang = 'en'
     return jsonify({
         'status': 'success',
         'examples': ai_assistant.get_guide_examples(lang),
-    })
-
-
-@ai_bp.route('/pull_model', methods=['POST'])
-def pull_model():
-    data = request.get_json(silent=True) or {}
-    settings = ai_settings.load()
-    model = data.get('model') or settings.get('model', 'qwen2.5:7b')
-    ollama_url = settings.get('ollama_url', 'http://localhost:11434')
-
-    pull_state = ai_assistant.get_pull_state()
-    if pull_state['active']:
-        return jsonify({'status': 'failure', 'message': 'A download is already in progress'}), 409
-
-    ollama_info = ai_assistant.check_ollama(ollama_url)
-    if not ollama_info['running']:
-        return jsonify({'status': 'failure', 'message': 'Ollama is not running'}), 503
-
-    ai_assistant.start_model_pull(ollama_url, model)
-    return jsonify({'status': 'success', 'message': f'Download started for {model}'})
-
-
-@ai_bp.route('/pull_status', methods=['GET'])
-def pull_status():
-    pull_state = ai_assistant.get_pull_state()
-    pct = 0
-    if pull_state['total'] and pull_state['total'] > 0:
-        pct = int(pull_state['completed'] / pull_state['total'] * 100)
-    return jsonify({
-        'status': 'success',
-        'active': pull_state['active'],
-        'model': pull_state['model'],
-        'pull_status': pull_state['status'],
-        'percent': pct,
-        'done': pull_state['done'],
-        'error': pull_state['error'],
     })
