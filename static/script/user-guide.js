@@ -362,7 +362,6 @@ class UserGuide {
         this.isActive = true;
 
         this.overlay.classList.add('active');
-        console.log(this.steps);
         this.showStep(this.currentStep);
     }
 
@@ -669,8 +668,19 @@ class UserGuide {
         const rect = element.getBoundingClientRect();
         const padding = 10;
 
-        // Ensure rect is valid (non-zero if visible)
-        if (rect.width === 0 && rect.height === 0) return;
+        // Element is present in the DOM but not yet visible (e.g. inside a still-collapsed
+        // section or a display:none parent that expandSection hasn't opened yet).
+        // Keep the spotlight hidden but reposition the tooltip to the viewport centre so
+        // it doesn't stay frozen at its previous step's location.
+        if (rect.width === 0 && rect.height === 0) {
+            const cx = window.innerWidth / 2;
+            const cy = window.scrollY + window.innerHeight / 2;
+            this.positionTooltip(
+                { top: cy, bottom: cy, left: cx, right: cx, width: 0, height: 0 },
+                step.position || 'bottom'
+            );
+            return;
+        }
 
         this.spotlight.style.top = `${rect.top - padding + window.scrollY}px`;
         this.spotlight.style.left = `${rect.left - padding}px`;
