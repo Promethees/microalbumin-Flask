@@ -60,7 +60,13 @@ def activate():
 @ai_bp.route('/chat', methods=['POST'])
 def ai_chat():
     data = request.get_json(silent=True) or {}
-    messages = data.get('messages', [])
+    raw_messages = data.get('messages', [])
+    messages = [
+        m for m in raw_messages
+        if isinstance(m, dict)
+        and m.get('role') in ('user', 'assistant')
+        and isinstance(m.get('content', ''), str)
+    ]
     if not messages:
         return jsonify({'status': 'failure', 'message': 'No messages provided'}), 400
 
