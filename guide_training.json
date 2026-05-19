@@ -34,34 +34,6 @@
           "skipInteraction": true
         },
         {
-          "target": "#log-hid-data",
-          "title": "Colorimeter Control Panel",
-          "description": "This panel controls data recording from your PyBadge colorimeter. In this tutorial we will use sample data instead of a live device.",
-          "position": "right",
-          "skipInteraction": true
-        },
-        {
-          "target": "#run-script-btn",
-          "title": "Start Recording",
-          "description": "This button starts live absorbance recording from the colorimeter. For now, just note its location — we will use a sample file next.",
-          "position": "bottom",
-          "skipInteraction": true
-        },
-        {
-          "target": "#timeout-control",
-          "title": "Measurement Duration",
-          "description": "Set how long each recording lasts. 'Infinite' records until you click Stop.",
-          "position": "bottom",
-          "skipInteraction": true
-        },
-        {
-          "target": "#interval-control",
-          "title": "Sampling Interval",
-          "description": "Set the time between each reading. 0 fetches data as fast as available.",
-          "position": "bottom",
-          "skipInteraction": true
-        },
-        {
           "target": "#file-selection",
           "title": "Load Sample Data",
           "description": "Select a kinetics CSV file to explore the app. Sample files are available in the sample_data folder — pick any to continue.",
@@ -88,13 +60,6 @@
           "description": "Enter the known analyte concentration as the reference point, set a file name, and click 'Export Data' to create a calibration CSV.",
           "position": "top",
           "skipInteraction": false
-        },
-        {
-          "target": "#directory",
-          "title": "Browse to Saving Location",
-          "description": "Navigate to the directory where the calibration CSV was just saved so you can select it in the next step.",
-          "position": "right",
-          "skipInteraction": true
         },
         {
           "target": "#file-selection",
@@ -1039,41 +1004,6 @@
           "description": "Select Kinetics mode to begin a time-series colorimeter measurement.",
           "position": "right",
           "skipInteraction": false
-        },
-        {
-          "target": "#log-hid-data",
-          "title": "Reading Colorimeter Data Console",
-          "description": "This console controls the colorimeter device. Make sure your PyBadge is connected via USB before starting.",
-          "position": "right",
-          "skipInteraction": true
-        },
-        {
-          "target": "#timeout-control",
-          "title": "Set Measurement Timeout",
-          "description": "Configure how long the device collects data. Enable 'Infinite' to run until you manually stop it.",
-          "position": "right",
-          "skipInteraction": true
-        },
-        {
-          "target": "#interval-control",
-          "title": "Set Sampling Interval",
-          "description": "Set how frequently the colorimeter takes a reading during the measurement.",
-          "position": "right",
-          "skipInteraction": true
-        },
-        {
-          "target": "#run-script-btn",
-          "title": "Start Reading",
-          "description": "Click 'Start reading' to begin collecting colorimeter data from the device. Readings will appear in the log below.",
-          "position": "top",
-          "skipInteraction": true
-        },
-        {
-          "target": "#log-display",
-          "title": "Live Data Log",
-          "description": "Incoming sensor readings appear here in real time. Each row is a timestamped measurement from the device.",
-          "position": "top",
-          "skipInteraction": true
         },
         {
           "target": "#file-selection",

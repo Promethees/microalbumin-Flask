@@ -3,15 +3,10 @@
     "id": "app_introduction",
     "steps": [
       "Easy OKAPI có 4 chế độ: Kinetics (chuỗi thời gian), Point (điểm thời gian đơn), Calibrate (tạo đường chuẩn) và Report (xuất dữ liệu). Chúng ta bắt đầu ở chế độ Kinetics.",
-      "Bảng điều khiển này điều khiển việc ghi dữ liệu từ máy so màu PyBadge. Trong hướng dẫn này, chúng ta sẽ dùng dữ liệu mẫu thay vì thiết bị thực.",
-      "Nút này bắt đầu ghi lại độ hấp thụ trực tiếp từ máy so màu. Hiện tại, chỉ cần ghi nhớ vị trí của nó — chúng ta sẽ dùng tệp mẫu tiếp theo.",
-      "Đặt thời gian mỗi lần ghi. 'Infinite' sẽ ghi cho đến khi bạn nhấp Dừng.",
-      "Đặt khoảng thời gian giữa mỗi lần đọc. 0 lấy dữ liệu nhanh nhất có thể.",
       "Chọn tệp CSV kinetics để khám phá ứng dụng. Các tệp mẫu có trong thư mục sample_data — chọn bất kỳ tệp nào để tiếp tục.",
       "Dữ liệu đo của bạn được hiển thị ở đây dưới dạng biểu đồ chuỗi thời gian cho thấy độ hấp thụ theo thời gian.",
       "Chọn nguồn đo (kênh) để xuất cho hiệu chuẩn.",
       "Nhập nồng độ chất phân tích đã biết làm điểm tham chiếu, đặt tên tệp và nhấp 'Export Data' để tạo CSV hiệu chuẩn.",
-      "Điều hướng đến thư mục nơi CSV hiệu chuẩn vừa được lưu để bạn có thể chọn nó ở bước tiếp theo.",
       "Tìm CSV hiệu chuẩn bạn đã xuất. Nhấp 'Edit' để kiểm tra nội dung, rồi chọn nó.",
       "Chuyển sang chế độ Calibrate để thiết lập hồi quy và tạo hệ số đường chuẩn.",
       "Chọn đại lượng kinetics nào (maxRate, Slope, Sat hoặc Time to Sat) để dùng cho đường chuẩn.",
@@ -648,11 +643,6 @@
     "id": "measurement_guide",
     "steps": [
       "Chọn chế độ Kinetics để bắt đầu đo máy so màu theo chuỗi thời gian.",
-      "Bảng điều khiển này điều khiển thiết bị máy so màu. Đảm bảo PyBadge của bạn được kết nối qua USB trước khi bắt đầu.",
-      "Cấu hình thời gian thiết bị thu thập dữ liệu. Bật 'Vô hạn' để chạy cho đến khi dừng thủ công.",
-      "Đặt tần suất máy so màu lấy số liệu trong quá trình đo.",
-      "Nhấp 'Start reading' để bắt đầu thu thập dữ liệu từ thiết bị. Kết quả đọc sẽ xuất hiện trong nhật ký bên dưới.",
-      "Kết quả đọc từ cảm biến xuất hiện ở đây theo thời gian thực. Mỗi hàng là một phép đo có dấu thời gian từ thiết bị.",
       "Sau khi dừng đo, tệp dữ liệu tự động được lưu. Chọn nó ở đây để xem biểu đồ và chạy phân tích."
     ],
     "queries": [

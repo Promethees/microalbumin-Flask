@@ -3,15 +3,10 @@
     "id": "app_introduction",
     "steps": [
       "Easy OKAPI a 4 modes : Kinetics (série temporelle), Point (point temporel unique), Calibrate (création de courbe étalon) et Report (export de données). Nous démarrons en mode Kinetics.",
-      "Ce panneau contrôle l'enregistrement des données depuis le colorimètre PyBadge. Dans ce tutoriel, nous utiliserons des données d'exemple plutôt qu'un appareil réel.",
-      "Ce bouton démarre l'enregistrement en direct de l'absorbance depuis le colorimètre. Pour l'instant, notez simplement son emplacement — nous utiliserons un fichier d'exemple ensuite.",
-      "Définissez la durée de chaque enregistrement. 'Infinite' enregistre jusqu'à ce que vous cliquiez sur Arrêt.",
-      "Définissez l'intervalle entre chaque lecture. 0 récupère les données aussi vite que possible.",
       "Sélectionnez un fichier CSV cinétique pour explorer l'application. Des fichiers d'exemple sont disponibles dans le dossier sample_data — choisissez-en un pour continuer.",
       "Vos données de mesure sont visualisées ici sous forme d'un graphique temporel montrant l'absorbance en fonction du temps.",
       "Choisissez la source de mesure (canal) à exporter pour la calibration.",
       "Entrez la concentration connue de l'analyte comme point de référence, définissez un nom de fichier et cliquez sur 'Export Data' pour créer un CSV de calibration.",
-      "Naviguez jusqu'au répertoire où le CSV de calibration vient d'être sauvegardé pour le sélectionner à l'étape suivante.",
       "Trouvez le CSV de calibration que vous avez exporté. Cliquez sur 'Edit' pour vérifier son contenu, puis sélectionnez-le.",
       "Passez en mode Calibrate pour configurer la régression et générer les coefficients de la courbe étalon.",
       "Choisissez quelle grandeur cinétique (maxRate, Slope, Sat ou Time to Sat) utiliser pour la courbe étalon.",
@@ -573,11 +568,6 @@
     "id": "measurement_guide",
     "steps": [
       "Sélectionnez le mode Kinetics pour démarrer une mesure colorimétrique en série temporelle.",
-      "Cette console contrôle le colorimètre. Assurez-vous que votre PyBadge est connecté via USB avant de démarrer.",
-      "Configurez la durée de collecte. Activez 'Infini' pour continuer jusqu'à l'arrêt manuel.",
-      "Définissez la fréquence à laquelle le colorimètre prend une lecture pendant la mesure.",
-      "Cliquez sur 'Start reading' pour commencer la collecte depuis le colorimètre. Les lectures apparaîtront dans le log ci-dessous.",
-      "Les lectures du capteur apparaissent ici en temps réel. Chaque ligne est une mesure horodatée de l'appareil.",
       "Après l'arrêt, votre fichier est automatiquement sauvegardé. Sélectionnez-le ici pour voir les graphiques et lancer l'analyse."
     ],
     "queries": [
