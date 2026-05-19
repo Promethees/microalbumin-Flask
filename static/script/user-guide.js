@@ -759,23 +759,18 @@ class UserGuide {
         // interaction is required to signal the preferred action.
         nextBtn.style.display = notLast ? 'inline-block' : 'none';
         nextBtn.style.opacity = step.skipInteraction ? '1' : '0.4';
-        nextBtn.disabled = !step.skipInteraction;
         finishBtn.style.display = !notLast ? 'inline-block' : 'none';
         finishBtn.style.opacity = step.skipInteraction ? '1' : '0.4';
-        finishBtn.disabled = !step.skipInteraction;
     }
 
     /**
      * Go to next step (manual navigation)
      */
     nextStep() {
-        const currentStep = this.steps[this.currentStep];
-        if (currentStep && currentStep.skipInteraction) {
-            if (this.currentStep < this.steps.length - 1) {
-                this.removeInteractionHandler();
-                this.currentStep++;
-                this.showStep(this.currentStep);
-            }
+        if (this.currentStep < this.steps.length - 1) {
+            this.removeInteractionHandler();
+            this.currentStep++;
+            this.showStep(this.currentStep);
         }
     }
 
