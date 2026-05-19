@@ -71,10 +71,9 @@ echo Vendor libraries downloaded successfully.
 
 :: ── AI Assistant Setup ────────────────────────────────────────────────────────
 :: If ai_settings.json already exists (written by the NSIS installer), skip.
-:: Otherwise write a default disabled config; settings can be changed inside the app.
 if not exist "code\ai_settings.json" (
-    code\venv\Scripts\python.exe -c "import json; open('code/ai_settings.json','w').write(json.dumps({'enabled':False,'preferred_languages':['en'],'model':'qwen2.5:7b','ollama_url':'http://localhost:11434','first_run_shown':False},indent=2))"
-    echo    [OK] Saved default AI settings: code\ai_settings.json
+    code\venv\Scripts\python.exe -c "import json; open('code/ai_settings.json','w').write(json.dumps({'enabled':True,'preferred_languages':['en'],'first_run_shown':False},indent=2))"
+    echo    [OK] Saved AI settings: code\ai_settings.json
 )
 
 echo Virtual environment setup complete.
