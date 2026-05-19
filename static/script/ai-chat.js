@@ -330,11 +330,10 @@
                 AI.status = data;
                 AI.activeLang = localStorage.getItem('okapi_ai_lang') || 'en';
                 _updateLangBtn();
+                _loadGuides();
                 _showWelcomeIfNeeded();
             })
             .catch(() => {});
-
-        _loadGuides();
     }
 
     function _loadGuides() {
