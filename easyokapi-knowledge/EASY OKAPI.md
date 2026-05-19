@@ -48,10 +48,10 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 |---|---|---|
 | Core | `main.py` | App initialization, SocketIO setup, Base routes (`/`, `/ping`) |
 | Auth | `src/routes/auth_routes.py` | Google Drive OAuth2 flow and sync operations |
-| Account | `src/routes/account_routes.py` | User registration, login, password reset, account deletion, download |
+| Account | `src/routes/account_routes.py` | User registration, login, password reset, account deletion, download, **AI activation** |
 | File Ops | `src/routes/file_routes.py` | CSV/JSON CRUD operations (Edit, Delete, Copy, Upload, Merge) |
 | Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export |
-| AI | `src/routes/ai_routes.py` | AI assistant: chat, settings, guides (`/ai/*`) |
+| AI | `src/routes/ai_routes.py` | AI assistant: chat, settings, guides, **desktop proxy** (`/ai/*`) |
 | Extensions | `src/extensions.py` | Centralized SocketIO instance to avoid circular imports |
 
 ### 2.2 Backend Modules (`src/`)
@@ -71,6 +71,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `range.py`                                               | Returns display range input configuration                                                 |
 | `ai_assistant.py`                                        | Groq API client, guide training, MCP tools, chat_stream generator (multilingual)          |
 | `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
+| `download_service.py`                                    | JWT helpers: generate/validate download tokens (30 min) and activation tokens (permanent) |
 
 ### 2.3 Frontend (`static/script/` — 12 JS files)
 
@@ -130,6 +131,7 @@ The app includes a persistent account system backed by a **PostgreSQL** database
 | Reset password | GET | `/account/reset-password/<token>` | Renders reset form; token expires in 1 h |
 | Reset password | POST | `/api/account/reset-password` | Updates password hash |
 | Get token | POST | `/api/account/token` | Refreshes download token for logged-in user |
+| **Activate AI** | POST | `/api/activate` | Exchanges a 30-min download token for a permanent activation token |
 | Logout | POST | `/api/account/logout` | Clears session keys |
 | Delete account | POST | `/api/account/delete` | Requires password; wipes Firebase data, Redis cache, DB row |
 | Download | GET | `/api/download` | Validates JWT token; proxies GitHub release tarball to user |
@@ -264,7 +266,107 @@ microalbumin-Flask/
 
 ---
 
-## 5. Key Differences from `main` Branch (Summary)
+---
+
+## 5. AI Proxy Architecture (Desktop → Heroku → Groq)
+
+### 5.1 Purpose
+
+The `GROQ_API_KEY` lives **only** on the Heroku server. Desktop app packages never contain it. A verified Easy OKAPI account holder exchanges a short-lived download token for a permanent activation token stored locally. Every AI request from the desktop is routed through Heroku, which validates the token against the database before calling Groq.
+
+### 5.2 Token Lifecycle
+
+```
+User registers & verifies email
+          │
+          ▼
+    POST /api/account/login
+    ◄── { download_token }      ← JWT, 30-min TTL
+    payload: { sub, email, purpose:"app_download", iat, exp }
+          │
+          │  (installer or in-app form)
+          ▼
+    POST /api/activate  { token: <download_token> }
+          │  server validates expiry + DB lookup
+    ◄── { status:"success", license_token }
+    payload: same as above but exp STRIPPED — permanent
+          │
+          ▼
+    Saved to  activation.json  on the user's local machine
+```
+
+**Key rules:**
+- Download token: 30-minute expiry, validated with `validate_download_token()` (checks `exp`).
+- Activation token: no expiry, re-signed with the same `SECRET_KEY`, validated with `validate_activation_token()` (`options={'verify_exp': False}`).
+- Both tokens carry `purpose: "app_download"` — a wrong-purpose token is rejected even if the signature is valid.
+- The activation token is **not stored on the server**; the server only keeps the DB row.
+
+### 5.3 Chat Proxy Flow
+
+```
+Desktop app
+  │
+  │  POST /ai/proxy/chat
+  │  body: { license_token, messages, language, model, ui_context }
+  ▼
+Heroku  (src/routes/ai_routes.py  →  proxy_chat())
+  │
+  ├─ 1. validate_activation_token(license_token)
+  │      → checks JWT signature + purpose field
+  │      → raises InvalidTokenError → 401
+  │
+  ├─ 2. User.query.get(payload['sub'])
+  │      → account missing or is_verified=False → 403
+  │
+  ├─ 3. Config.GROQ_API_KEY present?
+  │      → missing → 503
+  │
+  └─ 4. ai_assistant.chat_stream(messages, language, GROQ_API_KEY, model, ui_context)
+         → streams SSE events back to desktop
+         → each event: data: {"type":"chunk","content":"..."}\n\n
+         → terminated with: data: [DONE]\n\n
+```
+
+The desktop's `proxy_chat_stream()` (`src/ai_assistant.py`) makes the HTTP POST with `stream=True`, iterates `iter_lines()`, and re-yields parsed event dicts. The SSE format is identical to the direct Groq path so the frontend renders both the same way.
+
+### 5.4 Files Involved
+
+| File | Branch | Role |
+|---|---|---|
+| `src/download_service.py` | online | `generate_download_token`, `validate_download_token`, `issue_activation_token`, `validate_activation_token` |
+| `src/routes/account_routes.py` | online | `POST /api/activate` — exchanges download token for activation token |
+| `src/routes/ai_routes.py` | online | `POST /ai/proxy/chat` — validates token + streams Groq response |
+| `src/config.py` | online | `Config.GROQ_API_KEY`, `Config.AI_MODEL` |
+| `src/activation.py` | main | Reads/writes `activation.json`; exposes `get_license_token()`, `AI_SERVICE_URL` |
+| `src/routes/ai_routes.py` | main | `POST /ai/activate` (calls online `/api/activate`); `/ai/chat` dispatches proxy vs dev mode |
+| `src/ai_assistant.py` | main | `proxy_chat_stream()` — HTTP client that calls `/ai/proxy/chat` and re-yields SSE |
+| `activation.json` | main (runtime) | `{ "license_token": "..." }` — written on first activation, gitignored |
+
+### 5.5 Access Mode Decision (`main` branch)
+
+`_get_api_mode()` in `src/routes/ai_routes.py`:
+
+```
+activation.json  →  license_token present?
+    YES  →  mode = "proxy"   (credential = license_token)
+    NO   →  GROQ_API_KEY in .env?
+                YES  →  mode = "dev"    (credential = api_key, dev machines only)
+                NO   →  mode = None     (503 — AI not activated)
+```
+
+### 5.6 Security Properties
+
+| Property | Mechanism |
+|---|---|
+| Key never shipped with app | `GROQ_API_KEY` is a Heroku config var; absent from all git branches |
+| Signature tamper-proof | HS256 signed with `SECRET_KEY`; forged tokens fail `validate_activation_token` |
+| Revocable per-user | DB lookup on every proxy request; deleting or unverifying the account blocks the next call |
+| Token reuse across reinstalls | Activation token has no expiry; user pastes the same token after reinstalling |
+| Dev override | `.env` `GROQ_API_KEY` bypasses activation — only works on developer machines |
+
+---
+
+## 6. Key Differences from `main` Branch (Summary)
 
 | Aspect | `online` branch | `main` branch (expected) |
 |---|---|---|
@@ -279,3 +381,6 @@ microalbumin-Flask/
 | `static_folder` | `'static/dist'` | `'static'` |
 | Shutdown endpoint | Not applicable | Present |
 | `PRODUCTION_MODE` | `True` | `False` |
+| AI backend | Direct Groq call (`chat_stream`) | Proxy to Heroku (`proxy_chat_stream`), falls back to direct if `GROQ_API_KEY` in `.env` |
+| AI key location | `GROQ_API_KEY` Heroku config var | Never stored locally; accessed via activation token |
+| AI activation | N/A — always direct | `POST /ai/activate` → exchanges download token → writes `activation.json` |
