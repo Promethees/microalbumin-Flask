@@ -178,6 +178,35 @@
 
     const _picker = { visible: false, idx: 0, list: [] };
 
+    // ── Rate limiter ──────────────────────────────────────────────────────────
+    // Sliding-window: max 15 LLM requests per 60 s. Slash-command guide actions
+    // (which never hit /ai/chat) are exempt — only actual LLM sends are counted.
+
+    const _RATE_LIMIT_MAX = 15;
+    const _RATE_LIMIT_WINDOW_MS = 60 * 1000;
+    const _rateLimitTimestamps = [];
+
+    const _RATE_LIMITED_MSG = {
+        en: (s) => `⏳ Sending too fast — please wait ${s}s before the next message.`,
+        vi: (s) => `⏳ Gửi quá nhanh — vui lòng chờ ${s}s trước khi gửi tiếp.`,
+        zh: (s) => `⏳ 发送过快 — 请等待 ${s} 秒后再发送。`,
+        fr: (s) => `⏳ Trop rapide — attendez ${s}s avant le prochain message.`,
+        ja: (s) => `⏳ 送信が速すぎます — ${s} 秒待ってから送信してください。`,
+        ru: (s) => `⏳ Слишком быстро — подождите ${s} сек. перед следующим сообщением.`,
+    };
+
+    function _checkRateLimit() {
+        const now = Date.now();
+        while (_rateLimitTimestamps.length && now - _rateLimitTimestamps[0] > _RATE_LIMIT_WINDOW_MS) {
+            _rateLimitTimestamps.shift();
+        }
+        if (_rateLimitTimestamps.length >= _RATE_LIMIT_MAX) {
+            return Math.ceil((_RATE_LIMIT_WINDOW_MS - (now - _rateLimitTimestamps[0])) / 1000);
+        }
+        _rateLimitTimestamps.push(now);
+        return 0;
+    }
+
     // ── Tab title notification ────────────────────────────────────────────────
 
     let _origTitle = document.title;
@@ -873,6 +902,14 @@
                 input.value = '';
                 _addMsg('user', text);
                 _runRedoAction();
+                return;
+            }
+
+            const _waitSecs = _checkRateLimit();
+            if (_waitSecs > 0) {
+                const lang = AI.activeLang || 'en';
+                const fn = _RATE_LIMITED_MSG[lang] || _RATE_LIMITED_MSG.en;
+                _addSystemMsg(fn(_waitSecs));
                 return;
             }
 
