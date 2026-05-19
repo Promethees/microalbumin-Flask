@@ -590,14 +590,11 @@ class UserGuide {
      * Handle interaction events
      */
     handleInteraction(e) {
-        // Debounce or Prevent double calling is handled by removing handler immediately
-        if (!this.currentInteractionHandler && e.type !== 'click') return; // approximate check
-
         const targetElement = this.currentTargetElement || e.currentTarget;
 
+        // removeInteractionHandler detaches the listener, preventing re-entry
         this.removeInteractionHandler();
 
-        // If targetElement is null (unexpected), return
         if (!targetElement) return;
 
         const { isCheckbox, isSelect, isButton, isClickable, isTableRow, isContainer } = this.determineElementType(targetElement);
