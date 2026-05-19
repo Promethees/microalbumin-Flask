@@ -300,7 +300,11 @@ _SYSTEM_PROMPTS = {
         "Examples:\n"
         "• 'how to go to calibrate mode' → call trigger_custom_steps with target #meas-mode-section\n"
         "• 'how do I export?' → call trigger_custom_steps with target #export-analysis\n"
-        "• 'how do I upload a file?' → call trigger_custom_steps with target #file-selection\n"
+        "• 'how do I upload a file?' → call trigger_custom_steps with target #upload-file-btn\n"
+        "• 'how do I connect Google Drive?' → call trigger_custom_steps with targets #drive-section, #drive-connect-btn\n"
+        "• 'how do I sync to Drive?' → call trigger_custom_steps with targets #drive-section, #drive-sync-section, #auto-sync-checkbox\n"
+        "• 'how do I disable popups?' → call trigger_custom_steps with target #no-swal-checkbox\n"
+        "• 'how do I set the quantity?' → call trigger_custom_steps with target #regressed-quantity\n"
         "Only call trigger_guide when the user explicitly asks for a COMPLETE end-to-end workflow tour.\n"
         "Check [App state]: if mode already matches what the user wants, skip the mode-switch step.\n"
         "After calling a guide tool, confirm in one sentence that the guide launched.\n\n"
@@ -496,7 +500,7 @@ TOOLS = [
                         "enum": [
                             "measurement_modes", "kinetics_analysis", "standard_curve",
                             "calibration", "csv_format", "regression",
-                            "reports", "file_operations",
+                            "reports", "file_operations", "google_drive", "upload_files",
                         ],
                     }
                 },
@@ -550,9 +554,14 @@ TOOLS = [
                 "Valid IDs: "
                 "#meas-mode-section #file-selection #cal-json-sel-section #merge-file-btn "
                 "#data-display-section #chart-container #range-display #window-size-section "
-                "#split-source-section #export-analysis #report-section #cal-mode-select "
-                "#select-quantity-section #select-regress-algo #export-coef #threshold-value "
-                "#select-time-point #report-console-section #report-items-container"
+                "#split-source-section #normalize-mode-section #open-all-analysis "
+                "#export-analysis #report-section #cal-mode-select "
+                "#select-quantity-section #regressed-quantity #select-regress-algo "
+                "#export-coef #threshold-value #select-time-point "
+                "#report-console-section #report-items-container "
+                "#drive-section #drive-connect-btn #drive-sync-section #auto-sync-checkbox "
+                "#upload-file-btn #upload-json-btn #no-swal-checkbox #filter-source "
+                "#deselect-file-btn #copy-file-btn #report-subject-name"
             ),
             "parameters": {
                 "type": "object",
@@ -646,6 +655,22 @@ _HELP_DOCS = {
         "• Merge CSV — combine multiple CSV files\n"
         "• Export — save calibration results to new CSV/JSON\n"
         "• Google Drive — sync files with your Drive account"
+    ),
+    "google_drive": (
+        "Google Drive Integration (sidebar Drive section):\n"
+        "• Connect — click 'Connect to Google Drive' to sign in and authorise access\n"
+        "• Select folder — pick an existing Drive folder or create a new one for syncing\n"
+        "• Push — upload local data files from your session to the selected Drive folder\n"
+        "• Pull — download files from the Drive folder into your local session\n"
+        "• Auto-sync — when enabled, new data files are automatically pushed to Drive after each measurement\n"
+        "Access via the Google Drive section in the left sidebar."
+    ),
+    "upload_files": (
+        "Uploading files:\n"
+        "• Upload CSV — click 'Upload CSV' in the File Selection section to import a measurement CSV from your device\n"
+        "• Upload JSON — click 'Upload JSON' in the Calibration section to import a standard-curve coefficient file\n"
+        "• Files are added to the respective lists and available for immediate selection\n"
+        "• Alternatively, use Google Drive sync to pull files from the cloud"
     ),
 }
 

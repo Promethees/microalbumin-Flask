@@ -1477,6 +1477,133 @@
           "skipInteraction": true
         }
       ]
+    },
+    {
+      "id": "google_drive_connect",
+      "queries": [
+        "google drive",
+        "connect drive",
+        "connect to drive",
+        "sync to drive",
+        "drive connection",
+        "cloud storage",
+        "save to drive",
+        "backup to drive",
+        "connect to google",
+        "google drive integration",
+        "how to connect drive",
+        "link google drive"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#drive-section",
+          "title": "Google Drive Integration",
+          "description": "The Google Drive section is here in the sidebar. You can connect your Google account to sync data files between Easy OKAPI and your Drive.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#drive-connect-btn",
+          "title": "Connect to Google Drive",
+          "description": "Click here to sign in with your Google account and authorise Easy OKAPI to access your Drive. Once connected, you can select a Drive folder and push or pull data files.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "google_drive_sync",
+      "queries": [
+        "drive push",
+        "drive pull",
+        "sync data to drive",
+        "push data to cloud",
+        "pull data from cloud",
+        "upload to drive",
+        "download from drive",
+        "auto sync",
+        "auto sync drive",
+        "push to drive",
+        "pull from drive",
+        "drive upload",
+        "drive download"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#drive-section",
+          "title": "Google Drive Sync",
+          "description": "After connecting your account and selecting a Drive folder, use the sync controls to push local data to the cloud or pull files from Drive into your session.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#drive-sync-section",
+          "title": "Push / Pull Controls",
+          "description": "The Push and Pull buttons appear here once a Drive folder is selected. Push uploads your local data files; Pull downloads files from Drive to your local session.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#auto-sync-checkbox",
+          "title": "Auto Sync",
+          "description": "Enable auto-sync to automatically push new data files to Google Drive each time a measurement completes.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "upload_file",
+      "queries": [
+        "upload file",
+        "upload csv",
+        "import file",
+        "import csv",
+        "add file",
+        "open file from device",
+        "load file from disk",
+        "add csv",
+        "bring in file",
+        "how to upload",
+        "upload my data",
+        "add my csv"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#upload-file-btn",
+          "title": "Upload CSV File",
+          "description": "Click here to upload a CSV data file from your device into the app session. The file will be added to the file list and immediately available for selection and analysis.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "upload_calibration_json",
+      "queries": [
+        "upload calibration",
+        "upload json",
+        "import calibration",
+        "import json",
+        "add calibration file",
+        "load json from disk",
+        "upload standard curve file",
+        "bring in calibration",
+        "add json file"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#upload-json-btn",
+          "title": "Upload Calibration JSON",
+          "description": "Click here to upload a calibration coefficient JSON file from your device. It will appear in the calibration JSON list and can be selected as a standard curve for concentration calculation.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
     }
   ]
 }
