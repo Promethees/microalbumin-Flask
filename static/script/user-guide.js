@@ -510,8 +510,13 @@ class UserGuide {
                     checkCount++;
                     if (checkCount >= maxChecks) {
                         clearInterval(checkInterval);
-                        console.error(`Target element still not found after waiting: ${step.target}`);
-                        // Optional: skip to next step or show error
+                        this.waitInterval = null;
+                        if (this.currentStep < this.steps.length - 1) {
+                            this.currentStep++;
+                            this.showStep(this.currentStep);
+                        } else {
+                            this.stop();
+                        }
                     }
                 }
             }, 100);
