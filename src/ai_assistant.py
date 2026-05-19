@@ -1369,7 +1369,7 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
             yield {'type': 'error', 'error': 'license_invalid'}
             return
         if resp.status_code == 503:
-            yield {'type': 'error', 'error': 'groq_not_installed'}
+            yield {'type': 'error', 'error': 'service_unavailable'}
             return
         resp.raise_for_status()
 
@@ -1390,8 +1390,8 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
                 pass
 
     except http_req.exceptions.ConnectionError:
-        yield {'type': 'error', 'error': 'Cannot connect to AI service. Check your internet connection.'}
+        yield {'type': 'error', 'error': 'proxy_unreachable'}
     except http_req.exceptions.Timeout:
-        yield {'type': 'error', 'error': 'AI service timed out. Please try again.'}
+        yield {'type': 'error', 'error': 'proxy_timeout'}
     except Exception as e:
         yield {'type': 'error', 'error': str(e)}

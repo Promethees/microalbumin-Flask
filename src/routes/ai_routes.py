@@ -71,13 +71,22 @@ def ai_chat():
     language = data.get('language') or 'en'
     ui_context = data.get('ui_context') or {}
 
+    _PROXY_TRANSIENT_ERRORS = frozenset({'proxy_unreachable', 'proxy_timeout'})
+
     if mode == 'proxy':
         def generate():
+            fell_back = False
             for event in ai_assistant.proxy_chat_stream(
                 messages, language, credential,
                 activation_mod.AI_SERVICE_URL, _AI_MODEL, ui_context,
             ):
+                if event.get('type') == 'error' and event.get('error') in _PROXY_TRANSIENT_ERRORS and _DEV_GROQ_KEY:
+                    fell_back = True
+                    break
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            if fell_back:
+                for event in ai_assistant.chat_stream(messages, language, _DEV_GROQ_KEY, _AI_MODEL, ui_context):
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
     else:
         def generate():

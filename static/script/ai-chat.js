@@ -957,6 +957,9 @@
                             } else if (event.type === 'error') {
                                 const errMsg = {
                                     groq_not_installed: '⚠ AI service is not configured on this server.',
+                                    service_unavailable: '⚠ AI service is temporarily unavailable. Please try again later.',
+                                    proxy_unreachable: '⚠ Cannot connect to AI service. Check your internet connection.',
+                                    proxy_timeout: '⚠ AI service timed out. Please try again.',
                                     api_key_invalid: '⚠ AI API key is invalid. Contact the server administrator.',
                                     rate_limit: '⚠ Rate limit reached. Please wait a moment and try again.',
                                     license_invalid: '⚠ AI license is invalid or expired. Re-activate at easyokapi.cbbiotec.vn.',
