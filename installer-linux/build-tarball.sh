@@ -21,7 +21,16 @@ cd "$PROJECT_ROOT" || exit 1
 echo "🧹 Cleaning up previous build artifacts..."
 rm -f "$TARBALL_NAME"
 
-# Create tarball from installer-linux/, excluding build script itself
+# ── Bundle the okapi mascot so zenity dialogs have a custom window icon ───────
+echo "📎 Bundling installer assets..."
+OKAPI_SRC="$PROJECT_ROOT/static/okapi.png"
+OKAPI_DST="$SCRIPT_DIR/okapi.png"
+if [ -f "$OKAPI_SRC" ]; then
+    cp "$OKAPI_SRC" "$OKAPI_DST"
+    echo "   ✔  okapi.png copied to $SOURCE_DIR/"
+fi
+
+# ── Create tarball from installer-linux/ (excluding the build script itself) ──
 echo "📦 Creating tarball: $TARBALL_NAME..."
 tar -czf "$TARBALL_NAME" \
     --exclude="$SOURCE_DIR/build-tarball.sh" \
@@ -31,7 +40,11 @@ if [ $? -eq 0 ]; then
     echo "✅ Success! $TARBALL_NAME created in $PROJECT_ROOT"
 else
     echo "❌ Error: Failed to create tarball."
+    rm -f "$OKAPI_DST"
     exit 1
 fi
+
+# Remove the temp copy from the source tree (keep repo clean)
+rm -f "$OKAPI_DST"
 
 echo "Done."

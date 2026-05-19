@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# ── ANSI colours ──────────────────────────────────────────────────────────────
+RESET="\033[0m"
+BOLD="\033[1m"
+GREEN="\033[32m"
+CYAN="\033[36m"
+RED="\033[31m"
+YELLOW="\033[33m"
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+print_step() { echo -e "\n  ${BOLD}${CYAN}▶  $1${RESET}"; }
+print_ok()   { echo -e "  ${GREEN}✔  $1${RESET}"; }
+print_fail() { echo -e "  ${RED}✗  $1${RESET}"; }
+
+# ── Banner ────────────────────────────────────────────────────────────────────
+clear
+echo ""
+echo -e "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${CYAN}║  ⬡  HTBiotec · EasyOKAPI · Step 1/2      ║${RESET}"
+echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+
 # Log all output to a file for debugging
 exec > >(tee -a /tmp/easyokapi-step1.log) 2>&1
 echo "Starting EasyOKAPI install step 1 at $(date)"
@@ -8,11 +29,13 @@ echo "Starting EasyOKAPI install step 1 at $(date)"
 prompt_input() {
     local title="$1" msg="$2" secret="${3:-false}"
     PROMPT_RESULT=""
+    local _wicon=""
+    [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
     if command -v zenity &>/dev/null; then
         if [ "$secret" = "true" ]; then
-            PROMPT_RESULT=$(zenity --password --title="$title" 2>/dev/null)
+            PROMPT_RESULT=$(zenity --password --title="$title" ${_wicon} 2>/dev/null)
         else
-            PROMPT_RESULT=$(zenity --entry --title="$title" --text="$msg" 2>/dev/null)
+            PROMPT_RESULT=$(zenity --entry --title="$title" --text="$msg" ${_wicon} 2>/dev/null)
         fi
     elif command -v whiptail &>/dev/null; then
         if [ "$secret" = "true" ]; then
@@ -31,8 +54,10 @@ prompt_input() {
 
 prompt_confirm() {
     local title="$1" msg="$2"
+    local _wicon=""
+    [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
     if command -v zenity &>/dev/null; then
-        zenity --question --title="$title" --text="$msg" 2>/dev/null
+        zenity --question --title="$title" --text="$msg" ${_wicon} 2>/dev/null
         return $?
     elif command -v whiptail &>/dev/null; then
         whiptail --yesno "$msg" 10 60 --title "$title" 3>&1 1>&2 2>&3
@@ -46,14 +71,14 @@ prompt_confirm() {
 
 # ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
-    echo "❌ This script must be run as root (sudo)."
+    print_fail "This script must be run as root (sudo)."
     exit 1
 fi
 
 # ── Determine the real user (the one who ran sudo) ────────────────────────────
 CURRENT_USER="${SUDO_USER:-}"
 if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ]; then
-    echo "❌ Unable to determine the invoking user. Run with: sudo ./install-1-deps-clone.sh"
+    print_fail "Unable to determine the invoking user. Run with: sudo ./install-1-deps-clone.sh"
     exit 1
 fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
@@ -65,9 +90,10 @@ AUTH_BASE_URL="__AUTH_BASE_URL__"
 INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
+OKAPI_ICON="$SCRIPT_DIR/okapi.png"
 
 # ── Step 1: Install system dependencies ───────────────────────────────────────
-echo "Installing system dependencies..."
+print_step "1 / 3  Installing system dependencies"
 apt-get update -y
 apt-get install -y \
     git curl build-essential libssl-dev zlib1g-dev libbz2-dev \
@@ -76,18 +102,19 @@ apt-get install -y \
     libhidapi-hidraw0 libhidapi-dev \
     zenity whiptail
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to install system dependencies."
+    print_fail "Failed to install system dependencies."
     exit 1
 fi
-echo "✅ System dependencies installed."
+print_ok "System dependencies installed."
 
 # ── Step 2: Install pyenv for the real user ────────────────────────────────────
+print_step "2 / 3  Installing pyenv & Python $PYTHON_VERSION"
 PYENV_BIN="$PYENV_ROOT/bin/pyenv"
 if [ ! -d "$PYENV_ROOT" ]; then
-    echo "Installing pyenv for $CURRENT_USER..."
+    echo "  Installing pyenv for $CURRENT_USER…"
     su - "$CURRENT_USER" -c 'curl -fsSL https://pyenv.run | bash'
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install pyenv."
+        print_fail "Failed to install pyenv."
         exit 1
     fi
 fi
@@ -105,24 +132,25 @@ if ! grep -q 'pyenv init' "$SHELL_RC" 2>/dev/null; then
     } >> "$SHELL_RC"
     chown "$CURRENT_USER:$CURRENT_USER" "$SHELL_RC"
 fi
-echo "✅ pyenv ready."
+print_ok "pyenv ready."
 
 # ── Step 3: Install Python 3.8.10 via pyenv ───────────────────────────────────
 if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/null | grep -qF '$PYTHON_VERSION'"; then
-    echo "Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)..."
+    echo "  Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)…"
     su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN install $PYTHON_VERSION"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install Python $PYTHON_VERSION."
+        print_fail "Failed to install Python $PYTHON_VERSION."
         exit 1
     fi
 fi
-echo "✅ Python $PYTHON_VERSION available."
+print_ok "Python $PYTHON_VERSION available."
 
 # ── Step 4: Prompt for EasyOKAPI download token ───────────────────────────────
+print_step "3 / 3  Downloading EasyOKAPI"
 prompt_input "EasyOKAPI Installer" "Enter your Generated EasyOKAPI Token:" "true"
 DOWNLOAD_TOKEN="$PROMPT_RESULT"
 if [ -z "$DOWNLOAD_TOKEN" ]; then
-    echo "❌ EasyOKAPI token is required. Installation aborted."
+    print_fail "EasyOKAPI token is required. Installation aborted."
     exit 1
 fi
 
@@ -176,7 +204,12 @@ printf '{\n  "license_token": "%s"\n}\n' "$DOWNLOAD_TOKEN" > "$INSTALL_DIR/activ
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
 
 echo ""
-echo "✅ Step 1 complete. Repository cloned to $INSTALL_DIR at $VERSION_TAG."
-echo "   Next: run  sudo ./install-2-venv.sh"
+echo -e "  ${BOLD}${GREEN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${GREEN}║  Step 1 complete — run install-2-venv    ║${RESET}"
+echo -e "  ${BOLD}${GREEN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+print_ok "EasyOKAPI $VERSION_TAG downloaded to $INSTALL_DIR."
+echo -e "     Next: ${BOLD}sudo ./install-2-venv.sh${RESET}"
+echo ""
 echo "Step 1 completed at $(date)"
 exit 0

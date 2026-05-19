@@ -1,20 +1,47 @@
 #!/bin/bash
 
+# ── ANSI colours ──────────────────────────────────────────────────────────────
+RESET="\033[0m"
+BOLD="\033[1m"
+GREEN="\033[32m"
+CYAN="\033[36m"
+RED="\033[31m"
+YELLOW="\033[33m"
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+print_step() { echo -e "\n  ${BOLD}${CYAN}▶  $1${RESET}"; }
+print_ok()   { echo -e "  ${GREEN}✔  $1${RESET}"; }
+print_fail() { echo -e "  ${RED}✗  $1${RESET}"; }
+print_warn() { echo -e "  ${YELLOW}⚠  $1${RESET}"; }
+
+# ── Banner ────────────────────────────────────────────────────────────────────
+clear
+echo ""
+echo -e "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${CYAN}║  ⬡  HTBiotec · EasyOKAPI · Installer     ║${RESET}"
+echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+
 # Log all output to a file for debugging
 exec > >(tee -a /tmp/easyokapi-install.log) 2>&1
 echo "Starting EasyOKAPI install script at $(date)"
 
 # ── Helper: GUI prompt fallback chain ────────────────────────────────────────
+# $OKAPI_ICON is set later (in the configuration section) once SCRIPT_DIR is known.
+# zenity receives it as --window-icon when available.
+
 # Usage: prompt_input <title> <message> <secret>
 #   Returns result in $PROMPT_RESULT
 prompt_input() {
     local title="$1" msg="$2" secret="${3:-false}"
     PROMPT_RESULT=""
+    local _wicon=""
+    [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
     if command -v zenity &>/dev/null; then
         if [ "$secret" = "true" ]; then
-            PROMPT_RESULT=$(zenity --password --title="$title" 2>/dev/null)
+            PROMPT_RESULT=$(zenity --password --title="$title" ${_wicon} 2>/dev/null)
         else
-            PROMPT_RESULT=$(zenity --entry --title="$title" --text="$msg" 2>/dev/null)
+            PROMPT_RESULT=$(zenity --entry --title="$title" --text="$msg" ${_wicon} 2>/dev/null)
         fi
     elif command -v whiptail &>/dev/null; then
         if [ "$secret" = "true" ]; then
@@ -34,8 +61,10 @@ prompt_input() {
 # Usage: prompt_confirm <title> <message>  → returns 0 for Yes, 1 for No
 prompt_confirm() {
     local title="$1" msg="$2"
+    local _wicon=""
+    [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
     if command -v zenity &>/dev/null; then
-        zenity --question --title="$title" --text="$msg" 2>/dev/null
+        zenity --question --title="$title" --text="$msg" ${_wicon} 2>/dev/null
         return $?
     elif command -v whiptail &>/dev/null; then
         whiptail --yesno "$msg" 10 60 --title "$title" 3>&1 1>&2 2>&3
@@ -49,7 +78,7 @@ prompt_confirm() {
 
 # ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
-    echo "❌ This script must be run as root (sudo)."
+    print_fail "This script must be run as root (sudo)."
     exit 1
 fi
 
@@ -69,9 +98,11 @@ INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
 BACKUP_DIR=""
+# Okapi mascot icon bundled alongside the install scripts (added by build-tarball.sh)
+OKAPI_ICON="$SCRIPT_DIR/okapi.png"
 
 # ── Step 1: Install system dependencies ───────────────────────────────────────
-echo "Installing system dependencies..."
+print_step "1 / 5  Installing system dependencies"
 apt-get update -y
 apt-get install -y \
     git curl build-essential libssl-dev zlib1g-dev libbz2-dev \
@@ -80,12 +111,13 @@ apt-get install -y \
     libhidapi-hidraw0 libhidapi-dev \
     zenity whiptail
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to install system dependencies."
+    print_fail "Failed to install system dependencies."
     exit 1
 fi
-echo "✅ System dependencies installed."
+print_ok "System dependencies installed."
 
 # ── Step 2: Install pyenv for the real user ────────────────────────────────────
+print_step "2 / 5  Installing pyenv & Python $PYTHON_VERSION"
 PYENV_BIN="$PYENV_ROOT/bin/pyenv"
 if [ ! -d "$PYENV_ROOT" ]; then
     echo "Installing pyenv for $CURRENT_USER..."
@@ -112,20 +144,21 @@ fi
 
 # ── Step 3: Install Python 3.8.10 via pyenv ───────────────────────────────────
 if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/null | grep -qF '$PYTHON_VERSION'"; then
-    echo "Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)..."
+    echo "  Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)…"
     su - "$CURRENT_USER" -c "PYENV_ROOT=\"$PYENV_ROOT\" $PYENV_BIN install $PYTHON_VERSION"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install Python $PYTHON_VERSION."
+        print_fail "Failed to install Python $PYTHON_VERSION."
         exit 1
     fi
 fi
-echo "✅ Python $PYTHON_VERSION available."
+print_ok "Python $PYTHON_VERSION available."
 
 # ── Step 4: Prompt for EasyOKAPI download token ───────────────────────────────
+print_step "3 / 5  Downloading EasyOKAPI"
 prompt_input "EasyOKAPI Installer" "Enter your Generated EasyOKAPI Token:" "true"
 DOWNLOAD_TOKEN="$PROMPT_RESULT"
 if [ -z "$DOWNLOAD_TOKEN" ]; then
-    echo "❌ EasyOKAPI token is required. Installation aborted."
+    print_fail "EasyOKAPI token is required. Installation aborted."
     exit 1
 fi
 
@@ -182,11 +215,12 @@ echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 printf '{\n  "license_token": "%s"\n}\n' "$DOWNLOAD_TOKEN" > "$INSTALL_DIR/activation.json"
 
 # ── Step 8: Create and populate virtual environment ───────────────────────────
-echo "Setting up Python virtual environment..."
+print_step "4 / 5  Setting up virtual environment"
+echo "  Creating virtual environment…"
 PYTHON_BIN="$PYENV_ROOT/versions/$PYTHON_VERSION/bin/python"
 su - "$CURRENT_USER" -c "$PYTHON_BIN -m venv $INSTALL_DIR/venv"
 if [ $? -ne 0 ]; then
-    echo "❌ Failed to create virtual environment."
+    print_fail "Failed to create virtual environment."
     exit 1
 fi
 
@@ -195,17 +229,17 @@ su - "$CURRENT_USER" -c "$VENV_PIP install --upgrade pip"
 if [ -f "$INSTALL_DIR/requirements.txt" ]; then
     su - "$CURRENT_USER" -c "$VENV_PIP install -r $INSTALL_DIR/requirements.txt"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install requirements."
+        print_fail "Failed to install requirements."
         exit 1
     fi
 else
-    echo "❌ requirements.txt not found."
+    print_fail "requirements.txt not found."
     exit 1
 fi
-echo "✅ Virtual environment ready."
+print_ok "Virtual environment ready."
 
 # ── Step 9: Download front-end vendor libraries ───────────────────────────────
-echo "Downloading front-end vendor libraries..."
+print_step "5 / 5  Downloading front-end vendor libraries"
 VENDOR_DIR="$INSTALL_DIR/static/vendor"
 FONT_DIR="$VENDOR_DIR/mathjax-fonts"
 mkdir -p "$FONT_DIR"
@@ -225,7 +259,7 @@ for entry in "${VENDOR_URLS[@]}"; do
     echo "  Downloading $file..."
     curl -fsSL "$url" -o "$VENDOR_DIR/$file"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download $file."
+        print_fail "Failed to download $file."
         exit 1
     fi
 done
@@ -243,14 +277,13 @@ for font in "${MATHJAX_FONTS[@]}"; do
     curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/${font}.woff" \
         -o "$FONT_DIR/${font}.woff"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download MathJax font: ${font}.woff"
+        print_fail "Failed to download MathJax font: ${font}.woff"
         exit 1
     fi
 done
-echo "✅ Vendor libraries downloaded."
+print_ok "Vendor libraries downloaded."
 
 # ── Step 10: HID udev rule ────────────────────────────────────────────────────
-echo "Installing HID udev rule..."
 UDEV_RULE="/etc/udev/rules.d/99-easyokapi-hid.rules"
 cat > "$UDEV_RULE" <<'UDEV'
 # EasyOKAPI – PyBadge colorimeter HID access for all users
@@ -259,10 +292,9 @@ SUBSYSTEM=="usb",    ATTRS{idVendor}=="239a", MODE="0666"
 UDEV
 udevadm control --reload-rules
 udevadm trigger
-echo "✅ udev rule installed."
+print_ok "udev rule installed."
 
 # ── Step 11: Desktop entry ────────────────────────────────────────────────────
-echo "Installing desktop entry..."
 cat > /usr/share/applications/EasyOKAPI.desktop <<DESKTOP
 [Desktop Entry]
 Name=EasyOKAPI
@@ -275,7 +307,7 @@ Categories=Science;
 DESKTOP
 chmod 644 /usr/share/applications/EasyOKAPI.desktop
 update-desktop-database /usr/share/applications/ 2>/dev/null || true
-echo "✅ Desktop entry installed."
+print_ok "Desktop entry installed."
 
 # ── Step 12: Copy run/uninstall scripts into install dir ─────────────────────
 cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
@@ -298,8 +330,13 @@ fi
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
 
 echo ""
-echo "✅ EasyOKAPI $VERSION_TAG installed to $INSTALL_DIR"
-echo "   Run with: sudo $INSTALL_DIR/run.sh"
-echo "   Or launch from your desktop application menu."
+echo -e "  ${BOLD}${GREEN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${GREEN}║  EasyOKAPI installed successfully!       ║${RESET}"
+echo -e "  ${BOLD}${GREEN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+print_ok "EasyOKAPI $VERSION_TAG installed to $INSTALL_DIR"
+echo -e "     Run with: ${BOLD}sudo $INSTALL_DIR/run.sh${RESET}"
+echo -e "     Or launch from your desktop application menu."
+echo ""
 echo "Install script completed at $(date)"
 exit 0

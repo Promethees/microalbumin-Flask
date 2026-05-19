@@ -1,19 +1,39 @@
 #!/bin/bash
 
+# ── ANSI colours ──────────────────────────────────────────────────────────────
+RESET="\033[0m"
+BOLD="\033[1m"
+GREEN="\033[32m"
+CYAN="\033[36m"
+RED="\033[31m"
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+print_step() { echo -e "\n  ${BOLD}${CYAN}▶  $1${RESET}"; }
+print_ok()   { echo -e "  ${GREEN}✔  $1${RESET}"; }
+print_fail() { echo -e "  ${RED}✗  $1${RESET}"; }
+
+# ── Banner ────────────────────────────────────────────────────────────────────
+clear
+echo ""
+echo -e "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${CYAN}║  ⬡  HTBiotec · EasyOKAPI · Step 2/2      ║${RESET}"
+echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+
 # Log all output to a file for debugging
 exec > >(tee -a /tmp/easyokapi-step2.log) 2>&1
 echo "Starting EasyOKAPI install step 2 at $(date)"
 
 # ── Root check ────────────────────────────────────────────────────────────────
 if [ "$EUID" -ne 0 ]; then
-    echo "❌ This script must be run as root (sudo)."
+    print_fail "This script must be run as root (sudo)."
     exit 1
 fi
 
 # ── Determine the real user (the one who ran sudo) ────────────────────────────
 CURRENT_USER="${SUDO_USER:-}"
 if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ]; then
-    echo "❌ Unable to determine the invoking user. Run with: sudo ./install-2-venv.sh"
+    print_fail "Unable to determine the invoking user. Run with: sudo ./install-2-venv.sh"
     exit 1
 fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
@@ -25,14 +45,14 @@ PYENV_ROOT="$CURRENT_HOME/.pyenv"
 
 # ── Preflight: require step 1 to have run ─────────────────────────────────────
 if [ ! -d "$INSTALL_DIR" ]; then
-    echo "❌ $INSTALL_DIR not found. Please run install-1-deps-clone.sh first."
+    print_fail "$INSTALL_DIR not found. Please run install-1-deps-clone.sh first."
     exit 1
 fi
 
 cd "$INSTALL_DIR"
 
 # ── Step 1: Create virtual environment ────────────────────────────────────────
-echo "Setting up Python virtual environment..."
+print_step "1 / 3  Creating virtual environment"
 PYTHON_BIN="$PYENV_ROOT/versions/$PYTHON_VERSION/bin/python"
 if [ ! -x "$PYTHON_BIN" ]; then
     echo "❌ Python $PYTHON_VERSION not found at $PYTHON_BIN."
@@ -43,7 +63,7 @@ fi
 if [ ! -d "venv" ]; then
     su - "$CURRENT_USER" -c "$PYTHON_BIN -m venv $INSTALL_DIR/venv"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to create virtual environment."
+        print_fail "Failed to create virtual environment."
         exit 1
     fi
 fi
@@ -54,23 +74,23 @@ su - "$CURRENT_USER" -c "$VENV_PIP install --upgrade pip"
 if [ -f "$INSTALL_DIR/requirements.txt" ]; then
     su - "$CURRENT_USER" -c "$VENV_PIP install -r $INSTALL_DIR/requirements.txt"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to install requirements."
+        print_fail "Failed to install requirements."
         exit 1
     fi
 else
-    echo "❌ requirements.txt not found in $INSTALL_DIR."
+    print_fail "requirements.txt not found in $INSTALL_DIR."
     exit 1
 fi
-echo "✅ Virtual environment ready."
+print_ok "Virtual environment ready."
 
 # ── Pre-compile bytecode for scipy/numpy so first app launch is not slow ──────
-echo "Pre-compiling Python bytecode for scientific libraries..."
+echo "  Pre-compiling Python bytecode for scientific libraries…"
 VENV_PYTHON="$INSTALL_DIR/venv/bin/python"
 su - "$CURRENT_USER" -c "$VENV_PYTHON -m compileall -q $INSTALL_DIR/venv/lib/python3.8/site-packages/scipy $INSTALL_DIR/venv/lib/python3.8/site-packages/numpy 2>/dev/null" || true
-echo "✅ Bytecode pre-compilation complete."
+print_ok "Bytecode pre-compilation complete."
 
 # ── Step 2: Download front-end vendor libraries ───────────────────────────────
-echo "Downloading front-end vendor libraries..."
+print_step "2 / 3  Downloading front-end vendor libraries"
 VENDOR_DIR="$INSTALL_DIR/static/vendor"
 FONT_DIR="$VENDOR_DIR/mathjax-fonts"
 mkdir -p "$FONT_DIR"
@@ -90,7 +110,7 @@ for entry in "${VENDOR_URLS[@]}"; do
     echo "  Downloading $file..."
     curl -fsSL "$url" -o "$VENDOR_DIR/$file"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download $file."
+        print_fail "Failed to download $file."
         exit 1
     fi
 done
@@ -108,14 +128,14 @@ for font in "${MATHJAX_FONTS[@]}"; do
     curl -fsSL "https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2/${font}.woff" \
         -o "$FONT_DIR/${font}.woff"
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download MathJax font: ${font}.woff"
+        print_fail "Failed to download MathJax font: ${font}.woff"
         exit 1
     fi
 done
-echo "✅ Vendor libraries downloaded."
+print_ok "Vendor libraries downloaded."
 
-# ── Step 3: HID udev rule ─────────────────────────────────────────────────────
-echo "Installing HID udev rule..."
+# ── Step 3: HID udev rule & desktop entry ─────────────────────────────────────
+print_step "3 / 3  Finalising installation"
 UDEV_RULE="/etc/udev/rules.d/99-easyokapi-hid.rules"
 cat > "$UDEV_RULE" <<'UDEV'
 # EasyOKAPI – PyBadge colorimeter HID access for all users
@@ -124,10 +144,7 @@ SUBSYSTEM=="usb",    ATTRS{idVendor}=="239a", MODE="0666"
 UDEV
 udevadm control --reload-rules
 udevadm trigger
-echo "✅ udev rule installed."
-
-# ── Step 4: Desktop entry ─────────────────────────────────────────────────────
-echo "Installing desktop entry..."
+print_ok "udev rule installed."
 cat > /usr/share/applications/EasyOKAPI.desktop <<DESKTOP
 [Desktop Entry]
 Name=EasyOKAPI
@@ -140,7 +157,7 @@ Categories=Science;
 DESKTOP
 chmod 644 /usr/share/applications/EasyOKAPI.desktop
 update-desktop-database /usr/share/applications/ 2>/dev/null || true
-echo "✅ Desktop entry installed."
+print_ok "Desktop entry installed."
 
 # ── Step 5: Copy run/uninstall scripts into install dir ───────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -152,8 +169,13 @@ chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
 
 echo ""
-echo "✅ EasyOKAPI installation complete."
-echo "   Run with: sudo $INSTALL_DIR/run.sh"
-echo "   Or launch from your desktop application menu."
+echo -e "  ${BOLD}${GREEN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "  ${BOLD}${GREEN}║  EasyOKAPI installation complete!        ║${RESET}"
+echo -e "  ${BOLD}${GREEN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+print_ok "All steps finished."
+echo -e "     Run with: ${BOLD}sudo $INSTALL_DIR/run.sh${RESET}"
+echo -e "     Or launch from your desktop application menu."
+echo ""
 echo "Step 2 completed at $(date)"
 exit 0
