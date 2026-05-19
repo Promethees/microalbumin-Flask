@@ -1258,12 +1258,43 @@ _CONCEPTUAL_MARKERS = frozenset({
     "что такое", "почему", "объясни", "разница", "значит",
 })
 
+# Phrases that carry an explicit navigation / how-to-do-it signal.
+# A query must contain at least one of these to be short-circuited to a guide.
+# Checked BEFORE _CONCEPTUAL_MARKERS so that more-specific phrases like
+# "how do i" take priority over the broader "how do" conceptual marker.
+_NAV_MARKERS = frozenset({
+    # English
+    "how to", "how do i", "how can i", "where is", "where do i", "where can i",
+    "show me", "take me to", "navigate to", "go to", "find the", "open the",
+    "step by step", "walk me through", "guide me", "walk me",
+    # Vietnamese
+    "cách", "làm thế nào", "ở đâu", "hướng dẫn tôi", "chỉ tôi", "chỉ cho tôi",
+    # Chinese
+    "怎么", "如何", "在哪", "带我", "找到",
+    # French
+    "comment faire", "comment", "où est", "montre-moi", "guidez-moi",
+    # Japanese
+    "どうやって", "どこ", "やり方", "使い方",
+    # Russian
+    "как мне", "как", "где", "покажи", "найти",
+})
+
 
 def _has_nav_intent(query: str) -> bool:
-    """True when query is navigation/how-to, False when it's a conceptual question.
-    Conceptual questions bypass the guide short-circuit and go to Groq."""
+    """True only when the query carries an explicit navigation/how-to signal.
+
+    NAV markers are checked before conceptual markers so that precise phrases
+    like 'how do i' take priority over the broader 'how do' conceptual marker.
+    Bare topic phrases with neither marker (e.g. 'kinetics settings') return
+    False and fall through to the LLM rather than being short-circuited to a
+    guide.
+    """
     q = query.lower()
-    return not any(marker in q for marker in _CONCEPTUAL_MARKERS)
+    if any(marker in q for marker in _NAV_MARKERS):
+        return True
+    if any(marker in q for marker in _CONCEPTUAL_MARKERS):
+        return False
+    return False
 
 
 def chat_stream(messages: list, language: str, api_key: str, model: str, ui_context: dict = None):
