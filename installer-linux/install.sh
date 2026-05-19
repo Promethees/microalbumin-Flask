@@ -277,17 +277,7 @@ chmod 644 /usr/share/applications/EasyOKAPI.desktop
 update-desktop-database /usr/share/applications/ 2>/dev/null || true
 echo "✅ Desktop entry installed."
 
-# ── Step 12: AI Assistant Setup ───────────────────────────────────────────────
-# Write default disabled settings; user can enable and configure from within the app.
-AI_SETTINGS_FILE="$INSTALL_DIR/ai_settings.json"
-if [ ! -f "$AI_SETTINGS_FILE" ]; then
-    printf '{\n  "enabled": false,\n  "preferred_languages": ["en"],\n  "model": "qwen2.5:7b",\n  "ollama_url": "http://localhost:11434",\n  "first_run_shown": false\n}\n' \
-        > "$AI_SETTINGS_FILE"
-    chown "$CURRENT_USER:$CURRENT_USER" "$AI_SETTINGS_FILE"
-    echo "✅ AI settings initialised (disabled by default — enable from the app)."
-fi
-
-# ── Step 13: Copy run/uninstall scripts into install dir ─────────────────────
+# ── Step 12: Copy run/uninstall scripts into install dir ─────────────────────
 cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
 cp "$SCRIPT_DIR/uninstall.sh"  "$INSTALL_DIR/uninstall.sh"
 chmod +x "$INSTALL_DIR/run.sh" "$INSTALL_DIR/uninstall.sh"

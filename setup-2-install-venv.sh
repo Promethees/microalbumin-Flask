@@ -96,16 +96,6 @@ else
     echo "Vendor libraries already present — skipping download."
 fi
 
-# ── AI Assistant Setup ────────────────────────────────────────────────────────
-AI_SETTINGS_FILE="$REPO_DIR/ai_settings.json"
-if [ ! -f "$AI_SETTINGS_FILE" ]; then
-    printf '{\n  "enabled": true,\n  "preferred_languages": ["en"],\n  "first_run_shown": false\n}\n' \
-        > "$AI_SETTINGS_FILE"
-    chown "$CURRENT_USER:$CURRENT_USER" "$AI_SETTINGS_FILE"
-    echo "✅ AI settings written."
-fi
-echo ""
-
 # ── Step 3: HID udev rule ─────────────────────────────────────────────────────
 echo "Installing HID udev rule..."
 cat > /etc/udev/rules.d/99-easyokapi-hid.rules <<'UDEV'

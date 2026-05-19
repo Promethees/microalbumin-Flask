@@ -159,12 +159,6 @@ if not exist "static\vendor\" (
     echo Vendor libraries downloaded successfully.
 )
 
-:: ── AI Assistant Setup (first run only) ─────────────────────────────────────
-if not exist "ai_settings.json" (
-    python -c "import json; open('ai_settings.json','w').write(json.dumps({'enabled':True,'preferred_languages':['en'],'first_run_shown':False},indent=2))"
-    echo    [OK] Saved: ai_settings.json
-)
-
 :: ── Launch application (80 → 100%) ────────────────────────────────────────
 echo Launching application...
 for /L %%p in (80,1,100) do (

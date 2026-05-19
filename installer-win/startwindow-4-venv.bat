@@ -69,11 +69,4 @@ for %%F in (MathJax_AMS-Regular MathJax_Main-Regular MathJax_Main-Bold MathJax_M
 )
 echo Vendor libraries downloaded successfully.
 
-:: ── AI Assistant Setup ────────────────────────────────────────────────────────
-:: If ai_settings.json already exists (written by the NSIS installer), skip.
-if not exist "code\ai_settings.json" (
-    code\venv\Scripts\python.exe -c "import json; open('code/ai_settings.json','w').write(json.dumps({'enabled':True,'preferred_languages':['en'],'first_run_shown':False},indent=2))"
-    echo    [OK] Saved AI settings: code\ai_settings.json
-)
-
 echo Virtual environment setup complete.

@@ -209,14 +209,6 @@ else
     exit 1
 fi
 
-# ── AI Assistant Setup ────────────────────────────────────────────────────────
-AI_SETTINGS_FILE="$INSTALL_DIR/ai_settings.json"
-if [ ! -f "$AI_SETTINGS_FILE" ]; then
-    printf '{\n  "enabled": true,\n  "preferred_languages": ["en"],\n  "first_run_shown": false\n}\n' \
-        > "$AI_SETTINGS_FILE"
-    echo "✅ AI settings written."
-fi
-
 echo "Setup complete. Application is installed in $INSTALL_DIR."
 echo "Postinstall script completed at $(date)"
 osascript -e 'display dialog "Installation complete. Run run.command to launch the application." buttons {"OK"} default button "OK" with title "EasyOKAPI Installer"'

@@ -102,15 +102,6 @@ for font in "${MATHJAX_FONTS[@]}"; do
 done
 echo "✅ Vendor libraries downloaded successfully."
 
-# ── AI Assistant Setup ────────────────────────────────────────────────────────
-AI_SETTINGS_FILE="ai_settings.json"
-if [ ! -f "$AI_SETTINGS_FILE" ]; then
-    printf '{\n  "enabled": true,\n  "preferred_languages": ["en"],\n  "first_run_shown": false\n}\n' \
-        > "$AI_SETTINGS_FILE"
-    echo "✅ AI settings written."
-fi
-echo ""
-
 # Ensure libhidapi.dylib is present in the mac folder
 if [ ! -f "mac/libhidapi.dylib" ]; then
     echo "❌ libhidapi.dylib not found in mac folder. Please place it in the 'mac' folder and retry."

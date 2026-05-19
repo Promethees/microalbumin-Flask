@@ -142,16 +142,7 @@ chmod 644 /usr/share/applications/EasyOKAPI.desktop
 update-desktop-database /usr/share/applications/ 2>/dev/null || true
 echo "✅ Desktop entry installed."
 
-# ── Step 5: AI Assistant Setup ────────────────────────────────────────────────
-AI_SETTINGS_FILE="$INSTALL_DIR/ai_settings.json"
-if [ ! -f "$AI_SETTINGS_FILE" ]; then
-    printf '{\n  "enabled": true,\n  "preferred_languages": ["en"],\n  "first_run_shown": false\n}\n' \
-        > "$AI_SETTINGS_FILE"
-    chown "$CURRENT_USER:$CURRENT_USER" "$AI_SETTINGS_FILE"
-    echo "✅ AI settings written."
-fi
-
-# ── Step 6: Copy run/uninstall scripts into install dir ───────────────────────
+# ── Step 5: Copy run/uninstall scripts into install dir ───────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cp "$SCRIPT_DIR/run.sh"        "$INSTALL_DIR/run.sh"
 cp "$SCRIPT_DIR/uninstall.sh"  "$INSTALL_DIR/uninstall.sh"
