@@ -53,22 +53,6 @@
         skipInteraction: false,
     };
 
-    // Get-started prepend step
-    const _GET_STARTED_STEP = {
-        target: '#init-button',
-        title: 'Click Get Started First',
-        description: 'The app hasn\'t been initialised yet. Click "Get Started" to load the main interface before proceeding with this guide.',
-        descriptions: {
-            vi: 'Ứng dụng chưa được khởi tạo. Nhấp vào "Bắt đầu" để tải giao diện chính trước khi tiếp tục hướng dẫn này.',
-            zh: '应用程序尚未初始化。请点击"开始"加载主界面后再继续本指南。',
-            fr: 'L\'application n\'a pas encore été initialisée. Cliquez sur "Commencer" pour charger l\'interface principale avant de poursuivre ce guide.',
-            ja: 'アプリはまだ初期化されていません。このガイドを続ける前に「はじめる」をクリックしてメインインターフェイスを読み込んでください。',
-            ru: 'Приложение ещё не инициализировано. Нажмите «Начать», чтобы загрузить главный интерфейс перед продолжением руководства.',
-        },
-        position: 'right',
-        skipInteraction: false,
-    };
-
     const _GUIDE_LAUNCHED = {
         en: 'Guide launched — follow the highlighted steps.',
         vi: 'Đã khởi động hướng dẫn — làm theo các bước được tô sáng.',
@@ -518,9 +502,6 @@
     }
 
     function _launchCustomSteps(steps) {
-        if (!_getUiContext().app_started && document.getElementById('init-button')) {
-            steps = [_GET_STARTED_STEP, ...steps];
-        }
         steps = _localizeSteps(steps);
         AI.lastAction = { type: 'custom_steps', steps };
         if (typeof window.userGuide === 'undefined') return;
