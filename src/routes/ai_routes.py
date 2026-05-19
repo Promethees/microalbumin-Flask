@@ -33,37 +33,14 @@ def _get_api_mode():
 
 @ai_bp.route('/status', methods=['GET'])
 def ai_status():
-    settings = ai_settings.load()
     mode, _ = _get_api_mode()
     return jsonify({
         'status': 'success',
         'api_ready': mode is not None,
         'activated': mode == 'proxy',
         'dev_mode': mode == 'dev',
-        'settings': settings,
         'supported_languages': ai_settings.SUPPORTED_LANGUAGES,
     })
-
-
-@ai_bp.route('/settings', methods=['GET'])
-def get_settings():
-    return jsonify({
-        'status': 'success',
-        'settings': ai_settings.load(),
-        'supported_languages': ai_settings.SUPPORTED_LANGUAGES,
-    })
-
-
-@ai_bp.route('/settings', methods=['POST'])
-def save_settings():
-    data = request.get_json(silent=True) or {}
-    current = ai_settings.load()
-    allowed = {'enabled', 'preferred_languages', 'preferred_language', 'first_run_shown'}
-    updates = {k: v for k, v in data.items() if k in allowed}
-    merged = {**current, **updates}
-    if ai_settings.save(merged):
-        return jsonify({'status': 'success', 'settings': ai_settings.load()})
-    return jsonify({'status': 'failure', 'message': 'Could not save settings'}), 500
 
 
 @ai_bp.route('/activate', methods=['POST'])
@@ -87,16 +64,11 @@ def ai_chat():
     if not messages:
         return jsonify({'status': 'failure', 'message': 'No messages provided'}), 400
 
-    settings = ai_settings.load()
-    if not settings.get('enabled', True):
-        return jsonify({'status': 'failure', 'message': 'AI assistant is disabled'}), 403
-
     mode, credential = _get_api_mode()
     if not mode:
         return jsonify({'status': 'failure', 'message': 'AI assistant is not activated'}), 503
 
-    langs = settings.get('preferred_languages', ['en'])
-    language = data.get('language') or (langs[0] if langs else 'en')
+    language = data.get('language') or 'en'
     ui_context = data.get('ui_context') or {}
 
     if mode == 'proxy':
