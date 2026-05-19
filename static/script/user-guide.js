@@ -428,6 +428,29 @@ class UserGuide {
     }
 
     /**
+     * Walk up the DOM from element and expand any collapsed ancestor sections
+     * so the target is visible before the spotlight is placed on it.
+     */
+    _ensureAncestorExpanded(element) {
+        const COLLAPSE_CLASSES = ['section-collapse', 'folder-list-collapse'];
+        let node = element.parentElement;
+        while (node && node !== document.body) {
+            if (node.classList.contains('collapsed')) {
+                const isCollapsible = COLLAPSE_CLASSES.some(c => node.classList.contains(c));
+                if (isCollapsible) {
+                    node.classList.remove('collapsed');
+                    if (node.id) {
+                        const chevronId = node.id.replace(/-collapse$/, '-chevron');
+                        const chevron = document.getElementById(chevronId);
+                        if (chevron) chevron.classList.remove('collapsed-chevron');
+                    }
+                }
+            }
+            node = node.parentElement;
+        }
+    }
+
+    /**
      * Show a specific step
      */
     showStep(stepIndex) {
@@ -443,6 +466,7 @@ class UserGuide {
         const step = this.steps[stepIndex];
         // Helper to setup step once element is found
         const setupStepWithElement = (target) => {
+            this._ensureAncestorExpanded(target);
             this.currentTargetElement = target;
             this.currentStepData = step;
 
