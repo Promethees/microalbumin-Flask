@@ -751,9 +751,17 @@ class UserGuide {
         const interactionInstruction = step.skipInteraction ? '' : ' Click or interact with the highlighted element to continue.';
         description.textContent = step.description + interactionInstruction;
 
+        const notLast = stepIndex < this.steps.length - 1;
         prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
-        nextBtn.style.display = (stepIndex < this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
-        finishBtn.style.display = (stepIndex === this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
+        // Always show Next/Finish so users are never completely stuck on an
+        // interactive step (e.g. element present but disabled). Dim when
+        // interaction is required to signal the preferred action.
+        nextBtn.style.display = notLast ? 'inline-block' : 'none';
+        nextBtn.style.opacity = step.skipInteraction ? '1' : '0.4';
+        nextBtn.disabled = !step.skipInteraction;
+        finishBtn.style.display = !notLast ? 'inline-block' : 'none';
+        finishBtn.style.opacity = step.skipInteraction ? '1' : '0.4';
+        finishBtn.disabled = !step.skipInteraction;
     }
 
     /**
