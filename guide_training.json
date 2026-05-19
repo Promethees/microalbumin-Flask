@@ -178,49 +178,6 @@
       ]
     },
     {
-      "id": "start_device",
-      "queries": [
-        "start measuring",
-        "run device",
-        "start device",
-        "begin measurement",
-        "start colorimeter",
-        "run script",
-        "launch device"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#run-script-btn",
-          "title": "Start Measurement",
-          "description": "Click this button to begin recording data from the colorimeter. Make sure the device is connected first.",
-          "position": "bottom",
-          "skipInteraction": true
-        }
-      ]
-    },
-    {
-      "id": "stop_device",
-      "queries": [
-        "stop measuring",
-        "stop device",
-        "terminate",
-        "stop colorimeter",
-        "end measurement",
-        "kill script"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#terminate-script-btn",
-          "title": "Stop Measurement",
-          "description": "Click this button to stop the recording process manually.",
-          "position": "bottom",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
       "id": "select_file",
       "queries": [
         "select file",
@@ -243,28 +200,6 @@
       ]
     },
     {
-      "id": "navigate_directory",
-      "queries": [
-        "change directory",
-        "browse directory",
-        "navigate folder",
-        "change folder",
-        "select folder",
-        "go to folder",
-        "base directory"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#directory",
-          "title": "Directory Browser",
-          "description": "Browse and navigate to the directory containing your data files.",
-          "position": "right",
-          "skipInteraction": true
-        }
-      ]
-    },
-    {
       "id": "load_calibration_json",
       "queries": [
         "load calibration",
@@ -282,48 +217,6 @@
           "description": "Select a calibration standard curve JSON file here to apply concentration conversion.",
           "position": "left",
           "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "set_timeout",
-      "queries": [
-        "timeout",
-        "time out",
-        "set timeout",
-        "where is timeout",
-        "change timeout",
-        "timeout setting"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#timeout-control",
-          "title": "Timeout Control",
-          "description": "Set the duration for each measurement recording here. Set to Infinite to record until manually stopped.",
-          "position": "bottom",
-          "skipInteraction": true
-        }
-      ]
-    },
-    {
-      "id": "set_interval",
-      "queries": [
-        "interval",
-        "set interval",
-        "where is interval",
-        "change interval",
-        "measurement interval",
-        "sampling interval"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#interval-control",
-          "title": "Interval Control",
-          "description": "Set the time interval between measurement readings. Set to 0 to fetch data as fast as available.",
-          "position": "bottom",
-          "skipInteraction": true
         }
       ]
     },
@@ -532,28 +425,6 @@
           "description": "Choose which time point to use for point-mode calibration.",
           "position": "left",
           "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "view_log",
-      "queries": [
-        "log",
-        "view log",
-        "see log",
-        "hid log",
-        "device log",
-        "show log",
-        "log data"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#log-display",
-          "title": "Measurement Log",
-          "description": "Real-time log of the measurement recording process. Useful for troubleshooting device connection issues.",
-          "position": "bottom",
-          "skipInteraction": true
         }
       ]
     },
@@ -1279,72 +1150,6 @@
       ]
     },
     {
-      "id": "live_view_active",
-      "queries": [],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#go-to-btn",
-          "title": "View Live Data Folder",
-          "description": "Click here to open the folder where your measurement data is being saved in real time.",
-          "position": "top",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "live_view_inactive",
-      "queries": [
-        "live data",
-        "view live",
-        "go to data",
-        "browse data folder",
-        "open data folder",
-        "where is my data",
-        "live folder"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#run-script-btn",
-          "title": "Start a Measurement First",
-          "description": "The 'View live data' button is only active during an ongoing measurement. Start reading from your device here first.",
-          "position": "top",
-          "skipInteraction": true
-        },
-        {
-          "target": "#go-to-btn",
-          "title": "View Live Data Folder",
-          "description": "Once a measurement is running, this button becomes active. Click it to open the folder where data is being saved in real time.",
-          "position": "top",
-          "skipInteraction": true
-        }
-      ]
-    },
-    {
-      "id": "shutdown_server",
-      "queries": [
-        "shut down",
-        "shutdown server",
-        "close the server",
-        "stop the server",
-        "exit application",
-        "close application",
-        "quit the app",
-        "turn off server"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#shutdown-btn",
-          "title": "Shutdown Server",
-          "description": "Click this button to stop the Flask server and close the application. Unsaved data will be lost, so make sure you have exported anything you need first.",
-          "position": "left",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
       "id": "open_user_guide",
       "queries": [
         "user guide",
@@ -1362,102 +1167,6 @@
           "title": "User Guide",
           "description": "Click here to launch the interactive step-by-step user guide. It walks you through the main features of the app with on-screen highlights.",
           "position": "bottom",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "base_name_input",
-      "queries": [
-        "base name",
-        "file name for measurement",
-        "what is base name",
-        "name my file",
-        "measurement file name",
-        "what to enter for name",
-        "naming the output file"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#base-name",
-          "title": "Base Name — Output File Name",
-          "description": "Enter the name for the CSV file that will be created when you start a measurement. For example, entering 'sample1' will save your data as 'sample1.csv' in the saving directory.",
-          "position": "top",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "saving_directory",
-      "queries": [
-        "saving directory",
-        "save directory",
-        "where are files saved",
-        "where does the file go",
-        "output folder",
-        "change save location",
-        "browse saving location",
-        "save to same directory",
-        "same directory as data"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#save-same-dir",
-          "title": "Save to Same Directory",
-          "description": "When checked, measurement files are saved in the same folder as your currently browsed directory. Uncheck to specify a custom saving path.",
-          "position": "top",
-          "skipInteraction": true
-        },
-        {
-          "target": "#base-dir-label",
-          "title": "Saving Directory",
-          "description": "This shows the folder where new CSV files will be saved. Use 'Browse Saving Location' nearby to change it when the checkbox above is unchecked.",
-          "position": "top",
-          "skipInteraction": true
-        }
-      ]
-    },
-    {
-      "id": "notify_done",
-      "queries": [
-        "notify when done",
-        "notification when finished",
-        "alert when complete",
-        "notify me",
-        "get notified",
-        "how do I get an alert",
-        "sound when done"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#notify-me",
-          "title": "Notify Me When Done",
-          "description": "When checked, the app plays a sound and shows a popup notification as soon as the measurement finishes (after the timeout). Useful if you step away while the device is running.",
-          "position": "top",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "clear_logs",
-      "queries": [
-        "clear logs",
-        "clear the log",
-        "delete log",
-        "reset log display",
-        "empty log",
-        "how to clear console output"
-      ],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#clear-logs-btn",
-          "title": "Clear Logs",
-          "description": "Click here to erase all text in the measurement log panel. This only clears the display — it does not delete any saved CSV files.",
-          "position": "top",
           "skipInteraction": false
         }
       ]
