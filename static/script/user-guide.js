@@ -582,8 +582,7 @@ class UserGuide {
      * Handle interaction events
      */
     handleInteraction(e) {
-        // Debounce or Prevent double calling is handled by removing handler immediately
-        if (!this.currentInteractionHandler && e.type !== 'click') return; // approximate check
+        if (!this.currentInteractionHandler) return;
 
         const targetElement = this.currentTargetElement || e.currentTarget;
 
