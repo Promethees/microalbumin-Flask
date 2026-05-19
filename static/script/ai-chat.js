@@ -96,6 +96,15 @@
         ru: 'Нечего повторять — сначала отправьте сообщение или выполните команду.',
     };
 
+    const _REDO_NOTE = {
+        en: '↺ Retrying last question…',
+        vi: '↺ Thử lại câu hỏi trước…',
+        zh: '↺ 重新发送上一条问题…',
+        fr: '↺ Nouvel essai pour la dernière question…',
+        ja: '↺ 最後の質問を再試行中…',
+        ru: '↺ Повтор последнего вопроса…',
+    };
+
     const _GUIDE_NOT_FOUND = {
         en: (id) => `Guide **${id}** not found. Try again after the app loads.`,
         vi: (id) => `Không tìm thấy hướng dẫn **${id}**. Vui lòng thử lại sau khi ứng dụng tải xong.`,
@@ -707,6 +716,7 @@
                 AI.messages[AI.messages.length - 1].content === last.query) {
                 AI.messages.pop();
             }
+            _addSystemMsg(_REDO_NOTE[lang] || _REDO_NOTE.en);
             const input = document.getElementById('okapi-ai-input');
             if (input) { input.value = last.query; OkapiAI.send(); }
         }
