@@ -735,9 +735,15 @@
             const menu = document.getElementById('okapi-ai-lang-menu');
             if (!menu) return;
             if (menu.classList.contains('okapi-hidden')) {
+                const btn = document.getElementById('okapi-ai-lang-btn');
+                if (btn) {
+                    const r = btn.getBoundingClientRect();
+                    menu.style.top = (r.bottom + 6) + 'px';
+                    menu.style.right = (window.innerWidth - r.right) + 'px';
+                }
                 const lang = AI.activeLang || 'en';
-                menu.querySelectorAll('.okapi-ai-lang-opt').forEach(btn => {
-                    btn.classList.toggle('okapi-ai-lang-active', btn.dataset.lang === lang);
+                menu.querySelectorAll('.okapi-ai-lang-opt').forEach(opt => {
+                    opt.classList.toggle('okapi-ai-lang-active', opt.dataset.lang === lang);
                 });
                 menu.classList.remove('okapi-hidden');
             } else {
