@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import socket
-import threading
-import urllib.error
-import urllib.request
 from file_path import DATA_ROOT
 from file import get_file_list
 import state
@@ -15,9 +11,12 @@ import state
 _GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_training.json")
 _GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_translations")
 
+VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru'}
+
 
 def _apply_overlay(examples: list, lang: str) -> list:
-    """Merge per-language description and query overlay onto a list of guide examples."""
+    if lang not in VALID_LANGS:
+        return examples
     overlay_path = os.path.join(_GUIDE_TRANSLATIONS_DIR, f"{lang}.json")
     try:
         with open(overlay_path, "r", encoding="utf-8") as f:
@@ -31,13 +30,11 @@ def _apply_overlay(examples: list, lang: str) -> list:
         if not item:
             result.append(ex)
             continue
-        # Merge step descriptions
         translated_steps = item.get("steps", [])
         new_steps = []
         for i, step in enumerate(ex["steps"]):
             desc = translated_steps[i] if i < len(translated_steps) and translated_steps[i] else step["description"]
             new_steps.append({**step, "description": desc})
-        # Append translated queries to English ones (union for broader matching)
         extra_queries = [q for q in item.get("queries", []) if q]
         new_queries = ex["queries"] + extra_queries
         result.append({**ex, "steps": new_steps, "queries": new_queries})
@@ -57,7 +54,6 @@ def _load_guide_examples(lang: str = "en") -> list:
 
 
 def _translate_step(step: dict, lang: str) -> dict:
-    """Return a copy of step with description resolved for lang (for inline constants)."""
     if lang == "en" or "descriptions" not in step:
         return {k: v for k, v in step.items() if k != "descriptions"}
     desc = step["descriptions"].get(lang) or step["description"]
@@ -65,7 +61,6 @@ def _translate_step(step: dict, lang: str) -> dict:
 
 
 def _translate_steps(steps: list, lang: str) -> list:
-    """Apply _translate_step to every step in a list."""
     if lang == "en":
         return [{k: v for k, v in s.items() if k != "descriptions"} for s in steps]
     return [_translate_step(s, lang) for s in steps]
@@ -92,20 +87,10 @@ _STOPWORDS = frozenset({
 
 
 def _content_words(text: str) -> frozenset:
-    """Return lowercase content words (length >= 4, not stopwords)."""
     return frozenset(w for w in text.lower().split() if len(w) >= 4 and w not in _STOPWORDS)
 
 
 def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
-    """Score a single keyword phrase against a query.
-
-    Returns:
-      1.0  exact phrase found in query
-      0.8  stem-overlap match:
-             - single content word that is >= 5 chars (e.g. 'measure' ↔ 'measurement')
-             - OR all content words of a multi-word phrase match in the query
-      0.0  otherwise
-    """
     if kw.lower() in q_lower:
         return 1.0
     kw_content = _content_words(kw)
@@ -113,12 +98,9 @@ def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
         return 0.0
     if len(kw_content) == 1:
         word = next(iter(kw_content))
-        # Short single-content-word phrases (e.g. "go to data" → "data") are too
-        # generic for stem-overlap; require the word to be at least 5 chars.
         if len(word) < 5:
             return 0.0
         return 0.8 if any(word in qw or qw in word for qw in q_content) else 0.0
-    # Multi-word: all content words must stem-match something in the query
     if all(
         any(kw_word in qw or qw in kw_word for qw in q_content)
         for kw_word in kw_content
@@ -128,18 +110,6 @@ def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
 
 
 def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tuple[dict, float] | tuple[None, float]:
-    """Return (best_example, score) for the given query and UI context, or (None, 0).
-
-    Scoring:
-      1.0  exact keyword phrase found in query
-      0.8  all content words of a keyword phrase stem-match words in the query
-             (e.g. 'measure' is a prefix of 'measurement')
-      +2   bonus when the example's mode condition matches the current mode
-      +1   bonus for mode_not condition (lower specificity)
-
-    Fast-path threshold is 0.7, so a single stem-match (0.8) is enough to
-    bypass Ollama, while preventing spurious matches from very short fragments.
-    """
     examples = _load_guide_examples(lang)
     if not examples:
         return None, 0
@@ -152,8 +122,6 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
 
     for ex in examples:
         conditions = ex.get("conditions", {})
-
-        # Hard mode filters
         if conditions.get("mode") and mode != conditions["mode"]:
             continue
         if conditions.get("mode_not") and mode == conditions["mode_not"]:
@@ -165,8 +133,6 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
         score: float = sum(_score_keyword(kw, q_lower, q_content) for kw in keywords)
         if score < 0.1:
             continue
-
-        # Specificity bonus so mode-matched examples win ties
         if conditions.get("mode") and mode == conditions["mode"]:
             score += 2
         elif conditions.get("mode_in") and mode in conditions["mode_in"]:
@@ -213,14 +179,6 @@ _GET_STARTED_STEP = {
 
 
 def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
-    """Format a matched example as a few-shot hint or return raw steps list.
-
-    If steps_only=True, return the steps list directly (for fast-path bypass).
-    Otherwise return a string hint appended to the system prompt.
-    Prepends a file-selection step when data is required but not loaded.
-    The get-started step is prepended by the JS layer (_launchCustomSteps) so
-    it is not added here to avoid duplication on the fast-path.
-    """
     steps = list(example["steps"])
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
         steps = [_translate_step(_FILE_SELECT_STEP, language)] + steps
@@ -233,7 +191,7 @@ def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", 
         f"call trigger_custom_steps with exactly these steps:\n{steps_json}"
     )
 
-# ── Greetings fast-path ───────────────────────────────────────────────────────
+# ── Greeting fast-path ───────────────────────────────────────────────────────
 
 _GREETING_TOKENS = frozenset({
     "hi", "hey", "hello", "hiya", "howdy", "sup", "yo",
@@ -569,7 +527,7 @@ _SYSTEM_PROMPTS = {
     ),
 }
 
-# ── Tool definitions (MCP-style, sent to Ollama) ──────────────────────────────
+# ── Tool definitions ─────────────────────────────────────────────────────────
 
 TOOLS = [
     {
@@ -817,70 +775,6 @@ _GUIDE_LAUNCHED = {
     "ru": "Руководство запущено — следуйте выделенным шагам.",
 }
 
-# ── Model pull state (module-level, single-user app) ─────────────────────────
-
-_pull_state = {
-    "active": False,
-    "model": "",
-    "status": "",
-    "total": 0,
-    "completed": 0,
-    "error": "",
-    "done": False,
-}
-_pull_lock = threading.Lock()
-
-
-def get_pull_state() -> dict:
-    with _pull_lock:
-        return dict(_pull_state)
-
-
-def start_model_pull(ollama_url: str, model: str) -> None:
-    """Start an Ollama model pull in a background thread."""
-    with _pull_lock:
-        if _pull_state["active"]:
-            return
-        _pull_state.update({"active": True, "model": model, "status": "starting",
-                             "total": 0, "completed": 0, "error": "", "done": False})
-
-    def _pull():
-        try:
-            body = json.dumps({"name": model, "stream": True}).encode()
-            req = urllib.request.Request(
-                f"{ollama_url}/api/pull",
-                data=body,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=600) as resp:
-                for raw in resp:
-                    line = raw.rstrip(b"\n")
-                    if not line:
-                        continue
-                    try:
-                        data = json.loads(line.decode("utf-8"))
-                    except Exception:
-                        continue
-                    with _pull_lock:
-                        _pull_state["status"] = data.get("status", _pull_state["status"])
-                        if "total" in data:
-                            _pull_state["total"] = data["total"]
-                        if "completed" in data:
-                            _pull_state["completed"] = data["completed"]
-                        if data.get("status") == "success":
-                            _pull_state["done"] = True
-        except Exception as e:
-            with _pull_lock:
-                _pull_state["error"] = str(e)
-                _pull_state["done"] = True
-        finally:
-            with _pull_lock:
-                _pull_state["active"] = False
-
-    threading.Thread(target=_pull, daemon=True).start()
-
-
 # ── Tool execution ────────────────────────────────────────────────────────────
 
 def _run_tool(name: str, args: dict) -> str:
@@ -971,54 +865,46 @@ def _run_tool(name: str, args: dict) -> str:
         return json.dumps({"error": str(e)})
 
 
-# ── Chat ──────────────────────────────────────────────────────────────────────
+# ── Groq chat ─────────────────────────────────────────────────────────────────
 
-def chat(messages: list, language: str, ollama_url: str, model: str) -> dict:
-    """Send a chat request to Ollama, executing any tool calls, and return the final reply."""
-    system_prompt = _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
-    full_messages = [{"role": "system", "content": system_prompt}] + messages
-    guide_action = None
-
-    for _ in range(6):  # guard against infinite tool loops
-        try:
-            body = json.dumps({"model": model, "messages": full_messages, "tools": TOOLS, "stream": False}).encode()
-            req = urllib.request.Request(
-                f"{ollama_url}/api/chat",
-                data=body,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read().decode())
-        except urllib.error.URLError:
-            return {"error": "ollama_offline"}
-        except socket.timeout:
-            return {"error": "timeout"}
-        except Exception as e:
-            return {"error": str(e)}
-        assistant_msg = result.get("message", {})
-        tool_calls = assistant_msg.get("tool_calls") or []
-
-        if not tool_calls:
-            out = {"reply": assistant_msg.get("content", "")}
-            if guide_action:
-                out["guide_action"] = guide_action
-            return out
-
-        # Execute tool calls and feed results back
-        full_messages.append(assistant_msg)
-        for tc in tool_calls:
-            fn = tc.get("function", {})
-            tool_name = fn.get("name", "")
-            tool_result = _run_tool(tool_name, fn.get("arguments") or {})
-            if tool_name in ("trigger_guide", "trigger_custom_steps"):
-                try:
-                    guide_action = json.loads(tool_result)
-                except Exception:
-                    pass
-            full_messages.append({"role": "tool", "content": tool_result})
-
-    return {"error": "max_iterations"}
+def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
+    try:
+        from groq import Groq
+        client = Groq(api_key=api_key)
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": 500,
+        }
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = "auto"
+        response = client.chat.completions.create(**kwargs)
+        msg = response.choices[0].message
+        result = {"role": "assistant", "content": msg.content or ""}
+        if msg.tool_calls:
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in msg.tool_calls
+            ]
+        return result
+    except ImportError:
+        return {"role": "assistant", "content": "", "error": "groq_not_installed"}
+    except Exception as e:
+        err = str(e)
+        if "401" in err or "api_key" in err.lower() or "authentication" in err.lower():
+            return {"role": "assistant", "content": "", "error": "api_key_invalid"}
+        if "429" in err or "rate_limit" in err.lower():
+            return {"role": "assistant", "content": "", "error": "rate_limit"}
+        return {"role": "assistant", "content": "", "error": err}
 
 
 _GUIDE_TOOLS = {"trigger_guide", "trigger_custom_steps"}
@@ -1349,29 +1235,22 @@ def _is_out_of_scope(query: str) -> bool:
     return False
 
 
-def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_context: dict = None):
-    """Generator yielding SSE event dicts.
-
-    Uses stream=False for all Ollama calls so that tool calling works reliably
-    on small models (qwen2.5:3b ignores tool definitions when stream=True).
-    """
+def chat_stream(messages: list, language: str, api_key: str, model: str, ui_context: dict = None):
+    """Generator yielding SSE event dicts."""
     last_user_query = next(
         (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
     )
     mode = (ui_context or {}).get("mode", "")
     data_loaded = (ui_context or {}).get("data_loaded", False)
 
-    # Greeting fast-path — respond instantly without touching Ollama
     if _is_greeting(last_user_query):
         yield {"type": "chunk", "content": _GREETING_RESPONSE.get(language, _GREETING_RESPONSE["en"])}
         return
 
-    # Fast pre-filter: bail out immediately for clearly off-topic queries
     if _is_out_of_scope(last_user_query):
         yield {"type": "chunk", "content": _OUT_OF_SCOPE.get(language, _OUT_OF_SCOPE["en"])}
         return
 
-    # Report clarification: turn 2 — user answered quick/full, dispatch guide directly
     pending_report = _get_pending_report_type(messages)
     if pending_report == "quick":
         raw = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
@@ -1384,7 +1263,6 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
         yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
         return
 
-    # Report clarification: turn 1 — ask user to specify quick vs full
     if _needs_report_clarification(last_user_query, messages):
         yield {"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}
         return
@@ -1401,63 +1279,48 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
             parts.append(f"cal_mode={cal_mode}")
         if parts:
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
-    matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
 
-    # Guide match (exact phrase = 1.0, stem-word overlap = 0.8) — skip Ollama
+    matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
     if matched and match_score >= 0.7:
         steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
         yield {"type": "guide", "guide_action": {"custom_steps": steps}}
         return
 
-    # General Q&A — full LLM response with tools
     full_messages = [{"role": "system", "content": system_prompt}] + messages
     guide_action = None
 
     for _ in range(6):
-        try:
-            body = json.dumps({
-                "model": model,
-                "messages": full_messages,
-                "tools": TOOLS,
-                "stream": False,
-                "keep_alive": -1,
-                "options": {"num_predict": 400, "num_ctx": 2048, "temperature": 0.1},
-            }).encode()
-            req = urllib.request.Request(
-                f"{ollama_url}/api/chat",
-                data=body,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read().decode())
-        except urllib.error.URLError:
-            yield {"type": "error", "error": "ollama_offline"}
+        result = _groq_chat(api_key, model, full_messages, TOOLS)
+        if "error" in result:
+            error_map = {
+                "groq_not_installed": "groq_not_installed",
+                "api_key_invalid": "api_key_invalid",
+                "rate_limit": "rate_limit",
+            }
+            yield {"type": "error", "error": error_map.get(result["error"], result["error"])}
             return
-        except socket.timeout:
-            yield {"type": "error", "error": "timeout"}
-            return
-        except Exception as e:
-            yield {"type": "error", "error": str(e)}
-            return
-        assistant_msg = result.get("message", {})
-        tool_calls = assistant_msg.get("tool_calls") or []
+
+        tool_calls = result.get("tool_calls") or []
 
         if not tool_calls:
-            content = assistant_msg.get("content", "")
+            content = result.get("content", "")
             if content:
                 yield {"type": "chunk", "content": content}
             if guide_action:
                 yield {"type": "guide", "guide_action": guide_action}
             return
 
-        full_messages.append(assistant_msg)
+        full_messages.append(result)
         only_guide_tools = True
         for tc in tool_calls:
             fn = tc.get("function", {})
             tool_name = fn.get("name", "")
-            tool_result = _run_tool(tool_name, fn.get("arguments") or {})
+            try:
+                tool_args = json.loads(fn.get("arguments", "{}"))
+            except Exception:
+                tool_args = {}
+            tool_result = _run_tool(tool_name, tool_args)
             if tool_name in _GUIDE_TOOLS:
                 try:
                     guide_action = json.loads(tool_result)
@@ -1465,13 +1328,14 @@ def chat_stream(messages: list, language: str, ollama_url: str, model: str, ui_c
                     pass
             else:
                 only_guide_tools = False
-            full_messages.append({"role": "tool", "content": tool_result})
+            full_messages.append({
+                "role": "tool",
+                "tool_call_id": tc.get("id", ""),
+                "content": tool_result,
+            })
 
-        # All tool calls were guide triggers — skip the second Ollama round-trip
-        # and return a brief confirmation immediately
         if only_guide_tools and guide_action:
-            msg = _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])
-            yield {"type": "chunk", "content": msg}
+            yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
             yield {"type": "guide", "guide_action": guide_action}
             return
 
@@ -1482,28 +1346,52 @@ def get_guide_examples(lang: str = "en") -> list:
     return _load_guide_examples(lang)
 
 
+def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_context=None):
+    """Generator yielding SSE event dicts via the online proxy server."""
+    import requests as http_req
 
-def prewarm_model(ollama_url: str, model: str) -> None:
-    """Fire-and-forget POST to keep the model loaded in Ollama memory."""
+    payload = {
+        'messages': messages,
+        'language': language,
+        'license_token': license_token,
+        'model': model,
+        'ui_context': ui_context or {},
+    }
+
     try:
-        body = json.dumps({"model": model, "prompt": "", "keep_alive": -1}).encode()
-        req = urllib.request.Request(
-            f"{ollama_url}/api/generate",
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST",
+        resp = http_req.post(
+            f"{proxy_url}/ai/proxy/chat",
+            json=payload,
+            stream=True,
+            timeout=(10, 120),
         )
-        urllib.request.urlopen(req, timeout=30)
-    except Exception:
-        pass
+        if resp.status_code == 401:
+            yield {'type': 'error', 'error': 'license_invalid'}
+            return
+        if resp.status_code == 503:
+            yield {'type': 'error', 'error': 'groq_not_installed'}
+            return
+        resp.raise_for_status()
 
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            if isinstance(line, bytes):
+                line = line.decode('utf-8')
+            if not line.startswith('data: '):
+                continue
+            raw = line[6:]
+            if raw == '[DONE]':
+                return
+            try:
+                event = json.loads(raw)
+                yield event
+            except (ValueError, KeyError):
+                pass
 
-def check_ollama(ollama_url: str) -> dict:
-    """Return {'running': bool, 'models': [...]} for the given Ollama URL."""
-    try:
-        with urllib.request.urlopen(f"{ollama_url}/api/tags", timeout=3) as resp:
-            data = json.loads(resp.read().decode())
-        models = [m["name"] for m in data.get("models", [])]
-        return {"running": True, "models": models}
-    except Exception:
-        return {"running": False, "models": []}
+    except http_req.exceptions.ConnectionError:
+        yield {'type': 'error', 'error': 'Cannot connect to AI service. Check your internet connection.'}
+    except http_req.exceptions.Timeout:
+        yield {'type': 'error', 'error': 'AI service timed out. Please try again.'}
+    except Exception as e:
+        yield {'type': 'error', 'error': str(e)}
