@@ -5,7 +5,7 @@ _PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 _ACTIVATION_PATH = os.path.join(_PROJECT_ROOT, 'activation.json')
 AI_SERVICE_URL = os.environ.get('AI_SERVICE_URL', 'https://www.easyokapi.cbbiotec.vn').rstrip('/')
 
-_token_cache: str | None = ...  # sentinel: ... means "not yet loaded"
+_token_cache = ...  # type: Optional[str]  # sentinel: ... means "not yet loaded"
 
 
 def load():
