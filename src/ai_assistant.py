@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import threading
 
 # ── Guide training examples (few-shot injection) ──────────────────────────────
@@ -10,6 +11,11 @@ _GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 _GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_translations")
 
 VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru'}
+
+
+_GUIDE_CACHE: dict = {}
+_GUIDE_CACHE_LOCK = threading.Lock()
+_GUIDE_CACHE_TTL = 60  # seconds
 
 
 def _apply_overlay(examples: list, lang: str) -> list:
@@ -40,6 +46,10 @@ def _apply_overlay(examples: list, lang: str) -> list:
 
 
 def _load_guide_examples(lang: str = "en") -> list:
+    with _GUIDE_CACHE_LOCK:
+        cached = _GUIDE_CACHE.get(lang)
+        if cached and time.monotonic() - cached["ts"] < _GUIDE_CACHE_TTL:
+            return cached["data"]
     try:
         with open(_GUIDE_TRAINING_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -48,6 +58,8 @@ def _load_guide_examples(lang: str = "en") -> list:
         return []
     if lang and lang != "en":
         examples = _apply_overlay(examples, lang)
+    with _GUIDE_CACHE_LOCK:
+        _GUIDE_CACHE[lang] = {"data": examples, "ts": time.monotonic()}
     return examples
 
 
