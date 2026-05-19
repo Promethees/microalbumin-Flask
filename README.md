@@ -97,173 +97,133 @@ heroku pg:psql --app easysensor-kit -c "SELECT COUNT(*) FROM users;"
 	- Use `npm init -y && npm pkg set scripts.build="node build.js" scripts.start="gunicorn main:app" && npm install --save-dev javascript-obfuscator terser clean-css`
 
 ## Overview
-This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
+Easy OKAPI (Open-colorimeter Kinetics Analysis Platform) is a cloud-hosted web application for colorimeter data analysis. It is developed by the Center for Bioscience and Biotechnology, HCMUS-VNU, and is inspired by the [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter).
 
 ## Features
-* ***Init prompt*** Instruct you to select the correct started Directory for Directory Picker
+
+### File Management
+
+Upload, edit, delete, copy, and merge `.csv` data files and `.json` calibration files directly in your browser session. Files are stored per-user and persist across sessions for registered users (backed by Firebase).
 
 <div align="center">
-	<img src="/images/init-prompt.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of file management panel -->
 </div>
 
-* ***Directory*** Browse host's directories to select CSV files.
+Supported data formats:
+- [`Kinetics JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/exp_kinetics.json)
+- [`Points JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/exp_point.json)
+- [`Single Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/single.csv)
+- [`Multiple Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/multi.csv)
+
+### Measurement Modes
+
+The application has **4 modes** selectable from the sidebar:
+
+| Mode | Description |
+|---|---|
+| `kinetics` | Time-series absorbance data — computes max rate, slope, saturation, time to saturation |
+| `point` | Single time-point endpoint assay |
+| `calibrate` | Build a standard curve from known concentrations using selectable regression algorithms |
+| `report` | Compile saved analysis snapshots into multi-file HTML or Excel reports |
 
 <div align="center">
-	<img src="/images/browse.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of mode selector -->
 </div>
 
-* ***Set measurement Modes*** The Application has 3 modes: `kinetics`, `point`, `calibrate`
+### Data Display & Charts
 
-* ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
-
-* ***Log HID*** Get data being sent from the ***PyBadge*** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
+Select a CSV file to visualize absorbance vs. time. Enable **Full Display** to overlay kinetics annotation lines (max rate window, linear progression, saturation) on the chart. Use **Display Range** to zoom into a time window and **Window Size** to control the sliding-window regression (kinetics mode only).
 
 <div align="center">
-	<img src="/images/logHID.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of data chart with annotations -->
 </div>
 
-* ***Standard curves*** Choose standard curve you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard curve json to understand the calculation methods. The information of selected file shall be displayed on the right portion of the interface.
+Multi-source CSV files display each measurement channel in a separate chart. Use **Split by Sources** and **Filter by source count** to manage multi-source views. **Normalize** subtracts the baseline value from each source for direct comparison.
 
 <div align="center">
-	<img src="/images/standardJSON.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of multi-source display -->
 </div>
 
-* ***File Selection*** When a directory with csv files is browsed, the list of selectable csv files are displayed under ***File Selection*** table. Currently, the feature only supports display data from ***ONE*** file at a time. Click `Select` to visualize the chosen csv, `Deselect` to turn the visualization off.
+### Kinetics Analysis
+
+In `kinetics` mode, for each measurement source the app computes:
+- **Max Rate** — highest ΔAbs/s found by sliding-window linear regression
+- **Slope** — overall linear slope across the dataset
+- **Sat** — plateau (saturation) absorbance value
+- **Time To Sat** — time in minutes until the signal reaches the plateau
 
 <div align="center">
-	<img src="/images/fileselection.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of kinetics analysis panel -->
 </div>
 
-* ***Upload data*** Data can only be uploaded align with the following formats to be processed properly.
+### Calibration & Standard Curves
 
-	- Format for [`Kinetics JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/exp_kinetics.json)
+In `calibrate` mode, select which kinetics quantity (max rate, slope, sat, time to sat) or time point (point mode) to use as the X-axis, then fit a standard curve with one of:
 
-	- Format for [`Points JSON`](https://github.com/Promethees/microalbumin-Flask/tree/online/json/exp_point.json)
+- Linear · Polynomial · Logarithmic · Exponential · Michaelis-Menten
 
-	- Format for [`Single Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/single.csv)
-
-	- Format for [`Multiple Source CSV`](https://github.com/Promethees/microalbumin-Flask/tree/online/csv/multi.csv)
-
-* ***Data Display***:
-	- `Full Display` Enable, Disable graphics of `maxRate` (maximum reaction velocity throughout the process), `Linear` (average speed along reaction stage), `Sat` (Measured value at saturating point when no longer reactions happening) lines. When it is checked and a csv file is being browsed, all data of that file will be shown and `Display Range` value should be disabled.
-	- In `kinetics` and `point` measurement modes, displayed data should show Measurement values (i.e Absorbance agains Time) 
-
-	<div align="center">
-		<img src="/images/meas.png" width="600">
-	</div>
-
-	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `maxRate`, `Slope` of `Linear` progression, `Sat`, and `Reacting Time taken to Saturation`.
-
-	<div align="center">
-		<img src="/images/calKinetics.png" width="600">
-	</div>
-
-	- In `calibrate` mode, if selected calibration type is `point`, you can select among timepoints, which are exported to the selected file earlier in the measuring stage for calibration. 
-
-	<div align="center">
-		<img src="/images/calPoint.png" width="600">
-	</div>
-
-
-* `Display Range` Modifications in display range change the displayed data and respective unit displayed on the plot. 
+Set an R² threshold to filter poor-quality windows. Export the fitted coefficients as a `.json` file for later use.
 
 <div align="center">
-	<img src="/images/displayrange.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of calibrate mode with regression curve -->
 </div>
 
-* `Window size` Specifies the number of data in a group to determine local slopes. Minimum is 3, maximum is half of data size in the browsing csv file. Disabled in `point`, `calibrate` mode
+### Concentration Derivation
+
+Load a saved standard-curve JSON to automatically convert measured values into analyte concentrations. The derived concentration is shown alongside each source's analysis panel.
 
 <div align="center">
-	<img src="/images/window.png" width="600">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of derived concentration display -->
 </div>
 
-* `Export Analysis` 
-	- Become ***Export coefficients for standard curve*** in `calibrate` mode
-	- For `point` mode, key in the time point, the system will export with corresponding approximated measurement value at that time point for you. 
-	<div align="center">
-		<img src="/images/exportA.png" width="600">
-	</div>
+### Export
 
-	- For `calibrate` mode, you can specify the corresponding regression algorithm to export standard curve with coefficients and plot on the chart. 
-	<div align="center">
-		<img src="/images/exportC.png" width="600">
-	</div>
+- **Export Analysis** — save kinetics/point results to a new CSV file
+- **Export Coefficients** — save the fitted standard-curve coefficients to a JSON file
+- **Export to Report** — push the current analysis snapshot into a named report subject
 
-	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
+<div align="center">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of export panel -->
+</div>
 
-* `Filter number of sources` Allows users to filter csv data files based on number of data sources available.
+### Report System
 
-	- Filter source control panel dropdown. Uncheck to disable the filter
-	<div align="center">
-		<img src="/images/filter-control.png" width="600">
-	</div>
+Switch to `report` mode to manage saved analysis snapshots organized into **subjects**. Reorder, rename, copy, merge, or delete subjects and items. Generate a final output as:
+- **HTML report** — printable in-browser, saveable as PDF
+- **Excel workbook** — formatted sheets with embedded charts per subject
 
-	- Typical multiple sources display
-	<div align="center">
-		<img src="/images/multi-meas-display.png" width="600">
-	</div>
+<div align="center">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of report console -->
+</div>
 
-	- You can either export all data analysis from these sources or select specific one to export
-	<div align="center">
-		<img src="/images/exp-multi.png" width="600">
-	</div>
+### Google Drive Integration
 
-## Directory Structure
-```
-microalbumin-Flask/
-|-- README.md
-|-- generate-tree.sh
-|-- log_hid_data.py
-|-- log_hid_data_pyusb.py
-|-- main.py
-|-- main_code.py
-|-- requirements-win.txt
-|-- requirements.txt
-|-- setup-1-install-pyenv.command
-|-- setup-2-install-venv.command
-|-- setup-3-run.command
-|-- src
-|   |-- browser_mgt.py
-|   |-- export_cal_json.py
-|   |-- export_data.py
-|   |-- file.py
-|   |-- file_path.py
-|   |-- get_next_filename.py
-|   |-- measure.py
-|   |-- mode.py
-|   |-- quantity.py
-|   |-- range.py
-|   |-- script_monitor.py
-|   `-- send_command.py
-|-- startwindow-1-git.bat
-|-- startwindow-2-pyenv.bat
-|-- startwindow-3-python.bat
-|-- startwindow-4-venv-run.bat
-|-- static
-|   |-- done.mp3
-|   |-- ht-logo.jpeg
-|   |-- ht-noname.png
-|   |-- ht.ico
-|   |-- script
-|   |   |-- calculate.js
-|   |   |-- data-display.js
-|   |   |-- data-handling.js
-|   |   |-- edit-file.js
-|   |   |-- generate-chart.js
-|   |   |-- hid-logging.js
-|   |   |-- index.js
-|   |   |-- init.js
-|   |   |-- navigation.js
-|   |   `-- short-hands.js
-|   `-- style.css
-`-- templates
-    |-- goodbye.html
-    `-- index.html
-```
+Connect your Google account to sync all session files (CSV + JSON) to a Drive folder of your choice. Data can be pushed to Drive or pulled back into the session at any time. Optional auto-sync on page close.
 
-## Notes
+<div align="center">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of Drive panel -->
+</div>
 
-* The app assumes Timestamp in CSV files is in seconds. Adjust baseMultiplier in index.html if your data uses a different unit.
+### AI Assistant (OKAPI Assistant)
+
+A floating chat widget powered by [Groq](https://groq.com). Ask questions about your data, calibration coefficients, or app navigation. The assistant responds with text explanations or launches an interactive step-by-step spotlight guide directly in the UI.
+
+Supported languages: English, Tiếng Việt, 中文 (简体), Français, 日本語, Русский.
+
+<div align="center">
+	<img src="/images/blank.png" width="600">
+	<!-- TODO: screenshot of AI chat widget -->
+</div>
 
 ## License
 * This project is for educational purposes and does not include a specific license. Feel free to use and modify it as needed.
