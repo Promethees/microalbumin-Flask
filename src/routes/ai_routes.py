@@ -106,9 +106,12 @@ def proxy_chat():
     language = data.get('language', 'en')
     model = data.get('model') or Config.AI_MODEL
     ui_context = data.get('ui_context') or {}
+    proxy_user_data = get_user_data(user_id=f'account_{user.id}')
 
     def generate():
-        for event in ai_assistant.chat_stream(messages, language, Config.GROQ_API_KEY, model, ui_context):
+        for event in ai_assistant.chat_stream(
+            messages, language, Config.GROQ_API_KEY, model, ui_context, proxy_user_data
+        ):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
