@@ -1019,7 +1019,7 @@
       "requires_data_loaded": true,
       "steps": [
         {
-          "target": "#normalize-mode",
+          "target": "#normalize-mode-section",
           "title": "Normalize Data",
           "description": "Toggle this to subtract the baseline absorbance (blank sample) from all readings, giving net absorbance values relative to background.",
           "position": "left",
@@ -1047,7 +1047,7 @@
       "requires_data_loaded": true,
       "steps": [
         {
-          "target": "#split-source",
+          "target": "#split-source-section",
           "title": "Split by Sources",
           "description": "Toggle this to display each measurement source (channel) as its own separate chart instead of overlaying them on a single graph.",
           "position": "left",
