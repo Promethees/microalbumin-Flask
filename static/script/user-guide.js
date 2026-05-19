@@ -400,7 +400,9 @@ class UserGuide {
      * Start polling for position changes (fallback for layout shifts or re-renders)
      */
     startPolling(step) {
-        // Poll every 100ms for 2 seconds, then every 500ms
+        const FAST_INTERVAL_MS = 100;
+        const FAST_DURATION_MS = 2000;
+        const FAST_STEPS = FAST_DURATION_MS / FAST_INTERVAL_MS; // 20 ticks before switching to slow poll
         let count = 0;
         this.pollingInterval = setInterval(() => {
             if (!this.isActive) {
@@ -421,8 +423,7 @@ class UserGuide {
             }
 
             count++;
-            // Slow down after 2 seconds
-            if (count === 20) {
+            if (count === FAST_STEPS) {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = setInterval(() => {
                     if (!this.isActive) return;
