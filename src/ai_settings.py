@@ -9,8 +9,6 @@ _SETTINGS_PATH = os.path.join(
 DEFAULTS = {
     "enabled": True,
     "preferred_languages": ["en"],
-    "model": "qwen2.5:7b",
-    "ollama_url": "http://localhost:11434",
     "first_run_shown": False,
 }
 
@@ -23,13 +21,6 @@ SUPPORTED_LANGUAGES = {
     "ru": "Русский",
 }
 
-AVAILABLE_MODELS = [
-    {"name": "qwen2.5:7b",  "size": "4.7 GB", "note": "Best multilingual (recommended)"},
-    {"name": "qwen2.5:3b",  "size": "1.9 GB", "note": "Lighter, still multilingual"},
-    {"name": "llama3.2:3b", "size": "2.0 GB", "note": "Good English/French, weaker Asian"},
-    {"name": "mistral:7b",  "size": "4.1 GB", "note": "Good European languages"},
-]
-
 
 def load() -> dict:
     base = dict(DEFAULTS)
@@ -38,11 +29,14 @@ def load() -> dict:
             with open(_SETTINGS_PATH, 'r', encoding='utf-8') as f:
                 stored = json.load(f)
 
-            # Backward-compat: migrate old single-language string to list
             if 'preferred_language' in stored and 'preferred_languages' not in stored:
                 stored['preferred_languages'] = [stored.pop('preferred_language')]
             elif 'preferred_language' in stored:
                 del stored['preferred_language']
+
+            # Drop obsolete Ollama keys
+            for obsolete in ('model', 'ollama_url'):
+                stored.pop(obsolete, None)
 
             return {**base, **stored}
         except Exception:
@@ -52,7 +46,6 @@ def load() -> dict:
 
 def save(settings: dict) -> bool:
     try:
-        # Migrate on save as well
         if 'preferred_language' in settings and 'preferred_languages' not in settings:
             settings = dict(settings)
             settings['preferred_languages'] = [settings.pop('preferred_language')]
@@ -60,8 +53,9 @@ def save(settings: dict) -> bool:
             settings = dict(settings)
             del settings['preferred_language']
 
-        merged = {**DEFAULTS, **settings}
-        # Guarantee preferred_languages is always a non-empty list
+        allowed = {'enabled', 'preferred_languages', 'first_run_shown'}
+        clean = {k: v for k, v in settings.items() if k in allowed}
+        merged = {**DEFAULTS, **clean}
         langs = merged.get('preferred_languages')
         if not isinstance(langs, list) or not langs:
             merged['preferred_languages'] = ['en']
