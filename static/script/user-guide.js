@@ -811,6 +811,15 @@ class UserGuide {
      * Build a step sequence for a named workflow.
      */
     _buildWorkflowSteps(workflowName) {
+        const mainContent = document.getElementById('main-content');
+        const appStarted = mainContent && !mainContent.classList.contains('hidden');
+        if (!appStarted) {
+            return [...this.stepDefinitions.initial];
+        }
+
+        const dataDisplay = document.getElementById('data-display-section');
+        const dataLoaded = dataDisplay && !dataDisplay.classList.contains('hidden');
+
         const d = this.stepDefinitions;
         switch (workflowName) {
             case 'kinetics':
@@ -818,41 +827,38 @@ class UserGuide {
                     ...d.common,
                     d.nonCalibrate,
                     ...d.fileSelection,
-                    ...d.kinetics.part1,
-                    ...d.kinetics.secondPart,
-                    d.kinetics.measurementMode,
+                    ...(dataLoaded ? [...d.kinetics.part1, ...d.kinetics.secondPart, d.kinetics.measurementMode] : []),
                 ];
             case 'point':
                 return [
                     ...d.common,
                     d.nonCalibrate,
                     ...d.fileSelection,
-                    ...d.point.part1,
-                    ...d.kinetics.secondPart,
-                    d.kinetics.measurementMode,
+                    ...(dataLoaded ? [...d.point.part1, ...d.kinetics.secondPart, d.kinetics.measurementMode] : []),
                 ];
             case 'calibrate_kinetics':
                 return [
                     ...d.common,
                     ...d.calibrate.calmode,
                     ...d.fileSelection,
-                    ...d.calibrate.common,
-                    ...d.calibrate.kinetics,
+                    ...(dataLoaded ? [...d.calibrate.common, ...d.calibrate.kinetics] : []),
                 ];
             case 'calibrate_point':
                 return [
                     ...d.common,
                     ...d.calibrate.calmode,
                     ...d.fileSelection,
-                    ...d.calibrate.common,
-                    ...d.calibrate.point,
+                    ...(dataLoaded ? [...d.calibrate.common, ...d.calibrate.point] : []),
                 ];
-            case 'report':
+            case 'report': {
+                const reportConsole = document.getElementById('report-console-section');
+                const reportVisible = reportConsole && !reportConsole.classList.contains('hidden');
                 return [
                     ...d.common,
                     ...d.fileSelection,
-                    ...d.report,
+                    ...(reportVisible ? d.report : []),
                 ];
+            }
             default: // 'general' — use the existing context-aware defineSteps logic
                 this.defineSteps();
                 return this.steps;
