@@ -995,6 +995,7 @@
                                     api_key_invalid: '⚠ AI API key is invalid. Contact the server administrator.',
                                     rate_limit: '⚠ Rate limit reached. Please wait a moment and try again.',
                                     license_invalid: '⚠ AI license is invalid or expired. Re-activate at easyokapi.cbbiotec.vn.',
+                                    max_iterations: '⚠ The assistant could not complete its response. Please try again.',
                                 }[event.error] || ('⚠ ' + event.error);
                                 _finalizeStreamingMsg(msgDiv, null, errMsg);
                                 return;
