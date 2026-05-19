@@ -1,6 +1,6 @@
 /**
  * OKAPI Assistant — floating AI chat widget
- * Connects to the local /ai/* routes which proxy to Ollama.
+ * Connects to /ai/* routes which proxy to Groq API.
  */
 
 (function () {
@@ -119,13 +119,13 @@
         fr: '📄 Rapport complet', ja: '📄 フルレポート', ru: '📄 Полный отчёт',
     };
 
-    const _AI_DISABLED_MSG = {
-        en: 'AI Assistant is disabled. Enable it in Settings.',
-        vi: 'Trợ lý AI đã bị tắt. Hãy bật lại trong Cài đặt.',
-        zh: 'AI 助手已禁用，请在设置中启用。',
-        fr: 'L\'assistant IA est désactivé. Activez-le dans les Paramètres.',
-        ja: 'AIアシスタントが無効です。設定で有効にしてください。',
-        ru: 'Помощник ИИ отключён. Включите его в настройках.',
+    const _AI_UNAVAILABLE_MSG = {
+        en: '⚠ AI not activated. Enter your Easy OKAPI token in the panel below.',
+        vi: '⚠ AI chưa được kích hoạt. Nhập mã Easy OKAPI của bạn vào ô bên dưới.',
+        zh: '⚠ AI 未激活。请在下方输入您的 Easy OKAPI 令牌。',
+        fr: '⚠ IA non activée. Entrez votre jeton Easy OKAPI ci-dessous.',
+        ja: '⚠ AI が有効化されていません。下の欄に Easy OKAPI トークンを入力してください。',
+        ru: '⚠ ИИ не активирован. Введите ваш токен Easy OKAPI в поле ниже.',
     };
 
     const _HELP_HEADER = {
@@ -139,31 +139,12 @@
     };
 
     const _STATUS_LABELS = {
-        en: { mode: 'mode', app_started: 'app started', data_loaded: 'data loaded', cal_mode: 'cal mode', model: 'model', ollama: 'ollama' },
-        vi: { mode: 'chế độ', app_started: 'đã khởi động', data_loaded: 'dữ liệu đã tải', cal_mode: 'chế độ cal', model: 'mô hình', ollama: 'ollama' },
-        zh: { mode: '模式', app_started: '已启动', data_loaded: '已加载数据', cal_mode: '校准模式', model: '模型', ollama: 'ollama' },
-        fr: { mode: 'mode', app_started: 'démarré', data_loaded: 'données chargées', cal_mode: 'mode cal', model: 'modèle', ollama: 'ollama' },
-        ja: { mode: 'モード', app_started: 'アプリ起動', data_loaded: 'データ読込', cal_mode: '校正モード', model: 'モデル', ollama: 'ollama' },
-        ru: { mode: 'режим', app_started: 'запущено', data_loaded: 'данные загружены', cal_mode: 'режим кал', model: 'модель', ollama: 'ollama' },
-    };
-
-    const _STATUS_BAR_MSGS = {
-        ollama_offline: {
-            en: '⚠ Ollama offline — open Settings to install',
-            vi: '⚠ Ollama ngoại tuyến — mở Cài đặt để cài đặt',
-            zh: '⚠ Ollama 离线 — 打开设置安装',
-            fr: '⚠ Ollama hors ligne — ouvrez les Paramètres pour installer',
-            ja: '⚠ Ollama オフライン — 設定を開いてインストール',
-            ru: '⚠ Ollama не работает — откройте Настройки для установки',
-        },
-        model_missing: {
-            en: '⚠ Model not downloaded — open Settings to download',
-            vi: '⚠ Mô hình chưa tải — mở Cài đặt để tải xuống',
-            zh: '⚠ 模型未下载 — 打开设置下载',
-            fr: '⚠ Modèle non téléchargé — ouvrez les Paramètres pour télécharger',
-            ja: '⚠ モデル未ダウンロード — 設定を開いてダウンロード',
-            ru: '⚠ Модель не загружена — откройте Настройки для загрузки',
-        },
+        en: { mode: 'mode', app_started: 'app started', data_loaded: 'data loaded', cal_mode: 'cal mode' },
+        vi: { mode: 'chế độ', app_started: 'đã khởi động', data_loaded: 'dữ liệu đã tải', cal_mode: 'chế độ cal' },
+        zh: { mode: '模式', app_started: '已启动', data_loaded: '已加载数据', cal_mode: '校准模式' },
+        fr: { mode: 'mode', app_started: 'démarré', data_loaded: 'données chargées', cal_mode: 'mode cal' },
+        ja: { mode: 'モード', app_started: 'アプリ起動', data_loaded: 'データ読込', cal_mode: '校正モード' },
+        ru: { mode: 'режим', app_started: 'запущено', data_loaded: 'данные загружены', cal_mode: 'режим кал' },
     };
 
     // Natural-language phrases that mean "redo the last thing"
@@ -227,15 +208,13 @@
 
     const AI = {
         open: false,
-        settingsOpen: false,
-        messages: [],          // {role, content}[]  — conversation history
-        settings: null,        // loaded from /ai/settings
-        status: null,          // loaded from /ai/status
-        guides: [],            // loaded from /ai/guides — keyed by id for O(1) lookup
-        activeLang: null,      // currently active language (cycles through preferred_languages)
-        pullTimer: null,
-        currentAbort: null,    // AbortController for the active /ai/chat fetch
-        lastAction: null,      // { type: 'custom_steps'|'workflow'|'llm', steps?, workflow?, query? }
+        messages: [],
+        settings: null,
+        status: null,
+        guides: [],
+        activeLang: null,
+        currentAbort: null,
+        lastAction: null,
         LANG_LABELS: {
             en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU'
         },
@@ -276,13 +255,22 @@
 <div id="okapi-ai-header">
   <span id="okapi-ai-title">&#129302; OKAPI Assistant</span>
   <div id="okapi-ai-header-btns">
-    <button id="okapi-ai-lang-btn" title="Cycle language" onclick="OkapiAI.cycleLang()"></button>
-    <button id="okapi-ai-settings-btn" title="Settings" onclick="OkapiAI.toggleSettings()">&#9881;</button>
+    <div id="okapi-ai-lang-select">
+      <button id="okapi-ai-lang-btn" title="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
+      <div id="okapi-ai-lang-menu" class="okapi-hidden">
+        <button class="okapi-ai-lang-opt" data-lang="en">English</button>
+        <button class="okapi-ai-lang-opt" data-lang="vi">Ti&#7871;ng Vi&#7879;t</button>
+        <button class="okapi-ai-lang-opt" data-lang="zh">&#20013;&#25991; (&#31616;&#20307;)</button>
+        <button class="okapi-ai-lang-opt" data-lang="fr">Fran&#231;ais</button>
+        <button class="okapi-ai-lang-opt" data-lang="ja">&#26085;&#26412;&#35486;</button>
+        <button class="okapi-ai-lang-opt" data-lang="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</button>
+      </div>
+    </div>
     <button id="okapi-ai-close-btn" title="Close" onclick="OkapiAI.close()">&#10005;</button>
   </div>
 </div>
 
-<!-- Main chat view -->
+<!-- Chat view -->
 <div id="okapi-ai-body">
   <div id="okapi-ai-messages"></div>
   <div id="okapi-ai-status-bar"></div>
@@ -291,61 +279,27 @@
     <textarea id="okapi-ai-input" rows="2" placeholder="Ask anything… (type / for commands)"></textarea>
     <button id="okapi-ai-send-btn" onclick="OkapiAI.send()">&#10148;</button>
   </div>
-</div>
-
-<!-- Settings view (hidden by default) -->
-<div id="okapi-ai-settings" class="okapi-hidden">
-  <h4>&#129302; AI Assistant Manager</h4>
-  <div id="okapi-ai-lang-section">
-    <div class="okapi-ai-set-label">Languages <span class="okapi-ai-set-hint">(select one or more; cycle with button)</span></div>
-    <div id="okapi-ai-lang-checks">
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="en"> English</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="vi"> Ti&#7871;ng Vi&#7879;t</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="zh"> &#20013;&#25991; (&#31616;&#20307;)</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="fr"> Fran&#231;ais</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="ja"> &#26085;&#26412;&#35486;</label>
-      <label><input type="checkbox" class="okapi-ai-lang-cb" value="ru"> &#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</label>
-    </div>
-  </div>
-  <label>Model
-    <select id="okapi-ai-set-model"></select>
-  </label>
-  <label>Ollama URL
-    <input type="text" id="okapi-ai-set-url">
-  </label>
-  <label class="okapi-ai-toggle-row">
-    <span>Enable AI Assistant</span>
-    <input type="checkbox" id="okapi-ai-set-enabled">
-  </label>
-  <div id="okapi-ai-ollama-status"></div>
-  <div id="okapi-ai-pull-section" class="okapi-hidden">
-    <div id="okapi-ai-pull-info"></div>
-    <div id="okapi-ai-pull-bar-wrap"><div id="okapi-ai-pull-bar"></div></div>
-    <button id="okapi-ai-pull-btn" onclick="OkapiAI.pullModel()">&#11015; Download Model</button>
-  </div>
-  <details id="okapi-ai-uninstall-details">
-    <summary>Uninstall / Remove</summary>
-    <div class="okapi-ai-uninstall-box">
-      <strong>Disable feature:</strong> uncheck "Enable AI Assistant" above and save.<br>
-      <strong>Remove downloaded model:</strong>
-      <code>ollama rm MODEL_NAME</code> in Terminal.<br>
-      <strong>Uninstall Ollama:</strong>
-      <a href="https://ollama.com" target="_blank">ollama.com</a>
-      &#8594; Docs &#8594; Uninstall.<br>
-      <strong>Reset AI settings:</strong>
-      <button onclick="OkapiAI.resetSettings()">&#8635; Reset to defaults</button>
-    </div>
-  </details>
-  <div id="okapi-ai-settings-actions">
-    <button onclick="OkapiAI.saveSettings()">Save</button>
-    <button onclick="OkapiAI.toggleSettings()">Back</button>
-  </div>
 </div>`;
         document.body.appendChild(panel);
 
+        // Move lang menu to <body> so position:fixed escapes the panel's transform
+        const langMenu = panel.querySelector('#okapi-ai-lang-menu');
+        if (langMenu) document.body.appendChild(langMenu);
+
+        document.querySelectorAll('.okapi-ai-lang-opt').forEach(btn => {
+            btn.addEventListener('click', () => OkapiAI.setLang(btn.dataset.lang));
+        });
+
+        document.addEventListener('click', (e) => {
+            const langBtn = document.getElementById('okapi-ai-lang-btn');
+            const menu = document.getElementById('okapi-ai-lang-menu');
+            if (menu && langBtn && !langBtn.contains(e.target) && !menu.contains(e.target)) {
+                _langMenuHide();
+            }
+        });
+
         const inputEl = document.getElementById('okapi-ai-input');
 
-        // send on Enter (Shift+Enter = newline); navigate picker with arrow keys
         inputEl.addEventListener('keydown', (e) => {
             if (_picker.visible) {
                 if (e.key === 'ArrowUp') { e.preventDefault(); _pickerMove(-1); return; }
@@ -357,14 +311,12 @@
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); OkapiAI.send(); }
         });
 
-        // show picker when text starts with /
         inputEl.addEventListener('input', () => {
             const val = inputEl.value;
             if (val.startsWith('/')) _pickerShow(val.slice(1));
             else _pickerHide();
         });
 
-        // delay hide so clicks register before blur fires
         inputEl.addEventListener('blur', () => { setTimeout(_pickerHide, 150); });
     }
 
@@ -377,7 +329,6 @@
                 if (data.status !== 'success') return;
                 AI.status = data;
                 AI.settings = data.settings;
-                // Initialize activeLang from preferred_languages (or legacy field)
                 const pl = AI.settings.preferred_languages
                     || (AI.settings.preferred_language ? [AI.settings.preferred_language] : null)
                     || ['en'];
@@ -385,7 +336,7 @@
                 _updateLangBtn();
                 _showWelcomeIfNeeded();
             })
-            .catch(() => {/* AI routes may not be registered yet */ });
+            .catch(() => {});
 
         _loadGuides();
     }
@@ -450,15 +401,18 @@
     function _updateStatusBar() {
         const bar = document.getElementById('okapi-ai-status-bar');
         if (!bar || !AI.status) return;
-        const lang = AI.activeLang || 'en';
-        if (!AI.status.ollama_running) {
-            const msg = _STATUS_BAR_MSGS.ollama_offline[lang] || _STATUS_BAR_MSGS.ollama_offline.en;
-            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-warn">${_esc(msg)}</span>`;
-        } else if (!AI.status.model_available) {
-            const msg = _STATUS_BAR_MSGS.model_missing[lang] || _STATUS_BAR_MSGS.model_missing.en;
-            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-warn">${_esc(msg)}</span>`;
+        if (AI.status.api_ready) {
+            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; AI ready</span>`;
         } else {
-            bar.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; ${_esc(AI.settings.model)}</span>`;
+            bar.innerHTML =
+                `<div class="okapi-ai-activate-box">` +
+                `<span class="okapi-ai-badge okapi-ai-badge-warn">&#9888; Not activated</span>` +
+                `<div class="okapi-ai-activate-row">` +
+                `<input id="okapi-ai-token-input" type="text" class="okapi-ai-token-input" placeholder="Paste Easy OKAPI token…" />` +
+                `<button class="okapi-ai-activate-btn" onclick="OkapiAI.activate()">Activate</button>` +
+                `</div>` +
+                `<a class="okapi-ai-activate-link" href="https://www.easyokapi.cbbiotec.vn" target="_blank">Get token at easyokapi.cbbiotec.vn &#8599;</a>` +
+                `</div>`;
         }
     }
 
@@ -480,7 +434,6 @@
         const div = document.createElement('div');
         div.className = `okapi-ai-msg okapi-ai-msg-${role}`;
 
-        // simple markdown: **bold**, newlines, code blocks
         div.innerHTML = _renderMarkdown(content);
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
@@ -555,104 +508,11 @@
             .replace(/"/g, '&quot;');
     }
 
-    // ── Settings panel ────────────────────────────────────────────────────────
+    // ── Language menu ─────────────────────────────────────────────────────────
 
-    function _populateSettings() {
-        if (!AI.status || !AI.settings) return;
-
-        // language checkboxes
-        const preferredLangs = AI.settings.preferred_languages || ['en'];
-        document.querySelectorAll('.okapi-ai-lang-cb').forEach(cb => {
-            cb.checked = preferredLangs.includes(cb.value);
-        });
-
-        // model select
-        const modelSel = document.getElementById('okapi-ai-set-model');
-        modelSel.innerHTML = '';
-        const catalog = AI.status.available_models_catalog || [];
-        catalog.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.name;
-            opt.textContent = `${m.name} (${m.size}) — ${m.note}`;
-            if (m.name === AI.settings.model) opt.selected = true;
-            modelSel.appendChild(opt);
-        });
-        // also add any already-installed models not in catalog
-        (AI.status.available_models || []).forEach(name => {
-            if (!catalog.find(m => m.name === name)) {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name + ' (installed)';
-                if (name === AI.settings.model) opt.selected = true;
-                modelSel.appendChild(opt);
-            }
-        });
-
-        // URL & enabled
-        document.getElementById('okapi-ai-set-url').value = AI.settings.ollama_url || 'http://localhost:11434';
-        document.getElementById('okapi-ai-set-enabled').checked = !!AI.settings.enabled;
-
-        // Ollama status
-        _renderOllamaStatus();
-    }
-
-    function _renderOllamaStatus() {
-        const el = document.getElementById('okapi-ai-ollama-status');
-        if (!el || !AI.status) return;
-        const pullSection = document.getElementById('okapi-ai-pull-section');
-
-        if (!AI.status.ollama_running) {
-            el.innerHTML = `
-<div class="okapi-ai-setup-box">
-  <strong>&#9888; Ollama is not running or not installed.</strong><br>
-  1. <a href="https://ollama.com/download" target="_blank">Download Ollama</a> and install it.<br>
-  2. Start Ollama, then click <strong>Refresh</strong> below.<br>
-  <button onclick="OkapiAI.refreshStatus()">&#8635; Refresh</button>
-</div>`;
-            pullSection.classList.add('okapi-hidden');
-        } else if (!AI.status.model_available) {
-            el.innerHTML = '<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; Ollama running</span>';
-            pullSection.classList.remove('okapi-hidden');
-            document.getElementById('okapi-ai-pull-info').textContent =
-                `Model "${AI.settings.model}" is not downloaded yet.`;
-        } else {
-            el.innerHTML = `<span class="okapi-ai-badge okapi-ai-badge-ok">&#10003; Ollama running &bull; ${_esc(AI.settings.model)} ready</span>`;
-            pullSection.classList.add('okapi-hidden');
-        }
-    }
-
-    // ── Pull progress ─────────────────────────────────────────────────────────
-
-    function _startPullPolling() {
-        if (AI.pullTimer) return;
-        AI.pullTimer = setInterval(() => {
-            fetch('/ai/pull_status')
-                .then(r => r.json())
-                .then(d => {
-                    if (d.status !== 'success') return;
-                    const info = document.getElementById('okapi-ai-pull-info');
-                    const bar = document.getElementById('okapi-ai-pull-bar');
-                    const btn = document.getElementById('okapi-ai-pull-btn');
-                    if (info) info.textContent = d.pull_status + (d.percent ? ` — ${d.percent}%` : '');
-                    if (bar) bar.style.width = (d.percent || 0) + '%';
-                    if (d.done || !d.active) {
-                        clearInterval(AI.pullTimer);
-                        AI.pullTimer = null;
-                        if (btn) btn.disabled = false;
-                        if (d.error) {
-                            if (info) info.textContent = 'Error: ' + d.error;
-                        } else {
-                            if (info) info.textContent = 'Download complete! ✓';
-                            // refresh status
-                            OkapiAI.refreshStatus();
-                        }
-                    }
-                })
-                .catch(() => {
-                    clearInterval(AI.pullTimer);
-                    AI.pullTimer = null;
-                });
-        }, 2000);
+    function _langMenuHide() {
+        const menu = document.getElementById('okapi-ai-lang-menu');
+        if (menu) menu.classList.add('okapi-hidden');
     }
 
     // ── Guide launcher ────────────────────────────────────────────────────────
@@ -769,14 +629,11 @@
             const ctx = _getUiContext();
             const lbl = _STATUS_LABELS[lang] || _STATUS_LABELS.en;
             const yesNo = (v) => v ? (lang === 'vi' ? 'có' : lang === 'zh' ? '是' : lang === 'fr' ? 'oui' : lang === 'ja' ? 'はい' : lang === 'ru' ? 'да' : 'yes') : (lang === 'vi' ? 'không' : lang === 'zh' ? '否' : lang === 'fr' ? 'non' : lang === 'ja' ? 'いいえ' : lang === 'ru' ? 'нет' : 'no');
-            const onOff = (v) => v ? (lang === 'vi' ? 'đang chạy' : lang === 'zh' ? '运行中' : lang === 'fr' ? 'actif' : lang === 'ja' ? '実行中' : lang === 'ru' ? 'работает' : 'running') : (lang === 'vi' ? 'ngoại tuyến' : lang === 'zh' ? '离线' : lang === 'fr' ? 'hors ligne' : lang === 'ja' ? 'オフライン' : lang === 'ru' ? 'не работает' : 'offline');
             const lines = [
                 `\`${lbl.mode}\` ${ctx.mode || '—'}`,
                 `\`${lbl.app_started}\` ${yesNo(ctx.app_started)}`,
                 `\`${lbl.data_loaded}\` ${yesNo(ctx.data_loaded)}`,
                 `\`${lbl.cal_mode}\` ${ctx.cal_mode || '—'}`,
-                `\`${lbl.model}\` ${(AI.settings && AI.settings.model) || '—'}`,
-                `\`${lbl.ollama}\` ${onOff(AI.status && AI.status.ollama_running)}`,
             ].join('\n');
             _addMsg('assistant', (_STATUS_HEADER[lang] || _STATUS_HEADER.en) + '\n\n' + lines);
             return;
@@ -932,72 +789,41 @@
             if (panel) panel.classList.remove('okapi-ai-panel-open');
         },
 
-        toggleSettings() {
-            AI.settingsOpen = !AI.settingsOpen;
-            const body = document.getElementById('okapi-ai-body');
-            const sett = document.getElementById('okapi-ai-settings');
-            const btn = document.getElementById('okapi-ai-settings-btn');
-
-            if (AI.settingsOpen) {
-                body.classList.add('okapi-hidden');
-                sett.classList.remove('okapi-hidden');
+        toggleLangMenu() {
+            const menu = document.getElementById('okapi-ai-lang-menu');
+            if (!menu) return;
+            if (menu.classList.contains('okapi-hidden')) {
+                const btn = document.getElementById('okapi-ai-lang-btn');
                 if (btn) {
-                    btn.innerHTML = '&#128172;';
-                    btn.title = 'Back to Chat';
+                    const r = btn.getBoundingClientRect();
+                    menu.style.top = (r.bottom + 6) + 'px';
+                    menu.style.right = (window.innerWidth - r.right) + 'px';
                 }
-                _populateSettings();
+                const lang = AI.activeLang || 'en';
+                menu.querySelectorAll('.okapi-ai-lang-opt').forEach(opt => {
+                    opt.classList.toggle('okapi-ai-lang-active', opt.dataset.lang === lang);
+                });
+                menu.classList.remove('okapi-hidden');
             } else {
-                body.classList.remove('okapi-hidden');
-                sett.classList.add('okapi-hidden');
-                if (btn) {
-                    btn.innerHTML = '&#9881;';
-                    btn.title = 'Settings';
-                }
-                _updateStatusBar();
+                _langMenuHide();
             }
         },
 
-        cycleLang() {
-            if (!AI.settings) return;
-            const pl = AI.settings.preferred_languages || ['en'];
-            if (pl.length <= 1) return;
-            const idx = pl.indexOf(AI.activeLang);
-            AI.activeLang = pl[(idx + 1) % pl.length];
+        setLang(lang) {
+            AI.activeLang = lang;
             _updateLangBtn();
+            _langMenuHide();
             _loadGuides();
-        },
-
-        saveSettings() {
-            const langBoxes = document.querySelectorAll('.okapi-ai-lang-cb:checked');
-            let langs = Array.from(langBoxes).map(cb => cb.value);
-            if (langs.length === 0) langs = ['en'];
-
-            const model = document.getElementById('okapi-ai-set-model').value;
-            const url = document.getElementById('okapi-ai-set-url').value.trim();
-            const enabled = document.getElementById('okapi-ai-set-enabled').checked;
-
-            fetch('/ai/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    preferred_languages: langs,
-                    model,
-                    ollama_url: url,
-                    enabled,
-                }),
-            })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.status === 'success') {
-                        AI.settings = d.settings;
-                        // Keep activeLang if still preferred, else reset to first
-                        const pl = AI.settings.preferred_languages || ['en'];
-                        if (!pl.includes(AI.activeLang)) AI.activeLang = pl[0];
-                        _updateLangBtn();
-                        OkapiAI.refreshStatus();
-                        OkapiAI.toggleSettings();
-                    }
-                });
+            if (AI.settings) {
+                AI.settings.preferred_languages = [lang];
+                fetch('/ai/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preferred_languages: [lang] }),
+                }).then(r => r.json()).then(d => {
+                    if (d.status === 'success') AI.settings = d.settings;
+                }).catch(() => {});
+            }
         },
 
         refreshStatus() {
@@ -1007,45 +833,12 @@
                     if (data.status !== 'success') return;
                     AI.status = data;
                     AI.settings = data.settings;
-                    // Maintain activeLang if still in preferred list, else reset
                     const pl = AI.settings.preferred_languages || ['en'];
                     if (!AI.activeLang || !pl.includes(AI.activeLang)) {
                         AI.activeLang = pl[0] || 'en';
                     }
                     _updateLangBtn();
                     _updateStatusBar();
-                    if (AI.settingsOpen) _renderOllamaStatus();
-                });
-        },
-
-        pullModel() {
-            const model = document.getElementById('okapi-ai-set-model').value;
-            const btn = document.getElementById('okapi-ai-pull-btn');
-            if (btn) btn.disabled = true;
-
-            // update settings model first
-            AI.settings.model = model;
-            fetch('/ai/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model }),
-            });
-
-            fetch('/ai/pull_model', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model }),
-            })
-                .then(r => r.json())
-                .then(d => {
-                    const info = document.getElementById('okapi-ai-pull-info');
-                    if (d.status !== 'success') {
-                        if (info) info.textContent = 'Error: ' + d.message;
-                        if (btn) btn.disabled = false;
-                        return;
-                    }
-                    if (info) info.textContent = 'Downloading…';
-                    _startPullPolling();
                 });
         },
 
@@ -1056,18 +849,53 @@
             }
         },
 
+        activate() {
+            const input = document.getElementById('okapi-ai-token-input');
+            const token = (input ? input.value : '').trim();
+            if (!token) return;
+            const btn = document.querySelector('.okapi-ai-activate-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Activating…'; }
+            fetch('/ai/activate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        fetch('/ai/status')
+                            .then(r => r.json())
+                            .then(d => {
+                                if (d.status === 'success') {
+                                    AI.status = d;
+                                    _updateStatusBar();
+                                }
+                            });
+                    } else {
+                        const bar = document.getElementById('okapi-ai-status-bar');
+                        const errEl = bar && bar.querySelector('.okapi-ai-activate-err');
+                        if (errEl) errEl.textContent = data.message || 'Activation failed.';
+                        else if (bar) bar.insertAdjacentHTML('beforeend',
+                            `<span class="okapi-ai-activate-err">${data.message || 'Activation failed.'}</span>`);
+                        if (btn) { btn.disabled = false; btn.textContent = 'Activate'; }
+                    }
+                })
+                .catch(() => {
+                    if (btn) { btn.disabled = false; btn.textContent = 'Activate'; }
+                });
+        },
+
         send() {
             const input = document.getElementById('okapi-ai-input');
             const text = (input.value || '').trim();
             if (!text) return;
 
-            if (!AI.settings || !AI.settings.enabled) {
+            if (AI.status && !AI.status.api_ready) {
                 const lang = AI.activeLang || 'en';
-                _addSystemMsg(_AI_DISABLED_MSG[lang] || _AI_DISABLED_MSG.en);
+                _addSystemMsg(_AI_UNAVAILABLE_MSG[lang] || _AI_UNAVAILABLE_MSG.en);
                 return;
             }
 
-            // Redo intent — resolve locally, don't push to conversation history
             if (_REDO_VOCAB.has(text.toLowerCase().replace(/[!?.،。]+$/, '').trim())) {
                 input.value = '';
                 _addMsg('user', text);
@@ -1081,7 +909,6 @@
             _addMsg('user', text);
             AI.messages.push({ role: 'user', content: text });
 
-            // Trim history to last 10 messages to keep prompts fast
             const historyToSend = AI.messages.length > 10
                 ? AI.messages.slice(-10)
                 : AI.messages.slice();
@@ -1097,7 +924,6 @@
             }
 
             const lang = AI.activeLang || 'en';
-            const model = AI.settings.model || 'qwen2.5:7b';
             const controller = new AbortController();
             AI.currentAbort = controller;
 
@@ -1107,7 +933,7 @@
                     const resp = await fetch('/ai/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ messages: historyToSend, language: lang, model, ui_context: _getUiContext() }),
+                        body: JSON.stringify({ messages: historyToSend, language: lang, ui_context: _getUiContext() }),
                         signal: controller.signal,
                     });
 
@@ -1149,11 +975,12 @@
                                     _launchCustomSteps(ga.custom_steps);
                                 }
                             } else if (event.type === 'error') {
-                                const errMsg = event.error === 'ollama_offline'
-                                    ? '⚠ Ollama is not running. Please start Ollama first.'
-                                    : event.error === 'timeout'
-                                        ? '⚠ Request timed out. The model may be loading — try again.'
-                                        : '⚠ ' + event.error;
+                                const errMsg = {
+                                    groq_not_installed: '⚠ AI service is not configured on this server.',
+                                    api_key_invalid: '⚠ AI API key is invalid. Contact the server administrator.',
+                                    rate_limit: '⚠ Rate limit reached. Please wait a moment and try again.',
+                                    license_invalid: '⚠ AI license is invalid or expired. Re-activate at easyokapi.cbbiotec.vn.',
+                                }[event.error] || ('⚠ ' + event.error);
                                 _finalizeStreamingMsg(msgDiv, null, errMsg);
                                 return;
                             }
@@ -1193,32 +1020,6 @@
                 }
             })();
         },
-
-        resetSettings() {
-            if (!confirm('Reset all AI Assistant settings to defaults?')) return;
-            fetch('/ai/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    enabled: true,
-                    preferred_languages: ['en'],
-                    model: 'qwen2.5:7b',
-                    ollama_url: 'http://localhost:11434',
-                    first_run_shown: false,
-                }),
-            })
-                .then(r => r.json())
-                .then(d => {
-                    if (d.status === 'success') {
-                        AI.settings = d.settings;
-                        AI.activeLang = 'en';
-                        _updateLangBtn();
-                        OkapiAI.refreshStatus();
-                        _populateSettings();
-                    }
-                });
-        },
-
 
         clearHistory() {
             AI.messages = [];

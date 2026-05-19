@@ -2262,6 +2262,65 @@ body.dark #okapi-ai-panel {
     font-weight: 700;
     font-size: 0.72rem;
     letter-spacing: 0.03em;
+    width: auto !important;
+    padding: 0 9px !important;
+}
+
+#okapi-ai-lang-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.13);
+    padding: 4px;
+    min-width: 148px;
+    z-index: 10100;
+}
+
+body.dark #okapi-ai-lang-menu {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+#okapi-ai-lang-menu button.okapi-ai-lang-opt {
+    display: block;
+    width: 100%;
+    height: auto;
+    text-align: left;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 400;
+    font-family: inherit;
+    color: #374151;
+    transition: background 0.12s;
+    box-sizing: border-box;
+}
+
+body.dark #okapi-ai-lang-menu button.okapi-ai-lang-opt {
+    color: #d1d5db;
+}
+
+#okapi-ai-lang-menu button.okapi-ai-lang-opt:hover {
+    background: rgba(99, 102, 241, 0.09);
+    color: #4f46e5;
+}
+
+body.dark #okapi-ai-lang-menu button.okapi-ai-lang-opt:hover {
+    color: #a5b4fc;
+}
+
+#okapi-ai-lang-menu button.okapi-ai-lang-opt.okapi-ai-lang-active {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    font-weight: 600;
+}
+
+body.dark #okapi-ai-lang-menu button.okapi-ai-lang-opt.okapi-ai-lang-active {
+    color: #a5b4fc;
 }
 
 /* Body (chat area) */
@@ -2425,6 +2484,77 @@ body.dark .okapi-ai-badge-ok {
 
 body.dark .okapi-ai-badge-warn {
     color: #fbbf24;
+}
+
+/* Activation box */
+.okapi-ai-activate-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.okapi-ai-activate-row {
+    display: flex;
+    gap: 6px;
+}
+
+.okapi-ai-token-input {
+    flex: 1;
+    font-size: 0.78rem;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    background: #fff;
+    color: #111827;
+    min-width: 0;
+}
+
+body.dark .okapi-ai-token-input {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f3f4f6;
+}
+
+.okapi-ai-token-input:focus {
+    border-color: #6366f1;
+}
+
+.okapi-ai-activate-btn {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.okapi-ai-activate-btn:hover {
+    background: #4f46e5;
+}
+
+.okapi-ai-activate-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.okapi-ai-activate-link {
+    font-size: 0.70rem;
+    color: #6366f1;
+    text-decoration: none;
+}
+
+.okapi-ai-activate-link:hover {
+    text-decoration: underline;
+}
+
+.okapi-ai-activate-err {
+    font-size: 0.72rem;
+    color: #dc2626;
 }
 
 /* Input row */
