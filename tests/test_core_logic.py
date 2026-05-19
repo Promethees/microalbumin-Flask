@@ -51,3 +51,35 @@ def test_close_port():
             kill_call = [call for call in mock_run.call_args_list if 'kill' in call.args[0]]
             assert len(kill_call) == 1
             assert '5678' in kill_call[0].args[0]
+
+
+# ---------------------------------------------------------------------------
+# script_monitor.check_log_for_missed_read
+# ---------------------------------------------------------------------------
+
+def test_check_log_for_missed_read_file_not_found():
+    assert script_monitor.check_log_for_missed_read("/nonexistent/log.txt") is False
+
+
+def test_check_log_for_missed_read_unexpected_without_session(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("Unexpected line: 0x01 0x02")
+    assert script_monitor.check_log_for_missed_read(str(log)) is True
+
+
+def test_check_log_for_missed_read_unexpected_with_session_started(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("New session started\nUnexpected line: 0x01 0x02")
+    assert script_monitor.check_log_for_missed_read(str(log)) is False
+
+
+def test_check_log_for_missed_read_clean_log(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("New session started\nAll data received.")
+    assert script_monitor.check_log_for_missed_read(str(log)) is False
+
+
+def test_check_log_for_missed_read_no_unexpected_no_session(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("Receiving data normally.")
+    assert script_monitor.check_log_for_missed_read(str(log)) is False

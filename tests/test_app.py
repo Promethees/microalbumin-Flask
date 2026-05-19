@@ -378,3 +378,132 @@ def test_edit_file_rename_success(client, tmp_path):
     assert rv.get_json()['status'] == 'success'
     assert not f_orig.exists()
     assert (tmp_path / 'renamed.csv').exists()
+
+
+# ---------------------------------------------------------------------------
+# core_routes — untested endpoints
+# ---------------------------------------------------------------------------
+
+def test_clear_logs_success(client, tmp_path):
+    log = tmp_path / "test.log"
+    log.write_text("old content")
+    with patch.object(state, 'log_file', str(log)):
+        rv = client.post('/clear_logs')
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert log.read_text() == ""
+
+
+def test_clear_cache_sets_no_cache_headers(client):
+    rv = client.post('/clear_cache')
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert 'no-store' in rv.headers.get('Cache-Control', '')
+
+
+def test_get_data_folders_returns_success(client):
+    with patch('routes.core_routes.get_data_subfolders', return_value=[]):
+        rv = client.get('/get_data_folders')
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert rv.get_json()['folders'] == []
+
+
+def test_browse_export_no_path_param(client):
+    rv = client.get('/browse_export')
+    assert rv.status_code == 400
+
+
+def test_browse_export_existing_path(client, tmp_path):
+    rv = client.get(f'/browse_export?path={str(tmp_path)}')
+    assert rv.status_code == 200
+    assert rv.get_json()['exists'] is True
+
+
+def test_browse_export_nonexistent_path(client):
+    rv = client.get('/browse_export?path=/nonexistent/xyz_abc_123')
+    assert rv.status_code == 200
+    assert rv.get_json()['exists'] is False
+
+
+def test_get_json_cal_invalid_mode_returns_empty(client):
+    rv = client.get('/get_json_cal?mode=invalid')
+    assert rv.status_code == 200
+    assert rv.get_json()['files'] == []
+
+
+def test_get_json_cal_kinetics_mode(client, tmp_path):
+    with patch.object(state, 'json_root_path', str(tmp_path)):
+        rv = client.get('/get_json_cal?mode=kinetics')
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+
+
+def test_browse_no_path_returns_400(client):
+    rv = client.post('/browse', data={})
+    assert rv.status_code == 400
+
+
+def test_browse_path_outside_roots_returns_error(client):
+    with patch.object(state, 'data_root_path', '/fake/data'), \
+         patch.object(state, 'report_root_path', '/fake/report'):
+        rv = client.post('/browse', data={'path': '/etc'})
+    assert rv.get_json()['status'] == 'error'
+    assert 'Invalid' in rv.get_json()['message']
+
+
+# ---------------------------------------------------------------------------
+# file_routes — get_headers error paths
+# ---------------------------------------------------------------------------
+
+def test_get_headers_no_file_param(client):
+    rv = client.get('/get_headers')
+    assert rv.status_code == 400
+
+
+def test_get_headers_non_csv_extension(client, tmp_path):
+    f = tmp_path / "data.txt"
+    f.write_text("col1\tval")
+    rv = client.get(f'/get_headers?file={str(f)}')
+    assert rv.status_code == 400
+    assert 'CSV' in rv.get_json()['error']
+
+
+def test_get_headers_file_not_found(client):
+    rv = client.get('/get_headers?file=/nonexistent/path.csv')
+    assert rv.status_code == 404
+
+
+def test_get_headers_path_traversal_rejected(client):
+    rv = client.get('/get_headers?file=../../etc/passwd.csv')
+    assert rv.status_code == 400
+
+
+def test_get_headers_empty_csv_returns_empty_list(client, tmp_path):
+    f = tmp_path / "empty.csv"
+    f.write_text("")
+    rv = client.get(f'/get_headers?file={str(f)}')
+    assert rv.status_code == 200
+    assert rv.get_json()['headers'] == []
+
+
+def test_get_headers_skips_comment_lines(client, tmp_path):
+    f = tmp_path / "data.csv"
+    f.write_text("# metadata\nTimestamp,Value:1\n0,0.5\n")
+    rv = client.get(f'/get_headers?file={str(f)}')
+    assert rv.status_code == 200
+    assert 'Timestamp' in rv.get_json()['headers']
+
+
+# ---------------------------------------------------------------------------
+# file_routes — get_json_content error paths
+# ---------------------------------------------------------------------------
+
+def test_get_json_content_invalid_mode(client):
+    rv = client.get('/get_json_content?json_name=test.json&mode=invalid')
+    assert rv.status_code == 400
+
+
+def test_get_json_content_path_traversal_rejected(client):
+    rv = client.get('/get_json_content?json_name=../secret.json&mode=kinetics')
+    assert rv.status_code == 400
