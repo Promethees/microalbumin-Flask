@@ -3,20 +3,64 @@ document.getElementById("year").textContent = new Date().getFullYear();
 let serverAvailable = true;
 let logInterval, updateInterval, serverCheckInterval;
 
-document.getElementById('toggleContainer').addEventListener('click', function () {
-    if (document.body.classList.contains('light')) {
-        document.body.classList.remove('light');
-        document.body.classList.add('dark');
-        document.getElementById('toggleButton').classList.add('active');
-        AppState.lightDisplay = false;
-        toggleMode();
+const _systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+// Apply a theme ('light' | 'dark') to the document and sync toggle UI.
+function _applyTheme(isDark) {
+    document.body.classList.toggle('dark', isDark);
+    document.body.classList.toggle('light', !isDark);
+    document.getElementById('toggleButton').classList.toggle('active', isDark);
+    if (typeof AppState !== 'undefined') AppState.lightDisplay = !isDark;
+}
+
+// Update the toggle icon to reflect the current effective mode + whether it's auto.
+function _syncToggleIcon(savedPref) {
+    const btn = document.getElementById('toggleButton');
+    if (savedPref === null) {
+        btn.dataset.themeMode = 'auto';
     } else {
-        document.body.classList.remove('dark');
-        document.body.classList.add('light');
-        document.getElementById('toggleButton').classList.remove('active');
-        AppState.lightDisplay = true;
+        btn.dataset.themeMode = savedPref;
+    }
+}
+
+// On startup: apply saved preference or fall back to system preference.
+(function initTheme() {
+    const saved = localStorage.getItem('theme'); // 'light' | 'dark' | null
+    const isDark = saved !== null ? saved === 'dark' : _systemDark.matches;
+    _applyTheme(isDark);
+    _syncToggleIcon(saved);
+})();
+
+// Follow system changes only when the user hasn't set a manual preference.
+_systemDark.addEventListener('change', function (e) {
+    if (localStorage.getItem('theme') === null) {
+        _applyTheme(e.matches);
+        _syncToggleIcon(null);
         toggleMode();
     }
+});
+
+// Toggle cycles: light → dark → auto (system) → light → …
+document.getElementById('toggleContainer').addEventListener('click', function () {
+    const current = document.getElementById('toggleButton').dataset.themeMode || 'light';
+    let next;
+    if (current === 'light') {
+        next = 'dark';
+    } else if (current === 'dark') {
+        next = 'auto';
+    } else {
+        next = 'light';
+    }
+
+    if (next === 'auto') {
+        localStorage.removeItem('theme');
+        _applyTheme(_systemDark.matches);
+    } else {
+        localStorage.setItem('theme', next);
+        _applyTheme(next === 'dark');
+    }
+    _syncToggleIcon(next === 'auto' ? null : next);
+    toggleMode();
 });
 
 document.getElementById('shutdown-btn').addEventListener('click', function () {
