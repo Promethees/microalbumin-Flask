@@ -75,8 +75,9 @@ graph TD
 | `browser_mgt.py` | `open_browser`, `close_port`, `cleanup`, `ensure_host_mapping` — browser/process lifecycle |
 | `script_monitor.py` | `check_log_for_errors` — scans `log/script_logs.txt` for PyBadge errors |
 | `send_command.py` | `connect_to_device` (find PyBadge via serial), `send_command_and_wait_ack` (serial protocol) |
-| `ai_assistant.py` | Ollama HTTP client, MCP-style tool engine, multilingual system prompts, model pull manager |
-| `ai_settings.py` | Load/save `ai_settings.json`; language/model/URL defaults; SUPPORTED_LANGUAGES, AVAILABLE_MODELS catalogs |
+| `ai_assistant.py` | Groq chat (`_groq_chat`, `chat_stream`), MCP tool engine, multilingual system prompts, `proxy_chat_stream()` for desktop proxy mode |
+| `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete Ollama keys on read |
+| `activation.py` | Reads/writes `activation.json`; `get_license_token()` and `AI_SERVICE_URL` constant for proxy mode |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
 | `get_next_filename.py` | Auto-naming duplicates (e.g., `file_1.csv`) |
@@ -147,20 +148,15 @@ Supported algorithms: `linear`, `polynomial`, `logarithmic`, `exponential`, `Mic
 ## 5. AI Assistant
 
 ### 5.1 Overview
-A floating chat widget (bottom-right corner) powered by a local Ollama LLM. Settings are persisted in `ai_settings.json` at the project root.
+A floating chat widget (bottom-right corner) powered by **Groq** (cloud LLM API). No local model download is required. The `GROQ_API_KEY` lives only on the online server (Heroku config var); desktop instances authenticate via a locally stored activation token rather than holding the key directly. Settings are persisted in `ai_settings.json` at the project root.
 
 ### 5.2 Supported Languages
 English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (ja), Russian (ru).
 
-### 5.3 Recommended Models
-| Model | Size | Best for |
-|---|---|---|
-| qwen2.5:7b | 4.7 GB | Best multilingual (recommended) |
-| qwen2.5:3b | 1.9 GB | Lighter, still multilingual |
-| llama3.2:3b | 2.0 GB | Good EN/FR, weaker Asian |
-| mistral:7b | 4.1 GB | Good European languages |
+### 5.3 Default Model
+`llama-3.1-8b-instant` (Groq). Override with `AI_MODEL` environment variable.
 
-### 5.4 MCP Tools (available to the LLM)
+### 5.4 MCP Tools (available to the LLM — main branch only)
 | Tool | Description |
 |---|---|
 | `get_app_context` | Current directory, CSV/JSON file lists, HID subprocess status |
@@ -168,48 +164,49 @@ English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (j
 | `read_calibration_file` | Read a JSON calibration file from `json/<mode>/` |
 | `get_hardware_status` | PyBadge subprocess running/stopped |
 | `get_help_topic` | Built-in docs for a feature topic |
+| `trigger_guide` | Launch a full preset workflow guide |
+| `trigger_custom_steps` | Launch a focused spotlight guide for specific UI elements |
 
-### 5.5 Routes
+### 5.5 Routes (main branch)
 | Route | Method | Purpose |
 |---|---|---|
-| `/ai/status` | GET | Ollama status, model availability, settings |
-| `/ai/chat` | POST | Send messages `{messages, language, model}` → `{reply}` |
+| `/ai/status` | GET | API readiness, activation state, settings |
+| `/ai/chat` | POST | Send messages → SSE stream (proxied or dev-direct) |
+| `/ai/activate` | POST | Exchange Easy OKAPI download token for local activation token |
 | `/ai/settings` | GET | Return current settings |
-| `/ai/settings` | POST | Update settings (language, model, url, enabled) |
-| `/ai/pull_model` | POST | Start background Ollama model download |
-| `/ai/pull_status` | GET | Poll download progress `{percent, done, error}` |
+| `/ai/settings` | POST | Update settings (language, enabled) |
+| `/ai/guides` | GET | Return guide examples for a given language |
 
 ### 5.6 Settings file (`ai_settings.json`)
 ```json
 {
   "enabled": true,
   "preferred_languages": ["en", "vi"],
-  "model": "qwen2.5:7b",
-  "ollama_url": "http://localhost:11434",
   "first_run_shown": false
 }
 ```
-`preferred_languages` is an array of 1–6 language codes. The in-app language button cycles through the selected languages. Old files with the singular `preferred_language` string are migrated to an array automatically on read/write by `ai_settings.py`.
+`preferred_languages` is an array of 1–6 language codes. The in-app language button cycles through the selected languages. Files that still contain the obsolete `preferred_language` string or `model`/`ollama_url` keys are silently migrated/stripped on read by `ai_settings.py`.
 
-### 5.7 Setup flow for new users
+### 5.7 Activation file (`activation.json`)
+```json
+{
+  "license_token": "<permanent JWT>"
+}
+```
+Written to the project root during installation or via the in-app activation form. Read by `src/activation.py`. If absent and no `GROQ_API_KEY` is set in `.env`, the AI widget shows "Not activated" and requests a token.
+
+### 5.8 Setup flow for new users
 **Option A — During installation (recommended):**
-- Mac: `setup-2-install-venv.command` and `installer-mac/install-venv.command` prompt for AI enable / multi-language / model; default download is **Y**; Ollama is started automatically before the pull if needed.
-- Windows: `startwindow-4-venv-run.bat` / `installer-win/startwindow-4-venv.bat` run the same prompt on first launch (guarded by `if not exist ai_settings.json`).
-- Linux: `setup-2-install-venv.sh` same flow; uses `systemctl start ollama` or `ollama serve &` before pull.
-- NSIS installer: `installer-win/setup.nsi` has a custom page with 6 language checkboxes.
+- Mac: `setup-2-install-venv.command` / `installer-mac/install-venv.command` prompt for language preferences, then ask for the Easy OKAPI download token and call `POST /api/activate` on the server. `activation.json` is written automatically.
+- Windows: `startwindow-4-venv-run.bat` does the same via `curl` + Python JSON parsing.
 
 **Option B — After installation, from inside the app:**
-1. Click the **🤖 AI Assistant** button (fixed, top-right of the page).
-2. If Ollama not installed: follow the setup-box link to ollama.com.
-3. Select model → click **Download Model** → progress bar tracks the pull.
+1. Click the **🤖 AI Assistant** button (bottom-right of the page).
+2. If "Not activated" is shown, paste the Easy OKAPI download token from `easyokapi.cbbiotec.vn` into the activation input and click **Activate**.
+3. The app calls `POST /ai/activate`, which exchanges the token with the server and writes `activation.json` locally.
 
-### 5.8 AI Manager (in-app)
-The **🤖 AI Assistant** button in the top-right corner opens the full management panel:
-- Enable / disable the feature
-- Select one or more languages via checkboxes; the language button (header) cycles through the selected set
-- Switch or download models
-- Reset to defaults
-- Uninstall guide (remove model, uninstall Ollama)
+**Developer mode (no activation required):**
+Set `GROQ_API_KEY` in `.env`. The app detects this and calls Groq directly, bypassing the proxy. Never ship `.env` with a real key.
 
 ---
 
@@ -320,7 +317,88 @@ Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25
 
 ---
 
-## 7. Key Differences from `online` Branch (Summary)
+## 7. AI Proxy Architecture
+
+The `GROQ_API_KEY` never ships inside the desktop app package. It lives only as a Heroku config var on the online server. Desktop instances access Groq through a two-phase token mechanism.
+
+### 7.1 Token Lifecycle
+
+```
+User logs in at easyokapi.cbbiotec.vn
+           │
+           ▼
+  ┌─────────────────────────────────┐
+  │  Download token  (30-min JWT)   │  purpose: "app_download"
+  │  {"sub":"42", "exp": now+1800}  │  signed with SECRET_KEY
+  └────────────────┬────────────────┘
+                   │
+       ┌───────────┴────────────┐
+       │  hits /api/download    │  gets app tarball from GitHub
+       │  hits /api/activate    │  exchanges for permanent token
+       └───────────┬────────────┘
+                   │  server: validates sig + exp, checks User DB
+                   ▼
+  ┌─────────────────────────────────┐
+  │  Activation token  (permanent)  │  same payload, exp stripped
+  │  {"sub":"42", ...}              │  written to activation.json
+  └────────────────┬────────────────┘
+                   │  stored on disk, never in URLs
+                   ▼
+  Desktop app → POST /ai/proxy/chat {messages, license_token}
+                   │  server: validates sig (no exp check)
+                   │          User.query.get(sub) → is_verified ✓
+                   │          calls Groq with server-side API key
+                   ▼
+  Streaming SSE response back to desktop app
+```
+
+### 7.2 Files Involved
+
+**Main branch (desktop app):**
+
+| File | Role |
+|---|---|
+| `src/activation.py` | Reads/writes `activation.json`; exposes `get_license_token()` and `AI_SERVICE_URL` |
+| `src/routes/ai_routes.py` | `_get_api_mode()` selects proxy vs dev-direct; `POST /ai/activate` calls online server and saves token |
+| `src/ai_assistant.py` | `proxy_chat_stream()` — HTTP POST to `/ai/proxy/chat`, iterates SSE lines, yields event dicts |
+| `activation.json` | Permanent activation token stored at project root (gitignored) |
+| `.env` | Dev-only `GROQ_API_KEY` override; commented out in production packages |
+
+**Online branch (Heroku server):**
+
+| File | Role |
+|---|---|
+| `src/download_service.py` | `issue_activation_token()` — strips `exp`, re-signs; `validate_activation_token()` — decodes without expiry check |
+| `src/routes/account_routes.py` | `POST /api/activate` — validates 30-min download token, looks up `User`, returns permanent activation token |
+| `src/routes/ai_routes.py` | `POST /ai/proxy/chat` — validates activation token, DB-checks account is still active, calls Groq, streams SSE |
+
+### 7.3 API Mode Selection (main branch)
+
+`_get_api_mode()` in `src/routes/ai_routes.py` returns the active mode on every request:
+
+```
+activation.json present?  →  mode = 'proxy'  (credential = license_token)
+       ↓ no
+GROQ_API_KEY in .env?     →  mode = 'dev'    (credential = api_key, calls Groq directly)
+       ↓ no
+                          →  mode = None      (AI widget shows "Not activated")
+```
+
+Proxy mode always takes priority over dev mode when both are present.
+
+### 7.4 Security Properties
+
+| Property | How it is achieved |
+|---|---|
+| `GROQ_API_KEY` never leaves Heroku | Only read from `Config.GROQ_API_KEY` inside `/ai/proxy/chat` |
+| Activation requires a live account | `/api/activate` and `/ai/proxy/chat` both call `User.query.get()` + `is_verified` check |
+| Stolen download URL has 30-min window | `validate_download_token` enforces `exp` on `/api/activate`; permanent token is issued server-side |
+| Permanent token can be revoked | Deleting or un-verifying the user account blocks `/ai/proxy/chat` on the next request |
+| Token not exposed in URLs | Activation token travels in POST body only; never in query strings or server logs |
+
+---
+
+## 8. Key Differences from `online` Branch (Summary)
 
 | Aspect | `main` branch | `online` branch |
 |---|---|---|
@@ -340,3 +418,5 @@ Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25
 | Installers | `.dmg` / `.exe` / batch scripts | N/A |
 | Route organization | Flask blueprints in `src/routes/` | Monolithic `main.py` |
 | Math computation | Server-side (`math_ops.py`, scipy) | Client-side JS only |
+| AI backend | Groq via proxy (`activation.json`) | Groq direct (`GROQ_API_KEY` on Heroku) |
+| AI key location | Never on client; proxied via Heroku | Heroku config var only |
