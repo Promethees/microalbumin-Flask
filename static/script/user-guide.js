@@ -367,7 +367,6 @@ class UserGuide {
         this.isActive = true;
 
         this.overlay.classList.add('active');
-        console.log(this.steps);
         this.showStep(this.currentStep);
     }
 

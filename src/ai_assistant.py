@@ -654,11 +654,13 @@ TOOLS = [
             "description": (
                 "Focused spotlight guide for 2-5 specific UI elements. "
                 "Use for targeted how-to questions. "
-                "Valid IDs: #log-hid-data #run-script-btn #terminate-script-btn #base-name "
-                "#timeout-control #interval-control #log-display #go-to-btn "
+                "Collapsed sections are expanded automatically before spotlighting. "
+                "Valid IDs: #log-hid-data #hid-save-section #run-script-btn #terminate-script-btn "
+                "#base-name #timeout-control #interval-control #log-display #go-to-btn "
                 "#meas-mode-section #file-selection #cal-json-sel-section #merge-file-btn "
                 "#data-display-section #chart-container #range-display #window-size-section "
-                "#split-source-section #export-analysis #report-section #cal-mode-select "
+                "#split-source-section #normalize-mode-section #open-all-analysis-section "
+                "#export-analysis #report-section #cal-mode-select "
                 "#select-quantity-section #select-regress-algo #export-coef #threshold-value "
                 "#select-time-point #report-console-section #report-items-container"
             ),
