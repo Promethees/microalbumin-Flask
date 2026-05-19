@@ -174,9 +174,30 @@ _FILE_SELECT_STEP = {
     "skipInteraction": False,
 }
 
+# Keywords that identify the target mode inside a mode-switch step description.
+_MODE_HINT_KEYWORDS: dict[str, list[str]] = {
+    "kinetics":  ["kinetics", "time-series", "time series"],
+    "point":     ["point mode", "endpoint", "single point"],
+    "calibrate": ["calibrat"],
+    "report":    ["report mode"],
+}
+
+
+def _is_redundant_mode_step(step: dict, current_mode: str) -> bool:
+    """Return True when step is a #meas-mode-section switch to the mode the user is already in."""
+    if step.get("target") != "#meas-mode-section" or not current_mode:
+        return False
+    desc = step.get("description", "").lower()
+    keywords = _MODE_HINT_KEYWORDS.get(current_mode, [])
+    return any(kw in desc for kw in keywords)
+
 
 def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
     steps = list(example["steps"])
+    current_mode = (ui_context or {}).get("mode", "")
+    # Drop a leading mode-switch step when the user is already in that mode.
+    if steps and _is_redundant_mode_step(steps[0], current_mode):
+        steps = steps[1:]
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
         steps = [_translate_step(_FILE_SELECT_STEP, language)] + steps
     if steps_only:
