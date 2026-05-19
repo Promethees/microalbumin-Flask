@@ -1213,21 +1213,24 @@
           "title": "Start Time",
           "description": "Enter the start of your analysis window. Data before this point will be excluded.",
           "position": "left",
-          "skipInteraction": false
+          "skipInteraction": false,
+          "expandSection": "range-collapse"
         },
         {
           "target": "#range-value-end",
           "title": "End Time",
           "description": "Enter the end of your analysis window. Data after this point will be excluded.",
           "position": "left",
-          "skipInteraction": false
+          "skipInteraction": false,
+          "expandSection": "range-collapse"
         },
         {
           "target": "#time-unit",
           "title": "Time Unit",
           "description": "Select the unit (seconds, minutes, or hours) that matches your range values.",
           "position": "left",
-          "skipInteraction": false
+          "skipInteraction": false,
+          "expandSection": "range-collapse"
         }
       ]
     },

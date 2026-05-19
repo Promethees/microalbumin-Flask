@@ -91,7 +91,7 @@ class UserGuide {
                     this.createStep('#cal-kinetics-button', 'Open/Collapse window of fitting coefficients', 'Toggle to see or hide fitting coefficients', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#chart-container', 'View Calibration Chart', 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#export-coef', 'Export Coefficients', 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
-                    this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true })
+                    this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true, expandSection: 'export-coef-collapse' })
                 ],
                 point: [
                     this.createStep('#select-time-point', 'Select Time Point (Calibration - Point)', 'Select which time point to use for calibration. Choose from the time points that were exported during measurement.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
@@ -102,7 +102,7 @@ class UserGuide {
                     this.createStep('#cal-point-button', 'Open/Collapse window of fitting coefficients', 'Toggle to see or hide fitting coefficients', { position: 'bottom', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#chart-container', 'View Calibration Chart', 'Your calibration data will be displayed here with the selected regression fit. Review the standard curve and coefficients.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
                     this.createStep('#export-coef', 'Export Coefficients', 'Export your calibration coefficients. Enter a file name and click "Export Coefficients" to save the standard curve data.', { position: 'left', scrollIntoView: true, skipInteraction: true }),
-                    this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true })
+                    this.createStep('#threshold-value', 'rSquared fitting threshold', 'Set the minimum accepted rSquared value for the fitting function. If the rSquared value is below this threshold, the fitting coefficients will not be exported.', { position: 'left', scrollIntoView: true, skipInteraction: true, expandSection: 'export-coef-collapse' })
                 ]
             },
             report: [
@@ -442,6 +442,20 @@ class UserGuide {
     }
 
     /**
+     * Expand a collapsed folder-section so children are visible before spotlighting them.
+     * collapseId must match the id of the .section-collapse element (e.g. 'export-coef-collapse').
+     * The paired chevron id is derived by replacing the trailing '-collapse' with '-chevron'.
+     */
+    _expandGuideSection(collapseId) {
+        const collapse = document.getElementById(collapseId);
+        if (!collapse || !collapse.classList.contains('collapsed')) return;
+        collapse.classList.remove('collapsed');
+        const chevronId = collapseId.replace(/-collapse$/, '-chevron');
+        const chevron = document.getElementById(chevronId);
+        if (chevron) chevron.classList.remove('collapsed-chevron');
+    }
+
+    /**
      * Show a specific step
      */
     showStep(stepIndex) {
@@ -476,12 +490,16 @@ class UserGuide {
             this.startPolling(step);
         };
 
+        // Expand a collapsed parent section before spotlighting a child inside it
+        if (step.expandSection) {
+            this._expandGuideSection(step.expandSection);
+        }
+
         const targetElement = document.querySelector(step.target);
 
         if (targetElement) {
             setupStepWithElement(targetElement);
             if (step.scrollIntoView) {
-                // Using 'auto' for instant scrolling works better with subsequent observer updates
                 const scrollBehavior = 'smooth';
                 targetElement.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
             }
