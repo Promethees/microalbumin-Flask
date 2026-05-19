@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import threading
@@ -25,7 +26,10 @@ def _apply_overlay(examples: list, lang: str) -> list:
     try:
         with open(overlay_path, "r", encoding="utf-8") as f:
             overlay = json.load(f)
-    except Exception:
+    except FileNotFoundError:
+        return examples
+    except Exception as exc:
+        logging.warning("Guide translation overlay %s unreadable: %s", overlay_path, exc)
         return examples
     index = {item["id"]: item for item in overlay}
     result = []
