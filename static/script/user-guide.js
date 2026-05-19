@@ -16,7 +16,6 @@ class UserGuide {
         this.currentTargetElement = null;
         this.currentStepData = null;
         this.resizeObserver = null;
-        this.resizeObserver = null;
         this.pollingInterval = null;
         this.waitInterval = null;
 
@@ -420,7 +419,7 @@ class UserGuide {
             if (count === 20) {
                 clearInterval(this.pollingInterval);
                 this.pollingInterval = setInterval(() => {
-                    if (!this.isActive) return;
+                    if (!this.isActive) { this.cleanupObservers(); return; }
                     this.positionSpotlight(element, step);
                 }, 500);
             }
