@@ -500,9 +500,11 @@
         t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
         // bold
         t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        // bullet points
+        // bullet points — wrap each contiguous run of <li> items in <ul>.
+        // Separator \n inside the run is removed here so the later \n→<br>
+        // pass does not inject a <br> between adjacent list items.
         t = t.replace(/^[•·]\s+(.+)$/gm, '<li>$1</li>');
-        t = t.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        t = t.replace(/<li>[^\n]*<\/li>(?:\n<li>[^\n]*<\/li>)*/g, m => '<ul>' + m.replace(/\n/g, '') + '</ul>');
         // newlines
         t = t.replace(/\n/g, '<br>');
         return t;
