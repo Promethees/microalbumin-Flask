@@ -858,6 +858,11 @@
             const text = (input.value || '').trim();
             if (!text) return;
 
+            // Route exact slash commands before the activation gate — guide commands
+            // work without AI being activated.
+            const _matchedCmd = SLASH_COMMANDS.find(c => c.cmd === text.toLowerCase());
+            if (_matchedCmd) { input.value = ''; _cmdExecute(_matchedCmd); return; }
+
             if (AI.status && !AI.status.api_ready) {
                 const lang = AI.activeLang || 'en';
                 _addSystemMsg(_AI_UNAVAILABLE_MSG[lang] || _AI_UNAVAILABLE_MSG.en);
