@@ -195,6 +195,19 @@ Function _DarkInstPage
     SendMessage $R7 0x2001 0 0x002A170F
   ${EndIf}
 
+  ; Detail log: apply indigo bg and re-enable DarkMode_Explorer theme so
+  ; Windows renders the scrollbar in dark style on Win10 20H1+/Win11.
+  ; _DarkPage stripped the theme with " "/" "; restore it here specifically
+  ; for this control.  Try RichEdit20W (NSIS 3.x) then EDIT as fallback.
+  System::Call 'user32::FindWindowEx(i $R8, i 0, t "RichEdit20W", i 0) i .R7'
+  ${If} $R7 == 0
+    System::Call 'user32::FindWindowEx(i $R8, i 0, t "EDIT", i 0) i .R7'
+  ${EndIf}
+  ${If} $R7 != 0
+    System::Call 'uxtheme::SetWindowTheme(i $R7, w "DarkMode_Explorer", i 0)'
+    SetCtlColors $R7 "${CLR_FG}" "${CLR_BG}"
+  ${EndIf}
+
   Pop $R8
   Pop $R7
 FunctionEnd
