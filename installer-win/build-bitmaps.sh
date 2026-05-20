@@ -42,18 +42,15 @@ fi
 if [ -n "$CONVERT" ]; then
     echo "Using ImageMagick…"
 
-    # Sidebar — fit ht-logo within 164 × 260, center on warm-white 164 × 314 canvas,
-    #           then composite the okapi mascot at bottom-left at 22% opacity
-    $CONVERT "$LOGO_SRC" \
-        -resize 164x260\> \
-        -background "#FFFDF0" \
-        -gravity North \
-        -extent 164x314 \
-        -type TrueColor \
-        BMP3:"$SIDEBAR_OUT"
-    $CONVERT "$SIDEBAR_OUT" \
-        \( "$OKAPI_SRC" -resize 70x70 -alpha set -channel Alpha -evaluate multiply 0.22 +channel \) \
-        -gravity SouthWest -geometry +6+6 -composite \
+    # Sidebar — warm-white 164 × 314 canvas:
+    #   • okapi mascot centred, fills ~140 px tall (main visual element)
+    #   • HTBiotec logo small at the bottom (brand anchor)
+    $CONVERT -size 164x314 "xc:#FFFDF0" \
+        \( "$OKAPI_SRC" -resize 140x140 \) \
+        -gravity Center -geometry +0-20 -composite \
+        \( "$LOGO_SRC" -resize 120x40\> \
+           -background "#FFFDF0" -gravity center -extent 150x40 \) \
+        -gravity South -geometry +0+8 -composite \
         -type TrueColor \
         BMP3:"$SIDEBAR_OUT"
 

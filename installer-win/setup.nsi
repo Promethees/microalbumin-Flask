@@ -124,7 +124,7 @@ Section "Install" SEC01
   FileOpen $R9 "$TEMP\easyokapi_tkn.tmp" w
   FileWrite $R9 "$EasyOKAPIToken"
   FileClose $R9
-  nsExec::ExecToLog '"cmd.exe" /c "$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code"'
+  nsExec::ExecToLog '"cmd.exe" /c ""$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code""'
   Pop $0
   Delete "$TEMP\easyokapi_tkn.tmp"
   ${If} $0 != 0
