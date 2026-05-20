@@ -92,15 +92,18 @@ Page custom TokenPage TokenPageLeave
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
+; MUI2 does NOT auto-undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW, so we manage it
+; manually: reuse the same define for consecutive pages sharing a callback,
+; and explicitly !undef before switching to a different one.
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_WELCOME
-
-!define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_CONFIRM
 
+!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_UNPAGE_INSTFILES
 
+!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_FINISH
 
