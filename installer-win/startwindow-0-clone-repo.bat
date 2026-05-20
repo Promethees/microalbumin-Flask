@@ -48,76 +48,79 @@ if not exist "!INSTALL_DIR!" (
     goto :skip_menu
 )
 
-:: Directory exists, count items to check if it's non-empty
+:: Directory exists — count items to decide whether it is a real installation
 set "item_count=0"
 for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
 
-if !item_count! gtr 0 (
-    echo [*] An existing installation was found at:
-    echo     !INSTALL_DIR!
-    echo.
-
-    :: Check if version file exists to display current version
-    if exist "!INSTALL_DIR!\VERSION.txt" (
-        set /p CURRENT_VERSION=<"!INSTALL_DIR!\VERSION.txt"
-        echo     Current version: !CURRENT_VERSION!
-    ) else (
-        echo     Current version: Unknown (no version file found)
-        set "CURRENT_VERSION=Unknown"
-    )
-
-    echo     New version: !VERSION_TAG!
-    echo.
-    echo Options:
-    echo   [1] Overwrite existing installation (recommended for updates)
-    echo   [2] Cancel and keep existing installation
-    echo.
-
-    :: Avoid if-else inside a ( ) block with delayed expansion — cmd.exe raises
-    :: "else was unexpected at this time." and exits 255.  Use two plain ifs.
-    set "CHOICE="
-    if "!NSIS_MODE!"=="1" (
-        echo [NSIS] Non-interactive mode - overwriting existing installation.
-        set "CHOICE=1"
-    )
-    if "!CHOICE!"=="" set /p "CHOICE=Enter your choice [1 or 2]: "
-
-    if "!CHOICE!"=="1" (
-        echo.
-        echo Backing up user data (data, json, report)...
-        set "BACKUP_DIR=%TEMP%\easyokapi_backup_%RANDOM%"
-        for %%D in (data json report) do (
-            if exist "!INSTALL_DIR!\%%D\" (
-                if "!HAS_BACKUP!"=="0" (
-                    mkdir "!BACKUP_DIR!" >nul 2>&1
-                    set "HAS_BACKUP=1"
-                )
-                xcopy /e /i /q "!INSTALL_DIR!\%%D" "!BACKUP_DIR!\%%D\" >nul 2>&1
-            )
-        )
-        echo Removing existing installation...
-        rmdir /s /q "!INSTALL_DIR!"
-        if !ERRORLEVEL! neq 0 (
-            echo ERROR: Failed to remove existing installation.
-            echo Please check permissions and try again.
-            exit /b 1
-        )
-        mkdir "!INSTALL_DIR!"
-        echo Existing installation removed successfully.
-    ) else if "!CHOICE!"=="2" (
-        echo.
-        echo Installation cancelled. Keeping existing installation.
-        exit /b 0
-    ) else (
-        echo.
-        echo ERROR: Invalid choice. Please enter 1 or 2.
-        exit /b 1
-    )
-    echo.
-) else (
+:: Empty directory — skip the overwrite menu entirely
+if !item_count! equ 0 (
     echo [*] Installation directory exists but is empty. Proceeding with installation...
     echo.
+    goto :skip_menu
 )
+
+:: ── Existing installation found ───────────────────────────────────────────────
+:: Everything below is at the TOP LEVEL (no outer block) so if-else is safe.
+echo [*] An existing installation was found at:
+echo     !INSTALL_DIR!
+echo.
+
+if exist "!INSTALL_DIR!\VERSION.txt" (
+    set /p CURRENT_VERSION=<"!INSTALL_DIR!\VERSION.txt"
+    echo     Current version: !CURRENT_VERSION!
+) else (
+    echo     Current version: Unknown (no version file found)
+    set "CURRENT_VERSION=Unknown"
+)
+
+echo     New version: !VERSION_TAG!
+echo.
+echo Options:
+echo   [1] Overwrite existing installation (recommended for updates)
+echo   [2] Cancel and keep existing installation
+echo.
+
+set "CHOICE="
+if "!NSIS_MODE!"=="1" (
+    echo [NSIS] Non-interactive mode - overwriting existing installation.
+    set "CHOICE=1"
+)
+if "!CHOICE!"=="" set /p "CHOICE=Enter your choice [1 or 2]: "
+
+if "!CHOICE!"=="2" (
+    echo.
+    echo Installation cancelled. Keeping existing installation.
+    exit /b 0
+)
+if "!CHOICE!" neq "1" (
+    echo.
+    echo ERROR: Invalid choice. Please enter 1 or 2.
+    exit /b 1
+)
+
+:: ── Overwrite path ────────────────────────────────────────────────────────────
+echo.
+echo Backing up user data (data, json, report)...
+set "BACKUP_DIR=%TEMP%\easyokapi_backup_%RANDOM%"
+for %%D in (data json report) do (
+    if exist "!INSTALL_DIR!\%%D\" (
+        if "!HAS_BACKUP!"=="0" (
+            mkdir "!BACKUP_DIR!" >nul 2>&1
+            set "HAS_BACKUP=1"
+        )
+        xcopy /e /i /q "!INSTALL_DIR!\%%D" "!BACKUP_DIR!\%%D\" >nul 2>&1
+    )
+)
+echo Removing existing installation...
+rmdir /s /q "!INSTALL_DIR!"
+if !ERRORLEVEL! neq 0 (
+    echo ERROR: Failed to remove existing installation.
+    echo Please check permissions and try again.
+    exit /b 1
+)
+mkdir "!INSTALL_DIR!"
+echo Existing installation removed successfully.
+echo.
 
 :skip_menu
 
