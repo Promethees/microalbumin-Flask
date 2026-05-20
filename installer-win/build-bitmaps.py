@@ -34,10 +34,13 @@ SIDEBAR_W, SIDEBAR_H = 164, 314
 HEADER_W,  HEADER_H  = 150, 57
 
 # ── Brand palette ─────────────────────────────────────────────────────────────
-PURPLE_TOP  = (99, 102, 241)   # indigo-500  #6366f1  — gradient top
-WHITE_BOT   = (255, 255, 255)  # white       #ffffff  — gradient bottom
-ACCENT      = (99, 102, 241)   # indigo-500  (header accent line)
-WHITE       = (255, 255, 255)
+PURPLE_TOP   = (99,  102, 241)  # indigo-500  #6366f1  — sidebar gradient top
+WHITE_BOT    = (255, 255, 255)  # white       #ffffff  — sidebar gradient bottom
+ACCENT       = (99,  102, 241)  # indigo-500            header accent line
+WHITE        = (255, 255, 255)
+# Left edge of the header gradient must match CLR_BG in setup.nsi (#312e81)
+# so the bitmap blends seamlessly with the SetCtlColors-painted text area.
+HEADER_LEFT  = (49,  46,  129)  # indigo-900  #312e81  — header gradient left
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -51,6 +54,19 @@ def vertical_gradient(w: int, h: int, top: tuple, bottom: tuple) -> Image.Image:
         g = int(top[1] + (bottom[1] - top[1]) * t)
         b = int(top[2] + (bottom[2] - top[2]) * t)
         draw.line([(0, y), (w - 1, y)], fill=(r, g, b))
+    return img
+
+
+def horizontal_gradient(w: int, h: int, left: tuple, right: tuple) -> Image.Image:
+    """Left-to-right linear gradient."""
+    img  = Image.new("RGB", (w, h))
+    draw = ImageDraw.Draw(img)
+    for x in range(w):
+        t = x / max(w - 1, 1)
+        r = int(left[0] + (right[0] - left[0]) * t)
+        g = int(left[1] + (right[1] - left[1]) * t)
+        b = int(left[2] + (right[2] - left[2]) * t)
+        draw.line([(x, 0), (x, h - 1)], fill=(r, g, b))
     return img
 
 
@@ -123,16 +139,19 @@ def build_header() -> None:
         print(f"ERROR: {ICON_SRC} not found.")
         sys.exit(1)
 
-    canvas = Image.new("RGB", (HEADER_W, HEADER_H), WHITE)
+    # Left-to-right gradient: HEADER_LEFT (indigo-900) matches the inner-page
+    # background painted by SetCtlColors, so the bitmap continues the gradient
+    # seamlessly rather than showing a hard colour boundary.
+    canvas = horizontal_gradient(HEADER_W, HEADER_H, HEADER_LEFT, WHITE)
     draw   = ImageDraw.Draw(canvas)
 
-    # Bottom accent line (2 px) — ties header to the sidebar accent colour
+    # Bottom accent line (2 px)
     draw.rectangle([0, HEADER_H - 2, HEADER_W - 1, HEADER_H - 1], fill=ACCENT)
 
-    # DNA icon centred (white canvas matches the installer inner-page background)
+    # DNA icon centred
     icon = fit_image(Image.open(ICON_SRC), HEADER_W - 4, HEADER_H - 6)
     ix   = (HEADER_W  - icon.width)  // 2
-    iy   = (HEADER_H  - icon.height) // 2 - 1  # nudge up slightly above the accent line
+    iy   = (HEADER_H  - icon.height) // 2 - 1
     canvas.paste(icon, (ix, iy), icon)
 
     canvas.convert("RGB").save(str(HEADER_OUT), format="BMP")
