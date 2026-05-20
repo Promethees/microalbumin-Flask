@@ -79,38 +79,33 @@ Var EasyOKAPIToken
 ; Each built-in MUI page gets a SHOW callback that recolours all inner controls.
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_WELCOME
-!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
 
 Page custom TokenPage TokenPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_DIRECTORY
-!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_PAGE_INSTFILES
-!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_FINISH
-!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
 
 ; Uninstaller pages
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_WELCOME
-!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
 
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_CONFIRM
-!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
 
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_UNPAGE_INSTFILES
-!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
 
 !define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_FINISH
-!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
+
+; MUI2 owns .onGUIInit — use this hook to run our outer-window colouring
+!define MUI_CUSTOMFUNCTION_GUIINIT _OnGUIInit
 
 ; Set language
 !insertmacro MUI_LANGUAGE "English"
@@ -177,8 +172,8 @@ Function _DarkInstPage
   Pop $R7
 FunctionEnd
 
-; Colour the outer installer window on startup (affects branding strip + chrome)
-Function .onGUIInit
+; Called by MUI2's .onGUIInit — colours the outer window chrome
+Function _OnGUIInit
   SetCtlColors $HWNDPARENT "${CLR_FG}" "${CLR_BG}"
 FunctionEnd
 
