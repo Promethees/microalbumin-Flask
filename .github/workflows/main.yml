@@ -95,11 +95,11 @@ jobs:
           python installer-win/build-bitmaps.py
 
       - name: Build Runner and Installer
-        shell: cmd
+        shell: pwsh
         run: |
-          cd installer-win
-          makensis runner.nsi
-          makensis /DAPP_VERSION=${{ env.APP_VERSION }} setup.nsi
+          Set-Location installer-win
+          & makensis runner.nsi
+          & makensis "/DAPP_VERSION=$env:APP_VERSION" "/DAUTH_BASE_URL=$env:AUTH_BASE_URL" setup.nsi
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4

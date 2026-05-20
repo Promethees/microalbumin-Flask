@@ -6,6 +6,10 @@
 !ifndef APP_VERSION
   !error "APP_VERSION is not defined. Pass it with: makensis /DAPP_VERSION=x.x.x setup.nsi"
 !endif
+; AUTH_BASE_URL must be passed at compile time: makensis /DAUTH_BASE_URL=https://... setup.nsi
+!ifndef AUTH_BASE_URL
+  !error "AUTH_BASE_URL is not defined. Pass it with: makensis /DAUTH_BASE_URL=https://... setup.nsi"
+!endif
 !define INSTALL_DIR "$PROGRAMFILES64\EasyOKAPI"
 !define RUNNER_NAME "${APP_NAME}"
 !define MUI_ICON "setup.ico"
@@ -112,46 +116,117 @@ Section "Install" SEC01
   File "EasyOKAPI.exe"
   File "ht.ico"
 
-  ; ── All setup steps run inside NSIS — no separate cmd windows ─────────────
-  ; nsExec::ExecToLog runs commands hidden and streams output to the detail list.
+  ; nsExec::ExecToLog streams each child-process stdout/stderr directly to the
+  ; NSIS detail log — no intermediate bat wrapper needed for Step 1.
 
-  DetailPrint "======================================"
-  DetailPrint "Step 1 / 3  -  Downloading application"
-  DetailPrint "======================================"
-  ; Inject the token into the child process environment (r10 = $R0, so the
-  ; token value never touches the System::Call string — safe for any chars).
-  StrCpy $R0 "$EasyOKAPIToken"
-  System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_DOWNLOAD_TOKEN", w r10) i .r1'
-  ${If} $1 == 0
-    MessageBox MB_OK|MB_ICONSTOP "Installer error: failed to pass token to child process (SetEnvironmentVariableW returned 0). Please re-run Setup."
-    Abort
-  ${EndIf}
-
-  ; Verify the download script was copied before trying to run it.
-  IfFileExists "$INSTDIR\startwindow-0-clone-repo.bat" +3
-    MessageBox MB_OK|MB_ICONSTOP "Installer error: startwindow-0-clone-repo.bat not found in $INSTDIR.$\r$\nPlease re-download the installer."
-    Abort
-
-  ; Resolve $INSTDIR to its 8.3 short path so cmd.exe block parsing is never
-  ; confused by parentheses (e.g. "C:\Program Files (x86)\...").
+  ; ── Resolve short paths (avoids spaces / parens breaking cmd.exe args) ────────
   System::Call 'kernel32::GetShortPathNameW(w "$INSTDIR", w .r11, i 1024)'
-  ; If 8.3 short-name resolution is disabled on the volume (NtfsDisable8dot3NameCreation),
-  ; GetShortPathNameW returns 0 and $R1 is empty — fall back to the original path.
   ${If} $R1 == ""
     StrCpy $R1 "$INSTDIR"
   ${EndIf}
-  nsExec::ExecToLog '"cmd.exe" /c ""$R1\startwindow-0-clone-repo.bat" "$R1\code""'
+  System::Call 'kernel32::GetShortPathNameW(w "$TEMP", w .r12, i 1024)'
+  ${If} $R2 == ""
+    StrCpy $R2 "$TEMP"
+  ${EndIf}
+  StrCpy $R3 "$R1\code"                 ; code destination directory
+  StrCpy $R4 "$R2\easyokapi_app.tar.gz" ; temp download archive
+
+  ; ── Inject token into child-process environment ───────────────────────────────
+  StrCpy $R0 "$EasyOKAPIToken"
+  System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_DOWNLOAD_TOKEN", w r10) i .r1'
+  ${If} $1 == 0
+    MessageBox MB_OK|MB_ICONSTOP "Installer error: could not set download token in process environment.$\r$\nPlease re-run Setup."
+    Abort
+  ${EndIf}
+
+  ; ── Step 1 / 3  -  Downloading application ───────────────────────────────────
+  DetailPrint "======================================"
+  DetailPrint "Step 1 / 3  -  Downloading application"
+  DetailPrint "======================================"
+
+  ; Back up user data if a previous installation already exists.
+  StrCpy $R5 "0"
+  StrCpy $R6 ""
+  IfFileExists "$R3" 0 step1_fresh      ; exists → fall through; absent → jump
+    DetailPrint "Existing installation found — preserving user data..."
+    StrCpy $R6 "$R2\easyokapi_backup"
+    CreateDirectory "$R6"
+    StrCpy $R5 "1"
+    IfFileExists "$R3\data\*.*" 0 +2
+      CopyFiles /SILENT "$R3\data" "$R6\data"
+    IfFileExists "$R3\json\*.*" 0 +2
+      CopyFiles /SILENT "$R3\json" "$R6\json"
+    IfFileExists "$R3\report\*.*" 0 +2
+      CopyFiles /SILENT "$R3\report" "$R6\report"
+    DetailPrint "Removing existing code directory for overwrite..."
+    RMDir /r "$R3"
+  step1_fresh:
+  CreateDirectory "$R3"
+
+  ; Download — curl output goes straight to the NSIS detail log.
+  DetailPrint "Downloading application archive..."
+  nsExec::ExecToLog '"cmd.exe" /c curl --fail -L -o "$R4" "${AUTH_BASE_URL}/api/download?token=%EASYOKAPI_DOWNLOAD_TOKEN%"'
   Pop $0
   ${If} $0 == 255
-    MessageBox MB_OK|MB_ICONSTOP "Download failed: the installer could not launch the download script (exit 255).$\r$\nThis is often caused by antivirus or Windows Defender blocking the process.$\r$\nTry temporarily disabling real-time protection, or add an exclusion for $INSTDIR, then re-run Setup."
+    MessageBox MB_OK|MB_ICONSTOP "curl could not be launched (exit 255).$\r$\nCheck antivirus / Defender exclusions for $INSTDIR, then re-run Setup."
     Abort
   ${EndIf}
   ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "Download failed (exit code $0).$\r$\nPlease check your token and internet connection, then re-run Setup.$\r$\nSee the detail log above for more information."
+    MessageBox MB_OK|MB_ICONSTOP "Download failed (curl exit $0).$\r$\nCheck your token and internet connection.$\r$\nSee the detail log above for curl's error output."
     Abort
   ${EndIf}
+
+  ; Extract — tar output goes straight to the NSIS detail log.
+  DetailPrint "Extracting application archive..."
+  nsExec::ExecToLog '"cmd.exe" /c tar -xzf "$R4" -C "$R3" --strip-components=1'
+  Pop $0
+  Delete "$R4"
+  ${If} $0 != 0
+    MessageBox MB_OK|MB_ICONSTOP "Extraction failed (tar exit $0).$\r$\nSee the detail log above for more information."
+    Abort
+  ${EndIf}
+
+  ; Restore preserved user data.
+  ${If} $R5 == "1"
+    DetailPrint "Restoring user data (data, json, report)..."
+    IfFileExists "$R6\data\*.*" 0 +2
+      CopyFiles /SILENT "$R6\data" "$R3\data"
+    IfFileExists "$R6\json\*.*" 0 +2
+      CopyFiles /SILENT "$R6\json" "$R3\json"
+    IfFileExists "$R6\report\*.*" 0 +2
+      CopyFiles /SILENT "$R6\report" "$R3\report"
+    RMDir /r "$R6"
+    DetailPrint "User data restored."
+  ${EndIf}
+
+  ; Remove development-only files from the extracted archive.
+  DetailPrint "Removing development files..."
+  Delete "$R3\*.command"
+  Delete "$R3\*.bat"
+  Delete "$R3\log_hid_data.py"
+  Delete "$R3\generate-tree.sh"
+  Delete "$R3\BUILD_MAC.md"
+  Delete "$R3\Rule.md"
+  RMDir /r "$R3\mac"
+  RMDir /r "$R3\easyokapi-knowledge"
+  RMDir /r "$R3\images"
+  RMDir /r "$R3\installer-mac"
+  RMDir /r "$R3\installer-win"
+  RMDir /r "$R3\installer-linux"
+  RMDir /r "$R3\tests"
+  RMDir /r "$R3\.github"
+
+  ; Write version and activation files.
+  FileOpen $9 "$R3\VERSION.txt" w
+  FileWrite $9 "v${APP_VERSION}"
+  FileClose $9
+  FileOpen $9 "$R3\activation.json" w
+  FileWrite $9 '{$\n  "license_token": "$EasyOKAPIToken"$\n}'
+  FileClose $9
+
   DetailPrint "Application downloaded successfully."
 
+  ; ── Step 2 / 3  -  Installing pyenv & Python ─────────────────────────────────
   DetailPrint "======================================"
   DetailPrint "Step 2 / 3  -  Installing pyenv & Python"
   DetailPrint "======================================"
