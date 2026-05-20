@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from file_path import DATA_ROOT
+from file_path import DATA_ROOT, validate_in_data_root
 from file import get_file_list
 import state
 
@@ -779,7 +779,7 @@ _GUIDE_LAUNCHED = {
 
 # ── Tool execution ────────────────────────────────────────────────────────────
 
-def _run_tool(name: str, args: dict) -> str:
+def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
     try:
         if name == "get_app_context":
             csv_files = get_file_list(DATA_ROOT)
@@ -797,8 +797,10 @@ def _run_tool(name: str, args: dict) -> str:
         elif name == "read_csv_file":
             filename = args.get("filename", "")
             max_rows = min(int(args.get("max_rows", 30)), 100)
-            filepath = os.path.join(DATA_ROOT, filename)
-            if not os.path.exists(filepath):
+            subfolder = (ui_context or {}).get("subfolder", "")
+            candidate = os.path.join(DATA_ROOT, subfolder, filename) if subfolder else os.path.join(DATA_ROOT, filename)
+            filepath = validate_in_data_root(candidate)
+            if not filepath or not os.path.exists(filepath):
                 return json.dumps({"error": f"'{filename}' not found in current directory."})
             lines = []
             data_rows = 0
@@ -1382,7 +1384,7 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
                 tool_args = json.loads(fn.get("arguments", "{}"))
             except Exception:
                 tool_args = {}
-            tool_result = _run_tool(tool_name, tool_args)
+            tool_result = _run_tool(tool_name, tool_args, ui_context)
             if tool_name in _GUIDE_TOOLS:
                 try:
                     guide_action = json.loads(tool_result)

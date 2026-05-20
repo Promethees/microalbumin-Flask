@@ -557,12 +557,18 @@
         const mainContent = document.getElementById('main-content');
         const dataDisplay = document.getElementById('data-display-section');
         const calMode = document.getElementById('cal-mode-select');
+        const dir = appState.currentDirectory || '';
+        const dataRoot = typeof DATA_ROOT !== 'undefined' ? DATA_ROOT : '';
+        const subfolder = (dir && dataRoot && dir !== dataRoot)
+            ? dir.split(/[/\\]/).pop()
+            : '';
         return {
             mode: appState.currentMeasurementMode || 'unknown',
             app_started: !!(mainContent && !mainContent.classList.contains('hidden')),
             data_loaded: !!(dataDisplay && !dataDisplay.classList.contains('hidden')),
             cal_mode: calMode ? (calMode.getAttribute('data-value') || '') : '',
             script_running: !!appState.scriptRunning,
+            subfolder,
         };
     }
 
