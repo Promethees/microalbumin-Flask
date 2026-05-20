@@ -193,15 +193,34 @@ Function _DarkButtons
   Pop $R0
 FunctionEnd
 
-; Called by MUI2's .onGUIInit — colours outer chrome, title bar, and buttons
+; Called by MUI2's .onGUIInit — colours outer chrome, title bar, buttons,
+; and the BrandingText ("EasyOKAPI x.x.x") strip at the bottom.
 Function _OnGUIInit
   SetCtlColors $HWNDPARENT "${CLR_FG}" "${CLR_BG}"
-  ; Title bar colour via DWM (Windows 10 20H1+ / Windows 11 only; silently
-  ; ignored on older builds). DWMWA_CAPTION_COLOR=35, TEXT_COLOR=36.
-  ; Colours are COLORREF 0x00BBGGRR: indigo-500 #6366F1 -> 0x00F16663
+
+  ; Title bar via DWM (Win10 20H1+ / Win11; silently ignored on older builds).
+  ; DWMWA_CAPTION_COLOR=35, DWMWA_TEXT_COLOR=36. COLORREF 0x00BBGGRR:
+  ;   indigo-500 #6366F1 -> 0x00F16663   white -> 0x00FFFFFF
   System::Call 'dwmapi::DwmSetWindowAttribute(i $HWNDPARENT, i 35, *i 0x00F16663, i 4)'
   System::Call 'dwmapi::DwmSetWindowAttribute(i $HWNDPARENT, i 36, *i 0x00FFFFFF, i 4)'
+
   Call _DarkButtons
+
+  ; Style the BrandingText strip — walk every Static-class child of the outer
+  ; window and apply a matching dark bg with soft indigo-300 text (#a5b4fc).
+  ; This removes the white-box appearance and renders the version as a
+  ; styled tag that harmonises with the indigo sidebar gradient.
+  Push $R0
+  StrCpy $R0 0
+  _branding_loop:
+    System::Call 'user32::FindWindowEx(i $HWNDPARENT, i $R0, t "Static", i 0) i .R0'
+    ${If} $R0 == 0
+      Goto _branding_done
+    ${EndIf}
+    SetCtlColors $R0 "A5B4FC" "${CLR_BG}"
+    Goto _branding_loop
+  _branding_done:
+  Pop $R0
 FunctionEnd
 
 ; ── EasyOKAPI token page ───────────────────────────────────────────────────────
