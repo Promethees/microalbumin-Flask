@@ -20,7 +20,7 @@ _GITHUB_EMAIL_URL = 'https://api.github.com/user/emails'
 
 
 def _base_url():
-    return os.environ.get('APP_BASE_URL', 'http://localhost:5003')
+    return os.environ.get('APP_BASE_URL', 'http://localhost:5003').rstrip('/')
 
 
 def _login_user(user):
