@@ -631,7 +631,7 @@ body.dark .toggle-button::before {
     content: '🌙';
 }
 
-.toggle-button[data-theme-mode="auto"]::before {
+body .toggle-button[data-theme-mode="auto"]::before {
     content: '🖥️';
     font-size: 16px;
 }
