@@ -126,8 +126,10 @@ Page custom TokenPage TokenPageLeave
 ; Extracts background.bmp to $PLUGINSDIR and starts the BgImage window.
 Function _OnInit
   InitPluginsDir
-  File /oname=$PLUGINSDIR\background.bmp "background.bmp"
-  BgImage::SetBg /NOUNLOAD /FILLSCREEN "$PLUGINSDIR\background.bmp"
+  File "/oname=$PLUGINSDIR\background.bmp" "background.bmp"
+  ; BgImage::SetBg stretches the bitmap to fill the screen internally.
+  ; /FILLSCREEN is not a valid flag — omit it or the plugin misreads the path.
+  BgImage::SetBg /NOUNLOAD "$PLUGINSDIR\background.bmp"
   BgImage::Redraw /NOUNLOAD
 FunctionEnd
 
