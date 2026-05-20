@@ -3,126 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Goodbye</title>
+    <title>Goodbye — EasyOKAPI</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        @keyframes bgShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33%       { transform: translate(25px, -35px) scale(1.07); }
+            66%       { transform: translate(-18px, 18px) scale(0.95); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.55); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes circleDraw {
+            from { stroke-dashoffset: 166; }
+            to   { stroke-dashoffset: 0; }
+        }
+
+        @keyframes checkDraw {
+            from { stroke-dashoffset: 60; }
+            to   { stroke-dashoffset: 0; }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f5f5f5;
-            text-align: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
         }
+
+        /* ── Light mode ──────────────────────────────────── */
         body.light {
-            background-color: #f5f5f5;
-            color: #000000;
+            background: linear-gradient(-45deg, #f0f4ff, #e8edf5, #f5f0ff, #edf5f0);
+            background-size: 400% 400%;
+            animation: bgShift 18s ease infinite;
+            color: #1e293b;
         }
+        body.light .orb { opacity: 0.1; }
+        body.light .orb-1 { background: radial-gradient(circle, #6366f1, transparent 70%); }
+        body.light .orb-2 { background: radial-gradient(circle, #a855f7, transparent 70%); }
+        body.light .orb-3 { background: radial-gradient(circle, #10b981, transparent 70%); }
+
+        body.light .card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        body.light .card-title    { color: #1e293b; }
+        body.light .card-subtitle { color: #64748b; }
+        body.light .countdown-label { color: #94a3b8; }
+        body.light .check-circle  { stroke: #10b981; }
+        body.light .check-tick    { stroke: #10b981; }
+        body.light .ring-bg       { stroke: #e2e8f0; }
+        body.light .ring-fill     { stroke: #6366f1; }
+        body.light .countdown-number { color: #6366f1; }
+        body.light .warning-badge {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+        }
+
+        /* ── Dark mode ───────────────────────────────────── */
         body.dark {
-            background-color: #444444;
-            color: #eeeeee;
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #0c1a3d, #0f172a);
+            background-size: 400% 400%;
+            animation: bgShift 14s ease infinite;
+            color: #f1f5f9;
         }
-        body.light .goodbye-container {
-            background-color: #ffffff;
-            color: inherit;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            max-width: 500px;
+        body.dark .orb { opacity: 0.22; }
+        body.dark .orb-1 { background: radial-gradient(circle, #6366f1, transparent 70%); }
+        body.dark .orb-2 { background: radial-gradient(circle, #a855f7, transparent 70%); }
+        body.dark .orb-3 { background: radial-gradient(circle, #2dd4bf, transparent 70%); }
+
+        body.dark .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
-        body.dark .goodbye-container {
-            background-color: #111111;
-            color: inherit;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            max-width: 500px;
+
+        body.dark .card-title    { color: #f1f5f9; }
+        body.dark .card-subtitle { color: rgba(226, 232, 240, 0.6); }
+        body.dark .countdown-label { color: rgba(226, 232, 240, 0.4); }
+        body.dark .check-circle  { stroke: #34d399; }
+        body.dark .check-tick    { stroke: #34d399; }
+        body.dark .ring-bg       { stroke: rgba(255, 255, 255, 0.1); }
+        body.dark .ring-fill     { stroke: #818cf8; }
+        body.dark .countdown-number { color: #818cf8; }
+        body.dark .warning-badge {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
         }
-        body.light h1 {
-            color: #333;
+
+        /* ── Ambient orbs ────────────────────────────────── */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(70px);
+            pointer-events: none;
+            animation: orbFloat 20s ease-in-out infinite;
         }
-        body.dark h1 {
-            color: #eeeeee;
+        .orb-1 { width: 520px; height: 520px; top: -160px; left: -160px; animation-duration: 22s; }
+        .orb-2 { width: 420px; height: 420px; bottom: -110px; right: -110px; animation-duration: 17s; animation-delay: -6s; }
+        .orb-3 { width: 280px; height: 280px; top: 40%; left: 55%; animation-duration: 15s; animation-delay: -10s; }
+
+        /* ── Card ────────────────────────────────────────── */
+        .card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+            padding: 3rem 3.5rem;
+            border-radius: 24px;
+            max-width: 460px;
+            width: 90%;
+            text-align: center;
+            animation: fadeInUp 0.5s ease both;
         }
-        body.light p {
-            color: #666;
-            margin-bottom: 1rem;
+
+        /* ── Animated checkmark ──────────────────────────── */
+        .check-wrap {
+            animation: scaleIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
         }
-        body.dark p {
-            color: #aaaaaa;
+        .checkmark-svg { width: 76px; height: 76px; }
+        .check-circle {
+            fill: none;
+            stroke-width: 2.5;
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-linecap: round;
+            animation: circleDraw 0.65s ease 0.25s forwards;
         }
-        .production-warning {
-            color: #d32f2f;
-            font-weight: bold;
-            margin-top: 1.5rem;
-            padding: 0.5rem;
-            background-color: #ffebee;
-            border-radius: 4px;
+        .check-tick {
+            fill: none;
+            stroke-width: 3;
+            stroke-dasharray: 60;
+            stroke-dashoffset: 60;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: checkDraw 0.4s ease 0.8s forwards;
         }
-        .icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            color: #4CAF50;
+
+        /* ── Text ────────────────────────────────────────── */
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            animation: fadeInUp 0.5s ease 0.25s both;
+        }
+        .card-subtitle {
+            font-size: 0.95rem;
+            line-height: 1.65;
+            animation: fadeInUp 0.5s ease 0.35s both;
+        }
+
+        /* ── Production badge ────────────────────────────── */
+        .warning-badge {
+            font-size: 0.78rem;
+            font-weight: 500;
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            animation: fadeInUp 0.5s ease 0.4s both;
+        }
+
+        /* ── Countdown ring ──────────────────────────────── */
+        .countdown-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            animation: fadeInUp 0.5s ease 0.45s both;
+        }
+        .ring-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+        }
+        .ring-svg {
+            width: 64px;
+            height: 64px;
+            transform: rotate(-90deg);
+        }
+        .ring-bg {
+            fill: none;
+            stroke-width: 4;
+        }
+        .ring-fill {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.92s linear;
+        }
+        .countdown-number {
+            position: absolute;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .countdown-label {
+            font-size: 0.76rem;
+            letter-spacing: 0.02em;
         }
     </style>
 </head>
 <body class="{{ mode }}">
-    <div class="goodbye-container">
-        <div class="icon">✓</div>
-        <h1>Server Shutdown Complete</h1>
-        <p>The server has been successfully terminated.</p>
-        
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="card">
+        <div class="check-wrap">
+            <svg class="checkmark-svg" viewBox="0 0 52 52">
+                <circle class="check-circle" cx="26" cy="26" r="25"/>
+                <path class="check-tick" d="M14 27l8 8 16-16"/>
+            </svg>
+        </div>
+
+        <h1 class="card-title">Server Shutdown Complete</h1>
+        <p class="card-subtitle" id="card-subtitle">
+            The server has been successfully terminated.<br>
+            Thank you for using EasyOKAPI.
+        </p>
+
         {% if production_mode %}
-        <div class="production-warning">
-            Production Mode: Terminal window will close automatically
+        <div class="warning-badge">
+            Production Mode — terminal window will close automatically
         </div>
         {% endif %}
-        
-        <p><small>This page will attempt to close in <span id="countdown">5</span> seconds.</small></p>
+
+        <div class="countdown-wrap">
+            <div class="ring-container">
+                <svg class="ring-svg" viewBox="0 0 56 56">
+                    <circle class="ring-bg" cx="28" cy="28" r="24"/>
+                    <circle class="ring-fill" id="ring-fill" cx="28" cy="28" r="24"/>
+                </svg>
+                <span class="countdown-number" id="countdown">5</span>
+            </div>
+            <span class="countdown-label">Closing window…</span>
+        </div>
     </div>
 
     <script>
-        // Countdown timer
-        let seconds = 5;
-        const countdownElement = document.getElementById('countdown');
-        let productionMode = "{{ production_mode }}"; // This should be set in your Flask context
-        productionMode = productionMode === 'True'; // Convert string to boolean
-        const countdown = setInterval(() => {
+        const TOTAL = 5;
+        const circumference = 2 * Math.PI * 24; // ≈ 150.8
+        const ringFill = document.getElementById('ring-fill');
+        const countdownEl = document.getElementById('countdown');
+        const subtitleEl = document.getElementById('card-subtitle');
+
+        ringFill.style.strokeDasharray = circumference;
+        ringFill.style.strokeDashoffset = 0;
+
+        let seconds = TOTAL;
+        const productionMode = "{{ production_mode }}" === 'True';
+
+        const tick = setInterval(() => {
             seconds--;
-            countdownElement.textContent = seconds;
-            
+            countdownEl.textContent = seconds;
+            ringFill.style.strokeDashoffset = circumference * (1 - seconds / TOTAL);
+
             if (seconds <= 0) {
-                clearInterval(countdown);
+                clearInterval(tick);
                 attemptClose();
             }
         }, 1000);
 
         function attemptClose() {
             if (productionMode) {
-                // For production mode, we'll try more aggressively to close everything
                 try {
-                    // Try standard close
                     window.close();
-                    
-                    // Fallback for browsers that block window.close()
                     setTimeout(() => {
                         window.open('', '_self').close();
-                        
-                        // Final fallback
                         setTimeout(() => {
-                            document.body.innerHTML = `
-                                <div class="goodbye-container">
-                                    <p>All processes terminated. You may now safely close this window.</p>
-                                </div>
-                            `;
+                            subtitleEl.textContent =
+                                'All processes terminated. You may now safely close this window.';
                         }, 500);
                     }, 500);
                 } catch (e) {
-                    console.error("Error closing window:", e);
+                    console.error('Error closing window:', e);
                 }
             } else {
-                // For development, just try to close the tab
                 window.open('', '_self').close();
             }
         }
