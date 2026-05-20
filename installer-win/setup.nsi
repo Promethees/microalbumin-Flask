@@ -1,4 +1,4 @@
-﻿; Installer script for EasyOKAPI
+; Installer script for EasyOKAPI
 ; Requires NSIS 3.0 or later
 
 !define APP_NAME "EasyOKAPI"
@@ -23,6 +23,12 @@
 !define MUI_HEADERIMAGE_BITMAP "header.bmp"
 !define MUI_HEADERIMAGE_RIGHT
 
+; ── Dark-theme colour palette ─────────────────────────────────────────────────
+; All hex strings without '#', matching the EasyOKAPI web app CSS variables.
+!define CLR_BG    "0F172A"   ; slate-900  — main page background  (#0f172a)
+!define CLR_FG    "E2E8F0"   ; slate-200  — body text             (#e2e8f0)
+!define CLR_INPUT "1E293B"   ; slate-800  — input field bg        (#1e293b)
+
 ; ── Modern UI look & feel ──────────────────────────────────────────────────────
 !define MUI_ABORTWARNING
 !define MUI_ABORTWARNING_TEXT "Are you sure you want to cancel the EasyOKAPI installation?"
@@ -42,6 +48,12 @@ RequestExecutionLevel admin
 
 ; Set the compression method
 SetCompressor lzma
+
+; ── Outer-window gradient (branding strip + chrome around the inner page) ─────
+BGGradient 0F172A 1E1B4B
+
+; ── Install-log text / background on the InstFiles detail area ─────────────────
+InstallColors E2E8F0 0F172A
 
 ; Installer metadata
 Name "${APP_NAME} ${APP_VERSION}"
@@ -64,20 +76,111 @@ Var EasyOKAPIToken
 
 ; ── Page order ─────────────────────────────────────────────────────────────────
 ; Welcome → Token → Directory → Install → Finish
+; Each built-in MUI page gets a SHOW callback that recolours all inner controls.
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_WELCOME
+!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
+
 Page custom TokenPage TokenPageLeave
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_DIRECTORY
+!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_PAGE_INSTFILES
+!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_FINISH
+!undef MUI_PAGE_CUSTOMFUNCTION_SHOW
 
 ; Uninstaller pages
+!define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_WELCOME
+!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
+
+!define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_CONFIRM
+!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
+
+!define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_UNPAGE_INSTFILES
+!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
+
+!define MUI_UNPAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_UNPAGE_FINISH
+!undef MUI_UNPAGE_CUSTOMFUNCTION_SHOW
 
 ; Set language
 !insertmacro MUI_LANGUAGE "English"
+
+; ── Dark-theme helpers ─────────────────────────────────────────────────────────
+
+; _DarkPage — called from every page SHOW callback.
+; Finds the MUI2 inner "#32770" dialog, colours it, then walks every direct
+; child control and applies the same dark palette via SetCtlColors.
+Function _DarkPage
+  Push $R8
+  Push $R9
+
+  FindWindow $R8 "#32770" "" $HWNDPARENT
+  ${If} $R8 == 0
+    Pop $R9
+    Pop $R8
+    Return
+  ${EndIf}
+  SetCtlColors $R8 "${CLR_FG}" "${CLR_BG}"
+
+  StrCpy $R9 0
+  _dp_loop:
+    System::Call 'user32::FindWindowEx(i $R8, i $R9, i 0, i 0) i .R9'
+    ${If} $R9 == 0
+      Goto _dp_done
+    ${EndIf}
+    SetCtlColors $R9 "${CLR_FG}" "${CLR_BG}"
+    Goto _dp_loop
+  _dp_done:
+
+  Pop $R9
+  Pop $R8
+FunctionEnd
+
+; _DarkInstPage — same as _DarkPage plus progress-bar colour overrides.
+; Removes the visual theme from the progress bar first (required on Vista+
+; so that PBM_SETBARCOLOR is not silently ignored by the themed renderer).
+Function _DarkInstPage
+  Call _DarkPage
+
+  Push $R7
+  Push $R8
+
+  FindWindow $R8 "#32770" "" $HWNDPARENT
+  ${If} $R8 == 0
+    Pop $R8
+    Pop $R7
+    Return
+  ${EndIf}
+
+  ; Locate the progress bar by class name
+  System::Call 'user32::FindWindowEx(i $R8, i 0, t "msctls_progress32", i 0) i .R7'
+  ${If} $R7 != 0
+    ; Strip the visual theme so custom colours take effect
+    System::Call 'uxtheme::SetWindowTheme(i $R7, w " ", w " ")'
+    ; PBM_SETBARCOLOR (0x0409) — bar fill: indigo-500 as COLORREF 0x00F16663
+    SendMessage $R7 0x0409 0 0x00F16663
+    ; PBM_SETBKCOLOR  (0x2001) — track bg:  slate-900 as COLORREF 0x002A170F
+    SendMessage $R7 0x2001 0 0x002A170F
+  ${EndIf}
+
+  Pop $R8
+  Pop $R7
+FunctionEnd
+
+; Colour the outer installer window on startup (affects branding strip + chrome)
+Function .onGUIInit
+  SetCtlColors $HWNDPARENT "${CLR_FG}" "${CLR_BG}"
+FunctionEnd
 
 ; ── EasyOKAPI token page ───────────────────────────────────────────────────────
 Function TokenPage
@@ -88,10 +191,16 @@ Function TokenPage
     Abort
   ${EndIf}
 
+  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+
   ${NSD_CreateLabel} 0 0 100% 24u "Please enter your Generated EasyOKAPI Token:"
   Pop $0
+  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
+
   ${NSD_CreateText} 0 26u 100% 12u ""
   Pop $TokenInput
+  SetCtlColors $TokenInput "${CLR_FG}" "${CLR_INPUT}"
+
   nsDialogs::Show
 FunctionEnd
 
