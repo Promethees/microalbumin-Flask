@@ -144,10 +144,32 @@ Section "Install" SEC01
   DetailPrint "Step 1 / 3  -  Downloading application"
   DetailPrint "======================================"
 
-  ; Back up user data if a previous installation already exists.
+  ; Detect existing installation and ask the user what to do.
   StrCpy $R5 "0"
   StrCpy $R6 ""
   IfFileExists "$R3" 0 step1_fresh      ; exists → fall through; absent → jump
+
+    ; Read the installed version from VERSION.txt (if present).
+    StrCpy $R7 "Unknown"
+    IfFileExists "$R3\VERSION.txt" 0 +4
+      FileOpen $8 "$R3\VERSION.txt" r
+      FileRead $8 $R7
+      FileClose $8
+
+    ; Ask the user: update or keep?
+    MessageBox MB_YESNO|MB_ICONQUESTION \
+      "An existing EasyOKAPI installation was found:$\r$\n\
+$\r$\n\
+    Location:        $R3$\r$\n\
+    Current version: $R7$\r$\n\
+    New version:     v${APP_VERSION}$\r$\n\
+$\r$\n\
+Update to v${APP_VERSION}? (Your data will be preserved.) \
+Click No to keep the existing installation and cancel Setup." \
+      IDYES step1_do_overwrite
+      Abort   ; user chose No → exit installer cleanly
+    step1_do_overwrite:
+
     DetailPrint "Existing installation found — preserving user data..."
     StrCpy $R6 "$R2\easyokapi_backup"
     CreateDirectory "$R6"
