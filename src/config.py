@@ -25,6 +25,12 @@ class Config:
     GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')
     
+    # OAuth — Social sign-in (Google & GitHub)
+    GOOGLE_OAUTH_CLIENT_ID = os.environ.get('GOOGLE_OAUTH_CLIENT_ID', '')
+    GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
+    GITHUB_OAUTH_CLIENT_ID = os.environ.get('GITHUB_OAUTH_CLIENT_ID', '')
+    GITHUB_OAUTH_CLIENT_SECRET = os.environ.get('GITHUB_OAUTH_CLIENT_SECRET', '')
+
     # AI Assistant (Groq)
     GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
     AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')

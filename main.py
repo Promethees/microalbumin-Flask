@@ -22,6 +22,7 @@ from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
+from routes.oauth_routes import oauth_bp
 from account import db, run_migrations
 
 app = Flask(__name__, static_folder='static')
@@ -55,6 +56,7 @@ app.register_blueprint(data_bp)
 app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(account_bp)
+app.register_blueprint(oauth_bp)
 
 delimiter = "/"
 

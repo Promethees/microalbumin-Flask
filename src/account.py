@@ -59,6 +59,22 @@ class User(db.Model):
         )
 
 
+class OAuthConnection(db.Model):
+    __tablename__ = 'oauth_connections'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    provider = db.Column(db.String(32), nullable=False)
+    provider_user_id = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('oauth_connections', lazy=True))
+
+    __table_args__ = (
+        db.UniqueConstraint('provider', 'provider_user_id', name='uq_oauth_provider_uid'),
+    )
+
+
 def run_migrations(engine):
     """Add columns introduced after the initial schema was created."""
     from sqlalchemy import text
