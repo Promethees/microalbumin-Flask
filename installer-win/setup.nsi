@@ -117,9 +117,12 @@ Page custom TokenPage TokenPageLeave
 ; ── Dark-theme helpers ─────────────────────────────────────────────────────────
 
 ; _DarkPage — called from every page SHOW callback.
-; Finds the MUI2 inner "#32770" dialog, colours it, then walks every direct
-; child control and applies the same dark palette via SetCtlColors.
+; Two-level walk: strips visual theme and applies dark palette to every
+; direct child of the MUI2 inner dialog, then repeats for each grandchild
+; (e.g. the Browse button and path edit inside the Destination Folder groupbox).
 Function _DarkPage
+  Push $R6
+  Push $R7
   Push $R8
   Push $R9
 
@@ -127,22 +130,42 @@ Function _DarkPage
   ${If} $R8 == 0
     Pop $R9
     Pop $R8
+    Pop $R7
+    Pop $R6
     Return
   ${EndIf}
   SetCtlColors $R8 "${CLR_FG}" "${CLR_BG}"
 
+  ; ── Level 1: direct children ─────────────────────────────────────────────
   StrCpy $R9 0
   _dp_loop:
     System::Call 'user32::FindWindowEx(i $R8, i $R9, i 0, i 0) i .R9'
     ${If} $R9 == 0
       Goto _dp_done
     ${EndIf}
+    ; Strip visual theme so SetCtlColors is honoured (fixes groupbox border)
+    System::Call 'uxtheme::SetWindowTheme(i $R9, w " ", w " ")'
     SetCtlColors $R9 "${CLR_FG}" "${CLR_BG}"
+
+    ; ── Level 2: grandchildren (controls nested inside groupboxes) ──────────
+    StrCpy $R7 0
+    _dp_gc_loop:
+      System::Call 'user32::FindWindowEx(i $R9, i $R7, i 0, i 0) i .R7'
+      ${If} $R7 == 0
+        Goto _dp_gc_done
+      ${EndIf}
+      System::Call 'uxtheme::SetWindowTheme(i $R7, w " ", w " ")'
+      SetCtlColors $R7 "${CLR_FG}" "${CLR_INPUT}"
+      Goto _dp_gc_loop
+    _dp_gc_done:
+
     Goto _dp_loop
   _dp_done:
 
   Pop $R9
   Pop $R8
+  Pop $R7
+  Pop $R6
 FunctionEnd
 
 ; _DarkInstPage — same as _DarkPage plus progress-bar colour overrides.
