@@ -118,15 +118,12 @@ Section "Install" SEC01
   DetailPrint "——————————————————————————————————————"
   DetailPrint "Step 1 / 3  —  Downloading application"
   DetailPrint "——————————————————————————————————————"
-  ; Write token to a temp file so special characters (!, &, ^, etc.) are never
-  ; interpreted by cmd.exe's command-line parser.  The batch file reads it back
-  ; with FOR /F and deletes it immediately — it never touches the install tree.
-  FileOpen $R9 "$TEMP\easyokapi_tkn.tmp" w
-  FileWrite $R9 "$EasyOKAPIToken"
-  FileClose $R9
+  ; Inject the token into the child process environment (r10 = $R0, so the
+  ; token value never touches the System::Call string — safe for any chars).
+  StrCpy $R0 "$EasyOKAPIToken"
+  System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_DOWNLOAD_TOKEN", w r10) i .r1'
   nsExec::ExecToLog '"cmd.exe" /c ""$INSTDIR\startwindow-0-clone-repo.bat" "$INSTDIR\code""'
   Pop $0
-  Delete "$TEMP\easyokapi_tkn.tmp"
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "Download failed (exit code $0).$\r$\nPlease check your token and internet connection, then re-run Setup."
     Abort

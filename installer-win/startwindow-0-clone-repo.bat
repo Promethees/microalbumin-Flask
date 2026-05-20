@@ -13,12 +13,11 @@ if "%~1"=="" (
     exit /b 1
 )
 
-:: Resolve the token — prefer the NSIS temp file (avoids cmd.exe arg quoting
-:: issues with special characters).  Fall back to the legacy arg2 for manual runs.
-set "TOKEN_FILE=%TEMP%\easyokapi_tkn.tmp"
-if exist "%TOKEN_FILE%" (
-    for /f "usebackq delims=" %%T in ("%TOKEN_FILE%") do set "DOWNLOAD_TOKEN=%%T"
-    del "%TOKEN_FILE%" >nul 2>&1
+:: Resolve token — NSIS injects it as EASYOKAPI_DOWNLOAD_TOKEN (safe for all
+:: special characters; never touches the cmd.exe command line).
+:: Fall back to arg2 for direct / manual invocations.
+if defined EASYOKAPI_DOWNLOAD_TOKEN (
+    set "DOWNLOAD_TOKEN=%EASYOKAPI_DOWNLOAD_TOKEN%"
     set "NSIS_MODE=1"
 ) else if "%~2" neq "" (
     set "DOWNLOAD_TOKEN=%~2"
