@@ -123,14 +123,15 @@ Page custom TokenPage TokenPageLeave
 ; ── Background image ──────────────────────────────────────────────────────────
 
 ; _OnInit — runs inside MUI2's .onInit before any window is created.
-; Extracts background.bmp to $PLUGINSDIR and starts the BgImage window.
+; Only extracts background.bmp here; the data stream is accessible at this
+; stage.  BgImage::SetBg is intentionally NOT called here because no NSIS
+; window exists yet — calling it this early causes BgImage to lose the
+; correct Z-order on Windows 10/11 and the background never appears.
+; The actual BgImage::SetBg / Redraw calls live in _OnGUIInit below.
 Function _OnInit
   InitPluginsDir
-  File "/oname=$PLUGINSDIR\background.bmp" "background.bmp"
-  ; BgImage::SetBg stretches the bitmap to fill the screen internally.
-  ; /FILLSCREEN is not a valid flag — omit it or the plugin misreads the path.
-  BgImage::SetBg /NOUNLOAD "$PLUGINSDIR\background.bmp"
-  BgImage::Redraw /NOUNLOAD
+  SetOutPath $PLUGINSDIR
+  File "background.bmp"
 FunctionEnd
 
 ; .onGUIEnd — runs after the installer GUI closes.  Destroys the BgImage window.
@@ -255,7 +256,13 @@ FunctionEnd
 
 ; Called by MUI2's .onGUIInit — colours outer chrome, title bar, buttons,
 ; and the BrandingText ("EasyOKAPI x.x.x") strip at the bottom.
+; BgImage is started here (not in _OnInit) so that the NSIS outer window
+; already exists when BgImage creates its background window — this gives
+; the correct Z-order on Windows 10/11 so the background is visible.
 Function _OnGUIInit
+  BgImage::SetBg /NOUNLOAD "$PLUGINSDIR\background.bmp"
+  BgImage::Redraw /NOUNLOAD
+
   SetCtlColors $HWNDPARENT "${CLR_FG}" "${CLR_BG}"
 
   ; Title bar via DWM (Win10 20H1+ / Win11; silently ignored on older builds).
