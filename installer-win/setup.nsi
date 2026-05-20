@@ -6,7 +6,7 @@
 !ifndef APP_VERSION
   !error "APP_VERSION is not defined. Pass it with: makensis /DAPP_VERSION=x.x.x setup.nsi"
 !endif
-!define INSTALL_DIR "$PROGRAMFILES\EasyOKAPI"
+!define INSTALL_DIR "$PROGRAMFILES64\EasyOKAPI"
 !define RUNNER_NAME "${APP_NAME}"
 !define MUI_ICON "setup.ico"
 !define MUI_UNICON "setup.ico"

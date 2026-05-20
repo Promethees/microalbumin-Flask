@@ -34,6 +34,13 @@ set "AUTH_BASE_URL=__AUTH_BASE_URL__"
 :: Set installation directory
 set "INSTALL_DIR=%~1"
 
+:: Convert to 8.3 short path at the top level (no surrounding block) so that
+:: cmd.exe block parsing is never confused by parentheses in the path
+:: (e.g. "C:\Program Files (x86)\...").  %%~sI resolves existing path
+:: components to their 8.3 names; non-existent components are kept as-is but
+:: any existing parent already loses its parens.
+for %%I in ("!INSTALL_DIR!") do set "INSTALL_DIR=%%~sI"
+
 :: Check if installation directory exists and is not empty
 echo.
 echo    ============================================
@@ -133,13 +140,15 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: Create installation directory if it doesn't exist
+if not exist "!INSTALL_DIR!" mkdir "!INSTALL_DIR!"
 if not exist "!INSTALL_DIR!" (
-    mkdir "!INSTALL_DIR!"
-    if !ERRORLEVEL! neq 0 (
-        echo ERROR: Failed to create directory "!INSTALL_DIR!".
-        exit /b 1
-    )
+    echo ERROR: Failed to create directory "!INSTALL_DIR!".
+    exit /b 1
 )
+
+:: Convert to 8.3 short path so cmd.exe block parsing is never tripped up by
+:: parentheses in the path (e.g. "C:\Program Files (x86)\...").
+for %%I in ("!INSTALL_DIR!") do set "INSTALL_DIR=%%~sI"
 
 :: Download the application archive using the EasyOKAPI token
 set "ARCHIVE_TMP=%TEMP%\easyokapi_app.tar.gz"
@@ -163,26 +172,28 @@ del /q "!ARCHIVE_TMP!" >nul 2>&1
 :: Restore user data preserved from the previous installation
 if "!HAS_BACKUP!"=="1" (
     echo Restoring user data (data, json, report)...
+    pushd "!INSTALL_DIR!" >nul 2>&1
     for %%D in (data json report) do (
-        if exist "!BACKUP_DIR!\%%D\" (
-            xcopy /e /i /q "!BACKUP_DIR!\%%D" "!INSTALL_DIR!\%%D\" >nul 2>&1
-        )
+        if exist "!BACKUP_DIR!\%%D\" xcopy /e /i /q "!BACKUP_DIR!\%%D" "%%D\" >nul 2>&1
     )
+    popd
     rmdir /s /q "!BACKUP_DIR!" >nul 2>&1
     echo User data restored successfully.
 )
 
 :: Remove dev-only files from the extracted archive
 echo Removing development files...
-del /s /q "!INSTALL_DIR!\*.command" >nul 2>&1
-del /s /q "!INSTALL_DIR!\*.bat" >nul 2>&1
-del /s /q "!INSTALL_DIR!\log_hid_data.py" >nul 2>&1
-del /s /q "!INSTALL_DIR!\generate-tree.sh" >nul 2>&1
-del /s /q "!INSTALL_DIR!\BUILD_MAC.md" >nul 2>&1
-del /s /q "!INSTALL_DIR!\Rule.md" >nul 2>&1
+pushd "!INSTALL_DIR!" >nul 2>&1
+del /s /q "*.command" >nul 2>&1
+del /s /q "*.bat" >nul 2>&1
+del /s /q "log_hid_data.py" >nul 2>&1
+del /s /q "generate-tree.sh" >nul 2>&1
+del /s /q "BUILD_MAC.md" >nul 2>&1
+del /s /q "Rule.md" >nul 2>&1
 for %%D in (mac easyokapi-knowledge images installer-mac installer-win installer-linux tests .github) do (
-    if exist "!INSTALL_DIR!\%%D" rmdir /s /q "!INSTALL_DIR!\%%D" >nul 2>&1
+    if exist "%%D" rmdir /s /q "%%D" >nul 2>&1
 )
+popd
 
 :: Save version information for future checks
 echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
