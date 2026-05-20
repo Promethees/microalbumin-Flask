@@ -115,9 +115,9 @@ Section "Install" SEC01
   ; ── All setup steps run inside NSIS — no separate cmd windows ─────────────
   ; nsExec::ExecToLog runs commands hidden and streams output to the detail list.
 
-  DetailPrint "——————————————————————————————————————"
-  DetailPrint "Step 1 / 3  —  Downloading application"
-  DetailPrint "——————————————————————————————————————"
+  DetailPrint "======================================"
+  DetailPrint "Step 1 / 3  -  Downloading application"
+  DetailPrint "======================================"
   ; Inject the token into the child process environment (r10 = $R0, so the
   ; token value never touches the System::Call string — safe for any chars).
   StrCpy $R0 "$EasyOKAPIToken"
@@ -125,6 +125,11 @@ Section "Install" SEC01
   ; Resolve $INSTDIR to its 8.3 short path so cmd.exe block parsing is never
   ; confused by parentheses (e.g. "C:\Program Files (x86)\...").
   System::Call 'kernel32::GetShortPathNameW(w "$INSTDIR", w .r11, i 1024)'
+  ; If 8.3 short-name resolution is disabled on the volume (NtfsDisable8dot3NameCreation),
+  ; GetShortPathNameW returns 0 and $R1 is empty — fall back to the original path.
+  ${If} $R1 == ""
+    StrCpy $R1 "$INSTDIR"
+  ${EndIf}
   nsExec::ExecToLog '"cmd.exe" /c ""$R1\startwindow-0-clone-repo.bat" "$R1\code""'
   Pop $0
   ${If} $0 != 0
@@ -133,16 +138,16 @@ Section "Install" SEC01
   ${EndIf}
   DetailPrint "Application downloaded successfully."
 
-  DetailPrint "——————————————————————————————————————"
-  DetailPrint "Step 2 / 3  —  Installing pyenv & Python"
-  DetailPrint "——————————————————————————————————————"
-  nsExec::ExecToLog '"cmd.exe" /c "$INSTDIR\startwindow-2-pyenv.bat"'
+  DetailPrint "======================================"
+  DetailPrint "Step 2 / 3  -  Installing pyenv & Python"
+  DetailPrint "======================================"
+  nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-2-pyenv.bat"'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "pyenv setup failed (exit code $0).$\r$\nCheck that you have an internet connection and re-run Setup."
     Abort
   ${EndIf}
-  nsExec::ExecToLog '"cmd.exe" /c "$INSTDIR\startwindow-3-python.bat"'
+  nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-3-python.bat"'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "Python installation failed (exit code $0).$\r$\nCheck the Detail log above for the error, then re-run Setup."
@@ -150,10 +155,10 @@ Section "Install" SEC01
   ${EndIf}
   DetailPrint "Python ready."
 
-  DetailPrint "——————————————————————————————————————"
-  DetailPrint "Step 3 / 3  —  Setting up virtual environment"
-  DetailPrint "——————————————————————————————————————"
-  nsExec::ExecToLog '"cmd.exe" /c "$INSTDIR\startwindow-4-venv.bat"'
+  DetailPrint "======================================"
+  DetailPrint "Step 3 / 3  -  Setting up virtual environment"
+  DetailPrint "======================================"
+  nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-4-venv.bat"'
   Pop $0
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "Virtual environment setup failed (exit code $0).$\r$\nCheck the Detail log above for the error, then re-run Setup."
