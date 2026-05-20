@@ -3,7 +3,7 @@
 This file serves as the primary orientation for the Antigravity agent regarding the **Main** branch of the `microalbumin-Flask` repository.
 
 ## Project Overview
-The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.0.8**.
+The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.0.9**.
 It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over USB/Serial connection using HID. 
 
 The application provides a Web GUI (via Flask templates and vanilla JavaScript) for users to:

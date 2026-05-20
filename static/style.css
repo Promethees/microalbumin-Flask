@@ -607,21 +607,197 @@ body.dark .toggle-container {
 /* ==========================================================================
    Initial Prompt & Welcome Screen
    ========================================================================== */
+
+@keyframes initBgShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes initFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%       { transform: translate(30px, -40px) scale(1.08); }
+    66%       { transform: translate(-20px, 20px) scale(0.94); }
+}
+
+@keyframes initFadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes initShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+}
+
 #init-prompt {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(-45deg, #0f172a, #1e1b4b, #0c1a3d, #0f172a);
+    background-size: 400% 400%;
+    animation: initBgShift 14s ease infinite;
+    z-index: 100;
+    overflow: hidden;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Floating ambient orbs */
+.init-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.22;
+    animation: initFloat 20s ease-in-out infinite;
+    pointer-events: none;
+}
+.init-orb-1 {
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, #6366f1, transparent 70%);
+    top: -160px; left: -160px;
+    animation-duration: 22s;
+}
+.init-orb-2 {
+    width: 420px; height: 420px;
+    background: radial-gradient(circle, #a855f7, transparent 70%);
+    bottom: -110px; right: -110px;
+    animation-duration: 17s;
+    animation-delay: -6s;
+}
+.init-orb-3 {
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, #2dd4bf, transparent 70%);
+    top: 45%; left: 58%;
+    animation-duration: 15s;
+    animation-delay: -10s;
+}
+
+/* Glassmorphism card */
+.init-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 100vh;
-    max-width: 50vw;
-    width: 100%;
+    gap: 1.2rem;
+    padding: 3rem 3.5rem;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    max-width: 500px;
+    width: 90%;
     text-align: center;
 }
 
-#init-prompt button {
-    padding: 10px 20px;
-    font-size: 16px;
+/* Logo */
+.init-logo-wrap {
+    animation: initFadeInUp 0.6s ease both;
+    animation-delay: 0.1s;
+}
+.init-logo {
+    height: 180px;
+    width: auto;
+    filter: drop-shadow(0 0 28px rgba(99, 102, 241, 0.45));
+    transition: transform 0.35s ease;
+}
+.init-logo:hover {
+    transform: scale(1.05);
+}
+
+/* Brand name row */
+.init-brand {
+    animation: initFadeInUp 0.6s ease both;
+    animation-delay: 0.2s;
+}
+.init-okapi-line {
+    justify-content: center;
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1;
+}
+.init-brand-easy {
+    background: linear-gradient(135deg, #818cf8, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.init-brand-okapi {
+    color: #f1f5f9;
+}
+.init-okapi-img {
+    width: 42px;
+    height: 42px;
+    margin-left: 10px;
+}
+
+/* Tagline */
+.init-tagline {
+    animation: initFadeInUp 0.6s ease both;
+    animation-delay: 0.3s;
+    color: rgba(226, 232, 240, 0.7);
+    font-size: 1rem;
+    line-height: 1.65;
+    margin: 0;
+}
+.init-tagline-sub {
+    font-size: 0.85rem;
+    color: rgba(226, 232, 240, 0.45);
+}
+
+/* CTA button */
+.init-cta-btn {
+    animation: initFadeInUp 0.6s ease both;
+    animation-delay: 0.4s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 2.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    color: white;
+    border: none;
+    border-radius: 100px;
     cursor: pointer;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    box-shadow: 0 4px 24px rgba(99, 102, 241, 0.5);
+    transition: transform 0.2s ease, box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+.init-cta-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.18) 50%,
+        transparent 70%
+    );
+    background-size: 200% auto;
+    animation: initShimmer 2.8s linear infinite;
+}
+.init-cta-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 36px rgba(99, 102, 241, 0.75);
+}
+.init-cta-btn:active {
+    transform: translateY(-1px);
+}
+.init-btn-arrow {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+.init-cta-btn:hover .init-btn-arrow {
+    transform: translateX(4px);
 }
 
 #prompt-message {
@@ -1450,10 +1626,18 @@ body.dark .swal2-container.swal2-backdrop-show {
     }
 
     #init-prompt {
+        position: fixed;
+        inset: 0;
+    }
+    .init-card {
+        padding: 2rem 1.5rem;
         max-width: 100%;
-        /* expand fully */
-        width: 100%;
-        order: 2;
+    }
+    .init-logo {
+        height: 130px;
+    }
+    .init-okapi-line {
+        font-size: 2rem;
     }
 
     footer {

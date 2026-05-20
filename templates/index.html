@@ -284,41 +284,37 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         ">Shutdown Program</button>
         <!-- Initial prompt shown on page load -->
-        <div id="init-prompt"
-            style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; text-align: center; padding: 0rem; border-radius: 10px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 100%;">
-            <!-- Company Logo -->
-            <img src="../static/cbb.png" alt="Company Logo" style="height: 400px; margin-bottom: 1rem;">
+        <div id="init-prompt">
+            <!-- Ambient background orbs -->
+            <div class="init-orb init-orb-1"></div>
+            <div class="init-orb init-orb-2"></div>
+            <div class="init-orb init-orb-3"></div>
 
-            <!-- Software Name with Styling -->
-            <h1 style="color: #2c3e50; font-size: 2.2rem; margin-bottom: 0.5rem; font-weight: 600;">
-                <h1 class="okapi-line" style="color: black">
-                    <span style="color: #3498db;">Easy</span>OKAPI
-                    <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img"
-                        style="width: 35px; height: 35px;">
-                </h1>
-            </h1>
+            <!-- Glassmorphism card -->
+            <div class="init-card">
+                <div class="init-logo-wrap">
+                    <img src="../static/cbb.png" alt="Company Logo" class="init-logo">
+                </div>
 
-            <p style="color: #7f8c8d; margin-bottom: 2rem; font-size: 1.1rem;">
-                Welcome to the EasyOKAPI Software!<br>
-                The best low-cost solution for your colorimetric measurements.
-            </p>
+                <div class="init-brand">
+                    <div class="okapi-line init-okapi-line">
+                        <span class="init-brand-easy">Easy</span><span class="init-brand-okapi">OKAPI</span>
+                        <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img init-okapi-img">
+                    </div>
+                </div>
 
-            <!-- <div style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;"> -->
-            <!-- <p id="prompt-message">
-                    Please select the directory containing <code>main.py</code> to get started.<br>
-                    <small style="color: #95a5a6;">(expected: {{ data_root }})</small>
-                </p> -->
+                <p class="init-tagline">
+                    Welcome to EasyOKAPI Software<br>
+                    <span class="init-tagline-sub">The best low-cost solution for your colorimetric measurements.</span>
+                </p>
 
-            <!-- <button onclick="init()" id="init-button" style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    Get Started
+                <button onclick="init()" id="init-button" class="init-cta-btn">
+                    <span>Get Started</span>
+                    <svg class="init-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
                 </button>
-                
-                <p id="error-message" class="error" style="display: none; color: #e74c3c; margin-top: 1rem;"></p>
-            </div> -->
-            <button onclick="init()" id="init-button"
-                style="background: #3498db; color: white; border: none; padding: 0.8rem 1.8rem; font-size: 1rem; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                Get Started
-            </button>
+            </div>
         </div>
         <div id="main-content" class="hidden">
             <div class="section" id="main-directory-section">
