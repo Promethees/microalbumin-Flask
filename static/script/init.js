@@ -67,7 +67,7 @@ document.getElementById('shutdown-btn').addEventListener('click', function () {
     terminateScript();
     const confirmationMessage = "{{ production_mode }}" === "True"
         ? 'WARNING: Production mode. This will terminate the server process and close the terminal. Continue?'
-        : 'Are you sure you want to shutdown the server?';
+        : 'Are you sure you want to shutdown the program?';
 
     if (confirm(confirmationMessage)) {
         // Determine the current mode
