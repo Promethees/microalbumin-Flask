@@ -73,14 +73,14 @@ if !item_count! gtr 0 (
     echo   [2] Cancel and keep existing installation
     echo.
 
-    :: When called from the NSIS installer stdin is not a real console, so set /p
-    :: would block or fail (the source of exit-code 255).  Auto-select option 1.
+    :: Avoid if-else inside a ( ) block with delayed expansion — cmd.exe raises
+    :: "else was unexpected at this time." and exits 255.  Use two plain ifs.
+    set "CHOICE="
     if "!NSIS_MODE!"=="1" (
-        echo [NSIS] Non-interactive install detected - overwriting existing installation.
+        echo [NSIS] Non-interactive mode - overwriting existing installation.
         set "CHOICE=1"
-    ) else (
-        set /p "CHOICE=Enter your choice [1 or 2]: "
     )
+    if "!CHOICE!"=="" set /p "CHOICE=Enter your choice [1 or 2]: "
 
     if "!CHOICE!"=="1" (
         echo.
