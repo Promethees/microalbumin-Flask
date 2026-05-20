@@ -78,6 +78,12 @@ jobs:
           choco install nsis -y
           echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
 
+      - name: Generate installer bitmaps
+        shell: pwsh
+        run: |
+          pip install Pillow --quiet
+          python installer-win/build-bitmaps.py
+
       - name: Build Runner and Installer
         shell: cmd
         run: |
