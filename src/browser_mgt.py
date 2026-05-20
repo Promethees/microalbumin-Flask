@@ -11,19 +11,21 @@ def is_port_open(host, port):
     """Check if the specified port is open."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(1)
-    result = sock.connect_ex((host, port))
-    sock.close()
-    return result == 0
+    try:
+        result = sock.connect_ex((host, port))
+        return result == 0
+    except OSError:
+        return False
+    finally:
+        sock.close()
 
 def open_browser(host, port):
     """Open the browser once the server is confirmed running."""
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
-        return
-
     url = f"http://{host}:{port}"
     sudo_user = os.environ.get("SUDO_USER")
 
-    if not wait_for_server(host, port):
+    # Poll 127.0.0.1 directly — always resolves regardless of hosts-file state.
+    if not wait_for_server('127.0.0.1', port):
         print(f"Server did not start on port {port} in time.")
         return
 
