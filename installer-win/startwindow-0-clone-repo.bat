@@ -4,17 +4,27 @@ setlocal EnableDelayedExpansion
 
 set "BACKUP_DIR="
 set "HAS_BACKUP=0"
+set "NSIS_MODE=0"
 
 :: Check if installation directory is provided
 if "%~1"=="" (
     echo ERROR: Installation directory not provided.
-    echo Usage: %0 "install_dir" "easyokapi_token"
+    echo Usage: %0 "install_dir" ["easyokapi_token"]
     exit /b 1
 )
 
-:: Check if EasyOKAPI token is provided
-if "%~2"=="" (
+:: Resolve the token — prefer the NSIS temp file (avoids cmd.exe arg quoting
+:: issues with special characters).  Fall back to the legacy arg2 for manual runs.
+set "TOKEN_FILE=%TEMP%\easyokapi_tkn.tmp"
+if exist "%TOKEN_FILE%" (
+    for /f "usebackq delims=" %%T in ("%TOKEN_FILE%") do set "DOWNLOAD_TOKEN=%%T"
+    del "%TOKEN_FILE%" >nul 2>&1
+    set "NSIS_MODE=1"
+) else if "%~2" neq "" (
+    set "DOWNLOAD_TOKEN=%~2"
+) else (
     echo ERROR: EasyOKAPI token not provided.
+    echo Usage: %0 "install_dir" "easyokapi_token"
     exit /b 1
 )
 
@@ -22,9 +32,8 @@ if "%~2"=="" (
 set "VERSION_TAG=__APP_VERSION__"
 set "AUTH_BASE_URL=__AUTH_BASE_URL__"
 
-:: Set installation directory and use the provided token directly
+:: Set installation directory
 set "INSTALL_DIR=%~1"
-set "DOWNLOAD_TOKEN=%~2"
 
 :: Check if installation directory exists and is not empty
 echo.
@@ -65,7 +74,14 @@ if !item_count! gtr 0 (
     echo   [2] Cancel and keep existing installation
     echo.
 
-    set /p "CHOICE=Enter your choice [1 or 2]: "
+    :: When called from the NSIS installer stdin is not a real console, so set /p
+    :: would block or fail (the source of exit-code 255).  Auto-select option 1.
+    if "!NSIS_MODE!"=="1" (
+        echo [NSIS] Non-interactive install detected - overwriting existing installation.
+        set "CHOICE=1"
+    ) else (
+        set /p "CHOICE=Enter your choice [1 or 2]: "
+    )
 
     if "!CHOICE!"=="1" (
         echo.

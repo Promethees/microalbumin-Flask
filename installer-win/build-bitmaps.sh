@@ -13,6 +13,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 LOGO_SRC="$PROJECT_ROOT/static/ht-logo.jpeg"   # full HTBiotec brand logo
 ICON_SRC="$PROJECT_ROOT/static/ht-noname.png"  # hexagon DNA icon (no text)
+OKAPI_SRC="$PROJECT_ROOT/static/okapi.png"     # okapi mascot
 
 SIDEBAR_OUT="$SCRIPT_DIR/sidebar.bmp"   # 164 × 314
 HEADER_OUT="$SCRIPT_DIR/header.bmp"    # 150 × 57
@@ -23,6 +24,10 @@ if [ ! -f "$LOGO_SRC" ]; then
 fi
 if [ ! -f "$ICON_SRC" ]; then
     echo "❌  $ICON_SRC not found."
+    exit 1
+fi
+if [ ! -f "$OKAPI_SRC" ]; then
+    echo "❌  $OKAPI_SRC not found."
     exit 1
 fi
 
@@ -37,12 +42,18 @@ fi
 if [ -n "$CONVERT" ]; then
     echo "Using ImageMagick…"
 
-    # Sidebar — fit ht-logo within 164 × 280, center on warm-white 164 × 314 canvas
+    # Sidebar — fit ht-logo within 164 × 260, center on warm-white 164 × 314 canvas,
+    #           then composite the okapi mascot at bottom-left at 22% opacity
     $CONVERT "$LOGO_SRC" \
-        -resize 164x280\> \
+        -resize 164x260\> \
         -background "#FFFDF0" \
-        -gravity center \
+        -gravity North \
         -extent 164x314 \
+        -type TrueColor \
+        BMP3:"$SIDEBAR_OUT"
+    $CONVERT "$SIDEBAR_OUT" \
+        \( "$OKAPI_SRC" -resize 70x70 -alpha set -channel Alpha -evaluate multiply 0.22 +channel \) \
+        -gravity SouthWest -geometry +6+6 -composite \
         -type TrueColor \
         BMP3:"$SIDEBAR_OUT"
 
@@ -55,7 +66,7 @@ if [ -n "$CONVERT" ]; then
         -type TrueColor \
         BMP3:"$HEADER_OUT"
 
-    echo "✅  sidebar.bmp and header.bmp created with ImageMagick."
+    echo "✅  sidebar.bmp and header.bmp created with ImageMagick (okapi watermark applied)."
 
 elif command -v sips &>/dev/null; then
     echo "ImageMagick not found — using sips (macOS, approximate)…"
