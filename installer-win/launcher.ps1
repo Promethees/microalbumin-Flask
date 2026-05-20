@@ -56,13 +56,16 @@ $Fill    = $Window.FindName('ProgressFill')
 $Status  = $Window.FindName('StatusLabel')
 $PctTxt  = $Window.FindName('PctLabel')
 
-$ScriptDir = $PSScriptRoot
+# Use $script: scope so the DispatcherTimer callback can see these variables
+$script:ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
 
 # Set window icon
-if (Test-Path "$ScriptDir\ht.ico") {
+if (Test-Path "$script:ScriptDir\ht.ico") {
     try {
         $Window.Icon = [System.Windows.Media.Imaging.BitmapFrame]::Create(
-            [uri][System.IO.Path]::GetFullPath("$ScriptDir\ht.ico"))
+            [uri][System.IO.Path]::GetFullPath("$script:ScriptDir\ht.ico"))
     } catch {}
 }
 
@@ -90,7 +93,7 @@ $Timer.Add_Tick({
 
     # Real work at stage transitions
     if ($p -eq 61) {
-        if (-not (Test-Path "$ScriptDir\code\main.py")) {
+        if (-not (Test-Path "$script:ScriptDir\code\main.py")) {
             $Status.Text = 'ERROR: main.py not found in .\code\'
             $Fill.Background = [System.Windows.Media.Brushes]::IndianRed
             $Timer.Stop()
@@ -101,10 +104,24 @@ $Timer.Add_Tick({
             return
         }
     } elseif ($p -eq 81) {
-        $py  = "$ScriptDir\code\venv\Scripts\python.exe"
-        $app = "$ScriptDir\code\main.py"
-        Start-Process -FilePath $py -ArgumentList "`"$app`"" `
-            -WorkingDirectory "$ScriptDir\code" -WindowStyle Hidden
+        $py  = "$script:ScriptDir\code\venv\Scripts\python.exe"
+        $app = "$script:ScriptDir\code\main.py"
+        try {
+            Start-Process -FilePath $py `
+                -ArgumentList "`"$app`"" `
+                -WorkingDirectory $script:ScriptDir `
+                -WindowStyle Hidden `
+                -ErrorAction Stop
+        } catch {
+            $Status.Text = "Launch failed: $_"
+            $Fill.Background = [System.Windows.Media.Brushes]::IndianRed
+            $script:Done = $true
+            $Timer.Stop()
+            $ct = New-Object System.Windows.Threading.DispatcherTimer
+            $ct.Interval = [TimeSpan]::FromSeconds(5)
+            $ct.Add_Tick({ $ct.Stop(); $Window.Close() })
+            $ct.Start()
+        }
     }
 
     # Update fill width and percentage label
