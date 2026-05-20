@@ -122,6 +122,16 @@ Section "Install" SEC01
   ; token value never touches the System::Call string — safe for any chars).
   StrCpy $R0 "$EasyOKAPIToken"
   System::Call 'Kernel32::SetEnvironmentVariableW(w "EASYOKAPI_DOWNLOAD_TOKEN", w r10) i .r1'
+  ${If} $1 == 0
+    MessageBox MB_OK|MB_ICONSTOP "Installer error: failed to pass token to child process (SetEnvironmentVariableW returned 0). Please re-run Setup."
+    Abort
+  ${EndIf}
+
+  ; Verify the download script was copied before trying to run it.
+  IfFileExists "$INSTDIR\startwindow-0-clone-repo.bat" +3
+    MessageBox MB_OK|MB_ICONSTOP "Installer error: startwindow-0-clone-repo.bat not found in $INSTDIR.$\r$\nPlease re-download the installer."
+    Abort
+
   ; Resolve $INSTDIR to its 8.3 short path so cmd.exe block parsing is never
   ; confused by parentheses (e.g. "C:\Program Files (x86)\...").
   System::Call 'kernel32::GetShortPathNameW(w "$INSTDIR", w .r11, i 1024)'
@@ -132,8 +142,12 @@ Section "Install" SEC01
   ${EndIf}
   nsExec::ExecToLog '"cmd.exe" /c ""$R1\startwindow-0-clone-repo.bat" "$R1\code""'
   Pop $0
+  ${If} $0 == 255
+    MessageBox MB_OK|MB_ICONSTOP "Download failed: the installer could not launch the download script (exit 255).$\r$\nThis is often caused by antivirus or Windows Defender blocking the process.$\r$\nTry temporarily disabling real-time protection, or add an exclusion for $INSTDIR, then re-run Setup."
+    Abort
+  ${EndIf}
   ${If} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "Download failed (exit code $0).$\r$\nPlease check your token and internet connection, then re-run Setup."
+    MessageBox MB_OK|MB_ICONSTOP "Download failed (exit code $0).$\r$\nPlease check your token and internet connection, then re-run Setup.$\r$\nSee the detail log above for more information."
     Abort
   ${EndIf}
   DetailPrint "Application downloaded successfully."

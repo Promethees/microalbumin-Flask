@@ -69,9 +69,19 @@ jobs:
         run: |
           $v   = "v${{ env.APP_VERSION }}"
           $url = "${{ env.AUTH_BASE_URL }}"
+          if (-not $url) {
+            Write-Error "AUTH_BASE_URL secret is not set. Add it under Settings → Secrets → Actions."
+            exit 1
+          }
           $f   = "installer-win\startwindow-0-clone-repo.bat"
-          ((Get-Content $f -Raw).Replace('__APP_VERSION__', $v)).Replace('__AUTH_BASE_URL__', $url) |
-            Set-Content $f
+          $content = (Get-Content $f -Raw -Encoding utf8).Replace('__APP_VERSION__', $v).Replace('__AUTH_BASE_URL__', $url)
+          [System.IO.File]::WriteAllText($f, $content, [System.Text.UTF8Encoding]::new($false))
+          # Verify placeholders were replaced
+          if ($content -match '__APP_VERSION__|__AUTH_BASE_URL__') {
+            Write-Error "Placeholder replacement failed. Content still contains unreplaced tokens."
+            exit 1
+          }
+          Write-Host "Injected version=$v and AUTH_BASE_URL=$($url.Substring(0, [Math]::Min(20,$url.Length)))..."
 
       - name: Install NSIS
         run: |

@@ -153,7 +153,7 @@ for %%I in ("!INSTALL_DIR!") do set "INSTALL_DIR=%%~sI"
 :: Download the application archive using the EasyOKAPI token
 set "ARCHIVE_TMP=%TEMP%\easyokapi_app.tar.gz"
 echo Downloading application to "!INSTALL_DIR!"...
-curl --fail -L -o "!ARCHIVE_TMP!" "!AUTH_BASE_URL!/api/download?token=!DOWNLOAD_TOKEN!"
+curl --fail -L -o "%ARCHIVE_TMP%" "%AUTH_BASE_URL%/api/download?token=%DOWNLOAD_TOKEN%"
 if !ERRORLEVEL! neq 0 (
     echo ERROR: Failed to download the application. Check your token and network connection.
     exit /b 1
@@ -199,7 +199,8 @@ popd
 echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
 
 :: Write activation.json — the download token doubles as the license token for the AI proxy
-(echo {& echo   "license_token": "!DOWNLOAD_TOKEN!"& echo }) > "!INSTALL_DIR!\activation.json"
+set "_tok=%DOWNLOAD_TOKEN%"
+(echo {& echo   "license_token": "!_tok!"& echo }) > "!INSTALL_DIR!\activation.json"
 
 echo Application downloaded successfully to "!INSTALL_DIR!" (!VERSION_TAG!).
 exit /b 0
