@@ -70,7 +70,7 @@ jobs:
           $v   = "v${{ env.APP_VERSION }}"
           $url = "${{ env.AUTH_BASE_URL }}"
           $f   = "installer-win\startwindow-0-clone-repo.bat"
-          (Get-Content $f -Raw) -replace '__APP_VERSION__', $v -replace '__AUTH_BASE_URL__', $url |
+          ((Get-Content $f -Raw).Replace('__APP_VERSION__', $v)).Replace('__AUTH_BASE_URL__', $url) |
             Set-Content $f
 
       - name: Install NSIS

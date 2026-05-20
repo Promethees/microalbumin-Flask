@@ -133,7 +133,7 @@ echo.
 
 :: Check if curl is available (Windows 10+ has curl built-in)
 where curl >nul 2>&1
-if %ERRORLEVEL% neq 0 (
+if !ERRORLEVEL! neq 0 (
     echo ERROR: curl is not installed or not found in PATH.
     echo Please install curl and ensure it is in your PATH.
     exit /b 1
@@ -153,8 +153,8 @@ for %%I in ("!INSTALL_DIR!") do set "INSTALL_DIR=%%~sI"
 :: Download the application archive using the EasyOKAPI token
 set "ARCHIVE_TMP=%TEMP%\easyokapi_app.tar.gz"
 echo Downloading application to "!INSTALL_DIR!"...
-curl -L -o "!ARCHIVE_TMP!" "!AUTH_BASE_URL!/api/download?token=!DOWNLOAD_TOKEN!"
-if %ERRORLEVEL% neq 0 (
+curl --fail -L -o "!ARCHIVE_TMP!" "!AUTH_BASE_URL!/api/download?token=!DOWNLOAD_TOKEN!"
+if !ERRORLEVEL! neq 0 (
     echo ERROR: Failed to download the application. Check your token and network connection.
     exit /b 1
 )
@@ -162,7 +162,7 @@ if %ERRORLEVEL% neq 0 (
 :: Extract archive (requires tar, available on Windows 10 1803+)
 echo Extracting application...
 tar -xzf "!ARCHIVE_TMP!" -C "!INSTALL_DIR!" --strip-components=1
-if %ERRORLEVEL% neq 0 (
+if !ERRORLEVEL! neq 0 (
     echo ERROR: Failed to extract the application archive.
     del /q "!ARCHIVE_TMP!" >nul 2>&1
     exit /b 1
