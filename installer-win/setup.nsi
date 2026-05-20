@@ -25,9 +25,10 @@
 
 ; ── Dark-theme colour palette ─────────────────────────────────────────────────
 ; All hex strings without '#', matching the EasyOKAPI web app CSS variables.
-!define CLR_BG    "0F172A"   ; slate-900  — main page background  (#0f172a)
-!define CLR_FG    "E2E8F0"   ; slate-200  — body text             (#e2e8f0)
-!define CLR_INPUT "1E293B"   ; slate-800  — input field bg        (#1e293b)
+!define CLR_BG     "312E81"  ; indigo-900 — main page background  (#312e81)
+!define CLR_FG     "E2E8F0"  ; slate-200  — body text             (#e2e8f0)
+!define CLR_INPUT  "1E1B4B"  ; indigo-950 — input field bg        (#1e1b4b)
+!define CLR_ACCENT "6366F1"  ; indigo-500 — buttons & accents     (#6366f1)
 
 ; ── Modern UI look & feel ──────────────────────────────────────────────────────
 !define MUI_ABORTWARNING
@@ -50,10 +51,10 @@ RequestExecutionLevel admin
 SetCompressor lzma
 
 ; ── Outer-window gradient (branding strip + chrome around the inner page) ─────
-BGGradient 0F172A 1E1B4B
+BGGradient 312E81 1E1B4B
 
 ; ── Install-log text / background on the InstFiles detail area ─────────────────
-InstallColors E2E8F0 0F172A
+InstallColors E2E8F0 312E81
 
 ; Installer metadata
 Name "${APP_NAME} ${APP_VERSION}"
@@ -175,9 +176,32 @@ Function _DarkInstPage
   Pop $R7
 FunctionEnd
 
-; Called by MUI2's .onGUIInit — colours the outer window chrome
+; _DarkButtons — strips visual theme and applies indigo fill to every
+; BUTTON-class direct child of the outer installer window (Next/Back/Cancel).
+Function _DarkButtons
+  Push $R0
+  StrCpy $R0 0
+  _dbtn_loop:
+    System::Call 'user32::FindWindowEx(i $HWNDPARENT, i $R0, t "Button", i 0) i .R0'
+    ${If} $R0 == 0
+      Goto _dbtn_done
+    ${EndIf}
+    System::Call 'uxtheme::SetWindowTheme(i $R0, w " ", w " ")'
+    SetCtlColors $R0 "${CLR_FG}" "${CLR_ACCENT}"
+    Goto _dbtn_loop
+  _dbtn_done:
+  Pop $R0
+FunctionEnd
+
+; Called by MUI2's .onGUIInit — colours outer chrome, title bar, and buttons
 Function _OnGUIInit
   SetCtlColors $HWNDPARENT "${CLR_FG}" "${CLR_BG}"
+  ; Title bar colour via DWM (Windows 10 20H1+ / Windows 11 only; silently
+  ; ignored on older builds). DWMWA_CAPTION_COLOR=35, TEXT_COLOR=36.
+  ; Colours are COLORREF 0x00BBGGRR: indigo-500 #6366F1 -> 0x00F16663
+  System::Call 'dwmapi::DwmSetWindowAttribute(i $HWNDPARENT, i 35, *i 0x00F16663, i 4)'
+  System::Call 'dwmapi::DwmSetWindowAttribute(i $HWNDPARENT, i 36, *i 0x00FFFFFF, i 4)'
+  Call _DarkButtons
 FunctionEnd
 
 ; ── EasyOKAPI token page ───────────────────────────────────────────────────────
