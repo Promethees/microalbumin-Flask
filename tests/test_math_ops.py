@@ -8,6 +8,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src'
 from math_ops import (
     compute_r_squared,
     linear_func,
+    poly_func,
+    log_func,
+    exp_func,
     mm_func,
     map_duplicates,
     calculate_coef_and_rsquared,
@@ -44,6 +47,55 @@ def test_compute_r_squared_length_mismatch_returns_zero():
 def test_linear_func_known_output():
     # 2*3 + 1 = 7
     assert linear_func(3, 2, 1) == pytest.approx(7.0)
+
+
+# ---------------------------------------------------------------------------
+# poly_func
+# ---------------------------------------------------------------------------
+
+def test_poly_func_known_output():
+    # 2*x^2 + 3*x + 1 at x=2 → 2*4 + 3*2 + 1 = 15
+    assert poly_func(2, 2, 3, 1) == pytest.approx(15.0)
+
+
+def test_poly_func_zero_x():
+    # a*0 + b*0 + c = c
+    assert poly_func(0, 5, 3, 7) == pytest.approx(7.0)
+
+
+def test_poly_func_negative_x():
+    # 1*(-2)^2 + 0*(-2) + 0 = 4
+    assert poly_func(-2, 1, 0, 0) == pytest.approx(4.0)
+
+
+# ---------------------------------------------------------------------------
+# log_func
+# ---------------------------------------------------------------------------
+
+def test_log_func_known_output():
+    # a * ln(x + b) + c  at x=0, b=1, a=1, c=0 → ln(1) = 0
+    assert log_func(0, 1, 1, 0) == pytest.approx(0.0)
+
+
+def test_log_func_with_offset():
+    # 2 * ln(3 + 1) + 5 = 2*ln(4) + 5
+    expected = 2 * np.log(4) + 5
+    assert log_func(3, 2, 1, 5) == pytest.approx(expected)
+
+
+# ---------------------------------------------------------------------------
+# exp_func
+# ---------------------------------------------------------------------------
+
+def test_exp_func_known_output():
+    # 1 * e^(0 * x) + 0 = 1
+    assert exp_func(99, 1, 0, 0) == pytest.approx(1.0)
+
+
+def test_exp_func_with_params():
+    # 2 * e^(0.5 * 2) + 1 = 2*e + 1
+    expected = 2 * np.exp(0.5 * 2) + 1
+    assert exp_func(2, 2, 0.5, 1) == pytest.approx(expected)
 
 
 # ---------------------------------------------------------------------------
