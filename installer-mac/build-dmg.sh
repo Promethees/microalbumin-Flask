@@ -106,6 +106,26 @@ if [ $? -eq 0 ]; then
         rm -f "$_ICNS_PATH"; exit 1
     fi
     rm -f "$_ICNS_PATH"
+
+    # ── Optional code-signing (set SIGNING_IDENTITY env var to enable) ──────────
+    if [ -n "${SIGNING_IDENTITY:-}" ]; then
+        echo "🔏 Signing EasyOKAPI.app with: $SIGNING_IDENTITY"
+        # Strip quarantine / extended attributes before signing
+        xattr -cr "$TMP_DIR/EasyOKAPI.app"
+        # Sign the inner binary first, then the bundle
+        codesign --force --sign "$SIGNING_IDENTITY" \
+            --options runtime \
+            --entitlements "$SOURCE_DIR/entitlements.plist" \
+            "$TMP_DIR/EasyOKAPI.app/Contents/MacOS/applet" 2>/dev/null || true
+        codesign --deep --force --verify \
+            --sign "$SIGNING_IDENTITY" \
+            --options runtime \
+            --entitlements "$SOURCE_DIR/entitlements.plist" \
+            "$TMP_DIR/EasyOKAPI.app"
+        echo "✅ EasyOKAPI.app signed."
+    else
+        echo "ℹ️  SIGNING_IDENTITY not set — skipping code-signing (DMG will be unsigned)."
+    fi
 else
     echo "❌ sips could not convert ht.ico — aborting."
     exit 1
