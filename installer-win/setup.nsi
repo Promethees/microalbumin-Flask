@@ -77,11 +77,12 @@ ShowUninstDetails show
 Var Dialog
 Var TokenInput
 Var EasyOKAPIToken
+Var BgBitmapHandle
 
 ; ── Page order ─────────────────────────────────────────────────────────────────
 ; Welcome → Token → Directory → Install → Finish
 ; Each built-in MUI page gets a SHOW callback that recolours all inner controls.
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
 !insertmacro MUI_PAGE_WELCOME
 
 Page custom TokenPage TokenPageLeave
@@ -140,6 +141,71 @@ Function .onGUIEnd
 FunctionEnd
 
 ; ── Dark-theme helpers ─────────────────────────────────────────────────────────
+
+; _DarkWelcomePage — SHOW callback for the Welcome page.
+; Injects background.bmp as a scaled bitmap control at the back of the inner
+; dialog's Z-order, then makes all other controls transparent so the image
+; shows through.  Outer chrome (buttons, title bar) is styled as usual.
+Function _DarkWelcomePage
+  Push $R6
+  Push $R7
+  Push $R8
+  Push $R9
+
+  FindWindow $R8 "#32770" "" $HWNDPARENT
+  ${If} $R8 != 0
+    ; Query the inner dialog's client area so we can scale the bitmap to fit.
+    System::Alloc 16
+    Pop $R9
+    System::Call 'user32::GetClientRect(i $R8, i $R9)'
+    System::Call '*$R9(i, i, i .r0, i .r1)'   ; r0 = width, r1 = height
+    System::Free $R9
+
+    ; Create a STATIC bitmap control covering the full inner dialog.
+    ; WS_CHILD|WS_VISIBLE|SS_BITMAP = 0x40000000|0x10000000|0x0000000E = 0x5000000E
+    System::Call 'user32::CreateWindowExW(i 0, t "STATIC", t "", i 0x5000000E, i 0, i 0, i r0, i r1, i $R8, i 0, i 0, i 0) i .R7'
+
+    ; Load background.bmp scaled to the dialog dimensions (LR_LOADFROMFILE=0x10).
+    System::Call 'user32::LoadImageW(i 0, t "$PLUGINSDIR\background.bmp", i 0, i r0, i r1, i 0x10) i .R6'
+    SendMessage $R7 0x172 0 $R6   ; STM_SETIMAGE (0x172), IMAGE_BITMAP (0)
+
+    ; Push the bitmap control behind all existing page controls.
+    System::Call 'user32::SetWindowPos(i $R7, i 1, i 0, i 0, i 0, i 0, i 3)'
+    ; HWND_BOTTOM=1, SWP_NOSIZE|SWP_NOMOVE=3
+
+    ; Make text/label controls transparent so the bitmap shows through.
+    ; Skip our own injected control ($R7) AND any SS_BITMAP controls — the
+    ; latter includes MUI2's sidebar panel (sidebar.bmp with the okapi mascot).
+    ; SS_BITMAP style = bits 0-3 of GWL_STYLE == 0xE; $R6 is free to reuse here.
+    StrCpy $R9 0
+    _dwp_loop:
+      System::Call 'user32::FindWindowEx(i $R8, i $R9, i 0, i 0) i .R9'
+      ${If} $R9 == 0
+        Goto _dwp_done
+      ${EndIf}
+      ${If} $R9 == $R7
+        Goto _dwp_loop
+      ${EndIf}
+      System::Call 'user32::GetWindowLongW(i $R9, i -16) i .R6'
+      IntOp $R6 $R6 & 0xF
+      ${If} $R6 == 0xE   ; SS_BITMAP — leave sidebar.bmp (and any other bitmap control) alone
+        Goto _dwp_loop
+      ${EndIf}
+      System::Call 'uxtheme::SetWindowTheme(i $R9, w " ", w " ")'
+      SetCtlColors $R9 "${CLR_FG}" "transparent"
+      Goto _dwp_loop
+    _dwp_done:
+
+    System::Call 'user32::InvalidateRect(i $R8, i 0, i 1)'
+  ${EndIf}
+
+  Pop $R9
+  Pop $R8
+  Pop $R7
+  Pop $R6
+
+  Call _DarkButtons
+FunctionEnd
 
 ; _DarkPage — called from every page SHOW callback.
 ; Two-level walk: strips visual theme and applies dark palette to every
@@ -299,11 +365,15 @@ Function TokenPage
     Abort
   ${EndIf}
 
-  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+  ; Background bitmap — created first so it is at the back of the Z-order.
+  ; NSD_SetStretchedImage scales background.bmp to fit the dialog client area.
+  ${NSD_CreateBitmap} 0 0 100% 100% ""
+  Pop $0
+  ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\background.bmp" $BgBitmapHandle
 
   ${NSD_CreateLabel} 0 0 100% 24u "Please enter your Generated EasyOKAPI Token:"
   Pop $0
-  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
+  SetCtlColors $0 "${CLR_FG}" "transparent"
 
   ${NSD_CreateText} 0 26u 100% 12u ""
   Pop $TokenInput
