@@ -30,13 +30,20 @@ LOGO_SRC  = PROJECT_ROOT / "static" / "ht-logo.jpeg"
 ICON_SRC  = PROJECT_ROOT / "static" / "ht-noname.png"
 OKAPI_SRC = PROJECT_ROOT / "static" / "okapi.png"
 
-SIDEBAR_OUT = SCRIPT_DIR / "sidebar.bmp"     # 164 x 314
-HEADER_OUT  = SCRIPT_DIR / "header.bmp"      # 150 x 57
-BG_OUT      = SCRIPT_DIR / "background.bmp"  # 1280 x 720
+SIDEBAR_OUT  = SCRIPT_DIR / "sidebar.bmp"     # 164 x 314
+HEADER_OUT   = SCRIPT_DIR / "header.bmp"      # 150 x 57
+BG_OUT       = SCRIPT_DIR / "background.bmp"  # 1280 x 720
+PAGE_BG_OUT  = SCRIPT_DIR / "page_bg.bmp"     # 432 x 314  (NSIS inner-dialog size)
 
-SIDEBAR_W, SIDEBAR_H = 164, 314
-HEADER_W,  HEADER_H  = 150, 57
-BG_W,      BG_H      = 1280, 720
+SIDEBAR_W,  SIDEBAR_H  = 164, 314
+HEADER_W,   HEADER_H   = 150, 57
+BG_W,       BG_H       = 1280, 720
+# 432 px = standard MUI2 window width.
+# 314 px = sidebar height = full inner-dialog height for the Welcome page.
+# LoadImageW scaling is unreliable for large source bitmaps, so page_bg.bmp is
+# pre-scaled here and loaded at native size (cx=0, cy=0) in the NSIS script.
+# Any excess height is silently clipped by SetWindowPos on the STATIC control.
+PAGE_BG_W,  PAGE_BG_H  = 432, 314
 
 # ── Brand palette (sidebar / header) ─────────────────────────────────────────
 PURPLE_TOP  = (99,  102, 241)   # indigo-500
@@ -426,11 +433,45 @@ def build_header() -> None:
     print(f"  header.bmp   written ({HEADER_W}x{HEADER_H})")
 
 
+# ── Page background (432 x 314) ──────────────────────────────────────────────
+
+def build_page_bg() -> None:
+    """
+    Resize background.bmp to the NSIS inner-dialog dimensions and save as
+    page_bg.bmp.  This file is loaded at native size in setup.nsi so that
+    LoadImageW never needs to scale a large source bitmap — which is
+    unreliable on some Windows / NSIS-plugin combinations.
+
+    Aspect-ratio note: background.bmp is 16:9 (1280×720); page_bg.bmp is
+    432×314 (~1.38:1).  A centre-crop is used to avoid distortion: we crop
+    the widest rectangle from the source that matches the target ratio before
+    down-sampling with LANCZOS.
+    """
+    bg = Image.open(str(BG_OUT)).convert("RGB")
+    src_w, src_h = bg.size
+    target_ar = PAGE_BG_W / PAGE_BG_H
+
+    # Centre-crop to target aspect ratio
+    crop_w = int(src_h * target_ar)
+    crop_h = src_h
+    if crop_w > src_w:           # source is taller than target AR — crop height
+        crop_h = int(src_w / target_ar)
+        crop_w = src_w
+    left = (src_w - crop_w) // 2
+    top  = (src_h - crop_h) // 2
+    bg   = bg.crop((left, top, left + crop_w, top + crop_h))
+
+    bg = bg.resize((PAGE_BG_W, PAGE_BG_H), Image.LANCZOS)
+    bg.save(str(PAGE_BG_OUT), format="BMP")
+    print(f"  page_bg.bmp  written ({PAGE_BG_W}x{PAGE_BG_H})")
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     print("Building NSIS installer bitmaps...")
     build_background()
+    build_page_bg()   # must run after build_background() — reads BG_OUT
     build_sidebar()
     build_header()
     print("Done. Recompile: makensis /DAPP_VERSION=x.x.x /DAUTH_BASE_URL=https://... setup.nsi")
