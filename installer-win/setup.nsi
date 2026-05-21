@@ -380,20 +380,28 @@ Function TokenPage
     Abort
   ${EndIf}
 
-  ; Background bitmap — created first so it is at the back of the Z-order.
-  ; Use page_bg.bmp (432x314, pre-scaled) so NSD_SetStretchedImage only needs
-  ; to scale a small source bitmap, which LoadImageW handles reliably.
+  ; Indigo fallback — same pattern as _DarkWelcomePage: stamp the dark theme
+  ; first so the page is never white even if NSD_SetStretchedImage returns 0.
+  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+
+  ; Background bitmap — created first so it sits at the back of the Z-order.
+  ; Use page_bg.bmp (432x314, pre-scaled) so NSD_SetStretchedImage only has to
+  ; scale a small source bitmap, which LoadImageW handles reliably.
   ${NSD_CreateBitmap} 0 0 100% 100% ""
   Pop $0
   ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
 
   ${NSD_CreateLabel} 0 0 100% 24u "Please enter your Generated EasyOKAPI Token:"
   Pop $0
-  SetCtlColors $0 "${CLR_FG}" "transparent"
+  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
 
   ${NSD_CreateText} 0 26u 100% 12u ""
   Pop $TokenInput
   SetCtlColors $TokenInput "${CLR_FG}" "${CLR_INPUT}"
+
+  ; Re-style the outer navigation buttons — mirrors _DarkWelcomePage's call to
+  ; _DarkButtons so the Next/Cancel buttons keep their indigo style on this page.
+  Call _DarkButtons
 
   nsDialogs::Show
 FunctionEnd
