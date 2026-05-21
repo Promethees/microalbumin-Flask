@@ -1,33 +1,55 @@
 #!/bin/bash
 
-# ── ANSI colours ──────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROGRESS_PIPE="/tmp/easyokapi_progress.pipe"
+INSTALL_DIR="/opt/EasyOKAPI"
+
 RESET="\033[0m"
 BOLD="\033[1m"
 GREEN="\033[32m"
 CYAN="\033[36m"
 RED="\033[31m"
 
-# ── Progress-bar helper ───────────────────────────────────────────────────────
-BAR_WIDTH=40
-progress() {
-    local pct=$1 label=$2
-    local filled=$(( pct * BAR_WIDTH / 100 ))
-    local empty=$(( BAR_WIDTH - filled ))
-    local bar=""
-    for (( i=0; i<filled; i++ )); do bar+="█"; done
-    for (( i=0; i<empty;  i++ )); do bar+="░"; done
-    printf "\r  ${CYAN}[${GREEN}${bar}${CYAN}]${RESET} ${BOLD}%3d%%${RESET}  %s" "$pct" "$label"
-}
+# ═══════════════════════════════════════════════════════════════════════════════
+# --inner  Runs as root (called via sudo by the outer section below).
+#          Performs venv setup and launches main.py.
+#          The FIFO already exists (created by the outer section, chmod 666).
+# ═══════════════════════════════════════════════════════════════════════════════
+if [ "$1" = "--inner" ]; then
+    exec > >(tee -a /tmp/easyokapi-run.log) 2>&1
 
-fill_to() {
-    local from=$1 to=$2 label=$3
-    for (( p=from; p<=to; p++ )); do
-        progress "$p" "$label"
-        sleep 0.015
-    done
-}
+    if [ ! -d "$INSTALL_DIR" ]; then
+        echo -e "\n  ${RED}✗  $INSTALL_DIR not found. Please run install.sh first.${RESET}\n"
+        exit 1
+    fi
 
-# ── Banner ────────────────────────────────────────────────────────────────────
+    cd "$INSTALL_DIR"
+
+    # ── venv ───────────────────────────────────────────────────────────────────
+    if [ ! -d "venv" ]; then
+        echo -e "\n  ${RED}✗  Virtual environment not found. Please re-run install.sh.${RESET}\n"
+        exit 1
+    fi
+    source venv/bin/activate
+
+    # ── preflight ──────────────────────────────────────────────────────────────
+    if [ ! -f "main.py" ]; then
+        echo -e "\n  ${RED}✗  main.py not found in $INSTALL_DIR.${RESET}\n"
+        exit 1
+    fi
+
+    # ── launch ─────────────────────────────────────────────────────────────────
+    python3 main.py
+    echo "Application exited at $(date)"
+    exit 0
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Outer  Runs as the current user.
+#        Tries to show a GUI splash window when a display is available;
+#        falls back to a plain terminal banner on headless systems.
+#        Then elevates to root (--inner) for venv/Flask startup.
+# ═══════════════════════════════════════════════════════════════════════════════
 clear
 echo ""
 echo -e "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
@@ -35,66 +57,57 @@ echo -e "  ${BOLD}${CYAN}║  ⬡  HTBiotec · EasyOKAPI · Launching …   ║$
 echo -e "  ${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
 echo ""
 
-exec > >(tee -a /tmp/easyokapi-run.log) 2>&1
-
-# ── Root check ────────────────────────────────────────────────────────────────
-if [ "$EUID" -ne 0 ]; then
-    echo -e "\n  ${RED}✗  This script must be run as root (sudo).${RESET}\n"
-    exit 1
-fi
-
-INSTALL_DIR="/opt/EasyOKAPI"
-
-if [ ! -d "$INSTALL_DIR" ]; then
-    echo -e "\n  ${RED}✗  $INSTALL_DIR not found. Please run install.sh first.${RESET}\n"
-    exit 1
-fi
-
-cd "$INSTALL_DIR"
-
-# ── Step 1: Activate venv (0 → 40%) ──────────────────────────────────────────
-fill_to 0 20 "Activating virtual environment …"
-if [ ! -d "venv" ]; then
-    echo -e "\n\n  ${RED}✗  Virtual environment not found. Please re-run install.sh.${RESET}\n"
-    exit 1
-fi
-source venv/bin/activate
-fill_to 20 40 "Activating virtual environment …"
-
-# ── Step 2: Preflight (40 → 50%) ─────────────────────────────────────────────
-fill_to 40 50 "Running preflight checks …"
-if [ ! -f "main.py" ]; then
-    echo -e "\n\n  ${RED}✗  main.py not found in $INSTALL_DIR.${RESET}\n"
-    exit 1
-fi
-
-# ── Step 3: IPC pipe for startup progress (50 → 100%) ────────────────────────
-PROGRESS_PIPE="/tmp/easyokapi_progress.pipe"
+# IPC pipe (user-created so the splash process can read it without root).
 rm -f "$PROGRESS_PIPE"
 mkfifo "$PROGRESS_PIPE"
+chmod 666 "$PROGRESS_PIPE"
 
-(
-    while IFS= read -r line; do
-        raw_pct="${line%% *}"
-        label="${line#* }"
-        pct=$(( raw_pct + 0 )) 2>/dev/null || pct=0
-        mapped=$(( 50 + pct * 50 / 100 ))
-        [ "$mapped" -gt 100 ] && mapped=100
-        progress "$mapped" "$label"
-        if [ "$pct" -ge 100 ] 2>/dev/null; then break; fi
-    done < "$PROGRESS_PIPE"
-    progress 100 "Server ready!         "
-    echo ""
-    echo ""
-    echo -e "  ${GREEN}${BOLD}✔  EasyOKAPI is running — opening browser…${RESET}"
-    echo ""
-    rm -f "$PROGRESS_PIPE"
-) &
-READER_PID=$!
+# GUI splash — only when a graphical display is available.
+SPLASH_PID=""
+USE_GUI=0
 
-python3 main.py
+if [ -n "$DISPLAY" ] && [ -f "$SCRIPT_DIR/splash.py" ] && command -v python3 >/dev/null 2>&1; then
+    # Quick check: does the python3 here have tkinter?
+    if python3 -c "import tkinter" 2>/dev/null; then
+        USE_GUI=1
+    fi
+fi
 
-kill "$READER_PID" 2>/dev/null
+if [ "$USE_GUI" = "1" ]; then
+    python3 "$SCRIPT_DIR/splash.py" &
+    SPLASH_PID=$!
+else
+    # ── Headless fallback: ANSI progress bar driven by FIFO ───────────────────
+    BAR_WIDTH=40
+    (
+        while IFS= read -r line; do
+            raw_pct="${line%% *}"
+            label="${line#* }"
+            pct=$(( raw_pct + 0 )) 2>/dev/null || pct=0
+            mapped=$(( 50 + pct * 50 / 100 ))
+            [ "$mapped" -gt 100 ] && mapped=100
+            filled=$(( mapped * BAR_WIDTH / 100 ))
+            empty=$(( BAR_WIDTH - filled ))
+            bar=""
+            for (( i=0; i<filled; i++ )); do bar+="█"; done
+            for (( i=0; i<empty;  i++ )); do bar+="░"; done
+            printf "\r  ${CYAN}[${GREEN}%s${CYAN}]${RESET} ${BOLD}%3d%%${RESET}  %s" \
+                   "$bar" "$mapped" "$label"
+            if [ "$pct" -ge 100 ] 2>/dev/null; then break; fi
+        done < "$PROGRESS_PIPE"
+        printf "\r  ${CYAN}[${GREEN}%s${CYAN}]${RESET} ${BOLD}100%%${RESET}  Server ready!                    \n\n" \
+               "$(printf '█%.0s' $(seq 1 $BAR_WIDTH))"
+        echo -e "  ${GREEN}${BOLD}✔  EasyOKAPI is running — opening browser…${RESET}\n"
+        rm -f "$PROGRESS_PIPE"
+    ) &
+    TEXT_PID=$!
+fi
+
+# Privileged launch (venv → Flask).
+sudo bash "$SCRIPT_DIR/run.sh" --inner
+
+# ── Cleanup ────────────────────────────────────────────────────────────────────
+[ -n "$SPLASH_PID" ] && kill "$SPLASH_PID" 2>/dev/null
+[ -n "$TEXT_PID"   ] && kill "$TEXT_PID"   2>/dev/null
 rm -f "$PROGRESS_PIPE"
-echo "Application exited at $(date)"
 exit 0
