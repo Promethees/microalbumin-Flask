@@ -24,11 +24,42 @@ if exist "%BIN_PATH%\pyenv.bat" (
     goto :set_pyenv
 )
 
-:: Install pyenv-win
-echo pyenv-win not found. Cloning pyenv-win repository to %PYENV_PATH_CLONE%...
-git clone https://github.com/pyenv-win/pyenv-win.git "%PYENV_PATH_CLONE%"
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to clone pyenv-win repository. Ensure Git is installed and try again.
+:: Install pyenv-win — three-tier fallback so this works even when Git was
+:: just installed in the same NSIS session (setx /M updates the registry but
+:: the parent process environment is not refreshed until a new login session,
+:: so 'git' may not yet be on PATH even though the exe is on disk).
+echo pyenv-win not found. Installing pyenv-win to %PYENV_PATH_CLONE%...
+set "PYENV_CLONED=0"
+
+:: Attempt 1 — git already in PATH (pre-existing install)
+git clone https://github.com/pyenv-win/pyenv-win.git "%PYENV_PATH_CLONE%" >nul 2>&1
+if !ERRORLEVEL! equ 0 set "PYENV_CLONED=1"
+if "!PYENV_CLONED!"=="1" echo pyenv-win cloned via git (PATH).
+
+:: Attempt 2 — git at the default Git-for-Windows install path (just installed
+:: this session; PATH not yet refreshed in the NSIS parent environment)
+if "!PYENV_CLONED!"=="0" (
+    if exist "C:\Program Files\Git\cmd\git.exe" (
+        "C:\Program Files\Git\cmd\git.exe" clone https://github.com/pyenv-win/pyenv-win.git "%PYENV_PATH_CLONE%"
+        if !ERRORLEVEL! equ 0 (
+            set "PYENV_CLONED=1"
+            echo pyenv-win cloned via git (full path).
+        )
+    )
+)
+
+:: Attempt 3 — no git available; download the master zip via PowerShell
+if "!PYENV_CLONED!"=="0" (
+    echo Git not available. Downloading pyenv-win archive via PowerShell...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$zip='%TEMP%\pyenv-win.zip'; $dst='%PYENV_PATH_CLONE%'; Invoke-WebRequest -UseBasicParsing 'https://github.com/pyenv-win/pyenv-win/archive/refs/heads/master.zip' -OutFile $zip; Expand-Archive -Force $zip '%TEMP%\pyenv-win-extract'; if (Test-Path $dst) { Remove-Item $dst -Recurse -Force }; Move-Item '%TEMP%\pyenv-win-extract\pyenv-win-master' $dst; Remove-Item $zip -ErrorAction SilentlyContinue"
+    if !ERRORLEVEL! equ 0 (
+        set "PYENV_CLONED=1"
+        echo pyenv-win downloaded via PowerShell.
+    )
+)
+
+if "!PYENV_CLONED!"=="0" (
+    echo ERROR: Failed to install pyenv-win. Ensure you have an internet connection and try again.
     exit /b 1
 )
 

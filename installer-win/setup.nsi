@@ -420,6 +420,7 @@ Section "Install" SEC01
 
   ; Copy batch files and launcher
   File "startwindow-0-clone-repo.bat"
+  File "startwindow-1-git.bat"
   File "startwindow-2-pyenv.bat"
   File "startwindow-3-python.bat"
   File "startwindow-4-venv.bat"
@@ -451,9 +452,9 @@ Section "Install" SEC01
     Abort
   ${EndIf}
 
-  ; ── Step 1 / 3  -  Downloading application ───────────────────────────────────
+  ; ── Step 1 / 4  -  Downloading application ───────────────────────────────────
   DetailPrint "======================================"
-  DetailPrint "Step 1 / 3  -  Downloading application"
+  DetailPrint "Step 1 / 4  -  Downloading application"
   DetailPrint "======================================"
 
   ; Detect existing installation and ask the user what to do.
@@ -560,9 +561,21 @@ Click No to keep the existing installation and cancel Setup." \
 
   DetailPrint "Application downloaded successfully."
 
-  ; ── Step 2 / 3  -  Installing pyenv & Python ─────────────────────────────────
+  ; ── Step 2 / 4  -  Installing Git ───────────────────────────────────────────
   DetailPrint "======================================"
-  DetailPrint "Step 2 / 3  -  Installing pyenv & Python"
+  DetailPrint "Step 2 / 4  -  Installing Git"
+  DetailPrint "======================================"
+  nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-1-git.bat"'
+  Pop $0
+  ${If} $0 != 0
+    MessageBox MB_OK|MB_ICONSTOP "Git installation failed (exit code $0).$\r$\nCheck your internet connection and re-run Setup."
+    Abort
+  ${EndIf}
+  DetailPrint "Git ready."
+
+  ; ── Step 3 / 4  -  Installing pyenv & Python ─────────────────────────────────
+  DetailPrint "======================================"
+  DetailPrint "Step 3 / 4  -  Installing pyenv & Python"
   DetailPrint "======================================"
   nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-2-pyenv.bat"'
   Pop $0
@@ -579,7 +592,7 @@ Click No to keep the existing installation and cancel Setup." \
   DetailPrint "Python ready."
 
   DetailPrint "======================================"
-  DetailPrint "Step 3 / 3  -  Setting up virtual environment"
+  DetailPrint "Step 4 / 4  -  Setting up virtual environment"
   DetailPrint "======================================"
   nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-4-venv.bat"'
   Pop $0
