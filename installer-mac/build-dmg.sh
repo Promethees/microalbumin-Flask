@@ -17,50 +17,50 @@ RW_DMG="${APP_NAME}_${VERSION}_rw.dmg"
 
 echo "🚀 Starting DMG build for $APP_NAME ($VERSION)…"
 
-# Ensure we are in the project root
 cd "$PROJECT_ROOT" || exit 1
 
-# Cleanup previous builds
-echo "🧹 Cleaning up previous build artifacts…"
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+echo "🧹 Cleaning up previous build artefacts…"
 rm -f "$DMG_NAME" "$RW_DMG"
 rm -rf "$TMP_DIR"
 
-# ── Prepare DMG contents ───────────────────────────────────────────────────────
-echo "📂 Preparing DMG contents…"
+# ── Prepare DMG root ──────────────────────────────────────────────────────────
+echo "📂 Preparing DMG root…"
 mkdir -p "$TMP_DIR"
-cp -R "$SOURCE_DIR/" "$TMP_DIR/"
-rm -f "$TMP_DIR/build-dmg.sh"    # strip build script from the DMG
 
-# ── Bundle the okapi mascot so install scripts can use it as a dialog icon ───
+# Copy only the files that belong in the DMG root:
+#   • uninstall.command — advanced users who need to remove the app
+#   • okapi.png         — dialog icon used by uninstall.command (hidden off-canvas)
+# Everything else (setup.sh, launch.sh, splash.py) lives inside the app bundle.
+cp "$SOURCE_DIR/uninstall.command" "$TMP_DIR/"
 cp "$PROJECT_ROOT/static/okapi.png" "$TMP_DIR/okapi.png"
 
-# ── Create a branded DMG background ──────────────────────────────────────────
-#    The background sits in a hidden .background/ folder inside the DMG.
-#    Finder reads it and renders it behind the icon grid.
-#    Size: 620 × 420 px — matches the window bounds set in the AppleScript below.
+# ── DMG background (drag-to-install style: 800 × 430 px) ─────────────────────
 mkdir -p "$TMP_DIR/.background"
-
 LOGO_SRC="$PROJECT_ROOT/static/ht-logo.jpeg"
 OKAPI_SRC="$PROJECT_ROOT/static/okapi.png"
 BG_OUT="$TMP_DIR/.background/background.png"
-BG_W=620; BG_H=420
+BG_W=800; BG_H=430
 
 echo "🎨 Creating DMG background image…"
 if command -v convert &>/dev/null || command -v magick &>/dev/null; then
     CONVERT=$(command -v magick || command -v convert)
-    # Warm off-white canvas, faint HTBiotec logo watermark bottom-right,
-    # okapi mascot watermark bottom-left.
+    # Warm off-white canvas, subtle arrow in the centre, faint brand watermarks.
     "$CONVERT" -size "${BG_W}x${BG_H}" "xc:#FFFEF5" \
-        \( "$LOGO_SRC"  -resize 180x180 -alpha set -channel Alpha -evaluate multiply 0.12 +channel \) \
-        -gravity SouthEast -geometry +24+18 -composite \
-        \( "$OKAPI_SRC" -resize 90x90   -alpha set -channel Alpha -evaluate multiply 0.20 +channel \) \
-        -gravity SouthWest -geometry +24+18 -composite \
+        \( "$LOGO_SRC"  -resize 160x160 -alpha set -channel Alpha -evaluate multiply 0.10 +channel \) \
+        -gravity SouthEast -geometry +20+16 -composite \
+        \( "$OKAPI_SRC" -resize 80x80   -alpha set -channel Alpha -evaluate multiply 0.16 +channel \) \
+        -gravity SouthWest -geometry +20+16 -composite \
+        -stroke "#89B4FA" -strokewidth 2.5 -fill none \
+        -draw "line 330,215 455,215" \
+        -fill "#89B4FA" -stroke "#89B4FA" -strokewidth 1 \
+        -draw "polygon 450,207 468,215 450,223" \
+        -font "Helvetica" -pointsize 12 -fill "#6C7086" \
+        -gravity Center -annotate +0+80 "Drag EasyOKAPI to Applications to install" \
         "$BG_OUT"
     echo "✅ Background image created with ImageMagick."
 elif command -v sips &>/dev/null; then
-    # Fallback: a plain soft yellow matching the HTBiotec brand palette
-    sips -z "$BG_H" "$BG_W" "$LOGO_SRC" --out "$BG_OUT" 2>/dev/null || \
-        python3 -c "
+    python3 -c "
 import struct, zlib
 def png_chunk(tag, data):
     raw = tag + data
@@ -74,11 +74,11 @@ with open('$BG_OUT', 'wb') as f:
     f.write(png_chunk(b'IDAT', idat))
     f.write(png_chunk(b'IEND', b''))
 "
-    echo "⚠️  Background created with sips/Python (install ImageMagick for logo watermark)."
+    echo "⚠️  Plain background (install ImageMagick for arrow + watermarks)."
 fi
 
-# ── Build EasyOKAPI.app with custom ht icon ───────────────────────────────────
-echo "🎨 Building EasyOKAPI.app with custom icon…"
+# ── Build EasyOKAPI.app ────────────────────────────────────────────────────────
+echo "🎨 Building EasyOKAPI.app…"
 
 _ICONSET="$(mktemp -d)/ht.iconset"
 mkdir -p "$_ICONSET"
@@ -86,13 +86,12 @@ _BASE_PNG="$(mktemp).png"
 
 sips -s format png "$PROJECT_ROOT/static/ht.ico" --out "$_BASE_PNG" 2>/dev/null
 if [ $? -eq 0 ]; then
-    sips -z 16  16  "$_BASE_PNG" --out "$_ICONSET/icon_16x16.png"      2>/dev/null
+    for sz in 16 32 128 256 512; do
+        sips -z $sz $sz "$_BASE_PNG" --out "$_ICONSET/icon_${sz}x${sz}.png"      2>/dev/null
+    done
     sips -z 32  32  "$_BASE_PNG" --out "$_ICONSET/icon_16x16@2x.png"   2>/dev/null
-    sips -z 32  32  "$_BASE_PNG" --out "$_ICONSET/icon_32x32.png"      2>/dev/null
     sips -z 64  64  "$_BASE_PNG" --out "$_ICONSET/icon_32x32@2x.png"   2>/dev/null
-    sips -z 128 128 "$_BASE_PNG" --out "$_ICONSET/icon_128x128.png"    2>/dev/null
     sips -z 256 256 "$_BASE_PNG" --out "$_ICONSET/icon_128x128@2x.png" 2>/dev/null
-    sips -z 256 256 "$_BASE_PNG" --out "$_ICONSET/icon_256x256.png"    2>/dev/null
     sips -z 512 512 "$_BASE_PNG" --out "$_ICONSET/icon_256x256@2x.png" 2>/dev/null
     _ICNS_PATH="$(mktemp).icns"
     iconutil -c icns "$_ICONSET" -o "$_ICNS_PATH"
@@ -103,31 +102,57 @@ if [ $? -eq 0 ]; then
         cp "$_ICNS_PATH" "$TMP_DIR/EasyOKAPI.app/Contents/Resources/applet.icns"
         echo "✅ EasyOKAPI.app built with ht icon."
     else
-        echo "⚠️  osacompile failed — EasyOKAPI.app not included."
+        echo "❌ osacompile failed — aborting."
+        rm -f "$_ICNS_PATH"; exit 1
     fi
     rm -f "$_ICNS_PATH"
 else
-    echo "⚠️  sips could not convert ht.ico — EasyOKAPI.app not included."
-fi
-
-# ── Create writable DMG, brand it, then convert to read-only ─────────────────
-echo "🛠️  Creating writable DMG…"
-hdiutil create -volname "$APP_NAME" -srcfolder "$TMP_DIR" \
-    -ov -format UDRW -size 300m "$RW_DMG"
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to create writable DMG."
+    echo "❌ sips could not convert ht.ico — aborting."
     exit 1
 fi
 
-echo "📎 Mounting DMG for branding…"
-MOUNT_OUTPUT=$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG" 2>&1)
-VOLUME="/Volumes/$APP_NAME"
+# ── Bundle Resources into the app ─────────────────────────────────────────────
+# setup.sh   — first-run installer (Homebrew → pyenv → Python → download → venv)
+# launch.sh  — subsequent launches (splash + Flask)
+# splash.py  — GUI splash window
+# okapi.png  — icon for osascript dialogs used by setup.sh / uninstall.command
+echo "📦 Bundling Resources into EasyOKAPI.app…"
+APP_RES="$TMP_DIR/EasyOKAPI.app/Contents/Resources"
+if [ -d "$APP_RES" ]; then
+    cp "$SOURCE_DIR/setup.sh"              "$APP_RES/"
+    cp "$SOURCE_DIR/launch.sh"             "$APP_RES/"
+    cp "$SOURCE_DIR/splash.py"             "$APP_RES/"
+    cp "$SOURCE_DIR/uninstall.command"     "$APP_RES/"
+    cp "$PROJECT_ROOT/static/okapi.png"    "$APP_RES/"
+    chmod +x \
+        "$APP_RES/setup.sh" \
+        "$APP_RES/launch.sh" \
+        "$APP_RES/splash.py" \
+        "$APP_RES/uninstall.command"
+    echo "✅ Resources bundled."
+else
+    echo "❌ App bundle Resources directory not found."
+    exit 1
+fi
 
-# Wait for Finder to register the volume
+# ── Applications symlink (drag-to-install) ────────────────────────────────────
+echo "🔗 Adding Applications symlink…"
+ln -sf /Applications "$TMP_DIR/Applications"
+
+# ── Create writable DMG ───────────────────────────────────────────────────────
+echo "🛠️  Creating writable DMG…"
+hdiutil create -volname "$APP_NAME" -srcfolder "$TMP_DIR" \
+    -ov -format UDRW -size 300m "$RW_DMG"
+[ $? -ne 0 ] && { echo "❌ hdiutil create failed."; exit 1; }
+
+echo "📎 Mounting DMG for layout branding…"
+hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG"
+VOLUME="/Volumes/$APP_NAME"
 sleep 3
 
-echo "🖼️  Applying background and icon layout via Finder…"
-# Window bounds {left, top, right, bottom} → 620 × 420 px window
+echo "🖼️  Applying drag-to-install layout via Finder…"
+# Window: 800 × 430 px (matches background image)
+# EasyOKAPI.app left-centre; Applications alias right-centre; uninstall bottom-right.
 osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "$APP_NAME"
@@ -135,32 +160,29 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set bounds of container window to {200, 120, 820, 540}
-        set icon size of icon view options of container window to 80
+        set bounds of container window to {200, 120, 1000, 550}
+        set icon size of icon view options of container window to 96
         set text size of icon view options of container window to 12
         set arrangement of icon view options of container window to not arranged
         set background picture of icon view options of container window to file ".background:background.png"
-        -- EasyOKAPI launcher — prominent on the left
+
+        -- App (left side)
         try
-            set position of item "EasyOKAPI.app" to {130, 195}
+            set position of item "EasyOKAPI.app" to {200, 200}
         end try
-        -- Install scripts — right column, top to bottom
+        -- Applications alias (right side)
         try
-            set position of item "install-tools-clone-repo.command" to {390, 80}
+            set position of item "Applications" to {590, 200}
         end try
+        -- Uninstall utility (bottom-right, secondary)
         try
-            set position of item "install-venv.command" to {390, 185}
+            set position of item "uninstall.command" to {590, 360}
         end try
+        -- Hide helper assets off-canvas
         try
-            set position of item "run.command" to {390, 290}
+            set position of item "okapi.png" to {-300, -300}
         end try
-        try
-            set position of item "uninstall.command" to {390, 380}
-        end try
-        -- okapi.png is a helper asset for the install scripts; hide it off-canvas
-        try
-            set position of item "okapi.png" to {-200, -200}
-        end try
+
         close
         open
         update without registering applications
@@ -176,11 +198,7 @@ sleep 2
 
 echo "📦 Converting to compressed read-only DMG: $DMG_NAME…"
 hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_NAME"
-if [ $? -ne 0 ]; then
-    echo "❌ Conversion to UDZO failed."
-    rm -f "$RW_DMG"
-    exit 1
-fi
+[ $? -ne 0 ] && { echo "❌ Conversion failed."; rm -f "$RW_DMG"; exit 1; }
 rm -f "$RW_DMG"
 
 echo "✅ $DMG_NAME created in $PROJECT_ROOT"
@@ -189,8 +207,8 @@ echo "✅ $DMG_NAME created in $PROJECT_ROOT"
 echo "📝 Updating version in README.md…"
 sed -i '' "s|img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
 sed -i '' "s|img.shields.io/badge/latest-v[0-9.]*[a-z]*-blue|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
-echo "✅ README.md updated with version $VERSION"
+echo "✅ README.md updated with $VERSION"
 
-# Cleanup
+# ── Cleanup ───────────────────────────────────────────────────────────────────
 rm -rf "$TMP_DIR"
 echo "Done."
