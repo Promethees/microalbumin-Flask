@@ -24,14 +24,17 @@ if not defined PYENV_PYTHON (
 )
 echo Using Python: %PYENV_PYTHON%
 
-set "VENV_DIR=%~dp0code\venv"
+REM Use 8.3 short path to avoid spaces in "Program Files" breaking subprocess calls
+set "VENV_DIR=%~sdp0code\venv"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 
-REM Create venv if not exists or is incomplete from a previous aborted run
+REM Create venv if not exists or is incomplete from a previous aborted run.
+REM --without-pip avoids the internal ensurepip subprocess that fails on paths with spaces;
+REM pip is bootstrapped separately below via "%VENV_PYTHON%" -m ensurepip.
 if not exist "%VENV_PYTHON%" (
     if exist "%VENV_DIR%" rmdir /s /q "%VENV_DIR%"
     echo Creating virtual environment...
-    "%PYENV_PYTHON%" -m venv "%VENV_DIR%"
+    "%PYENV_PYTHON%" -m venv --without-pip "%VENV_DIR%"
     if not exist "%VENV_PYTHON%" (
         echo ERROR: Failed to create virtual environment at %VENV_DIR%.
         exit /b 1
