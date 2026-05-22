@@ -24,19 +24,35 @@ if not defined PYENV_PYTHON (
     if exist "%PYENV_VERSIONS%\3.9.13\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.9.13\python.exe"
 )
 if not defined PYENV_PYTHON (
-    echo Python 3.8.10 and 3.9.13 not found. Attempting to install Python 3.8.10 via pyenv...
-    "%BIN_PATH%\pyenv" install 3.8.10
+    echo Python 3.8.10 and 3.9.13 not found in pyenv versions.
+    echo Downloading official Python 3.8.10 installer...
+    set "PY_INSTALLER=%TEMP%\python-3.8.10-amd64.exe"
+    set "PY_URL_64=https://www.python.org/ftp/python/3.8.10/python-3.8.10-amd64.exe"
+    set "PY_URL_32=https://www.python.org/ftp/python/3.8.10/python-3.8.10.exe"
+    set "PY_INSTALL_DIR=%PYENV_VERSIONS%\3.8.10"
+
+    :: Detect architecture
+    wmic OS get OSArchitecture | findstr /C:"64-bit" >nul
+    if !ERRORLEVEL! equ 0 (
+        curl -L -o "!PY_INSTALLER!" "!PY_URL_64!"
+    ) else (
+        curl -L -o "!PY_INSTALLER!" "!PY_URL_32!"
+    )
+    if !ERRORLEVEL! neq 0 (
+        echo ERROR: Failed to download Python 3.8.10 installer.
+        exit /b 1
+    )
+
+    :: Install into pyenv versions directory so both pyenv and direct-path lookups find it
+    start /wait "" "!PY_INSTALLER!" /quiet InstallAllUsers=0 TargetDir="!PY_INSTALL_DIR!" ^
+        Include_pip=1 Include_launcher=0 Include_test=0 Include_doc=0
+    del "!PY_INSTALLER!" 2>nul
+
     if exist "%PYENV_VERSIONS%\3.8.10\python.exe" (
         set "PYENV_PYTHON=%PYENV_VERSIONS%\3.8.10\python.exe"
     ) else (
-        echo Python 3.8.10 install failed. Trying 3.9.13...
-        "%BIN_PATH%\pyenv" install 3.9.13
-        if exist "%PYENV_VERSIONS%\3.9.13\python.exe" (
-            set "PYENV_PYTHON=%PYENV_VERSIONS%\3.9.13\python.exe"
-        ) else (
-            echo ERROR: Failed to install Python 3.8.10 and 3.9.13. Check internet connection and pyenv setup.
-            exit /b 1
-        )
+        echo ERROR: Python 3.8.10 installation failed. Check installer logs.
+        exit /b 1
     )
 )
 echo Using Python: %PYENV_PYTHON%
