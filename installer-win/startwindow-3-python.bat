@@ -27,7 +27,7 @@ if %ERRORLEVEL% equ 0 (
 :: Check Python versions
 :check_python
 echo Checking for Python %PREFERRED_PYTHON%...
-pyenv versions | findstr %PREFERRED_PYTHON% >nul 2>&1
+"%BIN_PATH%\pyenv" versions | findstr %PREFERRED_PYTHON% >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     echo Python %PREFERRED_PYTHON% is already installed.
     set "PYTHON_VERSION=%PREFERRED_PYTHON%"
@@ -35,7 +35,7 @@ if %ERRORLEVEL% equ 0 (
 )
 
 echo Python %PREFERRED_PYTHON% not found. Checking for Python %FALLBACK_PYTHON%...
-pyenv versions | findstr %FALLBACK_PYTHON% >nul 2>&1
+"%BIN_PATH%\pyenv" versions | findstr %FALLBACK_PYTHON% >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     echo Python %FALLBACK_PYTHON% is already installed.
     set "PYTHON_VERSION=%FALLBACK_PYTHON%"
@@ -44,13 +44,15 @@ if %ERRORLEVEL% equ 0 (
 
 :: Install preferred Python version
 echo Neither Python %PREFERRED_PYTHON% nor %FALLBACK_PYTHON% found.
-echo Installing Python %PREFERRED_PYTHON%... | pyenv install %PREFERRED_PYTHON%
+echo Installing Python %PREFERRED_PYTHON%...
+"%BIN_PATH%\pyenv" install %PREFERRED_PYTHON%
 if %ERRORLEVEL% equ 0 (
     echo Python %PREFERRED_PYTHON% installed successfully.
     set "PYTHON_VERSION=%PREFERRED_PYTHON%"
 ) else (
     echo Failed to install Python %PREFERRED_PYTHON%.
-    echo Attempting to install Python %FALLBACK_PYTHON%... | pyenv install %FALLBACK_PYTHON%
+    echo Attempting to install Python %FALLBACK_PYTHON%...
+    "%BIN_PATH%\pyenv" install %FALLBACK_PYTHON%
     if %ERRORLEVEL% equ 0 (
         echo Python %FALLBACK_PYTHON% installed successfully.
         set "PYTHON_VERSION=%FALLBACK_PYTHON%"
@@ -64,7 +66,7 @@ if %ERRORLEVEL% equ 0 (
 :set_python
 if %ERRORLEVEL% equ 0 (
     echo Setting Python %PYTHON_VERSION% as global version...
-    pyenv global %PYTHON_VERSION%
+    "%BIN_PATH%\pyenv" global %PYTHON_VERSION%
     echo Python %PYTHON_VERSION% is now set as the global version.
 ) else (
     echo ERROR: No Python version was set. Please check pyenv configuration.
@@ -72,7 +74,8 @@ if %ERRORLEVEL% equ 0 (
 )
 
 :: Rehash shims
-echo Updating pyenv shims... | pyenv rehash
+echo Updating pyenv shims...
+"%BIN_PATH%\pyenv" rehash
 
 echo Setup complete. Current Python Version: %PYTHON_VERSION%. Current Pyenv Version: %PYENV_VERSION%.
 endlocal

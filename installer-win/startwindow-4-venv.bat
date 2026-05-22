@@ -2,6 +2,10 @@
 setlocal enabledelayedexpansion
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
+
+set "PYENV_PATH=%USERPROFILE%\.pyenv\pyenv-win\pyenv-win"
+set "BIN_PATH=%PYENV_PATH%\bin"
+
 echo ===============================================
 echo  Welcome to the Easy Sensor Web Interface Setup
 echo ===============================================
@@ -11,11 +15,11 @@ echo It will set up a virtual environment and install required libraries.
 echo.
 
 REM Get the path to the pyenv Python
-for /f "delims=" %%i in ('pyenv which python') do set PYENV_PYTHON=%%i
+for /f "delims=" %%i in ('"%BIN_PATH%\pyenv" which python') do set PYENV_PYTHON=%%i
 if not defined PYENV_PYTHON (
     echo ERROR: pyenv which python did not return a path. Check pyenv installation and local version.
-    pyenv versions
-    pyenv which python
+    "%BIN_PATH%\pyenv" versions
+    "%BIN_PATH%\pyenv" which python
     exit /b 1
 )
 echo Using Python: %PYENV_PYTHON%
