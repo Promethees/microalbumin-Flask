@@ -14,12 +14,18 @@ echo This script assumes Git and Python are already installed with pyenv.
 echo It will set up a virtual environment and install required libraries.
 echo.
 
-REM Get the path to the pyenv Python
-for /f "delims=" %%i in ('"%BIN_PATH%\pyenv" which python') do set PYENV_PYTHON=%%i
+REM Locate the pyenv Python by checking known version paths directly.
+REM Avoids "pyenv which python" which can capture error messages (e.g. "pyenv local 3.7.4")
+REM instead of a real path when a .python-version file specifies an uninstalled version.
+set "PYENV_VERSIONS=%PYENV_PATH%\versions"
+set "PYENV_PYTHON="
+if exist "%PYENV_VERSIONS%\3.8.10\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.8.10\python.exe"
 if not defined PYENV_PYTHON (
-    echo ERROR: pyenv which python did not return a path. Check pyenv installation and local version.
-    "%BIN_PATH%\pyenv" versions
-    "%BIN_PATH%\pyenv" which python
+    if exist "%PYENV_VERSIONS%\3.9.13\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.9.13\python.exe"
+)
+if not defined PYENV_PYTHON (
+    echo ERROR: Python 3.8.10 and 3.9.13 not found under %PYENV_VERSIONS%.
+    echo Ensure startwindow-3-python.bat completed successfully.
     exit /b 1
 )
 echo Using Python: %PYENV_PYTHON%
