@@ -43,7 +43,7 @@ if "!PYENV_CLONED!"=="0" (
         "C:\Program Files\Git\cmd\git.exe" clone https://github.com/pyenv-win/pyenv-win.git "%PYENV_PATH_CLONE%"
         if !ERRORLEVEL! equ 0 (
             set "PYENV_CLONED=1"
-            echo pyenv-win cloned via git (full path).
+            echo pyenv-win cloned via git ^(full path^).
         )
     )
 )
