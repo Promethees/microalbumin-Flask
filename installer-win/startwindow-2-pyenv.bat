@@ -74,27 +74,17 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: Add pyenv-win to PATH without overwriting existing PATH
+:: Add pyenv-win to System PATH only (never mix User PATH in — causes duplicates on retries).
+:: Uses reg add instead of setx to bypass setx's 1024-char truncation limit.
 echo Adding pyenv-win to PATH...
-:: Get current system and user PATH
 for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH') do set "SYSTEM_PATH=%%b"
-for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH') do set "USER_PATH=%%b"
-set "CURRENT_PATH=%SYSTEM_PATH%;%USER_PATH%"
 :: Remove any trailing semicolon
-if "!CURRENT_PATH:~-1!"==";" set "CURRENT_PATH=!CURRENT_PATH:~0,-1!"
-:: Check if pyenv paths are already in PATH to avoid duplicates
-echo !CURRENT_PATH! | findstr /I /C:"%BIN_PATH%" >nul
+if "!SYSTEM_PATH:~-1!"==";" set "SYSTEM_PATH=!SYSTEM_PATH:~0,-1!"
+:: Check System PATH only — avoids re-adding entries already present from a previous run
+echo !SYSTEM_PATH! | findstr /I /C:"%BIN_PATH%" >nul
 if !ERRORLEVEL! neq 0 (
-    set "NEW_PATH=!CURRENT_PATH!;%BIN_PATH%;%SHIMS_PATH%;%PYENV_PATH%"
-    :: Check PATH length to avoid setx limitations
-    set "PATH_LENGTH=0"
-    for /L %%n in (0,1,8192) do if "!NEW_PATH:~%%n,1!" neq "" set /a PATH_LENGTH+=1
-    if !PATH_LENGTH! GTR 1024 (
-        echo WARNING: PATH length exceeds 1024 characters, which may cause issues with setx.
-        echo Please shorten the existing PATH manually before proceeding.
-        exit /b 1
-    )
-    setx PATH "!NEW_PATH!" /M
+    set "NEW_PATH=!SYSTEM_PATH!;%BIN_PATH%;%SHIMS_PATH%;%PYENV_PATH%"
+    reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH /t REG_EXPAND_SZ /d "!NEW_PATH!" /f >nul
     if !ERRORLEVEL! neq 0 (
         echo ERROR: Failed to update PATH. Please check permissions.
         exit /b 1
