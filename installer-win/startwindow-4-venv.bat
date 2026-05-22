@@ -24,16 +24,23 @@ if not defined PYENV_PYTHON (
 )
 echo Using Python: %PYENV_PYTHON%
 
-REM Create venv if not exists
-if not exist "code\venv" (
-    "%PYENV_PYTHON%" -m venv code\venv
+set "VENV_DIR=%~dp0code\venv"
+set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
+
+REM Create venv if not exists or is incomplete from a previous aborted run
+if not exist "%VENV_PYTHON%" (
+    if exist "%VENV_DIR%" rmdir /s /q "%VENV_DIR%"
+    echo Creating virtual environment...
+    "%PYENV_PYTHON%" -m venv "%VENV_DIR%"
+    if not exist "%VENV_PYTHON%" (
+        echo ERROR: Failed to create virtual environment at %VENV_DIR%.
+        exit /b 1
+    )
     echo Created virtual environment in 'code\venv'.
 )
 
-call code\venv\Scripts\activate.bat
+call "%VENV_DIR%\Scripts\activate.bat"
 echo Virtual environment activated.
-
-set "VENV_PYTHON=%~dp0code\venv\Scripts\python.exe"
 
 REM Ensure pip is installed
 echo Checking pip...
