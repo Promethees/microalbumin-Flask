@@ -33,18 +33,20 @@ if not exist "code\venv" (
 call code\venv\Scripts\activate.bat
 echo Virtual environment activated.
 
+set "VENV_PYTHON=%~dp0code\venv\Scripts\python.exe"
+
 REM Ensure pip is installed
 echo Checking pip...
-python -m ensurepip --upgrade
+"%VENV_PYTHON%" -m ensurepip --upgrade
 
 REM Install required libraries
 echo Installing requirements...
-pip install --upgrade pip
-pip install -r "%~dp0code\requirements-win.txt"
+"%VENV_PYTHON%" -m pip install --upgrade pip
+"%VENV_PYTHON%" -m pip install -r "%~dp0code\requirements-win.txt"
 
 REM Pre-compile bytecode for scipy/numpy so first app launch is not slow
 echo Pre-compiling Python bytecode for scientific libraries...
-python -m compileall -q "code\venv\Lib\site-packages\scipy" "code\venv\Lib\site-packages\numpy" 2>nul
+"%VENV_PYTHON%" -m compileall -q "code\venv\Lib\site-packages\scipy" "code\venv\Lib\site-packages\numpy" 2>nul
 echo Bytecode pre-compilation complete.
 
 REM Download front-end vendor libraries
