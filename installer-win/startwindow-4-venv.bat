@@ -24,9 +24,20 @@ if not defined PYENV_PYTHON (
     if exist "%PYENV_VERSIONS%\3.9.13\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.9.13\python.exe"
 )
 if not defined PYENV_PYTHON (
-    echo ERROR: Python 3.8.10 and 3.9.13 not found under %PYENV_VERSIONS%.
-    echo Ensure startwindow-3-python.bat completed successfully.
-    exit /b 1
+    echo Python 3.8.10 and 3.9.13 not found. Attempting to install Python 3.8.10 via pyenv...
+    "%BIN_PATH%\pyenv" install 3.8.10
+    if exist "%PYENV_VERSIONS%\3.8.10\python.exe" (
+        set "PYENV_PYTHON=%PYENV_VERSIONS%\3.8.10\python.exe"
+    ) else (
+        echo Python 3.8.10 install failed. Trying 3.9.13...
+        "%BIN_PATH%\pyenv" install 3.9.13
+        if exist "%PYENV_VERSIONS%\3.9.13\python.exe" (
+            set "PYENV_PYTHON=%PYENV_VERSIONS%\3.9.13\python.exe"
+        ) else (
+            echo ERROR: Failed to install Python 3.8.10 and 3.9.13. Check internet connection and pyenv setup.
+            exit /b 1
+        )
+    )
 )
 echo Using Python: %PYENV_PYTHON%
 
