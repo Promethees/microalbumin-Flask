@@ -2,13 +2,14 @@
 # EasyOKAPI Setup Launcher
 # Distribute alongside install.sh inside the release tarball.
 # The user extracts the tarball and double-clicks this file (or runs it from a
-# terminal) to start a graphical installer, mirroring EasyOKAPI_Setup.exe on
-# Windows.  The script:
-#   1. Shows a zenity welcome dialog (GUI systems only).
-#   2. Writes a desktop shortcut on ~/Desktop so the user can re-run it easily.
-#   3. Launches install.sh in a graphical terminal with DISPLAY/XAUTHORITY
-#      forwarded so zenity prompts (including the token dialog) work under sudo.
-#   4. Falls back gracefully to the current terminal on headless systems.
+# terminal) to start the installer wizard, mirroring EasyOKAPI_Setup.exe on
+# Windows.
+#
+# Design principle: ALL interactive GUI steps (welcome dialog, token prompt)
+# run here as the regular user, where the X server's MIT-MAGIC-COOKIE is
+# valid.  Only the privileged shell operations (apt-get, /opt/ writes) are
+# delegated to sudo inside the terminal.  The token is passed to install.sh
+# via EASYOKAPI_DOWNLOAD_TOKEN so it never needs to call zenity as root.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OKAPI_ICON="$SCRIPT_DIR/okapi.png"
@@ -23,24 +24,57 @@ RED="\033[31m"
 HAS_DISPLAY=0
 { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && HAS_DISPLAY=1
 
+_wicon=()
+if [ "$HAS_DISPLAY" = "1" ] && [ -f "$OKAPI_ICON" ] && command -v zenity &>/dev/null; then
+    _wicon=("--window-icon=$OKAPI_ICON")
+fi
+
 # ── Welcome dialog ─────────────────────────────────────────────────────────────
 if [ "$HAS_DISPLAY" = "1" ] && command -v zenity &>/dev/null; then
-    _wicon=()
-    [ -f "$OKAPI_ICON" ] && _wicon=("--window-icon=$OKAPI_ICON")
     zenity --info \
         --title="EasyOKAPI Setup" \
         --width=420 \
-        --text="<b>Welcome to the EasyOKAPI Installer</b>\n\nA terminal window will open to complete the installation.\n\nYou will be asked for:\n  \xe2\x80\xa2 Your administrator password (sudo)\n  \xe2\x80\xa2 Your EasyOKAPI download token\n\nClick <b>OK</b> to begin." \
+        --text="<b>Welcome to the EasyOKAPI Installer</b>\n\nPlease enter your EasyOKAPI download token on the next screen.\n\nThe installer will then open a terminal and set up the application automatically." \
         "${_wicon[@]}" 2>/dev/null
-    [ $? -ne 0 ] && exit 0   # user closed / cancelled the welcome dialog
+    [ $? -ne 0 ] && exit 0   # user closed / cancelled
+fi
+
+# ── Token prompt — runs as regular user so X11 auth is never an issue ─────────
+EASYOKAPI_DOWNLOAD_TOKEN=""
+if [ "$HAS_DISPLAY" = "1" ] && command -v zenity &>/dev/null; then
+    EASYOKAPI_DOWNLOAD_TOKEN=$(zenity --password \
+        --title="EasyOKAPI Setup — Download Token" \
+        "${_wicon[@]}" 2>/dev/null)
+    _rc=$?
+    if [ $_rc -ne 0 ] || [ -z "$EASYOKAPI_DOWNLOAD_TOKEN" ]; then
+        zenity --error \
+            --title="EasyOKAPI Setup" \
+            --text="A download token is required to install EasyOKAPI.\n\nInstallation cancelled." \
+            "${_wicon[@]}" 2>/dev/null
+        exit 1
+    fi
+elif command -v whiptail &>/dev/null; then
+    EASYOKAPI_DOWNLOAD_TOKEN=$(whiptail --passwordbox \
+        "Enter your EasyOKAPI download token:" 10 60 \
+        --title "EasyOKAPI Setup" 3>&1 1>&2 2>&3)
+    if [ -z "$EASYOKAPI_DOWNLOAD_TOKEN" ]; then
+        echo -e "  ${RED}A download token is required. Installation cancelled.${RESET}"
+        exit 1
+    fi
+else
+    echo -e "\n  ${BOLD}${CYAN}EasyOKAPI Setup${RESET}"
+    read -rsp "  Enter your EasyOKAPI download token: " EASYOKAPI_DOWNLOAD_TOKEN; echo
+    if [ -z "$EASYOKAPI_DOWNLOAD_TOKEN" ]; then
+        echo -e "  ${RED}A download token is required. Installation cancelled.${RESET}"
+        exit 1
+    fi
 fi
 
 # ── Write a desktop shortcut so the user can re-run setup easily ───────────────
 REAL_HOME="${HOME:-$(eval echo ~"$USER")}"
 DESKTOP_DIR="$REAL_HOME/Desktop"
 if [ -d "$DESKTOP_DIR" ]; then
-    DESKTOP_FILE="$DESKTOP_DIR/EasyOKAPI_Setup.desktop"
-    cat > "$DESKTOP_FILE" << DEOF
+    cat > "$DESKTOP_DIR/EasyOKAPI_Setup.desktop" << DEOF
 [Desktop Entry]
 Name=EasyOKAPI Setup
 Comment=Install HTBiotec EasyOKAPI biosensor application
@@ -50,23 +84,21 @@ Terminal=false
 Type=Application
 Categories=Science;
 DEOF
-    chmod +x "$DESKTOP_FILE"
+    chmod +x "$DESKTOP_DIR/EasyOKAPI_Setup.desktop"
 fi
 
-# ── Write a temp script that runs install.sh with display forwarded ────────────
-# Using a file avoids quoting hell when DISPLAY or paths contain special chars.
-DISP="${DISPLAY:-}"
-WDISP="${WAYLAND_DISPLAY:-}"
-XAUTH="${XAUTHORITY:-}"
+# ── Temp runner script — embeds token as env var, passed to sudo -E ────────────
+# File is chmod 600 (owner-read-only) and deleted when the install finishes.
 INSTALL_SH="$SCRIPT_DIR/install.sh"
-
 TMP_RUNNER=$(mktemp /tmp/easyokapi_setup_XXXXXX.sh)
-chmod +x "$TMP_RUNNER"
+chmod 600 "$TMP_RUNNER"
 
 cat > "$TMP_RUNNER" << EOF
 #!/bin/bash
-DISPLAY="$DISP" WAYLAND_DISPLAY="$WDISP" XAUTHORITY="$XAUTH" sudo -E bash "$INSTALL_SH"
+export EASYOKAPI_DOWNLOAD_TOKEN="$EASYOKAPI_DOWNLOAD_TOKEN"
+sudo -E bash "$INSTALL_SH"
 _status=\$?
+unset EASYOKAPI_DOWNLOAD_TOKEN
 echo ""
 if [ "\$_status" -eq 0 ]; then
     echo -e "  \033[1m\033[32m✔  EasyOKAPI installation complete.\033[0m"
@@ -101,7 +133,7 @@ if [ -n "$TERM_BIN" ]; then
         *)               "$TERM_BIN" -e "bash $TMP_RUNNER" ;;
     esac
 else
-    # No graphical terminal available — run directly in the current terminal.
+    # No graphical terminal — run directly in the current terminal.
     echo ""
     echo -e "  ${BOLD}${CYAN}No graphical terminal detected — running installer here.${RESET}"
     echo ""

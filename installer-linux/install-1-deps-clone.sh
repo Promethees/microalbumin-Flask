@@ -151,8 +151,14 @@ print_ok "Python $PYTHON_VERSION available."
 
 # ── Step 4: Prompt for EasyOKAPI download token ───────────────────────────────
 print_step "3 / 3  Downloading EasyOKAPI"
-prompt_input "EasyOKAPI Installer" "Enter your Generated EasyOKAPI Token:" "true"
-DOWNLOAD_TOKEN="$PROMPT_RESULT"
+if [ -n "${EASYOKAPI_DOWNLOAD_TOKEN:-}" ]; then
+    DOWNLOAD_TOKEN="$EASYOKAPI_DOWNLOAD_TOKEN"
+    unset EASYOKAPI_DOWNLOAD_TOKEN
+    print_ok "Download token received from setup launcher."
+else
+    prompt_input "EasyOKAPI Installer" "Enter your Generated EasyOKAPI Token:" "true"
+    DOWNLOAD_TOKEN="$PROMPT_RESULT"
+fi
 if [ -z "$DOWNLOAD_TOKEN" ]; then
     print_fail "EasyOKAPI token is required. Installation aborted."
     exit 1
