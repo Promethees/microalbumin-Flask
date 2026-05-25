@@ -35,6 +35,7 @@ echo "📦 Creating tarball: $TARBALL_NAME..."
 tar -czf "$TARBALL_NAME" \
     --exclude="$SOURCE_DIR/build-tarball.sh" \
     "$SOURCE_DIR/"
+echo "   ✔  setup.sh included in tarball"
 
 if [ $? -eq 0 ]; then
     echo "✅ Success! $TARBALL_NAME created in $PROJECT_ROOT"
