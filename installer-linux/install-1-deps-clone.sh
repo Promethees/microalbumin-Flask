@@ -31,7 +31,9 @@ prompt_input() {
     PROMPT_RESULT=""
     local _wicon=""
     [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
-    if command -v zenity &>/dev/null; then
+    local _has_display=0
+    { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && _has_display=1
+    if [ "$_has_display" = "1" ] && command -v zenity &>/dev/null; then
         if [ "$secret" = "true" ]; then
             PROMPT_RESULT=$(zenity --password --title="$title" ${_wicon} 2>/dev/null)
         else
@@ -56,7 +58,9 @@ prompt_confirm() {
     local title="$1" msg="$2"
     local _wicon=""
     [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
-    if command -v zenity &>/dev/null; then
+    local _has_display=0
+    { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && _has_display=1
+    if [ "$_has_display" = "1" ] && command -v zenity &>/dev/null; then
         zenity --question --title="$title" --text="$msg" ${_wicon} 2>/dev/null
         return $?
     elif command -v whiptail &>/dev/null; then
