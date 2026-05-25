@@ -26,26 +26,19 @@ echo ""
 exec > >(tee -a /tmp/easyokapi-install.log) 2>&1
 echo "Starting EasyOKAPI install script at $(date)"
 
-# ── Helper: GUI prompt fallback chain ────────────────────────────────────────
-# $OKAPI_ICON is set later (in the configuration section) once SCRIPT_DIR is known.
-# zenity receives it as --window-icon when available.
+# ── Terminal prompt helpers ───────────────────────────────────────────────────
+# install.sh always runs as root (enforced below). Root processes cannot use
+# the user's X11/Wayland display session — even with DISPLAY forwarded, the
+# compositor rejects root connections or renders a screenshot artifact.
+# All GUI interaction is handled by setup.sh as the regular user before sudo
+# is invoked. These helpers use whiptail (terminal TUI) or plain read only.
 
 # Usage: prompt_input <title> <message> <secret>
 #   Returns result in $PROMPT_RESULT
 prompt_input() {
     local title="$1" msg="$2" secret="${3:-false}"
     PROMPT_RESULT=""
-    local _wicon=""
-    [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
-    local _has_display=0
-    { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && _has_display=1
-    if [ "$_has_display" = "1" ] && command -v zenity &>/dev/null; then
-        if [ "$secret" = "true" ]; then
-            PROMPT_RESULT=$(zenity --password --title="$title" ${_wicon} 2>/dev/null)
-        else
-            PROMPT_RESULT=$(zenity --entry --title="$title" --text="$msg" ${_wicon} 2>/dev/null)
-        fi
-    elif command -v whiptail &>/dev/null; then
+    if command -v whiptail &>/dev/null; then
         if [ "$secret" = "true" ]; then
             PROMPT_RESULT=$(whiptail --passwordbox "$msg" 10 60 --title "$title" 3>&1 1>&2 2>&3)
         else
@@ -63,14 +56,7 @@ prompt_input() {
 # Usage: prompt_confirm <title> <message>  → returns 0 for Yes, 1 for No
 prompt_confirm() {
     local title="$1" msg="$2"
-    local _wicon=""
-    [ -n "${OKAPI_ICON:-}" ] && [ -f "${OKAPI_ICON}" ] && _wicon="--window-icon=${OKAPI_ICON}"
-    local _has_display=0
-    { [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; } && _has_display=1
-    if [ "$_has_display" = "1" ] && command -v zenity &>/dev/null; then
-        zenity --question --title="$title" --text="$msg" ${_wicon} 2>/dev/null
-        return $?
-    elif command -v whiptail &>/dev/null; then
+    if command -v whiptail &>/dev/null; then
         whiptail --yesno "$msg" 10 60 --title "$title" 3>&1 1>&2 2>&3
         return $?
     else
