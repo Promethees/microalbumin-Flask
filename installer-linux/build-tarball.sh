@@ -21,7 +21,7 @@ cd "$PROJECT_ROOT" || exit 1
 echo "🧹 Cleaning up previous build artifacts..."
 rm -f "$TARBALL_NAME"
 
-# ── Bundle the okapi mascot so zenity dialogs have a custom window icon ───────
+# ── Bundle the okapi mascot (used by setup_ui.py + zenity fallback) ──────────
 echo "📎 Bundling installer assets..."
 OKAPI_SRC="$PROJECT_ROOT/static/okapi.png"
 OKAPI_DST="$SCRIPT_DIR/okapi.png"
