@@ -35,6 +35,8 @@ generate_heavy_csv.py
 !guide_training.json
 !guide_translations/*.json
 
+!user_settings.json
+
 data/
 node_modules
 

@@ -4,6 +4,7 @@ import time
 import signal
 import threading
 import state
+import user_settings as _user_settings
 from file_path import DATA_ROOT, get_data_subfolders
 from range import get_range_input
 from mode import get_mode_input
@@ -54,6 +55,7 @@ def index():
     except:
         pass
 
+    user_settings = _user_settings.load()
     response = make_response(render_template('index.html',
                          title="Easy OKAPI",
                          data_root=DATA_ROOT,
@@ -66,7 +68,8 @@ def index():
                          cal_json_list=cal_json_list,
                          delimiter=state.delimiter,
                          production_mode=state.PRODUCTION_MODE,
-                         app_version=state.APP_VERSION))
+                         app_version=state.APP_VERSION,
+                         user_settings=user_settings))
     return response
 
 def delayed_termination():
@@ -121,6 +124,21 @@ def get_json_cal():
     os.makedirs(json_path, exist_ok=True)
     json_files = get_file_list(json_path, "*.json")
     return jsonify({'status': 'success', 'files': json_files})
+
+@core_bp.route('/settings', methods=['GET'])
+def get_settings():
+    return jsonify({'status': 'success', 'settings': _user_settings.load()})
+
+
+@core_bp.route('/settings', methods=['POST'])
+def post_settings():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'status': 'error', 'message': 'No JSON data'}), 400
+    if _user_settings.save(data):
+        return jsonify({'status': 'success'})
+    return jsonify({'status': 'error', 'message': 'Could not save settings'}), 500
+
 
 @core_bp.route('/get_report_subjects', methods=['GET'])
 def get_report_subjects():
