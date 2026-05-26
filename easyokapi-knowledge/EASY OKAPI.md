@@ -49,7 +49,7 @@ graph TD
 
 | Blueprint | File | Routes | Frontend Consumer |
 |---|---|---|---|
-| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_data_folders`, `/get_json_cal`, `/get_report_subjects` | `index.js`, `navigation.js`, `report.js` |
+| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_data_folders`, `/get_json_cal`, `/get_report_subjects`, `/settings` (GET+POST) | `index.js`, `navigation.js`, `report.js`, `init.js` |
 | `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/get_calibration_json_list`, `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js`, `report.js` |
 | `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
@@ -76,7 +76,8 @@ graph TD
 | `script_monitor.py` | `check_log_for_errors` — scans `log/script_logs.txt` for PyBadge errors |
 | `send_command.py` | `connect_to_device` (find PyBadge via serial), `send_command_and_wait_ack` (serial protocol) |
 | `ai_assistant.py` | Groq chat (`_groq_chat`, `chat_stream`), MCP tool engine, multilingual system prompts, `proxy_chat_stream()` for desktop proxy mode |
-| `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete Ollama keys on read |
+| `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete keys on read |
+| `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `default_mode`, `default_window_size`, `default_subfolder` |
 | `activation.py` | Reads/writes `activation.json`; `get_license_token()` and `AI_SERVICE_URL` constant for proxy mode |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
@@ -302,6 +303,7 @@ microalbumin-Flask/
 ├── log/                        # Script logs directory
 ├── report/                     # Saved HTML reports (by subject subdirectory)
 ├── ai_settings.json            # AI assistant settings (auto-created)
+├── user_settings.json          # User UI preferences (auto-created, gitignored)
 └── sample_data/
 ```
 
