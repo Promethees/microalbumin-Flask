@@ -37,3 +37,5 @@ generate_heavy_csv.py
 
 data/
 node_modules
+
+log/script_logs.txt
