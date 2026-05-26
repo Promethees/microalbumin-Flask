@@ -203,8 +203,18 @@ $(document).ready(function () {
     // Apply button text shrinking on page load
     setTimeout(() => shrinkAllButtonsToFit(), 100);
 
-    // Load data subfolders into the picker and selects
-    loadDataFolders();
+    // Load data subfolders into the picker and selects; auto-select saved preference
+    loadDataFolders().then(function () {
+        if (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.default_subfolder) {
+            const container = document.getElementById('data-folder-list');
+            if (container) {
+                const item = container.querySelector(
+                    `div[data-name="${CSS.escape(USER_SETTINGS.default_subfolder.toLowerCase())}"]`
+                );
+                if (item) item.click();
+            }
+        }
+    });
     if (typeof loadReportSubjectsForPicker === 'function') loadReportSubjectsForPicker();
 
     // Poll logs every 2 seconds if script is running
@@ -248,9 +258,15 @@ $(document).ready(function () {
             if (modeDiv.getAttribute('data-value') === "calibrate") {
                 $hidden(["num-sources-section"]);
             }
+            saveUserSetting('default_mode', modeDiv.getAttribute('data-value'));
             deselectFile();
             deselectFile("#json-table");
         });
+    });
+
+    document.getElementById('window-size')?.addEventListener('change', function () {
+        const ws = parseInt(this.value, 10);
+        if (!isNaN(ws) && ws >= 2) saveUserSetting('default_window_size', ws);
     });
 
     document.getElementById("cal-json-exp-section").addEventListener("change", () => {

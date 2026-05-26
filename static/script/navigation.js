@@ -68,6 +68,7 @@ async function selectDataFolder(name, path) {
     if (typeof window.showSpinner === 'function') window.showSpinner();
     await updateDirectory(path, true);
     if (typeof window.hideSpinner === 'function') window.hideSpinner();
+    if (typeof saveUserSetting === 'function') saveUserSetting('default_subfolder', name);
     blinkingItem("file-selection", 5000);
     scrollWhenVisible('file-selection');
 }

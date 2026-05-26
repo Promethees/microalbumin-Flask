@@ -23,12 +23,32 @@ function _syncToggleIcon(savedPref) {
     }
 }
 
-// On startup: apply saved preference or fall back to system preference.
+// Save a single key/value to the server-side user_settings.json (fire-and-forget).
+function saveUserSetting(key, value) {
+    fetch('/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value })
+    }).catch(() => {});
+}
+
+// On startup: apply saved localStorage preference → server preference → system default.
 (function initTheme() {
     const saved = localStorage.getItem('theme'); // 'light' | 'dark' | null
-    const isDark = saved !== null ? saved === 'dark' : _systemDark.matches;
+    let isDark, iconPref;
+    if (saved !== null) {
+        isDark = saved === 'dark';
+        iconPref = saved;
+    } else if (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.theme !== 'auto') {
+        isDark = USER_SETTINGS.theme === 'dark';
+        iconPref = USER_SETTINGS.theme;
+        localStorage.setItem('theme', USER_SETTINGS.theme);
+    } else {
+        isDark = _systemDark.matches;
+        iconPref = null;
+    }
     _applyTheme(isDark);
-    _syncToggleIcon(saved);
+    _syncToggleIcon(iconPref);
 })();
 
 // Follow system changes only when the user hasn't set a manual preference.
@@ -60,6 +80,7 @@ document.getElementById('toggleContainer').addEventListener('click', function ()
         _applyTheme(next === 'dark');
     }
     _syncToggleIcon(next === 'auto' ? null : next);
+    saveUserSetting('theme', next);
     toggleMode();
 });
 
@@ -490,9 +511,17 @@ document.addEventListener("DOMContentLoaded", () => {
 const modeDiv = document.getElementById('measurement-mode');
 const modeButtons = modeDiv.querySelectorAll('button[data-mode]');
 
-// Initialize by selecting the first button (or adjust logic as needed)
 if (modeButtons.length > 0) {
-    selectButton(modeButtons[0], modeButtons, modeDiv);
+    const preferredMode = (typeof USER_SETTINGS !== 'undefined') ? USER_SETTINGS.default_mode : null;
+    const defaultBtn = preferredMode
+        ? (Array.from(modeButtons).find(b => b.getAttribute('data-mode') === preferredMode) || modeButtons[0])
+        : modeButtons[0];
+    selectButton(defaultBtn, modeButtons, modeDiv);
+}
+
+const _wsInput = document.getElementById('window-size');
+if (_wsInput && typeof USER_SETTINGS !== 'undefined') {
+    _wsInput.value = USER_SETTINGS.default_window_size;
 }
 
 function selectButton(selectedButton, allButtons, div) {
