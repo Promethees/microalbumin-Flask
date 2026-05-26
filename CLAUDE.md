@@ -52,20 +52,20 @@ main.py (thin entry point)
         ├── file_routes.py    — CSV/JSON CRUD, export, merge, report CRUD
         ├── hardware_routes.py — HID subprocess control (run/check/terminate/logs)
         ├── math_routes.py    — server-side regression API
-        └── ai_routes.py      — AI assistant: chat, settings, Ollama status, model pull
+        └── ai_routes.py      — AI assistant: chat, settings, activation
 
 src/
   ├── state.py          ← global state singleton (process, paths, delimiter, PRODUCTION_MODE)
   ├── validators.py     ← @validate_json decorator for route input validation
   ├── math_ops.py       ← scipy/numpy regression (linear, poly, log, exp, Michaelis-Menten)
-  ├── ai_assistant.py   ← Ollama client, MCP tool engine, multilingual system prompts
+  ├── ai_assistant.py   ← Groq chat client, MCP tool engine, multilingual system prompts
   ├── ai_settings.py    ← AI settings persistence (ai_settings.json)
   └── routes/           ← blueprint modules (see above)
 
 static/script/
   ├── report.js         ← report generation + subject CRUD UI
   ├── user-guide.js     ← interactive spotlight user guide
-  └── ai-chat.js        ← floating AI chat widget (Ollama-powered, 6 languages)
+  └── ai-chat.js        ← floating AI chat widget (Groq-powered, 6 languages)
 
 report/                 ← saved HTML reports, organized by subject subdirectory
 ai_settings.json        ← AI assistant settings (auto-created on first run)

@@ -1,8 +1,8 @@
-# Local RAG Architecture — Customized User Guide
+# RAG Architecture — Customized User Guide
 
 ## Purpose
 
-This document describes the intended architecture for a **local Retrieval-Augmented Generation (RAG)** system that powers the AI-guided user guide in Easy OKAPI. It serves as the reference for both human developers and future AI agents implementing or extending this subsystem.
+This document describes the intended architecture for a **Retrieval-Augmented Generation (RAG)** system that powers the AI-guided user guide in Easy OKAPI. It serves as the reference for both human developers and future AI agents implementing or extending this subsystem.
 
 ---
 
@@ -38,7 +38,7 @@ The current system is a **keyword-based few-shot injection** pipeline. When a us
 
 ---
 
-## 2. Proposed: Local RAG Pipeline
+## 2. Proposed: RAG Pipeline
 
 The RAG system replaces (or augments as a fallback) the keyword scan with **semantic vector search**. Both the query and the guide knowledge base are embedded into the same vector space; retrieval finds semantically similar entries regardless of exact wording.
 
@@ -48,7 +48,7 @@ The RAG system replaces (or augments as a fallback) the keyword scan with **sema
 flowchart TD
     subgraph Offline ["Offline — Index Build (once, or on file change)"]
         GT["guide_training.json\n+ help_docs (strings)"]
-        EMB_OFF["Embedding Model\n(local: nomic-embed-text\nvia Ollama API)"]
+        EMB_OFF["Embedding Model\n(all-MiniLM-L6-v2\nvia sentence-transformers)"]
         VS["Vector Store\n(ChromaDB — local SQLite)"]
         GT -->|chunk + metadata| EMB_OFF
         EMB_OFF -->|float32 vectors| VS
@@ -60,7 +60,7 @@ flowchart TD
         SEARCH["Top-K Cosine Search\n(k=3 default)"]
         CTX["Retrieved chunks\n(steps + metadata)"]
         SYS["System Prompt\n+ injected context"]
-        LLM["Ollama LLM\n(qwen2.5:7b etc.)"]
+        LLM["Groq LLM\n(via proxy or dev-direct)"]
         RESP["Response\n± guide_action"]
         USER -->|raw text| EMB_ON
         EMB_ON -->|query vector| SEARCH
@@ -84,7 +84,7 @@ flowchart LR
 
     subgraph src/rag_guide.py ["src/rag_guide.py  (new)"]
         IDX["build_index()\nChunks all sources,\nembeds, upserts to ChromaDB"]
-        RET["retrieve(query, k)\nEmbeds query,\ncosinse search,\nreturns top-k docs"]
+        RET["retrieve(query, k)\nEmbeds query,\ncosine search,\nreturns top-k docs"]
         CHK["_needs_rebuild()\nCompares guide_training.json\nmtime to index timestamp"]
     end
 
@@ -152,17 +152,18 @@ microalbumin-Flask/
 
 `.rag_index/` is gitignored (auto-regenerated). Index is rebuilt when `guide_training.json` mtime changes or on first run.
 
-### 4.2 Embedding model selection
+### 4.2 Embedding model
 
-| Option | Library | Latency (per query) | Notes |
-|---|---|---|---|
-| `nomic-embed-text` via Ollama | `requests` | ~50–100 ms | Zero extra deps; requires Ollama running |
-| `all-MiniLM-L6-v2` via `sentence-transformers` | `sentence-transformers` | ~10–30 ms | Heavier install; no Ollama dependency |
-| `mxbai-embed-large` via Ollama | `requests` | ~100–200 ms | Higher quality, slower |
+**`all-MiniLM-L6-v2`** via `sentence-transformers` — runs locally, no external API call, no server dependency.
 
-**Recommended default:** `nomic-embed-text` via Ollama (reuses existing Ollama infrastructure, no new Python dependency).
+| Property | Value |
+|---|---|
+| Library | `sentence-transformers` |
+| Latency (per query) | ~10–30 ms |
+| Vector dimension | 384 |
+| Install | `pip install sentence-transformers` |
 
-**Fallback:** If Ollama is offline (embedding fails), `rag_guide.retrieve()` raises `EmbeddingUnavailableError`; `chat_stream()` falls back to `_match_guide_example()`.
+**Fallback:** If `sentence-transformers` is not installed (embedding fails), `rag_guide.retrieve()` raises `EmbeddingUnavailableError`; `chat_stream()` falls back to `_match_guide_example()`.
 
 ---
 
@@ -175,10 +176,10 @@ sequenceDiagram
     participant CS  as chat_stream()
     participant RAG as rag_guide.retrieve()
     participant KW  as _match_guide_example()
-    participant LLM as Ollama /api/chat
+    participant LLM as Groq (via proxy/dev)
 
     JS->>RT: POST /ai/chat {messages, language, ui_context}
-    RT->>CS: chat_stream(messages, language, url, model, ui_context)
+    RT->>CS: chat_stream(messages, language, ui_context)
 
     CS->>CS: out-of-scope filter (fast keyword)
     CS->>CS: report clarification check
@@ -187,13 +188,13 @@ sequenceDiagram
     alt RAG available
         RAG-->>CS: top-k chunks (steps JSON + descriptions)
         CS->>CS: format as RAG_CONTEXT block in system_prompt
-    else Ollama offline / RAG disabled
+    else sentence-transformers not installed / RAG disabled
         CS->>KW: _match_guide_example(query, ui_context)
         KW-->>CS: best keyword-matched example (or None)
         CS->>CS: format as FEW-SHOT HINT (existing logic)
     end
 
-    CS->>LLM: POST /api/chat {model, messages+context, tools}
+    CS->>LLM: chat request {model, messages+context, tools}
     LLM-->>CS: {message: {tool_calls or content}}
 
     alt tool_calls present
@@ -231,7 +232,6 @@ RAG settings are added to `ai_settings.json` and managed via `src/ai_settings.py
 ```json
 {
   "rag_enabled": true,
-  "rag_embedding_model": "nomic-embed-text",
   "rag_top_k": 3,
   "rag_score_threshold": 0.35
 }
@@ -247,21 +247,22 @@ RAG settings are added to `ai_settings.json` and managed via `src/ai_settings.py
 |---|---|
 | `src/rag_guide.py` | **New** — index build, retrieval, embedding calls |
 | `src/ai_assistant.py` | Import `rag_guide`; wrap `_match_guide_example` in RAG-first logic inside `chat_stream` |
-| `src/ai_settings.py` | Add `rag_enabled`, `rag_embedding_model`, `rag_top_k`, `rag_score_threshold` defaults |
-| `requirements.txt` | Add `chromadb` |
+| `src/ai_settings.py` | Add `rag_enabled`, `rag_top_k`, `rag_score_threshold` defaults |
+| `requirements.txt` | Add `chromadb`, `sentence-transformers` |
 | `easyokapi-knowledge/EASY OKAPI.md` | Add `rag_guide.py` to module table; add RAG settings to section 5.6 |
 | `Rule.md` | Add RAG coding rules (index path, fallback behaviour) |
 | `.gitignore` | Add `.rag_index/` |
 
 ---
 
-## 8. Constraints (from Rule.md)
+## 8. Constraints
 
-- **No cloud calls.** All embedding and LLM inference must go through the local Ollama endpoint (`ollama_url` from settings). No OpenAI, no Hugging Face Inference API.
+- **Embedding is local.** `sentence-transformers` runs on the user's machine — no cloud embedding API.
+- **LLM calls go through the existing Groq proxy.** No new AI service is introduced.
 - **No SocketIO / streaming from the index build.** Index build runs synchronously at startup (or lazily on first query); progress is logged, not streamed.
 - **Single-user.** No concurrency locking needed for the vector store beyond what ChromaDB provides internally.
 - **Static serving only.** No changes to JS bundle; all RAG logic is server-side Python.
-- **Graceful degradation.** If `chromadb` is not installed or Ollama is offline, the system must fall back silently to keyword matching — never crash.
+- **Graceful degradation.** If `chromadb` or `sentence-transformers` is not installed, the system must fall back silently to keyword matching — never crash.
 
 ---
 
@@ -270,7 +271,7 @@ RAG settings are added to `ai_settings.json` and managed via `src/ai_settings.py
 | Phase | Deliverable | Status |
 |---|---|---|
 | 0 | This architecture document | ✅ Done |
-| 1 | `src/rag_guide.py` — index build + Ollama embed | ⬜ Pending |
+| 1 | `src/rag_guide.py` — index build + sentence-transformers embed | ⬜ Pending |
 | 2 | Integrate into `chat_stream()` with fallback | ⬜ Pending |
 | 3 | `ai_settings.py` + `ai_settings.json` RAG keys | ⬜ Pending |
 | 4 | Settings UI in `ai-chat.js` (toggle RAG on/off) | ⬜ Pending |

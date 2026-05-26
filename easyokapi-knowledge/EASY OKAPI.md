@@ -53,7 +53,7 @@ graph TD
 | `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/get_calibration_json_list`, `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js`, `report.js` |
 | `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
-| `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/pull_model`, `/ai/pull_status` | `ai-chat.js` |
+| `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides` | `ai-chat.js` |
 
 * **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
 * **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init.
@@ -185,7 +185,7 @@ English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (j
   "first_run_shown": false
 }
 ```
-`preferred_languages` is an array of 1–6 language codes. The in-app language button cycles through the selected languages. Files that still contain the obsolete `preferred_language` string or `model`/`ollama_url` keys are silently migrated/stripped on read by `ai_settings.py`.
+`preferred_languages` is an array of 1–6 language codes. The in-app language button cycles through the selected languages. Files that still contain the obsolete `preferred_language` string key are silently migrated on read by `ai_settings.py`.
 
 ### 5.7 Activation file (`activation.json`)
 ```json
@@ -313,7 +313,7 @@ A local Retrieval-Augmented Generation pipeline is planned to replace the curren
 
 **`easyokapi-knowledge/RAG-USER-GUIDE.md`**
 
-Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25`) reading `guide_training.json`. Planned replacement: semantic vector search via ChromaDB + `nomic-embed-text` through Ollama, implemented in `src/rag_guide.py` (not yet created).
+Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25`) reading `guide_training.json`. Planned replacement: semantic vector search via ChromaDB with a cloud-compatible embedding model, implemented in `src/rag_guide.py` (not yet created).
 
 ---
 
