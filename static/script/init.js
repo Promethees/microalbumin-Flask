@@ -538,3 +538,95 @@ const calButtons = calDiv.querySelectorAll('button[data-mode]');
 if (calButtons.length > 0) {
     selectButton(calButtons[0], calButtons, calDiv);
 }
+
+// Settings modal
+document.getElementById('settingsBtn').addEventListener('click', async function () {
+    // Fetch current settings and available subfolders in parallel
+    const [settingsRes, foldersRes] = await Promise.all([
+        fetch('/settings').then(r => r.json()).catch(() => null),
+        fetch('/get_data_folders').then(r => r.json()).catch(() => [])
+    ]);
+
+    const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? USER_SETTINGS : {});
+    const folders = Array.isArray(foldersRes) ? foldersRes : [];
+
+    const subfolderOptions = folders.map(f =>
+        `<option value="${f.name}" ${s.default_subfolder === f.name ? 'selected' : ''}>${f.name}</option>`
+    ).join('');
+
+    const { value: formValues, isConfirmed } = await Swal.fire({
+        title: 'App Settings',
+        width: 420,
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:14px; padding:4px 0;">
+                <label style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="font-weight:600;">Theme</span>
+                    <select id="swal-theme" class="swal2-input" style="margin:0; width:100%;">
+                        <option value="light" ${s.theme === 'light' ? 'selected' : ''}>Light</option>
+                        <option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>Dark</option>
+                        <option value="auto" ${s.theme === 'auto' ? 'selected' : ''}>Auto (system)</option>
+                    </select>
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="font-weight:600;">Default mode</span>
+                    <select id="swal-mode" class="swal2-input" style="margin:0; width:100%;">
+                        <option value="kinetics" ${s.default_mode === 'kinetics' ? 'selected' : ''}>Kinetics</option>
+                        <option value="point" ${s.default_mode === 'point' ? 'selected' : ''}>Point</option>
+                        <option value="calibrate" ${s.default_mode === 'calibrate' ? 'selected' : ''}>Calibrate</option>
+                    </select>
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="font-weight:600;">Default window size</span>
+                    <input id="swal-window-size" type="number" min="2" class="swal2-input" style="margin:0; width:100%;" value="${s.default_window_size || 4}">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="font-weight:600;">Default subfolder</span>
+                    <select id="swal-subfolder" class="swal2-input" style="margin:0; width:100%;">
+                        <option value="" ${!s.default_subfolder ? 'selected' : ''}>(none)</option>
+                        ${subfolderOptions}
+                    </select>
+                </label>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        preConfirm: () => ({
+            theme: document.getElementById('swal-theme').value,
+            default_mode: document.getElementById('swal-mode').value,
+            default_window_size: parseInt(document.getElementById('swal-window-size').value, 10),
+            default_subfolder: document.getElementById('swal-subfolder').value || null,
+        })
+    });
+
+    if (!isConfirmed || !formValues) return;
+
+    const ok = await fetch('/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formValues)
+    }).then(r => r.ok).catch(() => false);
+
+    if (!ok) {
+        Swal.fire('Error', 'Could not save settings.', 'error');
+        return;
+    }
+
+    // Apply theme change immediately
+    if (formValues.theme === 'auto') {
+        localStorage.removeItem('theme');
+        _applyTheme(_systemDark.matches);
+        _syncToggleIcon(null);
+    } else {
+        localStorage.setItem('theme', formValues.theme);
+        _applyTheme(formValues.theme === 'dark');
+        _syncToggleIcon(formValues.theme);
+    }
+
+    // Apply window size immediately
+    const wsInput = document.getElementById('window-size');
+    if (wsInput) wsInput.value = formValues.default_window_size;
+
+    // Apply mode immediately
+    const allModeBtns = modeDiv.querySelectorAll('button[data-mode]');
+    const targetBtn = Array.from(allModeBtns).find(b => b.getAttribute('data-mode') === formValues.default_mode);
+    if (targetBtn) selectButton(targetBtn, allModeBtns, modeDiv);
+})

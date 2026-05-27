@@ -604,6 +604,35 @@ body.dark .toggle-container {
     transform: translateX(30px);
 }
 
+.settings-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #e5e7eb;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.settings-btn:hover {
+    background: #d1d5db;
+}
+
+body.dark .settings-btn {
+    background: #374151;
+}
+
+body.dark .settings-btn:hover {
+    background: #4b5563;
+}
+
 /* ==========================================================================
    Initial Prompt & Welcome Screen
    ========================================================================== */
