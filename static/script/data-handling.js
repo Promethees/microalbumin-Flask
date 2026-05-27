@@ -1694,12 +1694,15 @@ async function saveRangeCsv() {
     const rangeStart = getValFloat('range-value-start');
     const rangeEnd = getValFloat('range-value-end');
     const unitLabel = unit.slice(0, -1);
+    const stem = AppState.currentFile.replace(/\.csv$/i, '');
+    const defaultRangeName = `${stem}_range_${rangeStart}-${rangeEnd}`;
 
     const { value: saveName } = await Swal.fire({
         title: 'Save Range to CSV',
         input: 'text',
         inputLabel: `Rows from ${rangeStart} to ${rangeEnd} ${unitLabel} — save as:`,
         inputPlaceholder: 'filename (without .csv)',
+        inputValue: defaultRangeName,
         showCancelButton: true,
         inputValidator: v => (!v || !v.trim()) ? 'Filename is required' : null
     });
