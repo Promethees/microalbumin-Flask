@@ -93,3 +93,18 @@ After any significant change, update:
 - `Rule.md` if you introduce new behavioral constraints or anti-patterns.
 - `easyokapi-knowledge/EASY OKAPI.md` if you add files, routes, modules, or change architecture.
 - `CLAUDE.md` (this file) if the at-a-glance summary above becomes stale.
+
+---
+
+## Settings Coverage Rule
+
+Whenever a new feature introduces a user-facing behaviour that could reasonably vary per machine or per preference, ask: **should this be a user setting?**
+
+Checklist to run mentally for every new feature:
+- Does it have a hardcoded value a user might want to change (size, count, threshold, default state)?
+- Does it default a UI element to a particular state (collapsed/expanded, mode, sort order)?
+- Does it control how much data is shown or how the layout behaves?
+
+If any answer is yes, add the setting to `src/user_settings.py` (`DEFAULTS` + validation in `save()`), expose it in the settings modal in `static/script/init.js` (`SETTINGS_DEFAULTS` + form field), apply it on page load (via `USER_SETTINGS` in `index.html` or `init.js`), and add backend tests in `tests/test_user_settings.py`.
+
+**Anti-pattern**: do not hardcode UI dimensions, row limits, default states, or feature flags directly in CSS or JS when a user might reasonably want a different value on their machine.
