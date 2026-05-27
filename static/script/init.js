@@ -548,7 +548,7 @@ const SETTINGS_DEFAULTS = {
     file_table_height: 240,
     max_csv_rows: 0,
     max_json_rows: 0,
-    max_event_log_entries: 200,
+    event_log_retention_days: 30,
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -587,7 +587,7 @@ function _buildSettingsHTML(s, folders) {
         ${row('Max CSV files shown', '0 = show all', num('swal-max-csv', 0, s.max_csv_rows || 0))}
         ${row('Max calibration JSON files shown', '0 = show all', num('swal-max-json', 0, s.max_json_rows || 0))}
         <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Activity Log</p>
-        ${row('Max event log recordings', '0 = keep all; oldest entries are dropped when the limit is reached', num('swal-max-events', 0, s.max_event_log_entries ?? 200))}
+        ${row('Log retention (days)', '0 = keep forever; date folders older than this are removed on next launch', num('swal-retention-days', 0, s.event_log_retention_days ?? 30))}
     </div>`;
 }
 
@@ -600,7 +600,7 @@ function _readSettingsForm() {
         default_subfolder: document.getElementById('swal-subfolder').value || null,
         max_csv_rows: Math.max(0, parseInt(document.getElementById('swal-max-csv').value, 10) || 0),
         max_json_rows: Math.max(0, parseInt(document.getElementById('swal-max-json').value, 10) || 0),
-        max_event_log_entries: Math.max(0, parseInt(document.getElementById('swal-max-events').value, 10) || 0),
+        event_log_retention_days: Math.max(0, parseInt(document.getElementById('swal-retention-days').value, 10) || 0),
     };
 }
 
@@ -612,7 +612,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-subfolder').value = s.default_subfolder || '';
     document.getElementById('swal-max-csv').value = s.max_csv_rows || 0;
     document.getElementById('swal-max-json').value = s.max_json_rows || 0;
-    document.getElementById('swal-max-events').value = s.max_event_log_entries ?? 200;
+    document.getElementById('swal-retention-days').value = s.event_log_retention_days ?? 30;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
