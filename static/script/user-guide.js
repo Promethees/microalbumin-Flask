@@ -273,11 +273,16 @@ class UserGuide {
             return;
         }
 
-        // Report mode has its own layout — no calibration JSON panel, no data display section
+        // Report mode has its own layout — no calibration JSON panel, no data display section.
+        // Limit common steps to header/navigation elements; colorimeter controls are irrelevant here.
         if (currentMode === 'report') {
             const reportConsole = document.getElementById('report-console-section');
             const isReportConsoleVisible = reportConsole && !reportConsole.classList.contains('hidden');
-            this.steps = [...this.stepDefinitions.common];
+            const REPORT_HEADER_SELECTORS = new Set([
+                '#logo', '#toggleContainer', '#settingsBtn', '#meas-mode-section',
+                '#options-section', '#shutdown-btn', '#main-directory-section', '#data-folder-list'
+            ]);
+            this.steps = this.stepDefinitions.common.filter(s => REPORT_HEADER_SELECTORS.has(s.target));
             this.steps.push(...this.stepDefinitions.fileSelection);
             if (isReportConsoleVisible) {
                 this.steps.push(...this.stepDefinitions.report);
@@ -296,6 +301,20 @@ class UserGuide {
         } else {
             this.steps = this.getModeSpecificSteps(currentMode);
         }
+    }
+
+    /**
+     * Filter out steps that only exist when Split by Sources is active.
+     * #full-display-source-N and quantity-checkboxes-* elements are only rendered
+     * by createChartSection() in split mode; they don't exist in the default grouped view.
+     */
+    _filterSplitOnlySteps(part1) {
+        const isSplitMode = document.getElementById('split-source')?.checked ?? false;
+        if (isSplitMode) return part1;
+        return part1.filter(s =>
+            s.target !== '#full-display-source-0' &&
+            !s.target.includes('quantity-checkboxes')
+        );
     }
 
     /**
@@ -323,7 +342,7 @@ class UserGuide {
             return []; // handled in defineSteps
         } else if (mode === 'kinetics') {
             return buildSteps(
-                this.stepDefinitions.kinetics.part1,
+                this._filterSplitOnlySteps(this.stepDefinitions.kinetics.part1),
                 this.stepDefinitions.kinetics.deriveConPart,
                 this.stepDefinitions.kinetics.secondPart,
                 this.stepDefinitions.kinetics.jsonTable,
@@ -332,7 +351,7 @@ class UserGuide {
         } else if (mode === 'point') {
             // Reuse secondPart and others from kinetics where they are identical in content
             return buildSteps(
-                this.stepDefinitions.point.part1,
+                this._filterSplitOnlySteps(this.stepDefinitions.point.part1),
                 this.stepDefinitions.kinetics.deriveConPart, // Same content
                 this.stepDefinitions.kinetics.secondPart, // Same content
                 this.stepDefinitions.kinetics.jsonTable, // Same content
@@ -493,12 +512,15 @@ class UserGuide {
         if (targetElement) {
             setupStepWithElement(targetElement);
             if (step.scrollIntoView) {
-                // Using 'auto' for instant scrolling works better with subsequent observer updates
-                const scrollBehavior = 'smooth';
-                targetElement.scrollIntoView({ behavior: scrollBehavior, block: 'center' });
+                targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+            this.updateTooltip(step, stepIndex);
         } else {
+            // Show a placeholder tooltip while polling so the user can navigate
+            // back with Previous rather than being stuck on a blank screen.
             console.warn(`Target element not found initially: ${step.target}. Waiting...`);
+            this._updateTooltipSearching(step, stepIndex);
+
             // Poll for element appearance (up to 3 seconds)
             let checkCount = 0;
             const maxChecks = 30; // 3 seconds total
@@ -510,6 +532,7 @@ class UserGuide {
                     if (step.scrollIntoView) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
+                    this.updateTooltip(step, stepIndex);
                 } else {
                     checkCount++;
                     if (checkCount >= maxChecks) {
@@ -528,8 +551,6 @@ class UserGuide {
             // Store interval to clear it if we stop/move
             this.waitInterval = checkInterval;
         }
-
-        this.updateTooltip(step, stepIndex);
     }
 
     /**
@@ -599,14 +620,16 @@ class UserGuide {
         // If targetElement is null (unexpected), return
         if (!targetElement) return;
 
-        const { isCheckbox, isSelect, isButton, isClickable, isTableRow, isContainer } = this.determineElementType(targetElement);
+        const { isCheckbox, isSelect, isButton, isClickable, isTableRow, isContainer, isLabel } = this.determineElementType(targetElement);
 
         let delay = 100;
 
         if (isButton || isClickable) delay = 200;
-        else if (isCheckbox) delay = 150; // Increased to match original code update
-        else if (isContainer && e.stopPropagation) e.stopPropagation();
-        else if (e.stopPropagation) e.stopPropagation(); // formatted default
+        else if (isCheckbox) delay = 150;
+        else if (isLabel) delay = 400; // labels wrap checkboxes; allow toggleMode() DOM re-render
+
+        if (isContainer && e.stopPropagation) e.stopPropagation();
+        else if (e.stopPropagation) e.stopPropagation();
 
         setTimeout(() => {
             this.proceedToNextStep();
@@ -656,8 +679,16 @@ class UserGuide {
         const rect = element.getBoundingClientRect();
         const padding = 10;
 
-        // Ensure rect is valid (non-zero if visible)
-        if (rect.width === 0 && rect.height === 0) return;
+        // Element found in DOM but not visible (e.g. display:none).
+        // Hide the spotlight and centre the tooltip so the user can still read
+        // the description and navigate with Next/Previous.
+        if (rect.width === 0 && rect.height === 0) {
+            this.spotlight.classList.remove('active');
+            const ttRect = this.tooltip.getBoundingClientRect();
+            this.tooltip.style.top = `${window.scrollY + (window.innerHeight - ttRect.height) / 2}px`;
+            this.tooltip.style.left = `${(window.innerWidth - ttRect.width) / 2}px`;
+            return;
+        }
 
         this.spotlight.style.top = `${rect.top - padding + window.scrollY}px`;
         this.spotlight.style.left = `${rect.left - padding}px`;
@@ -733,7 +764,41 @@ class UserGuide {
 
         prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
         nextBtn.style.display = (stepIndex < this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
-        finishBtn.style.display = (stepIndex === this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
+
+        // Always offer an exit on the last step.
+        // Label it "Skip" when the step requires interaction so the user knows
+        // they are bypassing the action rather than completing the guide.
+        const isLast = stepIndex === this.steps.length - 1;
+        finishBtn.style.display = isLast ? 'inline-block' : 'none';
+        finishBtn.textContent = (isLast && !step.skipInteraction) ? 'Skip' : 'Finish';
+    }
+
+    /**
+     * Show a loading placeholder in the tooltip while polling for a dynamic element.
+     * Keeps the step counter and title visible and enables Previous so the user
+     * is never stuck on a blank screen.
+     */
+    _updateTooltipSearching(step, stepIndex) {
+        const counter = this.tooltip.querySelector('.tooltip-step-counter');
+        const title = this.tooltip.querySelector('.tooltip-title');
+        const description = this.tooltip.querySelector('.tooltip-description');
+        const prevBtn = this.tooltip.querySelector('.tooltip-prev-btn');
+        const nextBtn = this.tooltip.querySelector('.tooltip-next-btn');
+        const finishBtn = this.tooltip.querySelector('.tooltip-finish-btn');
+
+        counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
+        title.textContent = step.title;
+        description.textContent = 'Loading…';
+
+        prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
+        nextBtn.style.display = 'none';
+        finishBtn.style.display = 'none';
+
+        this.tooltip.classList.add('active');
+        // Centre the tooltip while there is nothing to point at
+        const ttRect = this.tooltip.getBoundingClientRect();
+        this.tooltip.style.top = `${window.scrollY + (window.innerHeight - ttRect.height) / 2}px`;
+        this.tooltip.style.left = `${(window.innerWidth - ttRect.width) / 2}px`;
     }
 
     /**
@@ -833,14 +898,14 @@ class UserGuide {
                     ...d.common,
                     d.nonCalibrate,
                     ...d.fileSelection,
-                    ...(dataLoaded ? [...d.kinetics.part1, ...d.kinetics.secondPart, d.kinetics.measurementMode] : []),
+                    ...(dataLoaded ? [...this._filterSplitOnlySteps(d.kinetics.part1), ...d.kinetics.secondPart, d.kinetics.measurementMode] : []),
                 ];
             case 'point':
                 return [
                     ...d.common,
                     d.nonCalibrate,
                     ...d.fileSelection,
-                    ...(dataLoaded ? [...d.point.part1, ...d.kinetics.secondPart, d.kinetics.measurementMode] : []),
+                    ...(dataLoaded ? [...this._filterSplitOnlySteps(d.point.part1), ...d.kinetics.secondPart, d.kinetics.measurementMode] : []),
                 ];
             case 'calibrate_kinetics':
                 return [
