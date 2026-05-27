@@ -5,6 +5,7 @@ import signal
 import threading
 import state
 import user_settings as _user_settings
+import event_logger
 from file_path import DATA_ROOT, get_data_subfolders
 from range import get_range_input
 from mode import get_mode_input
@@ -55,6 +56,7 @@ def index():
     except:
         pass
 
+    event_logger.append('session', 'start')
     user_settings = _user_settings.load()
     response = make_response(render_template('index.html',
                          title="Easy OKAPI",
@@ -138,6 +140,22 @@ def post_settings():
     if _user_settings.save(data):
         return jsonify({'status': 'success'})
     return jsonify({'status': 'error', 'message': 'Could not save settings'}), 500
+
+
+@core_bp.route('/event_log', methods=['GET'])
+def get_event_log():
+    return jsonify({'status': 'success', 'events': event_logger.read_all()})
+
+
+@core_bp.route('/event_log', methods=['POST'])
+def post_event_log():
+    data = request.get_json(silent=True) or {}
+    event_type = str(data.get('type', '')).strip()
+    action = str(data.get('action', '')).strip()
+    if not event_type or not action:
+        return jsonify({'status': 'error', 'message': 'type and action are required'}), 400
+    event_logger.append(event_type, action, data.get('details'))
+    return jsonify({'status': 'success'})
 
 
 @core_bp.route('/get_report_subjects', methods=['GET'])
