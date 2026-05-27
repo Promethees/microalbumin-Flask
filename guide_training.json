@@ -1851,6 +1851,120 @@
           "skipInteraction": true
         }
       ]
+    },
+    {
+      "id": "app_settings",
+      "queries": [
+        "app settings",
+        "open settings",
+        "change settings",
+        "settings panel",
+        "settings modal",
+        "configure the app",
+        "customise the app",
+        "customize the app",
+        "default mode setting",
+        "change default mode",
+        "change theme setting",
+        "change window size default",
+        "default subfolder setting",
+        "file table height",
+        "chart height setting",
+        "log display height",
+        "collapse log by default",
+        "default notify",
+        "default timeout setting",
+        "default interval setting",
+        "default normalize",
+        "default split sources",
+        "expand range by default",
+        "expand export by default",
+        "max csv files shown",
+        "max json files shown",
+        "activity log retention",
+        "gear icon",
+        "settings button"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#settingsBtn",
+          "title": "App Settings",
+          "description": "Click the ⚙️ gear icon to open the App Settings panel. From here you can customise: theme, default measurement mode, window size, default subfolder, file/JSON table row limits, activity log retention, colorimeter reading defaults (timeout, interval, notify, log height), and data display defaults (chart height, normalise, split sources, panel expand states).",
+          "position": "bottom",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "save_range_csv",
+      "queries": [
+        "save range",
+        "save display range",
+        "export range",
+        "save subset of data",
+        "trim data to range",
+        "cut data to range",
+        "save portion of csv",
+        "export time range",
+        "save time window",
+        "save data between times",
+        "save range to file",
+        "save filtered data"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#range-display",
+          "title": "Set the Time Range",
+          "description": "First set the From and To values to the time window you want to save. Choose the matching time unit (seconds, minutes, or hours).",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#save-range-btn",
+          "title": "Save Range to CSV",
+          "description": "Click '💾 Save Range' to export only the rows within the current display window to a new CSV file. You will be prompted to enter a filename before saving.",
+          "position": "bottom",
+          "skipInteraction": false
+        }
+      ]
+    },
+    {
+      "id": "save_linearity_range",
+      "queries": [
+        "save linearity range",
+        "export linearity range",
+        "linearity range",
+        "save linear phase",
+        "export linear phase",
+        "save linearity phase rows",
+        "linearity csv",
+        "linear portion of data",
+        "save linear section",
+        "export linear section"
+      ],
+      "conditions": {
+        "mode": "kinetics"
+      },
+      "requires_data_loaded": true,
+      "steps": [
+        {
+          "target": "#plot-button-source-0",
+          "title": "Open the Analysis Panel",
+          "description": "Click the +/− toggle to expand the kinetics analysis panel for a source. The Save Linearity Range button appears here when a linear phase is automatically detected in your data.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "button[title=\"Save the linearity range rows for this source to a new CSV file\"]",
+          "title": "Save Linearity Range",
+          "description": "Click '📐 Save Linearity Range' to export just the rows that fall within the detected linear phase of this source to a new CSV file. The filename is pre-filled based on the current file and source index. This subset is ideal input for building a calibration standard curve.",
+          "position": "right",
+          "skipInteraction": false
+        }
+      ]
     }
   ]
 }
