@@ -186,6 +186,36 @@ class TestSave:
         saved = json.loads((tmp_path / "user_settings.json").read_text())
         assert saved["max_json_rows"] == user_settings.DEFAULTS["max_json_rows"]
 
+    def test_saves_valid_max_event_log_entries(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"max_event_log_entries": 500}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_event_log_entries"] == 500
+
+    def test_saves_max_event_log_entries_zero(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_event_log_entries": 100})
+        assert user_settings.save({"max_event_log_entries": 0}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_event_log_entries"] == 0
+
+    def test_rejects_negative_max_event_log_entries(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_event_log_entries": -1})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_event_log_entries"] == user_settings.DEFAULTS["max_event_log_entries"]
+
+    def test_rejects_non_numeric_max_event_log_entries(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_event_log_entries": "all"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_event_log_entries"] == user_settings.DEFAULTS["max_event_log_entries"]
+
+    def test_max_event_log_entries_default_is_200(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        result = user_settings.load()
+        assert result["max_event_log_entries"] == 200
+
 
 # ---------------------------------------------------------------------------
 # GET /settings route
