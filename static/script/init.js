@@ -524,6 +524,27 @@ if (_wsInput && typeof USER_SETTINGS !== 'undefined') {
     _wsInput.value = USER_SETTINGS.default_window_size;
 }
 
+if (typeof USER_SETTINGS !== 'undefined') {
+    const _chartEl = document.getElementById('chart-container');
+    if (_chartEl) _chartEl.style.maxHeight = (USER_SETTINGS.chart_height || 600) + 'px';
+    const _normEl = document.getElementById('normalize-mode');
+    if (_normEl && USER_SETTINGS.default_normalize) _normEl.checked = true;
+    const _splitEl = document.getElementById('split-source');
+    if (_splitEl && USER_SETTINGS.default_split_sources) _splitEl.checked = true;
+    if (USER_SETTINGS.range_expanded_default) {
+        const _rc = document.getElementById('range-collapse');
+        const _rv = document.getElementById('range-chevron');
+        if (_rc) _rc.classList.remove('collapsed');
+        if (_rv) _rv.classList.remove('collapsed-chevron');
+    }
+    if (USER_SETTINGS.export_expanded_default) {
+        const _ec = document.getElementById('export-analysis-collapse');
+        const _ev = document.getElementById('export-analysis-chevron');
+        if (_ec) _ec.classList.remove('collapsed');
+        if (_ev) _ev.classList.remove('collapsed-chevron');
+    }
+}
+
 function selectButton(selectedButton, allButtons, div) {
     div.setAttribute('data-value', selectedButton.getAttribute('data-mode'));
     allButtons.forEach(button => {
@@ -549,6 +570,11 @@ const SETTINGS_DEFAULTS = {
     max_csv_rows: 0,
     max_json_rows: 0,
     event_log_retention_days: 30,
+    chart_height: 600,
+    default_normalize: false,
+    default_split_sources: false,
+    range_expanded_default: false,
+    export_expanded_default: false,
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -567,6 +593,11 @@ function _buildSettingsHTML(s, folders) {
         `<select id="${id}" class="swal2-input">${opts}</select>`;
     const num = (id, min, val) =>
         `<input id="${id}" type="number" min="${min}" class="swal2-input" value="${val}">`;
+    const rowCheck = (label, id, val) => `
+        <label class="sm-row sm-row--check">
+            <input type="checkbox" id="${id}" ${val ? 'checked' : ''}>
+            <span class="sm-label">${label}</span>
+        </label>`;
     const rowLimit = (label, inputId, checkId, val, checkLabel = 'Show all') => {
         const isAll = val === 0;
         return `
@@ -612,6 +643,16 @@ function _buildSettingsHTML(s, folders) {
             <p class="sm-section-title">Activity Log</p>
             ${rowLimit('Log retention (days)', 'swal-retention-days', 'swal-retention-forever', s.event_log_retention_days === 0 ? 0 : (s.event_log_retention_days ?? 30), 'Keep forever')}
         </div>
+        <div class="sm-section sm-section--full">
+            <p class="sm-section-title">Data Display</p>
+            <div class="sm-fields-grid">
+                ${row('Chart max height', 'px (min 200)', num('swal-chart-height', 200, s.chart_height || 600))}
+                ${rowCheck('Normalize data by default', 'swal-normalize', s.default_normalize)}
+                ${rowCheck('Split by sources by default', 'swal-split-sources', s.default_split_sources)}
+                ${rowCheck('Expand time range panel by default', 'swal-range-expanded', s.range_expanded_default)}
+                ${rowCheck('Expand export panel by default', 'swal-export-expanded', s.export_expanded_default)}
+            </div>
+        </div>
     </div>`;
 }
 
@@ -625,6 +666,11 @@ function _readSettingsForm() {
         max_csv_rows: document.getElementById('swal-max-csv-all').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-max-csv').value, 10) || 1),
         max_json_rows: document.getElementById('swal-max-json-all').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-max-json').value, 10) || 1),
         event_log_retention_days: document.getElementById('swal-retention-forever').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-retention-days').value, 10) || 1),
+        chart_height: Math.max(200, parseInt(document.getElementById('swal-chart-height').value, 10) || 600),
+        default_normalize: document.getElementById('swal-normalize').checked,
+        default_split_sources: document.getElementById('swal-split-sources').checked,
+        range_expanded_default: document.getElementById('swal-range-expanded').checked,
+        export_expanded_default: document.getElementById('swal-export-expanded').checked,
     };
 }
 
@@ -646,6 +692,11 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-retention-forever').checked = retForever;
     document.getElementById('swal-retention-days').disabled = retForever;
     document.getElementById('swal-retention-days').value = retForever ? '' : (s.event_log_retention_days ?? 30);
+    document.getElementById('swal-chart-height').value = s.chart_height || 600;
+    document.getElementById('swal-normalize').checked = !!s.default_normalize;
+    document.getElementById('swal-split-sources').checked = !!s.default_split_sources;
+    document.getElementById('swal-range-expanded').checked = !!s.range_expanded_default;
+    document.getElementById('swal-export-expanded').checked = !!s.export_expanded_default;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
@@ -713,6 +764,14 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     const allModeBtns = modeDiv.querySelectorAll('button[data-mode]');
     const targetBtn = Array.from(allModeBtns).find(b => b.getAttribute('data-mode') === formValues.default_mode);
     if (targetBtn) selectButton(targetBtn, allModeBtns, modeDiv);
+
+    // Apply chart height
+    const chartEl = document.getElementById('chart-container');
+    if (chartEl) chartEl.style.maxHeight = (formValues.chart_height || 600) + 'px';
+
+    // Apply normalize (live; does not retrigger a plot redraw on its own)
+    const normEl = document.getElementById('normalize-mode');
+    if (normEl) normEl.checked = !!formValues.default_normalize;
 
     // Re-render file tables with updated row limits (if a folder is loaded)
     if (typeof updateDirectory === 'function' && AppState.currentDirectory) {

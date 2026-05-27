@@ -14,6 +14,11 @@ DEFAULTS = {
     "max_csv_rows": 0,
     "max_json_rows": 0,
     "event_log_retention_days": 30,
+    "chart_height": 600,
+    "default_normalize": False,
+    "default_split_sources": False,
+    "range_expanded_default": False,
+    "export_expanded_default": False,
 }
 
 
@@ -80,6 +85,17 @@ def save(updates: dict) -> bool:
                 current["event_log_retention_days"] = n
         except (ValueError, TypeError):
             pass
+    if "chart_height" in updates:
+        try:
+            h = int(updates["chart_height"])
+            if h >= 200:
+                current["chart_height"] = h
+        except (ValueError, TypeError):
+            pass
+    for bool_key in ("default_normalize", "default_split_sources",
+                     "range_expanded_default", "export_expanded_default"):
+        if bool_key in updates:
+            current[bool_key] = bool(updates[bool_key])
     try:
         with open(_path(), "w", encoding="utf-8") as f:
             json.dump(current, f, indent=2)
