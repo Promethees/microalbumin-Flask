@@ -13,7 +13,7 @@ DEFAULTS = {
     "file_table_height": 240,
     "max_csv_rows": 0,
     "max_json_rows": 0,
-    "max_event_log_entries": 200,
+    "event_log_retention_days": 30,
 }
 
 
@@ -73,11 +73,11 @@ def save(updates: dict) -> bool:
                 current["max_json_rows"] = n
         except (ValueError, TypeError):
             pass
-    if "max_event_log_entries" in updates:
+    if "event_log_retention_days" in updates:
         try:
-            n = int(updates["max_event_log_entries"])
+            n = int(updates["event_log_retention_days"])
             if n >= 0:
-                current["max_event_log_entries"] = n
+                current["event_log_retention_days"] = n
         except (ValueError, TypeError):
             pass
     try:

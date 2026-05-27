@@ -1,14 +1,24 @@
 import json
 import os
+import shutil
 import time
+from datetime import date, timedelta
+
 import state
 import user_settings
 
-_LOG_FILENAME = "event_log.jsonl"
+# Set once at module import (= app startup). All events from this process
+# write to the same session file: log/events/YYYY-MM-DD/HH-MM-SS.jsonl
+_SESSION_DATE = time.strftime("%Y-%m-%d")
+_SESSION_START = time.strftime("%H-%M-%S")
 
 
-def _log_path():
-    return os.path.join(state.script_dir, "log", _LOG_FILENAME)
+def _events_root() -> str:
+    return os.path.join(state.script_dir, "log", "events")
+
+
+def _session_file() -> str:
+    return os.path.join(_events_root(), _SESSION_DATE, f"{_SESSION_START}.jsonl")
 
 
 def append(event_type: str, action: str, details: dict = None) -> None:
@@ -16,42 +26,57 @@ def append(event_type: str, action: str, details: dict = None) -> None:
     if details:
         entry["details"] = details
 
-    path = _log_path()
+    path = _session_file()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
 
-    settings = user_settings.load()
-    max_entries = int(settings.get("max_event_log_entries", 200))
-    if max_entries > 0:
-        _trim(path, max_entries)
-
-
-def _trim(path: str, max_entries: int) -> None:
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if len(lines) > max_entries:
-            with open(path, "w", encoding="utf-8") as f:
-                f.writelines(lines[-max_entries:])
-    except OSError:
-        pass
-
 
 def read_all() -> list:
-    path = _log_path()
-    if not os.path.isfile(path):
+    """Return all events across all date folders and sessions, oldest first."""
+    root = _events_root()
+    if not os.path.isdir(root):
         return []
     events = []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    try:
-                        events.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        pass
-    except OSError:
-        pass
+    for date_dir in sorted(os.listdir(root)):
+        date_path = os.path.join(root, date_dir)
+        if not os.path.isdir(date_path):
+            continue
+        for session_file in sorted(os.listdir(date_path)):
+            if not session_file.endswith(".jsonl"):
+                continue
+            try:
+                with open(os.path.join(date_path, session_file), "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            try:
+                                events.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                pass
+            except OSError:
+                pass
     return events
+
+
+def cleanup_old_logs() -> None:
+    """Remove date folders older than event_log_retention_days. 0 = keep forever."""
+    settings = user_settings.load()
+    retention_days = int(settings.get("event_log_retention_days", 30))
+    if retention_days <= 0:
+        return
+
+    cutoff = date.today() - timedelta(days=retention_days)
+    root = _events_root()
+    if not os.path.isdir(root):
+        return
+
+    for name in os.listdir(root):
+        folder = os.path.join(root, name)
+        if not os.path.isdir(folder):
+            continue
+        try:
+            if date.fromisoformat(name) < cutoff:
+                shutil.rmtree(folder, ignore_errors=True)
+        except ValueError:
+            pass

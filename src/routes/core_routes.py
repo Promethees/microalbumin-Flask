@@ -56,6 +56,7 @@ def index():
     except:
         pass
 
+    event_logger.cleanup_old_logs()
     event_logger.append('session', 'start')
     user_settings = _user_settings.load()
     response = make_response(render_template('index.html',
