@@ -129,11 +129,22 @@ Timestamp,Value:1,Value:2,...
 ### 2.12 User Settings — Persistent Preferences
 
 - User UI preferences are stored in `user_settings.json` at the project root via `src/user_settings.py`.
-- Supported keys: `theme` (`"light"|"dark"|"auto"`), `default_mode` (`"kinetics"|"point"|"calibrate"`), `default_window_size` (int ≥ 2), `default_subfolder` (str or null).
+- Supported keys: `theme` (`"light"|"dark"|"auto"`), `default_mode` (`"kinetics"|"point"|"calibrate"`), `default_window_size` (int ≥ 2), `default_subfolder` (str or null), `max_event_log_entries` (int ≥ 0, 0 = no limit, default 200).
 - `user_settings.json` is **gitignored** (contains per-machine preferences, not project config).
 - Routes: `GET /settings` returns current settings; `POST /settings` accepts a partial update (any subset of keys).
 - The settings object is injected into `index.html` as the `USER_SETTINGS` JS constant (alongside `DATA_ROOT`, `DELIMITER`, etc.).
 - **Anti-pattern**: Do not add new per-machine state to `state.py` globals — use `user_settings.py` for anything user-configurable.
+
+### 2.14 Event Logging — User Interaction Tracing
+
+- User interactions are traced to `log/event_log.jsonl` via `src/event_logger.py` (JSONL: one JSON object per line).
+- Each entry: `{"ts": "YYYY-MM-DDTHH:MM:SS", "type": "...", "action": "...", "details": {...}}`.
+- `append(type, action, details=None)` writes one line then trims to `max_event_log_entries` (from user settings).
+- `read_all()` returns the full list of parsed events.
+- Routes: `GET /event_log` returns all events; `POST /event_log` (`{type, action, details?}`) appends one entry.
+- Frontend: `logEvent(type, action, details)` in `static/script/event-tracker.js` (loaded first, before all other scripts) — fire-and-forget `fetch`, never blocks the UI.
+- Tracked events: `session:start` (page load), `mode:switch`, `file:select/delete/copy`, `data:display`, `hardware:start/stop`, `report:generate`, `settings:save`.
+- **Anti-pattern**: Do not `await` or `.catch()` log calls in the UI — they must never block or surface errors to the user.
 
 ### 2.13 AI Assistant — Groq Cloud LLM
 
