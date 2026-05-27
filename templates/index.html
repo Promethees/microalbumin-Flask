@@ -5,8 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ STATIC_VERSION }}">
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cbb.ico') }}">
     <script src="{{ url_for('static', filename='vendor/jquery-3.6.0.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
@@ -748,20 +747,20 @@
                 return isWindows ? joined.replace(/\//g, '\\') : joined;
             }
         </script>
-        <script src="{{ url_for('static', filename='script/event-tracker.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/init.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/hid-logging.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/index.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/navigation.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/generate-chart.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/data-display.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/data-handling.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/edit-file.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/calculate.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/user-guide.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/report.js') }}"></script>
-        <script src="{{ url_for('static', filename='script/ai-chat.js') }}"></script>
+        <script src="{{ url_for('static', filename='script/event-tracker.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/short-hands.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/init.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/hid-logging.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/index.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/navigation.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/generate-chart.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/data-display.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/data-handling.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/edit-file.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/calculate.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/user-guide.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/report.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/ai-chat.js') }}?v={{ STATIC_VERSION }}"></script>
 </body>
 
 </html>

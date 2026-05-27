@@ -85,7 +85,9 @@ from routes.ai_routes import ai_bp
 
 # ── Flask application ────────────────────────────────────────────────────────
 _report(95, "Configuring Flask application …")
+import time as _time
 app = Flask(__name__, static_folder='static')
+app.jinja_env.globals['STATIC_VERSION'] = str(int(_time.time()))
 app.register_blueprint(core_bp)
 app.register_blueprint(hardware_bp)
 app.register_blueprint(file_bp)

@@ -1,6 +1,23 @@
 {
-  "theme": "auto",
+  "theme": "light",
   "default_mode": "kinetics",
   "default_window_size": 4,
-  "default_subfolder": null
+  "default_subfolder": "520nm_20042026_HSA_Full",
+  "file_table_height": 240,
+  "max_csv_rows": 0,
+  "max_json_rows": 0,
+  "event_log_retention_days": 30,
+  "chart_height": 1000,
+  "default_normalize": false,
+  "default_split_sources": false,
+  "range_expanded_default": false,
+  "export_expanded_default": false,
+  "log_display_height": 300,
+  "log_section_collapsed": false,
+  "default_notify": true,
+  "default_inf_timeout": false,
+  "default_timeout": null,
+  "default_timeout_unit": "seconds",
+  "default_interval": null,
+  "default_interval_unit": "seconds"
 }
