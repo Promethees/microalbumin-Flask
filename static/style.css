@@ -1132,7 +1132,7 @@ body.dark  .folder-item.selected {
 
 .file-table-container {
     overflow-y: auto;
-    max-height: 240px;
+    max-height: var(--file-table-height, 240px);
     width: 100%;
     margin: 20px auto;
     scrollbar-width: thin;

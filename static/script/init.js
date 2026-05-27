@@ -539,62 +539,100 @@ if (calButtons.length > 0) {
     selectButton(calButtons[0], calButtons, calDiv);
 }
 
-// Settings modal
+// Defaults must stay in sync with user_settings.py:DEFAULTS
+const SETTINGS_DEFAULTS = {
+    theme: 'auto',
+    default_mode: 'kinetics',
+    default_window_size: 4,
+    default_subfolder: null,
+    file_table_height: 240,
+    max_csv_rows: 0,
+    max_json_rows: 0,
+};
+
+function _buildSettingsHTML(s, folders) {
+    const subfolderOptions = folders.map(f =>
+        `<option value="${f.name}" ${s.default_subfolder === f.name ? 'selected' : ''}>${f.name}</option>`
+    ).join('');
+
+    const row = (label, helpText, inputHtml) => `
+        <label style="display:flex;flex-direction:column;gap:3px;">
+            <span style="font-weight:600;font-size:0.9em;">${label}</span>
+            ${helpText ? `<span style="font-size:0.78em;color:#888;">${helpText}</span>` : ''}
+            ${inputHtml}
+        </label>`;
+
+    const sel = (id, opts) =>
+        `<select id="${id}" class="swal2-input" style="margin:0;width:100%;">${opts}</select>`;
+    const num = (id, min, val) =>
+        `<input id="${id}" type="number" min="${min}" class="swal2-input" style="margin:0;width:100%;" value="${val}">`;
+
+    return `<div style="text-align:left;display:flex;flex-direction:column;gap:12px;padding:4px 0;">
+        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Appearance</p>
+        ${row('Theme', '', sel('swal-theme',
+            `<option value="light" ${s.theme==='light'?'selected':''}>Light</option>
+             <option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option>
+             <option value="auto" ${s.theme==='auto'?'selected':''}>Auto (system)</option>`))}
+        ${row('File &amp; JSON table height', 'Scroll-area max-height in px (min 80)', num('swal-table-height', 80, s.file_table_height || 240))}
+        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Measurement</p>
+        ${row('Default mode', '', sel('swal-mode',
+            `<option value="kinetics" ${s.default_mode==='kinetics'?'selected':''}>Kinetics</option>
+             <option value="point" ${s.default_mode==='point'?'selected':''}>Point</option>
+             <option value="calibrate" ${s.default_mode==='calibrate'?'selected':''}>Calibrate</option>`))}
+        ${row('Default window size', 'Minimum 2', num('swal-window-size', 2, s.default_window_size || 4))}
+        ${row('Default subfolder', '', sel('swal-subfolder',
+            `<option value="" ${!s.default_subfolder?'selected':''}>(none)</option>${subfolderOptions}`))}
+        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">File Selection</p>
+        ${row('Max CSV files shown', '0 = show all', num('swal-max-csv', 0, s.max_csv_rows || 0))}
+        ${row('Max calibration JSON files shown', '0 = show all', num('swal-max-json', 0, s.max_json_rows || 0))}
+    </div>`;
+}
+
+function _readSettingsForm() {
+    return {
+        theme: document.getElementById('swal-theme').value,
+        file_table_height: Math.max(80, parseInt(document.getElementById('swal-table-height').value, 10) || 240),
+        default_mode: document.getElementById('swal-mode').value,
+        default_window_size: Math.max(2, parseInt(document.getElementById('swal-window-size').value, 10) || 4),
+        default_subfolder: document.getElementById('swal-subfolder').value || null,
+        max_csv_rows: Math.max(0, parseInt(document.getElementById('swal-max-csv').value, 10) || 0),
+        max_json_rows: Math.max(0, parseInt(document.getElementById('swal-max-json').value, 10) || 0),
+    };
+}
+
+function _fillSettingsForm(s) {
+    document.getElementById('swal-theme').value = s.theme;
+    document.getElementById('swal-table-height').value = s.file_table_height || 240;
+    document.getElementById('swal-mode').value = s.default_mode;
+    document.getElementById('swal-window-size').value = s.default_window_size || 4;
+    document.getElementById('swal-subfolder').value = s.default_subfolder || '';
+    document.getElementById('swal-max-csv').value = s.max_csv_rows || 0;
+    document.getElementById('swal-max-json').value = s.max_json_rows || 0;
+}
+
 document.getElementById('settingsBtn').addEventListener('click', async function () {
-    // Fetch current settings and available subfolders in parallel
     const [settingsRes, foldersRes] = await Promise.all([
         fetch('/settings').then(r => r.json()).catch(() => null),
         fetch('/get_data_folders').then(r => r.json()).catch(() => [])
     ]);
 
-    const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? USER_SETTINGS : {});
-    const folders = Array.isArray(foldersRes) ? foldersRes : [];
-
-    const subfolderOptions = folders.map(f =>
-        `<option value="${f.name}" ${s.default_subfolder === f.name ? 'selected' : ''}>${f.name}</option>`
-    ).join('');
+    const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? { ...USER_SETTINGS } : {});
+    const folders = Array.isArray(foldersRes) ? (foldersRes.folders || foldersRes) : [];
 
     const { value: formValues, isConfirmed } = await Swal.fire({
         title: 'App Settings',
-        width: 420,
-        html: `
-            <div style="text-align:left; display:flex; flex-direction:column; gap:14px; padding:4px 0;">
-                <label style="display:flex; flex-direction:column; gap:4px;">
-                    <span style="font-weight:600;">Theme</span>
-                    <select id="swal-theme" class="swal2-input" style="margin:0; width:100%;">
-                        <option value="light" ${s.theme === 'light' ? 'selected' : ''}>Light</option>
-                        <option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>Dark</option>
-                        <option value="auto" ${s.theme === 'auto' ? 'selected' : ''}>Auto (system)</option>
-                    </select>
-                </label>
-                <label style="display:flex; flex-direction:column; gap:4px;">
-                    <span style="font-weight:600;">Default mode</span>
-                    <select id="swal-mode" class="swal2-input" style="margin:0; width:100%;">
-                        <option value="kinetics" ${s.default_mode === 'kinetics' ? 'selected' : ''}>Kinetics</option>
-                        <option value="point" ${s.default_mode === 'point' ? 'selected' : ''}>Point</option>
-                        <option value="calibrate" ${s.default_mode === 'calibrate' ? 'selected' : ''}>Calibrate</option>
-                    </select>
-                </label>
-                <label style="display:flex; flex-direction:column; gap:4px;">
-                    <span style="font-weight:600;">Default window size</span>
-                    <input id="swal-window-size" type="number" min="2" class="swal2-input" style="margin:0; width:100%;" value="${s.default_window_size || 4}">
-                </label>
-                <label style="display:flex; flex-direction:column; gap:4px;">
-                    <span style="font-weight:600;">Default subfolder</span>
-                    <select id="swal-subfolder" class="swal2-input" style="margin:0; width:100%;">
-                        <option value="" ${!s.default_subfolder ? 'selected' : ''}>(none)</option>
-                        ${subfolderOptions}
-                    </select>
-                </label>
-            </div>`,
+        width: 460,
+        html: _buildSettingsHTML(s, folders),
         showCancelButton: true,
         confirmButtonText: 'Save',
-        preConfirm: () => ({
-            theme: document.getElementById('swal-theme').value,
-            default_mode: document.getElementById('swal-mode').value,
-            default_window_size: parseInt(document.getElementById('swal-window-size').value, 10),
-            default_subfolder: document.getElementById('swal-subfolder').value || null,
-        })
+        showDenyButton: true,
+        denyButtonText: 'Revert to defaults',
+        returnInputValueOnDeny: false,
+        preDeny: () => {
+            _fillSettingsForm(SETTINGS_DEFAULTS);
+            return false; // keep modal open
+        },
+        preConfirm: _readSettingsForm,
     });
 
     if (!isConfirmed || !formValues) return;
@@ -610,7 +648,10 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
         return;
     }
 
-    // Apply theme change immediately
+    // Update the live USER_SETTINGS object
+    Object.assign(USER_SETTINGS, formValues);
+
+    // Apply theme
     if (formValues.theme === 'auto') {
         localStorage.removeItem('theme');
         _applyTheme(_systemDark.matches);
@@ -621,12 +662,20 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
         _syncToggleIcon(formValues.theme);
     }
 
-    // Apply window size immediately
+    // Apply table height immediately via CSS variable
+    document.documentElement.style.setProperty('--file-table-height', formValues.file_table_height + 'px');
+
+    // Apply window size
     const wsInput = document.getElementById('window-size');
     if (wsInput) wsInput.value = formValues.default_window_size;
 
-    // Apply mode immediately
+    // Apply mode
     const allModeBtns = modeDiv.querySelectorAll('button[data-mode]');
     const targetBtn = Array.from(allModeBtns).find(b => b.getAttribute('data-mode') === formValues.default_mode);
     if (targetBtn) selectButton(targetBtn, allModeBtns, modeDiv);
+
+    // Re-render file tables with updated row limits (if a folder is loaded)
+    if (typeof updateDirectory === 'function' && AppState.currentDirectory) {
+        updateDirectory(AppState.currentDirectory, false);
+    }
 })

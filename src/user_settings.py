@@ -10,6 +10,9 @@ DEFAULTS = {
     "default_mode": "kinetics",
     "default_window_size": 4,
     "default_subfolder": None,
+    "file_table_height": 240,
+    "max_csv_rows": 0,
+    "max_json_rows": 0,
 }
 
 
@@ -48,6 +51,27 @@ def save(updates: dict) -> bool:
     if "default_subfolder" in updates:
         val = updates["default_subfolder"]
         current["default_subfolder"] = val if (isinstance(val, str) and val) or val is None else None
+    if "file_table_height" in updates:
+        try:
+            h = int(updates["file_table_height"])
+            if h >= 80:
+                current["file_table_height"] = h
+        except (ValueError, TypeError):
+            pass
+    if "max_csv_rows" in updates:
+        try:
+            n = int(updates["max_csv_rows"])
+            if n >= 0:
+                current["max_csv_rows"] = n
+        except (ValueError, TypeError):
+            pass
+    if "max_json_rows" in updates:
+        try:
+            n = int(updates["max_json_rows"])
+            if n >= 0:
+                current["max_json_rows"] = n
+        except (ValueError, TypeError):
+            pass
     try:
         with open(_path(), "w", encoding="utf-8") as f:
             json.dump(current, f, indent=2)

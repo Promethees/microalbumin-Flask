@@ -187,10 +187,15 @@ function arraysEqual(a, b) {
 function updateJSONTable(files) {
     let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
     if (files && files.length > 0) {
-        files.forEach(file => {
+        const limit = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.max_json_rows > 0) ? USER_SETTINGS.max_json_rows : Infinity;
+        const shown = files.slice(0, limit);
+        shown.forEach(file => {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
             html += `<tr${isSelected}><td>${_escHtml(file)}</td><td><button onclick="selectFile('${_esc(file)}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">✏️ Edit</button></td></tr>`;
-        })
+        });
+        if (files.length > shown.length) {
+            html += `<tr><td colspan="4" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${files.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
+        }
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
     }
@@ -224,10 +229,15 @@ function updateFileTable(files, deselect) {
 
     return filterFiles(files).then((filteredFiles) => {
         if (filteredFiles && filteredFiles.length > 0) {
-            filteredFiles.forEach(file => {
+            const limit = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.max_csv_rows > 0) ? USER_SETTINGS.max_csv_rows : Infinity;
+            const shown = filteredFiles.slice(0, limit);
+            shown.forEach(file => {
                 const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
                 html += `<tr${isSelected}><td>${_escHtml(file)}</td><td><button onclick="selectFile('${_esc(file)}', this)">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this)">✏️ Edit</button></td></tr>`;
             });
+            if (filteredFiles.length > shown.length) {
+                html += `<tr><td colspan="4" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${filteredFiles.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
+            }
         } else {
             html += '<tr><td colspan="4">No CSV files found in the directory.</td></tr>';
         }

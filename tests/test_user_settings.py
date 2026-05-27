@@ -137,6 +137,55 @@ class TestSave:
             result = user_settings.save({"theme": "dark"})
         assert result is False
 
+    def test_saves_valid_file_table_height(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"file_table_height": 400}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["file_table_height"] == 400
+
+    def test_rejects_file_table_height_below_minimum(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"file_table_height": 50})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["file_table_height"] == user_settings.DEFAULTS["file_table_height"]
+
+    def test_rejects_non_numeric_file_table_height(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"file_table_height": "tall"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["file_table_height"] == user_settings.DEFAULTS["file_table_height"]
+
+    def test_saves_valid_max_csv_rows(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"max_csv_rows": 20}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_csv_rows"] == 20
+
+    def test_saves_max_csv_rows_zero(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_csv_rows": 20})
+        assert user_settings.save({"max_csv_rows": 0}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_csv_rows"] == 0
+
+    def test_rejects_negative_max_csv_rows(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_csv_rows": -5})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_csv_rows"] == user_settings.DEFAULTS["max_csv_rows"]
+
+    def test_saves_valid_max_json_rows(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"max_json_rows": 10}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_json_rows"] == 10
+
+    def test_rejects_negative_max_json_rows(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_json_rows": -1})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_json_rows"] == user_settings.DEFAULTS["max_json_rows"]
+
 
 # ---------------------------------------------------------------------------
 # GET /settings route

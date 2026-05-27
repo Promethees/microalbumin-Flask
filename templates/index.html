@@ -740,6 +740,7 @@
             const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
+            document.documentElement.style.setProperty('--file-table-height', (USER_SETTINGS.file_table_height || 240) + 'px');
 
             function getNativePath(...paths) {
                 const isWindows = navigator.userAgent.includes('Windows');
