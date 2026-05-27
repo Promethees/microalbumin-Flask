@@ -129,7 +129,7 @@ Timestamp,Value:1,Value:2,...
 ### 2.12 User Settings — Persistent Preferences
 
 - User UI preferences are stored in `user_settings.json` at the project root via `src/user_settings.py`.
-- Supported keys: `theme` (`"light"|"dark"|"auto"`), `default_mode` (`"kinetics"|"point"|"calibrate"`), `default_window_size` (int ≥ 2), `default_subfolder` (str or null), `max_event_log_entries` (int ≥ 0, 0 = no limit, default 200).
+- Supported keys: `theme` (`"light"|"dark"|"auto"`), `default_mode` (`"kinetics"|"point"|"calibrate"`), `default_window_size` (int ≥ 2), `default_subfolder` (str or null), `event_log_retention_days` (int ≥ 0, 0 = keep forever, default 30).
 - `user_settings.json` is **gitignored** (contains per-machine preferences, not project config).
 - Routes: `GET /settings` returns current settings; `POST /settings` accepts a partial update (any subset of keys).
 - The settings object is injected into `index.html` as the `USER_SETTINGS` JS constant (alongside `DATA_ROOT`, `DELIMITER`, etc.).
@@ -137,14 +137,16 @@ Timestamp,Value:1,Value:2,...
 
 ### 2.14 Event Logging — User Interaction Tracing
 
-- User interactions are traced to `log/event_log.jsonl` via `src/event_logger.py` (JSONL: one JSON object per line).
+- Logs are stored under `log/events/YYYY-MM-DD/HH-MM-SS.jsonl`: one date folder per calendar day, one JSONL file per app launch within that day (name = session start time).
+- Module-level `_SESSION_DATE` / `_SESSION_START` constants are set once at import time so all events in one process go to the same file.
 - Each entry: `{"ts": "YYYY-MM-DDTHH:MM:SS", "type": "...", "action": "...", "details": {...}}`.
-- `append(type, action, details=None)` writes one line then trims to `max_event_log_entries` (from user settings).
-- `read_all()` returns the full list of parsed events.
+- `append(type, action, details=None)` — writes one JSONL line to the current session file.
+- `read_all()` — reads all events across all date folders and sessions, oldest first.
+- `cleanup_old_logs()` — removes date folders older than `event_log_retention_days`; called automatically on every session start (index route).
 - Routes: `GET /event_log` returns all events; `POST /event_log` (`{type, action, details?}`) appends one entry.
-- Frontend: `logEvent(type, action, details)` in `static/script/event-tracker.js` (loaded first, before all other scripts) — fire-and-forget `fetch`, never blocks the UI.
+- Frontend: `logEvent(type, action, details)` in `static/script/event-tracker.js` (loaded first) — fire-and-forget `fetch`, never blocks the UI.
 - Tracked events: `session:start` (page load), `mode:switch`, `file:select/delete/copy`, `data:display`, `hardware:start/stop`, `report:generate`, `settings:save`.
-- **Anti-pattern**: Do not `await` or `.catch()` log calls in the UI — they must never block or surface errors to the user.
+- **Anti-pattern**: Do not `await` log calls or show errors to the user when logging fails — logging is always best-effort.
 
 ### 2.13 AI Assistant — Groq Cloud LLM
 

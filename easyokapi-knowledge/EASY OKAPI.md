@@ -77,8 +77,8 @@ graph TD
 | `send_command.py` | `connect_to_device` (find PyBadge via serial), `send_command_and_wait_ack` (serial protocol) |
 | `ai_assistant.py` | Groq chat (`_groq_chat`, `chat_stream`), MCP tool engine, multilingual system prompts, `proxy_chat_stream()` for desktop proxy mode |
 | `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete keys on read |
-| `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `default_mode`, `default_window_size`, `default_subfolder`, `max_event_log_entries` |
-| `event_logger.py` | Append/read user interaction events to `log/event_log.jsonl` (JSONL, one JSON per line); enforces `max_event_log_entries` trim on every write |
+| `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `default_mode`, `default_window_size`, `default_subfolder`, `event_log_retention_days` |
+| `event_logger.py` | Append/read user interaction events; logs go to `log/events/YYYY-MM-DD/HH-MM-SS.jsonl` (one file per app launch per day); `cleanup_old_logs()` removes date folders older than `event_log_retention_days` |
 | `activation.py` | Reads/writes `activation.json`; `get_license_token()` and `AI_SERVICE_URL` constant for proxy mode |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
