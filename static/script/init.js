@@ -543,6 +543,38 @@ if (typeof USER_SETTINGS !== 'undefined') {
         if (_ec) _ec.classList.remove('collapsed');
         if (_ev) _ev.classList.remove('collapsed-chevron');
     }
+    const _logEl = document.getElementById('log-display');
+    if (_logEl) _logEl.style.maxHeight = (USER_SETTINGS.log_display_height || 300) + 'px';
+    if (USER_SETTINGS.log_section_collapsed) {
+        const _lc = document.getElementById('hid-collapse');
+        const _lv = document.getElementById('hid-chevron');
+        if (_lc) _lc.classList.add('collapsed');
+        if (_lv) _lv.classList.add('collapsed-chevron');
+    }
+    const _notifyEl = document.getElementById('notify-me');
+    if (_notifyEl) _notifyEl.checked = USER_SETTINGS.default_notify !== false;
+    if (USER_SETTINGS.default_inf_timeout) {
+        const _itEl = document.getElementById('inf-timeout');
+        if (_itEl) {
+            _itEl.checked = true;
+            const _toEl = document.getElementById('timeout');
+            const _tuEl = document.getElementById('timeout-unit');
+            if (_toEl) _toEl.disabled = true;
+            if (_tuEl) _tuEl.disabled = true;
+        }
+    }
+    if (USER_SETTINGS.default_timeout != null) {
+        const _toEl = document.getElementById('timeout');
+        if (_toEl && !_toEl.disabled) _toEl.value = USER_SETTINGS.default_timeout;
+    }
+    const _tuEl = document.getElementById('timeout-unit');
+    if (_tuEl && USER_SETTINGS.default_timeout_unit) _tuEl.value = USER_SETTINGS.default_timeout_unit;
+    if (USER_SETTINGS.default_interval != null) {
+        const _ivEl = document.getElementById('interval');
+        if (_ivEl) _ivEl.value = USER_SETTINGS.default_interval;
+    }
+    const _iuEl = document.getElementById('interval-unit');
+    if (_iuEl && USER_SETTINGS.default_interval_unit) _iuEl.value = USER_SETTINGS.default_interval_unit;
 }
 
 function selectButton(selectedButton, allButtons, div) {
@@ -575,6 +607,14 @@ const SETTINGS_DEFAULTS = {
     default_split_sources: false,
     range_expanded_default: false,
     export_expanded_default: false,
+    log_display_height: 300,
+    log_section_collapsed: false,
+    default_notify: true,
+    default_inf_timeout: false,
+    default_timeout: null,
+    default_timeout_unit: 'seconds',
+    default_interval: null,
+    default_interval_unit: 'seconds',
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -591,8 +631,8 @@ function _buildSettingsHTML(s, folders) {
 
     const sel = (id, opts) =>
         `<select id="${id}" class="swal2-input">${opts}</select>`;
-    const num = (id, min, val) =>
-        `<input id="${id}" type="number" min="${min}" class="swal2-input" value="${val}">`;
+    const num = (id, min, val, step = '') =>
+        `<input id="${id}" type="number" min="${min}" class="swal2-input" value="${val}"${step ? ` step="${step}"` : ''}>`;
     const rowCheck = (label, id, val) => `
         <label class="sm-row sm-row--check">
             <input type="checkbox" id="${id}" ${val ? 'checked' : ''}>
@@ -644,6 +684,25 @@ function _buildSettingsHTML(s, folders) {
             ${rowLimit('Log retention (days)', 'swal-retention-days', 'swal-retention-forever', s.event_log_retention_days === 0 ? 0 : (s.event_log_retention_days ?? 30), 'Keep forever')}
         </div>
         <div class="sm-section sm-section--full">
+            <p class="sm-section-title">Colorimeter Reading</p>
+            <div class="sm-fields-grid">
+                ${row('Log display height', 'px (min 100)', num('swal-log-height', 100, s.log_display_height || 300))}
+                ${rowCheck('Collapsed by default', 'swal-log-collapsed', s.log_section_collapsed)}
+                ${rowCheck('Notify when done by default', 'swal-log-notify', s.default_notify !== false)}
+                ${rowCheck('Infinite timeout by default', 'swal-log-inf-timeout', s.default_inf_timeout)}
+                ${row('Default timeout', '', num('swal-log-timeout', 0, s.default_timeout ?? '', 'any'))}
+                ${row('Default timeout unit', '', sel('swal-log-timeout-unit',
+                    `<option value="seconds" ${(s.default_timeout_unit||'seconds')==='seconds'?'selected':''}>seconds</option>
+                     <option value="minutes" ${s.default_timeout_unit==='minutes'?'selected':''}>minutes</option>
+                     <option value="hours"   ${s.default_timeout_unit==='hours'?'selected':''}>hours</option>`))}
+                ${row('Default interval', '', num('swal-log-interval', 0, s.default_interval ?? '', 'any'))}
+                ${row('Default interval unit', '', sel('swal-log-interval-unit',
+                    `<option value="seconds" ${(s.default_interval_unit||'seconds')==='seconds'?'selected':''}>seconds</option>
+                     <option value="minutes" ${s.default_interval_unit==='minutes'?'selected':''}>minutes</option>
+                     <option value="hours"   ${s.default_interval_unit==='hours'?'selected':''}>hours</option>`))}
+            </div>
+        </div>
+        <div class="sm-section sm-section--full">
             <p class="sm-section-title">Data Display</p>
             <div class="sm-fields-grid">
                 ${row('Chart max height', 'px (min 200)', num('swal-chart-height', 200, s.chart_height || 600))}
@@ -671,6 +730,14 @@ function _readSettingsForm() {
         default_split_sources: document.getElementById('swal-split-sources').checked,
         range_expanded_default: document.getElementById('swal-range-expanded').checked,
         export_expanded_default: document.getElementById('swal-export-expanded').checked,
+        log_display_height: Math.max(100, parseInt(document.getElementById('swal-log-height').value, 10) || 300),
+        log_section_collapsed: document.getElementById('swal-log-collapsed').checked,
+        default_notify: document.getElementById('swal-log-notify').checked,
+        default_inf_timeout: document.getElementById('swal-log-inf-timeout').checked,
+        default_timeout: document.getElementById('swal-log-timeout').value === '' ? null : parseFloat(document.getElementById('swal-log-timeout').value),
+        default_timeout_unit: document.getElementById('swal-log-timeout-unit').value,
+        default_interval: document.getElementById('swal-log-interval').value === '' ? null : parseFloat(document.getElementById('swal-log-interval').value),
+        default_interval_unit: document.getElementById('swal-log-interval-unit').value,
     };
 }
 
@@ -697,6 +764,14 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-split-sources').checked = !!s.default_split_sources;
     document.getElementById('swal-range-expanded').checked = !!s.range_expanded_default;
     document.getElementById('swal-export-expanded').checked = !!s.export_expanded_default;
+    document.getElementById('swal-log-height').value = s.log_display_height || 300;
+    document.getElementById('swal-log-collapsed').checked = !!s.log_section_collapsed;
+    document.getElementById('swal-log-notify').checked = s.default_notify !== false;
+    document.getElementById('swal-log-inf-timeout').checked = !!s.default_inf_timeout;
+    document.getElementById('swal-log-timeout').value = s.default_timeout ?? '';
+    document.getElementById('swal-log-timeout-unit').value = s.default_timeout_unit || 'seconds';
+    document.getElementById('swal-log-interval').value = s.default_interval ?? '';
+    document.getElementById('swal-log-interval-unit').value = s.default_interval_unit || 'seconds';
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
@@ -772,6 +847,14 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     // Apply normalize (live; does not retrigger a plot redraw on its own)
     const normEl = document.getElementById('normalize-mode');
     if (normEl) normEl.checked = !!formValues.default_normalize;
+
+    // Apply log display height
+    const logEl = document.getElementById('log-display');
+    if (logEl) logEl.style.maxHeight = (formValues.log_display_height || 300) + 'px';
+
+    // Apply notify default
+    const notifyEl = document.getElementById('notify-me');
+    if (notifyEl) notifyEl.checked = formValues.default_notify !== false;
 
     // Re-render file tables with updated row limits (if a folder is loaded)
     if (typeof updateDirectory === 'function' && AppState.currentDirectory) {

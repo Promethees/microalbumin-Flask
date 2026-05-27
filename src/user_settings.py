@@ -4,6 +4,7 @@ import state
 
 _VALID_THEMES = {"light", "dark", "auto"}
 _VALID_MODES = {"kinetics", "point", "calibrate"}
+_VALID_UNITS = {"seconds", "minutes", "hours"}
 
 DEFAULTS = {
     "theme": "auto",
@@ -19,6 +20,14 @@ DEFAULTS = {
     "default_split_sources": False,
     "range_expanded_default": False,
     "export_expanded_default": False,
+    "log_display_height": 300,
+    "log_section_collapsed": False,
+    "default_notify": True,
+    "default_inf_timeout": False,
+    "default_timeout": None,
+    "default_timeout_unit": "seconds",
+    "default_interval": None,
+    "default_interval_unit": "seconds",
 }
 
 
@@ -93,9 +102,33 @@ def save(updates: dict) -> bool:
         except (ValueError, TypeError):
             pass
     for bool_key in ("default_normalize", "default_split_sources",
-                     "range_expanded_default", "export_expanded_default"):
+                     "range_expanded_default", "export_expanded_default",
+                     "log_section_collapsed", "default_notify",
+                     "default_inf_timeout"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])
+    if "log_display_height" in updates:
+        try:
+            h = int(updates["log_display_height"])
+            if h >= 100:
+                current["log_display_height"] = h
+        except (ValueError, TypeError):
+            pass
+    for unit_key in ("default_timeout_unit", "default_interval_unit"):
+        if unit_key in updates and updates[unit_key] in _VALID_UNITS:
+            current[unit_key] = updates[unit_key]
+    for num_key in ("default_timeout", "default_interval"):
+        if num_key in updates:
+            val = updates[num_key]
+            if val is None:
+                current[num_key] = None
+            else:
+                try:
+                    n = float(val)
+                    if n >= 0:
+                        current[num_key] = n
+                except (ValueError, TypeError):
+                    pass
     try:
         with open(_path(), "w", encoding="utf-8") as f:
             json.dump(current, f, indent=2)
