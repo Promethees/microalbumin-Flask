@@ -705,7 +705,7 @@ function _buildSettingsHTML(s, folders) {
         <div class="sm-section sm-section--full">
             <p class="sm-section-title">Data Display</p>
             <div class="sm-fields-grid">
-                ${row('Chart max height', 'px (min 200)', num('swal-chart-height', 200, s.chart_height || 600))}
+                ${row('Data Display section max height', 'px (min 200)', num('swal-chart-height', 200, s.chart_height || 600))}
                 ${rowCheck('Normalize data by default', 'swal-normalize', s.default_normalize)}
                 ${rowCheck('Split by sources by default', 'swal-split-sources', s.default_split_sources)}
                 ${rowCheck('Expand time range panel by default', 'swal-range-expanded', s.range_expanded_default)}
