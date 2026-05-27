@@ -381,11 +381,19 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, label);
-        document.getElementById(analysisId).innerHTML = formatAnalysisHtml(analysisInfo,
+        const analysisEl = document.getElementById(analysisId);
+        analysisEl.innerHTML = formatAnalysisHtml(analysisInfo,
             AppState.plotColors[i % AppState.plotColors.length],
             `Source ${i + 1}`,
             `plot-analysis-source-${i}`
         );
+        if (analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
+            analysisEl.insertAdjacentHTML('beforeend',
+                `<button class="utility-btn" style="margin-top:4px;"
+                    title="Save the linearity range rows for this source to a new CSV file"
+                    onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">📐 Save Linearity Range</button>`
+            );
+        }
     }
 
     AppState.sourceCharts = charts;
@@ -413,10 +421,16 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     let html = '';
     analysisInfo.forEach((info, i) => {
         html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
+        const rawA = analyses[i];
+        if (rawA && rawA.linearXMin != null && rawA.linearXMax != null) {
+            html += `<button class="utility-btn" style="margin-top:4px;"
+                title="Save the linearity range rows for this source to a new CSV file"
+                onclick="saveLinearityRangeCsvForSource(${i}, ${rawA.linearXMin}, ${rawA.linearXMax})">📐 Save Linearity Range</button>`;
+        }
         html += `
             <div id="concentration-reader-section-source-${i}">
-                Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" 
-                    value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}" 
+                Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}"
+                    value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}"
                     oninput="adjustInputWidth(this)"
                     min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input> ng/µL
             </div>

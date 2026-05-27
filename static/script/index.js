@@ -65,6 +65,7 @@ const AppState = {
     report_root_path: REPORT_ROOT,
 
     currentReportSubject: null,
+    lastAnalyses: null,
     reset: function () {
         this.myChart = null;
         this.scriptRunning = false;
@@ -80,6 +81,7 @@ const AppState = {
         this.responseData = null;
         this.metaData = null;
         this.globalEstimatedValue = null;
+        this.lastAnalyses = null;
         this.currentDirectory = DATA_ROOT;
         this.exportPath = DATA_ROOT;
         this.multiSource = false;

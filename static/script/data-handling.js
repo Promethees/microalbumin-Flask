@@ -1732,3 +1732,54 @@ async function saveRangeCsv() {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
     }
 }
+
+async function saveLinearityRangeCsvForSource(sourceIndex, linearXMin, linearXMax) {
+    if (!AppState.currentFile) {
+        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        return;
+    }
+
+    const unit = getTimeUnitValue() || 'seconds';
+    const timeLabel = unit.slice(0, -1);
+    const conversionFactor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(unit);
+    const startDisp = (parseFloat(linearXMin) * conversionFactor).toFixed(2);
+    const endDisp = (parseFloat(linearXMax) * conversionFactor).toFixed(2);
+    const stem = AppState.currentFile.replace(/\.csv$/i, '');
+    const defaultLinearName = `${stem}_linear_s${sourceIndex + 1}`;
+
+    const { value: saveName } = await Swal.fire({
+        title: `Save Linearity Range — Source ${sourceIndex + 1}`,
+        input: 'text',
+        inputLabel: `Rows from ${startDisp} to ${endDisp} ${timeLabel} — save as:`,
+        inputPlaceholder: 'filename (without .csv)',
+        inputValue: defaultLinearName,
+        showCancelButton: true,
+        inputValidator: v => (!v || !v.trim()) ? 'Filename is required' : null
+    });
+
+    if (!saveName) return;
+
+    const baseFile = AppState.currentDirectory + DELIMITER + AppState.currentFile;
+    try {
+        const res = await fetch('/save_range_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file: baseFile,
+                range_start: parseFloat(linearXMin),
+                range_end: parseFloat(linearXMax),
+                save_name: saveName.trim(),
+                save_dir: AppState.currentDirectory
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved to ${data.path}` });
+            updateDirectory(AppState.currentDirectory);
+        } else {
+            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+    }
+}
