@@ -557,37 +557,45 @@ function _buildSettingsHTML(s, folders) {
     ).join('');
 
     const row = (label, helpText, inputHtml) => `
-        <label style="display:flex;flex-direction:column;gap:3px;">
-            <span style="font-weight:600;font-size:0.9em;">${label}</span>
-            ${helpText ? `<span style="font-size:0.78em;color:#888;">${helpText}</span>` : ''}
+        <label class="sm-row">
+            <span class="sm-label">${label}</span>
+            ${helpText ? `<span class="sm-help">${helpText}</span>` : ''}
             ${inputHtml}
         </label>`;
 
     const sel = (id, opts) =>
-        `<select id="${id}" class="swal2-input" style="margin:0;width:100%;">${opts}</select>`;
+        `<select id="${id}" class="swal2-input">${opts}</select>`;
     const num = (id, min, val) =>
-        `<input id="${id}" type="number" min="${min}" class="swal2-input" style="margin:0;width:100%;" value="${val}">`;
+        `<input id="${id}" type="number" min="${min}" class="swal2-input" value="${val}">`;
 
-    return `<div style="text-align:left;display:flex;flex-direction:column;gap:12px;padding:4px 0;">
-        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Appearance</p>
-        ${row('Theme', '', sel('swal-theme',
-            `<option value="light" ${s.theme==='light'?'selected':''}>Light</option>
-             <option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option>
-             <option value="auto" ${s.theme==='auto'?'selected':''}>Auto (system)</option>`))}
-        ${row('File &amp; JSON table height', 'Scroll-area max-height in px (min 80)', num('swal-table-height', 80, s.file_table_height || 240))}
-        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Measurement</p>
-        ${row('Default mode', '', sel('swal-mode',
-            `<option value="kinetics" ${s.default_mode==='kinetics'?'selected':''}>Kinetics</option>
-             <option value="point" ${s.default_mode==='point'?'selected':''}>Point</option>
-             <option value="calibrate" ${s.default_mode==='calibrate'?'selected':''}>Calibrate</option>`))}
-        ${row('Default window size', 'Minimum 2', num('swal-window-size', 2, s.default_window_size || 4))}
-        ${row('Default subfolder', '', sel('swal-subfolder',
-            `<option value="" ${!s.default_subfolder?'selected':''}>(none)</option>${subfolderOptions}`))}
-        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">File Selection</p>
-        ${row('Max CSV files shown', '0 = show all', num('swal-max-csv', 0, s.max_csv_rows || 0))}
-        ${row('Max calibration JSON files shown', '0 = show all', num('swal-max-json', 0, s.max_json_rows || 0))}
-        <p style="margin:0;font-size:0.82em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Activity Log</p>
-        ${row('Log retention (days)', '0 = keep forever; date folders older than this are removed on next launch', num('swal-retention-days', 0, s.event_log_retention_days ?? 30))}
+    return `<div id="settings-modal-body">
+        <div class="sm-section">
+            <p class="sm-section-title">Appearance</p>
+            ${row('Theme', '', sel('swal-theme',
+                `<option value="light" ${s.theme==='light'?'selected':''}>Light</option>
+                 <option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option>
+                 <option value="auto" ${s.theme==='auto'?'selected':''}>Auto (system)</option>`))}
+            ${row('File &amp; JSON table height', 'Scroll-area max-height in px (min 80)', num('swal-table-height', 80, s.file_table_height || 240))}
+        </div>
+        <div class="sm-section">
+            <p class="sm-section-title">Measurement</p>
+            ${row('Default mode', '', sel('swal-mode',
+                `<option value="kinetics" ${s.default_mode==='kinetics'?'selected':''}>Kinetics</option>
+                 <option value="point" ${s.default_mode==='point'?'selected':''}>Point</option>
+                 <option value="calibrate" ${s.default_mode==='calibrate'?'selected':''}>Calibrate</option>`))}
+            ${row('Default window size', 'Minimum 2', num('swal-window-size', 2, s.default_window_size || 4))}
+            ${row('Default subfolder', '', sel('swal-subfolder',
+                `<option value="" ${!s.default_subfolder?'selected':''}>(none)</option>${subfolderOptions}`))}
+        </div>
+        <div class="sm-section">
+            <p class="sm-section-title">File Selection</p>
+            ${row('Max CSV files shown', '0 = show all', num('swal-max-csv', 0, s.max_csv_rows || 0))}
+            ${row('Max calibration JSON files shown', '0 = show all', num('swal-max-json', 0, s.max_json_rows || 0))}
+        </div>
+        <div class="sm-section">
+            <p class="sm-section-title">Activity Log</p>
+            ${row('Log retention (days)', '0 = keep forever; date folders older than this are removed on next launch', num('swal-retention-days', 0, s.event_log_retention_days ?? 30))}
+        </div>
     </div>`;
 }
 
@@ -626,7 +634,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
     const { value: formValues, isConfirmed } = await Swal.fire({
         title: 'App Settings',
-        width: 460,
+        width: 'min(92vw, 680px)',
         html: _buildSettingsHTML(s, folders),
         showCancelButton: true,
         confirmButtonText: 'Save',

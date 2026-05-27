@@ -1606,6 +1606,76 @@ body.dark .swal2-container.swal2-backdrop-show {
 }
 
 /* ==========================================================================
+   App Settings Modal (responsive 2-column grid)
+   ========================================================================== */
+#settings-modal-body {
+    text-align: left;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px 28px;
+    padding: 4px 2px;
+    overflow-y: auto;
+    max-height: min(60vh, 480px);
+    scrollbar-width: thin;
+}
+
+@media (min-width: 520px) {
+    #settings-modal-body {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.sm-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.sm-section-title {
+    margin: 0 0 4px;
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #6366f1;
+    padding-bottom: 5px;
+    border-bottom: 1.5px solid #6366f1;
+}
+
+body.dark .sm-section-title {
+    color: #a5b4fc;
+    border-bottom-color: #a5b4fc;
+}
+
+.sm-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sm-label {
+    font-weight: 600;
+    font-size: 0.86em;
+}
+
+.sm-help {
+    font-size: 0.74em;
+    color: #888;
+    line-height: 1.35;
+    margin-bottom: 1px;
+}
+
+.sm-row .swal2-input {
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 0.88em !important;
+    padding: 7px 10px !important;
+    height: auto !important;
+}
+
+/* ==========================================================================
    Adaptive Layout for Smaller Screens
    ========================================================================== */
 
