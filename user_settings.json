@@ -1,8 +1,8 @@
 {
-  "theme": "light",
+  "theme": "auto",
   "default_mode": "kinetics",
   "default_window_size": 4,
-  "default_subfolder": "520nm_20042026_HSA_Full",
+  "default_subfolder": null,
   "file_table_height": 240,
   "max_csv_rows": 0,
   "max_json_rows": 0,
