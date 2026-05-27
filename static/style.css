@@ -1666,6 +1666,24 @@ body.dark .sm-section-title {
     margin-bottom: 1px;
 }
 
+.sm-limit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.sm-show-all-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82em;
+    font-weight: normal;
+    cursor: pointer;
+    white-space: nowrap;
+    color: inherit;
+}
+
 .sm-row .swal2-input {
     margin: 0 !important;
     width: 100% !important;

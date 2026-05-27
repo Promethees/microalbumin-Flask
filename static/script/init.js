@@ -567,6 +567,22 @@ function _buildSettingsHTML(s, folders) {
         `<select id="${id}" class="swal2-input">${opts}</select>`;
     const num = (id, min, val) =>
         `<input id="${id}" type="number" min="${min}" class="swal2-input" value="${val}">`;
+    const rowLimit = (label, inputId, checkId, val, checkLabel = 'Show all') => {
+        const isAll = val === 0;
+        return `
+        <div class="sm-row">
+            <div class="sm-limit-header">
+                <span class="sm-label">${label}</span>
+                <label class="sm-show-all-label">
+                    <input type="checkbox" id="${checkId}" ${isAll ? 'checked' : ''}
+                        onchange="var i=document.getElementById('${inputId}');i.disabled=this.checked;if(!this.checked&&!i.value)i.value=50;">
+                    ${checkLabel}
+                </label>
+            </div>
+            <input id="${inputId}" type="number" min="1" class="swal2-input"
+                value="${isAll ? '' : val}" ${isAll ? 'disabled' : ''}>
+        </div>`;
+    };
 
     return `<div id="settings-modal-body">
         <div class="sm-section">
@@ -589,12 +605,12 @@ function _buildSettingsHTML(s, folders) {
         </div>
         <div class="sm-section">
             <p class="sm-section-title">File Selection</p>
-            ${row('Max CSV files shown', '0 = show all', num('swal-max-csv', 0, s.max_csv_rows || 0))}
-            ${row('Max calibration JSON files shown', '0 = show all', num('swal-max-json', 0, s.max_json_rows || 0))}
+            ${rowLimit('Max CSV files shown', 'swal-max-csv', 'swal-max-csv-all', s.max_csv_rows || 0)}
+            ${rowLimit('Max calibration JSON files shown', 'swal-max-json', 'swal-max-json-all', s.max_json_rows || 0)}
         </div>
         <div class="sm-section">
             <p class="sm-section-title">Activity Log</p>
-            ${row('Log retention (days)', '0 = keep forever; date folders older than this are removed on next launch', num('swal-retention-days', 0, s.event_log_retention_days ?? 30))}
+            ${rowLimit('Log retention (days)', 'swal-retention-days', 'swal-retention-forever', s.event_log_retention_days === 0 ? 0 : (s.event_log_retention_days ?? 30), 'Keep forever')}
         </div>
     </div>`;
 }
@@ -606,9 +622,9 @@ function _readSettingsForm() {
         default_mode: document.getElementById('swal-mode').value,
         default_window_size: Math.max(2, parseInt(document.getElementById('swal-window-size').value, 10) || 4),
         default_subfolder: document.getElementById('swal-subfolder').value || null,
-        max_csv_rows: Math.max(0, parseInt(document.getElementById('swal-max-csv').value, 10) || 0),
-        max_json_rows: Math.max(0, parseInt(document.getElementById('swal-max-json').value, 10) || 0),
-        event_log_retention_days: Math.max(0, parseInt(document.getElementById('swal-retention-days').value, 10) || 0),
+        max_csv_rows: document.getElementById('swal-max-csv-all').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-max-csv').value, 10) || 1),
+        max_json_rows: document.getElementById('swal-max-json-all').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-max-json').value, 10) || 1),
+        event_log_retention_days: document.getElementById('swal-retention-forever').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-retention-days').value, 10) || 1),
     };
 }
 
@@ -618,9 +634,18 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-mode').value = s.default_mode;
     document.getElementById('swal-window-size').value = s.default_window_size || 4;
     document.getElementById('swal-subfolder').value = s.default_subfolder || '';
-    document.getElementById('swal-max-csv').value = s.max_csv_rows || 0;
-    document.getElementById('swal-max-json').value = s.max_json_rows || 0;
-    document.getElementById('swal-retention-days').value = s.event_log_retention_days ?? 30;
+    const csvAll = (s.max_csv_rows || 0) === 0;
+    document.getElementById('swal-max-csv-all').checked = csvAll;
+    document.getElementById('swal-max-csv').disabled = csvAll;
+    document.getElementById('swal-max-csv').value = csvAll ? '' : s.max_csv_rows;
+    const jsonAll = (s.max_json_rows || 0) === 0;
+    document.getElementById('swal-max-json-all').checked = jsonAll;
+    document.getElementById('swal-max-json').disabled = jsonAll;
+    document.getElementById('swal-max-json').value = jsonAll ? '' : s.max_json_rows;
+    const retForever = (s.event_log_retention_days ?? 30) === 0;
+    document.getElementById('swal-retention-forever').checked = retForever;
+    document.getElementById('swal-retention-days').disabled = retForever;
+    document.getElementById('swal-retention-days').value = retForever ? '' : (s.event_log_retention_days ?? 30);
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
