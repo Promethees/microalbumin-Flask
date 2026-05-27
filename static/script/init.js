@@ -622,7 +622,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     ]);
 
     const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? { ...USER_SETTINGS } : {});
-    const folders = Array.isArray(foldersRes) ? (foldersRes.folders || foldersRes) : [];
+    const folders = (foldersRes && Array.isArray(foldersRes.folders)) ? foldersRes.folders : [];
 
     const { value: formValues, isConfirmed } = await Swal.fire({
         title: 'App Settings',
