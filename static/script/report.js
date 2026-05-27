@@ -36,6 +36,7 @@ async function generateReport() {
 
     if (!formValues) return;
     const [reportTitle, promptedAlgo, reportFormat] = formValues;
+    logEvent('report', 'generate', { mode: AppState.currentMeasurementMode, format: reportFormat });
 
     if (reportFormat === 'excel') {
         await generateReportExcelFromCurrent(reportTitle, promptedAlgo || 'linear');

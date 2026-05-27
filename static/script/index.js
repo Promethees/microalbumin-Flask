@@ -616,6 +616,7 @@ function updateMultiSourceExportOptions() {
 }
 
 function switchingModes(mode) {
+    logEvent('mode', 'switch', { mode });
     const currentDir = AppState.currentDirectory;
     const prevMode = AppState.currentMeasurementMode;
     AppState.currentMeasurementMode = mode;

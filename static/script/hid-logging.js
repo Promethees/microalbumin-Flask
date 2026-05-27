@@ -155,6 +155,7 @@ async function runScript() {
         const response = await res.json();
 
         if (response.status === "success") {
+            logEvent('hardware', 'start', { subfolder, base_name: baseName });
             AppState.scriptRunning = true;
             $disable(["terminate-script-btn"], false);
             $disable(["go-to-btn"], false);
@@ -201,6 +202,7 @@ async function terminateScript() {
         const response = await res.json();
 
         if (response.status === "success") {
+            logEvent('hardware', 'stop');
             handleScriptTermination("Script terminated.\n");
         } else {
             $append("log-display", `Error: ${response.message}\n`);

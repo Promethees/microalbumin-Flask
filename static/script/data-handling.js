@@ -1,4 +1,5 @@
 async function selectFile(fileName, button, tableSelector = "#file-table") {
+    logEvent('file', 'select', { name: fileName, table: tableSelector });
     if (typeof window.showSpinner === 'function') window.showSpinner();
     try {
         // Disable the clicked button temporarily to prevent rapid clicks
@@ -205,6 +206,7 @@ function copyFile(tableSelector = "#file-table") {
         return;
     }
 
+    logEvent('file', 'copy', { name: currentFile });
     $.ajax({
         url: '/copy_file',
         method: 'POST',
@@ -275,7 +277,7 @@ function copyFile(tableSelector = "#file-table") {
 }
 
 async function processDataDisplay(fileName, jsonFileContent = null) {
-    // Proceed with fetching and displaying data
+    logEvent('data', 'display', { file: fileName });
     await fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
 }
@@ -344,7 +346,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
         const skipConfirmation = getBtnChecked("no-swal-checkbox");
 
         const proceedDelete = () => {
-            // Remove the file from the table
+            logEvent('file', 'delete', { name: fileName, table: tableSelector });
             $(button).closest("tr").remove();
             console.log("Deleting file:", fileName, "from table:", tableSelector);
 
