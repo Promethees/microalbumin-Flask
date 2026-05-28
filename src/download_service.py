@@ -1,8 +1,10 @@
 import os
+import re
 import time
 import jwt
 import requests
 
+_SEMVER_RE = re.compile(r'^v\d+\.\d+(\.\d+)*$')
 
 _DOWNLOAD_PURPOSE = 'app_download'
 _TOKEN_TTL = 30 * 60  # 30 minutes
@@ -63,7 +65,11 @@ def get_latest_version() -> str | None:
                 continue
             for prefix in _ARTIFACT_PREFIX.values():
                 if art['name'].startswith(prefix):
-                    return art['name'][len(prefix):]  # e.g. "v1.0.11"
+                    tag = art['name'][len(prefix):]
+                    # Only return properly versioned tags (e.g. 'v1.0.11').
+                    # Branch-name artifacts ('vmain', 'vdev', etc.) are not releases.
+                    if _SEMVER_RE.match(tag):
+                        return tag
         return None
     except Exception:
         return None
