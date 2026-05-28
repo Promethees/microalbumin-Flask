@@ -606,14 +606,13 @@ body.dark .top-right {
 }
 
 .update-banner-dismiss {
-    background: none;
-    border: none;
     cursor: pointer;
     font-size: 1rem;
     padding: 0 2px;
     line-height: 1;
     flex-shrink: 0;
     transition: color 0.15s;
+    user-select: none;
 }
 
 .light .update-banner-dismiss {
