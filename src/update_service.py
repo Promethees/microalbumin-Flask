@@ -2,7 +2,7 @@ import os
 import sys
 import shutil
 import platform
-import zipfile
+import tarfile
 import requests
 import state
 import activation as activation_mod
@@ -44,7 +44,7 @@ def check_for_update():
 
 
 def download_and_apply(progress_cb=None):
-    """Download the update zip from the server and apply it in-place.
+    """Download the update tarball from the server and apply it in-place.
 
     progress_cb(pct: int, label: str) is called at each stage.
     Returns list of relative paths that were updated.
@@ -62,7 +62,7 @@ def download_and_apply(progress_cb=None):
     resp.raise_for_status()
 
     total = int(resp.headers.get('Content-Length', 0))
-    tmp_path = os.path.join(state.script_dir, '_update_download.zip')
+    tmp_path = os.path.join(state.script_dir, '_update_download.tar.gz')
 
     _emit(progress_cb, 10, 'Downloading update...')
 
@@ -77,7 +77,7 @@ def download_and_apply(progress_cb=None):
                     _emit(progress_cb, pct, f'Downloading... {downloaded // 1024} KB / {total // 1024} KB')
 
     _emit(progress_cb, 72, 'Applying update...')
-    updated = _apply_zip(tmp_path)
+    updated = _apply_tarball(tmp_path)
 
     _emit(progress_cb, 90, 'Cleaning up...')
     try:
@@ -94,26 +94,28 @@ def _emit(cb, pct, label):
         cb(pct, label)
 
 
-def _shared_prefix(zf):
-    """Return the single top-level directory prefix shared by all zip entries, or None."""
-    names = zf.namelist()
+def _tar_shared_prefix(members):
+    """Return the single top-level directory name shared by all tar members, or None.
+
+    GitHub tarballs wrap everything in 'owner-repo-commithash/' — detect and strip it.
+    """
+    names = [m.name.replace('\\', '/') for m in members]
     if not names:
         return None
-    first = names[0].replace('\\', '/').split('/')[0]
-    if first and '.' not in first and all(
-        n.replace('\\', '/').split('/')[0] == first for n in names
-    ):
+    first = names[0].split('/')[0]
+    if first and all(n.split('/')[0] == first for n in names):
         return first
     return None
 
 
-def _apply_zip(zip_path):
+def _apply_tarball(tar_path):
     project_root = state.script_dir
     updated = []
-    with zipfile.ZipFile(zip_path, 'r') as zf:
-        prefix = _shared_prefix(zf)
-        for entry in zf.infolist():
-            name = entry.filename.replace('\\', '/')
+    with tarfile.open(tar_path, 'r:gz') as tf:
+        members = tf.getmembers()
+        prefix = _tar_shared_prefix(members)
+        for member in members:
+            name = member.name.replace('\\', '/')
             if prefix and name.startswith(prefix + '/'):
                 name = name[len(prefix) + 1:]
             if not name:
@@ -121,13 +123,17 @@ def _apply_zip(zip_path):
             top = name.split('/')[0]
             if top in _PRESERVE:
                 continue
-            if entry.is_dir() or name.endswith('/'):
+            if member.isdir():
+                continue
+            if not member.isfile():
                 continue
             dest = os.path.join(project_root, name)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
-            with zf.open(entry) as src, open(dest, 'wb') as dst:
-                shutil.copyfileobj(src, dst)
-            updated.append(name)
+            src = tf.extractfile(member)
+            if src:
+                with open(dest, 'wb') as dst:
+                    shutil.copyfileobj(src, dst)
+                updated.append(name)
     return updated
 
 
