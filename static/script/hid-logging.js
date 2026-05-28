@@ -1,5 +1,6 @@
 let statusCheckInterval = null;
 const STATUS_CHECK_INTERVAL = 2000; // Check every 2 seconds
+let _terminationNoticeFired = false;
 
 // --- Session timer state ---
 let sessionStartTime = null;
@@ -185,6 +186,7 @@ function onHidSubfolderChange(select) {
 // Main script runner
 async function runScript() {
     if (!validateFileName("base-name") || !validateTimeoutInterval()) return;
+    _terminationNoticeFired = false;
 
     const saveMode = document.querySelector('input[name="hid-save-mode"]:checked')?.value || 'existing';
     let subfolder = '';
@@ -368,6 +370,9 @@ async function clearLogs() {
 
 // --- Termination notice ---
 function showTerminationNotice(message, iconType) {
+    if (_terminationNoticeFired) return;
+    _terminationNoticeFired = true;
+    AppState.scriptRunning = false;
     terminateScript();
 
     const baseOpts = {
