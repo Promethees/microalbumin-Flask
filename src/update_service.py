@@ -38,7 +38,7 @@ def check_for_update():
     return {
         'current': state.APP_VERSION,
         'latest': latest,
-        'update_available': _version_tuple(latest) > _version_tuple(state.APP_VERSION),
+        'update_available': _version_tuple(latest) >= _version_tuple(state.APP_VERSION),
         'release_notes': data.get('release_notes', ''),
     }
 
