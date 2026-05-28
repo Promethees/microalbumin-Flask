@@ -33,8 +33,10 @@ function tickSessionTimer() {
             const sinceLastPoint = (now - lastDataPointTime) / 1000;
             const remaining = Math.max(0, sessionIntervalSec - sinceLastPoint);
             nextEl.textContent = formatHMS(remaining);
+            nextEl.classList.toggle('urgent', remaining <= 10);
         } else {
             nextEl.textContent = '--:--';
+            nextEl.classList.remove('urgent');
         }
     }
 }
@@ -81,7 +83,7 @@ function stopSessionTimer() {
     const elapsedEl = document.getElementById('session-elapsed');
     const nextEl = document.getElementById('session-next');
     if (elapsedEl) elapsedEl.textContent = '00:00:00';
-    if (nextEl) nextEl.textContent = '--:--';
+    if (nextEl) { nextEl.textContent = '--:--'; nextEl.classList.remove('urgent'); }
 }
 
 function checkScriptStatus() {
