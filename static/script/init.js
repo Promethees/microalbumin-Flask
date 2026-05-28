@@ -881,11 +881,16 @@ function _showUpdateBanner(version) {
     const banner = document.getElementById('update-banner');
     const vspan = document.getElementById('update-banner-version');
     const badge = document.getElementById('app-version-badge');
-    if (vspan) vspan.textContent = `v${version}`;
+    // Only append the version number if it is a real semver (e.g. "1.0.12")
+    const isSemver = /^v?\d+\.\d+/.test(version);
+    const vLabel = isSemver ? ' · ' + (version.startsWith('v') ? version : 'v' + version) : '';
+    if (vspan) vspan.textContent = vLabel;
     if (banner) banner.classList.remove('hidden');
     if (badge) {
         badge.classList.add('app-version-badge--update');
-        badge.title = `Update available: v${version} — click to update`;
+        badge.title = isSemver
+            ? `Update available: v${version.replace(/^v/, '')} — click to update`
+            : 'Update available — click to update';
     }
 }
 
