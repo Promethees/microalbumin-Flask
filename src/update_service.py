@@ -16,10 +16,12 @@ _PRESERVE = frozenset({
 
 
 def _version_tuple(v):
+    """Parse 'X.Y.Z' into (X, Y, Z). Returns None if v is not a semver string."""
     try:
-        return tuple(int(x) for x in str(v).split('.'))
+        parts = tuple(int(x) for x in str(v).split('.'))
+        return parts if parts else None
     except Exception:
-        return (0,)
+        return None
 
 
 def check_for_update():
@@ -35,10 +37,14 @@ def check_for_update():
     resp.raise_for_status()
     data = resp.json()
     latest = str(data.get('version', state.APP_VERSION))
+    latest_t = _version_tuple(latest)
+    current_t = _version_tuple(state.APP_VERSION)
+    # Non-semver tag (e.g. 'latest') → always offer download
+    update_available = True if latest_t is None else (latest_t >= (current_t or (0,)))
     return {
         'current': state.APP_VERSION,
         'latest': latest,
-        'update_available': _version_tuple(latest) >= _version_tuple(state.APP_VERSION),
+        'update_available': update_available,
         'release_notes': data.get('release_notes', ''),
     }
 
