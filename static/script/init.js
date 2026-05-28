@@ -929,9 +929,13 @@ function checkForUpdateFromSettings() {
     const statusEl = document.getElementById('swal-update-status');
     if (statusEl) statusEl.textContent = 'Checking…';
 
+    function _availableLabel(v) {
+        return /^v?\d+\.\d+/.test(v) ? 'v' + v.replace(/^v/, '') + ' is available' : 'Update available';
+    }
+
     if (_updateInfo && _updateInfo.update_available) {
         if (statusEl) statusEl.innerHTML =
-            `<span style="color:#f59e0b;font-weight:600">↑ v${_updateInfo.latest} is available.</span> ` +
+            `<span style="color:#f59e0b;font-weight:600">↑ ${_availableLabel(_updateInfo.latest)}.</span> ` +
             `<a href="#" onclick="Swal.close();setTimeout(showUpdateModal,200);return false" style="color:#f59e0b">Update Now →</a>`;
         return;
     }
@@ -947,7 +951,7 @@ function checkForUpdateFromSettings() {
             if (data.update_available) {
                 _showUpdateBanner(data.latest);
                 if (statusEl) statusEl.innerHTML =
-                    `<span style="color:#f59e0b;font-weight:600">↑ v${data.latest} is available.</span> ` +
+                    `<span style="color:#f59e0b;font-weight:600">↑ ${_availableLabel(data.latest)}.</span> ` +
                     `<a href="#" onclick="Swal.close();setTimeout(showUpdateModal,200);return false" style="color:#f59e0b">Update Now →</a>`;
             } else {
                 if (statusEl) statusEl.innerHTML =
@@ -973,12 +977,18 @@ function showUpdateModal() {
         });
         return;
     }
+    const _latestIsSemver = /^v?\d+\.\d+/.test(_updateInfo.latest);
+    const _latestLabel = _latestIsSemver
+        ? 'v' + _updateInfo.latest.replace(/^v/, '')
+        : null;
     const notes = _updateInfo.release_notes
         ? `<p style="text-align:left;font-size:0.85em;margin-top:8px;white-space:pre-wrap">${_updateInfo.release_notes}</p>`
         : '';
     Swal.fire({
-        title: `Update available: v${_updateInfo.latest}`,
-        html: `<p>Current version: <b>v${_updateInfo.current}</b></p>${notes}
+        title: _latestLabel ? `Update available: ${_latestLabel}` : 'Update available',
+        html: `<p>Current version: <b>v${_updateInfo.current}</b></p>
+               ${_latestLabel ? `<p>Latest version: <b>${_latestLabel}</b></p>` : ''}
+               ${notes}
                <p style="font-size:0.82em;color:#888;margin-top:8px">
                  The app will restart automatically after the update is applied.</p>`,
         icon: 'info',
