@@ -52,10 +52,15 @@ function startSessionTimer(intervalSec) {
 function onNewDataPoint() {
     const now = Date.now();
     if (!sessionStartTime) {
+        // First data point: reveal widget and start ticking.
         sessionStartTime = now;
         const timerEl = document.getElementById('session-timer');
         if (timerEl) timerEl.classList.remove('hidden');
         sessionTimerHandle = setInterval(tickSessionTimer, 1000);
+    } else if (!sessionIntervalSec) {
+        // Second data point with no configured interval: measure the device's
+        // actual interval from the gap between point 1 and point 2.
+        sessionIntervalSec = (now - sessionStartTime) / 1000;
     }
     lastDataPointTime = now;
     tickSessionTimer();
