@@ -616,15 +616,15 @@ body.dark .top-right {
 }
 
 .light .update-banner-dismiss {
-    color: #aaa;
+    color: #dc2626;
 }
 
 .dark .update-banner-dismiss {
-    color: #666;
+    color: #f87171;
 }
 
 .update-banner-dismiss:hover {
-    color: #d97706;
+    color: #b91c1c;
 }
 
 /* ==========================================================================
