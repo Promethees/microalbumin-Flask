@@ -39,9 +39,10 @@ def check_for_update():
     latest = str(data.get('version', '') or '')
     latest_t = _version_tuple(latest)
     current_t = _version_tuple(state.APP_VERSION)
-    # Only show update when server returns a valid semver >= current.
-    # Non-semver strings (branch names, 'latest', 'vmain', etc.) are not release signals.
-    update_available = (latest_t is not None) and (latest_t >= (current_t or (0,)))
+    # If the server returns a valid semver, compare with >= (same version still allows re-download).
+    # If the server returns a non-semver string ('latest', etc.), always allow download —
+    # it means a build is available but not yet tagged; the banner won't show the version string.
+    update_available = True if latest_t is None else (latest_t >= (current_t or (0,)))
     return {
         'current': state.APP_VERSION,
         'latest': latest,
