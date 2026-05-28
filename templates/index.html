@@ -187,11 +187,25 @@
             <div class="spinner-message">Process is ongoing, please wait...</div>
         </div>
     </div>
-    <!-- User Guide Button -->
-    <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide">
-        User Guide
-    </button>
-
+    <!-- Top-right controls: session timer + User Guide + Shutdown -->
+    <div id="top-right-controls">
+        <div id="session-timer" class="hidden">
+            <div class="timer-row">
+                <span class="timer-label">Session</span>
+                <span id="session-elapsed">00:00:00</span>
+            </div>
+            <div class="timer-row">
+                <span class="timer-label">Next</span>
+                <span id="session-next">--:--</span>
+            </div>
+        </div>
+        <div id="top-right-btn-group">
+            <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide">
+                User Guide
+            </button>
+            <button id="shutdown-btn">Shutdown Program</button>
+        </div>
+    </div>
 
     <div class="container">
         <div class="top-left">
@@ -274,19 +288,6 @@
                 </div>
             </div>
         </div>
-        <button id="shutdown-btn" style="
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            padding: 10px 15px;
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 9999;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        ">Shutdown Program</button>
         <!-- Initial prompt shown on page load -->
         <div id="init-prompt">
             <!-- Ambient background orbs -->

@@ -1861,15 +1861,121 @@ body.dark .sm-section-title {
 }
 
 /* ==========================================================================
+   Top-right controls: session timer + User Guide + Shutdown
+   ========================================================================== */
+
+#top-right-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+#top-right-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+}
+
+/* Shutdown button (moved out of inline styles) */
+#shutdown-btn {
+    padding: 10px 15px;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+}
+
+#shutdown-btn:hover {
+    background-color: #cc2222;
+}
+
+/* Session timer widget */
+#session-timer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-family: 'Courier New', Courier, monospace;
+    min-width: 110px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+body.light #session-timer {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    color: #333;
+}
+
+body.dark #session-timer {
+    background: rgba(40, 40, 50, 0.92);
+    border: 1px solid #444;
+    color: #e0e0e0;
+}
+
+.timer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.timer-label {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    opacity: 0.65;
+    text-transform: uppercase;
+}
+
+#session-elapsed {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+}
+
+body.light #session-elapsed {
+    color: #27ae60;
+}
+
+body.dark #session-elapsed {
+    color: #2ecc71;
+}
+
+#session-next {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+}
+
+body.light #session-next {
+    color: #2980b9;
+}
+
+body.dark #session-next {
+    color: #5dade2;
+}
+
+/* ==========================================================================
    User Guide / Tutorial System
    ========================================================================== */
 
 /* User Guide Button */
 #user-guide-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
     padding: 10px 20px;
     border-radius: 25px;
     font-weight: bold;

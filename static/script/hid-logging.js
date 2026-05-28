@@ -1,6 +1,83 @@
 let statusCheckInterval = null;
 const STATUS_CHECK_INTERVAL = 2000; // Check every 2 seconds
 
+// --- Session timer state ---
+let sessionStartTime = null;
+let lastDataPointTime = null;
+let sessionIntervalSec = null;
+let sessionTimerHandle = null;
+let _prevDataPointCount = 0;
+
+function formatHMS(totalSeconds) {
+    const s = Math.floor(totalSeconds);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(sec).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function tickSessionTimer() {
+    if (!sessionStartTime) return;
+    const now = Date.now();
+    const elapsedSec = (now - sessionStartTime) / 1000;
+
+    const elapsedEl = document.getElementById('session-elapsed');
+    if (elapsedEl) elapsedEl.textContent = formatHMS(elapsedSec);
+
+    const nextEl = document.getElementById('session-next');
+    if (nextEl) {
+        if (sessionIntervalSec && sessionIntervalSec > 0 && lastDataPointTime) {
+            const sinceLastPoint = (now - lastDataPointTime) / 1000;
+            const remaining = Math.max(0, sessionIntervalSec - sinceLastPoint);
+            nextEl.textContent = formatHMS(remaining);
+        } else {
+            nextEl.textContent = '--:--';
+        }
+    }
+}
+
+// Called when runScript succeeds — prepares state but keeps widget hidden
+// until the first real data point arrives.
+function startSessionTimer(intervalSec) {
+    sessionIntervalSec = intervalSec || null;
+    _prevDataPointCount = 0;
+    sessionStartTime = null;
+    lastDataPointTime = null;
+    if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
+}
+
+// Called each time a new data point is detected in the log output.
+function onNewDataPoint() {
+    const now = Date.now();
+    if (!sessionStartTime) {
+        sessionStartTime = now;
+        const timerEl = document.getElementById('session-timer');
+        if (timerEl) timerEl.classList.remove('hidden');
+        sessionTimerHandle = setInterval(tickSessionTimer, 1000);
+    }
+    lastDataPointTime = now;
+    tickSessionTimer();
+}
+
+function stopSessionTimer() {
+    if (sessionTimerHandle) {
+        clearInterval(sessionTimerHandle);
+        sessionTimerHandle = null;
+    }
+    sessionStartTime = null;
+    lastDataPointTime = null;
+    sessionIntervalSec = null;
+    _prevDataPointCount = 0;
+    const timerEl = document.getElementById('session-timer');
+    if (timerEl) timerEl.classList.add('hidden');
+    const elapsedEl = document.getElementById('session-elapsed');
+    const nextEl = document.getElementById('session-next');
+    if (elapsedEl) elapsedEl.textContent = '00:00:00';
+    if (nextEl) nextEl.textContent = '--:--';
+}
+
 function checkScriptStatus() {
     const logDisplay = document.getElementById('log-display');
     return new Promise((resolve) => {
@@ -76,10 +153,12 @@ function resetUI({ goToEnabled }) {
 }
 
 function resetUIAfterError() {
+    stopSessionTimer();
     resetUI({ goToEnabled: false });
 }
 
 function resetUIAfterCompletion() {
+    stopSessionTimer();
     resetUI({ goToEnabled: true });
     // Refresh folder picker so any newly-created subfolder is visible
     if (typeof loadDataFolders === 'function') loadDataFolders();
@@ -162,6 +241,7 @@ async function runScript() {
             $toggleClass("go-to-btn", "blinking", true);
             $text("log-display", "Script started...\n");
             if (saveMode === 'new' && typeof loadDataFolders === 'function') loadDataFolders();
+            startSessionTimer(payload.interval_sec);
             statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
         } else if (response.status === "device_not_found") {
             handleDeviceNotFound(response);
@@ -220,6 +300,7 @@ async function terminateScript() {
 
 function handleScriptTermination(message) {
     AppState.scriptRunning = false;
+    stopSessionTimer();
     $text("log-display", message);
     $disable(["run-script-btn"], false);
     $toggleClass("run-script-btn", "blinking", true);
@@ -246,6 +327,14 @@ async function fetchLogs() {
         if (response.status === "success") {
             const logs = response.logs;
             $text("log-display", logs);
+
+            // Detect newly recorded data points by counting log entries
+            const dpCount = (logs.match(/Received: Timestamp:/g) || []).length;
+            if (dpCount > _prevDataPointCount) {
+                _prevDataPointCount = dpCount;
+                onNewDataPoint();
+            }
+
             if (/PyBadge not found/.test(logs)) showTerminationNotice("PyBadge not found. Please check the connection.", "error");
             else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice("Failed to find input endpoint. Please verify USB connection.", "error");
             else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice("Session ended due to timeout.", "info");
