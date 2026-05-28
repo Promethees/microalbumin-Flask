@@ -86,14 +86,29 @@ _STOPWORDS = frozenset({
 })
 
 
+def _is_cjk(s: str) -> bool:
+    """True when s contains CJK / kana characters (Chinese, Japanese, Korean)."""
+    return any(
+        0x2E80 <= ord(c) <= 0x9FFF or 0xF900 <= ord(c) <= 0xFAFF or 0xAC00 <= ord(c) <= 0xD7AF
+        for c in s
+    )
+
+
 def _content_words(text: str) -> frozenset:
-    return frozenset(w for w in text.lower().split() if len(w) >= 4 and w not in _STOPWORDS)
+    result = set()
+    for w in text.lower().split():
+        min_len = 2 if _is_cjk(w) else 4
+        if len(w) >= min_len and w not in _STOPWORDS:
+            result.add(w)
+    return frozenset(result)
 
 
 def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
-    if kw.lower() in q_lower:
+    kw_lower = kw.lower()
+    min_len = 2 if _is_cjk(kw_lower) else 4
+    if kw_lower in q_lower and len(kw_lower) >= min_len and kw_lower not in _STOPWORDS:
         return 1.0
-    kw_content = _content_words(kw)
+    kw_content = _content_words(kw_lower)
     if not kw_content:
         return 0.0
     if len(kw_content) == 1:
