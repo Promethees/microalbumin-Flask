@@ -29,13 +29,7 @@
       "application",
       "guide",
       "démarrage",
-      "introduction",
-      "comment",
-      "cette",
-      "fonctionne",
-      "utiliser",
-      "de",
-      "l'application"
+      "introduction"
     ]
   },
   {
@@ -49,11 +43,7 @@
       "aller en mode calibrate",
       "calibration",
       "étalonnage",
-      "calibrate",
-      "aller",
-      "mode",
-      "passer",
-      "en"
+      "calibrate"
     ]
   },
   {
@@ -67,11 +57,7 @@
       "aller en mode cinétique",
       "cinétique",
       "kinetics",
-      "temporelle",
-      "aller",
-      "mode",
-      "passer",
-      "en"
+      "série temporelle"
     ]
   },
   {
@@ -83,12 +69,7 @@
       "mode point",
       "passer en point",
       "aller en mode point",
-      "point",
-      "temporel",
-      "aller",
-      "mode",
-      "passer",
-      "en",
+      "point temporel",
       "endpoint"
     ]
   },
@@ -102,13 +83,8 @@
       "lancer l'appareil",
       "commencer l'enregistrement",
       "démarrer",
-      "lancer",
-      "mesure",
-      "enregistrement",
-      "l'enregistrement",
-      "l'appareil",
-      "la",
-      "commencer"
+      "démarrage mesure",
+      "lancer mesure"
     ]
   },
   {
@@ -120,12 +96,7 @@
       "arrêter la mesure",
       "stopper l'appareil",
       "arrêter l'enregistrement",
-      "arrêter",
-      "mesure",
-      "l'enregistrement",
-      "l'appareil",
-      "stopper",
-      "la"
+      "arrêter mesure"
     ]
   },
   {
@@ -137,12 +108,7 @@
       "sélectionner un fichier",
       "charger un fichier",
       "ouvrir un csv",
-      "charger",
-      "sélectionner",
-      "ouvrir",
-      "un",
-      "fichier",
-      "csv"
+      "charger fichier données"
     ]
   },
   {
@@ -154,16 +120,8 @@
       "changer de répertoire",
       "parcourir le dossier",
       "naviguer dans les fichiers",
-      "les",
-      "répertoire",
-      "parcourir",
-      "fichiers",
-      "changer",
-      "de",
-      "le",
-      "naviguer",
-      "dans",
-      "dossier"
+      "changer répertoire",
+      "dossier données"
     ]
   },
   {
@@ -175,15 +133,8 @@
       "charger la calibration",
       "sélectionner le json de calibration",
       "fichier d'étalonnage",
-      "d'étalonnage",
-      "calibration",
-      "charger",
-      "sélectionner",
-      "la",
-      "json",
-      "fichier",
-      "de",
-      "le"
+      "calibration json",
+      "courbe étalon json"
     ]
   },
   {
@@ -195,15 +146,8 @@
       "configurer le délai",
       "durée de mesure",
       "où est le timeout",
-      "délai",
-      "est",
-      "durée",
-      "mesure",
       "timeout",
-      "où",
-      "configurer",
-      "de",
-      "le"
+      "délai mesure"
     ]
   },
   {
@@ -216,11 +160,7 @@
       "intervalle d'échantillonnage",
       "où est l'intervalle",
       "intervalle",
-      "l'intervalle",
-      "où",
-      "d'échantillonnage",
-      "configurer",
-      "est"
+      "intervalle mesure"
     ]
   },
   {
@@ -232,11 +172,8 @@
       "exporter les données",
       "sauvegarder les données",
       "comment exporter",
-      "les",
-      "comment",
-      "exporter",
-      "sauvegarder",
-      "données"
+      "exporter données",
+      "sauvegarder données"
     ]
   },
   {
@@ -249,12 +186,8 @@
       "fusionner les fichiers",
       "combiner les csv",
       "regrouper les fichiers",
-      "les",
-      "fusionner",
-      "fichiers",
-      "regrouper",
-      "combiner",
-      "csv"
+      "fusionner csv",
+      "combiner fichiers"
     ]
   },
   {
@@ -266,14 +199,8 @@
       "exporter vers le rapport",
       "sauver dans le rapport",
       "ajouter au rapport",
-      "ajouter",
-      "exporter",
-      "vers",
-      "au",
-      "dans",
-      "le",
-      "rapport",
-      "sauver"
+      "exporter rapport",
+      "rapport sujet"
     ]
   },
   {
@@ -285,13 +212,8 @@
       "voir le graphique",
       "afficher le graphe",
       "où est le graphique",
-      "afficher",
-      "voir",
-      "graphe",
-      "où",
-      "est",
-      "le",
-      "graphique"
+      "graphique données",
+      "graphe mesure"
     ]
   },
   {
@@ -303,12 +225,8 @@
       "sélectionner la régression",
       "algorithme d'ajustement",
       "choisir la régression",
-      "algorithme",
-      "la",
-      "régression",
-      "sélectionner",
-      "d'ajustement",
-      "choisir"
+      "algorithme régression",
+      "régression courbe"
     ]
   },
   {
@@ -320,13 +238,8 @@
       "exporter les coefficients",
       "sauvegarder la courbe",
       "enregistrer les coefficients",
-      "les",
-      "courbe",
-      "exporter",
-      "enregistrer",
-      "sauvegarder",
-      "la",
-      "coefficients"
+      "exporter coefficients",
+      "sauvegarder courbe étalon"
     ]
   },
   {
@@ -338,12 +251,8 @@
       "configurer le seuil",
       "seuil R²",
       "où est le seuil",
-      "r²",
-      "où",
-      "configurer",
-      "est",
-      "le",
-      "seuil"
+      "seuil r-carré",
+      "threshold r2"
     ]
   },
   {
@@ -355,12 +264,8 @@
       "taille de la fenêtre",
       "fenêtre glissante",
       "configurer la fenêtre",
-      "glissante",
-      "taille",
-      "la",
-      "fenêtre",
-      "de",
-      "configurer"
+      "window size",
+      "fenêtre analyse"
     ]
   },
   {
@@ -372,14 +277,8 @@
       "sélectionner le point de temps",
       "point temporel",
       "choisir le moment",
-      "temps",
-      "moment",
-      "sélectionner",
-      "de",
-      "temporel",
-      "point",
-      "le",
-      "choisir"
+      "time point",
+      "point temps mesure"
     ]
   },
   {
@@ -390,15 +289,8 @@
     "queries": [
       "voir le journal",
       "afficher les logs",
-      "où sont les logs",
-      "les",
-      "sont",
-      "afficher",
-      "journal",
-      "où",
-      "logs",
-      "le",
-      "voir"
+      "journal appareil",
+      "logs connexion"
     ]
   },
   {
@@ -415,15 +307,8 @@
       "flux de calibration cinétique",
       "courbe étalon cinétique",
       "créer calibration depuis kinetics",
-      "courbe",
-      "créer",
-      "depuis",
-      "calibration",
-      "cinétique",
-      "kinetics",
-      "flux",
-      "de",
-      "étalon"
+      "calibration kinetics",
+      "courbe étalon kinetics"
     ]
   },
   {
@@ -440,14 +325,8 @@
       "flux de calibration point",
       "courbe étalon point",
       "créer calibration depuis point",
-      "courbe",
-      "point",
-      "créer",
-      "depuis",
-      "calibration",
-      "flux",
-      "de",
-      "étalon"
+      "calibration point",
+      "courbe étalon mode point"
     ]
   },
   {
@@ -461,15 +340,7 @@
     "queries": [
       "calculer la concentration depuis kinetics",
       "concentration cinétique",
-      "obtenir la concentration de kinetics",
-      "obtenir",
-      "depuis",
-      "cinétique",
-      "la",
-      "kinetics",
-      "calculer",
-      "concentration",
-      "de"
+      "obtenir la concentration de kinetics"
     ]
   },
   {
@@ -483,16 +354,7 @@
     "queries": [
       "calculer la concentration depuis point",
       "concentration en mode point",
-      "obtenir la concentration de point",
-      "mode",
-      "obtenir",
-      "depuis",
-      "la",
-      "en",
-      "de",
-      "calculer",
-      "concentration",
-      "point"
+      "obtenir la concentration de point"
     ]
   },
   {
@@ -507,15 +369,7 @@
     "queries": [
       "calcul de concentration mauvais mode",
       "concentration ne s'affiche pas",
-      "mauvais mode",
-      "s'affiche",
-      "mauvais",
-      "mode",
-      "ne",
-      "calcul",
-      "pas",
-      "concentration",
-      "de"
+      "mauvais mode concentration"
     ]
   },
   {
@@ -538,14 +392,8 @@
       "créer une courbe d'étalonnage",
       "flux courbe étalon",
       "construire une courbe standard",
-      "courbe",
-      "une",
-      "d'étalonnage",
-      "créer",
-      "standard",
-      "flux",
-      "étalon",
-      "construire"
+      "créer courbe étalon",
+      "workflow calibration"
     ]
   },
   {
@@ -561,12 +409,7 @@
       "calculer la concentration",
       "obtenir la concentration",
       "quelle est la concentration",
-      "obtenir",
-      "quelle",
-      "la",
-      "calculer",
-      "concentration",
-      "est"
+      "concentration échantillon"
     ]
   },
   {
@@ -584,13 +427,7 @@
       "comment mesurer",
       "comment lire le colorimètre",
       "mesurer un échantillon",
-      "comment",
-      "colorimètre",
-      "lire",
-      "mesurer",
-      "un",
-      "le",
-      "échantillon"
+      "guide mesure colorimètre"
     ]
   },
   {
@@ -601,12 +438,7 @@
     "queries": [
       "rapport rapide",
       "générer rapport rapide",
-      "instantané de rapport",
-      "instantané",
-      "rapide",
-      "générer",
-      "de",
-      "rapport"
+      "instantané de rapport"
     ]
   },
   {
@@ -618,14 +450,7 @@
     ],
     "queries": [
       "rapport rapide depuis le rapport",
-      "générer rapport rapide en mode rapport",
-      "mode",
-      "depuis",
-      "rapide",
-      "générer",
-      "en",
-      "le",
-      "rapport"
+      "générer rapport rapide en mode rapport"
     ]
   },
   {
@@ -640,13 +465,7 @@
     "queries": [
       "rapport complet",
       "générer rapport complet",
-      "rapport complet depuis les données",
-      "les",
-      "depuis",
-      "générer",
-      "complet",
-      "données",
-      "rapport"
+      "rapport complet depuis les données"
     ]
   },
   {
@@ -659,14 +478,7 @@
     ],
     "queries": [
       "rapport complet en mode rapport",
-      "compiler le rapport final",
-      "compiler",
-      "mode",
-      "final",
-      "complet",
-      "en",
-      "le",
-      "rapport"
+      "compiler le rapport final"
     ]
   },
   {
@@ -677,15 +489,8 @@
     "queries": [
       "normaliser les données",
       "soustraire le blanc",
-      "retirer le fond",
-      "les",
-      "fond",
-      "retirer",
-      "soustraire",
-      "données",
-      "blanc",
-      "le",
-      "normaliser"
+      "retirer le fond absorbance",
+      "normaliser données"
     ]
   },
   {
@@ -696,14 +501,8 @@
     "queries": [
       "séparer les sources",
       "diviser par source",
-      "séparer les graphiques",
-      "les",
-      "séparer",
-      "sources",
-      "graphiques",
-      "source",
-      "diviser",
-      "par"
+      "séparer les graphiques sources",
+      "split source"
     ]
   },
   {
@@ -718,12 +517,7 @@
       "définir la plage d'analyse",
       "plage temporelle",
       "intervalle d'analyse",
-      "définir",
-      "plage",
-      "temporelle",
-      "intervalle",
-      "la",
-      "d'analyse"
+      "plage analyse données"
     ]
   },
   {
@@ -734,15 +528,7 @@
     "queries": [
       "exporter Excel depuis le rapport",
       "télécharger le classeur Excel",
-      "export Excel rapport",
-      "classeur",
-      "télécharger",
-      "exporter",
-      "depuis",
-      "excel",
-      "export",
-      "le",
-      "rapport"
+      "export Excel rapport"
     ]
   },
   {
@@ -754,11 +540,7 @@
     "queries": [
       "exporter Excel",
       "télécharger Excel",
-      "classeur Excel",
-      "classeur",
-      "télécharger",
-      "exporter",
-      "excel"
+      "classeur Excel"
     ]
   },
   {
@@ -769,17 +551,8 @@
     "queries": [
       "vue en direct",
       "voir les données en temps réel",
-      "affichage live",
-      "les",
-      "réel",
-      "affichage",
-      "temps",
-      "live",
-      "vue",
-      "direct",
-      "données",
-      "en",
-      "voir"
+      "données live",
+      "suivi temps réel"
     ]
   },
   {
@@ -791,14 +564,7 @@
     "queries": [
       "données en temps réel",
       "voir en direct",
-      "affichage en direct",
-      "réel",
-      "affichage",
-      "temps",
-      "direct",
-      "données",
-      "en",
-      "voir"
+      "données live mesure"
     ]
   },
   {
@@ -809,12 +575,7 @@
     "queries": [
       "arrêter le serveur",
       "fermer l'application",
-      "quitter",
-      "arrêter",
-      "fermer",
-      "serveur",
-      "le",
-      "l'application"
+      "quitter application"
     ]
   },
   {
@@ -825,14 +586,8 @@
     "queries": [
       "ouvrir le guide",
       "manuel d'utilisation",
-      "aide",
-      "bouton aide",
-      "bouton",
-      "manuel",
-      "ouvrir",
-      "guide",
-      "le",
-      "d'utilisation"
+      "aide application",
+      "bouton aide"
     ]
   },
   {
@@ -844,17 +599,7 @@
       "nom de base du fichier",
       "nom pour la mesure",
       "qu'est-ce que le nom de base",
-      "base",
-      "que",
-      "mesure",
-      "le",
-      "nom",
-      "la",
-      "du",
-      "de",
-      "fichier",
-      "pour",
-      "qu'est-ce"
+      "base name fichier"
     ]
   },
   {
@@ -867,16 +612,7 @@
       "répertoire de sauvegarde",
       "où sont enregistrés les fichiers",
       "dossier de sortie",
-      "sont",
-      "les",
-      "répertoire",
-      "sauvegarde",
-      "sortie",
-      "où",
-      "fichiers",
-      "enregistrés",
-      "de",
-      "dossier"
+      "emplacement sauvegarde"
     ]
   },
   {
@@ -887,15 +623,7 @@
     "queries": [
       "notifier quand c'est terminé",
       "alerte de fin",
-      "notification de fin",
-      "notifier",
-      "alerte",
-      "quand",
-      "terminé",
-      "c'est",
-      "de",
-      "fin",
-      "notification"
+      "notification fin mesure"
     ]
   },
   {
@@ -906,14 +634,7 @@
     "queries": [
       "effacer les logs",
       "nettoyer le journal",
-      "supprimer les logs",
-      "les",
-      "supprimer",
-      "journal",
-      "nettoyer",
-      "effacer",
-      "logs",
-      "le"
+      "supprimer les logs"
     ]
   },
   {
@@ -924,14 +645,7 @@
     "queries": [
       "désactiver les popups",
       "désactiver les fenêtres pop-up",
-      "supprimer les notifications",
-      "les",
-      "supprimer",
-      "pop-up",
-      "popups",
-      "fenêtres",
-      "désactiver",
-      "notifications"
+      "supprimer les notifications popup"
     ]
   },
   {
@@ -943,15 +657,7 @@
     "queries": [
       "filtrer par source",
       "filtrer le nombre de sources",
-      "filtre de sources",
-      "sources",
-      "source",
-      "filtre",
-      "nombre",
-      "de",
-      "le",
-      "filtrer",
-      "par"
+      "filtre sources fichiers"
     ]
   },
   {
@@ -962,12 +668,7 @@
     "queries": [
       "supprimer un fichier",
       "effacer un fichier",
-      "comment supprimer",
-      "supprimer",
-      "comment",
-      "effacer",
-      "un",
-      "fichier"
+      "comment supprimer fichier"
     ]
   },
   {
@@ -978,14 +679,7 @@
     "queries": [
       "copier un fichier",
       "dupliquer un fichier",
-      "faire une copie",
-      "une",
-      "copie",
-      "faire",
-      "un",
-      "fichier",
-      "copier",
-      "dupliquer"
+      "faire une copie fichier"
     ]
   },
   {
@@ -996,15 +690,7 @@
     "queries": [
       "désélectionner un fichier",
       "annuler la sélection",
-      "décharger le fichier",
-      "sélection",
-      "le",
-      "la",
-      "désélectionner",
-      "fichier",
-      "un",
-      "annuler",
-      "décharger"
+      "décharger le fichier données"
     ]
   },
   {
@@ -1015,15 +701,9 @@
     "queries": [
       "sélectionner la grandeur",
       "qu'est-ce que maxRate",
-      "choisir la quantité",
-      "que",
+      "choisir la quantité cinétique",
       "maxrate",
-      "quantité",
-      "grandeur",
-      "sélectionner",
-      "la",
-      "choisir",
-      "qu'est-ce"
+      "grandeur cinétique"
     ]
   },
   {
@@ -1034,14 +714,7 @@
     "queries": [
       "développer les analyses",
       "réduire les analyses",
-      "afficher tous les graphiques",
-      "les",
-      "afficher",
-      "réduire",
-      "développer",
-      "graphiques",
-      "tous",
-      "analyses"
+      "afficher tous les graphiques"
     ]
   },
   {
@@ -1053,17 +726,7 @@
     "queries": [
       "répertoire d'export",
       "changer l'emplacement d'export",
-      "où sont sauvés les fichiers exportés",
-      "sont",
-      "les",
-      "répertoire",
-      "sauvés",
-      "l'emplacement",
-      "exportés",
-      "où",
-      "fichiers",
-      "changer",
-      "d'export"
+      "où sont sauvés les fichiers exportés"
     ]
   },
   {
@@ -1074,12 +737,8 @@
     "queries": [
       "seuil R carré",
       "seuil R²",
-      "valeur de seuil R²",
-      "r²",
-      "valeur",
-      "carré",
-      "de",
-      "seuil"
+      "valeur seuil r-carré",
+      "threshold r²"
     ]
   },
   {
@@ -1092,16 +751,7 @@
     "queries": [
       "options de mise en page du rapport",
       "filigrane du rapport",
-      "paramètres de rapport",
-      "options",
-      "page",
-      "mise",
-      "paramètres",
-      "du",
-      "filigrane",
-      "en",
-      "de",
-      "rapport"
+      "paramètres rapport layout"
     ]
   },
   {
@@ -1114,17 +764,7 @@
     "queries": [
       "gérer les sujets de rapport",
       "qu'est-ce qu'un sujet de rapport",
-      "supprimer un sujet",
-      "les",
-      "supprimer",
-      "sujet",
-      "gérer",
-      "qu'un",
-      "un",
-      "de",
-      "sujets",
-      "rapport",
-      "qu'est-ce"
+      "supprimer sujet rapport"
     ]
   }
 ]

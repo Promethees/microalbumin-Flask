@@ -26,29 +26,8 @@
       "bắt đầu sử dụng",
       "giới thiệu ứng dụng",
       "hướng dẫn cho người mới",
-      "hoạt động",
-      "sử dụng",
-      "giới thiệu",
-      "hướng dẫn",
-      "mới",
-      "thiệu",
-      "giới",
-      "người",
-      "cách",
-      "thế",
-      "nào",
-      "sử",
-      "dẫn",
-      "đầu",
-      "hướng",
-      "này",
-      "ứng",
-      "bắt",
-      "động",
-      "dụng",
-      "như",
-      "cho",
-      "hoạt"
+      "hướng dẫn sử dụng",
+      "tổng quan ứng dụng"
     ]
   },
   {
@@ -60,15 +39,9 @@
       "chế độ calibrate",
       "chuyển sang calibrate",
       "vào chế độ hiệu chuẩn",
+      "chế độ hiệu chuẩn",
       "calibrate",
-      "hiệu chuẩn",
-      "chế",
-      "vào",
-      "độ",
-      "hiệu",
-      "chuyển",
-      "sang",
-      "chuẩn"
+      "hiệu chuẩn"
     ]
   },
   {
@@ -82,16 +55,7 @@
       "chế độ chuỗi thời gian",
       "kinetics",
       "chuỗi thời gian",
-      "động học",
-      "chế",
-      "độ",
-      "thời",
-      "gian",
-      "chuỗi",
-      "chuyển",
-      "sang",
-      "học",
-      "động"
+      "động học"
     ]
   },
   {
@@ -104,13 +68,7 @@
       "chuyển sang point",
       "chế độ điểm đơn",
       "point",
-      "điểm đơn",
-      "chế",
-      "độ",
-      "điểm",
-      "chuyển",
-      "đơn",
-      "sang"
+      "điểm đơn"
     ]
   },
   {
@@ -122,24 +80,7 @@
       "bắt đầu đo",
       "khởi động thiết bị",
       "chạy máy so màu",
-      "bắt đầu ghi dữ liệu",
-      "bắt đầu",
-      "khởi động",
-      "ghi dữ liệu",
-      "màu",
-      "liệu",
-      "đầu",
-      "chạy",
-      "so",
-      "bị",
-      "ghi",
-      "máy",
-      "khởi",
-      "dữ",
-      "bắt",
-      "đo",
-      "động",
-      "thiết"
+      "bắt đầu ghi dữ liệu"
     ]
   },
   {
@@ -151,18 +92,7 @@
       "dừng đo",
       "tắt thiết bị",
       "dừng ghi dữ liệu",
-      "dừng máy so màu",
-      "màu",
-      "liệu",
-      "dừng",
-      "so",
-      "bị",
-      "ghi",
-      "dữ",
-      "máy",
-      "đo",
-      "tắt",
-      "thiết"
+      "dừng máy so màu"
     ]
   },
   {
@@ -171,18 +101,10 @@
       "Chọn tệp dữ liệu CSV để phân tích ở đây. Nhấp để mở hộp chọn tệp."
     ],
     "queries": [
-      "chọn tệp",
-      "tải tệp",
+      "chọn tệp dữ liệu",
+      "tải tệp dữ liệu",
       "mở tệp csv",
-      "chọn file dữ liệu",
-      "liệu",
-      "file",
-      "tải",
-      "chọn",
-      "dữ",
-      "tệp",
-      "mở",
-      "csv"
+      "chọn file dữ liệu"
     ]
   },
   {
@@ -194,16 +116,7 @@
       "thay đổi thư mục",
       "duyệt thư mục",
       "điều hướng tệp",
-      "mở thư mục",
-      "duyệt",
-      "hướng",
-      "thư",
-      "thay",
-      "đổi",
-      "tệp",
-      "mở",
-      "mục",
-      "điều"
+      "mở thư mục dữ liệu"
     ]
   },
   {
@@ -216,13 +129,7 @@
       "chọn json hiệu chuẩn",
       "tệp hiệu chuẩn",
       "chọn đường chuẩn",
-      "đường",
-      "tải",
-      "chọn",
-      "hiệu",
-      "json",
-      "tệp",
-      "chuẩn"
+      "đường chuẩn json"
     ]
   },
   {
@@ -235,14 +142,7 @@
       "thời gian đo",
       "đặt thời gian ghi",
       "timeout ở đâu",
-      "thời",
-      "gian",
-      "đặt",
-      "timeout",
-      "đo",
-      "đâu",
-      "ghi",
-      "cài"
+      "timeout"
     ]
   },
   {
@@ -254,16 +154,7 @@
       "cài đặt interval",
       "khoảng thời gian lấy mẫu",
       "đặt khoảng cách đo",
-      "lấy",
-      "thời",
-      "gian",
-      "đặt",
-      "mẫu",
-      "interval",
-      "cách",
-      "đo",
-      "khoảng",
-      "cài"
+      "interval"
     ]
   },
   {
@@ -275,14 +166,7 @@
       "xuất dữ liệu",
       "lưu dữ liệu",
       "export dữ liệu",
-      "xuất kết quả",
-      "liệu",
-      "export",
-      "dữ",
-      "quả",
-      "xuất",
-      "lưu",
-      "kết"
+      "xuất kết quả phân tích"
     ]
   },
   {
@@ -295,15 +179,7 @@
       "gộp tệp",
       "kết hợp csv",
       "hợp nhất tệp",
-      "merge file",
-      "nhất",
-      "file",
-      "gộp",
-      "hợp",
-      "tệp",
-      "merge",
-      "kết",
-      "csv"
+      "merge file"
     ]
   },
   {
@@ -315,16 +191,7 @@
       "xuất vào báo cáo",
       "lưu vào báo cáo",
       "export to report",
-      "thêm vào báo cáo",
-      "vào",
-      "báo",
-      "export",
-      "xuất",
-      "to",
-      "cáo",
-      "lưu",
-      "report",
-      "thêm"
+      "thêm vào báo cáo"
     ]
   },
   {
@@ -334,17 +201,9 @@
     ],
     "queries": [
       "xem biểu đồ",
-      "đồ thị",
+      "đồ thị dữ liệu",
       "biểu đồ dữ liệu",
-      "hiển thị chart",
-      "xem",
-      "liệu",
-      "hiển",
-      "đồ",
-      "dữ",
-      "chart",
-      "thị",
-      "biểu"
+      "hiển thị chart"
     ]
   },
   {
@@ -357,16 +216,7 @@
       "thuật toán khớp đường cong",
       "chọn regression",
       "chọn kiểu hồi quy",
-      "thuật",
-      "đường",
-      "regression",
-      "cong",
-      "toán",
-      "chọn",
-      "kiểu",
-      "hồi",
-      "khớp",
-      "quy"
+      "regression"
     ]
   },
   {
@@ -379,17 +229,8 @@
       "lưu đường chuẩn",
       "xuất coefficients",
       "lưu hệ số hồi quy",
-      "đường",
-      "hệ",
-      "coefficients",
-      "xuất",
-      "số",
-      "lưu",
-      "hồi",
-      "chuẩn",
-      "quy",
-      "hệ số",
-      "đường chuẩn"
+      "hệ số đường chuẩn",
+      "coefficients"
     ]
   },
   {
@@ -402,11 +243,7 @@
       "ngưỡng r bình phương",
       "threshold",
       "r2 threshold",
-      "ngưỡng",
-      "đặt",
-      "bình",
-      "r2",
-      "phương"
+      "ngưỡng r2"
     ]
   },
   {
@@ -418,17 +255,7 @@
       "kích thước cửa sổ trượt",
       "window size",
       "cửa sổ phân tích",
-      "đặt window",
-      "sổ",
-      "phân",
-      "size",
-      "kích",
-      "trượt",
-      "thước",
-      "đặt",
-      "tích",
-      "cửa",
-      "window"
+      "đặt window size"
     ]
   },
   {
@@ -440,15 +267,7 @@
       "chọn điểm thời gian",
       "time point",
       "thời điểm đo",
-      "chọn time point",
-      "time",
-      "thời",
-      "điểm",
-      "gian",
-      "chọn",
-      "đo",
-      "point",
-      "endpoint"
+      "chọn time point"
     ]
   },
   {
@@ -458,14 +277,9 @@
     ],
     "queries": [
       "xem nhật ký",
-      "log",
-      "xem log",
       "nhật ký thiết bị",
-      "xem",
-      "bị",
-      "nhật",
-      "ký",
-      "thiết"
+      "xem log thiết bị",
+      "log"
     ]
   },
   {
@@ -482,17 +296,8 @@
       "quy trình hiệu chuẩn kinetics",
       "đường chuẩn kinetics",
       "tạo đường chuẩn từ kinetics",
-      "trình",
-      "đường",
-      "hiệu",
-      "từ",
-      "kinetics",
-      "tạo",
-      "chuẩn",
-      "quy",
-      "quy trình",
-      "hiệu chuẩn",
-      "đường chuẩn"
+      "quy trình hiệu chuẩn",
+      "hiệu chuẩn kinetics"
     ]
   },
   {
@@ -509,17 +314,7 @@
       "quy trình hiệu chuẩn point",
       "đường chuẩn point",
       "tạo đường chuẩn từ point",
-      "trình",
-      "đường",
-      "hiệu",
-      "từ",
-      "tạo",
-      "point",
-      "chuẩn",
-      "quy",
-      "quy trình",
-      "hiệu chuẩn",
-      "đường chuẩn"
+      "hiệu chuẩn point"
     ]
   },
   {
@@ -533,15 +328,7 @@
     "queries": [
       "tính nồng độ từ kinetics",
       "nồng độ kinetics",
-      "lấy nồng độ từ dữ liệu kinetics",
-      "tính",
-      "liệu",
-      "lấy",
-      "độ",
-      "từ",
-      "kinetics",
-      "dữ",
-      "nồng"
+      "lấy nồng độ từ dữ liệu kinetics"
     ]
   },
   {
@@ -555,13 +342,7 @@
     "queries": [
       "tính nồng độ từ point",
       "nồng độ point",
-      "lấy nồng độ từ point",
-      "tính",
-      "lấy",
-      "độ",
-      "từ",
-      "point",
-      "nồng"
+      "lấy nồng độ từ point"
     ]
   },
   {
@@ -576,16 +357,7 @@
     "queries": [
       "tính nồng độ sai chế độ",
       "chế độ không đúng để tính nồng độ",
-      "nồng độ không hiện",
-      "chế",
-      "không",
-      "để",
-      "tính",
-      "độ",
-      "đúng",
-      "hiện",
-      "sai",
-      "nồng"
+      "nồng độ không hiện"
     ]
   },
   {
@@ -608,14 +380,7 @@
       "tạo đường chuẩn",
       "quy trình đường chuẩn",
       "xây dựng đường chuẩn",
-      "quy trình tạo đường chuẩn",
-      "trình",
-      "đường",
-      "tạo",
-      "xây",
-      "dựng",
-      "chuẩn",
-      "quy"
+      "quy trình tạo đường chuẩn"
     ]
   },
   {
@@ -632,14 +397,6 @@
       "lấy nồng độ",
       "nồng độ mẫu",
       "nồng độ là bao nhiêu",
-      "tính",
-      "lấy",
-      "độ",
-      "bao",
-      "là",
-      "mẫu",
-      "nhiêu",
-      "nồng",
       "nồng độ",
       "concentration"
     ]
@@ -659,16 +416,7 @@
       "cách đo",
       "cách đọc máy so màu",
       "đo mẫu",
-      "hướng dẫn đo",
-      "đọc",
-      "màu",
-      "so",
-      "hướng",
-      "mẫu",
-      "dẫn",
-      "cách",
-      "đo",
-      "máy"
+      "hướng dẫn đo"
     ]
   },
   {
@@ -679,12 +427,7 @@
     "queries": [
       "báo cáo nhanh",
       "tạo báo cáo nhanh",
-      "chụp nhanh báo cáo",
-      "chụp",
-      "nhanh",
-      "báo",
-      "tạo",
-      "cáo"
+      "chụp nhanh báo cáo"
     ]
   },
   {
@@ -696,16 +439,7 @@
     ],
     "queries": [
       "báo cáo nhanh từ báo cáo",
-      "tạo báo cáo nhanh trong chế độ report",
-      "chế",
-      "nhanh",
-      "báo",
-      "độ",
-      "từ",
-      "tạo",
-      "trong",
-      "cáo",
-      "report"
+      "tạo báo cáo nhanh trong chế độ report"
     ]
   },
   {
@@ -721,21 +455,7 @@
       "báo cáo đầy đủ",
       "tạo báo cáo toàn diện",
       "full report từ dữ liệu",
-      "liệu",
-      "báo",
-      "đầy",
-      "report",
-      "từ",
-      "dữ",
-      "tạo",
-      "đủ",
-      "cáo",
-      "full",
-      "toàn",
-      "diện",
-      "báo cáo",
-      "đầy đủ",
-      "toàn diện"
+      "báo cáo toàn diện"
     ]
   },
   {
@@ -749,21 +469,7 @@
     "queries": [
       "báo cáo đầy đủ trong chế độ report",
       "tổng hợp báo cáo",
-      "full report trong report",
-      "chế",
-      "báo",
-      "độ",
-      "tất cả",
-      "hợp",
-      "trong",
-      "đủ",
-      "cáo",
-      "full",
-      "tổng",
-      "report",
-      "đầy",
-      "cả",
-      "tất"
+      "full report trong report"
     ]
   },
   {
@@ -774,16 +480,8 @@
     "queries": [
       "chuẩn hóa dữ liệu",
       "trừ nền",
-      "loại bỏ nền",
-      "normalize",
-      "nền",
-      "liệu",
-      "trừ",
-      "dữ",
-      "bỏ",
-      "hóa",
-      "chuẩn",
-      "loại"
+      "loại bỏ nền hấp thụ",
+      "normalize"
     ]
   },
   {
@@ -794,17 +492,8 @@
     "queries": [
       "tách nguồn",
       "chia theo nguồn",
-      "phân tách biểu đồ",
-      "split source",
-      "tách",
-      "split",
-      "phân",
-      "đồ",
-      "source",
-      "nguồn",
-      "biểu",
-      "chia",
-      "theo"
+      "phân tách biểu đồ theo nguồn",
+      "split source"
     ]
   },
   {
@@ -819,15 +508,7 @@
       "đặt phạm vi phân tích",
       "phạm vi thời gian",
       "giới hạn phân tích",
-      "vi",
-      "phân",
-      "thời",
-      "gian",
-      "đặt",
-      "tích",
-      "phạm",
-      "hạn",
-      "giới"
+      "khoảng thời gian phân tích"
     ]
   },
   {
@@ -838,17 +519,7 @@
     "queries": [
       "xuất excel trong báo cáo",
       "tải bảng tính excel",
-      "export excel từ báo cáo",
-      "bảng",
-      "tính",
-      "báo",
-      "tải",
-      "excel",
-      "từ",
-      "export",
-      "trong",
-      "xuất",
-      "cáo"
+      "export excel từ báo cáo"
     ]
   },
   {
@@ -860,14 +531,7 @@
     "queries": [
       "xuất excel",
       "tải workbook excel",
-      "tải về excel",
-      "export excel",
-      "workbook",
-      "tải",
-      "excel",
-      "export",
-      "xuất",
-      "về"
+      "export excel"
     ]
   },
   {
@@ -878,18 +542,7 @@
     "queries": [
       "xem dữ liệu trực tiếp",
       "view live data",
-      "live view",
-      "theo dõi trực tiếp",
-      "view",
-      "xem",
-      "theo",
-      "liệu",
-      "tiếp",
-      "dữ",
-      "dõi",
-      "trực",
-      "data",
-      "live"
+      "theo dõi trực tiếp"
     ]
   },
   {
@@ -901,16 +554,7 @@
     "queries": [
       "dữ liệu trực tiếp",
       "xem trực tiếp",
-      "live data",
-      "view live data",
-      "view",
-      "xem",
-      "liệu",
-      "tiếp",
-      "dữ",
-      "trực",
-      "data",
-      "live"
+      "live data"
     ]
   },
   {
@@ -922,14 +566,7 @@
       "tắt máy chủ",
       "đóng ứng dụng",
       "shutdown",
-      "thoát ứng dụng",
-      "dụng",
-      "thoát",
-      "chủ",
-      "ứng",
-      "tắt",
-      "đóng",
-      "máy"
+      "thoát ứng dụng"
     ]
   },
   {
@@ -941,17 +578,7 @@
       "mở hướng dẫn",
       "hướng dẫn sử dụng",
       "tài liệu trợ giúp",
-      "nút trợ giúp",
-      "tài",
-      "liệu",
-      "dụng",
-      "trợ",
-      "hướng",
-      "nút",
-      "sử",
-      "mở",
-      "giúp",
-      "dẫn"
+      "nút trợ giúp"
     ]
   },
   {
@@ -964,19 +591,7 @@
       "đặt tên file đo",
       "base name là gì",
       "tên tệp đầu ra",
-      "base",
-      "name",
-      "đầu",
-      "file",
-      "đặt",
-      "là",
-      "tên",
-      "tệp",
-      "đo",
-      "sở",
-      "cơ",
-      "gì",
-      "ra"
+      "base name"
     ]
   },
   {
@@ -989,15 +604,7 @@
       "thư mục lưu",
       "lưu ở đâu",
       "thư mục xuất tệp",
-      "vị trí lưu",
-      "thư",
-      "vị",
-      "tệp",
-      "xuất",
-      "lưu",
-      "đâu",
-      "trí",
-      "mục"
+      "vị trí lưu tệp"
     ]
   },
   {
@@ -1008,17 +615,7 @@
     "queries": [
       "thông báo khi xong",
       "cảnh báo hoàn thành",
-      "notify khi kết thúc",
-      "thông",
-      "hoàn",
-      "báo",
-      "xong",
-      "thúc",
-      "khi",
-      "thành",
-      "notify",
-      "cảnh",
-      "kết"
+      "notify khi kết thúc"
     ]
   },
   {
@@ -1029,15 +626,7 @@
     "queries": [
       "xóa log",
       "làm sạch nhật ký",
-      "xóa nhật ký thiết bị",
-      "log",
-      "làm",
-      "bị",
-      "nhật",
-      "ký",
-      "sạch",
-      "xóa",
-      "thiết"
+      "xóa nhật ký thiết bị"
     ]
   },
   {
@@ -1048,17 +637,7 @@
     "queries": [
       "tắt popup",
       "không hiện cửa sổ bật lên",
-      "tắt thông báo bật lên",
-      "không",
-      "sổ",
-      "lên",
-      "thông",
-      "báo",
-      "bật",
-      "cửa",
-      "hiện",
-      "tắt",
-      "popup"
+      "tắt thông báo bật lên"
     ]
   },
   {
@@ -1070,14 +649,7 @@
     "queries": [
       "lọc theo nguồn",
       "lọc số lượng nguồn",
-      "filter source",
-      "lượng",
-      "filter",
-      "lọc",
-      "source",
-      "nguồn",
-      "số",
-      "theo"
+      "filter source"
     ]
   },
   {
@@ -1087,15 +659,9 @@
     ],
     "queries": [
       "xóa tệp",
-      "xóa file",
+      "xóa file csv",
       "cách xóa file",
-      "loại bỏ tệp",
-      "file",
-      "bỏ",
-      "tệp",
-      "xóa",
-      "cách",
-      "loại"
+      "loại bỏ tệp dữ liệu"
     ]
   },
   {
@@ -1107,16 +673,7 @@
       "sao chép tệp",
       "nhân đôi tệp",
       "copy file",
-      "tạo bản sao",
-      "bản",
-      "copy",
-      "file",
-      "sao",
-      "đôi",
-      "chép",
-      "tệp",
-      "tạo",
-      "nhân"
+      "tạo bản sao"
     ]
   },
   {
@@ -1128,14 +685,7 @@
       "bỏ chọn tệp",
       "hủy chọn file",
       "unselect file",
-      "bỏ load tệp",
-      "file",
-      "chọn",
-      "bỏ",
-      "tệp",
-      "hủy",
-      "unselect",
-      "load"
+      "bỏ load tệp"
     ]
   },
   {
@@ -1148,14 +698,7 @@
       "maxRate là gì",
       "đại lượng kinetics",
       "chọn quantity",
-      "lượng",
-      "maxrate",
-      "chọn",
-      "là",
-      "quantity",
-      "kinetics",
-      "đại",
-      "gì"
+      "maxrate"
     ]
   },
   {
@@ -1166,18 +709,7 @@
     "queries": [
       "mở rộng phân tích",
       "thu gọn phân tích",
-      "hiện tất cả biểu đồ",
-      "phân",
-      "thu",
-      "tất",
-      "đồ",
-      "rộng",
-      "tích",
-      "cả",
-      "hiện",
-      "mở",
-      "biểu",
-      "gọn"
+      "hiện tất cả biểu đồ"
     ]
   },
   {
@@ -1189,16 +721,7 @@
     "queries": [
       "thư mục lưu xuất",
       "thay đổi vị trí xuất",
-      "lưu xuất ở đâu",
-      "thay",
-      "thư",
-      "vị",
-      "đổi",
-      "xuất",
-      "lưu",
-      "đâu",
-      "trí",
-      "mục"
+      "lưu xuất ở đâu"
     ]
   },
   {
@@ -1210,14 +733,7 @@
       "ngưỡng r bình phương",
       "rsquared threshold",
       "giá trị ngưỡng r2",
-      "ngưỡng",
-      "rsquared",
-      "threshold",
-      "bình",
-      "giá",
-      "r2",
-      "trị",
-      "phương"
+      "r squared threshold"
     ]
   },
   {
@@ -1230,17 +746,7 @@
     "queries": [
       "bố cục báo cáo",
       "hình mờ báo cáo",
-      "tùy chọn định dạng báo cáo",
-      "dạng",
-      "tùy",
-      "báo",
-      "bố",
-      "chọn",
-      "hình",
-      "cục",
-      "mờ",
-      "cáo",
-      "định"
+      "tùy chọn định dạng báo cáo"
     ]
   },
   {
@@ -1253,18 +759,7 @@
     "queries": [
       "quản lý chủ đề báo cáo",
       "report subject là gì",
-      "xóa chủ đề báo cáo",
-      "báo",
-      "chủ",
-      "quản",
-      "đề",
-      "là",
-      "lý",
-      "xóa",
-      "subject",
-      "cáo",
-      "gì",
-      "report"
+      "xóa chủ đề báo cáo"
     ]
   }
 ]
