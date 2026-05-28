@@ -286,9 +286,27 @@ def activate():
     return jsonify({'status': 'success', 'license_token': activation_token})
 
 
+@account_bp.route('/api/version')
+def app_version():
+    """Return the current app release tag and optional release notes.
+
+    Used by the desktop client's auto-update check (GET /update/check).
+    No authentication required — version info is public.
+    """
+    return jsonify({
+        'version': _APP_RELEASE_TAG,
+        'release_notes': os.environ.get('APP_RELEASE_NOTES', ''),
+    })
+
+
 @account_bp.route('/api/download')
 def download():
-    token = request.args.get('token') or request.headers.get('X-Download-Token')
+    # Accept token from query param, X-Download-Token header, or Authorization: Bearer header.
+    # The desktop auto-updater sends its permanent activation token as Authorization: Bearer.
+    # validate_download_token() accepts activation tokens too (same purpose claim, no exp).
+    auth_header = request.headers.get('Authorization', '')
+    bearer = auth_header[7:] if auth_header.startswith('Bearer ') else None
+    token = request.args.get('token') or request.headers.get('X-Download-Token') or bearer
     if not token:
         return jsonify({'status': 'error', 'message': 'Download token required'}), 401
 
