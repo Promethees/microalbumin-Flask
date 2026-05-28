@@ -599,6 +599,12 @@ body.dark .top-right {
     text-decoration: underline;
 }
 
+.update-banner-icon {
+    font-size: 0.95rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
 .update-banner-dismiss {
     background: none;
     border: none;
