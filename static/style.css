@@ -572,21 +572,14 @@ body.dark .top-right {
     align-items: center;
     gap: 4px;
     margin-top: 5px;
+    cursor: pointer;
 }
 
-.update-banner-btn {
-    background: #f59e0b;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
+.update-banner-label {
     font-size: 0.72rem;
-    padding: 3px 10px;
-    cursor: pointer;
     font-family: Arial, sans-serif;
     font-weight: 600;
     letter-spacing: 0.02em;
-    transition: background 0.15s;
-    /* shrink inside the capped banner width; truncate if still too tight */
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -594,23 +587,39 @@ body.dark .top-right {
     white-space: nowrap;
 }
 
-.update-banner-btn:hover {
-    background: #d97706;
+.light .update-banner-label {
+    color: #d97706;
+}
+
+.dark .update-banner-label {
+    color: #fbbf24;
+}
+
+#update-banner:hover .update-banner-label {
+    text-decoration: underline;
 }
 
 .update-banner-dismiss {
     background: none;
     border: none;
-    color: #aaa;
     cursor: pointer;
     font-size: 1rem;
     padding: 0 2px;
     line-height: 1;
+    flex-shrink: 0;
     transition: color 0.15s;
 }
 
+.light .update-banner-dismiss {
+    color: #aaa;
+}
+
+.dark .update-banner-dismiss {
+    color: #666;
+}
+
 .update-banner-dismiss:hover {
-    color: #555;
+    color: #d97706;
 }
 
 /* ==========================================================================
