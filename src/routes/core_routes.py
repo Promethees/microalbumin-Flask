@@ -139,6 +139,14 @@ def post_settings():
     if not data:
         return jsonify({'status': 'error', 'message': 'No JSON data'}), 400
     if _user_settings.save(data):
+        # Propagate runtime-relevant settings to state immediately.
+        if "max_resend_attempts" in data:
+            try:
+                n = int(data["max_resend_attempts"])
+                if n >= 0:
+                    state.MAX_RESEND_ATTEMPTS = n
+            except (ValueError, TypeError):
+                pass
         return jsonify({'status': 'success'})
     return jsonify({'status': 'error', 'message': 'Could not save settings'}), 500
 

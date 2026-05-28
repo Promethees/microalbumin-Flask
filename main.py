@@ -71,6 +71,11 @@ from export_data import is_metadata_consistent, write_metadata, write_headers, e
 _report(70, "Loading browser & state modules …")
 from browser_mgt import open_browser, cleanup, ensure_host_mapping
 import state
+import user_settings as _user_settings_boot
+
+# Apply persisted user settings to runtime state on startup.
+_boot_settings = _user_settings_boot.load()
+state.MAX_RESEND_ATTEMPTS = _boot_settings.get("max_resend_attempts", state.MAX_RESEND_ATTEMPTS)
 
 # ── Routes (blueprints) ──────────────────────────────────────────────────────
 _report(78, "Loading route blueprints …")

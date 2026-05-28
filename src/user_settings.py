@@ -28,6 +28,7 @@ DEFAULTS = {
     "default_timeout_unit": "seconds",
     "default_interval": None,
     "default_interval_unit": "seconds",
+    "max_resend_attempts": 3,
 }
 
 
@@ -129,6 +130,13 @@ def save(updates: dict) -> bool:
                         current[num_key] = n
                 except (ValueError, TypeError):
                     pass
+    if "max_resend_attempts" in updates:
+        try:
+            n = int(updates["max_resend_attempts"])
+            if n >= 0:
+                current["max_resend_attempts"] = n
+        except (ValueError, TypeError):
+            pass
     try:
         with open(_path(), "w", encoding="utf-8") as f:
             json.dump(current, f, indent=2)

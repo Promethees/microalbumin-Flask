@@ -216,6 +216,35 @@ class TestSave:
         result = user_settings.load()
         assert result["event_log_retention_days"] == 30
 
+    def test_saves_valid_max_resend_attempts(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"max_resend_attempts": 5}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_resend_attempts"] == 5
+
+    def test_saves_max_resend_attempts_zero(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"max_resend_attempts": 0}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_resend_attempts"] == 0
+
+    def test_rejects_negative_max_resend_attempts(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_resend_attempts": -1})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_resend_attempts"] == user_settings.DEFAULTS["max_resend_attempts"]
+
+    def test_rejects_non_numeric_max_resend_attempts(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"max_resend_attempts": "many"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["max_resend_attempts"] == user_settings.DEFAULTS["max_resend_attempts"]
+
+    def test_max_resend_attempts_default_is_3(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        result = user_settings.load()
+        assert result["max_resend_attempts"] == 3
+
 
 # ---------------------------------------------------------------------------
 # GET /settings route
