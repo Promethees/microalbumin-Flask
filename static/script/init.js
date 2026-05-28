@@ -881,11 +881,15 @@ function _showUpdateBanner(version) {
     const banner = document.getElementById('update-banner');
     const vspan = document.getElementById('update-banner-version');
     const badge = document.getElementById('app-version-badge');
-    // Only append the version number if it is a real semver (e.g. "1.0.12")
     const isSemver = /^v?\d+\.\d+/.test(version);
     const vLabel = isSemver ? ' · ' + (version.startsWith('v') ? version : 'v' + version) : '';
     if (vspan) vspan.textContent = vLabel;
-    if (banner) banner.classList.remove('hidden');
+    if (banner) {
+        banner.classList.remove('hidden');
+        // Cap banner width to the CBBiotec heading so it never widens the flex-group
+        const htbio = document.getElementById('htbio');
+        if (htbio) banner.style.maxWidth = htbio.offsetWidth + 'px';
+    }
     if (badge) {
         badge.classList.add('app-version-badge--update');
         badge.title = isSemver

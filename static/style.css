@@ -586,6 +586,11 @@ body.dark .top-right {
     font-weight: 600;
     letter-spacing: 0.02em;
     transition: background 0.15s;
+    /* shrink inside the capped banner width; truncate if still too tight */
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
