@@ -552,6 +552,21 @@ body.dark .top-right {
     margin-top: 1px;
 }
 
+.app-version-badge--update {
+    color: #f59e0b;
+}
+
+.app-version-badge--update::after {
+    content: ' \25cf';
+    color: #f59e0b;
+    animation: badge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+}
+
 /* ==========================================================================
    Theme Toggle Component
    ========================================================================== */

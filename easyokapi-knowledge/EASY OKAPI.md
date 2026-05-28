@@ -54,6 +54,7 @@ graph TD
 | `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
 | `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides` | `ai-chat.js` |
+| `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream) | `init.js` |
 
 * **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
 * **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init.
@@ -80,6 +81,7 @@ graph TD
 | `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `default_mode`, `default_window_size`, `default_subfolder`, `event_log_retention_days` |
 | `event_logger.py` | Append/read user interaction events; logs go to `log/events/YYYY-MM-DD/HH-MM-SS.jsonl` (one file per app launch per day); `cleanup_old_logs()` removes date folders older than `event_log_retention_days` |
 | `activation.py` | Reads/writes `activation.json`; `get_license_token()` and `AI_SERVICE_URL` constant for proxy mode |
+| `update_service.py` | Auto-update: `check_for_update()` (calls `/api/version`), `download_and_apply(progress_cb)` (downloads zip via `/api/download` + extracts in-place, preserving user data), `restart_after_delay()` (cross-platform process restart) |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
 | `get_next_filename.py` | Auto-naming duplicates (e.g., `file_1.csv`) |

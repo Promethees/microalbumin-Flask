@@ -861,3 +861,150 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
         updateDirectory(AppState.currentDirectory, false);
     }
 })
+
+// ── Auto-update ───────────────────────────────────────────────────────────────
+
+let _updateInfo = null;
+
+function checkForUpdate(silent = true) {
+    fetch('/update/check')
+        .then(r => r.json())
+        .then(data => {
+            if (!data || data.status !== 'success') {
+                if (!silent) {
+                    Swal.fire('Update check failed',
+                        (data && data.message) || 'Could not reach the update server.',
+                        'warning');
+                }
+                return;
+            }
+            _updateInfo = data;
+            const badge = document.getElementById('app-version-badge');
+            if (!badge) return;
+            if (data.update_available) {
+                badge.classList.add('app-version-badge--update');
+                badge.title = `Update available: v${data.latest} — click to update`;
+            } else if (!silent) {
+                Swal.fire({
+                    title: 'Up to date',
+                    text: `You are running the latest version (v${data.current}).`,
+                    icon: 'info',
+                    confirmButtonText: 'OK',
+                });
+            }
+        })
+        .catch(() => {
+            if (!silent) {
+                Swal.fire('Update check failed', 'Could not reach the update server.', 'warning');
+            }
+        });
+}
+
+function showUpdateModal() {
+    if (!_updateInfo) {
+        checkForUpdate(false);
+        return;
+    }
+    if (!_updateInfo.update_available) {
+        Swal.fire({
+            title: 'Up to date',
+            text: `You are running the latest version (v${_updateInfo.current}).`,
+            icon: 'info',
+            confirmButtonText: 'OK',
+        });
+        return;
+    }
+    const notes = _updateInfo.release_notes
+        ? `<p style="text-align:left;font-size:0.85em;margin-top:8px;white-space:pre-wrap">${_updateInfo.release_notes}</p>`
+        : '';
+    Swal.fire({
+        title: `Update available: v${_updateInfo.latest}`,
+        html: `<p>Current version: <b>v${_updateInfo.current}</b></p>${notes}
+               <p style="font-size:0.82em;color:#888;margin-top:8px">
+                 The app will restart automatically after the update is applied.</p>`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Update Now',
+        cancelButtonText: 'Later',
+        confirmButtonColor: '#f59e0b',
+    }).then(result => {
+        if (result.isConfirmed) _applyUpdate();
+    });
+}
+
+function _applyUpdate() {
+    let progressHtml = `
+        <div style="text-align:left">
+            <p id="upd-label" style="font-size:0.9em;margin-bottom:6px">Starting...</p>
+            <div style="background:#e5e7eb;border-radius:6px;overflow:hidden;height:14px">
+                <div id="upd-bar" style="background:#f59e0b;height:100%;width:0%;transition:width 0.3s"></div>
+            </div>
+            <p id="upd-pct" style="font-size:0.75em;color:#888;margin-top:4px">0%</p>
+        </div>`;
+
+    Swal.fire({
+        title: 'Updating Easy OKAPI...',
+        html: progressHtml,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            const es = new EventSource('/update/apply');
+            // EventSource only supports GET; we use a POST fetch + manual SSE parse instead.
+            es.close();
+
+            fetch('/update/apply', { method: 'POST' }).then(resp => {
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let buf = '';
+
+                function readChunk() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) return;
+                        buf += decoder.decode(value, { stream: true });
+                        const lines = buf.split('\n');
+                        buf = lines.pop();
+                        lines.forEach(line => {
+                            if (!line.startsWith('data: ')) return;
+                            const raw = line.slice(6).trim();
+                            if (raw === '[DONE]') return;
+                            try {
+                                const evt = JSON.parse(raw);
+                                const bar = document.getElementById('upd-bar');
+                                const lbl = document.getElementById('upd-label');
+                                const pct = document.getElementById('upd-pct');
+                                if (bar) bar.style.width = (evt.pct || 0) + '%';
+                                if (lbl) lbl.textContent = evt.label || '';
+                                if (pct) pct.textContent = (evt.pct || 0) + '%';
+                                if (evt.done) {
+                                    Swal.fire({
+                                        title: 'Update applied!',
+                                        text: 'The app is restarting. This page will reload in a moment.',
+                                        icon: 'success',
+                                        showConfirmButton: false,
+                                        timer: 4000,
+                                    }).then(() => location.reload());
+                                }
+                                if (evt.error) {
+                                    Swal.fire('Update failed', evt.label, 'error');
+                                }
+                            } catch (_) {}
+                        });
+                        readChunk();
+                    });
+                }
+                readChunk();
+            }).catch(err => {
+                Swal.fire('Update failed', String(err), 'error');
+            });
+        },
+    });
+}
+
+// Wire up the version badge click
+document.addEventListener('DOMContentLoaded', function () {
+    const badge = document.getElementById('app-version-badge');
+    if (badge) badge.addEventListener('click', showUpdateModal);
+    // Silent background check after 4 seconds (avoids slowing down initial load)
+    setTimeout(() => checkForUpdate(true), 4000);
+});

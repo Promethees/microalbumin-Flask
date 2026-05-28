@@ -162,6 +162,17 @@ Timestamp,Value:1,Value:2,...
 - Conversation history is **client-side only** (stored in `ai-chat.js` `AI.messages` array) — the backend is stateless, consistent with the single-user no-session rule.
 - **Anti-pattern**: Do not add Ollama, local model pulls, or `pull_model`/`pull_status` routes — the app no longer uses a local model server.
 
+### 2.15 Auto-Update — In-Place Code Update
+
+- Auto-update is handled by `src/update_service.py` and `src/routes/update_routes.py` (`update_bp`, mounted at `/update/*`).
+- **Version check**: `GET /update/check` calls `GET <AI_SERVICE_URL>/api/version` (unauthenticated or with Bearer token) and returns `{current, latest, update_available, release_notes}`.
+- **Apply update**: `POST /update/apply` streams SSE events `{pct, label}` while downloading the zip via `GET <AI_SERVICE_URL>/api/download` (requires `Authorization: Bearer <license_token>`), extracts it in-place over `state.script_dir`, then restarts the process.
+- **Preserved paths**: `data/`, `report/`, `json/`, `log/`, `activation.json`, `ai_settings.json`, `user_settings.json`, `.env` are **never overwritten** by an update zip — they contain user data and credentials.
+- **Zip convention**: The update zip may have a single top-level directory prefix (GitHub archive convention). `update_service._shared_prefix()` detects and strips it automatically.
+- **Process restart**: `restart_after_delay()` uses `os.execv` on Mac/Linux and `subprocess.Popen` + `os._exit(0)` on Windows.
+- **UI**: A version badge (`#app-version-badge`) in the top-left header gets an amber pulsing dot when an update is found. Clicking it opens a SweetAlert2 modal with release notes and an "Update Now" button. A progress bar modal shows SSE download/apply progress.
+- **Anti-pattern**: Do not call `restart_after_delay()` from any code path other than the update apply route — it hard-exits the server process.
+
 ---
 
 ## 3. Autonomous Documentation Updates
