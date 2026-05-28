@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, redirect, session
 import os
 import sys
-import time
 import requests as http_requests
 from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -22,6 +21,7 @@ from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
+from download_service import get_cached_artifacts, _ARTIFACT_PREFIX
 from routes.oauth_routes import oauth_bp
 from account import db, run_migrations
 
@@ -114,50 +114,13 @@ def index():
 
 # ------------------------------------------------------------------
 # GitHub Artifact Downloads
+# (artifact cache + _ARTIFACT_PREFIX live in download_service.py)
 # ------------------------------------------------------------------
-_GITHUB_REPO     = 'Promethees/microalbumin-Flask'
-_GITHUB_WORKFLOW = 'main.yml'
-_ARTIFACT_PREFIX = {'mac': 'EasyOKAPI-mac-', 'win': 'EasyOKAPI-win-', 'linux': 'EasyOKAPI-linux-'}
-
-# Shared cache: stores artifact list from the latest successful run
-_artifact_cache: dict = {'artifacts': None, 'ts': 0.0}
-_ARTIFACT_CACHE_TTL = 900  # 15 minutes
-
-def _gh_headers() -> dict:
-    h = {'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
-    token = os.environ.get('GITHUB_TOKEN')
-    if token:
-        h['Authorization'] = f'Bearer {token}'
-    return h
-
-def _get_cached_artifacts() -> list:
-    now = time.time()
-    if _artifact_cache['artifacts'] is not None and now - _artifact_cache['ts'] < _ARTIFACT_CACHE_TTL:
-        return _artifact_cache['artifacts']
-    # Fetch latest successful run on main
-    run_resp = http_requests.get(
-        f'https://api.github.com/repos/{_GITHUB_REPO}/actions/workflows/{_GITHUB_WORKFLOW}/runs',
-        params={'branch': 'main', 'status': 'success', 'per_page': 1},
-        headers=_gh_headers(), timeout=10
-    )
-    run_resp.raise_for_status()
-    runs = run_resp.json().get('workflow_runs', [])
-    if not runs:
-        return []
-    art_resp = http_requests.get(
-        f'https://api.github.com/repos/{_GITHUB_REPO}/actions/runs/{runs[0]["id"]}/artifacts',
-        headers=_gh_headers(), timeout=10
-    )
-    art_resp.raise_for_status()
-    artifacts = art_resp.json().get('artifacts', [])
-    _artifact_cache['artifacts'] = artifacts
-    _artifact_cache['ts'] = now
-    return artifacts
 
 @app.route('/api/release-info')
 def api_release_info():
     try:
-        artifacts = _get_cached_artifacts()
+        artifacts = get_cached_artifacts()
         version, available = None, {p: False for p in _ARTIFACT_PREFIX}
         for art in artifacts:
             if art.get('expired'):
@@ -178,7 +141,7 @@ def download_offline(platform):
     if not os.environ.get('GITHUB_TOKEN'):
         return jsonify({'status': 'error', 'message': 'GITHUB_TOKEN not configured on server'}), 503
     try:
-        artifacts = _get_cached_artifacts()
+        artifacts = get_cached_artifacts()
         prefix = _ARTIFACT_PREFIX[platform]
         artifact = next(
             (a for a in artifacts if a['name'].startswith(prefix) and not a.get('expired')),

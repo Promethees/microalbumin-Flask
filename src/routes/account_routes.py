@@ -5,12 +5,30 @@ import jwt as pyjwt
 
 from account import db, User
 from email_service import send_verification_email, send_password_reset_email
-from download_service import generate_download_token, validate_download_token, fetch_github_release, issue_activation_token
+from download_service import (
+    generate_download_token, validate_download_token,
+    fetch_github_release, issue_activation_token,
+    get_latest_version,
+)
 
 account_bp = Blueprint('account', __name__)
 
 _APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
-_APP_RELEASE_TAG = os.environ.get('APP_RELEASE_TAG', 'latest')
+# APP_RELEASE_TAG is a manual override; if absent the live GitHub build tag is used.
+_APP_RELEASE_TAG_OVERRIDE = os.environ.get('APP_RELEASE_TAG', '').strip()
+
+
+def _resolved_release_tag() -> str:
+    """Return the release tag to use for version checks and downloads.
+
+    Priority:
+    1. APP_RELEASE_TAG env var (manual override — useful for pinning a specific release)
+    2. Latest CI build tag from GitHub Actions artifacts (e.g. 'v1.0.11')
+    3. Fall back to 'latest' (GitHub resolves to the default branch HEAD)
+    """
+    if _APP_RELEASE_TAG_OVERRIDE and _APP_RELEASE_TAG_OVERRIDE != 'latest':
+        return _APP_RELEASE_TAG_OVERRIDE
+    return get_latest_version() or 'latest'
 
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
@@ -292,9 +310,15 @@ def app_version():
 
     Used by the desktop client's auto-update check (GET /update/check).
     No authentication required — version info is public.
+    The version is derived from the latest successful GitHub Actions build so it
+    updates automatically whenever CI publishes a new release.
     """
+    tag = _resolved_release_tag()
+    # Strip leading 'v' so the desktop client can do plain semver comparison
+    # against state.APP_VERSION which uses the bare '1.0.X' format.
+    version = tag.lstrip('v') if tag != 'latest' else tag
     return jsonify({
-        'version': _APP_RELEASE_TAG,
+        'version': version,
         'release_notes': os.environ.get('APP_RELEASE_NOTES', ''),
     })
 
@@ -321,11 +345,11 @@ def download():
     if not user or not user.is_verified:
         return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
 
-    version_tag = _APP_RELEASE_TAG
+    version_tag = _resolved_release_tag()
     try:
         upstream = fetch_github_release(version_tag)
     except Exception as e:
-        print(f'[download] GitHub fetch failed: {e}')
+        print(f'[download] GitHub fetch failed for tag={version_tag!r}: {e}')
         return jsonify({'status': 'error', 'message': 'Failed to fetch release from upstream'}), 502
 
     user.last_download = datetime.utcnow()
