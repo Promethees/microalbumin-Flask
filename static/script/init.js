@@ -898,6 +898,20 @@ function _showUpdateBanner(version) {
     }
 }
 
+function _dismissBanner(e) {
+    e.stopPropagation();
+    document.getElementById('update-banner').classList.add('hidden');
+    const badge = document.getElementById('app-version-badge');
+    if (!badge || !_updateInfo) return;
+    // Same version (re-download scenario): restore badge to default — no pending upgrade
+    // Different version (newer online): keep amber badge as a persistent reminder
+    const sameVersion = _updateInfo.latest === _updateInfo.current;
+    if (sameVersion) {
+        badge.classList.remove('app-version-badge--update');
+        badge.title = 'Check for updates';
+    }
+}
+
 function checkForUpdate(silent = true) {
     fetch('/update/check')
         .then(r => r.json())
