@@ -21,7 +21,7 @@ from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
-from download_service import get_cached_artifacts, _ARTIFACT_PREFIX, _GITHUB_REPO
+from download_service import get_cached_artifacts, _ARTIFACT_PREFIX, _GITHUB_REPO, _gh_headers
 from routes.oauth_routes import oauth_bp
 from account import db, run_migrations
 
