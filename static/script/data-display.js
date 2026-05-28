@@ -793,6 +793,32 @@ function getAnalysisOpenState(analysisId) {
     return getBtnChecked("open-all-analysis");
 }
 
+function toggleAllAnalyses() {
+    const isOpen = getBtnChecked("open-all-analysis");
+
+    // Clear all per-analysis localStorage overrides so the global state takes effect
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('analysis-open-')) keysToRemove.push(key);
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // Directly update all analysis content divs and their toggle buttons
+    document.querySelectorAll('[id^="analysis-content-"]').forEach(contentDiv => {
+        contentDiv.style.display = isOpen ? 'block' : 'none';
+        const analysisId = contentDiv.id.slice('analysis-content-'.length);
+        const buttonId = analysisId.replace('analysis', 'button');
+        const btn = document.getElementById(buttonId);
+        if (btn) {
+            btn.innerHTML = isOpen ? '-' : '+';
+            btn.title = isOpen ? 'Hide the analysis' : 'See the analysis';
+            const tooltip = btn.nextElementSibling;
+            if (tooltip) tooltip.innerText = isOpen ? 'Hide the analysis' : 'See the analysis';
+        }
+    });
+}
+
 function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
     const buttonId = analysisId.replace("analysis", "button");
     const isOpen = getAnalysisOpenState(analysisId);
