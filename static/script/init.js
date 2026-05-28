@@ -712,6 +712,17 @@ function _buildSettingsHTML(s, folders) {
                 ${rowCheck('Expand export panel by default', 'swal-export-expanded', s.export_expanded_default)}
             </div>
         </div>
+        <div class="sm-section">
+            <p class="sm-section-title">About</p>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span style="font-size:0.85em">Version: <b>v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?'}</b></span>
+                <button type="button" onclick="checkForUpdateFromSettings()"
+                    style="font-size:0.8em;padding:4px 12px;border-radius:6px;border:1px solid #d1d5db;background:transparent;cursor:pointer;">
+                    ↺ Check for updates
+                </button>
+            </div>
+            <p id="swal-update-status" style="font-size:0.8em;color:#888;margin-top:5px;min-height:1.2em;"></p>
+        </div>
     </div>`;
 }
 
@@ -866,6 +877,18 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
 let _updateInfo = null;
 
+function _showUpdateBanner(version) {
+    const banner = document.getElementById('update-banner');
+    const vspan = document.getElementById('update-banner-version');
+    const badge = document.getElementById('app-version-badge');
+    if (vspan) vspan.textContent = `v${version}`;
+    if (banner) banner.classList.remove('hidden');
+    if (badge) {
+        badge.classList.add('app-version-badge--update');
+        badge.title = `Update available: v${version} — click to update`;
+    }
+}
+
 function checkForUpdate(silent = true) {
     fetch('/update/check')
         .then(r => r.json())
@@ -879,11 +902,8 @@ function checkForUpdate(silent = true) {
                 return;
             }
             _updateInfo = data;
-            const badge = document.getElementById('app-version-badge');
-            if (!badge) return;
             if (data.update_available) {
-                badge.classList.add('app-version-badge--update');
-                badge.title = `Update available: v${data.latest} — click to update`;
+                _showUpdateBanner(data.latest);
             } else if (!silent) {
                 Swal.fire({
                     title: 'Up to date',
@@ -897,6 +917,40 @@ function checkForUpdate(silent = true) {
             if (!silent) {
                 Swal.fire('Update check failed', 'Could not reach the update server.', 'warning');
             }
+        });
+}
+
+function checkForUpdateFromSettings() {
+    const statusEl = document.getElementById('swal-update-status');
+    if (statusEl) statusEl.textContent = 'Checking…';
+
+    if (_updateInfo && _updateInfo.update_available) {
+        if (statusEl) statusEl.innerHTML =
+            `<span style="color:#f59e0b;font-weight:600">↑ v${_updateInfo.latest} is available.</span> ` +
+            `<a href="#" onclick="Swal.close();setTimeout(showUpdateModal,200);return false" style="color:#f59e0b">Update Now →</a>`;
+        return;
+    }
+
+    fetch('/update/check')
+        .then(r => r.json())
+        .then(data => {
+            if (!data || data.status !== 'success') {
+                if (statusEl) statusEl.textContent = (data && data.message) || 'Could not reach the update server.';
+                return;
+            }
+            _updateInfo = data;
+            if (data.update_available) {
+                _showUpdateBanner(data.latest);
+                if (statusEl) statusEl.innerHTML =
+                    `<span style="color:#f59e0b;font-weight:600">↑ v${data.latest} is available.</span> ` +
+                    `<a href="#" onclick="Swal.close();setTimeout(showUpdateModal,200);return false" style="color:#f59e0b">Update Now →</a>`;
+            } else {
+                if (statusEl) statusEl.innerHTML =
+                    `<span style="color:#22c55e">✓ v${data.current} is the latest version.</span>`;
+            }
+        })
+        .catch(() => {
+            if (statusEl) statusEl.textContent = 'Could not reach the update server.';
         });
 }
 

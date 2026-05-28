@@ -205,7 +205,11 @@
                         <span style="color: #3498db;">Easy</span> OKAPI
                         <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img">
                     </h1>
-                    <span class="app-version-badge" id="app-version-badge" title="Click to check for updates" style="cursor:pointer;">v{{ app_version }}</span>
+                    <span class="app-version-badge" id="app-version-badge" title="Check for updates" style="cursor:pointer;">v{{ app_version }}</span>
+                    <div id="update-banner" class="hidden">
+                        <button class="update-banner-btn" onclick="showUpdateModal()">↑ Update available · <span id="update-banner-version"></span></button>
+                        <button class="update-banner-dismiss" onclick="document.getElementById('update-banner').classList.add('hidden')" title="Dismiss">×</button>
+                    </div>
                 </div>
 
                 <div class="toggle-container" id="toggleContainer">
@@ -737,6 +741,7 @@
             const REPORT_ROOT = {{ report_root | tojson | safe }};
             const JSON_ROOT = {{ json_root | tojson | safe }};
             const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
+            const APP_VERSION = "{{ app_version }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
             document.documentElement.style.setProperty('--file-table-height', (USER_SETTINGS.file_table_height || 240) + 'px');
