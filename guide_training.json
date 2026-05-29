@@ -1040,7 +1040,19 @@
         "kinetics measurement",
         "run a measurement",
         "take a reading",
-        "capture data"
+        "capture data",
+        "colorimetric recording",
+        "start colorimetric recording",
+        "start recording",
+        "recording measurements",
+        "record measurement",
+        "colorimetric measurement",
+        "begin measuring",
+        "measuring with colorimeter",
+        "colorimeter recording",
+        "start measuring data",
+        "how to start recording",
+        "how to start measurement"
       ],
       "conditions": {},
       "steps": [
