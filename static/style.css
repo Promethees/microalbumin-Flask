@@ -1467,6 +1467,29 @@ body.dark .der-con-value.blinking {
 }
 
 /* ==========================================================================
+   Legend label inline editor
+   ========================================================================== */
+
+#legend-label-editor {
+    position: fixed;
+    z-index: 9999;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    box-shadow: var(--shadow-md);
+    min-width: 0;
+}
+
+#legend-label-editor-sizer {
+    position: fixed;
+    visibility: hidden;
+    white-space: pre;
+    font-size: 13px;
+    padding: 2px 6px;
+    pointer-events: none;
+}
+
+/* ==========================================================================
    SweetAlert2 Content Editor (Light/Dark Integration)
    ========================================================================== */
 

@@ -151,9 +151,12 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         index = store.index;
     }
 
-    // Update label dynamically for concentration input if it exists
+    // Refresh labels from localStorage so custom titles and concentration edits are picked up
     if (index !== null) {
         labelOrLabels = getLabel(`Value:${index + 1}`, unit);
+    } else {
+        const yColumns = window.ChartDataStore[canvasId]?.yColumns;
+        if (yColumns) labelOrLabels = yColumns.map(y => getLabel(y, unit));
     }
 
     // Normalize Y values if normalizeMode is checked
@@ -219,7 +222,6 @@ function createChartSection({
     unit,
     index
 }) {
-    // Get previous value from localStorage if it exists
     const previousValueKey = `con-value-read-source-${index}`;
     const previousValue = localStorage.getItem(previousValueKey) || '';
 
@@ -247,10 +249,10 @@ function createChartSection({
             <div id="${analysisId}"></div>
             ${`
                 <div id="concentration-reader-section-source-${index}">
-                    Concentration from source-${index + 1} sample is 
-                    <input type="number" id="con-value-read-source-${index}" 
+                    Concentration from source-${index + 1} sample is
+                    <input type="number" id="con-value-read-source-${index}"
                         value="${previousValue}"
-                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')" 
+                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')"
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
                         min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input> ng/µL
@@ -417,6 +419,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
     // Generate single chart with all Y-columns
     renderCharts(XColumnVals, YColumnVals, labels, measUnit);
+    window.ChartDataStore['plot-canvas'].yColumns = YColumn;
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
@@ -459,19 +462,16 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
 }
 
 function getLabel(yColumn, measUnit) {
-    // Extract n from "Value:n" format
     const match = yColumn.match(/Value:(\d+)/);
     if (!match) {
         throw new Error(`Invalid yColumn format: ${yColumn}. Expected format "Value:n"`);
     }
     const n = parseInt(match[1], 10);
-    const elementId = `con-value-read-source-${n - 1}`;
 
-    // let conValueRead = document.getElementById(elementId)?.value;
+    const customLabel = localStorage.getItem(`custom-line-label-source-${n - 1}`);
+    if (customLabel) return customLabel;
 
-    // conValueRead = conValueRead ? 
-    const conValueRead = localStorage.getItem(elementId);
-
+    const conValueRead = localStorage.getItem(`con-value-read-source-${n - 1}`);
     return conValueRead
         ? `${AppState.metaData['Measurement']} at ${conValueRead} ng/µL ${unitDisplay(measUnit)}`
         : `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
@@ -1058,7 +1058,13 @@ function getMetaUnit(metadata) {
 
 // Clear all concentration values for this session
 function clearConcentrationValues() {
-    for (let i = 0; i < AppState.numSources; i++) { // Adjust based on max sources
+    for (let i = 0; i < AppState.numSources; i++) {
         localStorage.removeItem(`con-value-read-source-${i}`);
+    }
+}
+
+function clearCustomLabels() {
+    for (let i = 0; i < AppState.numSources; i++) {
+        localStorage.removeItem(`custom-line-label-source-${i}`);
     }
 }

@@ -25,6 +25,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
             $hidden(["data-display-section"], false);
             AppState.currentFile = fileName;
             clearConcentrationValues();
+            clearCustomLabels();
 
             $id("copy-file-btn").disabled = false;
 

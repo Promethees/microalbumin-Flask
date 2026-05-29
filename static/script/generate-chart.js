@@ -330,7 +330,15 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                         }
                     }
                 },
-                legend: { labels: { color: getAxisStyle('label') } },
+                legend: {
+                    labels: { color: getAxisStyle('label') },
+                    onClick: (event, legendItem) => {
+                        if (AppState.currentMeasurementMode === "calibrate") return;
+                        if (legendItem.text.startsWith('Regression (')) return;
+                        const storageIndex = index !== null ? index : legendItem.datasetIndex;
+                        showLegendLabelEditor(event, legendItem, canvasId, storageIndex);
+                    }
+                },
                 title: {
                     display: true,
                     text: index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
@@ -346,4 +354,54 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
 
     AppState.chartInstances[canvasId] = chart;
     return chart;
+}
+
+function showLegendLabelEditor(event, legendItem, canvasId, storageIndex) {
+    const existing = document.getElementById('legend-label-editor');
+    if (existing) existing.remove();
+
+    // Hidden sizer span — measures rendered text width in the same font as the input
+    const sizer = document.createElement('span');
+    sizer.id = 'legend-label-editor-sizer';
+    document.body.appendChild(sizer);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'legend-label-editor';
+    input.value = legendItem.text;
+    input.placeholder = 'Label…';
+    input.style.left = `${event.native.clientX}px`;
+    input.style.top = `${event.native.clientY + 6}px`;
+
+    const syncWidth = () => {
+        sizer.textContent = input.value || input.placeholder;
+        input.style.width = `${sizer.offsetWidth + 2}px`;
+    };
+
+    input.addEventListener('input', syncWidth);
+
+    let committed = false;
+    const commit = () => {
+        if (committed) return;
+        committed = true;
+        sizer.remove();
+        const value = input.value.trim();
+        const storageKey = `custom-line-label-source-${storageIndex}`;
+        if (value !== '') {
+            localStorage.setItem(storageKey, value);
+        } else {
+            localStorage.removeItem(storageKey);
+        }
+        input.remove();
+        handleCkboxChange(canvasId);
+    };
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { committed = true; sizer.remove(); input.remove(); }
+    });
+    input.addEventListener('blur', commit);
+
+    document.body.appendChild(input);
+    setTimeout(() => { syncWidth(); input.select(); input.focus(); }, 0);
 }
