@@ -1467,6 +1467,68 @@ body.dark .der-con-value.blinking {
 }
 
 /* ==========================================================================
+   Custom HTML legend (replaces canvas legend outside calibrate mode)
+   ========================================================================== */
+
+[id^="html-legend-"] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 4px 14px;
+    padding: 4px 4px 8px;
+    width: 100%;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.legend-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.legend-label {
+    font-size: 12px;
+}
+
+body.light .legend-label { color: var(--chart-label-light); }
+body.dark  .legend-label { color: var(--chart-label-dark); }
+
+.legend-item.hidden-dataset .legend-label {
+    text-decoration: line-through;
+    opacity: 0.45;
+}
+
+.legend-item.hidden-dataset .legend-swatch { opacity: 0.3; }
+
+.legend-pencil {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 1px;
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+.legend-item:hover .legend-pencil { opacity: 0.55; }
+.legend-pencil:hover               { opacity: 1 !important; }
+
+body.light .legend-pencil { color: var(--text-color-light); }
+body.dark  .legend-pencil { color: var(--text-color-dark); }
+
+/* ==========================================================================
    Legend style editor (inline label + color picker)
    ========================================================================== */
 

@@ -338,15 +338,9 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                         }
                     }
                 },
-                legend: {
-                    labels: { color: getAxisStyle('label') },
-                    onClick: (event, legendItem) => {
-                        if (AppState.currentMeasurementMode === "calibrate") return;
-                        if (legendItem.text.startsWith('Regression (')) return;
-                        const storageIndex = index !== null ? index : legendItem.datasetIndex;
-                        showLegendStyleEditor(event, legendItem, canvasId, storageIndex);
-                    }
-                },
+                legend: AppState.currentMeasurementMode === "calibrate"
+                    ? { labels: { color: getAxisStyle('label') } }
+                    : { display: false },
                 title: {
                     display: true,
                     text: index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
@@ -361,7 +355,66 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     });
 
     AppState.chartInstances[canvasId] = chart;
+    if (AppState.currentMeasurementMode !== "calibrate") {
+        renderHtmlLegend(chart, canvasId, index);
+    }
     return chart;
+}
+
+function renderHtmlLegend(chart, canvasId, sourceIndex) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    let legendEl = document.getElementById(`html-legend-${canvasId}`);
+    if (!legendEl) {
+        legendEl = document.createElement('div');
+        legendEl.id = `html-legend-${canvasId}`;
+        canvas.parentElement.insertBefore(legendEl, canvas);
+    }
+    legendEl.innerHTML = '';
+
+    const items = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+    items.forEach((item) => {
+        const isRegression = item.text.startsWith('Regression (');
+        const storageIndex = sourceIndex !== null ? sourceIndex : item.datasetIndex;
+
+        const row = document.createElement('span');
+        row.className = 'legend-item' + (item.hidden ? ' hidden-dataset' : '');
+
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.style.background = item.strokeStyle;
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'legend-label';
+        labelSpan.textContent = item.text;
+
+        const toggle = () => {
+            chart.setDatasetVisibility(item.datasetIndex, item.hidden);
+            chart.update('none');
+            renderHtmlLegend(chart, canvasId, sourceIndex);
+        };
+        swatch.addEventListener('click', toggle);
+        labelSpan.addEventListener('click', toggle);
+
+        row.appendChild(swatch);
+        row.appendChild(labelSpan);
+
+        if (!isRegression) {
+            const pencil = document.createElement('button');
+            pencil.className = 'legend-pencil';
+            pencil.textContent = '✎';
+            pencil.title = 'Edit label and color';
+            pencil.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rect = pencil.getBoundingClientRect();
+                showLegendStyleEditor(rect.left, rect.bottom, item, canvasId, storageIndex);
+            });
+            row.appendChild(pencil);
+        }
+
+        legendEl.appendChild(row);
+    });
 }
 
 function updateAnalysisColor(storageIndex, color) {
@@ -379,7 +432,7 @@ function updateAnalysisColor(storageIndex, color) {
     }
 }
 
-function showLegendStyleEditor(event, legendItem, canvasId, storageIndex) {
+function showLegendStyleEditor(clientX, clientY, legendItem, canvasId, storageIndex) {
     const existing = document.getElementById('legend-style-editor');
     if (existing) existing.remove();
     const existingSizer = document.getElementById('legend-label-editor-sizer');
@@ -391,8 +444,8 @@ function showLegendStyleEditor(event, legendItem, canvasId, storageIndex) {
 
     const editor = document.createElement('div');
     editor.id = 'legend-style-editor';
-    editor.style.left = `${event.native.clientX}px`;
-    editor.style.top = `${event.native.clientY + 6}px`;
+    editor.style.left = `${clientX}px`;
+    editor.style.top = `${clientY + 4}px`;
 
     const labelInput = document.createElement('input');
     labelInput.type = 'text';
