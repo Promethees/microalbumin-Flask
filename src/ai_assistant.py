@@ -103,21 +103,36 @@ def _content_words(text: str) -> frozenset:
     return frozenset(result)
 
 
+def _token_match(a: str, b: str) -> bool:
+    """Prefix-aware token equality.
+
+    Two words match when they are equal or one is a *prefix* of the other, so
+    stem variants line up ('file'/'files', 'record'/'recorded'). Plain substring
+    containment is deliberately avoided: a negation/derivation prefix such as
+    'de-' or 'un-' embeds the base word as a *suffix* ('select' ⊂ 'deselect'),
+    which would otherwise produce a confidently wrong, antonymous match.
+    """
+    return a == b or a.startswith(b) or b.startswith(a)
+
+
 def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
     kw_lower = kw.lower()
     min_len = 2 if _is_cjk(kw_lower) else 4
-    if kw_lower in q_lower and len(kw_lower) >= min_len and kw_lower not in _STOPWORDS:
-        return 1.0
     kw_content = _content_words(kw_lower)
+    # Exact contiguous phrase match — weighted by specificity (content-word
+    # count) so one long, specific phrase ('export data to report') outranks a
+    # pile of short generic keywords summed from a less-relevant example.
+    if kw_lower in q_lower and len(kw_lower) >= min_len and kw_lower not in _STOPWORDS:
+        return 1.0 + 0.8 * max(0, len(kw_content) - 1)
     if not kw_content:
         return 0.0
     if len(kw_content) == 1:
         word = next(iter(kw_content))
         if len(word) < 5:
             return 0.0
-        return 0.8 if any(word in qw or qw in word for qw in q_content) else 0.0
+        return 0.8 if any(_token_match(word, qw) for qw in q_content) else 0.0
     if all(
-        any(kw_word in qw or qw in kw_word for qw in q_content)
+        any(_token_match(kw_word, qw) for qw in q_content)
         for kw_word in kw_content
     ):
         return 0.8
@@ -1329,18 +1344,49 @@ def _is_conceptual(query: str) -> bool:
 # nav marker (e.g. "switch to point mode", "change the interval", "merge two files").
 _STRONG_MATCH_SCORE = 1.6
 
+# A single solid keyword hit. The nav/how-to path requires at least this much so
+# that an incidental fuzzy match (0.8) on one out-of-context word — e.g. "select"
+# in "select a regression algorithm" matching the file-selection guide — cannot
+# hijack the query into an unrelated guide.
+_NAV_LAUNCH_SCORE = 1.0
+
+# Explicit "give me the whole tour" phrasings. The intent here is unambiguous, so
+# a matched guide may launch on a weak keyword score (e.g. "walkthrough" fuzzily
+# matching "walk me through the whole app").
+_TOUR_MARKERS = frozenset({
+    "walk me through", "walkthrough", "walk through", "step by step",
+    "step-by-step", "guide me through", "full tour", "whole app", "entire app",
+    "tour of the app", "show me everything", "from scratch",
+    # Multilingual
+    "toàn bộ", "từng bước", "hướng dẫn toàn bộ",            # vi
+    "完整流程", "逐步", "整个应用",                              # zh
+    "tout le processus", "pas à pas", "visite complète",   # fr
+    "アプリ全体", "ステップバイステップ", "全体の流れ",                  # ja
+    "пошагово", "весь процесс", "всё приложение",          # ru
+})
+
+
+def _is_tour_request(query: str) -> bool:
+    """True when the query explicitly asks for a full, end-to-end walkthrough."""
+    q = query.lower()
+    return any(marker in q for marker in _TOUR_MARKERS)
+
 
 def _should_launch_guide(query: str, score: float) -> bool:
     """Decide whether a matched guide example should be short-circuited to the UI.
 
-    Fires on (a) an explicit navigation/how-to phrasing with a usable match, or
-    (b) a strong keyword match that is not a conceptual question. Conceptual
+    Fires on (a) an explicit full-tour request with any usable match, (b) a
+    navigation/how-to phrasing backed by at least one solid keyword hit, or
+    (c) a strong keyword match that is not a conceptual question. Conceptual
     questions always fall through to the LLM.
 
-    Nav intent is checked before the conceptual gate so that precise phrasings
-    like "how do i" take priority over the broader "how do" conceptual marker.
+    Tour and nav intent are checked before the conceptual gate so that precise
+    phrasings like "how do i" take priority over the broader "how do" conceptual
+    marker.
     """
-    if _has_nav_intent(query) and score >= 0.7:
+    if _is_tour_request(query) and score >= 0.7:
+        return True
+    if _has_nav_intent(query) and score >= _NAV_LAUNCH_SCORE:
         return True
     if _is_conceptual(query):
         return False
