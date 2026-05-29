@@ -1467,17 +1467,50 @@ body.dark .der-con-value.blinking {
 }
 
 /* ==========================================================================
-   Legend label inline editor
+   Legend style editor (inline label + color picker)
    ========================================================================== */
 
-#legend-label-editor {
+#legend-style-editor {
     position: fixed;
     z-index: 9999;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
     box-shadow: var(--shadow-md);
+}
+
+body.light #legend-style-editor {
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid #e5e7eb;
+}
+
+body.dark #legend-style-editor {
+    background: rgba(55, 65, 81, 0.97);
+    border: 1px solid #4b5563;
+}
+
+body.light #legend-style-editor input[type="text"],
+body.dark #legend-style-editor input[type="text"] {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 2px 2px;
+    font-size: 13px;
+    outline: none;
     min-width: 0;
+}
+
+#legend-style-editor input[type="color"] {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+    flex-shrink: 0;
 }
 
 #legend-label-editor-sizer {
@@ -1485,7 +1518,7 @@ body.dark .der-con-value.blinking {
     visibility: hidden;
     white-space: pre;
     font-size: 13px;
-    padding: 2px 6px;
+    padding: 2px 2px;
     pointer-events: none;
 }
 

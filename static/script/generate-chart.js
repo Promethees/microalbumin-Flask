@@ -60,6 +60,18 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
     return { xColumn, processedYColumns, allYValues, conversionFactor };
 }
 
+function toHex(color) {
+    if (/^#[0-9a-f]{6}/i.test(color)) return color.slice(0, 7);
+    const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return '#000000';
+    return '#' + [m[1], m[2], m[3]].map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+}
+
+function getSourceColor(index) {
+    return localStorage.getItem(`custom-source-color-${index}`)
+        || AppState.plotColors[index % AppState.plotColors.length];
+}
+
 function createDataset(yData, label, analysis, selectColor, i, isSinglePoint) {
     const yColumn = yData.avg;
     const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
@@ -71,12 +83,8 @@ function createDataset(yData, label, analysis, selectColor, i, isSinglePoint) {
         minData: yData.min, // Store min for distribution bars
         maxData: yData.max, // Store max for distribution bars
         stdData: yData.std, // Store std for tooltips
-        borderColor: selectColor !== null
-            ? AppState.plotColors[selectColor % AppState.plotColors.length]
-            : AppState.plotColors[i % AppState.plotColors.length],
-        backgroundColor: selectColor !== null
-            ? AppState.plotColors[selectColor % AppState.plotColors.length]
-            : AppState.plotColors[i % AppState.plotColors.length],
+        borderColor: getSourceColor(selectColor !== null ? selectColor : i),
+        backgroundColor: getSourceColor(selectColor !== null ? selectColor : i),
         tension: isSinglePoint ? 0 : 0.1,
         fill: false,
         pointRadius,
@@ -336,7 +344,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                         if (AppState.currentMeasurementMode === "calibrate") return;
                         if (legendItem.text.startsWith('Regression (')) return;
                         const storageIndex = index !== null ? index : legendItem.datasetIndex;
-                        showLegendLabelEditor(event, legendItem, canvasId, storageIndex);
+                        showLegendStyleEditor(event, legendItem, canvasId, storageIndex);
                     }
                 },
                 title: {
@@ -356,52 +364,109 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     return chart;
 }
 
-function showLegendLabelEditor(event, legendItem, canvasId, storageIndex) {
-    const existing = document.getElementById('legend-label-editor');
-    if (existing) existing.remove();
+function updateAnalysisColor(storageIndex, color) {
+    // Split mode: source-N-analysis div contains a span as first child
+    const splitDiv = document.getElementById(`source-${storageIndex}-analysis`);
+    if (splitDiv) {
+        const span = splitDiv.querySelector('span');
+        if (span) span.style.color = color;
+        return;
+    }
+    // Grouped mode: analysis-content-plot-analysis-source-N → parentElement is the span
+    const innerDiv = document.getElementById(`analysis-content-plot-analysis-source-${storageIndex}`);
+    if (innerDiv?.parentElement?.tagName === 'SPAN') {
+        innerDiv.parentElement.style.color = color;
+    }
+}
 
-    // Hidden sizer span — measures rendered text width in the same font as the input
+function showLegendStyleEditor(event, legendItem, canvasId, storageIndex) {
+    const existing = document.getElementById('legend-style-editor');
+    if (existing) existing.remove();
+    const existingSizer = document.getElementById('legend-label-editor-sizer');
+    if (existingSizer) existingSizer.remove();
+
     const sizer = document.createElement('span');
     sizer.id = 'legend-label-editor-sizer';
     document.body.appendChild(sizer);
 
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.id = 'legend-label-editor';
-    input.value = legendItem.text;
-    input.placeholder = 'Label…';
-    input.style.left = `${event.native.clientX}px`;
-    input.style.top = `${event.native.clientY + 6}px`;
+    const editor = document.createElement('div');
+    editor.id = 'legend-style-editor';
+    editor.style.left = `${event.native.clientX}px`;
+    editor.style.top = `${event.native.clientY + 6}px`;
+
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.value = legendItem.text;
+    labelInput.placeholder = 'Label…';
+
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = toHex(getSourceColor(storageIndex));
+
+    editor.appendChild(labelInput);
+    editor.appendChild(colorInput);
+    document.body.appendChild(editor);
 
     const syncWidth = () => {
-        sizer.textContent = input.value || input.placeholder;
-        input.style.width = `${sizer.offsetWidth + 2}px`;
+        sizer.textContent = labelInput.value || labelInput.placeholder;
+        labelInput.style.width = `${sizer.offsetWidth + 2}px`;
     };
+    labelInput.addEventListener('input', syncWidth);
 
-    input.addEventListener('input', syncWidth);
+    // Live color preview — fast path, no full re-render
+    colorInput.addEventListener('input', () => {
+        const chart = AppState.chartInstances[canvasId];
+        if (chart) {
+            const ds = chart.data.datasets[legendItem.datasetIndex];
+            if (ds) {
+                ds.borderColor = colorInput.value;
+                ds.backgroundColor = colorInput.value;
+                chart.update('none');
+            }
+        }
+        updateAnalysisColor(storageIndex, colorInput.value);
+    });
 
     let committed = false;
-    const commit = () => {
-        if (committed) return;
-        committed = true;
-        sizer.remove();
-        const value = input.value.trim();
-        const storageKey = `custom-line-label-source-${storageIndex}`;
-        if (value !== '') {
-            localStorage.setItem(storageKey, value);
-        } else {
-            localStorage.removeItem(storageKey);
-        }
-        input.remove();
-        handleCkboxChange(canvasId);
+    const onOutsideClick = (e) => {
+        if (!editor.contains(e.target)) closeEditor(true);
     };
 
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); commit(); }
-        if (e.key === 'Escape') { committed = true; sizer.remove(); input.remove(); }
-    });
-    input.addEventListener('blur', commit);
+    const closeEditor = (shouldCommit) => {
+        if (committed) return;
+        committed = true;
+        document.removeEventListener('mousedown', onOutsideClick);
+        sizer.remove();
 
-    document.body.appendChild(input);
-    setTimeout(() => { syncWidth(); input.select(); input.focus(); }, 0);
+        if (shouldCommit) {
+            const labelValue = labelInput.value.trim();
+            if (labelValue !== '') {
+                localStorage.setItem(`custom-line-label-source-${storageIndex}`, labelValue);
+            } else {
+                localStorage.removeItem(`custom-line-label-source-${storageIndex}`);
+            }
+            const defaultColor = toHex(AppState.plotColors[storageIndex % AppState.plotColors.length]);
+            if (colorInput.value !== defaultColor) {
+                localStorage.setItem(`custom-source-color-${storageIndex}`, colorInput.value);
+            } else {
+                localStorage.removeItem(`custom-source-color-${storageIndex}`);
+            }
+        }
+
+        editor.remove();
+        handleCkboxChange(canvasId);
+        updateAnalysisColor(storageIndex, getSourceColor(storageIndex));
+    };
+
+    labelInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); closeEditor(true); }
+        if (e.key === 'Escape') { closeEditor(false); }
+    });
+
+    setTimeout(() => {
+        document.addEventListener('mousedown', onOutsideClick);
+        syncWidth();
+        labelInput.select();
+        labelInput.focus();
+    }, 0);
 }

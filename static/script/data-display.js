@@ -385,7 +385,7 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         const analysisInfo = formatAnalysisInfo(analysis, label);
         const analysisEl = document.getElementById(analysisId);
         analysisEl.innerHTML = formatAnalysisHtml(analysisInfo,
-            AppState.plotColors[i % AppState.plotColors.length],
+            getSourceColor(i),
             `Source ${i + 1}`,
             `plot-analysis-source-${i}`
         );
@@ -423,7 +423,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
+        html += formatAnalysisHtml(info, getSourceColor(i), `Source ${i + 1}`, `plot-analysis-source-${i}`);
         const rawA = analyses[i];
         if (rawA && rawA.linearXMin != null && rawA.linearXMax != null) {
             html += `<button class="utility-btn" style="margin-top:4px;"
@@ -1066,5 +1066,11 @@ function clearConcentrationValues() {
 function clearCustomLabels() {
     for (let i = 0; i < AppState.numSources; i++) {
         localStorage.removeItem(`custom-line-label-source-${i}`);
+    }
+}
+
+function clearCustomColors() {
+    for (let i = 0; i < AppState.numSources; i++) {
+        localStorage.removeItem(`custom-source-color-${i}`);
     }
 }
