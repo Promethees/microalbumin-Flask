@@ -375,6 +375,7 @@ function showTerminationNotice(message, iconType) {
     if (_terminationNoticeFired) return;
     _terminationNoticeFired = true;
     AppState.scriptRunning = false;
+    stopSessionTimer();
     terminateScript();
 
     const baseOpts = {
