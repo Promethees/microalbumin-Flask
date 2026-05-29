@@ -26,7 +26,7 @@ class UserGuide {
             ],
             common: [
                 this.createStep('#logo', 'Welcome to Easy OKAPI!', 'Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), developed by Center for Bioscience and Biotechnology, HCMUS-VNU. Click the logo anytime to scroll to the top of the page.', { position: 'bottom', skipInteraction: true }),
-                this.createStep('#toggleContainer', 'Theme Toggle', 'Switch between light and dark modes for comfortable viewing in any environment.', { position: 'bottom' }),
+                this.createStep('#toggleContainer', 'Theme Toggle', 'Switch between light and dark modes for comfortable viewing in any environment.', { position: 'bottom', skipInteraction: true }),
                 this.createStep('#settingsBtn', 'App Settings', 'Open the App Settings panel to customise the application: theme, default measurement mode, window size, default subfolder, file table row limits, colorimeter reading defaults (timeout, interval, notify), and data display defaults (normalise, split sources, panel expand states).', { position: 'bottom', skipInteraction: true }),
                 this.createStep('#meas-mode-section', 'Measurement Mode', 'Select your measurement mode: "kinetics" for time-series data or "point" for single-point measurements, or "calibrate" to create standard curves.', { position: 'right', skipInteraction: true }),
                 this.createStep('#options-section', 'Options', 'Configure your preferences here. You can disable popups and filter data files by number of measurement sources.', { position: 'right', skipInteraction: true }),
@@ -225,8 +225,15 @@ class UserGuide {
                     this.spotlight.style.pointerEvents = '';
                     this.overlay.style.pointerEvents = '';
 
-                    if (realTarget) {
-                        realTarget.dispatchEvent(new MouseEvent('click', {
+                    // Only forward the click — and let the guide advance — when it lands
+                    // on a real interactive control inside the highlighted container.
+                    // Clicks on empty padding or section headings are ignored so the guide
+                    // can't desync from the action it asked the user to take (e.g. advancing
+                    // a "switch mode" step without the mode actually changing).
+                    const ACTIONABLE = 'button, input, select, textarea, label, a, [onclick], [data-mode], [role="button"]';
+                    const actionable = realTarget && realTarget.closest(ACTIONABLE);
+                    if (actionable && targetElement.contains(actionable)) {
+                        actionable.dispatchEvent(new MouseEvent('click', {
                             bubbles: true, cancelable: true, view: window, detail: 1
                         }));
                     }
@@ -762,13 +769,19 @@ class UserGuide {
         const interactionInstruction = step.skipInteraction ? '' : ' Click or interact with the highlighted element to continue.';
         description.textContent = step.description + interactionInstruction;
 
+        const isLast = stepIndex === this.steps.length - 1;
         prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
-        nextBtn.style.display = (stepIndex < this.steps.length - 1 && step.skipInteraction) ? 'inline-block' : 'none';
+
+        // Always provide a forward path so the user can never be trapped — even on an
+        // interactive step whose target is hidden, off-screen, or advances on an event
+        // (blur/change) that isn't obvious. On interactive steps the forward button is
+        // labelled "Skip" to signal it bypasses the requested action.
+        nextBtn.style.display = isLast ? 'none' : 'inline-block';
+        nextBtn.textContent = step.skipInteraction ? 'Next →' : 'Skip →';
 
         // Always offer an exit on the last step.
         // Label it "Skip" when the step requires interaction so the user knows
         // they are bypassing the action rather than completing the guide.
-        const isLast = stepIndex === this.steps.length - 1;
         finishBtn.style.display = isLast ? 'inline-block' : 'none';
         finishBtn.textContent = (isLast && !step.skipInteraction) ? 'Skip' : 'Finish';
     }
@@ -790,9 +803,14 @@ class UserGuide {
         title.textContent = step.title;
         description.textContent = 'Loading…';
 
+        // Offer an immediate skip while the element is being located, so the user is
+        // never forced to wait out the 3s search (after which the step auto-advances).
+        const isLast = stepIndex === this.steps.length - 1;
         prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
-        nextBtn.style.display = 'none';
-        finishBtn.style.display = 'none';
+        nextBtn.style.display = isLast ? 'none' : 'inline-block';
+        nextBtn.textContent = 'Skip →';
+        finishBtn.style.display = isLast ? 'inline-block' : 'none';
+        finishBtn.textContent = 'Skip';
 
         this.tooltip.classList.add('active');
         // Centre the tooltip while there is nothing to point at
@@ -805,13 +823,13 @@ class UserGuide {
      * Go to next step (manual navigation)
      */
     nextStep() {
-        const currentStep = this.steps[this.currentStep];
-        if (currentStep && currentStep.skipInteraction) {
-            if (this.currentStep < this.steps.length - 1) {
-                this.removeInteractionHandler();
-                this.currentStep++;
-                this.showStep(this.currentStep);
-            }
+        // Manual forward navigation, driven by the Next/Skip button. Works on
+        // interactive steps too (acts as "Skip") so the user always has a way
+        // forward regardless of the step's interaction state.
+        if (this.currentStep < this.steps.length - 1) {
+            this.removeInteractionHandler();
+            this.currentStep++;
+            this.showStep(this.currentStep);
         }
     }
 
