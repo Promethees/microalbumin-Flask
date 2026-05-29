@@ -19,5 +19,6 @@
   "default_timeout": null,
   "default_timeout_unit": "seconds",
   "default_interval": null,
-  "default_interval_unit": "seconds"
+  "default_interval_unit": "seconds",
+  "max_resend_attempts": 3
 }
