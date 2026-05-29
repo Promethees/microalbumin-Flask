@@ -405,7 +405,6 @@ function showLegendStyleEditor(event, legendItem, canvasId, storageIndex) {
 
     editor.appendChild(labelInput);
     editor.appendChild(colorInput);
-    document.body.appendChild(editor);
 
     const syncWidth = () => {
         sizer.textContent = labelInput.value || labelInput.placeholder;
@@ -463,9 +462,12 @@ function showLegendStyleEditor(event, legendItem, canvasId, storageIndex) {
         if (e.key === 'Escape') { closeEditor(false); }
     });
 
+    // Measure and set width before first paint to avoid shrink flash
+    syncWidth();
+    document.body.appendChild(editor);
+
     setTimeout(() => {
         document.addEventListener('mousedown', onOutsideClick);
-        syncWidth();
         labelInput.select();
         labelInput.focus();
     }, 0);
