@@ -1314,6 +1314,39 @@ def _has_nav_intent(query: str) -> bool:
     return False
 
 
+def _is_conceptual(query: str) -> bool:
+    """True when the query is asking for an explanation rather than how to do something.
+
+    Conceptual questions ("what is R²", "why does Vmax matter") are routed to the LLM
+    so it can explain, rather than short-circuited to a UI guide.
+    """
+    q = query.lower()
+    return any(marker in q for marker in _CONCEPTUAL_MARKERS)
+
+
+# A keyword score this high (≈ two strong keyword hits) is treated as a confident
+# match, enough to launch a guide for imperative commands that carry no explicit
+# nav marker (e.g. "switch to point mode", "change the interval", "merge two files").
+_STRONG_MATCH_SCORE = 1.6
+
+
+def _should_launch_guide(query: str, score: float) -> bool:
+    """Decide whether a matched guide example should be short-circuited to the UI.
+
+    Fires on (a) an explicit navigation/how-to phrasing with a usable match, or
+    (b) a strong keyword match that is not a conceptual question. Conceptual
+    questions always fall through to the LLM.
+
+    Nav intent is checked before the conceptual gate so that precise phrasings
+    like "how do i" take priority over the broader "how do" conceptual marker.
+    """
+    if _has_nav_intent(query) and score >= 0.7:
+        return True
+    if _is_conceptual(query):
+        return False
+    return score >= _STRONG_MATCH_SCORE
+
+
 def chat_stream(messages: list, language: str, api_key: str, model: str, ui_context: dict = None):
     """Generator yielding SSE event dicts."""
     last_user_query = next(
@@ -1360,7 +1393,7 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
 
     matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
-    if matched and match_score >= 0.7 and _has_nav_intent(last_user_query):
+    if matched and _should_launch_guide(last_user_query, match_score):
         steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
         yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
         yield {"type": "guide", "guide_action": {"custom_steps": steps}}

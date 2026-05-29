@@ -221,7 +221,11 @@
         "begin measurement",
         "start colorimeter",
         "run script",
-        "launch device"
+        "launch device",
+        "run the script",
+        "launch the device",
+        "start the run",
+        "power on device"
       ],
       "conditions": {},
       "steps": [
@@ -242,7 +246,17 @@
         "terminate",
         "stop colorimeter",
         "end measurement",
-        "kill script"
+        "kill script",
+        "stop recording",
+        "stop the recording",
+        "stop measurement",
+        "stop the measurement",
+        "halt measurement",
+        "cancel measurement",
+        "abort measurement",
+        "halt colorimeter",
+        "halt the colorimeter",
+        "halt recording"
       ],
       "conditions": {},
       "steps": [
@@ -339,7 +353,15 @@
         "set timeout",
         "where is timeout",
         "change timeout",
-        "timeout setting"
+        "timeout setting",
+        "how long",
+        "recording duration",
+        "measurement duration",
+        "record forever",
+        "run forever",
+        "how long to record",
+        "time limit",
+        "duration of recording"
       ],
       "conditions": {},
       "steps": [
@@ -360,7 +382,15 @@
         "where is interval",
         "change interval",
         "measurement interval",
-        "sampling interval"
+        "sampling interval",
+        "sampling rate",
+        "sample rate",
+        "how often",
+        "time between readings",
+        "reading frequency",
+        "how frequently",
+        "sampling frequency",
+        "frequency of readings"
       ],
       "conditions": {},
       "steps": [
@@ -590,7 +620,13 @@
         "hid log",
         "device log",
         "show log",
-        "log data"
+        "log data",
+        "recording log",
+        "measurement log",
+        "see the log",
+        "show the log",
+        "log output",
+        "view the log"
       ],
       "conditions": {},
       "steps": [
@@ -1052,7 +1088,15 @@
         "colorimeter recording",
         "start measuring data",
         "how to start recording",
-        "how to start measurement"
+        "how to start measurement",
+        "start logging",
+        "logging data",
+        "start logging data",
+        "data acquisition",
+        "acquire data",
+        "capture readings",
+        "take readings",
+        "begin recording"
       ],
       "conditions": {},
       "steps": [
@@ -1388,7 +1432,15 @@
         "browse data folder",
         "open data folder",
         "where is my data",
-        "live folder"
+        "live folder",
+        "recorded data",
+        "live measurement",
+        "real time data",
+        "real-time data",
+        "watch data live",
+        "monitor recording",
+        "see recorded data",
+        "open recorded data"
       ],
       "conditions": {},
       "steps": [
@@ -1462,7 +1514,11 @@
         "name my file",
         "measurement file name",
         "what to enter for name",
-        "naming the output file"
+        "naming the output file",
+        "output file name",
+        "what name",
+        "name the file",
+        "name the recording"
       ],
       "conditions": {},
       "steps": [
