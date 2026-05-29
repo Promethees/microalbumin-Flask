@@ -721,7 +721,7 @@
     "id": "export_saving_directory",
     "steps": [
       "Coché, les fichiers exportés sont sauvegardés dans le même dossier que le fichier de données chargé. Décochez pour choisir une autre destination.",
-      "Ce champ indique où iront les fichiers exportés. Il se met à jour automatiquement lors du changement de dossier ou du basculement de la case à cocher."
+      "Cliquez ce bouton pour ouvrir un sélecteur de dossier et choisir où enregistrer les fichiers exportés. Le chemin sélectionné est utilisé pour tous les exports suivants jusqu'à modification."
     ],
     "queries": [
       "répertoire d'export",

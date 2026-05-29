@@ -716,7 +716,7 @@
     "id": "export_saving_directory",
     "steps": [
       "Khi được chọn, tệp xuất (dữ liệu hiệu chuẩn hoặc JSON hệ số) được lưu cùng thư mục với tệp dữ liệu đang tải. Bỏ chọn để chọn đích khác.",
-      "Trường này hiển thị nơi tệp xuất sẽ đến. Tự động cập nhật khi bạn duyệt vị trí mới hoặc bật/tắt hộp kiểm 'cùng thư mục' ở trên."
+      "Nhấn nút này để mở bộ chọn thư mục và chọn nơi lưu tệp xuất. Đường dẫn đã chọn sẽ được dùng cho tất cả các lần xuất tiếp theo cho đến khi thay đổi."
     ],
     "queries": [
       "thư mục lưu xuất",

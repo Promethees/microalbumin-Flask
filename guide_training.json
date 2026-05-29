@@ -1738,9 +1738,9 @@
           "skipInteraction": true
         },
         {
-          "target": "#save-dir-label",
-          "title": "Export Saving Directory",
-          "description": "This field shows where exported files will go. It updates automatically when you browse a new location or when the 'same directory' checkbox above is toggled.",
+          "target": "#go-to-exp-btn",
+          "title": "Browse Saving Location",
+          "description": "Click this button to open a folder picker and choose where exported files will be saved. The selected path is used for all subsequent exports until changed.",
           "position": "top",
           "skipInteraction": true
         }
