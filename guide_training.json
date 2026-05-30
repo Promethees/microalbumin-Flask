@@ -1464,13 +1464,13 @@
       "id": "shutdown_server",
       "queries": [
         "shut down",
-        "shutdown server",
-        "close the server",
-        "stop the server",
+        "shutdown application",
+        "close the application",
+        "stop the application",
         "exit application",
         "close application",
         "quit the app",
-        "turn off server"
+        "turn off application"
       ],
       "conditions": {},
       "steps": [
