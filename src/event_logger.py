@@ -27,9 +27,15 @@ def append(event_type: str, action: str, details: dict = None) -> None:
         entry["details"] = details
 
     path = _session_file()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry) + "\n")
+    # Event logging is best-effort analytics; a non-writable log directory
+    # (e.g. created under sudo, or a read-only deploy) must never break the
+    # request that triggered the event.
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError:
+        pass
 
 
 def read_all() -> list:
