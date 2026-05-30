@@ -138,3 +138,104 @@ def test_weak_match_without_nav_defers_to_llm():
     assert matched == "normalize_data"
     assert score < ai_assistant._STRONG_MATCH_SCORE
     assert not fires("normalize my data", KIN_DATA)
+
+
+# ===========================================================================
+# Regression batch for the four routing defects found by the query harness.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# #1 — Prefix-only token matching.
+# A base word embedded as a *suffix* of a negation/derivation form must not
+# cross-match ('select' ⊂ 'deselect'/'unselect'), while genuine stem variants
+# ('record'/'recorded', 'file'/'files') still do.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("a, b, expected", [
+    ("file", "files", True),
+    ("record", "recorded", True),
+    ("source", "sources", True),
+    ("select", "deselect", False),
+    ("select", "unselect", False),
+    ("load", "unload", False),
+])
+def test_token_match_is_prefix_only(a, b, expected):
+    assert ai_assistant._token_match(a, b) is expected
+    assert ai_assistant._token_match(b, a) is expected  # symmetric
+
+
+def test_select_file_not_hijacked_by_deselect():
+    """'select a file' must reach select_file, not the antonym deselect_file."""
+    matched, score = route("where do I select a file", KIN_DATA)
+    assert matched == "select_file", f"routed to {matched!r} ({score:.2f})"
+    assert fires("where do I select a file", KIN_DATA)
+
+
+def test_genuine_deselect_still_reaches_deselect_file():
+    """Inverse guard: real deselect phrasing still routes to deselect_file."""
+    matched, _ = route("how do I deselect a file", KIN_DATA)
+    assert matched == "deselect_file"
+
+
+# ---------------------------------------------------------------------------
+# #2 / #3 — Specificity-weighted exact matches.
+# One long, specific exact phrase must outrank a pile of short generic or
+# near-duplicate fuzzy keywords summed from a less-relevant example.
+# ---------------------------------------------------------------------------
+def test_export_to_report_beats_generic_export():
+    """'export data to report' is the report-subject guide, not plain export."""
+    matched, score = route("export data to report", KIN_DATA)
+    assert matched == "export_to_report_subject", f"routed to {matched!r} ({score:.2f})"
+    assert fires("export data to report", KIN_DATA)
+
+
+def test_record_data_reaches_measurement_guide_not_live_view():
+    """'record data' reaches the measurement guide, not live_view_inactive, whose
+    several near-duplicate '...recorded data' keywords previously out-summed it."""
+    matched, score = route("how do I record data", KIN_DATA)
+    assert matched == "measurement_guide", f"routed to {matched!r} ({score:.2f})"
+
+
+def test_specificity_weight_orders_exact_matches():
+    """A longer exact phrase scores strictly higher than a one-word exact match."""
+    qc = ai_assistant._content_words("export data to report")
+    long_phrase = ai_assistant._score_keyword("export data to report", "export data to report", qc)
+    one_word = ai_assistant._score_keyword("export", "export data to report", qc)
+    assert long_phrase > one_word
+
+
+# ---------------------------------------------------------------------------
+# #4 — A single incidental fuzzy hit (0.8) on an out-of-context word must not
+# hijack into an unrelated guide. The right guide still fires in its own mode.
+# ---------------------------------------------------------------------------
+def test_regression_query_wrong_mode_defers_to_llm():
+    """'select a regression algorithm' in kinetics must NOT open the file guide
+    (its only hit there is the incidental word 'select')."""
+    matched, score = route("how do I select a regression algorithm", KIN_NODATA)
+    assert not fires("how do I select a regression algorithm", KIN_NODATA), \
+        f"weak fuzzy match {matched!r} ({score:.2f}) should defer to the LLM"
+
+
+def test_regression_query_fires_in_calibrate_mode():
+    """The same query in the correct mode reaches the regression-algorithm guide."""
+    matched, _ = route("how do I select a regression algorithm", CAL_DATA)
+    assert matched == "select_regression"
+    assert fires("how do I select a regression algorithm", CAL_DATA)
+
+
+def test_nav_launch_requires_a_solid_hit():
+    """The nav/how-to path needs >= _NAV_LAUNCH_SCORE; a lone 0.8 fuzzy is not enough."""
+    assert ai_assistant._NAV_LAUNCH_SCORE >= 1.0
+
+
+# ---------------------------------------------------------------------------
+# Firing gate: explicit full-tour requests launch even on a weak keyword score.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("query", [
+    "walk me through the whole app",
+    "guide me through everything",
+    "give me a step by step walkthrough",
+])
+def test_full_tour_requests_fire_app_introduction(query):
+    matched, score = route(query, KIN_NODATA)
+    assert matched == "app_introduction", f"{query!r} routed to {matched!r}"
+    assert fires(query, KIN_NODATA), f"{query!r} (score {score:.2f}) should launch the tour"
