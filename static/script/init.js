@@ -880,6 +880,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 // ── Auto-update ───────────────────────────────────────────────────────────────
 
 let _updateInfo = null;
+let _updateCheckInterval = null;
 
 function _showUpdateBanner(version) {
     const banner = document.getElementById('update-banner');
@@ -916,8 +917,10 @@ function _dismissBanner(e) {
     }
 }
 
+// Resolves to true when the update server was reached (status 'success'),
+// false on any network/unreachable/error response so callers can retry.
 function checkForUpdate(silent = true) {
-    fetch('/update/check')
+    return fetch('/update/check')
         .then(r => r.json())
         .then(data => {
             if (!data || data.status !== 'success') {
@@ -926,7 +929,7 @@ function checkForUpdate(silent = true) {
                         (data && data.message) || 'Could not reach the update server.',
                         'warning');
                 }
-                return;
+                return false;
             }
             _updateInfo = data;
             if (data.update_available) {
@@ -939,12 +942,49 @@ function checkForUpdate(silent = true) {
                     confirmButtonText: 'OK',
                 });
             }
+            return true;
         })
         .catch(() => {
             if (!silent) {
                 Swal.fire('Update check failed', 'Could not reach the update server.', 'warning');
             }
+            return false;
         });
+}
+
+// Run the silent startup check, retrying with backoff while the update server is
+// unreachable (common right after first launch, before networking/activation settles).
+// Stops retrying once a check succeeds; thereafter a slow periodic re-check keeps the
+// banner accurate for updates published while the app stays open.
+function scheduleStartupUpdateCheck() {
+    const RETRY_DELAYS = [4000, 8000, 15000, 30000]; // ms; attempts at ~4s, 12s, 27s, 57s
+    const PERIODIC_MS = 30 * 60 * 1000;              // re-check every 30 min once reachable
+
+    const startPeriodic = (ms) => {
+        if (_updateCheckInterval) clearInterval(_updateCheckInterval);
+        _updateCheckInterval = setInterval(() => {
+            checkForUpdate(true).then(reached => {
+                // Once reachable, settle into the slow steady-state cadence.
+                if (reached && ms !== PERIODIC_MS) startPeriodic(PERIODIC_MS);
+            });
+        }, ms);
+    };
+
+    let attempt = 0;
+    const tryOnce = () => {
+        checkForUpdate(true).then(reached => {
+            if (reached) {
+                startPeriodic(PERIODIC_MS);
+            } else if (attempt < RETRY_DELAYS.length) {
+                setTimeout(tryOnce, RETRY_DELAYS[attempt++]);
+            } else {
+                // Stop fast retries but keep a slow background loop so the banner
+                // can still appear if the server becomes reachable later.
+                startPeriodic(60 * 1000);
+            }
+        });
+    };
+    setTimeout(tryOnce, RETRY_DELAYS[attempt++]);
 }
 
 function checkForUpdateFromSettings() {
@@ -1096,6 +1136,7 @@ function _applyUpdate() {
 document.addEventListener('DOMContentLoaded', function () {
     const badge = document.getElementById('app-version-badge');
     if (badge) badge.addEventListener('click', showUpdateModal);
-    // Silent background check after 4 seconds (avoids slowing down initial load)
-    setTimeout(() => checkForUpdate(true), 4000);
+    // Silent background check, retried with backoff while the update server is
+    // unreachable so the banner still appears on first startup once it responds.
+    scheduleStartupUpdateCheck();
 });
