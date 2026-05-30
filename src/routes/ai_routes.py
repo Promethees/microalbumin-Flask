@@ -116,3 +116,37 @@ def get_guides():
         'status': 'success',
         'examples': ai_assistant.get_guide_examples(lang),
     })
+
+
+@ai_bp.route('/match', methods=['POST'])
+def ai_match():
+    """Local, no-LLM guide resolution for the desktop client.
+
+    The desktop UI differs from the cloud UI, so navigation guides must be
+    resolved against this app's own elements rather than delegated to the cloud
+    proxy. The frontend calls this before any chat request: a hit launches the
+    local guide; a miss falls through to the normal (LLM) chat. No activation
+    required — guide navigation is purely local.
+    """
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or '').strip()
+    if not query:
+        msgs = data.get('messages') or []
+        query = next(
+            (m.get('content', '') for m in reversed(msgs)
+             if isinstance(m, dict) and m.get('role') == 'user'),
+            '',
+        ).strip()
+
+    language = data.get('language') or 'en'
+    if language not in ai_settings.SUPPORTED_LANGUAGES:
+        language = 'en'
+    ui_context = data.get('ui_context') or {}
+
+    guide_id, steps = ai_assistant.resolve_guide(query, ui_context, language)
+    return jsonify({
+        'status': 'success',
+        'fires': bool(steps),
+        'guide_id': guide_id,
+        'steps': steps or [],
+    })

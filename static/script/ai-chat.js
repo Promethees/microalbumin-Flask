@@ -552,6 +552,30 @@
         setTimeout(() => window.userGuide.startCustomSteps(steps), 400);
     }
 
+    // Resolve a UI-navigation guide LOCALLY (typo/phrasing tolerant) via /ai/match,
+    // so the guide uses THIS app's own UI rather than the cloud proxy's. Returns a
+    // Promise<bool>: true when a local guide was launched (caller should stop),
+    // false to fall through to the LLM. Any error falls through.
+    function _tryLocalGuide(text) {
+        const lang = AI.activeLang || 'en';
+        return fetch('/ai/match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: text, language: lang, ui_context: _getUiContext() }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (!data || data.status !== 'success' || !data.fires || !(data.steps || []).length) {
+                    return false;
+                }
+                _addMsg('user', text);
+                _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+                _launchCustomSteps(data.steps);   // sets AI.lastAction for /redo
+                return true;
+            })
+            .catch(() => false);
+    }
+
     function _getUiContext() {
         const appState = window.AppState || {};
         const mainContent = document.getElementById('main-content');
@@ -900,6 +924,17 @@
             const _matchedCmd = SLASH_COMMANDS.find(c => c.cmd === text.toLowerCase());
             if (_matchedCmd) { input.value = ''; _cmdExecute(_matchedCmd); return; }
 
+            input.value = '';
+            // Resolve UI-navigation guides LOCALLY first (typo/phrasing tolerant) so
+            // they use THIS app's UI rather than the cloud proxy's. Works without AI
+            // activation. Falls through to the LLM when no guide fires.
+            _tryLocalGuide(text).then(handled => {
+                if (!handled) OkapiAI._sendToLLM(text);
+            });
+        },
+
+        _sendToLLM(text) {
+            const input = document.getElementById('okapi-ai-input');
             if (AI.status && !AI.status.api_ready) {
                 const lang = AI.activeLang || 'en';
                 _addSystemMsg(_AI_UNAVAILABLE_MSG[lang] || _AI_UNAVAILABLE_MSG.en);
@@ -923,7 +958,6 @@
 
             AI.lastAction = { type: 'llm', query: text };
 
-            input.value = '';
             _addMsg('user', text);
             AI.messages.push({ role: 'user', content: text });
 

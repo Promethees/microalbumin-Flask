@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 import json
 import os
 from file_path import DATA_ROOT, validate_in_data_root
@@ -94,9 +95,15 @@ def _is_cjk(s: str) -> bool:
     )
 
 
+# Edge punctuation stripped from query/keyword tokens before matching, so
+# "measurement?" or "(kinetics)" normalise to their bare word forms.
+_EDGE_PUNCT = ".,!?;:()[]{}\"'`…“”’"
+
+
 def _content_words(text: str) -> frozenset:
     result = set()
     for w in text.lower().split():
+        w = w.strip(_EDGE_PUNCT)
         min_len = 2 if _is_cjk(w) else 4
         if len(w) >= min_len and w not in _STOPWORDS:
             result.add(w)
@@ -113,6 +120,38 @@ def _token_match(a: str, b: str) -> bool:
     which would otherwise produce a confidently wrong, antonymous match.
     """
     return a == b or a.startswith(b) or b.startswith(a)
+
+
+# ── Typo tolerance: spell-correct query words to the guide vocabulary ─────────
+# Misspellings are normalised to the nearest known keyword word BEFORE scoring,
+# so the prefix matcher above and the keyword lists keep working unchanged.
+# Guards (shared 2-char prefix, length within 2, high similarity) keep this to
+# genuine typos ('measurment'→'measurement') and never map a real out-of-domain
+# word onto a near neighbour ('internal'≁'interval', 'select'≁'deselect').
+
+def _guide_vocabulary(examples: list) -> frozenset:
+    vocab = set()
+    for ex in examples:
+        for kw in ex.get("queries", []):
+            vocab |= _content_words(kw)
+    return frozenset(vocab)
+
+
+def _nearest_keyword_word(word: str, vocab: frozenset) -> str:
+    if _is_cjk(word) or len(word) < 5 or word in vocab:
+        return word
+    best, best_ratio = word, 0.88
+    for v in vocab:
+        if len(v) < 5 or v[:2] != word[:2] or abs(len(v) - len(word)) > 2:
+            continue
+        ratio = difflib.SequenceMatcher(None, word, v).ratio()
+        if ratio > best_ratio:
+            best, best_ratio = v, ratio
+    return best
+
+
+def _canonicalize_content(content: frozenset, vocab: frozenset) -> frozenset:
+    return frozenset(_nearest_keyword_word(w, vocab) for w in content)
 
 
 def _score_keyword(kw: str, q_lower: str, q_content: frozenset) -> float:
@@ -145,7 +184,7 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
         return None, 0
 
     q_lower = query.lower()
-    q_content = _content_words(q_lower)
+    q_content = _canonicalize_content(_content_words(q_lower), _guide_vocabulary(examples))
     mode = (ui_context or {}).get("mode", "")
     best_score: float = 0
     best = None
@@ -1391,6 +1430,28 @@ def _should_launch_guide(query: str, score: float) -> bool:
     if _is_conceptual(query):
         return False
     return score >= _STRONG_MATCH_SCORE
+
+
+def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):
+    """Local (no-LLM) guide resolution for the desktop client.
+
+    Runs the same intent pipeline as the chat short-circuit — greeting/out-of-
+    scope rejection, fuzzy keyword matching, and the firing gate — entirely on
+    this machine, so UI-navigation guides resolve against THIS app's own UI
+    instead of being delegated to the cloud proxy (whose UI differs).
+
+    Returns (guide_id, steps) when a guide should launch, else (None, None).
+    `steps` already includes the file-select / translation handling applied by
+    _format_fewshot_hint.
+    """
+    ui_context = ui_context or {}
+    if not query or _is_greeting(query) or _is_out_of_scope(query):
+        return None, None
+    matched, score = _match_guide_example(query, ui_context, language)
+    if not matched or not _should_launch_guide(query, score):
+        return None, None
+    steps = _format_fewshot_hint(matched, ui_context, language, steps_only=True)
+    return matched["id"], steps
 
 
 def chat_stream(messages: list, language: str, api_key: str, model: str, ui_context: dict = None):

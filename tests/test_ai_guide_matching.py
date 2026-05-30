@@ -239,3 +239,101 @@ def test_full_tour_requests_fire_app_introduction(query):
     matched, score = route(query, KIN_NODATA)
     assert matched == "app_introduction", f"{query!r} routed to {matched!r}"
     assert fires(query, KIN_NODATA), f"{query!r} (score {score:.2f}) should launch the tour"
+
+
+# ===========================================================================
+# Semantic-intent layer: spell-correction (typos / phrasing) + local resolver.
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Query words are spell-corrected to the guide vocabulary BEFORE scoring, so
+# misspellings still reach the right guide. Guards keep genuine out-of-domain
+# words and antonyms from being mis-corrected.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("typo, canonical", [
+    ("measurment", "measurement"),
+    ("mesure", "measure"),
+    ("calibrte", "calibrate"),
+    ("kinetcs", "kinetics"),
+    ("colorimiter", "colorimeter"),
+])
+def test_nearest_keyword_word_fixes_typos(typo, canonical):
+    vocab = ai_assistant._guide_vocabulary(ai_assistant._load_guide_examples("en"))
+    assert canonical in vocab, f"test premise: {canonical!r} should be in the guide vocabulary"
+    assert ai_assistant._nearest_keyword_word(typo, vocab) == canonical
+
+
+@pytest.mark.parametrize("word", [
+    "internal",   # real word, near 'interval' — must NOT be corrected
+    "deselect",   # antonym of 'select' — must stay itself
+    "report",     # already in vocabulary
+])
+def test_nearest_keyword_word_leaves_valid_words(word):
+    vocab = ai_assistant._guide_vocabulary(ai_assistant._load_guide_examples("en"))
+    assert ai_assistant._nearest_keyword_word(word, vocab) == word
+
+
+@pytest.mark.parametrize("query, expected", [
+    ("how to do measurment", "measurement_guide"),
+    ("how to mesure kinetics", "measurement_guide"),
+    ("how to start a colorimetic recording", "measurement_guide"),
+    ("how do I calibrte", "nav_calibrate_mode"),
+    ("swich to point mode", "nav_point_mode"),
+    ("how do I delete a fle", "delete_file"),
+])
+def test_misspelled_queries_still_route(query, expected):
+    matched, score = route(query, KIN_NODATA)
+    assert matched == expected, f"{query!r} routed to {matched!r} ({score:.2f})"
+
+
+def test_typo_does_not_break_antonym_guard():
+    # 'deselct' (typo of deselect) must reach deselect_file, never select_file.
+    matched, _ = route("how do I deselct a file", KIN_DATA)
+    assert matched == "deselect_file"
+
+
+# ---------------------------------------------------------------------------
+# resolve_guide(): the local, no-LLM resolver used by the /ai/match endpoint.
+# ---------------------------------------------------------------------------
+def test_resolve_guide_returns_local_steps():
+    guide_id, steps = ai_assistant.resolve_guide("how to do measurement", KIN_NODATA, "en")
+    assert guide_id == "measurement_guide"
+    assert steps and len(steps) == 7
+    # Steps are real desktop targets, resolved locally (not the cloud's 2-step stub).
+    assert steps[0]["target"] == "#measurement-mode"
+
+
+def test_resolve_guide_defers_conceptual_and_greeting():
+    assert ai_assistant.resolve_guide("what is R squared", KIN_DATA, "en") == (None, None)
+    assert ai_assistant.resolve_guide("hello there", KIN_NODATA, "en") == (None, None)
+    assert ai_assistant.resolve_guide("", KIN_NODATA, "en") == (None, None)
+
+
+# ---------------------------------------------------------------------------
+# /ai/match HTTP route — local guide resolution, no activation required.
+# ---------------------------------------------------------------------------
+def test_ai_match_route_fires_for_measurement(client):
+    resp = client.post("/ai/match", json={
+        "query": "how to do measurment",  # misspelled on purpose
+        "language": "en",
+        "ui_context": {"mode": "kinetics", "data_loaded": False, "app_started": True},
+    })
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["status"] == "success"
+    assert data["fires"] is True
+    assert data["guide_id"] == "measurement_guide"
+    assert len(data["steps"]) == 7
+
+
+def test_ai_match_route_defers_conceptual(client):
+    resp = client.post("/ai/match", json={
+        "query": "what is maxRate",
+        "language": "en",
+        "ui_context": {"mode": "kinetics", "data_loaded": True, "app_started": True},
+    })
+    data = resp.get_json()
+    assert data["status"] == "success"
+    assert data["fires"] is False
+    assert data["guide_id"] is None
+    assert data["steps"] == []
