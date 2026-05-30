@@ -641,8 +641,9 @@
   {
     "id": "measurement_guide",
     "steps": [
-      "Chọn chế độ Kinetics để bắt đầu đo máy so màu theo chuỗi thời gian.",
-      "Sau khi dừng đo, tệp dữ liệu tự động được lưu. Chọn nó ở đây để xem biểu đồ và chạy phân tích."
+      "Nhấp vào đây để tải lên tệp CSV được ghi từ máy so màu của bạn. Đang dùng Google Drive? Hãy dùng bảng Drive để đồng bộ các phiên đã lưu.",
+      "Chọn chế độ kinetics (chuỗi thời gian) hoặc point (điểm cuối) cho phù hợp với cách dữ liệu của bạn được thu thập.",
+      "Chọn tệp đã tải lên hoặc đồng bộ từ Drive ở đây để xem biểu đồ và chạy phân tích."
     ],
     "queries": [
       "cách đo",

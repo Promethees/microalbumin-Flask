@@ -863,16 +863,23 @@
       "conditions": {},
       "steps": [
         {
+          "target": "#upload-file-btn",
+          "title": "Upload Your Data",
+          "description": "Click here to upload a CSV file recorded from your colorimeter. Already using Google Drive? Use the Drive panel to sync your saved sessions instead.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
           "target": "#meas-mode-section",
-          "title": "Switch to Kinetics Mode",
-          "description": "Select Kinetics mode to begin a time-series colorimeter measurement.",
+          "title": "Choose Measurement Mode",
+          "description": "Select kinetics (time-series) or point (endpoint) to match how your data was collected.",
           "position": "right",
           "skipInteraction": true
         },
         {
           "target": "#file-selection",
-          "title": "Load Your Data",
-          "description": "After stopping the measurement, your data file is automatically saved. Select it here to view charts and run analysis.",
+          "title": "Load and Analyze",
+          "description": "Select your uploaded or Drive-synced file here to view charts and run the analysis.",
           "position": "left",
           "skipInteraction": true
         }

@@ -566,8 +566,9 @@
   {
     "id": "measurement_guide",
     "steps": [
-      "Sélectionnez le mode Kinetics pour démarrer une mesure colorimétrique en série temporelle.",
-      "Après l'arrêt, votre fichier est automatiquement sauvegardé. Sélectionnez-le ici pour voir les graphiques et lancer l'analyse."
+      "Cliquez ici pour téléverser un fichier CSV enregistré depuis votre colorimètre. Vous utilisez Google Drive ? Utilisez plutôt le panneau Drive pour synchroniser vos sessions enregistrées.",
+      "Sélectionnez le mode kinetics (série temporelle) ou point (point final) selon la façon dont vos données ont été collectées.",
+      "Sélectionnez ici votre fichier téléversé ou synchronisé depuis Drive pour voir les graphiques et lancer l'analyse."
     ],
     "queries": [
       "comment mesurer",
