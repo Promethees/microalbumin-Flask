@@ -575,7 +575,11 @@
     "queries": [
       "arrêter le serveur",
       "fermer l'application",
-      "quitter application"
+      "quitter application",
+      "quitter",
+      "quitter l'application",
+      "fermer l'app",
+      "quitter l'app"
     ]
   },
   {

@@ -566,7 +566,11 @@
       "tắt máy chủ",
       "đóng ứng dụng",
       "shutdown",
-      "thoát ứng dụng"
+      "thoát ứng dụng",
+      "thoát",
+      "đóng app",
+      "thoát app",
+      "tắt ứng dụng"
     ]
   },
   {
