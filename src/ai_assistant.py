@@ -1590,7 +1590,12 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
         if resp.status_code == 503:
             yield {'type': 'error', 'error': 'service_unavailable'}
             return
-        resp.raise_for_status()
+        # Any other non-2xx (e.g. a 400 the proxy raises for an unsupported
+        # request) should surface as a friendly message, not a raw HTTPError
+        # string from raise_for_status().
+        if resp.status_code >= 400:
+            yield {'type': 'error', 'error': 'service_unavailable'}
+            return
 
         for line in resp.iter_lines():
             if not line:
