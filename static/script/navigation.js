@@ -381,23 +381,53 @@ function scrollWhenVisible(elementId, duration = 500) {
     const isVisible = el =>
         el.offsetParent !== null && window.getComputedStyle(el).display !== "none";
 
-    // Scroll so the element's centre aligns with the viewport's centre
-    // Double rAF ensures Chart.js (and any other rAF-deferred renderers) have
-    // committed their layout before scrollIntoView reads element positions.
-    const scrollToElement = (deferred = false) => {
-        if (deferred) {
-            requestAnimationFrame(() => requestAnimationFrame(() =>
-                target.scrollIntoView({ behavior: "smooth", block: "center" })
-            ));
-        } else {
-            target.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+    // Scroll so the element's centre aligns with the viewport's centre, then keep
+    // re-asserting that alignment for a short window. This defeats the race where a
+    // one-shot smooth scroll is invalidated mid-flight by concurrent reflows — the
+    // 500ms live-update loop (updateDirectory + drawMeasurementChart) and async
+    // Chart.js canvas resizes shift content above the target after the scroll's
+    // destination offset was computed, leaving the section off-screen.
+    //
+    // The first assertion is smooth for feel; follow-up corrections are instant and
+    // only fire when the element has actually drifted past `tolerance`, so a settled
+    // page produces no jitter.
+    const TOLERANCE_PX = 24;        // distance from viewport centre treated as "centred"
+    const CORRECT_EVERY_MS = 150;   // how often to re-check during the guard window
+    const SMOOTH_SETTLE_MS = 450;   // let the smooth animation finish before correcting
+    const GUARD_FOR_MS = 1400;      // span ~2-3 live-update ticks plus the chart draw
+
+    const isCentred = () => {
+        const rect = target.getBoundingClientRect();
+        const targetCentre = rect.top + rect.height / 2;
+        return Math.abs(targetCentre - window.innerHeight / 2) <= TOLERANCE_PX;
     };
 
-    // If already visible, defer the scroll so any pending layout work (e.g.
-    // chart canvas resizing) finishes before we measure the scroll target.
+    const scrollToElement = () => {
+        // Double rAF ensures Chart.js (and any other rAF-deferred renderers) have
+        // committed their layout before scrollIntoView reads element positions.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+
+            const deadline = performance.now() + GUARD_FOR_MS;
+            const reassert = () => {
+                if (!isVisible(target)) return;     // navigated away / re-hidden
+                if (!isCentred()) {
+                    // Reflow pushed it away — snap back instantly (no animation to
+                    // restart, so it can't be invalidated the same way).
+                    target.scrollIntoView({ behavior: "auto", block: "center" });
+                }
+                if (performance.now() < deadline) {
+                    setTimeout(reassert, CORRECT_EVERY_MS);
+                }
+            };
+            setTimeout(reassert, SMOOTH_SETTLE_MS);
+        }));
+    };
+
+    // If already visible, scroll now; pending layout work is handled by the
+    // deferred measurement and the re-assert guard above.
     if (isVisible(target)) {
-        scrollToElement(true);
+        scrollToElement();
         return;
     }
 
