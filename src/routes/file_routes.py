@@ -352,6 +352,115 @@ def save_range_csv(validated_data):
         return jsonify({'status': 'error', 'message': str(e)})
 
 
+@file_bp.route('/save_normalized_csv', methods=['POST'])
+@validate_json({
+    'file': str,
+    'save_name': str,
+})
+def save_normalized_csv(validated_data):
+    """Save a blank-removed copy of a stored CSV (each Value column minus its own minimum).
+
+    Body adds optional 'source_index': null -> normalize every Value column;
+    int -> only that source's Value column. Mirrors save_range_csv: reads from
+    user_data['csv'], writes a new entry, emits an update_csv refresh.
+    """
+    import csv as csv_mod
+    from io import StringIO
+    file_name = os.path.basename(validated_data['file'].strip())
+    save_name = os.path.basename(validated_data['save_name'].strip())
+    source_index = (request.get_json(silent=True) or {}).get('source_index')
+    if not save_name:
+        return jsonify({'status': 'error', 'message': 'Save name is required'})
+    if not save_name.lower().endswith('.csv'):
+        save_name += '.csv'
+
+    try:
+        user_data = get_user_data()
+        content = user_data['csv'].get(file_name)
+        if content is None:
+            return jsonify({'status': 'error', 'message': f"File '{file_name}' not found"})
+
+        meta_lines = []
+        data_lines = []
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                meta_lines.append(line)
+            elif stripped:
+                data_lines.append(stripped)
+
+        if not data_lines:
+            return jsonify({'status': 'error', 'message': 'Source file has no data'})
+
+        header_list = [h.strip() for h in next(csv_mod.reader([data_lines[0]]))]
+        rows = [next(csv_mod.reader([line])) for line in data_lines[1:]]
+
+        # Value columns: every column whose name starts with "Value" (col 0 is Timestamp).
+        value_col_idx = [i for i, name in enumerate(header_list) if name.lower().startswith('value')]
+        if not value_col_idx:
+            value_col_idx = list(range(1, len(header_list)))
+
+        if source_index is None:
+            target_idx = list(value_col_idx)
+        else:
+            try:
+                target_idx = [value_col_idx[int(source_index)]]
+            except (IndexError, ValueError, TypeError):
+                return jsonify({'status': 'error', 'message': 'Invalid source index'})
+
+        # Per-column minimum over numeric cells.
+        col_min = {}
+        for ci in target_idx:
+            mn = None
+            for cells in rows:
+                if ci >= len(cells):
+                    continue
+                try:
+                    v = float(cells[ci])
+                except ValueError:
+                    continue
+                if mn is None or v < mn:
+                    mn = v
+            col_min[ci] = mn
+
+        for cells in rows:
+            for ci in target_idx:
+                mn = col_min.get(ci)
+                if mn is None or ci >= len(cells):
+                    continue
+                try:
+                    v = float(cells[ci])
+                except ValueError:
+                    continue
+                cells[ci] = '%.6g' % (v - mn)
+
+        if source_index is None:
+            meta_lines.append('# Normalization: subtract per-column minimum / blank removal (all sources)')
+        else:
+            meta_lines.append('# Normalization: subtract per-column minimum / blank removal (source %d)' % (int(source_index) + 1))
+
+        out = StringIO()
+        for line in meta_lines:
+            out.write(line + '\n')
+        writer = csv_mod.writer(out)
+        writer.writerow(header_list)
+        writer.writerows(rows)
+
+        with user_data_session() as ud:
+            ud['csv'][save_name] = out.getvalue()
+
+        socketio.emit('update_csv')
+        return jsonify({
+            'status': 'success',
+            'message': f'Saved {len(rows)} rows as {save_name}',
+            'count': len(rows),
+            'save_name': save_name
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+
 # ── Report helpers ─────────────────────────────────────────────────────────────
 
 def _safe_subject_name(name: str) -> str:

@@ -368,6 +368,18 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
             `Source ${i + 1}`,
             `plot-analysis-source-${i}`
         );
+        if (analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
+            document.getElementById(analysisId).insertAdjacentHTML('beforeend',
+                `<button class="utility-btn" style="margin-top:4px;"
+                    title="Save the linearity range rows for this source to a new CSV file"
+                    onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">📐 Save Linearity Range</button>`
+            );
+        }
+        document.getElementById(analysisId).insertAdjacentHTML('beforeend',
+            `<button class="utility-btn" style="margin-top:4px;"
+                title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
+                onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`
+        );
     }
 
     AppState.sourceCharts = charts;
@@ -396,6 +408,14 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     let html = '';
     analysisInfo.forEach((info, i) => {
         html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
+        if (analyses[i] && analyses[i].linearXMin != null && analyses[i].linearXMax != null) {
+            html += `<button class="utility-btn" style="margin-top:4px;"
+                title="Save the linearity range rows for this source to a new CSV file"
+                onclick="saveLinearityRangeCsvForSource(${i}, ${analyses[i].linearXMin}, ${analyses[i].linearXMax})">📐 Save Linearity Range</button>`;
+        }
+        html += `<button class="utility-btn" style="margin-top:4px;"
+            title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
+            onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" 
