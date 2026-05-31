@@ -525,6 +525,16 @@ function processResponse(response, jsonFile) {
     AppState.metaData = response.metadata;
     AppState.numSources = response.num_sources || 1;
 
+    // Hide split-source when there is only one Value column — splitting is meaningless
+    if (AppState.currentMeasurementMode !== 'calibrate') {
+        const isSingle = AppState.numSources === 1;
+        $hidden(['split-source-section'], isSingle);
+        if (isSingle) {
+            const splitCheckbox = document.getElementById('split-source');
+            if (splitCheckbox) splitCheckbox.checked = false;
+        }
+    }
+
     // Update plot
     updatePlotBasedOnMode(jsonFile);
 

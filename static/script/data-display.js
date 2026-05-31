@@ -340,8 +340,16 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
             });
             appendHTML(section);
         } else {
-            // Single mixed plot
+            // Single mixed plot — show full-display checkbox when there is only one Value column
+            const fullDisplayHtml = AppState.numSources === 1
+                ? `<label>
+                    <input type="checkbox" id="full-display-plot"
+                        onchange="handleFullDisplayChange('full-display-plot', 'plot', 'plot-canvas')">
+                    Full display: See all data and special lines
+                   </label>`
+                : '';
             const html = `
+                ${fullDisplayHtml}
                 <label id="quantity-checkboxes-plot" class="hidden">
                     <h3>Quantities to display on graphic</h3>
                     ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
@@ -422,8 +430,12 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     // Format analysis info for all sources
     const analysisInfo = analyses.map((a, i) => formatAnalysisInfo(a, labels[i]));
 
-    // Generate single chart with all Y-columns
-    renderCharts(XColumnVals, YColumnVals, labels, measUnit);
+    // Generate single chart with all Y-columns.
+    // For single source: pass original (unfiltered, raw-seconds) data to renderCharts so
+    // ChartDataStore holds unclipped values — enabling the full-display checkbox to work.
+    const renderX = AppState.numSources === 1 ? allGroups.allXColumn : XColumnVals;
+    const renderY = AppState.numSources === 1 ? [allGroups.allYColumn[0]] : YColumnVals;
+    renderCharts(renderX, renderY, labels, measUnit);
     window.ChartDataStore['plot-canvas'].yColumns = YColumn;
     // Update analysis info display
     let html = '';
