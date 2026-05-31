@@ -1189,3 +1189,142 @@ def export_report_excel(validated_data):
         as_attachment=True,
         attachment_filename=f'{safe_subject}_report.xlsx'
     )
+
+
+def _write_normalized_csv(file_path, save_name, save_dir, source_index=None):
+    """Write a normalized copy of a CSV file to a new CSV file.
+
+    Companion to _write_subset_csv for the Normalize extraction feature.
+    Each targeted Value column has its own minimum subtracted from every
+    value (per-column blank removal), so the lowest point becomes 0 and the
+    measured baseline (blank) is removed. The Timestamp column and any
+    non-targeted columns are copied unchanged.
+
+    If source_index is None, every Value column is normalized (global button).
+    Otherwise only the Value column for that source is normalized.
+    Preserves all metadata (#) lines and the header row.
+    """
+    if not file_path or not os.path.isfile(file_path):
+        return jsonify({'status': 'error', 'message': 'Source file not found.'}), 404
+
+    if save_name is None or not str(save_name).strip():
+        return jsonify({'status': 'error', 'message': 'Save name is required.'}), 400
+
+    # Sanitize the save name -> strip any path components and .csv suffix
+    save_name = os.path.basename(str(save_name).strip())
+    if save_name.lower().endswith('.csv'):
+        save_name = save_name[:-4]
+
+    src_dir = os.path.dirname(file_path)
+    save_dir = save_dir or src_dir
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+
+    out_path = os.path.join(save_dir, save_name + '.csv')
+
+    metadata_lines = []
+    header_line = None
+    data_rows = []
+    with open(file_path, 'r', newline='') as f:
+        for raw in f:
+            line = raw.rstrip('\n')
+            if line.startswith('#'):
+                metadata_lines.append(line)
+            elif header_line is None:
+                header_line = line
+            else:
+                data_rows.append(line)
+
+    if header_line is None:
+        return jsonify({'status': 'error', 'message': 'No header row found in source file.'}), 400
+
+    header_cols = header_line.split(',')
+    # Value columns: every column whose name starts with "Value" (col 0 is Timestamp).
+    value_col_idx = [i for i, name in enumerate(header_cols)
+                     if name.strip().lower().startswith('value')]
+    if not value_col_idx:
+        # Fallback: treat every column except the first (timestamp) as a value column.
+        value_col_idx = list(range(1, len(header_cols)))
+
+    if source_index is None:
+        target_idx = list(value_col_idx)
+    else:
+        try:
+            target_idx = [value_col_idx[int(source_index)]]
+        except (IndexError, ValueError, TypeError):
+            return jsonify({'status': 'error', 'message': 'Invalid source index.'}), 400
+
+    # Parse non-blank rows into cells once.
+    parsed = [row.split(',') for row in data_rows if row.strip()]
+
+    # Compute per-column minimum over numeric cells.
+    col_min = {}
+    for ci in target_idx:
+        mn = None
+        for cells in parsed:
+            if ci >= len(cells):
+                continue
+            try:
+                v = float(cells[ci])
+            except ValueError:
+                continue
+            if mn is None or v < mn:
+                mn = v
+        col_min[ci] = mn
+
+    out_rows = []
+    for cells in parsed:
+        new_cells = list(cells)
+        for ci in target_idx:
+            mn = col_min.get(ci)
+            if mn is None or ci >= len(cells):
+                continue
+            try:
+                v = float(cells[ci])
+            except ValueError:
+                continue
+            new_cells[ci] = '%.6g' % (v - mn)
+        out_rows.append(','.join(new_cells))
+
+    # Record the transformation in metadata for traceability.
+    if source_index is None:
+        metadata_lines.append('# Normalization: subtract per-column minimum / blank removal (all sources)')
+    else:
+        metadata_lines.append('# Normalization: subtract per-column minimum / blank removal (source %d)' % (int(source_index) + 1))
+
+    with open(out_path, 'w', newline='') as f:
+        for m in metadata_lines:
+            f.write(m + '\n')
+        f.write(header_line + '\n')
+        for row in out_rows:
+            f.write(row + '\n')
+
+    rel_path = os.path.relpath(out_path, state.data_root_path) \
+        if hasattr(state, 'data_root_path') and state.data_root_path else out_path
+
+    return jsonify({
+        'status': 'success',
+        'count': len(out_rows),
+        'path': rel_path,
+        'file_name': save_name + '.csv'
+    })
+
+
+@file_bp.route('/save_normalized_csv', methods=['POST'])
+@validate_json
+def save_normalized_csv():
+    """Save a normalized copy of a CSV file (subtract per-column minimum / blank removal) to a new CSV file.
+
+    Body: {file, save_name, save_dir, source_index?}. When source_index is
+    omitted/null, every Value column is normalized; otherwise only the column
+    for that source is normalized.
+    """
+    try:
+        data = request.get_json()
+        file_path = data.get('file')
+        save_name = data.get('save_name')
+        save_dir = data.get('save_dir')
+        source_index = data.get('source_index')
+        return _write_normalized_csv(file_path, save_name, save_dir, source_index)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500

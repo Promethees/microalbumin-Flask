@@ -1738,6 +1738,96 @@ async function saveRangeCsv() {
     }
 }
 
+async function saveNormalizedCsv() {
+    if (!AppState.currentFile) {
+        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        return;
+    }
+
+    const stem = AppState.currentFile.replace(/\.csv$/i, '');
+    const defaultName = `${stem}_normalized`;
+
+    const { value: saveName } = await Swal.fire({
+        title: 'Save Normalized Data',
+        input: 'text',
+        inputLabel: 'Every column minus its own minimum (blank removed) \u2014 save as:',
+        inputPlaceholder: 'filename (without .csv)',
+        inputValue: defaultName,
+        showCancelButton: true,
+        inputValidator: v => (!v || !v.trim()) ? 'Filename is required' : null
+    });
+
+    if (!saveName) return;
+
+    const sourceFile = AppState.currentDirectory + DELIMITER + AppState.currentFile;
+    try {
+        const res = await fetch('/save_normalized_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file: sourceFile,
+                save_name: saveName.trim(),
+                save_dir: AppState.currentDirectory,
+                source_index: null
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved to ${data.path}` });
+            updateDirectory(AppState.currentDirectory);
+        } else {
+            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+    }
+}
+
+async function saveNormalizedCsvForSource(sourceIndex) {
+    if (!AppState.currentFile) {
+        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        return;
+    }
+
+    const stem = AppState.currentFile.replace(/\.csv$/i, '');
+    const defaultName = `${stem}_norm_s${sourceIndex + 1}`;
+
+    const { value: saveName } = await Swal.fire({
+        title: `Save Normalized Data \u2014 Source ${sourceIndex + 1}`,
+        input: 'text',
+        inputLabel: `Source ${sourceIndex + 1} minus its minimum (blank removed) \u2014 save as:`,
+        inputPlaceholder: 'filename (without .csv)',
+        inputValue: defaultName,
+        showCancelButton: true,
+        inputValidator: v => (!v || !v.trim()) ? 'Filename is required' : null
+    });
+
+    if (!saveName) return;
+
+    const sourceFile = AppState.currentDirectory + DELIMITER + AppState.currentFile;
+    try {
+        const res = await fetch('/save_normalized_csv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file: sourceFile,
+                save_name: saveName.trim(),
+                save_dir: AppState.currentDirectory,
+                source_index: sourceIndex
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved to ${data.path}` });
+            updateDirectory(AppState.currentDirectory);
+        } else {
+            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+    }
+}
+
 async function saveLinearityRangeCsvForSource(sourceIndex, linearXMin, linearXMax) {
     if (!AppState.currentFile) {
         Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });

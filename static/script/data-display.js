@@ -396,6 +396,11 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
                     onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">📐 Save Linearity Range</button>`
             );
         }
+        analysisEl.insertAdjacentHTML('beforeend',
+            `<button class="utility-btn" style="margin-top:4px;"
+                title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
+                onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`
+        );
     }
 
     AppState.sourceCharts = charts;
@@ -430,6 +435,9 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
                 title="Save the linearity range rows for this source to a new CSV file"
                 onclick="saveLinearityRangeCsvForSource(${i}, ${rawA.linearXMin}, ${rawA.linearXMax})">📐 Save Linearity Range</button>`;
         }
+        html += `<button class="utility-btn" style="margin-top:4px;"
+            title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
+            onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}"
