@@ -87,6 +87,9 @@ def download_and_apply(progress_cb=None):
     _emit(progress_cb, 72, 'Applying update...')
     updated = _apply_tarball(tmp_path)
 
+    _emit(progress_cb, 80, 'Installing dependencies...')
+    _install_requirements()
+
     _emit(progress_cb, 90, 'Cleaning up...')
     try:
         os.remove(tmp_path)
@@ -143,6 +146,46 @@ def _apply_tarball(tar_path):
                     shutil.copyfileobj(src, dst)
                 updated.append(name)
     return updated
+
+
+def _requirements_path():
+    """Return the platform-appropriate requirements file in the project root."""
+    name = ('requirements-win.txt'
+            if platform.system().lower().startswith('win')
+            else 'requirements.txt')
+    return os.path.join(state.script_dir, name)
+
+
+def _install_requirements():
+    """Install/upgrade dependencies into the running venv after applying an update.
+
+    The in-app update only overwrites source files — it never touches the venv —
+    so an update that adds a new dependency would otherwise relaunch into code
+    that crashes on ImportError. Running ``pip install -r <requirements>`` with
+    the venv interpreter (``sys.executable``) is idempotent (already-satisfied
+    packages are skipped) and picks up anything new. Raises RuntimeError on
+    failure so the caller reports the update as failed rather than relaunching a
+    broken app.
+    """
+    import subprocess
+
+    req = _requirements_path()
+    if not os.path.isfile(req):
+        return
+
+    creationflags = 0
+    if platform.system().lower().startswith('win'):
+        creationflags = 0x08000000  # CREATE_NO_WINDOW — the app runs hidden
+
+    proc = subprocess.run(
+        [sys.executable, '-m', 'pip', 'install', '-r', req],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, creationflags=creationflags,
+    )
+    if proc.returncode != 0:
+        tail = (proc.stdout or '')[-800:]
+        raise RuntimeError(
+            f'Dependency install failed (pip exit {proc.returncode}):\n{tail}')
 
 
 def restart_after_delay(delay_secs=1.5):

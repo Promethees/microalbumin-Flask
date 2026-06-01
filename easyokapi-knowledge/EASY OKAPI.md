@@ -81,7 +81,7 @@ graph TD
 | `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `default_mode`, `default_window_size`, `default_subfolder`, `event_log_retention_days` |
 | `event_logger.py` | Append/read user interaction events; logs go to `log/events/YYYY-MM-DD/HH-MM-SS.jsonl` (one file per app launch per day); `cleanup_old_logs()` removes date folders older than `event_log_retention_days` |
 | `activation.py` | Reads/writes `activation.json`; `get_license_token()` and `AI_SERVICE_URL` constant for proxy mode |
-| `update_service.py` | Auto-update: `check_for_update()` (calls `/api/version`), `download_and_apply(progress_cb)` (downloads zip via `/api/download` + extracts in-place, preserving user data), `restart_after_delay()` (Unix: `os.execv`; Windows: detached PowerShell relauncher that waits for the port to free, then relaunches hidden) |
+| `update_service.py` | Auto-update: `check_for_update()` (calls `/api/version`), `download_and_apply(progress_cb)` (downloads zip via `/api/download` + extracts in-place, preserving user data, then `_install_requirements()` so new deps are present), `restart_after_delay()` (Unix: `os.execv`; Windows: detached PowerShell relauncher that waits for the port to free, then relaunches hidden) |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
 | `get_next_filename.py` | Auto-naming duplicates (e.g., `file_1.csv`) |

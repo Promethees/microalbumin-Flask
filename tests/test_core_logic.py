@@ -88,6 +88,35 @@ def test_windows_relaunch_script_quotes_args_with_spaces():
     assert "@('" + main + "')" not in script
 
 
+def test_install_requirements_raises_on_pip_failure():
+    # Regression: the in-app update never rebuilds the venv, so after applying an
+    # update that adds a new dependency, download_and_apply must run pip and fail
+    # loudly (so the app is not relaunched into an ImportError) instead of going
+    # ahead silently.
+    import update_service
+    with patch.object(update_service, '_requirements_path', return_value=__file__), \
+         patch('subprocess.run', return_value=MagicMock(returncode=1, stdout='boom')):
+        with pytest.raises(RuntimeError):
+            update_service._install_requirements()
+
+
+def test_install_requirements_ok_when_pip_succeeds():
+    import update_service
+    with patch.object(update_service, '_requirements_path', return_value=__file__), \
+         patch('subprocess.run', return_value=MagicMock(returncode=0, stdout='ok')) as run:
+        update_service._install_requirements()  # must not raise
+        assert run.called
+
+
+def test_install_requirements_skips_when_no_requirements_file():
+    import update_service
+    missing = os.path.join(os.path.dirname(__file__), 'no_such_requirements.txt')
+    with patch.object(update_service, '_requirements_path', return_value=missing), \
+         patch('subprocess.run') as run:
+        update_service._install_requirements()
+        run.assert_not_called()
+
+
 def test_windows_relaunch_script_uses_portable_port_probe():
     # Regression: the relaunch must probe the port with a .NET TcpClient connect,
     # not Get-NetTCPConnection. That cmdlet is missing on some Windows builds,

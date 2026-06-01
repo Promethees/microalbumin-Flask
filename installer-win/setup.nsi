@@ -520,9 +520,9 @@ Click No to keep the existing installation and cancel Setup." \
     ; temp file (rather than inlined) to avoid NSIS/PowerShell quote escaping.
     DetailPrint "Stopping any running EasyOKAPI instance..."
     FileOpen $9 "$PLUGINSDIR\stop-easyokapi.ps1" w
-    FileWrite $9 '$$r = $$args[0]$\r$\n'
-    FileWrite $9 'Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq ''python.exe'' -or $$_.Name -eq ''pythonw.exe'') -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }$\r$\n'
-    FileWrite $9 'Start-Sleep -Seconds 2$\r$\n'
+    FileWrite $9 "$$r = $$args[0]$\r$\n"
+    FileWrite $9 "Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq 'python.exe' -or $$_.Name -eq 'pythonw.exe') -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }$\r$\n"
+    FileWrite $9 "Start-Sleep -Seconds 2$\r$\n"
     FileClose $9
     nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\stop-easyokapi.ps1" "$INSTDIR\"'
     Pop $0
