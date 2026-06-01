@@ -53,7 +53,14 @@ def wait_for_server(host, port, timeout=10, interval=0.2):
     return False
 
 def close_port(port, exclude_pid=None):
-    """Close processes using the specified port, excluding the given PID."""
+    """Close processes listening on the specified port, excluding the given PID."""
+    current_pid = str(exclude_pid or os.getpid())
+    if platform.system() == "Windows":
+        _close_port_windows(port, current_pid)
+    else:
+        _close_port_unix(port, current_pid)
+
+def _close_port_unix(port, current_pid):
     try:
         # Use lsof to find processes using the port
         result = subprocess.run(
@@ -63,7 +70,6 @@ def close_port(port, exclude_pid=None):
             check=False
         )
         pids = result.stdout.strip().split('\n')
-        current_pid = str(exclude_pid or os.getpid())
         for pid in pids:
             if pid and pid != current_pid:
                 print(f"Terminating process {pid} using port {port}")
@@ -72,6 +78,41 @@ def close_port(port, exclude_pid=None):
         print(f"Error closing port {port}: {e}")
     except FileNotFoundError:
         print("lsof not found; ensure lsof is installed (e.g., sudo apt install lsof)")
+
+def _close_port_windows(port, current_pid):
+    """Find and kill processes LISTENING on `port` via netstat + taskkill.
+
+    lsof/kill do not exist on Windows, so the old close_port() silently did
+    nothing there — leaving a stray instance holding the port after a hard exit,
+    which is what bricked in-app updates (see update_service.restart_after_delay).
+    """
+    CREATE_NO_WINDOW = 0x08000000
+    try:
+        result = subprocess.run(
+            ['netstat', '-ano', '-p', 'tcp'],
+            capture_output=True, text=True, check=False,
+            creationflags=CREATE_NO_WINDOW,
+        )
+    except (OSError, ValueError) as e:
+        print(f"Could not run netstat to close port {port}: {e}")
+        return
+
+    needle = f":{port}"
+    pids = set()
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        # Columns: Proto  Local Address  Foreign Address  State  PID
+        if len(parts) >= 5 and parts[0].upper().startswith("TCP"):
+            local, state, pid = parts[1], parts[3], parts[-1]
+            if local.endswith(needle) and state.upper() == "LISTENING" \
+                    and pid.isdigit() and pid != current_pid:
+                pids.add(pid)
+
+    for pid in pids:
+        print(f"Terminating process {pid} using port {port}")
+        subprocess.run(['taskkill', '/F', '/PID', pid],
+                       capture_output=True, text=True, check=False,
+                       creationflags=CREATE_NO_WINDOW)
 
 def cleanup(process, log_file, args):
     try:

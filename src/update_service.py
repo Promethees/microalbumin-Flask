@@ -146,17 +146,117 @@ def _apply_tarball(tar_path):
 
 
 def restart_after_delay(delay_secs=1.5):
-    """Restart the current Python process after a short delay (non-blocking)."""
+    """Restart the current process after a short delay (non-blocking).
+
+    Mac/Linux: os.execv replaces the process image in place — atomic, and the
+    same image rebinds the port (Werkzeug sets SO_REUSEADDR).
+
+    Windows: a process cannot relaunch itself after os._exit(), and the dev
+    server's port lingers briefly after exit. The old code spawned the new
+    instance and *then* hard-exited, so the new process raced the dying one for
+    the port, failed to bind, and (being launched -WindowStyle Hidden) died with
+    no visible window — bricking the app until the stray process was killed.
+
+    Instead we spawn a *detached* PowerShell relauncher that waits for the port
+    to be released, starts a fresh hidden instance, and shows a dialog if it
+    never comes up. Only then does this process free the port via os._exit().
+    """
     import threading
     import time
 
     def _do_restart():
         time.sleep(delay_secs)
         if platform.system().lower().startswith('win'):
-            import subprocess
-            subprocess.Popen([sys.executable] + sys.argv)
-            os._exit(0)
+            _restart_windows()
         else:
             os.execv(sys.executable, [sys.executable] + sys.argv)
 
     threading.Thread(target=_do_restart, daemon=False).start()
+
+
+def _current_port():
+    try:
+        return int(state.args.port)
+    except Exception:
+        return 5099
+
+
+def _shutdown_current_process():
+    """Best-effort stop of the HID subprocess so it is not orphaned on exit."""
+    try:
+        import browser_mgt
+        browser_mgt.cleanup(state.process, state.log_file, state.args)
+    except Exception:
+        pass
+
+
+def _ps_quote(s):
+    """Quote a value as a PowerShell single-quoted string literal."""
+    return "'" + str(s).replace("'", "''") + "'"
+
+
+def _build_windows_relaunch_script(cmd, cwd, port):
+    """Build a one-line PowerShell relauncher script (statements joined by ';')."""
+    exe_q = _ps_quote(cmd[0])
+    cwd_q = _ps_quote(cwd)
+    args = cmd[1:]
+    arg_clause = ''
+    if args:
+        arg_list = ', '.join(_ps_quote(a) for a in args)
+        arg_clause = f"-ArgumentList @({arg_list}) "
+    msg = ('EasyOKAPI did not come back up after the update. '
+           'Please relaunch it from the Start menu or desktop shortcut.')
+    return (
+        f"$port = {int(port)}; "
+        "$hasCmd = $null -ne (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue); "
+        "if ($hasCmd) { "
+        "  $deadline = (Get-Date).AddSeconds(20); "
+        "  while ((Get-Date) -lt $deadline) { "
+        "    $c = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue; "
+        "    if (-not $c) { break }; Start-Sleep -Milliseconds 300 "
+        "  } "
+        "} else { Start-Sleep -Seconds 3 } "
+        f"Start-Process -FilePath {exe_q} {arg_clause}-WorkingDirectory {cwd_q} -WindowStyle Hidden; "
+        "if ($hasCmd) { "
+        "  $up = $false; $check = (Get-Date).AddSeconds(20); "
+        "  while ((Get-Date) -lt $check) { "
+        "    $c2 = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue; "
+        "    if ($c2) { $up = $true; break }; Start-Sleep -Milliseconds 400 "
+        "  } "
+        "  if (-not $up) { "
+        "    try { Add-Type -AssemblyName PresentationFramework; "
+        f"      [System.Windows.MessageBox]::Show({_ps_quote(msg)}, 'EasyOKAPI Update') | Out-Null "
+        "    } catch {} "
+        "  } "
+        "}"
+    )
+
+
+def _restart_windows():
+    import subprocess
+
+    port = _current_port()
+    cwd = os.getcwd()
+    cmd = [sys.executable] + list(sys.argv)
+
+    DETACHED_PROCESS = 0x00000008
+    CREATE_NEW_PROCESS_GROUP = 0x00000200
+    CREATE_NO_WINDOW = 0x08000000
+    try:
+        subprocess.Popen(
+            ['powershell', '-NoProfile', '-NonInteractive',
+             '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
+             '-Command', _build_windows_relaunch_script(cmd, cwd, port)],
+            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+            close_fds=True,
+        )
+    except Exception as e:
+        # If the detached relauncher cannot be spawned, fall back to the naive
+        # relaunch so the user is not left with nothing running.
+        print(f"[update] Detached relaunch failed ({e}); using direct relaunch.")
+        subprocess.Popen(cmd, cwd=cwd)
+        os._exit(0)
+        return
+
+    _shutdown_current_process()
+    os._exit(0)

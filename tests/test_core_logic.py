@@ -41,16 +41,35 @@ def test_check_log_for_errors(tmp_path):
     log_file.write_text("Fatal: Failed to find input endpoint. Exiting.")
     assert script_monitor.check_log_for_errors(str(log_file)) == "input_endpoint_error"
 
-def test_close_port():
-    with patch('subprocess.run') as mock_run:
-        # Mock lsof result
-        mock_run.return_value = MagicMock(stdout="1234\n5678\n")
-        with patch('os.getpid', return_value=1234):
-            browser_mgt.close_port(5099)
-            # Should kill 5678, skip 1234
-            kill_call = [call for call in mock_run.call_args_list if 'kill' in call.args[0]]
-            assert len(kill_call) == 1
-            assert '5678' in kill_call[0].args[0]
+def test_close_port_unix():
+    with patch('src.browser_mgt.platform.system', return_value='Linux'):
+        with patch('subprocess.run') as mock_run:
+            # Mock lsof result
+            mock_run.return_value = MagicMock(stdout="1234\n5678\n")
+            with patch('os.getpid', return_value=1234):
+                browser_mgt.close_port(5099)
+                # Should kill 5678, skip 1234
+                kill_call = [call for call in mock_run.call_args_list if 'kill' in call.args[0]]
+                assert len(kill_call) == 1
+
+def test_close_port_windows():
+    # netstat output: skip own PID (1234), kill the other listener (5678),
+    # ignore non-LISTENING rows and rows for a different port.
+    netstat_out = (
+        "  Proto  Local Address          Foreign Address        State           PID\n"
+        "  TCP    127.0.0.1:5099         0.0.0.0:0              LISTENING       1234\n"
+        "  TCP    0.0.0.0:5099           0.0.0.0:0              LISTENING       5678\n"
+        "  TCP    127.0.0.1:5099         127.0.0.1:55000        ESTABLISHED     9999\n"
+        "  TCP    0.0.0.0:8080           0.0.0.0:0              LISTENING       4321\n"
+    )
+    with patch('src.browser_mgt.platform.system', return_value='Windows'):
+        with patch('subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(stdout=netstat_out)
+            with patch('os.getpid', return_value=1234):
+                browser_mgt.close_port(5099)
+                kill_calls = [c for c in mock_run.call_args_list if 'taskkill' in c.args[0]]
+                killed_pids = {c.args[0][-1] for c in kill_calls}
+                assert killed_pids == {'5678'}
 
 
 # ---------------------------------------------------------------------------
