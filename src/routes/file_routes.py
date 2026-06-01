@@ -283,6 +283,34 @@ def delete_file():
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
+@file_bp.route('/delete_data_folder', methods=['POST'])
+@validate_json({'path': str})
+def delete_data_folder(validated_data):
+    """Delete a data subfolder (and everything inside it).
+
+    The path must resolve inside DATA_ROOT and may not be DATA_ROOT itself.
+    """
+    try:
+        if state.process and state.process.poll() is None:
+            return jsonify({'status': 'error', 'message': 'Cannot delete folders while the data collection process is running'}), HTTPStatus.LOCKED
+
+        abs_path = validate_in_data_root(validated_data['path'])
+        if not abs_path:
+            return jsonify({'status': 'error', 'message': 'Invalid folder path'}), HTTPStatus.BAD_REQUEST
+        if abs_path == DATA_ROOT:
+            return jsonify({'status': 'error', 'message': 'Cannot delete the data root folder'}), HTTPStatus.BAD_REQUEST
+        if not os.path.isdir(abs_path):
+            return jsonify({'status': 'error', 'message': 'Folder not found'}), HTTPStatus.NOT_FOUND
+
+        shutil.rmtree(abs_path)
+        return jsonify({'status': 'success', 'message': f"Deleted folder '{os.path.basename(abs_path)}'"}), HTTPStatus.OK
+    except PermissionError as e:
+        return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
+    except OSError as e:
+        return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
+
 @file_bp.route('/copy_file', methods=['POST'])
 def copy_file():
     try:

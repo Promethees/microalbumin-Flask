@@ -41,8 +41,71 @@ function _renderFolderList(containerId, folders) {
                      data-path="${_esc(f.path)}"
                      data-name="${_esc(f.name.toLowerCase())}"
                      onclick="selectDataFolder('${_esc(f.name)}', this.dataset.path)"
-                     title="${_escHtml(f.path)}">${_escHtml(f.name)}</div>`;
+                     title="${_escHtml(f.path)}"><span class="folder-item-name">${_escHtml(f.name)}</span><button type="button" class="folder-item-delete" title="Delete folder" onclick="event.stopPropagation(); deleteDataFolder('${_esc(f.name)}', this.closest('.folder-item').dataset.path)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button></div>`;
     }).join('');
+}
+
+// Delete a data subfolder (and its contents) after confirmation. Refreshes the
+// folder lists and, if the deleted folder was the active directory, falls back
+// to the data root.
+async function deleteDataFolder(name, path) {
+    // Fetch the CSV files in the folder so the confirmation can list what will be removed.
+    let files = [];
+    try {
+        const res = await fetch('/browse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'path=' + encodeURIComponent(path)
+        });
+        const d = await res.json();
+        if (d.status === 'success') files = d.files || [];
+    } catch (e) { /* fall back to a generic confirmation if listing fails */ }
+
+    const fileListHtml = files.length
+        ? `<p style="margin:8px 0 4px;">The following ${files.length} CSV file${files.length > 1 ? 's' : ''} will be permanently deleted:</p>
+           <ul style="text-align:left; max-height:160px; overflow:auto; margin:0; padding:6px 6px 6px 22px; border:1px solid #e5e7eb; border-radius:6px; font-size:0.85em;">
+               ${files.map(f => `<li>${_escHtml(f)}</li>`).join('')}
+           </ul>`
+        : `<p style="margin:8px 0;">This folder contains no CSV files.</p>`;
+
+    const result = await Swal.fire({
+        title: 'Delete folder?',
+        html: `<div style="text-align:left;">Delete <b>"${_escHtml(name)}"</b>? This cannot be undone.${fileListHtml}</div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete',
+        confirmButtonColor: '#ef4444'
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+        if (typeof window.showSpinner === 'function') window.showSpinner();
+        const response = await fetch('/delete_data_folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path })
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Delete failed');
+
+        const wasCurrent = AppState.currentDirectory &&
+            (AppState.currentDirectory === path ||
+             AppState.currentDirectory.replace(/\\\\/g, '\\') === path);
+        await loadDataFolders();
+        if (wasCurrent && typeof DATA_ROOT !== 'undefined') {
+            await updateDirectory(DATA_ROOT, true);
+        }
+
+        if (getBtnChecked("no-swal-checkbox")) {
+            console.log("Folder deleted successfully:", data.message);
+        } else {
+            Swal.fire('Folder deleted', data.message || `Deleted "${name}".`, 'success');
+        }
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    } finally {
+        if (typeof window.hideSpinner === 'function') window.hideSpinner();
+    }
 }
 
 function _populateFolderSelect(selectId, folders, includeRootOption) {
