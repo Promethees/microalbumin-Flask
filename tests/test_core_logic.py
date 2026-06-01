@@ -72,6 +72,22 @@ def test_close_port_windows():
                 assert killed_pids == {'5678'}
 
 
+def test_windows_relaunch_script_quotes_args_with_spaces():
+    # Regression: app installs to "C:\Program Files\EasyOKAPI" (path has a
+    # space). Start-Process -ArgumentList does not quote elements containing
+    # spaces, so the main.py path must be passed embedded in double quotes or
+    # Python gets a split argv ("C:\Program") and the relaunch silently dies.
+    import update_service
+    exe = r"C:\Program Files\EasyOKAPI\code\venv\Scripts\python.exe"
+    main = r"C:\Program Files\EasyOKAPI\code\main.py"
+    script = update_service._build_windows_relaunch_script(
+        [exe, main], r"C:\Program Files\EasyOKAPI", 5099)
+    # The main.py argument must appear double-quoted inside the ArgumentList.
+    assert '@(\'"' + main + '"\')' in script
+    # And it must not appear bare (unquoted) in the ArgumentList.
+    assert "@('" + main + "')" not in script
+
+
 # ---------------------------------------------------------------------------
 # script_monitor.check_log_for_missed_read
 # ---------------------------------------------------------------------------

@@ -195,6 +195,20 @@ def _ps_quote(s):
     return "'" + str(s).replace("'", "''") + "'"
 
 
+def _ps_arg(s):
+    """Quote a process argument for ``Start-Process -ArgumentList``.
+
+    Start-Process joins the ArgumentList elements with spaces to form the child
+    command line and does NOT quote elements that contain spaces. So passing a
+    bare path like ``C:\\Program Files\\EasyOKAPI\\code\\main.py`` makes Python
+    receive a split argv (``C:\\Program`` + ``Files\\...``) and fail to start.
+    We therefore embed double quotes around the value (mirroring launcher.ps1)
+    and wrap the whole thing as a PowerShell single-quoted literal.
+    """
+    content = '"' + str(s).replace('"', '\\"') + '"'
+    return "'" + content.replace("'", "''") + "'"
+
+
 def _build_windows_relaunch_script(cmd, cwd, port):
     """Build a one-line PowerShell relauncher script (statements joined by ';')."""
     exe_q = _ps_quote(cmd[0])
@@ -202,7 +216,7 @@ def _build_windows_relaunch_script(cmd, cwd, port):
     args = cmd[1:]
     arg_clause = ''
     if args:
-        arg_list = ', '.join(_ps_quote(a) for a in args)
+        arg_list = ', '.join(_ps_arg(a) for a in args)
         arg_clause = f"-ArgumentList @({arg_list}) "
     msg = ('EasyOKAPI did not come back up after the update. '
            'Please relaunch it from the Start menu or desktop shortcut.')
