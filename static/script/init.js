@@ -142,6 +142,7 @@ function refreshNumSourcesOptions(path) {
 function rebuildExportSourceOptions() {
     if (AppState.currentMeasurementMode === "calibrate") return;
     const selectElement = document.getElementById('exp-json-source');
+    if (!selectElement) return;
     selectElement.innerHTML = '<option value="ALL">ALL</option>';
     for (let i = 1; i <= AppState.numSources; i++) {
         const option = document.createElement('option');
