@@ -61,15 +61,27 @@ REM Use 8.3 short path to avoid spaces in "Program Files" breaking subprocess ca
 set "VENV_DIR=%~sdp0code\venv"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 
-REM Create venv if not exists or is incomplete from a previous aborted run.
+REM Recreate the venv if python.exe is missing OR the venv is broken.
+REM Checking only python.exe (the old behaviour) let a HALF-BUILT venv survive a
+REM reinstall: an aborted run — or antivirus quarantining pyvenv.cfg/pythonw.exe —
+REM leaves python.exe behind without pyvenv.cfg, so the venv python exits instantly
+REM with "No pyvenv.cfg file" and the app silently never launches. pyvenv.cfg is the
+REM reliable health marker, so treat its absence as "rebuild from scratch".
 REM --without-pip avoids the internal ensurepip subprocess that fails on paths with spaces;
 REM pip is bootstrapped separately below via "%VENV_PYTHON%" -m ensurepip.
-if not exist "%VENV_PYTHON%" (
+set "VENV_BROKEN="
+if not exist "%VENV_PYTHON%" set "VENV_BROKEN=1"
+if not exist "%VENV_DIR%\pyvenv.cfg" set "VENV_BROKEN=1"
+if defined VENV_BROKEN (
     if exist "%VENV_DIR%" rmdir /s /q "%VENV_DIR%"
     echo Creating virtual environment...
     "%PYENV_PYTHON%" -m venv --without-pip "%VENV_DIR%"
     if not exist "%VENV_PYTHON%" (
         echo ERROR: Failed to create virtual environment at %VENV_DIR%.
+        exit /b 1
+    )
+    if not exist "%VENV_DIR%\pyvenv.cfg" (
+        echo ERROR: virtual environment created without pyvenv.cfg at %VENV_DIR%.
         exit /b 1
     )
     echo Created virtual environment in 'code\venv'.
@@ -81,11 +93,35 @@ echo Virtual environment activated.
 REM Ensure pip is installed
 echo Checking pip...
 "%VENV_PYTHON%" -m ensurepip --upgrade
+if errorlevel 1 (
+    echo ERROR: Failed to bootstrap pip into the virtual environment.
+    exit /b 1
+)
 
-REM Install required libraries
+REM Install required libraries. Each step's exit code MUST be checked: an
+REM unchecked pip failure (network blip, AV, a wheel that won't build) used to
+REM leave a partial venv — e.g. flask/pandas/requests/groq missing — while the
+REM installer still reported success and shipped a broken app.
 echo Installing requirements...
 "%VENV_PYTHON%" -m pip install --upgrade pip
+if errorlevel 1 (
+    echo ERROR: Failed to upgrade pip.
+    exit /b 1
+)
 "%VENV_PYTHON%" -m pip install -r "%~dp0code\requirements-win.txt"
+if errorlevel 1 (
+    echo ERROR: Failed to install required packages from requirements-win.txt.
+    exit /b 1
+)
+
+REM Verify the core imports actually work so a partial install can never ship.
+echo Verifying environment...
+"%VENV_PYTHON%" -c "import flask, pandas, requests, scipy, groq"
+if errorlevel 1 (
+    echo ERROR: Environment verification failed - core packages are missing.
+    exit /b 1
+)
+echo Environment verified.
 
 REM Pre-compile bytecode for scipy/numpy so first app launch is not slow
 echo Pre-compiling Python bytecode for scientific libraries...

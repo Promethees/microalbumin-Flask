@@ -93,12 +93,27 @@ $Timer.Add_Tick({
 
     # Real work at stage transitions
     if ($p -eq 61) {
+        # Preflight: bail loudly if the app code or the venv is missing/broken.
+        # A half-built venv (no pyvenv.cfg, or core packages never installed)
+        # has a python.exe that exits instantly with "No pyvenv.cfg file" or an
+        # ImportError, so the hidden app would silently never appear. Detect it
+        # here and tell the user, instead of launching a corpse at p=81.
+        $py = "$script:ScriptDir\code\venv\Scripts\python.exe"
+        $fail = $null
         if (-not (Test-Path "$script:ScriptDir\code\main.py")) {
-            $Status.Text = 'ERROR: main.py not found in .\code\'
+            $fail = 'ERROR: main.py not found in .\code\'
+        } elseif (-not ((Test-Path "$script:ScriptDir\code\venv\pyvenv.cfg") -and `
+                        (Test-Path $py) -and `
+                        (Test-Path "$script:ScriptDir\code\venv\Lib\site-packages\flask"))) {
+            $fail = 'ERROR: Python environment is incomplete or corrupted. Please reinstall EasyOKAPI.'
+        }
+        if ($fail) {
+            $Status.Text = $fail
             $Fill.Background = [System.Windows.Media.Brushes]::IndianRed
+            $script:Done = $true
             $Timer.Stop()
             $ct = New-Object System.Windows.Threading.DispatcherTimer
-            $ct.Interval = [TimeSpan]::FromSeconds(3)
+            $ct.Interval = [TimeSpan]::FromSeconds(5)
             $ct.Add_Tick({ $ct.Stop(); $Window.Close() })
             $ct.Start()
             return
