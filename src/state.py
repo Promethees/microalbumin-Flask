@@ -37,7 +37,7 @@ else:
 
 # Configuration
 PRODUCTION_MODE = True
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.1.2"
 
 # Resend configuration
 MAX_RESEND_ATTEMPTS = 3   # Maximum number of reading-request resend attempts

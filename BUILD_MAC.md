@@ -20,7 +20,7 @@ This guide explains how to build the `EasyOKAPI.dmg` installer from the source f
 4.  The script will:
     - Cleanup previous builds.
     - Copy the contents of `installer-mac/` to a temporary directory.
-    - Create a compressed DMG named `EasyOKAPI_1.1.1.dmg` in the project root.
+    - Create a compressed DMG named `EasyOKAPI_1.1.2.dmg` in the project root.
     - Remove the temporary directory.
 
 ## Troubleshooting
