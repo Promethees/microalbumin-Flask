@@ -66,6 +66,11 @@ function _populateFolderSelect(selectId, folders, includeRootOption) {
 
 async function selectDataFolder(name, path) {
     if (typeof window.showSpinner === 'function') window.showSpinner();
+    // Re-derive the available source counts for the newly selected folder before
+    // rendering, so #num-sources (and the file table) reflect the new data.
+    if (typeof refreshNumSourcesOptions === 'function') {
+        await refreshNumSourcesOptions(path);
+    }
     await updateDirectory(path, true);
     if (typeof window.hideSpinner === 'function') window.hideSpinner();
     if (typeof saveUserSetting === 'function') saveUserSetting('default_subfolder', name);

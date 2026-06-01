@@ -112,10 +112,47 @@ document.getElementById('shutdown-btn').addEventListener('click', function () {
     }
 });
 
+// Repopulate the #num-sources dropdown for the given folder. No-op unless the
+// "Filter by number of sources" checkbox is on. Preserves the current selection
+// when the new folder still offers that count; otherwise falls back to the
+// smallest available count. Returns a Promise that resolves once AppState.numSources
+// reflects the new folder, so callers can render the file table afterwards.
+function refreshNumSourcesOptions(path) {
+    const filterCheckbox = document.getElementById('filter-source');
+    if (!filterCheckbox || !filterCheckbox.checked) return Promise.resolve();
+    const dir = path || AppState.currentDirectory;
+    return new Promise((resolve) => {
+        $.get('/get_num_sources?path=' + encodeURIComponent(dir), { request: true }, function (response) {
+            const select = document.getElementById('num-sources');
+            const counts = (response && response.num_sources) || [];
+            const previous = AppState.numSources;
+            select.innerHTML = ''; // clear existing options
+            counts.forEach(num => select.add(new Option(num, num)));
+            // Keep the previous choice if the new folder still supports it.
+            const keep = counts.includes(previous) ? previous : (counts[0] || 1);
+            select.value = String(keep);
+            AppState.numSources = keep;
+            resolve();
+        }).fail(function () { resolve(); });
+    });
+}
+
+// Rebuild the per-source export dropdown (#exp-json-source) from the current
+// AppState.numSources. Skipped in calibrate mode, which has no source export.
+function rebuildExportSourceOptions() {
+    if (AppState.currentMeasurementMode === "calibrate") return;
+    const selectElement = document.getElementById('exp-json-source');
+    selectElement.innerHTML = '<option value="ALL">ALL</option>';
+    for (let i = 1; i <= AppState.numSources; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = i;
+        selectElement.appendChild(option);
+    }
+}
+
 document.getElementById('filter-source').addEventListener('change', function () {
     const numSourcesSelect = document.getElementById('num-sources-section');
-    const splitBySource = document.getElementById('split-source-section');
-    updateDirectory(AppState.currentDirectory, true);
     deselectFile();
     deselectFile("#json-table");
     AppState.responseData = null;
@@ -126,28 +163,16 @@ document.getElementById('filter-source').addEventListener('change', function () 
     document.getElementById('exp-json-time-value').value = '';
     if (this.checked) {
         numSourcesSelect.classList.remove('hidden');
-        $.get('/get_num_sources?path=' + AppState.currentDirectory, { request: true }, function (response) {
-            const select = document.getElementById('num-sources');
-            select.innerHTML = ''; // clear existing options (optional)
-            response.num_sources.forEach(num => {
-                select.add(new Option(num, num));
-            });
-            AppState.numSources = response.num_sources[0] || 1;
+        // Populate the dropdown for the current folder, then render with the
+        // resolved source count so the file table and export options match it.
+        refreshNumSourcesOptions(AppState.currentDirectory).then(() => {
+            updateDirectory(AppState.currentDirectory, true);
+            rebuildExportSourceOptions();
         });
     } else {
         numSourcesSelect.classList.add('hidden');
-    }
-
-    if (AppState.currentMeasurementMode !== "calibrate") {
-        const selectElement = document.getElementById('exp-json-source');
-        // Optional: Clear previous options except "ALL"
-        selectElement.innerHTML = '<option value="ALL">ALL</option>';
-        for (let i = 1; i <= AppState.numSources; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            selectElement.appendChild(option);
-        }
+        updateDirectory(AppState.currentDirectory, true);
+        rebuildExportSourceOptions();
     }
 });
 
@@ -881,6 +906,37 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
 let _updateInfo = null;
 let _updateCheckInterval = null;
+let _bannerWidthObserver = null;
+
+// Cap the banner to the CBBiotec heading width so it never widens the flex-group.
+// Reads htbio.offsetWidth live — but only clamps when the heading is actually laid
+// out (width > 0). If the banner is shown while #title is still display:none
+// (htbio.offsetWidth === 0, e.g. an update check resolves before the user clicks
+// "Get Started"), clamping to 0px would collapse the banner to nothing. In that
+// case we leave it uncapped; the ResizeObserver below re-applies the real cap the
+// moment the heading gains a size.
+function _applyBannerWidthCap() {
+    const banner = document.getElementById('update-banner');
+    if (!banner || banner.classList.contains('hidden')) return;
+    const htbio = document.getElementById('htbio');
+    const w = htbio ? htbio.offsetWidth : 0;
+    if (w > 0) {
+        banner.style.maxWidth = w + 'px';
+    } else {
+        banner.style.removeProperty('max-width');
+    }
+}
+
+// Recompute the cap whenever the heading's box changes — including the
+// display:none → visible transition (offsetWidth 0 → real), which is what makes
+// the banner reliable regardless of when the update check resolves.
+function _ensureBannerWidthObserver() {
+    if (_bannerWidthObserver || typeof ResizeObserver === 'undefined') return;
+    const htbio = document.getElementById('htbio');
+    if (!htbio) return;
+    _bannerWidthObserver = new ResizeObserver(() => _applyBannerWidthCap());
+    _bannerWidthObserver.observe(htbio);
+}
 
 function _showUpdateBanner(version) {
     const banner = document.getElementById('update-banner');
@@ -891,9 +947,8 @@ function _showUpdateBanner(version) {
     if (vspan) vspan.textContent = vLabel;
     if (banner) {
         banner.classList.remove('hidden');
-        // Cap banner width to the CBBiotec heading so it never widens the flex-group
-        const htbio = document.getElementById('htbio');
-        if (htbio) banner.style.maxWidth = htbio.offsetWidth + 'px';
+        _ensureBannerWidthObserver();
+        _applyBannerWidthCap();
     }
     if (badge) {
         badge.classList.add('app-version-badge--update');
