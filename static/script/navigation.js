@@ -298,6 +298,28 @@ function fetchJSON(jsonFile, callback) {
     });
 }
 
+// Poll /api/current_output until the backend has finished writing the marker.
+// While a reading session is starting, current_output.txt may not exist yet
+// (HTTP 404) or may be present but empty (HTTP 204) — both mean "still writing".
+// Only a 200 with exists:true and a filename counts as ready. Returns the parsed
+// payload once ready, or null after `retries` attempts (~retries * intervalMs ms).
+async function fetchCurrentOutputUntilReady({ retries = 20, intervalMs = 250 } = {}) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const response = await fetch('/api/current_output');
+            if (response.status === 200) {
+                const data = await response.json();
+                if (data && data.exists && data.filename) return data;
+            }
+            // 204 (empty marker) / 404 (not created yet) / other -> backend not done; retry
+        } catch (_) {
+            // transient network/server hiccup -> retry
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+    return null; // gave up: marker never became ready
+}
+
 async function browseSavingLocation(changeToCalibrate = false, button = null, path = "") {
     // Temporarily disable the button to prevent multiple clicks
     $(button).prop("disabled", true);
@@ -311,50 +333,55 @@ async function browseSavingLocation(changeToCalibrate = false, button = null, pa
         const dirPath = AppState.exportPath;
         await updateDirectory(dirPath, true, changeToCalibrate);
     } else {
+        // Keep the loading circle up for the whole "View live data" attempt: the
+        // marker fetch may need to be retried while the backend is still writing
+        // current_output.txt, and the target CSV may take a moment to appear in
+        // the refreshed table. selectFile() manages the spinner for its own render.
+        if (typeof window.showSpinner === 'function') window.showSpinner();
         try {
-            const response = await fetch('/api/current_output');
-            let data = { exists: false };
-            if (response.ok) {
-                data = await response.json();
-            }
+            // Wait until the backend has finished writing the marker file.
+            const data = await fetchCurrentOutputUntilReady();
 
-            if (data && data.exists) {
+            if (data) {
                 // Use server-provided directory (with trailing separator if needed)
                 const dirPath = data.dir || data.dir_with_sep;
                 const fileName = data.filename;
 
                 await updateDirectory(dirPath, true, changeToCalibrate);
 
-                // Wait for the table to refresh/populate, then select the row's button
-                // Since updateDirectory now returns a Promise, we don't need a timeout here
-                // but we wait one tick to ensure DOM is updated
-                await new Promise(resolve => setTimeout(resolve, 50));
-
-                // find a TD whose text exactly equals the filename
-                const cells = document.querySelectorAll("#file-table tr td");
-                const cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
+                // The table is repopulated asynchronously and, while reading, the
+                // target CSV may not be listed on the first refresh. Retry locating
+                // the row for a short window so the spinner stays up until the file
+                // is actually selectable.
+                let cell = null;
+                for (let attempt = 0; attempt < 10 && !cell; attempt++) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    const cells = document.querySelectorAll("#file-table tr td");
+                    cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
+                }
 
                 if (cell) {
                     const row = cell.closest("tr");
                     const btn = row.querySelector("button");
-
-                    if (btn) {
-                        selectFile(fileName, btn, "#file-table");
-                    } else {
-                        // fallback: pass the cell element so selectFile still finds the row to highlight
-                        selectFile(fileName, cell, "#file-table");
-                    }
+                    // Pass the button if present, otherwise the cell, so selectFile
+                    // can still find the row to highlight.
+                    await selectFile(fileName, btn || cell, "#file-table");
                 } else {
                     console.warn(`File "${fileName}" not found in #file-table.`);
+                    blinkingItem("file-selection", 5000);
                 }
             } else {
-                // no recorded path -> fallback to original behavior
+                // Marker never became ready (e.g. backend still initialising the
+                // CSV, or no reading session) -> fall back to original behavior.
+                console.warn("current_output marker not ready; falling back.");
                 await updateDirectory(path, true, changeToCalibrate);
                 blinkingItem("file-selection", 5000);
             }
         } catch (err) {
             console.error("Error fetching current_output:", err);
             await updateDirectory(path, true, changeToCalibrate);
+        } finally {
+            if (typeof window.hideSpinner === 'function') window.hideSpinner();
         }
     }
 }

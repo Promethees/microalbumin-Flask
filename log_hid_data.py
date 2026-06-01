@@ -161,6 +161,11 @@ class HIDDataCollector:
             return
 
         self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)
+        # Save latest output path so Flask can find it
+        latest_file_marker = os.path.join(self.log_dir, "current_output.txt")
+        open(latest_file_marker, "w").close()
+        with open(latest_file_marker, "w") as marker:
+            marker.write(self.output_file)
         os.makedirs(self.base_dir, exist_ok=True)
         with open(self.output_file, "w") as f:
             # Write metadata as comments
@@ -170,12 +175,6 @@ class HIDDataCollector:
             header = line.replace('TIMESTAMP', 'Timestamp').replace('VALUE', 'Value')
             f.write(header)
         self.log(f"New session started. Header written to {self.output_file}")
-
-        # Save latest output path so Flask can find it
-        latest_file_marker = os.path.join(self.log_dir, "current_output.txt")
-        open(latest_file_marker, "w").close()
-        with open(latest_file_marker, "w") as marker:
-            marker.write(self.output_file)
         
         self.session_started = True
 
