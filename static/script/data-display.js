@@ -159,10 +159,12 @@ function handleCkboxChange(canvasId, originalAllXColumn, allYColumnOrArray, labe
         if (yColumns) labelOrLabels = yColumns.map(y => getLabel(y, unit));
     }
 
-    // Normalize Y values if normalizeMode is checked
+    // Normalize Y values if normalizeMode is checked. normalizeByMin excludes
+    // NONE/non-numeric entries from the minimum so a single missing value can't
+    // turn the whole trace into NaN and make it vanish from the chart.
     allYColumnOrArray = getBtnChecked("normalize-mode") ? (Array.isArray(allYColumnOrArray[0])
-        ? allYColumnOrArray.map(yCol => yCol.map(value => (value !== null ? value - Math.min(...yCol.filter(v => v !== null)) : null)))
-        : allYColumnOrArray.map(value => (value !== null ? value - Math.min(...allYColumnOrArray.filter(v => v !== null)) : null)))
+        ? allYColumnOrArray.map(yCol => normalizeByMin(yCol))
+        : normalizeByMin(allYColumnOrArray))
         : allYColumnOrArray;
 
     const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue());
@@ -771,13 +773,30 @@ function preprocessDataCalParams(data, XColumn, YColumn) {
     }
 }
 
+// Subtract a column's own minimum from every value (blank removal). Non-numeric
+// entries (null, undefined, the "NONE" placeholder, or anything that is not a
+// finite number) are excluded from the minimum and emitted as null. This stops a
+// single missing/NONE value from poisoning Math.min into NaN — which previously
+// turned every value in the column into NaN and made the whole trace disappear.
+function normalizeByMin(columnData) {
+    const numeric = columnData
+        .map(v => (v === null || v === undefined || v === "NONE") ? NaN : Number(v))
+        .filter(v => !Number.isNaN(v));
+    if (numeric.length === 0) return columnData.map(() => null);
+    const min = Math.min(...numeric);
+    return columnData.map(value => {
+        if (value === null || value === undefined || value === "NONE") return null;
+        const n = Number(value);
+        return Number.isNaN(n) ? null : n - min;
+    });
+}
+
 function extractColumnAndNormalize(data, colName) {
     const columnData = data.map(row => row[colName]);
     const normalizeMode = document.getElementById('normalize-mode');
     const shouldNormalize = normalizeMode.style.display !== 'none' && normalizeMode.checked;
     if (!shouldNormalize) return columnData;
-    const min = Math.min(...columnData.filter(v => v !== null && v !== undefined));
-    return columnData.map(value => (value !== null && value !== undefined ? value - min : null));
+    return normalizeByMin(columnData);
 }
 
 function extractColumnAndConvert(data, colName, convert = false) {
