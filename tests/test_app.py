@@ -507,3 +507,70 @@ def test_get_json_content_invalid_mode(client):
 def test_get_json_content_path_traversal_rejected(client):
     rv = client.get('/get_json_content?json_name=../secret.json&mode=kinetics')
     assert rv.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# file_routes — /delete_data_folder
+# ---------------------------------------------------------------------------
+
+def test_delete_data_folder_success(client, tmp_path):
+    folder = tmp_path / "sub"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/delete_data_folder', json={'path': str(folder)})
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert not folder.exists()
+
+
+def test_delete_data_folder_process_running_returns_locked(client):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    rv = client.post('/delete_data_folder', json={'path': '/data/sub'})
+    assert rv.status_code == 423
+
+
+def test_delete_data_folder_path_outside_data_root(client, tmp_path):
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=None):
+        rv = client.post('/delete_data_folder', json={'path': '../../../etc'})
+    assert rv.status_code == 400
+    assert 'Invalid' in rv.get_json()['message']
+
+
+def test_delete_data_folder_cannot_delete_data_root(client, tmp_path):
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(tmp_path)):
+        rv = client.post('/delete_data_folder', json={'path': str(tmp_path)})
+    assert rv.status_code == 400
+    assert 'root' in rv.get_json()['message'].lower()
+
+
+def test_delete_data_folder_not_found(client, tmp_path):
+    ghost = str(tmp_path / "ghost")
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=ghost):
+        rv = client.post('/delete_data_folder', json={'path': ghost})
+    assert rv.status_code == 404
+    assert 'not found' in rv.get_json()['message'].lower()
+
+
+def test_delete_data_folder_permission_error(client, tmp_path):
+    folder = tmp_path / "locked"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)), \
+         patch('shutil.rmtree', side_effect=PermissionError("denied")):
+        rv = client.post('/delete_data_folder', json={'path': str(folder)})
+    assert rv.status_code == 403
+
+
+def test_delete_data_folder_oserror(client, tmp_path):
+    folder = tmp_path / "inuse"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)), \
+         patch('shutil.rmtree', side_effect=OSError("busy")):
+        rv = client.post('/delete_data_folder', json={'path': str(folder)})
+    assert rv.status_code == 500
