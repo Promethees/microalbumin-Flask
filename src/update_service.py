@@ -42,7 +42,7 @@ def check_for_update():
     # If the server returns a valid semver, compare with >= (same version still allows re-download).
     # If the server returns a non-semver string ('latest', etc.), always allow download —
     # it means a build is available but not yet tagged; the banner won't show the version string.
-    update_available = True if latest_t is None else (latest_t >= (current_t or (0,)))
+    update_available = True if latest_t is None else (latest_t > (current_t or (0,)))
     return {
         'current': state.APP_VERSION,
         'latest': latest,
