@@ -23,6 +23,27 @@ fi
 REPO_NAME="microalbumin-Flask"
 INSTALL_DIR="/Applications/$REPO_NAME"
 
+# ── Preserve user data before removing the application directory ──────────────
+# Mirrors the Windows/Linux uninstallers: measurement data, calibration curves,
+# and reports are copied to a persistent backup so a later reinstall can import
+# them from the setup wizard.
+if [ -d "$INSTALL_DIR" ]; then
+    USER_DATA_DEST="/Users/$CURRENT_USER/EasyOKAPI_data"
+    DATA_SAVED=0
+    for _dir in data json report; do
+        if [ -d "$INSTALL_DIR/$_dir" ]; then
+            mkdir -p "$USER_DATA_DEST"
+            cp -r "$INSTALL_DIR/$_dir" "$USER_DATA_DEST/$_dir"
+            DATA_SAVED=1
+        fi
+    done
+    if [ "$DATA_SAVED" -eq 1 ]; then
+        chown -R "$CURRENT_USER:staff" "$USER_DATA_DEST"
+        echo "✅ User data (data/, json/, report/) preserved at $USER_DATA_DEST"
+        osascript -e "display dialog \"Your measurement data, calibration curves, and reports have been saved to:\n\n$USER_DATA_DEST\n\nReinstall EasyOKAPI later to import them back.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Uninstall\"" 2>/dev/null
+    fi
+fi
+
 # Remove the application directory
 if [ -d "$INSTALL_DIR" ]; then
     echo "Removing application directory $INSTALL_DIR..."

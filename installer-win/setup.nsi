@@ -40,9 +40,19 @@
 
 ; Finish page — offer to launch the application immediately
 !define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} Installed"
-!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been successfully installed.$\r$\n$\r$\nA shortcut has been created on your Desktop. Click Finish to close the installer."
+!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been successfully installed.$\r$\n$\r$\nA shortcut has been created on your Desktop.$\r$\n$\r$\nA backup of measurement data, calibration curves, and reports from any previous installation is kept in your Documents folder under EasyOKAPI_data. If you reinstalled after uninstalling, tick the box below to import that data into this version, then click Finish."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${RUNNER_NAME}.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch EasyOKAPI now"
+
+; Second finish-page checkbox — the MUI "show readme" checkbox is repurposed
+; via SHOWREADME_FUNCTION to import user data preserved from a previous
+; installation (Documents\EasyOKAPI_data) into this freshly installed version.
+; Unchecked by default so a normal upgrade — whose data is already auto-restored
+; during install — is never touched unless the user explicitly opts in.
+!define MUI_FINISHPAGE_SHOWREADME ""
+!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
+!define MUI_FINISHPAGE_SHOWREADME_TEXT "Import data from a previous EasyOKAPI backup"
+!define MUI_FINISHPAGE_SHOWREADME_FUNCTION RestoreBackupData
 
 ; Request admin privileges
 RequestExecutionLevel admin
@@ -414,6 +424,26 @@ Function TokenPageLeave
   ${EndIf}
 FunctionEnd
 
+; ── Finish-page: import data from a previous installation ──────────────────────
+; Wired to the repurposed SHOWREADME checkbox. Copies measurement data,
+; calibration JSON, and reports from the persistent backup folder
+; ($DOCUMENTS\EasyOKAPI_data) — written by the uninstaller and by the update
+; path of this installer — into the freshly installed code directory.
+Function RestoreBackupData
+  StrCpy $R6 "$DOCUMENTS\EasyOKAPI_data"
+  IfFileExists "$R6\*.*" 0 rbd_none
+    IfFileExists "$R6\data\*.*" 0 +2
+      CopyFiles /SILENT "$R6\data" "$INSTDIR\code\data"
+    IfFileExists "$R6\json\*.*" 0 +2
+      CopyFiles /SILENT "$R6\json" "$INSTDIR\code\json"
+    IfFileExists "$R6\report\*.*" 0 +2
+      CopyFiles /SILENT "$R6\report" "$INSTDIR\code\report"
+    MessageBox MB_OK|MB_ICONINFORMATION "Your previous EasyOKAPI data has been imported from:$\r$\n$R6$\r$\n$\r$\nThe backup folder has been kept in case you need it again."
+    Return
+  rbd_none:
+    MessageBox MB_OK|MB_ICONINFORMATION "No previous EasyOKAPI backup was found at:$\r$\n$R6$\r$\n$\r$\nThere is nothing to import."
+FunctionEnd
+
 ; ── Install section ────────────────────────────────────────────────────────────
 Section "Install" SEC01
   SetOutPath "$INSTDIR"
@@ -484,7 +514,11 @@ Click No to keep the existing installation and cancel Setup." \
     step1_do_overwrite:
 
     DetailPrint "Existing installation found — preserving user data..."
-    StrCpy $R6 "$R2\easyokapi_backup"
+    ; Persistent backup folder (also read by the finish-page "Import data" option
+    ; and written by the uninstaller). Cleared first so it only ever holds the
+    ; most recent installation's data.
+    StrCpy $R6 "$DOCUMENTS\EasyOKAPI_data"
+    RMDir /r "$R6"
     CreateDirectory "$R6"
     StrCpy $R5 "1"
     IfFileExists "$R3\data\*.*" 0 +2
@@ -530,8 +564,9 @@ Click No to keep the existing installation and cancel Setup." \
       CopyFiles /SILENT "$R6\json" "$R3\json"
     IfFileExists "$R6\report\*.*" 0 +2
       CopyFiles /SILENT "$R6\report" "$R3\report"
-    RMDir /r "$R6"
-    DetailPrint "User data restored."
+    ; Keep $R6 as a persistent safety backup (Documents\EasyOKAPI_data) rather
+    ; than deleting it — the finish page tells the user where it is.
+    DetailPrint "User data restored. A backup copy is kept at $R6."
   ${EndIf}
 
   ; Remove development-only files from the extracted archive.

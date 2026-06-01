@@ -167,11 +167,16 @@ if [ -d "$INSTALL_DIR" ] && [ "$(find "$INSTALL_DIR" -maxdepth 1 | wc -l)" -gt 1
     echo "Existing installation found: $CURRENT_VERSION → $VERSION_TAG"
     if prompt_confirm "EasyOKAPI Installer" "Existing installation found.\n\nCurrent: $CURRENT_VERSION\nNew: $VERSION_TAG\n\nOverwrite?"; then
         echo "Backing up user data (data/, json/, report/)..."
-        BACKUP_DIR="/tmp/easyokapi_userdata_backup_$$"
+        # Persistent backup folder (also written by uninstall.sh and offered for
+        # import at the end of this installer). Cleared first so it only holds the
+        # most recent installation's data.
+        BACKUP_DIR="$CURRENT_HOME/EasyOKAPI_data"
+        rm -rf "$BACKUP_DIR"
         mkdir -p "$BACKUP_DIR"
         for _dir in data json report; do
             [ -d "$INSTALL_DIR/$_dir" ] && cp -r "$INSTALL_DIR/$_dir" "$BACKUP_DIR/$_dir"
         done
+        chown -R "$CURRENT_USER:$CURRENT_USER" "$BACKUP_DIR"
         echo "Removing existing installation..."
         rm -rf "$INSTALL_DIR"
     else
@@ -320,8 +325,25 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
             cp -r "$BACKUP_DIR/$_dir" "$INSTALL_DIR/$_dir"
         fi
     done
-    rm -rf "$BACKUP_DIR"
-    echo "✅ User data restored."
+    # Keep $BACKUP_DIR as a persistent safety backup rather than deleting it.
+    echo "✅ User data restored. A backup copy is kept at $BACKUP_DIR"
+fi
+
+# ── Offer to import data from a previous installation ─────────────────────────
+# Only when this was a fresh install (no in-installer restore happened) but a
+# leftover backup from a prior uninstall is present. After an overwrite the data
+# was already restored above, so there is nothing more to do.
+PERSIST_BACKUP="$CURRENT_HOME/EasyOKAPI_data"
+if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
+    print_warn "A backup of EasyOKAPI data from a previous installation was found at:"
+    echo "     $PERSIST_BACKUP"
+    if prompt_confirm "EasyOKAPI Installer" "A backup of your previous EasyOKAPI data was found at:\n\n$PERSIST_BACKUP\n\nImport it into this version now?"; then
+        for _dir in data json report; do
+            [ -d "$PERSIST_BACKUP/$_dir" ] && cp -r "$PERSIST_BACKUP/$_dir" "$INSTALL_DIR/$_dir"
+        done
+        chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
+        print_ok "Previous data imported from $PERSIST_BACKUP"
+    fi
 fi
 
 # Fix ownership
@@ -333,6 +355,9 @@ echo -e "  ${BOLD}${GREEN}║  EasyOKAPI installed successfully!       ║${RESE
 echo -e "  ${BOLD}${GREEN}╚══════════════════════════════════════════╝${RESET}"
 echo ""
 print_ok "EasyOKAPI $VERSION_TAG installed to $INSTALL_DIR"
+if [ -d "$PERSIST_BACKUP" ]; then
+    echo -e "     Data backup kept at: ${BOLD}$PERSIST_BACKUP${RESET}"
+fi
 echo -e "     Run with: ${BOLD}sudo $INSTALL_DIR/run.sh${RESET}"
 echo -e "     Or launch from your desktop application menu."
 echo ""

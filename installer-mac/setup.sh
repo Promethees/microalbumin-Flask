@@ -115,11 +115,16 @@ if [ -d "$INSTALL_DIR" ] && [ "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
         exit 0
     fi
     echo "  Backing up user data (data/, json/, report/) …"
-    BACKUP_DIR="/tmp/easyokapi_backup_$$"
+    # Persistent backup folder (also written by uninstall.command and offered
+    # for import at the end of this installer). Cleared first so it only holds
+    # the most recent installation's data.
+    BACKUP_DIR="/Users/$CURRENT_USER/EasyOKAPI_data"
+    rm -rf "$BACKUP_DIR"
     mkdir -p "$BACKUP_DIR"
     for d in data json report; do
         [ -d "$INSTALL_DIR/$d" ] && cp -r "$INSTALL_DIR/$d" "$BACKUP_DIR/$d"
     done
+    chown -R "$CURRENT_USER:staff" "$BACKUP_DIR"
     echo "  Removing existing installation …"
     rm -rf "$INSTALL_DIR" || { print_fail "Could not remove existing install."; exit 1; }
 fi
@@ -168,8 +173,8 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
             chown -R "$CURRENT_USER:staff" "$INSTALL_DIR/$d"
         fi
     done
-    rm -rf "$BACKUP_DIR"
-    print_ok "User data restored."
+    # Keep $BACKUP_DIR as a persistent safety backup rather than deleting it.
+    print_ok "User data restored. A backup copy is kept at $BACKUP_DIR"
 fi
 print_ok "Application downloaded to $INSTALL_DIR."
 
@@ -292,6 +297,24 @@ fi
 
 chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
 
+# ── Offer to import data from a previous installation ─────────────────────────
+# Only when this was a fresh install (no in-installer restore happened) but a
+# leftover backup from a prior uninstall is present. After an overwrite the data
+# was already restored above, so there is nothing more to do.
+PERSIST_BACKUP="/Users/$CURRENT_USER/EasyOKAPI_data"
+if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
+    IMPORT=$(osascript \
+        -e "display dialog \"A backup of measurement data, calibration curves, and reports from a previous EasyOKAPI installation was found at:\n\n$PERSIST_BACKUP\n\nImport it into this version now?\" buttons {\"Not now\", \"Import previous data\"} default button \"Import previous data\" with title \"EasyOKAPI Setup\" $(_icon)" \
+        -e 'button returned of result' 2>/dev/null)
+    if [ "$IMPORT" = "Import previous data" ]; then
+        for d in data json report; do
+            [ -d "$PERSIST_BACKUP/$d" ] && cp -r "$PERSIST_BACKUP/$d" "$INSTALL_DIR/$d"
+        done
+        chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
+        print_ok "Previous data imported from $PERSIST_BACKUP"
+    fi
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "  ${BOLD}${GREEN}╔══════════════════════════════════════════╗${RESET}"
@@ -300,5 +323,8 @@ echo -e "  ${BOLD}${GREEN}╚═════════════════
 echo ""
 echo "Setup completed at $(date)"
 
-osascript -e "display dialog \"EasyOKAPI is ready!\n\nLaunch it anytime by clicking EasyOKAPI in your Applications folder or Launchpad.\" buttons {\"Done\"} default button \"Done\" with title \"EasyOKAPI Setup Complete\" $(_icon)"
+# Mention the persistent data backup location on the final dialog if one exists.
+BACKUP_NOTE=""
+[ -d "$PERSIST_BACKUP" ] && BACKUP_NOTE="\n\nA backup of your measurement data is kept at:\n$PERSIST_BACKUP"
+osascript -e "display dialog \"EasyOKAPI is ready!\n\nLaunch it anytime by clicking EasyOKAPI in your Applications folder or Launchpad.$BACKUP_NOTE\" buttons {\"Done\"} default button \"Done\" with title \"EasyOKAPI Setup Complete\" $(_icon)"
 exit 0
