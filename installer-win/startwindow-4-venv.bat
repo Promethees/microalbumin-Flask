@@ -61,6 +61,15 @@ REM Use 8.3 short path to avoid spaces in "Program Files" breaking subprocess ca
 set "VENV_DIR=%~sdp0code\venv"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 
+REM A running EasyOKAPI instance keeps its venv python.exe and DLLs open. That
+REM makes both "rmdir venv" and "pip install" fail with [WinError 5] Access is
+REM denied, and leaves the venv half-deleted (e.g. pyvenv.cfg gone, python.exe
+REM stuck) so the rebuild is skipped and a broken app ships. Stop any Python
+REM running from THIS install before touching the venv. %~dp0 is the install
+REM root (trailing backslash) so we match the process's full executable path.
+echo Stopping any running EasyOKAPI instance...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$r='%~dp0'; Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and $_.ExecutablePath -and $_.ExecutablePath.StartsWith($r,[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Write-Host ('  stopping PID ' + $_.ProcessId); Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2"
+
 REM Recreate the venv if python.exe is missing OR the venv is broken.
 REM Checking only python.exe (the old behaviour) let a HALF-BUILT venv survive a
 REM reinstall: an aborted run — or antivirus quarantining pyvenv.cfg/pythonw.exe —
