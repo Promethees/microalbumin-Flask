@@ -106,11 +106,26 @@ $Timer.Add_Tick({
     } elseif ($p -eq 81) {
         $py  = "$script:ScriptDir\code\venv\Scripts\python.exe"
         $app = "$script:ScriptDir\code\main.py"
+        # Python is launched -WindowStyle Hidden with no console, so without this
+        # redirect any startup traceback (broken venv, missing wheel, AV
+        # quarantine, elevation issue) is lost and the app silently "never
+        # starts". Capture stderr to a log so the real cause is visible.
+        # The directory is created here because state.py only makes it *after*
+        # Python has already imported far enough to run — too late for the
+        # redirect target to exist.
+        $errLog = "$script:ScriptDir\code\log\launch_stderr.txt"
+        try {
+            $logDir = Split-Path -Parent $errLog
+            if (-not (Test-Path $logDir)) {
+                New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+            }
+        } catch {}
         try {
             Start-Process -FilePath $py `
                 -ArgumentList "`"$app`"" `
                 -WorkingDirectory $script:ScriptDir `
                 -WindowStyle Hidden `
+                -RedirectStandardError $errLog `
                 -ErrorAction Stop
         } catch {
             $Status.Text = "Launch failed: $_"

@@ -210,7 +210,19 @@ def _ps_arg(s):
 
 
 def _build_windows_relaunch_script(cmd, cwd, port):
-    """Build a one-line PowerShell relauncher script (statements joined by ';')."""
+    """Build a one-line PowerShell relauncher script (statements joined by ';').
+
+    Port readiness is probed with a .NET ``TcpClient`` connect to
+    ``127.0.0.1:<port>`` rather than ``Get-NetTCPConnection``. That cmdlet lives
+    in the NetTCPIP module, which is absent on some Windows builds; the old code
+    fell back to a fixed ``Start-Sleep -Seconds 3`` there, re-introducing the
+    port race that bricked the relaunch (the new instance tried to bind before
+    the dying one freed the port, ``app.run`` → ``sys.exit(1)``, and — being
+    hidden — died silently). A connect probe works on every Windows PowerShell
+    version and is immune to ``SO_REUSEADDR`` (which would let a *bind* succeed
+    while the dying process still holds the port, so "can I bind?" is not a
+    reliable "is it free?" — "can I connect?" is).
+    """
     exe_q = _ps_quote(cmd[0])
     cwd_q = _ps_quote(cwd)
     args = cmd[1:]
@@ -222,26 +234,27 @@ def _build_windows_relaunch_script(cmd, cwd, port):
            'Please relaunch it from the Start menu or desktop shortcut.')
     return (
         f"$port = {int(port)}; "
-        "$hasCmd = $null -ne (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue); "
-        "if ($hasCmd) { "
-        "  $deadline = (Get-Date).AddSeconds(20); "
-        "  while ((Get-Date) -lt $deadline) { "
-        "    $c = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue; "
-        "    if (-not $c) { break }; Start-Sleep -Milliseconds 300 "
-        "  } "
-        "} else { Start-Sleep -Seconds 3 } "
+        # True while something is actively listening on the loopback port.
+        "function Test-Listening($p) { "
+        "  try { $c = New-Object System.Net.Sockets.TcpClient; "
+        "    $c.Connect('127.0.0.1', $p); $c.Close(); return $true } "
+        "  catch { return $false } "
+        "}; "
+        # Wait for the dying instance to release the port (up to ~20s).
+        "$deadline = (Get-Date).AddSeconds(20); "
+        "while ((Get-Date) -lt $deadline) { "
+        "  if (-not (Test-Listening $port)) { break }; Start-Sleep -Milliseconds 300 "
+        "} "
         f"Start-Process -FilePath {exe_q} {arg_clause}-WorkingDirectory {cwd_q} -WindowStyle Hidden; "
-        "if ($hasCmd) { "
-        "  $up = $false; $check = (Get-Date).AddSeconds(20); "
-        "  while ((Get-Date) -lt $check) { "
-        "    $c2 = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue; "
-        "    if ($c2) { $up = $true; break }; Start-Sleep -Milliseconds 400 "
-        "  } "
-        "  if (-not $up) { "
-        "    try { Add-Type -AssemblyName PresentationFramework; "
-        f"      [System.Windows.MessageBox]::Show({_ps_quote(msg)}, 'EasyOKAPI Update') | Out-Null "
-        "    } catch {} "
-        "  } "
+        # Wait for the fresh instance to come back up (up to ~20s).
+        "$up = $false; $check = (Get-Date).AddSeconds(20); "
+        "while ((Get-Date) -lt $check) { "
+        "  if (Test-Listening $port) { $up = $true; break }; Start-Sleep -Milliseconds 400 "
+        "} "
+        "if (-not $up) { "
+        "  try { Add-Type -AssemblyName PresentationFramework; "
+        f"    [System.Windows.MessageBox]::Show({_ps_quote(msg)}, 'EasyOKAPI Update') | Out-Null "
+        "  } catch {} "
         "}"
     )
 

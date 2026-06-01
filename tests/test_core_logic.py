@@ -88,6 +88,22 @@ def test_windows_relaunch_script_quotes_args_with_spaces():
     assert "@('" + main + "')" not in script
 
 
+def test_windows_relaunch_script_uses_portable_port_probe():
+    # Regression: the relaunch must probe the port with a .NET TcpClient connect,
+    # not Get-NetTCPConnection. That cmdlet is missing on some Windows builds,
+    # and the old fallback (a fixed "Start-Sleep -Seconds 3") re-introduced the
+    # port race that bricked the relaunch (new instance binds before the dying
+    # one frees the port → app.run → sys.exit(1), hidden, dies silently).
+    import update_service
+    script = update_service._build_windows_relaunch_script(
+        [r"C:\py.exe", r"C:\main.py"], r"C:\app", 5099)
+    assert "Get-NetTCPConnection" not in script
+    assert "Start-Sleep -Seconds 3" not in script
+    # Must use a connect probe to the loopback port.
+    assert "System.Net.Sockets.TcpClient" in script
+    assert "Connect('127.0.0.1', $p)" in script
+
+
 # ---------------------------------------------------------------------------
 # script_monitor.check_log_for_missed_read
 # ---------------------------------------------------------------------------
