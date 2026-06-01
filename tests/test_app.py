@@ -574,3 +574,36 @@ def test_delete_data_folder_oserror(client, tmp_path):
          patch('shutil.rmtree', side_effect=OSError("busy")):
         rv = client.post('/delete_data_folder', json={'path': str(folder)})
     assert rv.status_code == 500
+
+
+# ---------------------------------------------------------------------------
+# file_routes — /api/current_output
+# ---------------------------------------------------------------------------
+
+def test_api_current_output_marker_missing(client, tmp_path):
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.get('/api/current_output')
+    assert rv.status_code == 404
+    assert rv.get_json()['exists'] is False
+
+
+def test_api_current_output_marker_empty(client, tmp_path):
+    log_dir = tmp_path / "log"
+    log_dir.mkdir()
+    (log_dir / "current_output.txt").write_text("")
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.get('/api/current_output')
+    assert rv.status_code == 204
+
+
+def test_api_current_output_ready(client, tmp_path):
+    log_dir = tmp_path / "log"
+    log_dir.mkdir()
+    (log_dir / "current_output.txt").write_text("/data/sub/run1.csv")
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.get('/api/current_output')
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['exists'] is True
+    assert body['filename'] == 'run1.csv'
+    assert body['dir'] == '/data/sub'
