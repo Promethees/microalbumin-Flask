@@ -607,3 +607,25 @@ def test_api_current_output_ready(client, tmp_path):
     assert body['exists'] is True
     assert body['filename'] == 'run1.csv'
     assert body['dir'] == '/data/sub'
+
+
+# ---------------------------------------------------------------------------
+# file_routes — /get_num_sources
+# ---------------------------------------------------------------------------
+
+def test_get_num_sources_empty_folder_returns_empty_list(client, tmp_path):
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)):
+        rv = client.get(f'/get_num_sources?path={str(tmp_path)}')
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    assert body['num_sources'] == []
+
+
+def test_get_num_sources_csv_with_two_sources(client, tmp_path):
+    csv = tmp_path / "run.csv"
+    csv.write_text("# Measurement: ABS\nTimestamp,Value:1,Value:2\n0,0.1,0.2\n")
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)):
+        rv = client.get(f'/get_num_sources?path={str(tmp_path)}')
+    assert rv.status_code == 200
+    assert rv.get_json()['num_sources'] == [2]
