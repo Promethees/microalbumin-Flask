@@ -900,6 +900,13 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     if (typeof updateDirectory === 'function' && AppState.currentDirectory) {
         updateDirectory(AppState.currentDirectory, false);
     }
+
+    // Notify the user the settings were saved (unless popups are disabled).
+    if (getBtnChecked("no-swal-checkbox")) {
+        console.log("Settings saved successfully.");
+    } else {
+        Swal.fire('Settings saved', 'Your configurations have been updated.', 'success');
+    }
 })
 
 // ── Auto-update ───────────────────────────────────────────────────────────────
