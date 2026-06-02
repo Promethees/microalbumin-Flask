@@ -311,6 +311,51 @@ def delete_data_folder(validated_data):
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
+@file_bp.route('/rename_data_folder', methods=['POST'])
+@validate_json({'path': str, 'new_name': str})
+def rename_data_folder(validated_data):
+    """Rename a data subfolder.
+
+    The source path must resolve inside DATA_ROOT and may not be DATA_ROOT
+    itself. The new name must be a bare folder name (no separators, traversal,
+    or hidden-folder prefix) so the renamed folder stays visible in the picker.
+    Returns the new absolute path so the frontend can re-point the active
+    directory if the renamed folder was selected.
+    """
+    try:
+        if state.process and state.process.poll() is None:
+            return jsonify({'status': 'error', 'message': 'Cannot rename folders while the data collection process is running'}), HTTPStatus.LOCKED
+
+        abs_path = validate_in_data_root(validated_data['path'])
+        if not abs_path:
+            return jsonify({'status': 'error', 'message': 'Invalid folder path'}), HTTPStatus.BAD_REQUEST
+        if abs_path == DATA_ROOT:
+            return jsonify({'status': 'error', 'message': 'Cannot rename the data root folder'}), HTTPStatus.BAD_REQUEST
+        if not os.path.isdir(abs_path):
+            return jsonify({'status': 'error', 'message': 'Folder not found'}), HTTPStatus.NOT_FOUND
+
+        new_name = (validated_data['new_name'] or '').strip()
+        if not new_name:
+            return jsonify({'status': 'error', 'message': 'New folder name is required'}), HTTPStatus.BAD_REQUEST
+        if any(x in new_name for x in ('..', '/', '\\', '\x00')) or new_name.startswith('.') or new_name.startswith('_'):
+            return jsonify({'status': 'error', 'message': 'Invalid folder name'}), HTTPStatus.BAD_REQUEST
+
+        if os.path.basename(abs_path) == new_name:
+            return jsonify({'status': 'success', 'message': 'Folder name unchanged', 'path': abs_path}), HTTPStatus.OK
+
+        new_path = os.path.join(DATA_ROOT, new_name)
+        if os.path.exists(new_path):
+            return jsonify({'status': 'error', 'message': 'A folder with that name already exists'}), HTTPStatus.CONFLICT
+
+        os.rename(abs_path, new_path)
+        return jsonify({'status': 'success', 'message': f"Renamed folder to '{new_name}'", 'path': new_path}), HTTPStatus.OK
+    except PermissionError as e:
+        return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
+    except OSError as e:
+        return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
+
 @file_bp.route('/copy_file', methods=['POST'])
 def copy_file():
     try:

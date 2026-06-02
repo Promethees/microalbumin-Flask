@@ -577,6 +577,110 @@ def test_delete_data_folder_oserror(client, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# file_routes — /rename_data_folder
+# ---------------------------------------------------------------------------
+
+def test_rename_data_folder_success(client, tmp_path):
+    folder = tmp_path / "old"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': 'new'})
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    assert body['path'] == str(tmp_path / "new")
+    assert not folder.exists()
+    assert (tmp_path / "new").is_dir()
+
+
+def test_rename_data_folder_process_running_returns_locked(client):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    rv = client.post('/rename_data_folder', json={'path': '/data/sub', 'new_name': 'x'})
+    assert rv.status_code == 423
+
+
+def test_rename_data_folder_path_outside_data_root(client, tmp_path):
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=None):
+        rv = client.post('/rename_data_folder', json={'path': '../../../etc', 'new_name': 'x'})
+    assert rv.status_code == 400
+    assert 'Invalid folder path' in rv.get_json()['message']
+
+
+def test_rename_data_folder_cannot_rename_data_root(client, tmp_path):
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(tmp_path)):
+        rv = client.post('/rename_data_folder', json={'path': str(tmp_path), 'new_name': 'x'})
+    assert rv.status_code == 400
+    assert 'root' in rv.get_json()['message'].lower()
+
+
+def test_rename_data_folder_not_found(client, tmp_path):
+    ghost = str(tmp_path / "ghost")
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=ghost):
+        rv = client.post('/rename_data_folder', json={'path': ghost, 'new_name': 'x'})
+    assert rv.status_code == 404
+    assert 'not found' in rv.get_json()['message'].lower()
+
+
+def test_rename_data_folder_empty_name(client, tmp_path):
+    folder = tmp_path / "old"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': '   '})
+    assert rv.status_code == 400
+    assert 'required' in rv.get_json()['message'].lower()
+
+
+def test_rename_data_folder_rejects_traversal_name(client, tmp_path):
+    folder = tmp_path / "old"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': '../escape'})
+    assert rv.status_code == 400
+    assert 'Invalid folder name' in rv.get_json()['message']
+    assert folder.is_dir()
+
+
+def test_rename_data_folder_rejects_hidden_prefix(client, tmp_path):
+    folder = tmp_path / "old"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': '_hidden'})
+    assert rv.status_code == 400
+    assert 'Invalid folder name' in rv.get_json()['message']
+
+
+def test_rename_data_folder_name_unchanged(client, tmp_path):
+    folder = tmp_path / "same"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': 'same'})
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert folder.is_dir()
+
+
+def test_rename_data_folder_target_exists(client, tmp_path):
+    folder = tmp_path / "old"
+    folder.mkdir()
+    (tmp_path / "taken").mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': 'taken'})
+    assert rv.status_code == 409
+    assert 'already exists' in rv.get_json()['message'].lower()
+    assert folder.is_dir()
+
+
+# ---------------------------------------------------------------------------
 # file_routes — /api/current_output
 # ---------------------------------------------------------------------------
 

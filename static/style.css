@@ -1178,6 +1178,23 @@ body.dark #swal-edit-table tr.selected td {
 }
 .folder-item:hover .folder-item-delete { opacity: 1; }
 .folder-item-delete:hover { background: rgba(239, 68, 68, 0.15); }
+.folder-item-rename {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: #4a90d9;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.55;
+    transition: opacity 0.12s, background 0.12s;
+}
+.folder-item:hover .folder-item-rename { opacity: 1; }
+.folder-item-rename:hover { background: rgba(74, 144, 217, 0.15); }
 body.light .folder-item:hover { background: #e8f0fe; }
 body.dark  .folder-item:hover { background: #2a3a4a; }
 body.light .folder-item.selected {
