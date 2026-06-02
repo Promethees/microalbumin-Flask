@@ -92,6 +92,7 @@ Var Dialog
 Var TokenInput
 Var EasyOKAPIToken
 Var BgBitmapHandle
+Var ImportSampleData   ; "1" = import bundled sample_data into data\, else remove it
 
 ; ── Page order ─────────────────────────────────────────────────────────────────
 ; Welcome → Token → Directory → Install → Finish
@@ -666,6 +667,23 @@ Click Cancel to exit Setup without making any changes." \
   RMDir /r "$R3\tests"
   RMDir /r "$R3\.github"
 
+  ; Ask now (before the long Git/Python/venv steps) whether to import the bundled
+  ; sample measurement data, so the user is not interrupted at the very end. The
+  ; choice is acted on after Step 4: the app lists immediate subfolders of data/
+  ; as data folders, so importing copies sample_data\ to data\sample_data\. The
+  ; source copy in the code root is removed afterwards either way.
+  StrCpy $ImportSampleData "0"
+  IfFileExists "$R3\sample_data\*.*" 0 sample_data_ask_done
+    MessageBox MB_YESNO|MB_ICONQUESTION \
+      "EasyOKAPI includes a set of sample measurement files.$\r$\n\
+$\r$\n\
+Import them into your data folder (as a $\"sample_data$\" folder) so you can explore the app right away?$\r$\n\
+$\r$\n\
+Click No to skip — you can always add your own data later." \
+      IDNO sample_data_ask_done
+    StrCpy $ImportSampleData "1"
+  sample_data_ask_done:
+
   ; Write version and activation files.
   FileOpen $9 "$R3\VERSION.txt" w
   FileWrite $9 "v${APP_VERSION}"
@@ -742,6 +760,16 @@ Click Cancel to exit Setup." \
   ; run. The in-app updater re-extracts it from the downloaded tarball before it
   ; runs pip, so removing it here does not break future updates.
   Delete "$INSTDIR\code\requirements-win.txt"
+
+  ; Act on the earlier sample-data choice: import copies the bundled CSVs into
+  ; data\sample_data\ (so they show up as a data folder); otherwise they are just
+  ; discarded. The source sample_data\ in the code root is removed in both cases.
+  ${If} $ImportSampleData == "1"
+    DetailPrint "Importing sample data into data\sample_data..."
+    CreateDirectory "$INSTDIR\code\data\sample_data"
+    CopyFiles /SILENT "$INSTDIR\code\sample_data\*.*" "$INSTDIR\code\data\sample_data"
+  ${EndIf}
+  RMDir /r "$INSTDIR\code\sample_data"
 
   ; Create desktop shortcut and write uninstaller
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${RUNNER_NAME}.exe"

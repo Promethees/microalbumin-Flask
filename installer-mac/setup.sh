@@ -337,6 +337,23 @@ if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
     fi
 fi
 
+# ── Offer to import the bundled sample measurement data ───────────────────────
+# sample_data/ ships in the source tarball as example CSVs. The app lists
+# immediate subfolders of data/ as data folders, so importing copies it to
+# data/sample_data/. The source copy is removed afterwards either way.
+if [ -d "$INSTALL_DIR/sample_data" ]; then
+    SAMPLE=$(osascript \
+        -e "display dialog \"EasyOKAPI includes a set of sample measurement files.\n\nImport them into your data folder (as a 'sample_data' folder) so you can explore the app right away?\" buttons {\"No\", \"Import sample data\"} default button \"Import sample data\" with title \"EasyOKAPI Setup\" $(_icon)" \
+        -e 'button returned of result' 2>/dev/null)
+    if [ "$SAMPLE" = "Import sample data" ]; then
+        mkdir -p "$INSTALL_DIR/data/sample_data"
+        cp -r "$INSTALL_DIR/sample_data/." "$INSTALL_DIR/data/sample_data/"
+        chown -R "$CURRENT_USER:staff" "$INSTALL_DIR/data"
+        print_ok "Sample data imported into data/sample_data."
+    fi
+    rm -rf "$INSTALL_DIR/sample_data"
+fi
+
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "  ${BOLD}${GREEN}╔══════════════════════════════════════════╗${RESET}"
