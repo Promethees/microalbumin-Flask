@@ -643,6 +643,17 @@ Click Cancel to exit Setup without making any changes." \
     Abort
   ${EndIf}
 
+  ; The tarball ships SAMPLE content: measurement CSVs in sample_data\ and
+  ; calibration curves in json\ (kinetics\, point\). Move the shipped json
+  ; samples into the sample_data bundle so the LIVE json\ workspace starts empty.
+  ; Leaving them in json\ entangled the shipped samples with the user's own
+  ; calibrations through every backup/restore cycle (the json\json loop) and made
+  ; freshly shipped samples look like preserved user data. Both are offered as an
+  ; opt-in import at the end of setup instead. (data\ is gitignored, never shipped.)
+  IfFileExists "$R3\json\*.*" 0 +3
+    CreateDirectory "$R3\sample_data"
+    Rename "$R3\json" "$R3\sample_data\json"
+
   ; Restore preserved user data by merging each backup folder's CONTENTS into the
   ; destination (see MergeDir) — never the folder itself, which would nest as
   ; data\data / json\json\... For data, RunArchive "restore" then dissolves the
@@ -657,6 +668,12 @@ Click Cancel to exit Setup without making any changes." \
     ; than deleting it — the finish page tells the user where it is.
     DetailPrint "User data restored. A backup copy is kept at $R6."
   ${EndIf}
+
+  ; The live json\ workspace now holds only the user's own calibrations (shipped
+  ; samples were staged out above). Ensure it exists even when there was nothing
+  ; to restore — a fresh install, or a user with no saved curves. The app
+  ; tolerates an empty json\ folder.
+  CreateDirectory "$R3\json"
 
   ; Remove development-only files from the extracted archive.
   DetailPrint "Removing development files..."
@@ -681,16 +698,16 @@ Click Cancel to exit Setup without making any changes." \
   RMDir /r "$R3\.github"
 
   ; Ask now (before the long Git/Python/venv steps) whether to import the bundled
-  ; sample measurement data, so the user is not interrupted at the very end. The
-  ; choice is acted on after Step 4: the app lists immediate subfolders of data/
-  ; as data folders, so importing copies sample_data\ to data\sample_data\. The
-  ; source copy in the code root is removed afterwards either way.
+  ; samples, so the user is not interrupted at the very end. The choice is acted
+  ; on after Step 4: sample CSVs go to a data\sample_data\ folder and the sample
+  ; calibration curves are merged into the live json\ workspace. Both source
+  ; copies (staged under sample_data\) are removed afterwards either way.
   StrCpy $ImportSampleData "0"
   IfFileExists "$R3\sample_data\*.*" 0 sample_data_ask_done
     MessageBox MB_YESNO|MB_ICONQUESTION \
-      "EasyOKAPI includes a set of sample measurement files.$\r$\n\
+      "EasyOKAPI includes sample measurement files and sample calibration curves.$\r$\n\
 $\r$\n\
-Import them into your data folder (as a $\"sample_data$\" folder) so you can explore the app right away?$\r$\n\
+Import them into your workspace (sample CSVs as a $\"sample_data$\" data folder, and the calibration curves into your saved curves) so you can explore the app right away?$\r$\n\
 $\r$\n\
 Click No to skip - you can always add your own data later." \
       IDNO sample_data_ask_done
@@ -774,13 +791,15 @@ Click Cancel to exit Setup." \
   ; runs pip, so removing it here does not break future updates.
   Delete "$INSTDIR\code\requirements-win.txt"
 
-  ; Act on the earlier sample-data choice: import copies the bundled CSVs into
-  ; data\sample_data\ (so they show up as a data folder); otherwise they are just
-  ; discarded. The source sample_data\ in the code root is removed in both cases.
+  ; Act on the earlier sample choice: import copies the bundled sample CSVs into
+  ; a data\sample_data\ folder and merges the staged sample calibration curves
+  ; into the live json\ workspace (kinetics\, point\). Otherwise both are just
+  ; discarded. The staged sample_data\ tree in the code root is removed either way.
   ${If} $ImportSampleData == "1"
-    DetailPrint "Importing sample data into data\sample_data..."
+    DetailPrint "Importing sample measurement data and calibration curves..."
     CreateDirectory "$INSTDIR\code\data\sample_data"
-    CopyFiles /SILENT "$INSTDIR\code\sample_data\*.*" "$INSTDIR\code\data\sample_data"
+    CopyFiles /SILENT "$INSTDIR\code\sample_data\*.csv" "$INSTDIR\code\data\sample_data"
+    !insertmacro MergeDir "$INSTDIR\code\sample_data\json" "$INSTDIR\code\json"
   ${EndIf}
   RMDir /r "$INSTDIR\code\sample_data"
 
