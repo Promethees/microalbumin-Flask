@@ -709,8 +709,23 @@ Click Cancel to exit Setup without making any changes." \
   DetailPrint "======================================"
   DetailPrint "Step 4 / 4  -  Setting up virtual environment"
   DetailPrint "======================================"
+  step4_venv:
   nsExec::ExecToLog '"cmd.exe" /c "$R1\startwindow-4-venv.bat"'
   Pop $0
+  ; Exit code 2 = the venv is locked by a still-running EasyOKAPI instance, which
+  ; we cannot force-kill (it runs elevated). Ask the user to shut it down and
+  ; retry this step rather than failing the whole install with a cryptic error.
+  ${If} $0 == 2
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
+      "EasyOKAPI is still running and is locking its virtual environment, so it cannot be rebuilt.$\r$\n\
+$\r$\n\
+Please shut it down: open EasyOKAPI in your browser (http://localhost:5099) and click the \
+$\"Shutdown Program$\" button, then click Retry.$\r$\n\
+$\r$\n\
+Click Cancel to exit Setup." \
+      IDRETRY step4_venv
+    Abort
+  ${EndIf}
   ${If} $0 != 0
     MessageBox MB_OK|MB_ICONSTOP "Virtual environment setup failed (exit code $0).$\r$\nCheck the Detail log above for the error, then re-run Setup."
     Abort

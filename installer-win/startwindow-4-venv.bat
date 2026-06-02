@@ -61,18 +61,20 @@ REM Use 8.3 short path to avoid spaces in "Program Files" breaking subprocess ca
 set "VENV_DIR=%~sdp0code\venv"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 
-REM A running EasyOKAPI instance keeps its venv python.exe and DLLs open. That
-REM makes both "rmdir venv" and "pip install" fail with [WinError 5] Access is
-REM denied, and leaves the venv half-deleted (e.g. pyvenv.cfg gone, python.exe
-REM stuck) so the rebuild is skipped and a broken app ships. Stop any Python
-REM running from THIS install before touching the venv. %~dp0 is the install
-REM root (trailing backslash) so we match the process's full executable path.
-REM Stop-Process -Force returns before Windows releases the file handles, so we
-REM Wait-Process on the killed PIDs then poll until python.exe opens with an
-REM exclusive handle (no lingering lock) before proceeding — a fixed sleep raced
-REM the dying process and left the venv locked.
-echo Stopping any running EasyOKAPI instance...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$r='%~dp0'; $procs = Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and $_.ExecutablePath -and $_.ExecutablePath.StartsWith($r,[System.StringComparison]::OrdinalIgnoreCase) }; $ids=@(); foreach ($p in $procs) { $ids += [int]$p.ProcessId; Write-Host ('  stopping PID ' + $p.ProcessId); Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; foreach ($id in $ids) { try { Wait-Process -Id $id -Timeout 15 -ErrorAction SilentlyContinue } catch {} }; $venvPy = Join-Path $r 'code\venv\Scripts\python.exe'; $deadline=(Get-Date).AddSeconds(15); while ((Get-Date) -lt $deadline) { if (-not (Test-Path -LiteralPath $venvPy)) { break }; try { $fs=[System.IO.File]::Open($venvPy,'Open','ReadWrite','None'); $fs.Close(); break } catch { Start-Sleep -Milliseconds 300 } }"
+REM A running EasyOKAPI instance keeps venv\Scripts\python.exe and its DLLs
+REM locked, so the rmdir/create below fails with [Errno 13] / [WinError 5] and a
+REM broken app ships. EasyOKAPI runs elevated, so we CANNOT force-kill it from
+REM here (Stop-Process is denied by the system). Instead, if the venv python is
+REM present and still locked, bail with a distinct exit code (2) so the installer
+REM can ask the user to shut EasyOKAPI down and retry this step. A short poll
+REM absorbs the brief window after a just-issued shutdown before the handle frees.
+echo Checking the virtual environment is not locked by a running instance...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%VENV_PYTHON%'; $deadline=(Get-Date).AddSeconds(5); while ($true) { if (-not (Test-Path -LiteralPath $p)) { exit 0 }; try { $fs=[System.IO.File]::Open($p,'Open','ReadWrite','None'); $fs.Close(); exit 0 } catch { if ((Get-Date) -ge $deadline) { exit 2 }; Start-Sleep -Milliseconds 300 } }"
+if "%ERRORLEVEL%"=="2" (
+    echo ERROR: EasyOKAPI is still running and is locking its virtual environment.
+    echo Please shut EasyOKAPI down ^(open http://localhost:5099 and click "Shutdown Program"^), then run Setup again.
+    exit /b 2
+)
 
 REM Recreate the venv if python.exe is missing OR the venv is broken.
 REM Checking only python.exe (the old behaviour) let a HALF-BUILT venv survive a
