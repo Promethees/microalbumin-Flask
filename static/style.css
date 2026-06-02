@@ -3719,6 +3719,13 @@ body.dark .okapi-ai-cmd-desc {
     }
 }
 
+/* SweetAlert2 stacking — the app uses overlays up to z-index 9999999, while
+   SweetAlert2's container defaults to 1060, which buries toasts/modals behind
+   open panels. Lift the Swal container above every app layer. */
+.swal2-container {
+    z-index: 2147483000 !important;
+}
+
 @media (max-width: 600px) {
     #hid-existing-row,
     #hid-new-row {

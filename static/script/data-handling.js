@@ -1059,7 +1059,7 @@ async function confirmSwalItemDelete(btn) {
             consoleContainer.innerHTML = '<p style="color:#666;">No items found in this subject folder.</p>';
         }
     } catch (e) {
-        alert('Error: ' + e.message);
+        Swal.fire({ title: 'Error!', text: e.message, icon: 'error', confirmButtonText: 'OK' });
         cancelSwalItemDelete(btn);
     }
 }
@@ -1464,6 +1464,20 @@ function exportData() {
     sendExportDataToSources(processedExpPath, saveFile, analysisData);
 }
 
+// Lightweight, non-blocking warning toast for field-level validation that
+// already has inline feedback (e.g. a blinking input) — avoids a heavy modal.
+function warnToast(message) {
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'warning',
+        title: message,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+}
+
 // Validate concentration values based on source mode
 function validateConcentration() {
     const sourceValue = document.getElementById("exp-json-source").value;
@@ -1471,7 +1485,7 @@ function validateConcentration() {
         for (let i = 0; i < AppState.numSources; i++) {
             const inputId = `con-value-read-source-${i}`;
             if (!document.getElementById(inputId).value) {
-                alert(`Please enter a concentration value for source-${i + 1}`);
+                warnToast(`Please enter a concentration value for source-${i + 1}.`);
                 blinkingItem(inputId, 5000);
                 return false;
             }
@@ -1480,7 +1494,7 @@ function validateConcentration() {
         const sourceIndex = getValInt("exp-json-source") - 1;
         const inputId = `con-value-read-source-${sourceIndex}`;
         if (!document.getElementById(inputId).value) {
-            alert(`Please enter a concentration value for source-${sourceIndex + 1}`);
+            warnToast(`Please enter a concentration value for source-${sourceIndex + 1}.`);
             blinkingItem(inputId, 5000);
             return false;
         }
@@ -1496,7 +1510,7 @@ function generateAnalysisData() {
     } else if (mode === "point") {
         return generatePointData();
     }
-    alert("Invalid measurement mode.");
+    Swal.fire({ title: 'Error!', text: 'Invalid measurement mode.', icon: 'error', confirmButtonText: 'OK' });
     return null;
 }
 
@@ -1529,7 +1543,7 @@ function generateKineticsData() {
 function generatePointData() {
     const currExpTimePoint = getValFloat("exp-json-time-value");
     if (!currExpTimePoint || isNullOrArrayOfNull(AppState.globalEstimatedValue)) {
-        alert("Please set the reference time point to export data or ensure time point is within the recorded time range.");
+        Swal.fire({ title: 'Time point required', text: 'Please set the reference time point to export data or ensure time point is within the recorded time range.', icon: 'warning', confirmButtonText: 'OK' });
         return null;
     }
 
@@ -1570,7 +1584,7 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
         isBatch = true;
         const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`));
         if (entries.length === 0) {
-            alert("No analysis data available to export.");
+            Swal.fire({ title: 'Nothing to export', text: 'No analysis data available to export.', icon: 'warning', confirmButtonText: 'OK' });
             return;
         }
         payload = { ...commonData, newFile: true, entries };
@@ -1578,7 +1592,7 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
         const sourceIndex = getValInt("exp-json-source") - 1;
         const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`);
         if (!entry) {
-            alert("No analysis data available to export.");
+            Swal.fire({ title: 'Nothing to export', text: 'No analysis data available to export.', icon: 'warning', confirmButtonText: 'OK' });
             return;
         }
         payload = { ...commonData, ...entry, newFile: true };
@@ -1604,6 +1618,24 @@ function prepareExportEntry(analysisData, conInputId) {
     };
 }
 
+// Return a short, user-friendly folder label for an export directory
+// (relative to the data root) instead of the full filesystem path.
+function exportFolderLabel(dirPath) {
+    if (!dirPath) return 'the selected folder';
+    const stripTrailing = (p) => String(p).replace(/[\\/]+$/, '');
+    const d = stripTrailing(dirPath);
+    if (typeof DATA_ROOT !== 'undefined' && DATA_ROOT) {
+        const root = stripTrailing(DATA_ROOT);
+        if (d === root) return 'the data root';
+        if (d.startsWith(root + DELIMITER)) {
+            return `"${d.slice(root.length + DELIMITER.length)}"`;
+        }
+    }
+    // Fallback: just the last path segment
+    const parts = d.split(/[\\/]+/);
+    return `"${parts[parts.length - 1] || d}"`;
+}
+
 // Helper to send the payload (single or batch)
 function sendExportPayload(payload, isBatch) {
     console.log(`Sending ${isBatch ? 'batch' : 'single'} export data:`, payload);
@@ -1614,14 +1646,20 @@ function sendExportPayload(payload, isBatch) {
         data: JSON.stringify(payload),
         success: function (response) {
             if (response.status === 'success') {
-                alert(`Success: ${response.message}!`);
+                Swal.fire({
+                    title: 'Exported!',
+                    text: `Data exported to ${exportFolderLabel(payload.save_dir)} folder.`,
+                    icon: 'success',
+                    timer: 2500,
+                    showConfirmButton: false
+                });
             } else {
-                alert(`Error: ${response.message}`);
+                Swal.fire({ title: 'Error!', text: response.message, icon: 'error', confirmButtonText: 'OK' });
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
-            alert("Error exporting data");
+            Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
         }
     });
 }
@@ -1651,18 +1689,24 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile 
             data: JSON.stringify(data),
             success: function (response) {
                 if (response.status === 'success') {
-                    alert(`Success: ${response.message}!`);
+                    Swal.fire({
+                        title: 'Exported!',
+                        text: `Data exported to ${exportFolderLabel(saveDir)} folder.`,
+                        icon: 'success',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
                 } else {
-                    alert(`Error: ${response.message}`);
+                    Swal.fire({ title: 'Error!', text: response.message, icon: 'error', confirmButtonText: 'OK' });
                 }
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 console.log("AJAX error:", textStatus, errorThrown);
-                alert("Error exporting data");
+                Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
             }
         });
     } else {
-        alert("Error! No analysis data available to export.");
+        Swal.fire({ title: 'Error!', text: 'No analysis data available to export.', icon: 'error', confirmButtonText: 'OK' });
     }
 }
 
@@ -1715,12 +1759,12 @@ function exportJSONCoef() {
 
     const selectElement = document.getElementById('regressed-quantity');
     if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)) {
-        alert("Please set time point to regress data from");
+        Swal.fire({ title: 'Time point required', text: 'Please set time point to regress data from.', icon: 'warning', confirmButtonText: 'OK' });
         return null;
     }
 
     if (!AppState.exp_json_content) {
-        alert("Error! No analysis data available to export.");
+        Swal.fire({ title: 'Nothing to export', text: 'No analysis data available to export.', icon: 'warning', confirmButtonText: 'OK' });
         return;
     }
 
@@ -1729,7 +1773,7 @@ function exportJSONCoef() {
         const sel = document.getElementById('json-overwrite-select');
         fileName = sel ? sel.value : '';
         if (!fileName) {
-            alert("Please select an existing calibrate file to overwrite.");
+            Swal.fire({ title: 'No file selected', text: 'Please select an existing calibrate file to overwrite.', icon: 'warning', confirmButtonText: 'OK' });
             return;
         }
         // Strip .json extension so backend adds it consistently
@@ -1760,15 +1804,21 @@ function exportJSONCoef() {
         data: JSON.stringify(data),
         success: function (response) {
             if (response.status === 'success') {
-                alert(`Success: ${response.message}!`);
+                Swal.fire({
+                    title: 'Exported!',
+                    text: `Calibration data exported to the "${data.cal_mode}" calibrate folder.`,
+                    icon: 'success',
+                    timer: 2500,
+                    showConfirmButton: false
+                });
                 if (exportMode === 'overwrite') loadExistingJsonFiles();
             } else {
-                alert(`Error: ${response.message}`);
+                Swal.fire({ title: 'Error!', text: response.message, icon: 'error', confirmButtonText: 'OK' });
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
-            alert("Error exporting data");
+            Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
         }
     });
 }

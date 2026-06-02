@@ -199,11 +199,11 @@ async function runScript() {
         if (!validateFileName("hid-new-folder-name")) return;
         subfolder = ($id("hid-new-folder-name").value || '').trim();
         if (!subfolder) {
-            alert('Please enter a name for the new subfolder.');
+            Swal.fire({ title: 'Name required', text: 'Please enter a name for the new subfolder.', icon: 'warning', confirmButtonText: 'OK' });
             return;
         }
         if (typeof isReservedDataFolderName === 'function' && isReservedDataFolderName(subfolder)) {
-            alert(`"${subfolder}" is a reserved folder name and cannot be used.`);
+            Swal.fire({ title: 'Reserved name', text: `"${subfolder}" is a reserved folder name and cannot be used.`, icon: 'error', confirmButtonText: 'OK' });
             return;
         }
     }
