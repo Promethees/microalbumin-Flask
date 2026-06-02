@@ -188,7 +188,10 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
     echo "  Restoring user data …"
     for d in data json report; do
         if [ -d "$BACKUP_DIR/$d" ]; then
-            cp -r "$BACKUP_DIR/$d" "$INSTALL_DIR/$d"
+            # Copy CONTENTS into the destination (src/.), not the folder itself —
+            # "cp -r src dest" nests src INTO an existing dest, giving data/data.
+            mkdir -p "$INSTALL_DIR/$d"
+            cp -r "$BACKUP_DIR/$d/." "$INSTALL_DIR/$d/"
             chown -R "$CURRENT_USER:staff" "$INSTALL_DIR/$d"
         fi
     done
@@ -329,7 +332,10 @@ if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
         -e 'button returned of result' 2>/dev/null)
     if [ "$IMPORT" = "Import previous data" ]; then
         for d in data json report; do
-            [ -d "$PERSIST_BACKUP/$d" ] && cp -r "$PERSIST_BACKUP/$d" "$INSTALL_DIR/$d"
+            if [ -d "$PERSIST_BACKUP/$d" ]; then
+                mkdir -p "$INSTALL_DIR/$d"
+                cp -r "$PERSIST_BACKUP/$d/." "$INSTALL_DIR/$d/"
+            fi
         done
         _archive_unstash_root "$INSTALL_DIR/data"
         chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"

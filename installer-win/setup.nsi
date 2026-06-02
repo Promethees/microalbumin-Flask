@@ -461,6 +461,19 @@ FunctionEnd
   Pop $0
 !macroend
 
+; Merge the CONTENTS of SRC into DST without nesting. NSIS CopyFiles copies a
+; source folder INTO an already-existing destination (producing data\data and,
+; across repeated updates, a json\json\json\... loop). robocopy instead merges
+; SRC's contents into DST and recurses every subfolder — including dotless ones
+; like the archive 'root' staging folder, which a CopyFiles "$SRC\*.*" wildcard
+; is not guaranteed to copy. Guarded by IfFileExists so an empty/absent SRC is
+; skipped (the +3 jumps over the nsExec + Pop). robocopy exit codes 0-7 = success.
+!macro MergeDir SRC DST
+  IfFileExists "${SRC}\*.*" 0 +3
+    nsExec::ExecToLog 'robocopy "${SRC}" "${DST}" /E /NJH /NJS /NFL /NDL /NC /NS /NP'
+    Pop $0
+!macroend
+
 ; ── Finish-page: import data from a previous installation ──────────────────────
 ; Wired to the repurposed SHOWREADME checkbox. Copies measurement data,
 ; calibration JSON, and reports from the persistent backup folder
@@ -469,13 +482,13 @@ FunctionEnd
 Function RestoreBackupData
   StrCpy $R6 "$DOCUMENTS\EasyOKAPI_data"
   IfFileExists "$R6\*.*" 0 rbd_none
-    IfFileExists "$R6\data\*.*" 0 +2
-      CopyFiles /SILENT "$R6\data" "$INSTDIR\code\data"
+    ; Merge CONTENTS into the destination (see MergeDir), not the folder itself —
+    ; a plain "CopyFiles $R6\data $INSTDIR\code\data" nests into the existing
+    ; data\ here (data\data). RunArchive then dissolves the 'root' staging folder.
+    !insertmacro MergeDir "$R6\data" "$INSTDIR\code\data"
     !insertmacro RunArchive "restore" "$INSTDIR\code\data"
-    IfFileExists "$R6\json\*.*" 0 +2
-      CopyFiles /SILENT "$R6\json" "$INSTDIR\code\json"
-    IfFileExists "$R6\report\*.*" 0 +2
-      CopyFiles /SILENT "$R6\report" "$INSTDIR\code\report"
+    !insertmacro MergeDir "$R6\json" "$INSTDIR\code\json"
+    !insertmacro MergeDir "$R6\report" "$INSTDIR\code\report"
     MessageBox MB_OK|MB_ICONINFORMATION "Your previous EasyOKAPI data has been imported from:$\r$\n$R6$\r$\n$\r$\nThe backup folder has been kept in case you need it again."
     Return
   rbd_none:
@@ -630,16 +643,16 @@ Click Cancel to exit Setup without making any changes." \
     Abort
   ${EndIf}
 
-  ; Restore preserved user data.
+  ; Restore preserved user data by merging each backup folder's CONTENTS into the
+  ; destination (see MergeDir) — never the folder itself, which would nest as
+  ; data\data / json\json\... For data, RunArchive "restore" then dissolves the
+  ; 'root' staging folder so loose CSVs land directly under code\data.
   ${If} $R5 == "1"
     DetailPrint "Restoring user data (data, json, report)..."
-    IfFileExists "$R6\data\*.*" 0 +2
-      CopyFiles /SILENT "$R6\data" "$R3\data"
+    !insertmacro MergeDir "$R6\data" "$R3\data"
     !insertmacro RunArchive "restore" "$R3\data"
-    IfFileExists "$R6\json\*.*" 0 +2
-      CopyFiles /SILENT "$R6\json" "$R3\json"
-    IfFileExists "$R6\report\*.*" 0 +2
-      CopyFiles /SILENT "$R6\report" "$R3\report"
+    !insertmacro MergeDir "$R6\json" "$R3\json"
+    !insertmacro MergeDir "$R6\report" "$R3\report"
     ; Keep $R6 as a persistent safety backup (Documents\EasyOKAPI_data) rather
     ; than deleting it — the finish page tells the user where it is.
     DetailPrint "User data restored. A backup copy is kept at $R6."

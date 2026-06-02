@@ -341,7 +341,10 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
     echo "Restoring user data (data/, json/, report/)..."
     for _dir in data json report; do
         if [ -d "$BACKUP_DIR/$_dir" ]; then
-            cp -r "$BACKUP_DIR/$_dir" "$INSTALL_DIR/$_dir"
+            # Copy CONTENTS into the destination (src/.), not the folder itself —
+            # "cp -r src dest" nests src INTO an existing dest, giving data/data.
+            mkdir -p "$INSTALL_DIR/$_dir"
+            cp -r "$BACKUP_DIR/$_dir/." "$INSTALL_DIR/$_dir/"
         fi
     done
     _archive_unstash_root "$INSTALL_DIR/data"
@@ -360,7 +363,10 @@ if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
     echo "     $PERSIST_BACKUP"
     if prompt_confirm "EasyOKAPI Installer" "A backup of your previous EasyOKAPI data was found at:\n\n$PERSIST_BACKUP\n\nImport it into this version now?"; then
         for _dir in data json report; do
-            [ -d "$PERSIST_BACKUP/$_dir" ] && cp -r "$PERSIST_BACKUP/$_dir" "$INSTALL_DIR/$_dir"
+            if [ -d "$PERSIST_BACKUP/$_dir" ]; then
+                mkdir -p "$INSTALL_DIR/$_dir"
+                cp -r "$PERSIST_BACKUP/$_dir/." "$INSTALL_DIR/$_dir/"
+            fi
         done
         _archive_unstash_root "$INSTALL_DIR/data"
         chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
