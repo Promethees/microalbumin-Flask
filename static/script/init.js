@@ -1115,7 +1115,7 @@ function showUpdateModal() {
                ${_latestLabel ? `<p>Latest version: <b>${_latestLabel}</b></p>` : ''}
                ${notes}
                <p style="font-size:0.82em;color:#888;margin-top:8px">
-                 The app will restart automatically after the update is applied.</p>`,
+                 After the update is applied, EasyOKAPI will close so you can relaunch it.</p>`,
         icon: 'info',
         showCancelButton: true,
         confirmButtonText: 'Update Now',
@@ -1171,13 +1171,22 @@ function _applyUpdate() {
                                 if (lbl) lbl.textContent = evt.label || '';
                                 if (pct) pct.textContent = (evt.pct || 0) + '%';
                                 if (evt.done) {
-                                    Swal.fire({
-                                        title: 'Update applied!',
-                                        text: 'The app is restarting. This page will reload in a moment.',
-                                        icon: 'success',
-                                        showConfirmButton: false,
-                                        timer: 4000,
-                                    }).then(() => location.reload());
+                                    // Auto-restart is unreliable, so finalize by shutting the
+                                    // server down and showing a "please relaunch" page that
+                                    // closes this tab (mirrors the shutdown flow).
+                                    const mode = AppState.lightDisplay ? 'light' : 'dark';
+                                    fetch('/update/finalize', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ mode }),
+                                    })
+                                        .then(resp => resp.text())
+                                        .then(html => {
+                                            document.open();
+                                            document.write(html);
+                                            document.close();
+                                        })
+                                        .catch(() => { window.location.href = '/goodbye'; });
                                 }
                                 if (evt.error) {
                                     Swal.fire('Update failed', evt.label, 'error');

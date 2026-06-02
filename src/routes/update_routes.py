@@ -1,8 +1,12 @@
 import json
+import os
 import queue
+import signal
 import threading
-from flask import Blueprint, jsonify, request, Response, stream_with_context
+import time
+from flask import Blueprint, jsonify, render_template, request, Response, stream_with_context
 import requests as _requests
+import state
 import update_service
 import activation as activation_mod
 
@@ -59,9 +63,11 @@ def apply_update():
             yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
 
         if result.get('ok'):
-            yield f"data: {json.dumps({'pct': 100, 'label': 'Restarting...', 'done': True})}\n\n"
+            # In-app auto-restart is unreliable (notably the Windows relauncher),
+            # so we do not restart here. The client calls /update/finalize next,
+            # which shuts the server down and shows a "please relaunch" page.
+            yield f"data: {json.dumps({'pct': 100, 'label': 'Update applied. Finishing up...', 'done': True})}\n\n"
             yield "data: [DONE]\n\n"
-            update_service.restart_after_delay(1.5)
         else:
             err = result.get('error', 'Unknown error')
             yield f"data: {json.dumps({'pct': 0, 'label': err, 'error': True})}\n\n"
@@ -72,3 +78,29 @@ def apply_update():
         mimetype='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
+
+
+def _delayed_shutdown(delay_secs=5):
+    """Stop the HID subprocess, then SIGTERM ourselves so main.py's signal handler
+    runs atexit cleanup and frees the port (mirrors core_routes.delayed_termination)."""
+    time.sleep(delay_secs)
+    try:
+        update_service._shutdown_current_process()
+    except Exception:
+        pass
+    os.kill(os.getpid(), signal.SIGTERM)
+
+
+@update_bp.route('/finalize', methods=['POST'])
+def finalize_update():
+    """Shut the server down after an applied update and return a page that closes
+    the tab and reminds the user to relaunch the app into the new code.
+
+    Auto-restart from inside the running process is unreliable, so instead we stop
+    cleanly here and let the user relaunch — same shutdown mechanism as /shutdown.
+    """
+    threading.Thread(target=_delayed_shutdown, daemon=True).start()
+    data = request.get_json(silent=True) or {}
+    mode = data.get('mode', 'light')
+    return render_template('restart_required.html',
+                           production_mode=state.PRODUCTION_MODE, mode=mode)
