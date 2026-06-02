@@ -13,7 +13,7 @@ if "%~1"=="" (
     exit /b 1
 )
 
-:: Resolve token — NSIS injects it as EASYOKAPI_DOWNLOAD_TOKEN (safe for all
+:: Resolve token - NSIS injects it as EASYOKAPI_DOWNLOAD_TOKEN (safe for all
 :: special characters; never touches the cmd.exe command line).
 :: Fall back to arg2 for direct / manual invocations.
 if defined EASYOKAPI_DOWNLOAD_TOKEN (
@@ -55,11 +55,11 @@ if not exist "!INSTALL_DIR!" (
     goto :skip_menu
 )
 
-:: Directory exists — count items to decide whether it is a real installation
+:: Directory exists - count items to decide whether it is a real installation
 set "item_count=0"
 for /f %%i in ('dir /b "!INSTALL_DIR!" 2^>nul ^| find /c /v ""') do set "item_count=%%i"
 
-:: Empty directory — skip the overwrite menu entirely
+:: Empty directory - skip the overwrite menu entirely
 if !item_count! equ 0 (
     echo [*] Installation directory exists but is empty. Proceeding with installation...
     echo.
@@ -204,7 +204,7 @@ popd
 :: Save version information for future checks
 echo !VERSION_TAG!> "!INSTALL_DIR!\VERSION.txt"
 
-:: Write activation.json — the download token doubles as the license token for the AI proxy
+:: Write activation.json - the download token doubles as the license token for the AI proxy
 set "_tok=%DOWNLOAD_TOKEN%"
 (echo {& echo   "license_token": "!_tok!"& echo }) > "!INSTALL_DIR!\activation.json"
 

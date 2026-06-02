@@ -679,7 +679,7 @@ Click Cancel to exit Setup without making any changes." \
 $\r$\n\
 Import them into your data folder (as a $\"sample_data$\" folder) so you can explore the app right away?$\r$\n\
 $\r$\n\
-Click No to skip — you can always add your own data later." \
+Click No to skip - you can always add your own data later." \
       IDNO sample_data_ask_done
     StrCpy $ImportSampleData "1"
   sample_data_ask_done:

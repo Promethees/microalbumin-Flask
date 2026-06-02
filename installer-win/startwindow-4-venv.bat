@@ -78,7 +78,7 @@ if "%ERRORLEVEL%"=="2" (
 
 REM Recreate the venv if python.exe is missing OR the venv is broken.
 REM Checking only python.exe (the old behaviour) let a HALF-BUILT venv survive a
-REM reinstall: an aborted run — or antivirus quarantining pyvenv.cfg/pythonw.exe —
+REM reinstall: an aborted run - or antivirus quarantining pyvenv.cfg/pythonw.exe -
 REM leaves python.exe behind without pyvenv.cfg, so the venv python exits instantly
 REM with "No pyvenv.cfg file" and the app silently never launches. pyvenv.cfg is the
 REM reliable health marker, so treat its absence as "rebuild from scratch".
@@ -115,7 +115,7 @@ if errorlevel 1 (
 
 REM Install required libraries. Each step's exit code MUST be checked: an
 REM unchecked pip failure (network blip, AV, a wheel that won't build) used to
-REM leave a partial venv — e.g. flask/pandas/requests/groq missing — while the
+REM leave a partial venv - e.g. flask/pandas/requests/groq missing - while the
 REM installer still reported success and shipped a broken app.
 echo Installing requirements...
 "%VENV_PYTHON%" -m pip install --upgrade pip
