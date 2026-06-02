@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import shutil
 import platform
@@ -86,6 +87,7 @@ def download_and_apply(progress_cb=None):
 
     _emit(progress_cb, 72, 'Applying update...')
     updated = _apply_tarball(tmp_path)
+    _sync_version_file()
 
     _emit(progress_cb, 80, 'Installing dependencies...')
     _install_requirements()
@@ -146,6 +148,30 @@ def _apply_tarball(tar_path):
                     shutil.copyfileobj(src, dst)
                 updated.append(name)
     return updated
+
+
+def _sync_version_file():
+    """Rewrite VERSION.txt to match the freshly-applied source version.
+
+    VERSION.txt is created by the installers and read back by them to show the
+    installed version, but it is not part of the source tarball — so an in-app
+    update would leave it pointing at the old version, misleading a later
+    installer run. We read the new APP_VERSION from the just-extracted state.py
+    (the authoritative value the app reports after restart) and rewrite
+    VERSION.txt in the installers' 'vX.Y.Z' format. Best-effort: never fails the
+    update.
+    """
+    try:
+        state_path = os.path.join(state.script_dir, 'src', 'state.py')
+        with open(state_path, 'r', encoding='utf-8') as f:
+            m = re.search(r'^APP_VERSION\s*=\s*["\']([^"\']+)["\']', f.read(), re.M)
+        if not m:
+            return
+        version = m.group(1).lstrip('v')
+        with open(os.path.join(state.script_dir, 'VERSION.txt'), 'w', encoding='utf-8') as f:
+            f.write(f'v{version}\n')
+    except Exception:
+        pass
 
 
 def _requirements_path():
