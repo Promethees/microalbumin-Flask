@@ -718,9 +718,31 @@ Click No to skip - you can always add your own data later." \
   FileOpen $9 "$R3\VERSION.txt" w
   FileWrite $9 "v${APP_VERSION}"
   FileClose $9
+  ; Write activation.json with the raw download token first so the file always
+  ; exists, then best-effort upgrade it to a PERMANENT license token below. The
+  ; raw token is valid for only 30 minutes; left as-is the AI proxy and in-app
+  ; updates would 401 once it expires. The app also retries the exchange on
+  ; startup (activation.ensure_permanent_token), so this is defence in depth.
   FileOpen $9 "$R3\activation.json" w
   FileWrite $9 '{$\n  "license_token": "$EasyOKAPIToken"$\n}'
   FileClose $9
+  ; Exchange helper, written to a temp file to dodge NSIS/PowerShell quote escaping.
+  ; It POSTs the download token to /api/activate and overwrites activation.json
+  ; with the permanent token it returns; on any failure it rewrites the raw token.
+  FileOpen $9 "$PLUGINSDIR\exchange-token.ps1" w
+  FileWrite $9 "$$tok = $$args[0]; $$auth = $$args[1]; $$dest = $$args[2]; $$license = $$tok$\r$\n"
+  FileWrite $9 "try {$\r$\n"
+  FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
+  FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\"}'$\r$\n"
+  FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
+  FileWrite $9 "  if ($$resp.license_token) { $$license = $$resp.license_token }$\r$\n"
+  FileWrite $9 "} catch {}$\r$\n"
+  FileWrite $9 "$$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$license + '$\"' + [char]10 + '}'$\r$\n"
+  FileWrite $9 "[System.IO.File]::WriteAllText($$dest, $$json, (New-Object System.Text.UTF8Encoding($$false)))$\r$\n"
+  FileClose $9
+  DetailPrint "Finalizing license activation..."
+  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\exchange-token.ps1" "$EasyOKAPIToken" "${AUTH_BASE_URL}" "$R3\activation.json"'
+  Pop $0
 
   DetailPrint "Application downloaded successfully."
 

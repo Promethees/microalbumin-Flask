@@ -183,6 +183,17 @@ if __name__ == '__main__':
     browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
     browser_thread.start()
 
+    # Best-effort: upgrade a freshly-installed raw download token to a permanent
+    # license token while it is still valid. Runs off the launch path so a slow or
+    # unreachable auth server never delays startup. See activation.ensure_permanent_token().
+    def _ensure_permanent_token():
+        try:
+            import activation
+            activation.ensure_permanent_token()
+        except Exception:
+            pass
+    threading.Thread(target=_ensure_permanent_token, daemon=True).start()
+
     atexit.register(cleanup, state.process, state.log_file, state.args)
 
     def _shutdown_handler(signum, frame):

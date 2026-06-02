@@ -169,7 +169,19 @@ rm -f "$ARCHIVE_TMP"
 chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
 
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
-printf '{\n  "license_token": "%s"\n}\n' "$ACCESS_TOKEN" > "$INSTALL_DIR/activation.json"
+# Write activation.json. The access token doubles as the license token, but it is
+# only valid for 30 minutes — persisting it raw means the AI proxy and in-app
+# updates break (/api/download -> 401) once it expires. Exchange it now, while it
+# is still fresh, for a permanent activation token (no expiry). Fall back to the
+# raw token if the exchange fails; the app retries the exchange on startup.
+LICENSE_TOKEN="$ACCESS_TOKEN"
+if _resp=$(curl -fsS -X POST "$AUTH_BASE_URL/api/activate" \
+        -H "Content-Type: application/json" \
+        -d "{\"token\": \"$ACCESS_TOKEN\"}" 2>/dev/null); then
+    _perm=$(printf '%s' "$_resp" | sed -n 's/.*"license_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    if [ -n "$_perm" ]; then LICENSE_TOKEN="$_perm"; fi
+fi
+printf '{\n  "license_token": "%s"\n}\n' "$LICENSE_TOKEN" > "$INSTALL_DIR/activation.json"
 chown "$CURRENT_USER:staff" "$INSTALL_DIR/activation.json"
 
 echo "  Cleaning development artefacts …"

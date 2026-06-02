@@ -191,8 +191,19 @@ rm -f  "$INSTALL_DIR/generate-tree.sh" "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR
 rm -f  "$INSTALL_DIR"/*.bat
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 
-# Write activation.json — the download token doubles as the license token for the AI proxy
-printf '{\n  "license_token": "%s"\n}\n' "$DOWNLOAD_TOKEN" > "$INSTALL_DIR/activation.json"
+# Write activation.json. The download token doubles as the license token, but it
+# is only valid for 30 minutes — persisting it raw means the AI proxy and in-app
+# updates break (/api/download -> 401) once it expires. Exchange it now, while it
+# is still fresh, for a permanent activation token (no expiry). Fall back to the
+# raw token if the exchange fails; the app retries the exchange on startup.
+LICENSE_TOKEN="$DOWNLOAD_TOKEN"
+if _resp=$(curl -fsS -X POST "$AUTH_BASE_URL/api/activate" \
+        -H "Content-Type: application/json" \
+        -d "{\"token\": \"$DOWNLOAD_TOKEN\"}" 2>/dev/null); then
+    _perm=$(printf '%s' "$_resp" | sed -n 's/.*"license_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    if [ -n "$_perm" ]; then LICENSE_TOKEN="$_perm"; fi
+fi
+printf '{\n  "license_token": "%s"\n}\n' "$LICENSE_TOKEN" > "$INSTALL_DIR/activation.json"
 
 # Fix ownership so the user can write to the app dir
 chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
