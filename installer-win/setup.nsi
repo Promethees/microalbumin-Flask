@@ -738,6 +738,11 @@ Click Cancel to exit Setup." \
   DetailPrint "Removing setup scripts..."
   Delete "$INSTDIR\startwindow-*.bat"
 
+  ; requirements-win.txt is only needed by Step 4 (venv build), which has already
+  ; run. The in-app updater re-extracts it from the downloaded tarball before it
+  ; runs pip, so removing it here does not break future updates.
+  Delete "$INSTDIR\code\requirements-win.txt"
+
   ; Create desktop shortcut and write uninstaller
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${RUNNER_NAME}.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
