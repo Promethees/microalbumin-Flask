@@ -25,7 +25,7 @@ src/
   routes/account_routes.py — HTTP endpoints: register, login, /api/account/token, /api/download
   download_service.py     — JWT mint/validate, GitHub tarball proxy
   email_service.py        — Verification and password-reset emails
-  config.py               — Env-var wiring (SECRET_KEY, GITHUB_PAT, APP_RELEASE_TAG, …)
+  config.py               — Env-var wiring (SECRET_KEY, GITHUB_PAT, …)
 templates/
   login.html              — Login form; displays token after sign-in
   index.html              — "Get Offline Version" section; "🔑 Get Download Token" button
@@ -133,9 +133,9 @@ Client                      Flask server                    GitHub API
 
 1. **Token validation** (`download_service.py:23`): decodes and verifies the JWT, checks `purpose == 'app_download'`, raises `jwt.InvalidTokenError` on any failure.
 2. **User lookup**: fetches the `User` row by `payload['sub']`; verifies `is_verified` is still `True`.
-3. **GitHub API call** (`download_service.py:32`): constructs the tarball URL:
+3. **GitHub API call** (`download_service.py:32`): constructs the tarball URL, where the tag is the latest published GitHub Release (resolved via `get_latest_release_tag()`):
    ```
-   https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/tarball/{APP_RELEASE_TAG}
+   https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/tarball/{release_tag}
    ```
    and adds the server's PAT in the `Authorization: Bearer <GITHUB_PAT>` header.
 4. **Streams** the response back to the client with `Content-Disposition: attachment`.
@@ -151,10 +151,9 @@ The **GitHub PAT** (`GITHUB_PAT` env var, also checked as `GITHUB_TOKEN`) is a c
 |----------|-----------|-------------|
 | `SECRET_KEY` | `config.py`, `download_service.py` | HMAC secret for signing JWTs |
 | `GITHUB_PAT` | `download_service.py`, `config.py` | GitHub Personal Access Token with repo read access |
-| `GITHUB_TOKEN` | `main.py`, `config.py` | Fallback alias for `GITHUB_PAT` (used for artifact list) |
+| `GITHUB_TOKEN` | `main.py`, `config.py` | Fallback alias for `GITHUB_PAT` (used for the GitHub Release lookup) |
 | `GITHUB_OWNER` | `download_service.py` | GitHub user/org owning the repo (default: `Promethees`) |
 | `GITHUB_REPO` | `download_service.py` | Repository name (default: `microalbumin-Flask`) |
-| `APP_RELEASE_TAG` | `account_routes.py` | Git tag or branch to serve (e.g. `v1.0.5`, `latest`) |
 | `DATABASE_URL` | `config.py` | SQLAlchemy DB URI (SQLite default, PostgreSQL in prod) |
 | `APP_BASE_URL` | `account_routes.py`, `email_service.py` | Public URL used in email links |
 
@@ -207,6 +206,6 @@ User (browser/installer)     Flask / account_routes.py     GitHub API
 | `src/download_service.py` | `generate_download_token` (L11), `validate_download_token` (L23), `fetch_github_release` (L32) |
 | `src/routes/account_routes.py` | `login` (L143), `get_token` (L198), `download` (L266) |
 | `src/account.py` | `User` model, `generate_verification_token` (L37), `is_reset_token_valid` (L54) |
-| `src/config.py` | `GITHUB_PAT`, `SECRET_KEY`, `APP_RELEASE_TAG` wiring (L51–55) |
+| `src/config.py` | `GITHUB_PAT`, `SECRET_KEY` wiring (L51–55) |
 | `templates/index.html` | `revealDownloadToken()` (L605), download section UI (L226–274) |
 | `templates/login.html` | Post-login token display (L115–125), fetch `/api/account/login` (L147) |

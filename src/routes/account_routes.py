@@ -9,27 +9,21 @@ from email_service import send_verification_email, send_password_reset_email
 from download_service import (
     generate_download_token, validate_download_token,
     fetch_github_release, issue_activation_token,
-    get_latest_version,
+    get_latest_release_tag,
 )
 
 account_bp = Blueprint('account', __name__)
 
 _APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
-# APP_RELEASE_TAG is a manual override; if absent the live GitHub build tag is used.
-_APP_RELEASE_TAG_OVERRIDE = os.environ.get('APP_RELEASE_TAG', '').strip()
 
 
 def _resolved_release_tag() -> str:
     """Return the release tag to use for version checks and downloads.
 
-    Priority:
-    1. APP_RELEASE_TAG env var (manual override — useful for pinning a specific release)
-    2. Latest CI build tag from GitHub Actions artifacts (e.g. 'v1.0.11')
-    3. Fall back to 'latest' (GitHub resolves to the default branch HEAD)
+    Tracks the latest published GitHub Release (no config needed). Falls back to
+    'latest' so GitHub resolves to the most recent Release if the lookup fails.
     """
-    if _APP_RELEASE_TAG_OVERRIDE and _APP_RELEASE_TAG_OVERRIDE != 'latest':
-        return _APP_RELEASE_TAG_OVERRIDE
-    return get_latest_version() or 'latest'
+    return get_latest_release_tag() or 'latest'
 
 
 # A semver release tag, optionally 'v'-prefixed (e.g. 'v1.1.1' or '1.1.1').

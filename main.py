@@ -114,8 +114,8 @@ def index():
 
 # ------------------------------------------------------------------
 # GitHub Release Downloads
-# Installers are served from the GitHub Release pinned by APP_RELEASE_TAG
-# (release cache + _RELEASE_ASSET_SUFFIX live in download_service.py).
+# Installers are served from the repo's latest published GitHub Release.
+# Release cache + _RELEASE_ASSET_SUFFIX live in download_service.py.
 # ------------------------------------------------------------------
 
 @app.route('/api/release-info')

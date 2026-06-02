@@ -45,7 +45,6 @@ Set these on Heroku with `heroku config:set VAR=value -a easysensor-kit`:
 | `SMTP_USER` | Yes | Sender email address |
 | `SMTP_PASS` | Yes | SMTP app password |
 | `APP_BASE_URL` | Yes | Public URL of the app, e.g. `https://www.easysensorkit.cbbiotec.vn` |
-| `APP_RELEASE_TAG` | No | GitHub release tag to serve on download (default: `latest`) |
 | `GITHUB_PAT` | Yes | GitHub Personal Access Token for proxying the source release |
 
 ### Account System (User Login & Registration)

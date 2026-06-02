@@ -1,22 +1,12 @@
 import os
-import re
 import time
 import jwt
 import requests
 
-_SEMVER_RE = re.compile(r'^v\d+\.\d+(\.\d+)*$')
-
 _DOWNLOAD_PURPOSE = 'app_download'
 _TOKEN_TTL = 30 * 60  # 30 minutes
 
-# ── GitHub artifact cache ─────────────────────────────────────────────────────
-
-_GITHUB_REPO     = 'Promethees/microalbumin-Flask'
-_GITHUB_WORKFLOW = 'main.yml'
-_ARTIFACT_PREFIX = {'mac': 'EasyOKAPI-mac-', 'win': 'EasyOKAPI-win-', 'linux': 'EasyOKAPI-linux-'}
-
-_artifact_cache: dict = {'artifacts': None, 'ts': 0.0}
-_ARTIFACT_CACHE_TTL = 900  # 15 minutes
+_GITHUB_REPO = 'Promethees/microalbumin-Flask'
 
 
 def _gh_headers() -> dict:
@@ -27,38 +17,11 @@ def _gh_headers() -> dict:
     return h
 
 
-def get_cached_artifacts() -> list:
-    """Fetch and cache artifacts from the latest successful CI run on main."""
-    now = time.time()
-    if _artifact_cache['artifacts'] is not None and now - _artifact_cache['ts'] < _ARTIFACT_CACHE_TTL:
-        return _artifact_cache['artifacts']
-    run_resp = requests.get(
-        f'https://api.github.com/repos/{_GITHUB_REPO}/actions/workflows/{_GITHUB_WORKFLOW}/runs',
-        params={'branch': 'main', 'status': 'success', 'per_page': 1},
-        headers=_gh_headers(), timeout=10
-    )
-    run_resp.raise_for_status()
-    runs = run_resp.json().get('workflow_runs', [])
-    if not runs:
-        return []
-    art_resp = requests.get(
-        f'https://api.github.com/repos/{_GITHUB_REPO}/actions/runs/{runs[0]["id"]}/artifacts',
-        headers=_gh_headers(), timeout=10
-    )
-    art_resp.raise_for_status()
-    artifacts = art_resp.json().get('artifacts', [])
-    _artifact_cache['artifacts'] = artifacts
-    _artifact_cache['ts'] = now
-    return artifacts
-
-
-# ── GitHub Release assets (pinned to APP_RELEASE_TAG) ─────────────────────────
-# The public download buttons serve the built installers attached to a specific
-# GitHub Release, identified by APP_RELEASE_TAG (e.g. 'v1.1.4') rather than the
-# latest successful CI run. When the tag is unset we fall back to the repo's
-# 'latest' published release.
-
-_APP_RELEASE_TAG = os.environ.get('APP_RELEASE_TAG', '').strip()
+# ── GitHub Release assets ─────────────────────────────────────────────────────
+# Version checks and the public download buttons resolve to the repo's latest
+# published GitHub Release and its built installers. No manual configuration is
+# needed. Callers may pass an explicit tag to get_release()/get_release_asset()
+# to serve a specific Release instead.
 
 # Match a release asset to a platform by its filename suffix.
 # (mac → EasyOKAPI_<ver>.dmg, win → EasyOKAPI_Setup_<ver>.exe, linux → *_linux_<ver>.tar.gz)
@@ -69,12 +32,13 @@ _RELEASE_CACHE_TTL = 900  # 15 minutes
 
 
 def get_release(tag: str | None = None) -> dict | None:
-    """Fetch and cache the GitHub Release for APP_RELEASE_TAG (or an explicit tag).
+    """Fetch and cache a GitHub Release.
 
-    Returns the release JSON object, or None when the release does not exist.
-    Falls back to the repo's latest published release when no tag is configured.
+    With no tag, resolves to the repo's latest published Release. Pass an explicit
+    tag (e.g. 'v1.1.4') to fetch that specific Release. Returns the release JSON
+    object, or None when the release does not exist.
     """
-    tag = (tag or _APP_RELEASE_TAG).strip()
+    tag = (tag or '').strip()
     now = time.time()
     if (_release_cache['release'] is not None
             and _release_cache['tag'] == tag
@@ -111,25 +75,15 @@ def get_release_asset(platform: str, tag: str | None = None) -> dict | None:
     return None
 
 
-def get_latest_version() -> str | None:
-    """Return the raw version tag from the latest CI build (e.g. 'v1.0.11'), or None.
+def get_latest_release_tag() -> str | None:
+    """Return the tag of the latest published GitHub Release (e.g. 'v1.1.4'), or None.
 
     The tag matches the git tag used in the repo so it can be passed directly to
-    fetch_github_release().  Strip the leading 'v' when comparing against semver strings.
+    fetch_github_release(). Strip the leading 'v' for plain semver comparison.
     """
     try:
-        artifacts = get_cached_artifacts()
-        for art in artifacts:
-            if art.get('expired'):
-                continue
-            for prefix in _ARTIFACT_PREFIX.values():
-                if art['name'].startswith(prefix):
-                    tag = art['name'][len(prefix):]
-                    # Only return properly versioned tags (e.g. 'v1.0.11').
-                    # Branch-name artifacts ('vmain', 'vdev', etc.) are not releases.
-                    if _SEMVER_RE.match(tag):
-                        return tag
-        return None
+        release = get_release()
+        return release.get('tag_name') if release else None
     except Exception:
         return None
 

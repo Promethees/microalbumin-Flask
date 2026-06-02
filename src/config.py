@@ -57,8 +57,6 @@ class Config:
     GITHUB_PAT  = os.environ.get('GITHUB_PAT', os.environ.get('GITHUB_TOKEN', ''))
     GITHUB_OWNER = os.environ.get('GITHUB_OWNER', 'Promethees')
     GITHUB_REPO  = os.environ.get('GITHUB_REPO', 'microalbumin-Flask')
-    # Release tag to serve when users download (e.g. "v1.0.5")
-    APP_RELEASE_TAG = os.environ.get('APP_RELEASE_TAG', 'latest')
 
     # Persistent login session lifetime (30 days)
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)

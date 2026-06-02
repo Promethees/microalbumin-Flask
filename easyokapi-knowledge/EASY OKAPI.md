@@ -256,7 +256,6 @@ git push heroku online:main
 | `SMTP_USER` | Sender email address |
 | `SMTP_PASS` | SMTP app password |
 | `APP_BASE_URL` | Public URL used in verification/reset emails |
-| `APP_RELEASE_TAG` | GitHub release tag to serve on download (default: `latest`) |
 | `GITHUB_PAT` | GitHub Personal Access Token for proxying the release tarball |
 
 ---
