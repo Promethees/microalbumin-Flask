@@ -1,5 +1,6 @@
 import json
 import os
+import requests
 from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
 import ai_assistant
@@ -45,13 +46,45 @@ def ai_status():
 
 @ai_bp.route('/activate', methods=['POST'])
 def activate():
-    """Save the Easy OKAPI download token as the local license token."""
+    """Exchange the pasted Easy OKAPI download token for a permanent license token.
+
+    The website only issues short-lived (30-min) download tokens. Saving that raw
+    token verbatim means it expires within the hour, after which the server rejects
+    both AI proxy calls and in-app update downloads (/api/download → 401). We
+    therefore exchange it once via the server's /api/activate endpoint, which
+    returns a permanent activation token (no exp), and persist that instead.
+    """
     data = request.get_json(silent=True) or {}
     token = (data.get('token') or '').strip()
     if not token:
         return jsonify({'status': 'failure', 'message': 'Token is required'}), 400
 
-    if not activation_mod.save(token):
+    try:
+        resp = requests.post(
+            f'{activation_mod.AI_SERVICE_URL}/api/activate',
+            json={'token': token}, timeout=15,
+        )
+    except requests.RequestException as e:
+        return jsonify({'status': 'failure',
+                        'message': f'Could not reach activation server: {e}'}), 502
+
+    if resp.status_code != 200:
+        message = 'Activation failed. The token may be invalid or expired — get a fresh one at easyokapi.cbbiotec.vn.'
+        try:
+            message = resp.json().get('message', message)
+        except ValueError:
+            pass
+        return jsonify({'status': 'failure', 'message': message}), resp.status_code
+
+    try:
+        license_token = (resp.json().get('license_token') or '').strip()
+    except ValueError:
+        license_token = ''
+    if not license_token:
+        return jsonify({'status': 'failure',
+                        'message': 'Activation server did not return a license token'}), 502
+
+    if not activation_mod.save(license_token):
         return jsonify({'status': 'failure', 'message': 'Could not save activation token'}), 500
 
     return jsonify({'status': 'success', 'message': 'AI assistant activated'})
