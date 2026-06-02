@@ -75,7 +75,7 @@ InstallColors E2E8F0 312E81
 
 ; Installer metadata
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "EasyOKAPI_Setup.exe"
+OutFile "EasyOKAPI_Setup_${APP_VERSION}.exe"
 InstallDir "${INSTALL_DIR}"
 BrandingText "EasyOKAPI ${APP_VERSION}"
 ShowInstDetails show

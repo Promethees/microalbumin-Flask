@@ -131,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-win-${{ needs.setup.outputs.version }}
-          path: installer-win/*.exe
+          path: installer-win/EasyOKAPI_Setup_${{ needs.setup.outputs.bare_version }}.exe
 
   # ── Linux build ────────────────────────────────────────────────────────────
   build-linux:
