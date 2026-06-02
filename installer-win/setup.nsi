@@ -732,6 +732,12 @@ Click Cancel to exit Setup." \
   ${EndIf}
   DetailPrint "Virtual environment ready."
 
+  ; Remove the setup batch scripts now that they have served their purpose. The
+  ; startwindow-*.bat files only drive installation (Steps 1–4); at runtime the
+  ; app launches via EasyOKAPI.exe -> launcher.ps1, so none are needed afterwards.
+  DetailPrint "Removing setup scripts..."
+  Delete "$INSTDIR\startwindow-*.bat"
+
   ; Create desktop shortcut and write uninstaller
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${RUNNER_NAME}.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
