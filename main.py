@@ -21,7 +21,7 @@ from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
-from download_service import get_cached_artifacts, _ARTIFACT_PREFIX, _GITHUB_REPO, _gh_headers
+from download_service import get_release, get_release_asset, _RELEASE_ASSET_SUFFIX, _gh_headers
 from routes.oauth_routes import oauth_bp
 from account import db, run_migrations
 
@@ -113,46 +113,34 @@ def index():
     return response
 
 # ------------------------------------------------------------------
-# GitHub Artifact Downloads
-# (artifact cache + _ARTIFACT_PREFIX live in download_service.py)
+# GitHub Release Downloads
+# Installers are served from the GitHub Release pinned by APP_RELEASE_TAG
+# (release cache + _RELEASE_ASSET_SUFFIX live in download_service.py).
 # ------------------------------------------------------------------
 
 @app.route('/api/release-info')
 def api_release_info():
     try:
-        artifacts = get_cached_artifacts()
-        version, available = None, {p: False for p in _ARTIFACT_PREFIX}
-        for art in artifacts:
-            if art.get('expired'):
-                continue
-            for platform, prefix in _ARTIFACT_PREFIX.items():
-                if art['name'].startswith(prefix):
-                    available[platform] = True
-                    if version is None:
-                        version = art['name'][len(prefix):]  # e.g. "v1.0.4"
-        return jsonify({'version': version or 'unknown', 'available': available})
+        release = get_release()
+        version = (release.get('tag_name') if release else None) or 'unknown'  # e.g. "v1.1.4"
+        available = {p: get_release_asset(p) is not None for p in _RELEASE_ASSET_SUFFIX}
+        return jsonify({'version': version, 'available': available})
     except Exception as e:
         return jsonify({'error': str(e), 'version': None, 'available': {}}), 502
 
 @app.route('/download/<platform>')
 def download_offline(platform):
-    if platform not in _ARTIFACT_PREFIX:
+    if platform not in _RELEASE_ASSET_SUFFIX:
         return jsonify({'status': 'error', 'message': 'Unknown platform'}), 404
-    if not os.environ.get('GITHUB_TOKEN'):
-        return jsonify({'status': 'error', 'message': 'GITHUB_TOKEN not configured on server'}), 503
     try:
-        artifacts = get_cached_artifacts()
-        prefix = _ARTIFACT_PREFIX[platform]
-        artifact = next(
-            (a for a in artifacts if a['name'].startswith(prefix) and not a.get('expired')),
-            None
-        )
-        if not artifact:
+        asset = get_release_asset(platform)
+        if not asset:
             return jsonify({'status': 'error', 'message': f'No {platform} build available yet'}), 404
-        # Ask GitHub for the presigned S3 URL (returns 302)
+        # Ask GitHub for the presigned S3 URL (the asset API 302-redirects to it).
         dl = http_requests.get(
-            f'https://api.github.com/repos/{_GITHUB_REPO}/actions/artifacts/{artifact["id"]}/zip',
-            headers=_gh_headers(), allow_redirects=False, timeout=10
+            asset['url'],
+            headers={**_gh_headers(), 'Accept': 'application/octet-stream'},
+            allow_redirects=False, timeout=10
         )
         location = dl.headers.get('Location')
         if not location:

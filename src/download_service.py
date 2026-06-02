@@ -52,6 +52,65 @@ def get_cached_artifacts() -> list:
     return artifacts
 
 
+# ── GitHub Release assets (pinned to APP_RELEASE_TAG) ─────────────────────────
+# The public download buttons serve the built installers attached to a specific
+# GitHub Release, identified by APP_RELEASE_TAG (e.g. 'v1.1.4') rather than the
+# latest successful CI run. When the tag is unset we fall back to the repo's
+# 'latest' published release.
+
+_APP_RELEASE_TAG = os.environ.get('APP_RELEASE_TAG', '').strip()
+
+# Match a release asset to a platform by its filename suffix.
+# (mac → EasyOKAPI_<ver>.dmg, win → EasyOKAPI_Setup_<ver>.exe, linux → *_linux_<ver>.tar.gz)
+_RELEASE_ASSET_SUFFIX = {'mac': '.dmg', 'win': '.exe', 'linux': '.tar.gz'}
+
+_release_cache: dict = {'release': None, 'ts': 0.0, 'tag': None}
+_RELEASE_CACHE_TTL = 900  # 15 minutes
+
+
+def get_release(tag: str | None = None) -> dict | None:
+    """Fetch and cache the GitHub Release for APP_RELEASE_TAG (or an explicit tag).
+
+    Returns the release JSON object, or None when the release does not exist.
+    Falls back to the repo's latest published release when no tag is configured.
+    """
+    tag = (tag or _APP_RELEASE_TAG).strip()
+    now = time.time()
+    if (_release_cache['release'] is not None
+            and _release_cache['tag'] == tag
+            and now - _release_cache['ts'] < _RELEASE_CACHE_TTL):
+        return _release_cache['release']
+    if tag:
+        url = f'https://api.github.com/repos/{_GITHUB_REPO}/releases/tags/{tag}'
+    else:
+        url = f'https://api.github.com/repos/{_GITHUB_REPO}/releases/latest'
+    resp = requests.get(url, headers=_gh_headers(), timeout=10)
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    release = resp.json()
+    _release_cache.update(release=release, ts=now, tag=tag)
+    return release
+
+
+def get_release_asset(platform: str, tag: str | None = None) -> dict | None:
+    """Return the GitHub Release asset dict for a platform, matched by filename suffix.
+
+    Returns None when the platform is unknown, the release is missing, or the
+    release has no asset for that platform.
+    """
+    suffix = _RELEASE_ASSET_SUFFIX.get(platform)
+    if not suffix:
+        return None
+    release = get_release(tag)
+    if not release:
+        return None
+    for asset in release.get('assets', []):
+        if asset.get('name', '').lower().endswith(suffix):
+            return asset
+    return None
+
+
 def get_latest_version() -> str | None:
     """Return the raw version tag from the latest CI build (e.g. 'v1.0.11'), or None.
 
