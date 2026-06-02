@@ -79,6 +79,7 @@
 - Hidden directories (starting with `.` or `_`) are filtered out.
 - **Anti-pattern**: Do **not** restore `get_directory()`, `browse_directory()`, `get_parent_directory()`, or `current_directory` global in `file_path.py` — these have been permanently removed.
 - `/run_script` payload uses `subfolder` (folder name only, no slashes) instead of `base_dir`; backend constructs `data/<subfolder>` and creates it if needed.
+- Route `POST /move_file` (`filename`, `path`, `dest_path`; form-encoded) moves a CSV data file between data subfolders. Both `path` and `dest_path` must validate inside `data_root`; `filename` must be a bare name (no `/`, `\`, `..`); same-folder moves are rejected; a name clash in the destination is auto-incremented via `get_next_filename` so a move **never** clobbers an existing file. Blocked (`423 LOCKED`) while the HID process runs. Frontend: `moveFile()` in `data-handling.js` (Move button `#move-file-btn`, enabled/disabled alongside `#copy-file-btn`) shows a SweetAlert2 folder-select dialog (data root + subfolders, excluding the current folder). CSV-only: it bails in `report` mode.
 
 ### 2.7 Shutdown Endpoint
 

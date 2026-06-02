@@ -401,6 +401,63 @@ def copy_file():
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
+@file_bp.route('/move_file', methods=['POST'])
+def move_file():
+    """Move a CSV data file from one data subfolder to another.
+
+    Both the source (``path``) and destination (``dest_path``) directories must
+    validate inside DATA_ROOT. The destination filename is auto-incremented when
+    a file of the same name already exists there, so a move never clobbers data.
+    """
+    try:
+        if state.process and state.process.poll() is None:
+            return jsonify({'status': 'error', 'message': 'Cannot move files while the data collection process is running'}), HTTPStatus.LOCKED
+
+        file_name = request.form.get('filename')
+        src_dir = request.form.get('path') or DATA_ROOT
+        dest_dir = request.form.get('dest_path') or DATA_ROOT
+
+        if not file_name:
+            return jsonify({'status': 'error', 'message': 'Filename is required'}), HTTPStatus.BAD_REQUEST
+        # Filename must be a bare name with no path traversal/separators.
+        if any(c in file_name for c in ('/', '\\', '..')):
+            return jsonify({'status': 'error', 'message': 'Invalid filename'}), HTTPStatus.BAD_REQUEST
+
+        src_dir_v = validate_in_data_root(src_dir)
+        dest_dir_v = validate_in_data_root(dest_dir)
+        if not src_dir_v or not dest_dir_v:
+            return jsonify({'status': 'error', 'message': 'Invalid folder path'}), HTTPStatus.BAD_REQUEST
+        if not os.path.isdir(dest_dir_v):
+            return jsonify({'status': 'error', 'message': 'Destination folder not found'}), HTTPStatus.NOT_FOUND
+
+        if os.path.normpath(src_dir_v) == os.path.normpath(dest_dir_v):
+            return jsonify({'status': 'error', 'message': 'Source and destination folders are the same'}), HTTPStatus.BAD_REQUEST
+
+        src_path = os.path.join(src_dir_v, file_name)
+        if not os.path.isfile(src_path):
+            return jsonify({'status': 'error', 'message': 'Source file not found'}), HTTPStatus.NOT_FOUND
+
+        # Auto-rename in the destination so a same-named file is never overwritten.
+        dst_path = os.path.join(dest_dir_v, file_name)
+        if os.path.exists(dst_path):
+            dst_path = get_next_filename(Path(file_name).suffix or ".csv", dest_dir_v, Path(file_name).stem)
+
+        try:
+            shutil.move(src_path, dst_path)
+            return jsonify({
+                'status': 'success',
+                'message': f"Moved '{file_name}' to {dest_dir_v}",
+                'new_path': dst_path,
+                'new_filename': os.path.basename(dst_path)
+            }), HTTPStatus.OK
+        except PermissionError as e:
+            return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
+        except OSError as e:
+            return jsonify({'status': 'error', 'message': f'Failed: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
+
 @file_bp.route('/merge_csv', methods=['POST'])
 def merge_csv():
     try:

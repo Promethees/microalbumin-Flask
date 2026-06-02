@@ -129,6 +129,91 @@ def test_copy_file(client, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# file_routes — /move_file
+# ---------------------------------------------------------------------------
+
+def test_move_file_success(client, tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    dst = tmp_path / "dst"; dst.mkdir()
+    (src / "m.csv").write_text("data")
+    with patch('file_path.DATA_ROOT', str(tmp_path)):
+        rv = client.post('/move_file', data={
+            'filename': 'm.csv', 'path': str(src), 'dest_path': str(dst)
+        })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert not (src / "m.csv").exists()
+    assert (dst / "m.csv").exists()
+
+
+def test_move_file_autorenames_on_conflict(client, tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    dst = tmp_path / "dst"; dst.mkdir()
+    (src / "m.csv").write_text("new")
+    (dst / "m.csv").write_text("existing")
+    with patch('file_path.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.get_next_filename', return_value=str(dst / "m_1.csv")):
+        rv = client.post('/move_file', data={
+            'filename': 'm.csv', 'path': str(src), 'dest_path': str(dst)
+        })
+    assert rv.status_code == 200
+    assert (dst / "m.csv").read_text() == "existing"   # original not clobbered
+    assert (dst / "m_1.csv").read_text() == "new"
+    assert not (src / "m.csv").exists()
+
+
+def test_move_file_same_folder_rejected(client, tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    (src / "m.csv").write_text("data")
+    with patch('file_path.DATA_ROOT', str(tmp_path)):
+        rv = client.post('/move_file', data={
+            'filename': 'm.csv', 'path': str(src), 'dest_path': str(src)
+        })
+    assert rv.status_code == 400
+    assert 'same' in rv.get_json()['message'].lower()
+    assert (src / "m.csv").exists()
+
+
+def test_move_file_process_running_returns_locked(client):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    rv = client.post('/move_file', data={'filename': 'm.csv', 'path': '/data/a', 'dest_path': '/data/b'})
+    assert rv.status_code == 423
+
+
+def test_move_file_missing_source(client, tmp_path):
+    src = tmp_path / "src"; src.mkdir()
+    dst = tmp_path / "dst"; dst.mkdir()
+    with patch('file_path.DATA_ROOT', str(tmp_path)):
+        rv = client.post('/move_file', data={
+            'filename': 'ghost.csv', 'path': str(src), 'dest_path': str(dst)
+        })
+    assert rv.status_code == 404
+
+
+def test_move_file_rejects_traversal_filename(client, tmp_path):
+    with patch('file_path.DATA_ROOT', str(tmp_path)):
+        rv = client.post('/move_file', data={
+            'filename': '../evil.csv', 'path': str(tmp_path), 'dest_path': str(tmp_path / "dst")
+        })
+    assert rv.status_code == 400
+    assert 'filename' in rv.get_json()['message'].lower()
+
+
+def test_move_file_dest_outside_data_root(client, tmp_path, tmp_path_factory):
+    src = tmp_path / "src"; src.mkdir()
+    (src / "m.csv").write_text("data")
+    outside = str(tmp_path_factory.mktemp("outside"))
+    with patch('file_path.DATA_ROOT', str(tmp_path)):
+        rv = client.post('/move_file', data={
+            'filename': 'm.csv', 'path': str(src), 'dest_path': outside
+        })
+    assert rv.status_code == 400
+    assert 'invalid folder' in rv.get_json()['message'].lower()
+    assert (src / "m.csv").exists()
+
+
+# ---------------------------------------------------------------------------
 # edit_file Route Tests
 # ---------------------------------------------------------------------------
 

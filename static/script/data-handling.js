@@ -29,6 +29,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
             clearCustomColors();
 
             $id("copy-file-btn").disabled = false;
+            if ($id("move-file-btn")) $id("move-file-btn").disabled = false;
 
             // Reset range values
             $id("range-value-start").value = 0;
@@ -278,6 +279,82 @@ function copyFile(tableSelector = "#file-table") {
     });
 }
 
+// Move the selected CSV data file to another data subfolder (or the data root).
+// CSV-only — the report-mode file table holds subjects, not movable data files.
+async function moveFile() {
+    if (AppState.currentMeasurementMode === 'report') return;
+
+    const currentFile = AppState.currentFile;
+    if (!currentFile) {
+        Swal.fire({ title: 'Error!', text: 'No file selected to move.', icon: 'error', confirmButtonText: 'OK' });
+        return;
+    }
+
+    // Build the destination dropdown from the available data folders, excluding
+    // the folder the file already lives in.
+    let folders = [];
+    try {
+        const res = await fetch('/get_data_folders');
+        const data = await res.json();
+        folders = data.folders || [];
+    } catch (e) { /* still offer the data root below */ }
+
+    const norm = p => (p || '').replace(/\\\\/g, '\\');
+    const current = norm(AppState.currentDirectory);
+    const options = {};
+    if (typeof DATA_ROOT !== 'undefined' && norm(DATA_ROOT) !== current) {
+        options[DATA_ROOT] = '— data root —';
+    }
+    folders.forEach(f => { if (norm(f.path) !== current) options[f.path] = f.name; });
+
+    if (Object.keys(options).length === 0) {
+        Swal.fire({ title: 'No destination', text: 'There is no other data folder to move this file to. Create a folder first.', icon: 'info', confirmButtonText: 'OK' });
+        return;
+    }
+
+    const { value: destPath } = await Swal.fire({
+        title: `Move "${currentFile}"`,
+        input: 'select',
+        inputOptions: options,
+        inputPlaceholder: 'Select destination folder',
+        showCancelButton: true,
+        confirmButtonText: 'Move',
+        inputValidator: (v) => (!v ? 'Please choose a destination folder.' : null)
+    });
+    if (!destPath) return;
+
+    logEvent('file', 'move', { name: currentFile, dest: destPath });
+    if (typeof window.showSpinner === 'function') window.showSpinner();
+    $.ajax({
+        url: '/move_file',
+        method: 'POST',
+        data: { path: AppState.currentDirectory, dest_path: destPath, filename: currentFile },
+        success: function (response) {
+            if (response.status === 'success') {
+                deselectFile('#file-table');
+                updateDirectory(AppState.currentDirectory);
+                if (getBtnChecked('no-swal-checkbox')) {
+                    console.log('File moved successfully:', response.message);
+                } else {
+                    Swal.fire({ title: 'Moved!', text: response.message, icon: 'success', timer: 2000, showConfirmButton: false });
+                }
+            } else {
+                Swal.fire({ title: 'Error!', text: response.message || 'An unknown error occurred while moving the file.', icon: 'error', confirmButtonText: 'OK' });
+            }
+        },
+        error: function (xhr, status, error) {
+            let message;
+            if (xhr.status === 423) message = 'File operation is locked because a process is currently running.';
+            else if (xhr.status === 404) message = 'The file or destination folder was not found.';
+            else if (xhr.status === 403) message = 'Permission denied. Please check your file permissions.';
+            else if (xhr.status === 400) message = 'Invalid request. Please check the input data.';
+            else message = 'Unexpected error: ' + (xhr.responseJSON?.message || error);
+            Swal.fire({ title: 'Error!', text: message, icon: 'error', confirmButtonText: 'OK' });
+        },
+        complete: function () { if (typeof window.hideSpinner === 'function') window.hideSpinner(); }
+    });
+}
+
 async function processDataDisplay(fileName, jsonFileContent = null) {
     logEvent('data', 'display', { file: fileName });
     await fetchData(fileName, jsonFileContent);
@@ -307,7 +384,7 @@ function deselectFile(tableSelector = "#file-table") {
         $text("plot-analysis", "");
 
         updateFileDisplay(AppState.currentFile);
-        $disable(["copy-file-btn"], true);
+        $disable(["copy-file-btn", "move-file-btn"], true);
         $hidden(["data-display-section"]);
 
     } else if (tableSelector === "#json-table") {
