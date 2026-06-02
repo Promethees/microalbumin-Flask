@@ -554,31 +554,35 @@ Click No to keep the existing installation and cancel Setup." \
       Abort   ; user chose No → exit installer cleanly
     step1_do_overwrite:
 
-    ; Stop any EasyOKAPI Python still running from this install. A live instance
-    ; keeps its venv python.exe/DLLs open, so the RMDir below only partially
-    ; deletes the venv and the later "pip install" fails with [WinError 5]
-    ; Access is denied, shipping a broken app. The PowerShell is written to a
-    ; temp file (rather than inlined) to avoid NSIS/PowerShell quote escaping.
-    ;
-    ; Stop-Process -Force returns BEFORE Windows has finished tearing the process
-    ; down and releasing its handles on venv\Scripts\python.exe and the loaded
-    ; .pyd/.dll files, so a fixed Start-Sleep raced the dying process and the
-    ; RMDir below could still hit a locked venv. Instead we Wait-Process on the
-    ; killed PIDs, then poll until the venv python can be opened with an exclusive
-    ; (FileShare None) handle — proving no other process still holds it — before
-    ; returning, so the RMDir is never racing a lingering lock.
-    DetailPrint "Stopping any running EasyOKAPI instance..."
-    FileOpen $9 "$PLUGINSDIR\stop-easyokapi.ps1" w
+    ; A live EasyOKAPI instance keeps its venv python.exe/DLLs open, so the RMDir
+    ; below would only partially delete the venv and the later "pip install" would
+    ; fail with [WinError 5] Access is denied, shipping a broken app. EasyOKAPI
+    ; runs elevated, so an unattended Stop-Process is denied by the system — we
+    ; cannot reliably force-kill it. Instead, detect whether an instance from THIS
+    ; install is still running and make the user shut it down before we touch the
+    ; venv. The detector (written to a temp file to dodge NSIS/PowerShell quote
+    ; escaping) exits 1 while a matching python.exe/pythonw.exe is alive, else 0.
+    FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
     FileWrite $9 "$$r = $$args[0]$\r$\n"
     FileWrite $9 "$$procs = Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq 'python.exe' -or $$_.Name -eq 'pythonw.exe') -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) }$\r$\n"
-    FileWrite $9 "$$ids = @(); foreach ($$p in $$procs) { $$ids += [int]$$p.ProcessId; Write-Host ('  stopping PID ' + $$p.ProcessId); Stop-Process -Id $$p.ProcessId -Force -ErrorAction SilentlyContinue }$\r$\n"
-    FileWrite $9 "foreach ($$id in $$ids) { try { Wait-Process -Id $$id -Timeout 15 -ErrorAction SilentlyContinue } catch {} }$\r$\n"
-    FileWrite $9 "$$venvPy = Join-Path $$r 'code\venv\Scripts\python.exe'$\r$\n"
-    FileWrite $9 "$$deadline = (Get-Date).AddSeconds(15)$\r$\n"
-    FileWrite $9 "while ((Get-Date) -lt $$deadline) { if (-not (Test-Path -LiteralPath $$venvPy)) { break }; try { $$fs = [System.IO.File]::Open($$venvPy,'Open','ReadWrite','None'); $$fs.Close(); break } catch { Start-Sleep -Milliseconds 300 } }$\r$\n"
+    FileWrite $9 "if ($$procs) { exit 1 } else { exit 0 }$\r$\n"
     FileClose $9
-    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\stop-easyokapi.ps1" "$INSTDIR\"'
+
+  step1_check_running:
+    DetailPrint "Checking for a running EasyOKAPI instance..."
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1" "$INSTDIR\"'
     Pop $0
+    ${If} $0 == 1
+      MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
+        "EasyOKAPI is still running and must be closed before it can be updated.$\r$\n\
+$\r$\n\
+Please shut it down: open EasyOKAPI in your browser (http://localhost:5099) and click the \
+$\"Shutdown Program$\" button, then click Retry.$\r$\n\
+$\r$\n\
+Click Cancel to exit Setup without making any changes." \
+        IDRETRY step1_check_running
+      Abort   ; user chose Cancel → leave the existing install untouched
+    ${EndIf}
 
     DetailPrint "Existing installation found — preserving user data..."
     ; Persistent backup folder (also read by the finish-page "Import data" option
