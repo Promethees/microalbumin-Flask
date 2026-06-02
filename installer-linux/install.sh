@@ -207,7 +207,7 @@ fi
 # ── Step 6: Download the application ──────────────────────────────────────────
 ARCHIVE_TMP="/tmp/easyokapi_app.tar.gz"
 echo "Downloading application to $INSTALL_DIR..."
-curl -L -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$DOWNLOAD_TOKEN"
+curl -L -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$DOWNLOAD_TOKEN&version=$VERSION_TAG"
 if [ $? -ne 0 ] || [ ! -s "$ARCHIVE_TMP" ]; then
     echo "❌ Failed to download the application. Check your token and network connection."
     exit 1

@@ -67,8 +67,12 @@ REM denied, and leaves the venv half-deleted (e.g. pyvenv.cfg gone, python.exe
 REM stuck) so the rebuild is skipped and a broken app ships. Stop any Python
 REM running from THIS install before touching the venv. %~dp0 is the install
 REM root (trailing backslash) so we match the process's full executable path.
+REM Stop-Process -Force returns before Windows releases the file handles, so we
+REM Wait-Process on the killed PIDs then poll until python.exe opens with an
+REM exclusive handle (no lingering lock) before proceeding — a fixed sleep raced
+REM the dying process and left the venv locked.
 echo Stopping any running EasyOKAPI instance...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$r='%~dp0'; Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and $_.ExecutablePath -and $_.ExecutablePath.StartsWith($r,[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Write-Host ('  stopping PID ' + $_.ProcessId); Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$r='%~dp0'; $procs = Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'python.exe' -or $_.Name -eq 'pythonw.exe') -and $_.ExecutablePath -and $_.ExecutablePath.StartsWith($r,[System.StringComparison]::OrdinalIgnoreCase) }; $ids=@(); foreach ($p in $procs) { $ids += [int]$p.ProcessId; Write-Host ('  stopping PID ' + $p.ProcessId); Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; foreach ($id in $ids) { try { Wait-Process -Id $id -Timeout 15 -ErrorAction SilentlyContinue } catch {} }; $venvPy = Join-Path $r 'code\venv\Scripts\python.exe'; $deadline=(Get-Date).AddSeconds(15); while ((Get-Date) -lt $deadline) { if (-not (Test-Path -LiteralPath $venvPy)) { break }; try { $fs=[System.IO.File]::Open($venvPy,'Open','ReadWrite','None'); $fs.Close(); break } catch { Start-Sleep -Milliseconds 300 } }"
 
 REM Recreate the venv if python.exe is missing OR the venv is broken.
 REM Checking only python.exe (the old behaviour) let a HALF-BUILT venv survive a

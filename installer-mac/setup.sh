@@ -150,7 +150,7 @@ fi
 
 ARCHIVE_TMP="/tmp/easyokapi_app_$$.tar.gz"
 echo "  Downloading application archive …"
-curl -L --fail -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$ACCESS_TOKEN"
+curl -L --fail -o "$ARCHIVE_TMP" "$AUTH_BASE_URL/api/download?token=$ACCESS_TOKEN&version=$VERSION_TAG"
 if [ $? -ne 0 ] || [ ! -s "$ARCHIVE_TMP" ]; then
     print_fail "Download failed."
     osascript -e "display dialog \"Download failed. Please check your access token and internet connection.\" buttons {\"OK\"} with title \"EasyOKAPI Setup\" $(_icon)"

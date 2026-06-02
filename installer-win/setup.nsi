@@ -559,11 +559,23 @@ Click No to keep the existing installation and cancel Setup." \
     ; deletes the venv and the later "pip install" fails with [WinError 5]
     ; Access is denied, shipping a broken app. The PowerShell is written to a
     ; temp file (rather than inlined) to avoid NSIS/PowerShell quote escaping.
+    ;
+    ; Stop-Process -Force returns BEFORE Windows has finished tearing the process
+    ; down and releasing its handles on venv\Scripts\python.exe and the loaded
+    ; .pyd/.dll files, so a fixed Start-Sleep raced the dying process and the
+    ; RMDir below could still hit a locked venv. Instead we Wait-Process on the
+    ; killed PIDs, then poll until the venv python can be opened with an exclusive
+    ; (FileShare None) handle — proving no other process still holds it — before
+    ; returning, so the RMDir is never racing a lingering lock.
     DetailPrint "Stopping any running EasyOKAPI instance..."
     FileOpen $9 "$PLUGINSDIR\stop-easyokapi.ps1" w
     FileWrite $9 "$$r = $$args[0]$\r$\n"
-    FileWrite $9 "Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq 'python.exe' -or $$_.Name -eq 'pythonw.exe') -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force -ErrorAction SilentlyContinue }$\r$\n"
-    FileWrite $9 "Start-Sleep -Seconds 2$\r$\n"
+    FileWrite $9 "$$procs = Get-CimInstance Win32_Process | Where-Object { ($$_.Name -eq 'python.exe' -or $$_.Name -eq 'pythonw.exe') -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) }$\r$\n"
+    FileWrite $9 "$$ids = @(); foreach ($$p in $$procs) { $$ids += [int]$$p.ProcessId; Write-Host ('  stopping PID ' + $$p.ProcessId); Stop-Process -Id $$p.ProcessId -Force -ErrorAction SilentlyContinue }$\r$\n"
+    FileWrite $9 "foreach ($$id in $$ids) { try { Wait-Process -Id $$id -Timeout 15 -ErrorAction SilentlyContinue } catch {} }$\r$\n"
+    FileWrite $9 "$$venvPy = Join-Path $$r 'code\venv\Scripts\python.exe'$\r$\n"
+    FileWrite $9 "$$deadline = (Get-Date).AddSeconds(15)$\r$\n"
+    FileWrite $9 "while ((Get-Date) -lt $$deadline) { if (-not (Test-Path -LiteralPath $$venvPy)) { break }; try { $$fs = [System.IO.File]::Open($$venvPy,'Open','ReadWrite','None'); $$fs.Close(); break } catch { Start-Sleep -Milliseconds 300 } }$\r$\n"
     FileClose $9
     nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\stop-easyokapi.ps1" "$INSTDIR\"'
     Pop $0
@@ -590,7 +602,9 @@ Click No to keep the existing installation and cancel Setup." \
 
   ; Download — curl output goes straight to the NSIS detail log.
   DetailPrint "Downloading application archive..."
-  nsExec::ExecToLog '"cmd.exe" /c curl --fail -L -o "$R4" "${AUTH_BASE_URL}/api/download?token=%EASYOKAPI_DOWNLOAD_TOKEN%"'
+  ; Pin the download to THIS installer's version so the server serves the exact
+  ; build that was packaged, not whatever its APP_RELEASE_TAG currently resolves to.
+  nsExec::ExecToLog '"cmd.exe" /c curl --fail -L -o "$R4" "${AUTH_BASE_URL}/api/download?token=%EASYOKAPI_DOWNLOAD_TOKEN%&version=v${APP_VERSION}"'
   Pop $0
   ${If} $0 == 255
     MessageBox MB_OK|MB_ICONSTOP "curl could not be launched (exit 255).$\r$\nCheck antivirus / Defender exclusions for $INSTDIR, then re-run Setup."
