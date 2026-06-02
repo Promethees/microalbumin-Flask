@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, render_template, Response, stream_with_context, session
 import jwt as pyjwt
@@ -29,6 +30,29 @@ def _resolved_release_tag() -> str:
     if _APP_RELEASE_TAG_OVERRIDE and _APP_RELEASE_TAG_OVERRIDE != 'latest':
         return _APP_RELEASE_TAG_OVERRIDE
     return get_latest_version() or 'latest'
+
+
+# A semver release tag, optionally 'v'-prefixed (e.g. 'v1.1.1' or '1.1.1').
+_SEMVER_TAG_RE = re.compile(r'^v?\d+\.\d+\.\d+$')
+
+
+def _requested_version_tag():
+    """Return a client-requested, validated release tag from ?version=, or None.
+
+    The desktop installer pins the build it was packaged for by sending
+    ?version=v1.1.1, so the server serves that exact release instead of whatever
+    _resolved_release_tag() currently points at (which always tracks the latest).
+
+    The value is interpolated into the GitHub tarball URL in fetch_github_release,
+    so it MUST be validated against a strict semver allowlist — never pass an
+    arbitrary client string through as a git ref. Always normalised to the
+    'v'-prefixed form the git tags use. Returns None when absent or malformed so
+    the caller falls back to _resolved_release_tag().
+    """
+    raw = (request.args.get('version') or '').strip()
+    if not raw or not _SEMVER_TAG_RE.match(raw):
+        return None
+    return raw if raw.startswith('v') else f'v{raw}'
 
 
 # ── Pages ──────────────────────────────────────────────────────────────────────
@@ -345,7 +369,10 @@ def download():
     if not user or not user.is_verified:
         return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
 
-    version_tag = _resolved_release_tag()
+    # Honour an explicit, validated ?version= (the installer pins its own build);
+    # fall back to the server's resolved tag (used by the in-app auto-updater,
+    # which intentionally always pulls the latest).
+    version_tag = _requested_version_tag() or _resolved_release_tag()
     try:
         upstream = fetch_github_release(version_tag)
     except Exception as e:
