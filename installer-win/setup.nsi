@@ -424,6 +424,42 @@ Function TokenPageLeave
   ${EndIf}
 FunctionEnd
 
+; ── Data-archive layout helpers ────────────────────────────────────────────────
+; Keep the archived data\ tree purely subfolder-based so it round-trips cleanly
+; across uninstall/reinstall: loose files at the data root are stashed under
+; data\root\ on "normalize" (the app forbids a real 'root' subfolder so there is
+; no collision) and dissolved back into the data root on "restore". The helper is
+; a small PowerShell script written to $PLUGINSDIR (the same file-not-inline
+; pattern used for stop-easyokapi.ps1, which avoids NSIS/PowerShell quote
+; escaping). WriteArchiveHelper must be inserted once per running binary
+; (installer and uninstaller are separate executables) before RunArchive is used.
+!macro WriteArchiveHelper
+  InitPluginsDir
+  FileOpen $9 "$PLUGINSDIR\archive.ps1" w
+  FileWrite $9 "$$mode = $$args[0]$\r$\n"
+  FileWrite $9 "$$dataDir = $$args[1]$\r$\n"
+  FileWrite $9 "if (-not (Test-Path -LiteralPath $$dataDir)) { exit 0 }$\r$\n"
+  FileWrite $9 "$$rootDir = Join-Path $$dataDir 'root'$\r$\n"
+  FileWrite $9 "if ($$mode -eq 'normalize') {$\r$\n"
+  FileWrite $9 "  $$loose = Get-ChildItem -LiteralPath $$dataDir -File -Force -ErrorAction SilentlyContinue$\r$\n"
+  FileWrite $9 "  if ($$loose) {$\r$\n"
+  FileWrite $9 "    if (-not (Test-Path -LiteralPath $$rootDir)) { New-Item -ItemType Directory -Path $$rootDir | Out-Null }$\r$\n"
+  FileWrite $9 "    foreach ($$f in $$loose) { Move-Item -LiteralPath $$f.FullName -Destination $$rootDir -Force }$\r$\n"
+  FileWrite $9 "  }$\r$\n"
+  FileWrite $9 "} elseif ($$mode -eq 'restore') {$\r$\n"
+  FileWrite $9 "  if (Test-Path -LiteralPath $$rootDir) {$\r$\n"
+  FileWrite $9 "    foreach ($$i in (Get-ChildItem -LiteralPath $$rootDir -Force -ErrorAction SilentlyContinue)) { Move-Item -LiteralPath $$i.FullName -Destination $$dataDir -Force }$\r$\n"
+  FileWrite $9 "    Remove-Item -LiteralPath $$rootDir -Recurse -Force -ErrorAction SilentlyContinue$\r$\n"
+  FileWrite $9 "  }$\r$\n"
+  FileWrite $9 "}$\r$\n"
+  FileClose $9
+!macroend
+
+!macro RunArchive MODE DIR
+  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\archive.ps1" "${MODE}" "${DIR}"'
+  Pop $0
+!macroend
+
 ; ── Finish-page: import data from a previous installation ──────────────────────
 ; Wired to the repurposed SHOWREADME checkbox. Copies measurement data,
 ; calibration JSON, and reports from the persistent backup folder
@@ -434,6 +470,7 @@ Function RestoreBackupData
   IfFileExists "$R6\*.*" 0 rbd_none
     IfFileExists "$R6\data\*.*" 0 +2
       CopyFiles /SILENT "$R6\data" "$INSTDIR\code\data"
+    !insertmacro RunArchive "restore" "$INSTDIR\code\data"
     IfFileExists "$R6\json\*.*" 0 +2
       CopyFiles /SILENT "$R6\json" "$INSTDIR\code\json"
     IfFileExists "$R6\report\*.*" 0 +2
@@ -447,6 +484,10 @@ FunctionEnd
 ; ── Install section ────────────────────────────────────────────────────────────
 Section "Install" SEC01
   SetOutPath "$INSTDIR"
+
+  ; Emit the data-archive helper once so the backup/restore steps below (and the
+  ; finish-page "Import data" option) can normalize/dissolve the data\root\ folder.
+  !insertmacro WriteArchiveHelper
 
   ; Copy batch files and launcher
   File "startwindow-0-clone-repo.bat"
@@ -537,6 +578,7 @@ Click No to keep the existing installation and cancel Setup." \
     StrCpy $R5 "1"
     IfFileExists "$R3\data\*.*" 0 +2
       CopyFiles /SILENT "$R3\data" "$R6\data"
+    !insertmacro RunArchive "normalize" "$R6\data"
     IfFileExists "$R3\json\*.*" 0 +2
       CopyFiles /SILENT "$R3\json" "$R6\json"
     IfFileExists "$R3\report\*.*" 0 +2
@@ -574,6 +616,7 @@ Click No to keep the existing installation and cancel Setup." \
     DetailPrint "Restoring user data (data, json, report)..."
     IfFileExists "$R6\data\*.*" 0 +2
       CopyFiles /SILENT "$R6\data" "$R3\data"
+    !insertmacro RunArchive "restore" "$R3\data"
     IfFileExists "$R6\json\*.*" 0 +2
       CopyFiles /SILENT "$R6\json" "$R3\json"
     IfFileExists "$R6\report\*.*" 0 +2
@@ -672,9 +715,11 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\${APP_NAME}"
 
   ; Preserve user data before wiping the install directory
+  !insertmacro WriteArchiveHelper
   CreateDirectory "$DOCUMENTS\EasyOKAPI_data"
   IfFileExists "$INSTDIR\code\data\*.*" 0 +2
     CopyFiles /SILENT "$INSTDIR\code\data" "$DOCUMENTS\EasyOKAPI_data\data"
+  !insertmacro RunArchive "normalize" "$DOCUMENTS\EasyOKAPI_data\data"
   IfFileExists "$INSTDIR\code\json\*.*" 0 +2
     CopyFiles /SILENT "$INSTDIR\code\json" "$DOCUMENTS\EasyOKAPI_data\json"
   IfFileExists "$INSTDIR\code\report\*.*" 0 +2

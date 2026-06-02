@@ -52,6 +52,21 @@ def test_run_script_success(client):
                 assert rv.status_code == 200
                 assert rv.get_json()['status'] == 'success'
 
+def test_run_script_rejects_reserved_subfolder(client):
+    """The archive staging name 'root' is reserved and must be refused."""
+    rv = client.post('/run_script', json={'subfolder': 'root'})
+    assert rv.status_code == 400
+    assert rv.get_json()['status'] == 'failure'
+    assert 'reserved' in rv.get_json()['message'].lower()
+
+
+def test_run_script_rejects_reserved_subfolder_case_insensitive(client):
+    """Reserved-name check is case-insensitive ('ROOT' is also refused)."""
+    rv = client.post('/run_script', json={'subfolder': 'ROOT'})
+    assert rv.status_code == 400
+    assert rv.get_json()['status'] == 'failure'
+
+
 def test_check_status_not_running(client):
     """Test check_status when no script is running."""
     rv = client.get('/check_status')
@@ -655,6 +670,17 @@ def test_rename_data_folder_rejects_hidden_prefix(client, tmp_path):
         rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': '_hidden'})
     assert rv.status_code == 400
     assert 'Invalid folder name' in rv.get_json()['message']
+
+
+def test_rename_data_folder_rejects_reserved_name(client, tmp_path):
+    folder = tmp_path / "old"
+    folder.mkdir()
+    with patch('routes.file_routes.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.validate_in_data_root', return_value=str(folder)):
+        rv = client.post('/rename_data_folder', json={'path': str(folder), 'new_name': 'Root'})
+    assert rv.status_code == 400
+    assert 'reserved' in rv.get_json()['message'].lower()
+    assert folder.is_dir()
 
 
 def test_rename_data_folder_name_unchanged(client, tmp_path):

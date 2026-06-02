@@ -11,6 +11,7 @@ import shutil
 
 import state
 from file_path import (DATA_ROOT, validate_in_data_root,
+                       is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER,
                        parse_csv_metadata, detect_csv_schema,
                        CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL)
 from file import get_dynamic_data, replace_empty, merge_csv_files
@@ -339,6 +340,8 @@ def rename_data_folder(validated_data):
             return jsonify({'status': 'error', 'message': 'New folder name is required'}), HTTPStatus.BAD_REQUEST
         if any(x in new_name for x in ('..', '/', '\\', '\x00')) or new_name.startswith('.') or new_name.startswith('_'):
             return jsonify({'status': 'error', 'message': 'Invalid folder name'}), HTTPStatus.BAD_REQUEST
+        if is_reserved_data_folder_name(new_name):
+            return jsonify({'status': 'error', 'message': f"'{RESERVED_ARCHIVE_FOLDER}' is a reserved folder name and cannot be used"}), HTTPStatus.BAD_REQUEST
 
         if os.path.basename(abs_path) == new_name:
             return jsonify({'status': 'success', 'message': 'Folder name unchanged', 'path': abs_path}), HTTPStatus.OK

@@ -1,6 +1,15 @@
 const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const _esc = s => _escHtml(String(s)).replace(/"/g, '&quot;').replace(/'/g, "\\'");
 
+// Folder name reserved by the data-archive feature (mirrors RESERVED_ARCHIVE_FOLDER
+// in src/file_path.py). Loose files at the data root are stashed under
+// data/<this>/ when the app is uninstalled/updated, so a user subfolder of this
+// name would collide. Folder create/rename forbid it (case-insensitive).
+const RESERVED_DATA_FOLDER = 'root';
+function isReservedDataFolderName(name) {
+    return (name || '').trim().toLowerCase() === RESERVED_DATA_FOLDER;
+}
+
 // ── Data-folder collapse toggle ──────────────────────────────────────────────
 
 function toggleFolderList(collapseId, chevronId) {
@@ -123,6 +132,7 @@ async function renameDataFolder(name, path) {
             if (!v) return 'Folder name is required';
             if (/[\\/]|\.\./.test(v)) return 'Name cannot contain slashes or "..".';
             if (v.startsWith('.') || v.startsWith('_')) return 'Name cannot start with "." or "_".';
+            if (isReservedDataFolderName(v)) return `"${RESERVED_DATA_FOLDER}" is a reserved folder name.`;
             return null;
         }
     });

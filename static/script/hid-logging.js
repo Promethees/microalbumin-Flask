@@ -202,6 +202,10 @@ async function runScript() {
             alert('Please enter a name for the new subfolder.');
             return;
         }
+        if (typeof isReservedDataFolderName === 'function' && isReservedDataFolderName(subfolder)) {
+            alert(`"${subfolder}" is a reserved folder name and cannot be used.`);
+            return;
+        }
     }
 
     const baseName = $id("base-name").value.trim();

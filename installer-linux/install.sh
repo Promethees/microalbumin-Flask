@@ -88,6 +88,24 @@ INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYTHON_VERSION="3.8.10"
 BACKUP_DIR=""
+
+# ── Data-archive layout helpers ───────────────────────────────────────────────
+# The persistent backup keeps the data/ tree purely subfolder-based: loose files
+# at the data root are stashed under data/root/ (the app forbids a real 'root'
+# subfolder so there is no collision). On restore the staging folder is dissolved
+# back into the data root.
+_archive_stash_root() {  # $1 = path to a data/ directory
+    [ -d "$1" ] || return 0
+    if [ -n "$(find "$1" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]; then
+        mkdir -p "$1/root"
+        find "$1" -maxdepth 1 -type f -exec mv -f {} "$1/root/" \;
+    fi
+}
+_archive_unstash_root() {  # $1 = path to a data/ directory
+    [ -d "$1/root" ] || return 0
+    find "$1/root" -mindepth 1 -maxdepth 1 -exec mv -f {} "$1/" \;
+    rmdir "$1/root" 2>/dev/null || rm -rf "$1/root"
+}
 # Okapi mascot icon bundled alongside the install scripts (added by build-tarball.sh)
 OKAPI_ICON="$SCRIPT_DIR/okapi.png"
 
@@ -176,6 +194,7 @@ if [ -d "$INSTALL_DIR" ] && [ "$(find "$INSTALL_DIR" -maxdepth 1 | wc -l)" -gt 1
         for _dir in data json report; do
             [ -d "$INSTALL_DIR/$_dir" ] && cp -r "$INSTALL_DIR/$_dir" "$BACKUP_DIR/$_dir"
         done
+        _archive_stash_root "$BACKUP_DIR/data"
         chown -R "$CURRENT_USER:$CURRENT_USER" "$BACKUP_DIR"
         echo "Removing existing installation..."
         rm -rf "$INSTALL_DIR"
@@ -325,6 +344,8 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
             cp -r "$BACKUP_DIR/$_dir" "$INSTALL_DIR/$_dir"
         fi
     done
+    _archive_unstash_root "$INSTALL_DIR/data"
+    chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR/data" 2>/dev/null
     # Keep $BACKUP_DIR as a persistent safety backup rather than deleting it.
     echo "✅ User data restored. A backup copy is kept at $BACKUP_DIR"
 fi
@@ -341,6 +362,7 @@ if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
         for _dir in data json report; do
             [ -d "$PERSIST_BACKUP/$_dir" ] && cp -r "$PERSIST_BACKUP/$_dir" "$INSTALL_DIR/$_dir"
         done
+        _archive_unstash_root "$INSTALL_DIR/data"
         chown -R "$CURRENT_USER:$CURRENT_USER" "$INSTALL_DIR"
         print_ok "Previous data imported from $PERSIST_BACKUP"
     fi

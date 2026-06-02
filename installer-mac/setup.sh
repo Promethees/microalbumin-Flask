@@ -102,6 +102,24 @@ print_ok "Python 3.8.10 ready."
 # ── Step 4 / 5 : Download application ────────────────────────────────────────
 print_step "4 / 5  Downloading EasyOKAPI"
 
+# ── Data-archive layout helpers ───────────────────────────────────────────────
+# The persistent backup keeps the data/ tree purely subfolder-based: loose files
+# at the data root are stashed under data/root/ (the app forbids a real 'root'
+# subfolder so there is no collision). On restore the staging folder is dissolved
+# back into the data root.
+_archive_stash_root() {  # $1 = path to a data/ directory
+    [ -d "$1" ] || return 0
+    if [ -n "$(find "$1" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]; then
+        mkdir -p "$1/root"
+        find "$1" -maxdepth 1 -type f -exec mv -f {} "$1/root/" \;
+    fi
+}
+_archive_unstash_root() {  # $1 = path to a data/ directory
+    [ -d "$1/root" ] || return 0
+    find "$1/root" -mindepth 1 -maxdepth 1 -exec mv -f {} "$1/" \;
+    rmdir "$1/root" 2>/dev/null || rm -rf "$1/root"
+}
+
 # Back up user data if reinstalling
 BACKUP_DIR=""
 if [ -d "$INSTALL_DIR" ] && [ "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
@@ -124,6 +142,7 @@ if [ -d "$INSTALL_DIR" ] && [ "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
     for d in data json report; do
         [ -d "$INSTALL_DIR/$d" ] && cp -r "$INSTALL_DIR/$d" "$BACKUP_DIR/$d"
     done
+    _archive_stash_root "$BACKUP_DIR/data"
     chown -R "$CURRENT_USER:staff" "$BACKUP_DIR"
     echo "  Removing existing installation …"
     rm -rf "$INSTALL_DIR" || { print_fail "Could not remove existing install."; exit 1; }
@@ -173,6 +192,8 @@ if [ -n "$BACKUP_DIR" ] && [ -d "$BACKUP_DIR" ]; then
             chown -R "$CURRENT_USER:staff" "$INSTALL_DIR/$d"
         fi
     done
+    _archive_unstash_root "$INSTALL_DIR/data"
+    chown -R "$CURRENT_USER:staff" "$INSTALL_DIR/data" 2>/dev/null
     # Keep $BACKUP_DIR as a persistent safety backup rather than deleting it.
     print_ok "User data restored. A backup copy is kept at $BACKUP_DIR"
 fi
@@ -310,6 +331,7 @@ if [ -z "$BACKUP_DIR" ] && [ -d "$PERSIST_BACKUP" ]; then
         for d in data json report; do
             [ -d "$PERSIST_BACKUP/$d" ] && cp -r "$PERSIST_BACKUP/$d" "$INSTALL_DIR/$d"
         done
+        _archive_unstash_root "$INSTALL_DIR/data"
         chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
         print_ok "Previous data imported from $PERSIST_BACKUP"
     fi

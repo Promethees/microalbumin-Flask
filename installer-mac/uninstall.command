@@ -23,6 +23,18 @@ fi
 REPO_NAME="microalbumin-Flask"
 INSTALL_DIR="/Applications/$REPO_NAME"
 
+# ── Data-archive layout helper ────────────────────────────────────────────────
+# Keep the archived data/ tree purely subfolder-based: loose files sitting
+# directly in the data root are stashed under data/root/ (the app forbids a real
+# 'root' subfolder so there is no collision). The reinstall dissolves it back.
+_archive_stash_root() {  # $1 = path to a data/ directory
+    [ -d "$1" ] || return 0
+    if [ -n "$(find "$1" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]; then
+        mkdir -p "$1/root"
+        find "$1" -maxdepth 1 -type f -exec mv -f {} "$1/root/" \;
+    fi
+}
+
 # ── Preserve user data before removing the application directory ──────────────
 # Mirrors the Windows/Linux uninstallers: measurement data, calibration curves,
 # and reports are copied to a persistent backup so a later reinstall can import
@@ -37,6 +49,7 @@ if [ -d "$INSTALL_DIR" ]; then
             DATA_SAVED=1
         fi
     done
+    _archive_stash_root "$USER_DATA_DEST/data"
     if [ "$DATA_SAVED" -eq 1 ]; then
         chown -R "$CURRENT_USER:staff" "$USER_DATA_DEST"
         echo "✅ User data (data/, json/, report/) preserved at $USER_DATA_DEST"

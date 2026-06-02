@@ -68,6 +68,7 @@
 - Users are **restricted to the `data/` directory** (project root). Free filesystem browsing is no longer allowed.
 - A **subfolder picker** UI lists immediate subdirectories of `data/` with search and sort by name.
 - `src/file_path.py` exports `DATA_ROOT` constant, `validate_in_data_root(path)`, and `get_data_subfolders()`. There is **no mutable `current_directory` state** — the backend is stateless; directory tracking is owned by the frontend.
+- **Reserved folder name `root`**: `src/file_path.py` exports `RESERVED_ARCHIVE_FOLDER = "root"` and `is_reserved_data_folder_name(name)` (case-insensitive, trims whitespace). `data/root/` is the staging folder the installers use to hold loose data-root files during the uninstall/reinstall archive cycle (see §2.16), so a user **cannot** create a subfolder called `root`. The check is enforced server-side in `/run_script` (subfolder) and `/rename_data_folder` (new_name), and client-side in `hid-logging.js` (new-folder input) and `navigation.js` (`isReservedDataFolderName`, rename validator). The JS constant `RESERVED_DATA_FOLDER` mirrors the Python constant — keep the two in sync.
 - `src/state.py` tracks `data_root_path`, `report_root_path`, `json_root_path` (all auto-created on startup).
 - Route `GET /get_data_folders` returns `[{"name": "...", "path": "..."}, ...]`.
 - Route `POST /rename_data_folder` (`{path, new_name}`) renames a subfolder in place via `os.rename`. The source `path` must validate inside `data_root` and not be the root itself; `new_name` must be a bare folder name (rejects `..`, `/`, `\`, `\x00`, and any `.`/`_` prefix so the result stays visible in the picker — `get_data_subfolders()` hides those). Returns the new absolute `path` so the frontend can re-point the active directory when the renamed folder was selected. Blocked (`423 LOCKED`) while the HID collection process is running, mirroring `/delete_data_folder`. Frontend: `renameDataFolder(name, path)` in `navigation.js`, triggered by the pencil button on each `.folder-item`.
@@ -181,6 +182,16 @@ Timestamp,Value:1,Value:2,...
 - **Port cleanup is OS-aware**: `browser_mgt.close_port()` dispatches to `lsof`+`kill` on Unix and `netstat -ano`+`taskkill` on Windows. Do not assume `lsof`/`kill` exist on Windows (they don't — the old single-path version silently no-op'd there).
 - **UI**: A version badge (`#app-version-badge`) in the top-left header gets an amber pulsing dot when an update is found. Clicking it opens a SweetAlert2 modal with release notes and an "Update Now" button. A progress bar modal shows SSE download/apply progress.
 - **Anti-pattern**: Do not call `restart_after_delay()` from any code path other than the update apply route — it hard-exits the server process.
+
+---
+
+### 2.16 Data-Archive Layout (Uninstall / Reinstall)
+
+- The **installers** (`installer-win/setup.nsi`, `installer-mac/setup.sh` + `uninstall.command`, `installer-linux/install.sh` + `uninstall.sh`) preserve `data/`, `json/`, `report/` across an uninstall/update by copying them to a persistent backup (`EasyOKAPI_data` in Documents/home) and restoring on the next install. The in-app auto-update (`update_service.py`) does **not** archive — it preserves data in place — so this layout logic lives **only** in the installers, not in `update_service.py`.
+- **`data/` is normalized to a purely subfolder-based tree in the archive.** On backup, loose files sitting directly in the data root are moved into a `data/root/` staging folder ("normalize"); on restore, `data/root/`'s contents are moved back up to the data root and the folder is removed ("restore"/dissolve). This keeps the archived `data/` tree uniform so it round-trips cleanly. `json/` and `report/` are **not** normalized (they are already subfolder-organized).
+- The staging folder name (`root`) is the reserved folder name from §2.6 — the app forbids creating a real `data/root/` so the staging folder never collides with user data.
+- **Implementation is inline in each installer (no shared Python helper)** — at Windows restore time no Python interpreter exists yet (the venv is built in a later step), so the logic must be installer-native. Windows uses a small PowerShell script written to `$PLUGINSDIR\archive.ps1` (the `WriteArchiveHelper` / `RunArchive` NSIS macros, mirroring the `stop-easyokapi.ps1` file-not-inline pattern); Mac/Linux use shell `_archive_stash_root` / `_archive_unstash_root` functions (`find -maxdepth 1 -type f`).
+- **Anti-pattern**: Do not normalize the *live* install's `data/` directory — only the backup copy (on archive) and the restored copy (on restore), so a failed install never mutates the user's working data. Do not add normalization to `json/` or `report/`.
 
 ---
 

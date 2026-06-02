@@ -30,6 +30,18 @@ prompt_confirm() {
     fi
 }
 
+# ── Data-archive layout helper ────────────────────────────────────────────────
+# Keep the archived data/ tree purely subfolder-based: loose files sitting
+# directly in the data root are stashed under data/root/ (the app forbids a real
+# 'root' subfolder so there is no collision). The reinstall dissolves it back.
+_archive_stash_root() {  # $1 = path to a data/ directory
+    [ -d "$1" ] || return 0
+    if [ -n "$(find "$1" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]; then
+        mkdir -p "$1/root"
+        find "$1" -maxdepth 1 -type f -exec mv -f {} "$1/root/" \;
+    fi
+}
+
 # ── Preserve user data before removing application directory ──────────────────
 if [ -d "$INSTALL_DIR" ]; then
     USER_DATA_DEST="$CURRENT_HOME/EasyOKAPI_data"
@@ -42,6 +54,8 @@ if [ -d "$INSTALL_DIR" ]; then
             DATA_SAVED=1
         fi
     done
+    _archive_stash_root "$USER_DATA_DEST/data"
+    chown -R "$CURRENT_USER:$CURRENT_USER" "$USER_DATA_DEST" 2>/dev/null
     if [ "$DATA_SAVED" -eq 1 ]; then
         echo "✅ User data (data/, json/, report/) preserved at $USER_DATA_DEST"
     fi

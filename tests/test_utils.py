@@ -85,6 +85,23 @@ def test_validate_in_data_root_outside(tmp_path, tmp_path_factory):
 
 
 # ---------------------------------------------------------------------------
+# file_path.is_reserved_data_folder_name
+# ---------------------------------------------------------------------------
+
+def test_is_reserved_data_folder_name_matches_root_any_case():
+    assert file_path.is_reserved_data_folder_name("root")
+    assert file_path.is_reserved_data_folder_name("ROOT")
+    assert file_path.is_reserved_data_folder_name("  Root  ")
+
+
+def test_is_reserved_data_folder_name_allows_other_names():
+    assert not file_path.is_reserved_data_folder_name("rootfolder")
+    assert not file_path.is_reserved_data_folder_name("my_data")
+    assert not file_path.is_reserved_data_folder_name("")
+    assert not file_path.is_reserved_data_folder_name(None)
+
+
+# ---------------------------------------------------------------------------
 # file_path.parse_csv_metadata
 # ---------------------------------------------------------------------------
 

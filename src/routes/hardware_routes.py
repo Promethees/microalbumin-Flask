@@ -7,6 +7,7 @@ import time
 import state
 from script_monitor import check_log_for_errors, check_log_for_missed_read
 from send_command import connect_to_device, send_command_and_wait_ack
+from file_path import is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER
 from validators import validate_json
 
 hardware_bp = Blueprint('hardware', __name__)
@@ -44,6 +45,9 @@ def run_script(validated_data):
     # Subfolder must be a simple name with no path traversal
     if subfolder and any(c in subfolder for c in ('/', '\\', '..')):
         return jsonify({'status': 'failure', 'message': 'Invalid subfolder name'}), 400
+    # "root" is reserved by the data-archive feature (see file_path.py).
+    if subfolder and is_reserved_data_folder_name(subfolder):
+        return jsonify({'status': 'failure', 'message': f"'{RESERVED_ARCHIVE_FOLDER}' is a reserved folder name and cannot be used"}), 400
     if any(c in base_name for c in ('/', '\\', '..')):
         return jsonify({'status': 'failure', 'message': 'Invalid base name'}), 400
 

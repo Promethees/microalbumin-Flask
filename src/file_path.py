@@ -17,6 +17,19 @@ def _find_project_root():
 DATA_ROOT = os.path.join(_find_project_root(), 'data')
 os.makedirs(DATA_ROOT, exist_ok=True)
 
+# Folder name reserved by the data-archive feature. When the app is uninstalled
+# or updated, the installers stash loose files sitting directly in the data root
+# into a ``data/<RESERVED_ARCHIVE_FOLDER>/`` staging folder so the archived
+# ``data/`` tree is purely subfolder-based; on restore the staging folder is
+# dissolved back into the data root. A user-created subfolder with this name
+# would collide with that staging folder, so folder creation/rename forbids it.
+RESERVED_ARCHIVE_FOLDER = "root"
+
+
+def is_reserved_data_folder_name(name: str) -> bool:
+    """True if ``name`` collides with a reserved data-folder name (case-insensitive)."""
+    return (name or "").strip().lower() == RESERVED_ARCHIVE_FOLDER
+
 
 def validate_in_data_root(path: str):
     """Return abs path if it's within DATA_ROOT, else None."""
