@@ -758,6 +758,87 @@
                 console.log("AJAX error fetching JSON files:", textStatus, errorThrown);
                 $showText("error-message", "Error fetching JSON files")
             });
+
+        // ── Inactivity auto-logout ────────────────────────────────────────────
+        // Logs the user out once the EasyOKAPI tab has been left unopened (hidden
+        // or closed) for longer than IDLE_LIMIT_MS. While the tab is visible we
+        // send a heartbeat so the server keeps the session alive; when it is
+        // hidden the heartbeat stops and a timer — plus a re-check when the tab is
+        // reopened — triggers logout. A tab closed and reopened past the limit is
+        // caught server-side: the page then renders logged-out and this never runs.
+        (function setupIdleAutoLogout() {
+            if (!IS_LOGGED_IN) return;
+
+            const IDLE_LIMIT_MS = 60 * 60 * 1000;   // 60 minutes — keep in sync with Config.ACCOUNT_IDLE_TIMEOUT
+            const HEARTBEAT_MS  = 5 * 60 * 1000;     // ping the server every 5 min while visible
+
+            let heartbeatTimer = null;
+            let hiddenLogoutTimer = null;
+            let hiddenAt = 0;
+            let loggedOut = false;
+
+            function stopHeartbeat() {
+                if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+            }
+
+            async function sendHeartbeat() {
+                try {
+                    const res = await fetch('/api/account/heartbeat', { method: 'POST' });
+                    if (res.status === 401) doAutoLogout();
+                } catch (e) { /* offline / transient — ignore, retry next tick */ }
+            }
+
+            function startHeartbeat() {
+                if (heartbeatTimer || loggedOut) return;
+                sendHeartbeat();
+                heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS);
+            }
+
+            async function doAutoLogout() {
+                if (loggedOut) return;
+                loggedOut = true;
+                stopHeartbeat();
+                if (hiddenLogoutTimer) { clearTimeout(hiddenLogoutTimer); hiddenLogoutTimer = null; }
+                try { await fetch('/api/account/logout', { method: 'POST' }); } catch (e) {}
+                const redirect = () => { window.location.href = '/account/login'; };
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Signed out',
+                        text: 'You were logged out after a period of inactivity. Please sign in again.',
+                        confirmButtonText: 'Log in',
+                        confirmButtonColor: '#2d6a4f',
+                        allowOutsideClick: false
+                    }).then(redirect);
+                } else {
+                    redirect();
+                }
+            }
+
+            function onHidden() {
+                stopHeartbeat();
+                hiddenAt = Date.now();
+                if (hiddenLogoutTimer) clearTimeout(hiddenLogoutTimer);
+                // Background timers get throttled, so we also re-check elapsed time on return.
+                hiddenLogoutTimer = setTimeout(doAutoLogout, IDLE_LIMIT_MS);
+            }
+
+            function onVisible() {
+                if (hiddenLogoutTimer) { clearTimeout(hiddenLogoutTimer); hiddenLogoutTimer = null; }
+                if (hiddenAt && (Date.now() - hiddenAt) > IDLE_LIMIT_MS) { doAutoLogout(); return; }
+                hiddenAt = 0;
+                startHeartbeat();
+            }
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) onHidden(); else onVisible();
+            });
+
+            // Let the shared fetch helper report server-side expiry from any request.
+            window.__eokSessionExpired = doAutoLogout;
+
+            if (document.hidden) onHidden(); else startHeartbeat();
+        })();
     </script>
     {% if config.PRODUCTION_MODE %}
     <script src="{{ url_for('static', filename='dist/short-hands.min.js') }}"></script>

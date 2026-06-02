@@ -200,6 +200,7 @@ def login():
     session['account_user_id'] = user.id
     session['account_user_name'] = user.name
     session['account_user_email'] = user.email
+    session['last_activity'] = datetime.utcnow().isoformat()
 
     # Disconnect Google Drive — session is now set so get_user_id() returns
     # the account-based key, ensuring we reset the right user's drive state.
@@ -250,11 +251,29 @@ def get_token():
     })
 
 
+@account_bp.route('/api/account/heartbeat', methods=['POST'])
+def heartbeat():
+    """Keep-alive ping sent by the web app while its tab is visible.
+
+    The global idle guard (main.enforce_account_idle_timeout) refreshes
+    `last_activity` for this path, so a steady heartbeat keeps the session
+    alive while the user is looking at the tab. When the tab is hidden or
+    closed the heartbeat stops and the session lapses after the idle timeout;
+    the guard then returns 401 here (and on other /api calls) so the client
+    can redirect to the login page.
+    """
+    if not session.get('account_user_id'):
+        return jsonify({'status': 'error', 'code': 'session_expired',
+                        'message': 'Not logged in'}), 401
+    return jsonify({'status': 'success'})
+
+
 @account_bp.route('/api/account/logout', methods=['POST'])
 def logout():
     session.pop('account_user_id', None)
     session.pop('account_user_name', None)
     session.pop('account_user_email', None)
+    session.pop('last_activity', None)
     return jsonify({'status': 'success', 'message': 'Logged out'})
 
 

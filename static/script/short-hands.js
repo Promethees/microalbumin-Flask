@@ -52,6 +52,12 @@ async function fetchJSON(url, options = {}) {
         const response = await fetch(url, mergedOptions);
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            // The server expires idle account sessions (see Config.ACCOUNT_IDLE_TIMEOUT);
+            // surface that to the inactivity handler so any API call can trigger logout.
+            if (response.status === 401 && errorData.code === 'session_expired'
+                && typeof window.__eokSessionExpired === 'function') {
+                window.__eokSessionExpired();
+            }
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
         return await response.json();

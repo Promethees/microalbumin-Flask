@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, redirect, session
 import os
 import sys
+from datetime import datetime
 import requests as http_requests
 from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -59,6 +60,50 @@ app.register_blueprint(account_bp)
 app.register_blueprint(oauth_bp)
 
 delimiter = "/"
+
+# ── Account inactivity auto-logout ───────────────────────────────────────────
+# Logs an account out once the EasyOKAPI tab has been left unopened (hidden or
+# closed) for longer than Config.ACCOUNT_IDLE_TIMEOUT. The web app
+# (templates/index.html) sends a heartbeat to /api/account/heartbeat only while
+# its tab is visible, and opening the main page counts as activity; those are the
+# only paths that refresh `last_activity`. Every other request merely checks the
+# stamp, so a backgrounded tab's polling (e.g. /ping every few seconds) cannot
+# keep the session alive.
+_ACTIVITY_REFRESH_PATHS = {'/', '/api/account/heartbeat'}
+
+
+@app.before_request
+def enforce_account_idle_timeout():
+    if not session.get('account_user_id'):
+        return
+
+    now = datetime.utcnow()
+    last_raw = session.get('last_activity')
+    last_dt = None
+    if last_raw:
+        try:
+            last_dt = datetime.fromisoformat(last_raw)
+        except (ValueError, TypeError):
+            last_dt = None
+
+    if last_dt is not None and (now - last_dt) > app.config['ACCOUNT_IDLE_TIMEOUT']:
+        # Idle past the limit — drop the account session.
+        for key in ('account_user_id', 'account_user_name', 'account_user_email', 'last_activity'):
+            session.pop(key, None)
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'status': 'error',
+                'code': 'session_expired',
+                'message': 'You were logged out after a period of inactivity. Please log in again.'
+            }), 401
+        # Page navigations fall through and simply render in the logged-out state.
+        return
+
+    # Still within the window. Refresh the stamp only on genuine activity signals
+    # (first request after login, the main page load, or an explicit heartbeat).
+    if last_dt is None or request.path in _ACTIVITY_REFRESH_PATHS:
+        session['last_activity'] = now.isoformat()
+        session.permanent = True
 
 # Region 1: Base Routes
 @app.route('/ping')

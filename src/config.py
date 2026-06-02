@@ -61,6 +61,11 @@ class Config:
     # Persistent login session lifetime (30 days)
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
 
+    # Auto-logout after the EasyOKAPI tab has been left unopened (hidden/closed)
+    # for this long. Enforced server-side in main.enforce_account_idle_timeout
+    # and mirrored client-side in templates/index.html.
+    ACCOUNT_IDLE_TIMEOUT = timedelta(minutes=60)
+
     # Automatic Production Detection (Heroku uses 'DYNO', generic servers often use 'PORT')
     _prod_env = os.environ.get('PRODUCTION_MODE')
     if _prod_env is not None:
