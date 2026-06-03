@@ -1,9 +1,19 @@
 # Plan: Ship EasyOKAPI as a No-Source Frozen Binary (PyInstaller)
 
-Status: **IN PROGRESS** — decisions resolved (see §11); P1 code complete & validated
-on **v1.1.8**; P2–P4 pending.
+Status: **FEATURE-COMPLETE** (pending cutover) — P1–P4 all implemented. P1 validated on
+CI; P2 unit-tested; P3a green on CI; P3b (mac/win/linux frozen installers) + P4 (online
+`/api/download?kind=bundle`) implemented, validated as far as possible without a real
+frozen build. Remaining: flip `ENCODE_SOURCE=true` to exercise the frozen pipeline
+end-to-end on CI, sign/notarize, and the source→frozen cutover.
 
 ## Progress log
+
+**P4 (server: per-platform bundle download) — done (`online` branch):**
+- `GET /api/download?kind=bundle&platform=mac|win|linux` resolves the release's
+  `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}` asset (`download_service.get_bundle_asset()`)
+  and 302-redirects to its public download URL; the desktop swap updater follows it. The
+  source-tarball path and `/api/version` are unchanged. py_compile-clean; committed on
+  `online` (not yet pushed).
 
 **P1 (backend freeze) — code complete, validated on v1.1.8:**
 - `.env` / `.env.example` `ENCODE_SOURCE` flag; `tools/package.py`; `easyokapi.spec`
@@ -289,14 +299,13 @@ These must live **outside** the read-only binary and survive updates.
 **Source build (unchanged):** tarball overwrite + `_install_requirements` +
 `_sync_version_file` + `os.execv` restart, with its existing tests intact.
 
-**Server-side change still required (P4, online branch — not this repo):**
-`/api/download` must also vend the **onedir bundle archive** when
-`?kind=bundle&platform=` is present. NOTE: this is a **new artifact**, distinct from
-the existing release assets — `download_service.get_release_asset()` maps mac→`.dmg` /
-win→`.exe` / linux→`.tar.gz`, but those are the **installers**, not the raw onedir the
-swapper expects. CI (P3) must build+publish `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`
-alongside the installers, and the server resolves `kind=bundle` to those. `/api/version`
-stays as-is. Flagged for coordination (§11.3).
+**Server-side change (P4) — ✅ done on the `online` branch** (commit `feat(download):
+serve per-platform onedir bundle…`): `GET /api/download?kind=bundle&platform=mac|win|linux`
+now resolves the release's `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}` asset via the
+new `download_service.get_bundle_asset()` and 302-redirects to its public download URL
+(the desktop client follows the redirect; cross-host redirect drops the bearer token, which
+is fine for a public release asset). The default source-tarball path and `/api/version` are
+unchanged. CI (P3a) already publishes those bundle assets to each release.
 
 ---
 
@@ -410,8 +419,10 @@ the binary.
      embed the onedir, migrate old source-install data to app-data, and build in CI
      (gated). Source installers untouched. Follow-ups: signing/notarization; source-step
      cutover.
-4. **P4 — Server + cutover:** online-branch `/api/download` resolves `?kind=bundle` to
-   the new bundle artifacts; migration release.
+4. **P4 — Server + cutover:** ✅ done — online-branch `/api/download` resolves
+   `?kind=bundle&platform=` to the per-platform bundle asset (302 redirect) via
+   `get_bundle_asset()`. Remaining cutover items: publish/point users at the frozen
+   installers, sign/notarize, and gate the source steps off when ready.
 
 Docs to update on completion (per `CLAUDE.md`): `Rule.md`,
 `easyokapi-knowledge/EASY OKAPI.md`, `CLAUDE.md`, `BUILD_MAC.md`.
