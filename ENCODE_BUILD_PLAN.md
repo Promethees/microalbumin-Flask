@@ -43,6 +43,22 @@ on **v1.1.8**; P2–P4 pending.
   from the existing installer assets (`.dmg`/`.exe`/installer `.tar.gz`). CI (P3)
   builds + publishes it.
 
+**P3b (installers embed the binary + migrate old installs) — done (all 3 platforms):**
+- Vendor bundling fix (`tools/fetch_vendor.py` + CI smoke assert) so the freeze ships
+  `static/vendor/`.
+- **macOS:** `run-frozen.scpt` → `launch-frozen.sh` (+ `migrate-frozen.sh`), packaged by
+  `build-dmg-frozen.sh` → `EasyOKAPI_v<ver>_mac.dmg`.
+- **Windows:** `setup-frozen.nsi` (bundles the onedir, migrates `$INSTDIR\code\` data →
+  `%LOCALAPPDATA%\EasyOKAPI`) → `EasyOKAPI_Setup_<ver>_frozen.exe`.
+- **Linux:** `build-tarball-frozen.sh` + `install-frozen.sh` (migrates `/opt/EasyOKAPI`
+  data → `~/.local/share/EasyOKAPI`, CDC udev rule, desktop entry) + `run-frozen.sh`.
+- All additive + `ENCODE_SOURCE`-gated; the source installers are untouched. Each
+  migrates an old source install's `data/json/report/log` + settings, then replaces it.
+  Validated as far as possible locally (`bash -n`, YAML parse, the AppleScript applet
+  compiles); the DMG/NSIS builds + install flow are validated on CI / real machines.
+- **Follow-ups:** macOS notarization of the embedded onedir; Windows exe code-signing;
+  an eventual cutover that gates the *source* installer steps off.
+
 **P3a (CI freeze + smoke + bundle artifacts) — done:**
 - `.github/workflows/main.yml`: each `build-*` job, gated by `ENCODE_SOURCE` (repo var,
   default `false`), now also freezes the onedir via `tools/package.py --encode`,
@@ -390,9 +406,10 @@ the binary.
      `EasyOKAPI-bundle-*` update artifacts — gated by `ENCODE_SOURCE` (repo var, default
      `false`). Set the repo variable to `true` to validate the freeze on clean runners
      (this is the keystone that was blocked locally by iCloud).
-   - **P3b (installer embedding + migration):** ⏳ pending — make the DMG/NSIS/tarball
-     installers embed the binary (drop pyenv/clone) and migrate old source installs.
-     Deferred until P3a goes green on CI.
+   - **P3b (installer embedding + migration):** ✅ done — mac/win/linux frozen installers
+     embed the onedir, migrate old source-install data to app-data, and build in CI
+     (gated). Source installers untouched. Follow-ups: signing/notarization; source-step
+     cutover.
 4. **P4 — Server + cutover:** online-branch `/api/download` resolves `?kind=bundle` to
    the new bundle artifacts; migration release.
 
