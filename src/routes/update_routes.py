@@ -81,9 +81,20 @@ def apply_update():
 
 
 def _delayed_shutdown(delay_secs=5):
-    """Stop the HID subprocess, then SIGTERM ourselves so main.py's signal handler
-    runs atexit cleanup and frees the port (mirrors core_routes.delayed_termination)."""
+    """Stop the data-logger subprocess, then shut down so the port frees.
+
+    Frozen build with a staged update: hand off to the detached swap helper, which
+    waits for the port to free, swaps the install dir, and relaunches the new
+    binary. apply_pending_swap_and_exit() spawns that helper and os._exit()s, so it
+    only returns (False) when there is nothing to swap (source build / no staged
+    update), in which case we fall through to the normal SIGTERM shutdown (mirrors
+    core_routes.delayed_termination)."""
     time.sleep(delay_secs)
+    try:
+        if update_service.apply_pending_swap_and_exit():
+            return  # unreachable on success (process already replaced)
+    except Exception:
+        pass
     try:
         update_service._shutdown_current_process()
     except Exception:

@@ -28,7 +28,33 @@ on **v1.1.8**; P2–P4 pending.
   (`Errno 60`). **Remedy:** build on a non-synced path (clone to `~/build/...` or
   `/tmp`) or rely on CI (clean runners) — the real production build target.
 
-**What changed vs the original plan (v1.1.6 → v1.1.7):**
+**P2 (binary-swap updater) — client side code complete:**
+- `update_service.download_and_apply()` branches on `sys.frozen`. Frozen path:
+  `_download_and_stage_bundle()` streams the platform onedir archive
+  (`?platform=&kind=bundle`) into app-data, extracts + verifies it, and records a
+  `_pending_update.txt` marker; `apply_pending_swap_and_exit()` (called by
+  `/update/finalize`) spawns a detached PowerShell/`sh` helper that waits for the
+  port to free, swaps `EasyOKAPI/` for the staged dir (rollback on failure), and
+  relaunches. No `pip` step. Source path unchanged (tarball + pip + `os.execv`).
+- `tests/test_update_binary_swap.py`: 14 tests (347 total pass). The live swap +
+  relaunch is exercised by the per-OS CI smoke test (P3), not locally.
+- **Still needs the server (P4):** `/api/download?kind=bundle` must vend a NEW
+  onedir-bundle artifact (`EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`), distinct
+  from the existing installer assets (`.dmg`/`.exe`/installer `.tar.gz`). CI (P3)
+  builds + publishes it.
+
+**P3a (CI freeze + smoke + bundle artifacts) — done:**
+- `.github/workflows/main.yml`: each `build-*` job, gated by `ENCODE_SOURCE` (repo var,
+  default `false`), now also freezes the onedir via `tools/package.py --encode`,
+  smoke-tests `/ping`, and uploads `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`;
+  the `release` job publishes them. Additive — the source installers still build, so
+  unsetting the flag changes nothing. YAML validated.
+- **To activate:** set the repository variable `ENCODE_SOURCE=true` (Settings → Secrets
+  and variables → Actions → Variables). The next push runs the freeze + smoke on clean
+  mac/win/linux runners — the first real validation of P1's PyInstaller spec.
+- **P3b (installer embedding + migration) pending** — deferred until the freeze is green.
+
+**What changed vs the original plan (v1.1.6 → v1.1.8):**
 - **HID is gone.** The "Run" flow moved to the CDC serial collector
   (`log_cdc_data.py`); the HID logger scripts were removed (`log_hid_data*.py`).
   CDC needs **no elevated privileges**, so the original `src/privilege.py` sudo
@@ -207,41 +233,61 @@ These must live **outside** the read-only binary and survive updates.
 | `src/activation.py` | `activation.json` under `state.script_dir`. | ✅ done |
 | `src/ai_assistant.py` | Guide files from `state.bundle_dir`. | ✅ done |
 | `src/routes/ai_routes.py` | `.env` from `state.script_dir`. | ✅ done |
-| `src/update_service.py` | Rewrite to download+swap a **binary** (see §8). Remove `_apply_tarball`, `_install_requirements`, the `state.py` regex read in `_sync_version_file`. | ⏳ P2 |
-| `src/browser_mgt.py` | Verify host-mapping / `sudo open` paths hold under frozen. | ⏳ P2 |
+| `src/update_service.py` | Branch on `sys.frozen`: frozen → download+stage the platform onedir bundle and swap via a detached helper; source → unchanged tarball+pip flow (kept, with its tests). `_sync_version_file`/`_install_requirements` run in source mode only. | ✅ done (P2) |
+| `src/routes/update_routes.py` | `finalize` hands a frozen build off to `apply_pending_swap_and_exit()` (detached swap+relaunch); source build falls through to the normal SIGTERM shutdown. | ✅ done (P2) |
+| `src/browser_mgt.py` | Verify host-mapping / `sudo open` paths hold under frozen. | ⏳ P3 |
 
 ---
 
-## 8. In-app update for binaries (P2)
+## 8. In-app update for binaries (P2 — client side DONE)
 
-Replace `update_service.download_and_apply()`:
-- `GET /api/version` stays (returns latest version string).
-- `GET /api/download?platform=mac|win|linux` now serves the **binary artifact** for
-  the caller's OS (was: source tarball).
-- Apply = download new binary to a temp path, verify, **atomic replace** the running
-  binary/onedir, then relaunch. A running executable can't always overwrite itself
-  (esp. Windows) → reuse the existing detached-relauncher pattern (`_restart_windows`)
-  to swap-then-launch. Mac/Linux: replace then `os.execv`.
-- `pip install` step is **deleted** (deps are inside the binary).
-- Version source: read from a bundled `VERSION` marker / the running binary, not from
-  a `state.py` regex (there is no `state.py` on disk when frozen).
+`update_service.download_and_apply()` branches on `sys.frozen`:
 
-**Server-side change required** (online branch, not this repo): `/api/download` must
-vend per-platform binaries; `/api/version` stays as-is. The online branch currently
-streams a GitHub **source** tarball via `fetch_github_release(tag)`, with
-`download_service.get_release_asset(platform, tag)` already mapping mac→.dmg /
-win→.exe / linux→.tar.gz — so the asset plumbing exists; `/api/download` just needs to
-call it. Flagged for coordination (§11.3).
+**Frozen build (implemented):**
+- `GET /api/version` unchanged — version compare uses the running binary's
+  compiled `state.APP_VERSION` (no `state.py` on disk, no regex read).
+- `GET /api/download?platform={mac|win|linux}&kind=bundle` → the platform **onedir
+  bundle archive** (`.zip` on Windows, `.tar.gz` else), expanding to a single
+  top-level `EasyOKAPI/` dir (exe + `_internal/`).
+- Apply = `_download_and_stage_bundle()`: stream archive into the writable app-data
+  dir, extract to `_update_staging/`, verify (exe + `_internal/` present), and write
+  a `_pending_update.txt` marker. **No `pip` step** (deps are inside the binary).
+- Swap = `apply_pending_swap_and_exit()`, triggered by `/update/finalize`: spawn a
+  **detached** OS-shell helper (PowerShell on Windows, `sh` on POSIX) that waits for
+  the port to free, moves `EasyOKAPI/` → `EasyOKAPI.old`, moves the staged dir into
+  place (rollback on failure), relaunches the new exe, then deletes `.old`. The app
+  then `os._exit()`s to free the port and unlock the install dir. A running process
+  can't replace its own loaded files in place (esp. Windows), so the move is done by
+  the external helper after exit — generalizing the existing `_restart_windows`
+  detached-relauncher pattern.
+- Covered by `tests/test_update_binary_swap.py` (platform mapping, extract/verify,
+  pending marker, branch selection, script builders). The live swap+relaunch is
+  validated by the per-OS CI smoke test (P3), not locally.
+
+**Source build (unchanged):** tarball overwrite + `_install_requirements` +
+`_sync_version_file` + `os.execv` restart, with its existing tests intact.
+
+**Server-side change still required (P4, online branch — not this repo):**
+`/api/download` must also vend the **onedir bundle archive** when
+`?kind=bundle&platform=` is present. NOTE: this is a **new artifact**, distinct from
+the existing release assets — `download_service.get_release_asset()` maps mac→`.dmg` /
+win→`.exe` / linux→`.tar.gz`, but those are the **installers**, not the raw onedir the
+swapper expects. CI (P3) must build+publish `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`
+alongside the installers, and the server resolves `kind=bundle` to those. `/api/version`
+stays as-is. Flagged for coordination (§11.3).
 
 ---
 
-## 9. Installer changes (P3)
+## 9. Installer changes — P3b (PENDING; deferred until the freeze is green)
+
+Rewriting three platform installers on top of a freeze that has never run on CI is
+high-risk and untestable locally, so it is sequenced **after** P3a proves the freeze.
 
 ### macOS (`installer-mac/`)
 - `setup.sh`: drop Homebrew/pyenv/Python/venv/pip and source-tarball download. Instead:
   place binary; the app self-creates per-user app-data dirs on first launch.
-- `build-dmg.sh` / `main.yml build-macos`: run PyInstaller, drop the binary (or `.app`)
-  into the DMG. Signing/notarization now signs a real Mach-O.
+- `build-dmg.sh` / `main.yml build-macos`: drop the onedir (or `.app`) into the DMG.
+  Signing/notarization now signs a real Mach-O.
 
 ### Windows (`installer-win/`)
 - `setup.nsi` / `startwindow-*.bat`: remove git-clone, pyenv, venv steps. NSIS installs
@@ -256,14 +302,25 @@ replaces it (preserving the user's data/json/report/log by relocating to app-dat
 
 ---
 
-## 10. CI changes (`.github/workflows/main.yml`) (P3)
+## 10. CI changes (`.github/workflows/main.yml`) — P3a (DONE)
 
-- Each `build-*` job: `pip install -r requirements-build.txt`, run `tools/package.py`,
-  then wrap the artifact in the existing installer step.
-- Add a **smoke test** per OS: launch the frozen binary headless, hit `/ping`, assert
-  200 — PyInstaller breakages (missing hidden imports, datas) surface here.
-- `release` job: upload the binaries to the GitHub release **and** ensure they reach the
-  server backing `/api/download` (coordinate per §8).
+Implemented, gated by the `ENCODE_SOURCE` repo variable (default `false`, so the
+existing source pipeline is untouched until opt-in):
+- `setup` job resolves `ENCODE_SOURCE` (`vars.ENCODE_SOURCE || 'false'`) into an
+  `encode_source` output the build jobs branch on.
+- Each `build-{macos,windows,linux}` job, when `encode_source == 'true'`, additionally:
+  sets up Python 3.8, `pip install -r requirements.txt -r requirements-build.txt`,
+  runs `python tools/package.py --encode` (PyInstaller onedir), **smoke-tests** the
+  binary (launch headless with `--alias 127.0.0.1`, poll `/ping`, assert 200 — surfaces
+  missing hidden imports / datas), archives the onedir to
+  `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`, and uploads it as an artifact.
+- `release` job downloads those bundle artifacts (gated) into `dist/` so the existing
+  `gh release upload dist/*` publishes them alongside the installers — these are what
+  the in-app swap updater (P2) and the server (P4) consume.
+
+These steps are **additive**: the source installers (DMG/EXE/tarball) still build, so
+nothing regresses when `ENCODE_SOURCE` is unset. P3b then makes those installers embed
+the binary.
 
 ---
 
@@ -286,12 +343,22 @@ replaces it (preserving the user's data/json/report/log by relocating to app-dat
 1. **P1 — Backend freeze:** `.env`/`tools/package.py`/`easyokapi.spec`; state/path split;
    `--cdc-logger` re-entry; collector log-dir fix. ✅ **done (v1.1.8), pending a clean
    CI/non-iCloud freeze + smoke test.**
-2. **P2 — Updater:** rewrite `update_service` for binary swap; define the
-   `/api/download?platform=` contract; bundled version marker.
-3. **P3 — Installers + CI:** rewire mac/win/linux installers and `main.yml`, gated by
-   the flag, with per-OS smoke tests + old-install migration.
-4. **P4 — Server + cutover:** online-branch `/api/download` vends binaries; migration
-   release.
+2. **P2 — Updater:** ✅ **done (client side).** `update_service` branches frozen→
+   bundle download+stage+detached swap / source→unchanged; `/update/finalize` drives
+   the swap; `/api/download?platform=&kind=bundle` contract defined; version from the
+   running binary. 14 new tests. Live swap awaits the CI build (P3); server vending
+   the bundle artifact is P4.
+3. **P3 — Installers + CI:**
+   - **P3a (CI freeze + smoke + bundle artifacts):** ✅ **done.** `main.yml` builds the
+     PyInstaller onedir per OS, smoke-tests `/ping`, and publishes the
+     `EasyOKAPI-bundle-*` update artifacts — gated by `ENCODE_SOURCE` (repo var, default
+     `false`). Set the repo variable to `true` to validate the freeze on clean runners
+     (this is the keystone that was blocked locally by iCloud).
+   - **P3b (installer embedding + migration):** ⏳ pending — make the DMG/NSIS/tarball
+     installers embed the binary (drop pyenv/clone) and migrate old source installs.
+     Deferred until P3a goes green on CI.
+4. **P4 — Server + cutover:** online-branch `/api/download` resolves `?kind=bundle` to
+   the new bundle artifacts; migration release.
 
 Docs to update on completion (per `CLAUDE.md`): `Rule.md`,
 `easyokapi-knowledge/EASY OKAPI.md`, `CLAUDE.md`, `BUILD_MAC.md`.

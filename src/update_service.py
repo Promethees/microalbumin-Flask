@@ -4,6 +4,7 @@ import sys
 import shutil
 import platform
 import tarfile
+import zipfile
 import requests
 import state
 import activation as activation_mod
@@ -14,6 +15,52 @@ _PRESERVE = frozenset({
     'activation.json', 'ai_settings.json', 'user_settings.json',
     '.env',
 })
+
+# ── Frozen (no-source) vs source distribution ────────────────────────────────
+# Two update mechanisms share check_for_update() but diverge in download_and_apply:
+#   • Source build (dev / ENCODE_SOURCE=false): download a .py source tarball and
+#     overwrite files in place, then pip-install + restart (the historical flow).
+#   • Frozen build (PyInstaller onedir, ENCODE_SOURCE=true): there is no .py on
+#     disk, so we download the platform's onedir *bundle* archive, stage it in the
+#     writable app-data dir, then a detached helper swaps the install dir and
+#     relaunches. No pip step (deps are inside the binary).
+#
+# The server contract (served by the online branch — see P4):
+#   GET /api/version                          → {version, release_notes}   (unchanged)
+#   GET /api/download                         → source tarball             (unchanged)
+#   GET /api/download?platform=<k>&kind=bundle → frozen onedir archive for <k>
+#       <k> ∈ {mac, win, linux}; archive is .zip on win, .tar.gz elsewhere; it
+#       expands to a single top-level "EasyOKAPI/" dir holding the executable +
+#       _internal/ (exactly PyInstaller's COLLECT output).
+
+_BUNDLE_NAME = 'EasyOKAPI'  # PyInstaller COLLECT name (the onedir folder + exe)
+
+
+def _is_frozen():
+    return getattr(sys, 'frozen', False)
+
+
+def _platform_key():
+    """Map the running OS to the server's ?platform= key."""
+    p = sys.platform
+    if p.startswith('win'):
+        return 'win'
+    if p == 'darwin':
+        return 'mac'
+    return 'linux'
+
+
+def _bundle_root():
+    """Directory holding the running frozen executable (the onedir COLLECT dir).
+
+    e.g. <install>/EasyOKAPI/  (contains EasyOKAPI[.exe] + _internal/). Only
+    meaningful when frozen.
+    """
+    return os.path.dirname(os.path.abspath(sys.executable))
+
+
+def _bundle_exe_name():
+    return f'{_BUNDLE_NAME}.exe' if _platform_key() == 'win' else _BUNDLE_NAME
 
 
 def _version_tuple(v):
@@ -53,15 +100,22 @@ def check_for_update():
 
 
 def download_and_apply(progress_cb=None):
-    """Download the update tarball from the server and apply it in-place.
+    """Download the update from the server and apply it.
 
     progress_cb(pct: int, label: str) is called at each stage.
-    Returns list of relative paths that were updated.
+    Returns list of relative paths that were updated (source mode) or the staged
+    bundle path (frozen mode).
     Raises RuntimeError if not activated, or requests.RequestException on failure.
+
+    Frozen builds swap a binary bundle (no .py on disk); source builds overwrite
+    .py files in place. The branch is chosen by sys.frozen.
     """
     token = activation_mod.get_license_token()
     if not token:
         raise RuntimeError('App is not activated — cannot download update.')
+
+    if _is_frozen():
+        return _download_and_stage_bundle(token, progress_cb)
 
     _emit(progress_cb, 5, 'Connecting to update server...')
 
@@ -212,6 +266,266 @@ def _install_requirements():
         tail = (proc.stdout or '')[-800:]
         raise RuntimeError(
             f'Dependency install failed (pip exit {proc.returncode}):\n{tail}')
+
+
+# ── Frozen (no-source) binary-swap update ────────────────────────────────────
+# Downloads the platform onedir bundle, stages it in the writable app-data dir,
+# and records a pending swap. The actual directory swap + relaunch is deferred to
+# a detached OS-shell helper spawned at finalize time (apply_pending_swap_and_exit)
+# — a running process can't reliably replace its own install dir in place
+# (Windows locks loaded DLLs; even on POSIX the port must free first).
+
+def _archive_ext():
+    return 'zip' if _platform_key() == 'win' else 'tar.gz'
+
+
+def _bundle_archive_url():
+    return (f"{activation_mod.AI_SERVICE_URL}/api/download"
+            f"?platform={_platform_key()}&kind=bundle")
+
+
+def _staging_dir():
+    return os.path.join(state.script_dir, '_update_staging')
+
+
+def _pending_swap_path():
+    return os.path.join(state.script_dir, '_pending_update.txt')
+
+
+def _download_and_stage_bundle(token, progress_cb=None):
+    """Download + extract the platform onedir bundle into a staging dir.
+
+    Returns the staged onedir root (the dir holding the new executable). The swap
+    itself happens later via apply_pending_swap_and_exit(). Raises RuntimeError /
+    requests.RequestException on failure.
+    """
+    _emit(progress_cb, 5, 'Connecting to update server...')
+    headers = {'Authorization': f'Bearer {token}'}
+    resp = requests.get(_bundle_archive_url(), headers=headers, stream=True, timeout=180)
+    resp.raise_for_status()
+
+    total = int(resp.headers.get('Content-Length', 0))
+    archive_path = os.path.join(state.script_dir, f'_update_bundle.{_archive_ext()}')
+
+    _emit(progress_cb, 10, 'Downloading update...')
+    downloaded = 0
+    with open(archive_path, 'wb') as f:
+        for chunk in resp.iter_content(chunk_size=65536):
+            if chunk:
+                f.write(chunk)
+                downloaded += len(chunk)
+                if total and progress_cb:
+                    pct = 10 + int(downloaded / total * 60)
+                    _emit(progress_cb, pct,
+                          f'Downloading... {downloaded // 1024} KB / {total // 1024} KB')
+
+    _emit(progress_cb, 74, 'Extracting update...')
+    staged_root = _extract_bundle(archive_path)
+    _verify_staged_bundle(staged_root)
+
+    try:
+        os.remove(archive_path)
+    except OSError:
+        pass
+
+    _record_pending_swap(staged_root)
+    _emit(progress_cb, 100, 'Update downloaded — restart to apply.')
+    return [staged_root]
+
+
+def _extract_bundle(archive_path):
+    """Extract the bundle archive and return the staged onedir root.
+
+    The archive expands to a single top-level 'EasyOKAPI/' dir (PyInstaller's
+    COLLECT output). We extract into a clean staging dir and return the path to
+    that onedir folder (the one containing the executable).
+    """
+    staging = _staging_dir()
+    shutil.rmtree(staging, ignore_errors=True)
+    os.makedirs(staging, exist_ok=True)
+
+    if archive_path.endswith('.zip'):
+        with zipfile.ZipFile(archive_path) as zf:
+            zf.extractall(staging)
+    else:
+        with tarfile.open(archive_path, 'r:gz') as tf:
+            tf.extractall(staging)
+
+    # Prefer the conventional EasyOKAPI/ folder; otherwise find the dir holding
+    # the executable (handles archives with or without a top-level wrapper).
+    exe_name = _bundle_exe_name()
+    direct = os.path.join(staging, _BUNDLE_NAME)
+    if os.path.isfile(os.path.join(direct, exe_name)):
+        return direct
+    for root, _dirs, files in os.walk(staging):
+        if exe_name in files:
+            return root
+    raise RuntimeError('Update archive did not contain the application bundle.')
+
+
+def _verify_staged_bundle(staged_root):
+    exe = os.path.join(staged_root, _bundle_exe_name())
+    if not os.path.isfile(exe):
+        raise RuntimeError('Staged update is missing its executable.')
+    # _internal/ holds the Python runtime + bundled datas; its absence means a
+    # truncated/corrupt download.
+    if not os.path.isdir(os.path.join(staged_root, '_internal')):
+        raise RuntimeError('Staged update is incomplete (no _internal directory).')
+
+
+def _record_pending_swap(staged_root):
+    with open(_pending_swap_path(), 'w', encoding='utf-8') as f:
+        f.write(staged_root)
+
+
+def read_pending_swap():
+    """Return the staged onedir root recorded by a completed frozen download, or None."""
+    try:
+        with open(_pending_swap_path(), 'r', encoding='utf-8') as f:
+            path = f.read().strip()
+        return path if path and os.path.isdir(path) else None
+    except OSError:
+        return None
+
+
+def _clear_pending_swap():
+    try:
+        os.remove(_pending_swap_path())
+    except OSError:
+        pass
+
+
+def _relaunch_extra_args():
+    """The CLI args to relaunch with (everything after the executable)."""
+    return list(sys.argv[1:])
+
+
+def apply_pending_swap_and_exit():
+    """Spawn a detached helper that swaps in the staged bundle and relaunches,
+    then exit this process so the port frees and the install dir is unlocked.
+
+    No-op (returns False) when not frozen or there is no staged update.
+    """
+    if not _is_frozen():
+        return False
+    staged_root = read_pending_swap()
+    if not staged_root:
+        return False
+
+    live_root = _bundle_root()
+    port = _current_port()
+    exe_name = _bundle_exe_name()
+    extra = _relaunch_extra_args()
+
+    if _platform_key() == 'win':
+        _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra)
+    else:
+        _spawn_posix_swapper(live_root, staged_root, port, exe_name, extra)
+
+    _clear_pending_swap()
+    _shutdown_current_process()
+    os._exit(0)
+
+
+def _spawn_posix_swapper(live_root, staged_root, port, exe_name, extra_args):
+    import subprocess
+    import tempfile
+
+    script = _build_posix_swap_script()
+    fd, path = tempfile.mkstemp(suffix='_swap.sh', dir=state.script_dir)
+    with os.fdopen(fd, 'w') as f:
+        f.write(script)
+    os.chmod(path, 0o755)
+    cmd = ['sh', path, live_root, staged_root, str(port), exe_name] + list(extra_args)
+    # Detached so it outlives this process (which is about to exit).
+    subprocess.Popen(cmd, start_new_session=True, close_fds=True)
+
+
+def _build_posix_swap_script():
+    """sh script: wait for the port to free, swap dirs, relaunch the new exe.
+
+    Args: LIVE NEW PORT EXE [relaunch args…]. Port-free is probed with lsof/nc
+    when present (fixed short sleep otherwise); the swap is atomic moves with a
+    rollback if the second move fails.
+    """
+    return (
+        '#!/bin/sh\n'
+        'LIVE="$1"; NEW="$2"; PORT="$3"; EXE="$4"; shift 4\n'
+        'i=0\n'
+        'while [ $i -lt 84 ]; do\n'
+        '  if command -v lsof >/dev/null 2>&1; then\n'
+        '    lsof -i "tcp:$PORT" -sTCP:LISTEN >/dev/null 2>&1 || break\n'
+        '  elif command -v nc >/dev/null 2>&1; then\n'
+        '    nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1 || break\n'
+        '  else\n'
+        '    sleep 5; break\n'
+        '  fi\n'
+        '  sleep 0.3; i=$((i+1))\n'
+        'done\n'
+        'OLD="$LIVE.old-$$"\n'
+        'mv "$LIVE" "$OLD" || exit 1\n'
+        'if ! mv "$NEW" "$LIVE"; then mv "$OLD" "$LIVE"; exit 1; fi\n'
+        'rm -rf "$OLD"\n'
+        '"$LIVE/$EXE" "$@" &\n'
+    )
+
+
+def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
+    import subprocess
+
+    DETACHED_PROCESS = 0x00000008
+    CREATE_NEW_PROCESS_GROUP = 0x00000200
+    CREATE_NO_WINDOW = 0x08000000
+    script = _build_windows_swap_script(live_root, staged_root, port, exe_name, extra_args)
+    subprocess.Popen(
+        ['powershell', '-NoProfile', '-NonInteractive',
+         '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-Command', script],
+        creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+        close_fds=True,
+    )
+
+
+def _build_windows_swap_script(live_root, staged_root, port, exe_name, extra_args):
+    """PowerShell: wait for the port to free, swap the install dir, relaunch.
+
+    Mirrors _build_windows_relaunch_script's TcpClient port probe (works on every
+    PowerShell version, immune to SO_REUSEADDR), then Move-Item swaps the dirs and
+    Start-Process launches the new exe hidden.
+    """
+    live_q = _ps_quote(live_root)
+    new_q = _ps_quote(staged_root)
+    exe_q = _ps_quote(exe_name)
+    arg_clause = ''
+    if extra_args:
+        arg_clause = '-ArgumentList @(' + ', '.join(_ps_arg(a) for a in extra_args) + ') '
+    msg = ('EasyOKAPI could not finish updating. Please relaunch it from the Start '
+           'menu or desktop shortcut.')
+    return (
+        f"$live = {live_q}; $new = {new_q}; $port = {int(port)}; $exe = {exe_q}; "
+        "function Test-Listening($p) { "
+        "  try { $c = New-Object System.Net.Sockets.TcpClient; "
+        "    $c.Connect('127.0.0.1', $p); $c.Close(); return $true } "
+        "  catch { return $false } "
+        "}; "
+        "$deadline = (Get-Date).AddSeconds(25); "
+        "while ((Get-Date) -lt $deadline) { "
+        "  if (-not (Test-Listening $port)) { break }; Start-Sleep -Milliseconds 300 "
+        "} "
+        "$old = \"$live.old\"; "
+        "try { "
+        "  if (Test-Path $old) { Remove-Item -Recurse -Force $old }; "
+        "  Move-Item -Force $live $old; "
+        "  Move-Item -Force $new $live; "
+        "  Remove-Item -Recurse -Force $old; "
+        "  $exePath = Join-Path $live $exe; "
+        f"  Start-Process -FilePath $exePath {arg_clause}-WorkingDirectory $live -WindowStyle Hidden "
+        "} catch { "
+        "  if ((Test-Path $old) -and (-not (Test-Path $live))) { Move-Item -Force $old $live }; "
+        "  try { Add-Type -AssemblyName PresentationFramework; "
+        f"    [System.Windows.MessageBox]::Show({_ps_quote(msg)}, 'EasyOKAPI Update') | Out-Null "
+        "  } catch {} "
+        "}"
+    )
 
 
 def restart_after_delay(delay_secs=1.5):
