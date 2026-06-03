@@ -175,11 +175,11 @@ def _sync_version_file():
 
 
 def _requirements_path():
-    """Return the platform-appropriate requirements file in the project root."""
-    name = ('requirements-win.txt'
-            if platform.system().lower().startswith('win')
-            else 'requirements.txt')
-    return os.path.join(state.script_dir, name)
+    """Return the requirements file in the project root.
+
+    A single cross-platform requirements.txt is used on all OSes.
+    """
+    return os.path.join(state.script_dir, 'requirements.txt')
 
 
 def _install_requirements():

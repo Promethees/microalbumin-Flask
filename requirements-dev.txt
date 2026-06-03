@@ -1,0 +1,6 @@
+# Test/development-only dependencies — NOT needed by the running app.
+# The runtime requirements live in requirements.txt; install both to run tests:
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pytest tests/ --ignore=venv
+pytest==7.4.0
+pytest-flask==1.2.0

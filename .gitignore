@@ -9,6 +9,7 @@ venv
 *.lock
 *.zip
 *.txt
+!requirements-dev.txt
 *.json
 /log
 vercel

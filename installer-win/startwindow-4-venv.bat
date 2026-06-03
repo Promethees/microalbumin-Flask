@@ -123,9 +123,9 @@ if errorlevel 1 (
     echo ERROR: Failed to upgrade pip.
     exit /b 1
 )
-"%VENV_PYTHON%" -m pip install -r "%~dp0code\requirements-win.txt"
+"%VENV_PYTHON%" -m pip install -r "%~dp0code\requirements.txt"
 if errorlevel 1 (
-    echo ERROR: Failed to install required packages from requirements-win.txt.
+    echo ERROR: Failed to install required packages from requirements.txt.
     exit /b 1
 )
 
