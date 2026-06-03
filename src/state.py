@@ -37,4 +37,4 @@ else:
 
 # Configuration
 PRODUCTION_MODE = True
-APP_VERSION = "1.1.6"
+APP_VERSION = "1.1.7"
