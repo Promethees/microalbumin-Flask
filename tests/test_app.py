@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import os
 import json
+import subprocess
 from main import app
 import state
 
@@ -38,19 +39,35 @@ def test_run_script_already_running(client):
     assert 'already running' in rv.get_json()['message']
 
 def test_run_script_success(client):
-    """Test successful run_script start."""
-    with patch('routes.hardware_routes.connect_to_device') as mock_conn:
-        with patch('routes.hardware_routes.send_command_and_wait_ack', return_value=(True, '')):
-            with patch('subprocess.Popen') as mock_popen:
-                mock_popen.return_value = MagicMock()
-                rv = client.post('/run_script', json={
-                    'base_dir': 'data',
-                    'base_name': 'test',
-                    'timeout_sec': 10,
-                    'interval_sec': 1
-                })
-                assert rv.status_code == 200
-                assert rv.get_json()['status'] == 'success'
+    """A CDC logger subprocess that stays alive (wait() times out) => success.
+
+    The CDC logger owns the serial port: it does the connect + command
+    handshake itself, so run_script only launches it and treats a still-running
+    process as a successfully started session.
+    """
+    with patch('subprocess.Popen') as mock_popen:
+        proc = MagicMock()
+        proc.wait.side_effect = subprocess.TimeoutExpired(cmd='log_cdc_data.py', timeout=2)
+        mock_popen.return_value = proc
+        rv = client.post('/run_script', json={
+            'base_name': 'test',
+            'timeout_sec': 10,
+            'interval_sec': 1
+        })
+        assert rv.status_code == 200
+        assert rv.get_json()['status'] == 'success'
+
+def test_run_script_device_not_found(client):
+    """A logger that exits immediately and logged a missing device => device_not_found."""
+    with patch('subprocess.Popen') as mock_popen, \
+         patch('routes.hardware_routes.check_log_for_errors', return_value='device_not_found'):
+        proc = MagicMock()
+        proc.wait.return_value = 1  # exits quickly (no TimeoutExpired)
+        mock_popen.return_value = proc
+        rv = client.post('/run_script', json={'base_name': 'test'})
+        assert rv.status_code == 200
+        assert rv.get_json()['status'] == 'device_not_found'
+
 
 def test_run_script_rejects_reserved_subfolder(client):
     """The archive staging name 'root' is reserved and must be refused."""
@@ -72,6 +89,18 @@ def test_check_status_not_running(client):
     rv = client.get('/check_status')
     assert rv.status_code == 200
     assert rv.get_json()['status'] == 'not_running'
+
+
+def test_check_status_completed(client):
+    """A finished logger process that established a session => success (completed)."""
+    state.process = MagicMock()
+    state.process.poll.return_value = 0  # process has exited
+    with patch('routes.hardware_routes.check_log_for_errors', return_value=None), \
+         patch('routes.hardware_routes.check_log_for_session_start', return_value=True):
+        rv = client.get('/check_status')
+        assert rv.status_code == 200
+        assert rv.get_json()['status'] == 'success'
+        assert state.process is None
 
 # File Routes Tests
 def test_get_json_content(client, tmp_path):

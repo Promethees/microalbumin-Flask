@@ -1,16 +1,17 @@
 import os
 
-def check_log_for_missed_read(log_path):
-    """Returns True if the log shows HID data arriving before the session was established.
+def check_log_for_session_start(log_path):
+    """Returns True if the log shows a measurement session was established.
 
-    This happens when the HID subprocess starts late and misses the metadata/header
-    lines sent by the PyBadge, producing 'Unexpected line:' entries with no session start.
+    Used by the CDC reader path to distinguish a completed (or terminated)
+    reading session from a handshake/connection failure where the logger
+    exited before any data was captured.
     """
     if not os.path.exists(log_path):
         return False
     with open(log_path, 'r') as f:
-        content = f.read()
-    return "Unexpected line:" in content and "New session started" not in content
+        return "New session started" in f.read()
+
 
 def check_log_for_errors(log_path):
     """Check the log file for specific error patterns"""

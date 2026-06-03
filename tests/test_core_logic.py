@@ -134,32 +134,20 @@ def test_windows_relaunch_script_uses_portable_port_probe():
 
 
 # ---------------------------------------------------------------------------
-# script_monitor.check_log_for_missed_read
+# script_monitor.check_log_for_session_start
 # ---------------------------------------------------------------------------
 
-def test_check_log_for_missed_read_file_not_found():
-    assert script_monitor.check_log_for_missed_read("/nonexistent/log.txt") is False
+def test_check_log_for_session_start_file_not_found():
+    assert script_monitor.check_log_for_session_start("/nonexistent/log.txt") is False
 
 
-def test_check_log_for_missed_read_unexpected_without_session(tmp_path):
+def test_check_log_for_session_start_true_when_session_logged(tmp_path):
     log = tmp_path / "run.log"
-    log.write_text("Unexpected line: 0x01 0x02")
-    assert script_monitor.check_log_for_missed_read(str(log)) is True
+    log.write_text("Connected to PyBadge\nNew session started. Header written to out.csv")
+    assert script_monitor.check_log_for_session_start(str(log)) is True
 
 
-def test_check_log_for_missed_read_unexpected_with_session_started(tmp_path):
+def test_check_log_for_session_start_false_without_session(tmp_path):
     log = tmp_path / "run.log"
-    log.write_text("New session started\nUnexpected line: 0x01 0x02")
-    assert script_monitor.check_log_for_missed_read(str(log)) is False
-
-
-def test_check_log_for_missed_read_clean_log(tmp_path):
-    log = tmp_path / "run.log"
-    log.write_text("New session started\nAll data received.")
-    assert script_monitor.check_log_for_missed_read(str(log)) is False
-
-
-def test_check_log_for_missed_read_no_unexpected_no_session(tmp_path):
-    log = tmp_path / "run.log"
-    log.write_text("Receiving data normally.")
-    assert script_monitor.check_log_for_missed_read(str(log)) is False
+    log.write_text("PyBadge not found. Device (Pybadge) not found.")
+    assert script_monitor.check_log_for_session_start(str(log)) is False
