@@ -1,9 +1,11 @@
 import base64
 import json
 import os
+import state
 
-_PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-_ACTIVATION_PATH = os.path.join(_PROJECT_ROOT, 'activation.json')
+# activation.json is writable user data: in a frozen build it lives in the
+# per-user app-data dir (state.script_dir), not beside the read-only binary.
+_ACTIVATION_PATH = os.path.join(state.script_dir, 'activation.json')
 AI_SERVICE_URL = os.environ.get('AI_SERVICE_URL', 'https://www.easyokapi.cbbiotec.vn').rstrip('/')
 
 _token_cache = ...  # type: Optional[str]  # sentinel: ... means "not yet loaded"

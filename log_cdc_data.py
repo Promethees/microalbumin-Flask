@@ -34,6 +34,7 @@ _SRC_DIR = os.path.join(_SCRIPT_DIR, "src")
 if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
+import state
 from get_next_filename import get_next_filename
 from send_command import connect_to_device, send_command_and_wait_ack
 
@@ -63,7 +64,9 @@ class CDCDataCollector:
         self.data_pattern = r"^\d+\.\d{1,2},(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
         self.end_pattern = r"^SESSION TIMEOUT$"
 
-        self.log_dir = os.path.join(_SCRIPT_DIR, "log")
+        # Writable log dir: project root in dev, per-user app-data when frozen
+        # (state.script_dir). Must match where Flask reads logs (state.log_file).
+        self.log_dir = os.path.join(state.script_dir, "log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.log_file_path = os.path.join(self.log_dir, "script_logs.txt")
 

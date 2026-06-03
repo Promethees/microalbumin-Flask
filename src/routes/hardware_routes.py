@@ -28,15 +28,23 @@ def clear_logs():
 
 
 def _logger_command(base_dir, base_name, timeout_sec, interval_sec):
-    """Build the CDC logger subprocess command using the running interpreter
-    (which has pyserial available). CDC needs no elevated privileges."""
-    script_path = os.path.join(state.script_dir, 'log_cdc_data.py')
-    if "window" in platform.system().lower():
-        venv_python = os.path.join(state.script_dir, 'venv', 'Scripts', 'python.exe')
-        python_exe = venv_python if os.path.exists(venv_python) else sys.executable
+    """Build the CDC logger subprocess command. CDC needs no elevated privileges.
+
+    Frozen: there is no python interpreter or log_cdc_data.py on disk, so we
+    re-invoke the app binary itself in --cdc-logger mode (sys.executable IS the
+    binary; main.py dispatches the collector before Flask loads).
+    Dev: run log_cdc_data.py with the running interpreter (which has pyserial)."""
+    if getattr(sys, 'frozen', False):
+        cmd = [sys.executable, '--cdc-logger']
     else:
-        python_exe = sys.executable or 'python3'
-    cmd = [python_exe, script_path, '--base-dir', base_dir, '--base-name', base_name]
+        script_path = os.path.join(state.bundle_dir, 'log_cdc_data.py')
+        if "window" in platform.system().lower():
+            venv_python = os.path.join(state.script_dir, 'venv', 'Scripts', 'python.exe')
+            python_exe = venv_python if os.path.exists(venv_python) else sys.executable
+        else:
+            python_exe = sys.executable or 'python3'
+        cmd = [python_exe, script_path]
+    cmd += ['--base-dir', base_dir, '--base-name', base_name]
     if timeout_sec is not None:
         cmd += ['--timeout-sec', str(float(timeout_sec))]
     if interval_sec is not None:

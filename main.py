@@ -1,3 +1,26 @@
+# ── CDC-logger re-entrant mode ───────────────────────────────────────────────
+# To collect colorimeter readings the app re-invokes *itself* with --cdc-logger
+# (see routes/hardware_routes.run_script). In a frozen build there is no python
+# interpreter or log_cdc_data.py on disk to spawn, so the single binary plays
+# both roles: this branch runs the CDC data collector and exits before Flask is
+# imported. CDC serial needs no elevated privileges. In dev this path is unused
+# (hardware_routes runs log_cdc_data.py directly), but it works there too.
+import sys as _sys
+
+if '--cdc-logger' in _sys.argv:
+    import os as _o
+
+    # In dev the collector modules sit in the project root + src/; a frozen build
+    # bundles them so they import directly.
+    if not getattr(_sys, 'frozen', False):
+        _root = _o.path.dirname(_o.path.abspath(__file__))
+        for _p in (_root, _o.path.join(_root, 'src')):
+            if _p not in _sys.path:
+                _sys.path.insert(0, _p)
+
+    import log_cdc_data as _logger
+    _sys.exit(_logger.main())
+
 # ── Startup progress reporter ────────────────────────────────────────────────
 # Writes "pct label\n" lines to a named FIFO or temporary file so launch
 # scripts can drive the terminal progress bar in real time.
@@ -47,10 +70,12 @@ from filelock import FileLock, Timeout
 _report(25, "Loading standard libraries …")
 
 # ── Source path setup ────────────────────────────────────────────────────────
-if _os.name == "nt":  # Windows
-    sys.path.append(r"code\src")
-else:                  # Linux, macOS
-    sys.path.append("src")
+# Dev only: a frozen build bundles these modules so no path tweaking is needed.
+if not getattr(sys, 'frozen', False):
+    if _os.name == "nt":  # Windows
+        sys.path.append(r"code\src")
+    else:                  # Linux, macOS
+        sys.path.append("src")
 
 # ── Project file-path / utility modules ─────────────────────────────────────
 _report(30, "Loading file-path utilities …")
@@ -87,7 +112,11 @@ from routes.update_routes import update_bp
 # ── Flask application ────────────────────────────────────────────────────────
 _report(95, "Configuring Flask application …")
 import time as _time
-app = Flask(__name__, static_folder='static')
+# Assets are bundled read-only; resolve them from the bundle root (== project
+# root in dev, sys._MEIPASS in a frozen build).
+app = Flask(__name__,
+            static_folder=_os.path.join(state.bundle_dir, 'static'),
+            template_folder=_os.path.join(state.bundle_dir, 'templates'))
 app.jinja_env.globals['STATIC_VERSION'] = str(int(_time.time()))
 app.register_blueprint(core_bp)
 app.register_blueprint(hardware_bp)

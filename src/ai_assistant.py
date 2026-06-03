@@ -9,8 +9,10 @@ import state
 
 # ── Guide training examples (few-shot injection) ──────────────────────────────
 
-_GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_training.json")
-_GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_translations")
+# Read-only bundled assets: resolve from the bundle root (== project root in dev,
+# sys._MEIPASS in a frozen build).
+_GUIDE_TRAINING_PATH = os.path.join(state.bundle_dir, "guide_training.json")
+_GUIDE_TRANSLATIONS_DIR = os.path.join(state.bundle_dir, "guide_translations")
 
 VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru'}
 

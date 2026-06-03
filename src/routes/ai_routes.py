@@ -5,11 +5,14 @@ from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
 import ai_assistant
 import activation as activation_mod
+import state
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
-# Load .env for dev-mode override (GROQ_API_KEY in .env bypasses activation — dev only)
-_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '.env')
+# Load .env for dev-mode override (GROQ_API_KEY in .env bypasses activation — dev only).
+# .env is writable user data: it lives in the app-data dir for a frozen build,
+# and in the project root in dev (both == state.script_dir).
+_env_path = os.path.join(state.script_dir, '.env')
 if os.path.exists(_env_path):
     with open(_env_path, encoding='utf-8') as _f:
         for _line in _f:

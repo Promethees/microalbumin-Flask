@@ -38,6 +38,12 @@ generate_heavy_csv.py
 
 !user_settings.json
 
+# Build tooling (tracked despite the broad *.txt / *.env ignores above)
+!requirements-build.txt
+!.env.example
+/dist/
+/build/
+
 data/
 node_modules
 

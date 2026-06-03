@@ -1,20 +1,12 @@
 import os
 from pathlib import Path
 import re
+import state
 
-# All user data is confined to the data/ directory under the project root.
-def _find_project_root():
-    d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for _ in range(3):
-        if os.path.isfile(os.path.join(d, 'main.py')):
-            return d
-        parent = os.path.dirname(d)
-        if parent == d:
-            break
-        d = parent
-    return d
-
-DATA_ROOT = os.path.join(_find_project_root(), 'data')
+# All user data is confined to the writable data/ directory. In dev this is the
+# project root; in a frozen build it is the per-user app-data dir (state.script_dir),
+# never the read-only bundle. Kept in lockstep with state.data_root_path.
+DATA_ROOT = os.path.join(state.script_dir, 'data')
 os.makedirs(DATA_ROOT, exist_ok=True)
 
 # Folder name reserved by the data-archive feature. When the app is uninstalled
