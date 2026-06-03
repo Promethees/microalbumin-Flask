@@ -306,12 +306,31 @@ New files (the source `build-dmg.sh` / `setup.sh` / `launch.sh` are untouched):
   `SIGNING_IDENTITY` is set; full notarization of the embedded onedir is a follow-up
   (see `SIGNING.md`). Until then users right-click→Open or `xattr -dr com.apple.quarantine`.
 
-### Windows (`installer-win/`)
-- `setup.nsi` / `startwindow-*.bat`: remove git-clone, pyenv, venv steps. NSIS installs
-  `EasyOKAPI.exe` + the onedir `_internal/`.
+### Windows (`installer-win/`) — ✅ done (additive, gated)
+New file (source `setup.nsi` untouched):
+- `setup-frozen.nsi` — minimal NSIS that bundles the onedir via `File /r dist\EasyOKAPI\*`,
+  shortcuts to `EasyOKAPI.exe --port 5099 --alias 127.0.0.1` (loopback avoids the
+  hosts-file edit), and migrates `data/json/report/log` + settings from an old
+  `$INSTDIR\code\` source install into `%LOCALAPPDATA%\EasyOKAPI` (marker-guarded). No
+  token page / download / git / pyenv / venv. CI `build-windows` compiles it + uploads
+  `EasyOKAPI_Setup_<ver>_frozen.exe` when `ENCODE_SOURCE=true`. (Code-signing the exe is
+  a follow-up.)
 
-### Linux (`installer-linux/`)
-- `install*.sh` / `build-tarball.sh`: tarball ships the PyInstaller onedir, no venv.
+### Linux (`installer-linux/`) — ✅ done (additive, gated)
+New files (source `install.sh` / `build-tarball.sh` untouched):
+- `build-tarball-frozen.sh` — packages `dist/EasyOKAPI/` + installer/runner into
+  `EasyOKAPI_linux_v<ver>_frozen.tar.gz`.
+- `install-frozen.sh` (sudo) — migrates old `/opt/EasyOKAPI` source data into
+  `~/.local/share/EasyOKAPI`, installs the onedir to `/opt/EasyOKAPI`, adds a **CDC**
+  udev rule (`tty`, vendor 239a, MODE 0666 — replaces the old HID hidraw rule) so the
+  serial port is user-accessible, and a desktop entry that runs the binary (no sudo,
+  no pkexec). No apt deps / pyenv / venv / vendor fetch.
+- `run-frozen.sh` — execs the binary. CI `build-linux` builds the tarball + uploads it
+  when `ENCODE_SOURCE=true`.
+
+**Note:** the frozen installer steps are additive — the source DMG/EXE/tarball still
+build. A later cutover can gate the source steps off (and drop the `AUTH_BASE_URL`
+requirement, which the frozen path doesn't need) once the frozen installers are trusted.
 
 All three: **gated by `ENCODE_SOURCE`.** `false` ⇒ keep today's source flow untouched.
 **Migration (§11.5):** the encoded installer detects an old source-based install and

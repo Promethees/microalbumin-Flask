@@ -251,6 +251,18 @@ jobs:
           name: EasyOKAPI-bundle-win-${{ needs.setup.outputs.version }}
           path: EasyOKAPI-bundle-win.zip
 
+      - name: Build no-source installer (NSIS, embeds the frozen binary)
+        if: needs.setup.outputs.encode_source == 'true'
+        shell: pwsh
+        run: makensis "/DAPP_VERSION=$env:APP_VERSION" installer-win\setup-frozen.nsi
+
+      - name: Upload no-source installer artifact
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyOKAPI-win-frozen-${{ needs.setup.outputs.version }}
+          path: EasyOKAPI_Setup_*_frozen.exe
+
   # ── Linux build ────────────────────────────────────────────────────────────
   build-linux:
     needs: [setup, test]
@@ -325,6 +337,21 @@ jobs:
         with:
           name: EasyOKAPI-bundle-linux-${{ needs.setup.outputs.version }}
           path: EasyOKAPI-bundle-linux.tar.gz
+
+      - name: Build no-source tarball (embeds the frozen binary)
+        if: needs.setup.outputs.encode_source == 'true'
+        env:
+          APP_VERSION: ${{ needs.setup.outputs.bare_version }}
+        run: |
+          chmod +x ./installer-linux/build-tarball-frozen.sh
+          ./installer-linux/build-tarball-frozen.sh
+
+      - name: Upload no-source tarball artifact
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyOKAPI-linux-frozen-${{ needs.setup.outputs.version }}
+          path: "*_linux_*_frozen.tar.gz"
 
   # ── Release ────────────────────────────────────────────────────────────────
   # Runs on every v* tag push, including force-pushed tag updates.
