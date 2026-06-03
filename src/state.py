@@ -38,3 +38,8 @@ else:
 # Configuration
 PRODUCTION_MODE = True
 APP_VERSION = "1.1.7"
+
+# Address bug reports are sent to (used by the "Report a Bug" button to
+# pre-fill a mailto: link). This is the maintainer's inbox, not a per-machine
+# user preference, so it lives here as a project constant.
+MAINTAINER_EMAIL = "tqmthong@gmail.com"

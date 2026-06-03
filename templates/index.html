@@ -31,6 +31,7 @@
                 document.getElementById('logo').classList.remove('hidden');
                 document.getElementById('meas-mode-section').classList.remove('hidden');
                 document.getElementById('options-section').classList.remove('hidden');
+                document.getElementById('report-bug-section').classList.remove('hidden');
             } catch (err) {
                 console.error('Initialization selection canceled or failed:', err);
                 // Show error message and allow retry
@@ -285,6 +286,12 @@
                             </select>
                         </div>
                     </div>
+                </div>
+                <div class="section hidden" id="report-bug-section">
+                    <button id="report-bug-btn" onclick="reportBug()"
+                        title="Report a bug or defect to the maintainer" aria-label="Report a Bug">
+                        🐞 Report a Bug
+                    </button>
                 </div>
             </div>
         </div>
@@ -747,6 +754,7 @@
             const JSON_ROOT = {{ json_root | tojson | safe }};
             const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
             const APP_VERSION = "{{ app_version }}";
+            const MAINTAINER_EMAIL = "{{ maintainer_email }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
             document.documentElement.style.setProperty('--file-table-height', (USER_SETTINGS.file_table_height || 240) + 'px');
@@ -771,6 +779,7 @@
         <script src="{{ url_for('static', filename='script/user-guide.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/report.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/ai-chat.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/bug-report.js') }}?v={{ STATIC_VERSION }}"></script>
 </body>
 
 </html>

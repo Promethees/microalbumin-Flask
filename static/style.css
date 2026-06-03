@@ -2060,6 +2060,96 @@ body.dark .sm-section-title {
     background-color: #cc2222;
 }
 
+/* Report a Bug button (left column, below Options) */
+#report-bug-section {
+    text-align: center;
+    background: none;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 0;
+}
+
+#report-bug-section:hover {
+    box-shadow: none;
+}
+
+#report-bug-btn {
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: none;
+    font-size: 14px;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+body.light #report-bug-btn {
+    background-color: #f0ad4e;
+    color: #3a2c00;
+}
+
+body.dark #report-bug-btn {
+    background-color: #d99425;
+    color: #1a1a1a;
+}
+
+#report-bug-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: none;
+}
+
+/* Bug-report log-file picker (inside a SweetAlert) */
+.bug-log-hint {
+    margin: 0 0 10px;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.bug-log-list {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 6px;
+    text-align: left;
+}
+
+.bug-log-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+    font-size: 13px;
+}
+
+.bug-log-row:last-child {
+    border-bottom: none;
+}
+
+.bug-log-row:hover {
+    background: rgba(128, 128, 128, 0.12);
+}
+
+.bug-log-name {
+    flex: 1;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.bug-log-size {
+    opacity: 0.65;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 /* Session timer widget */
 #session-timer {
     display: flex;

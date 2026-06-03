@@ -523,6 +523,85 @@ def test_clear_logs_success(client, tmp_path):
     assert log.read_text() == ""
 
 
+def test_download_event_logs_bundles_jsonl(client, tmp_path):
+    import io
+    import zipfile
+    events_root = tmp_path / "log" / "events" / "2026-06-03"
+    events_root.mkdir(parents=True)
+    (events_root / "10-00-00.jsonl").write_text('{"ts":"x","type":"session","action":"start"}\n')
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.get('/download_event_logs')
+    assert rv.status_code == 200
+    assert rv.mimetype == 'application/zip'
+    assert 'easyokapi-logs-' in rv.headers.get('Content-Disposition', '')
+    z = zipfile.ZipFile(io.BytesIO(rv.data))
+    assert z.testzip() is None
+    assert any(n.endswith('10-00-00.jsonl') for n in z.namelist())
+
+
+def test_download_event_logs_empty_still_returns_zip(client, tmp_path):
+    import io
+    import zipfile
+    # No log/events directory at all — must still return a valid zip with a note.
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.get('/download_event_logs')
+    assert rv.status_code == 200
+    assert rv.mimetype == 'application/zip'
+    z = zipfile.ZipFile(io.BytesIO(rv.data))
+    assert z.testzip() is None
+    assert 'events/README.txt' in z.namelist()
+
+
+def test_list_event_log_files_newest_first(client, tmp_path):
+    events_root = tmp_path / "log" / "events" / "2026-06-03"
+    events_root.mkdir(parents=True)
+    (events_root / "10-00-00.jsonl").write_text('{"a":1}\n')
+    (events_root / "11-00-00.jsonl").write_text('{"a":2}\n')
+    import os as _os
+    # Make 11-00-00 the more recently modified file.
+    _os.utime(str(events_root / "10-00-00.jsonl"), (1000, 1000))
+    _os.utime(str(events_root / "11-00-00.jsonl"), (2000, 2000))
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.get('/list_event_log_files')
+    assert rv.status_code == 200
+    files = rv.get_json()['files']
+    assert [f['path'] for f in files] == ['2026-06-03/11-00-00.jsonl', '2026-06-03/10-00-00.jsonl']
+    assert all('size' in f for f in files)
+
+
+def test_download_event_logs_post_selection(client, tmp_path):
+    import io
+    import zipfile
+    events_root = tmp_path / "log" / "events" / "2026-06-03"
+    events_root.mkdir(parents=True)
+    (events_root / "10-00-00.jsonl").write_text('{"a":1}\n')
+    (events_root / "11-00-00.jsonl").write_text('{"a":2}\n')
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.post('/download_event_logs', json={'files': ['2026-06-03/10-00-00.jsonl']})
+    assert rv.status_code == 200
+    assert rv.mimetype == 'application/zip'
+    z = zipfile.ZipFile(io.BytesIO(rv.data))
+    assert z.namelist() == ['events/2026-06-03/10-00-00.jsonl']
+
+
+def test_download_event_logs_post_rejects_traversal(client, tmp_path):
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.post('/download_event_logs', json={'files': ['../../../etc/passwd']})
+    assert rv.status_code == 400
+
+
+def test_download_event_logs_post_rejects_too_many(client, tmp_path):
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.post('/download_event_logs', json={'files': ['a.jsonl'] * 6})
+    assert rv.status_code == 400
+
+
+def test_download_event_logs_post_rejects_empty(client, tmp_path):
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.post('/download_event_logs', json={'files': []})
+    assert rv.status_code == 400
+
+
 def test_clear_cache_sets_no_cache_headers(client):
     rv = client.post('/clear_cache')
     assert rv.status_code == 200

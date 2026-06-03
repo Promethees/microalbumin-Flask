@@ -50,7 +50,7 @@ graph TD
 
 | Blueprint | File | Routes | Frontend Consumer |
 |---|---|---|---|
-| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_data_folders`, `/get_json_cal`, `/get_report_subjects`, `/settings` (GET+POST), `/event_log` (GET+POST) | `index.js`, `navigation.js`, `report.js`, `init.js`, `event-tracker.js` |
+| `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_data_folders`, `/get_json_cal`, `/get_report_subjects`, `/settings` (GET+POST), `/event_log` (GET+POST), `/list_event_log_files` (GET), `/download_event_logs` (GET all / POST selected, max 5) | `index.js`, `navigation.js`, `report.js`, `init.js`, `event-tracker.js`, `bug-report.js` |
 | `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/edit_file`, `/delete_file`, `/copy_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/get_calibration_json_list`, `/delete_data_folder`, `/rename_data_folder`, `/move_file`, `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js`, `report.js` |
 | `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities` | `calculate.js`, `data-display.js` |
@@ -98,7 +98,7 @@ graph TD
 
 Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` — host-initiated sessions use `transport="cdc"` (`usb_cdc.data`), button-initiated use `transport="hid"`.
 
-### 2.4 Frontend (`static/script/` — 12 JS files)
+### 2.4 Frontend (`static/script/` — 15 JS files)
 
 | File | Responsibility |
 |---|---|
@@ -116,6 +116,7 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 | `report.js` | Report generation (`generateReport`), subject CRUD UI (create/rename/copy/delete subjects, export to subject, view items) |
 | `user-guide.js` | Interactive step-by-step user guide with spotlight overlay |
 | `ai-chat.js` | Floating AI chat widget: panel toggle, multilingual language selector, settings panel, model download progress, conversation history |
+| `bug-report.js` | "Report a Bug" button (left column, below Options): SweetAlert flow — (1) attach logs? (2) pick up to 5 `log/events/` files (`/list_event_log_files`), (3) name the zip. `POST /download_event_logs` bundles the chosen files and downloads the zip to the machine, then a `mailto:` draft to `state.MAINTAINER_EMAIL` opens with an instruction to attach that downloaded zip manually (mailto: cannot pre-attach files). "No, just email" opens a plain `mailto:` with no attachment. |
 
 ### 2.5 Templates (`templates/`)
 

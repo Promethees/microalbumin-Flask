@@ -1,8 +1,10 @@
-from flask import Blueprint, jsonify, make_response, render_template, request
+from flask import Blueprint, jsonify, make_response, render_template, request, send_file
 import os
+import io
 import time
 import signal
 import threading
+import zipfile
 import state
 import user_settings as _user_settings
 import event_logger
@@ -72,6 +74,7 @@ def index():
                          delimiter=state.delimiter,
                          production_mode=state.PRODUCTION_MODE,
                          app_version=state.APP_VERSION,
+                         maintainer_email=state.MAINTAINER_EMAIL,
                          user_settings=user_settings))
     return response
 
@@ -157,6 +160,120 @@ def post_event_log():
         return jsonify({'status': 'error', 'message': 'type and action are required'}), 400
     event_logger.append(event_type, action, data.get('details'))
     return jsonify({'status': 'success'})
+
+
+# Cap on how many event-log files a single bug-report attachment may bundle.
+MAX_EVENT_LOG_SELECTION = 5
+
+
+def _events_root():
+    return os.path.join(state.script_dir, 'log', 'events')
+
+
+def _resolve_event_log_path(rel_path):
+    """Resolve a client-supplied relative event-log path against the events root.
+    Returns the absolute path if it is a real .jsonl file safely inside the root,
+    otherwise None (guards against path traversal)."""
+    root = _events_root()
+    rel = str(rel_path).replace('\\', '/').strip().lstrip('/')
+    if not rel.endswith('.jsonl'):
+        return None
+    abs_path = os.path.normpath(os.path.join(root, rel))
+    if not (abs_path == root or abs_path.startswith(root + os.sep)):
+        return None
+    if not os.path.isfile(abs_path):
+        return None
+    return abs_path
+
+
+@core_bp.route('/list_event_log_files', methods=['GET'])
+def list_event_log_files():
+    """List available event-log session files (log/events/**/*.jsonl), newest
+    first, so the user can pick which ones to attach to a bug report."""
+    root = _events_root()
+    files = []
+    if os.path.isdir(root):
+        for dirpath, _dirs, names in os.walk(root):
+            for name in names:
+                if not name.endswith('.jsonl'):
+                    continue
+                abs_path = os.path.join(dirpath, name)
+                rel_path = os.path.relpath(abs_path, root).replace(os.sep, '/')
+                try:
+                    st = os.stat(abs_path)
+                    files.append({'path': rel_path, 'size': st.st_size, 'modified': st.st_mtime})
+                except OSError:
+                    pass
+    files.sort(key=lambda f: f['modified'], reverse=True)
+    return jsonify({'status': 'success', 'files': files})
+
+
+@core_bp.route('/download_event_logs', methods=['GET', 'POST'])
+def download_event_logs():
+    """Bundle event-log session files (log/events/**/*.jsonl) into an in-memory
+    zip the user can attach to a bug-report email.
+
+    GET  → bundles all event logs (legacy "attach everything" behaviour).
+    POST → bundles only the files listed in JSON {"files": [...]} (max
+           MAX_EVENT_LOG_SELECTION), used by the "Report a Bug" file picker.
+
+    If nothing matches, the zip still contains a short note so the user always
+    has a file to attach."""
+    events_root = _events_root()
+
+    selected_paths = None
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        requested = data.get('files')
+        if not isinstance(requested, list) or not requested:
+            return jsonify({'status': 'error', 'message': 'No files selected'}), 400
+        if len(requested) > MAX_EVENT_LOG_SELECTION:
+            return jsonify({'status': 'error',
+                            'message': f'Select at most {MAX_EVENT_LOG_SELECTION} files'}), 400
+        selected_paths = []
+        for rel in requested:
+            abs_path = _resolve_event_log_path(rel)
+            if abs_path is None:
+                return jsonify({'status': 'error', 'message': f'Invalid file: {rel}'}), 400
+            selected_paths.append(abs_path)
+
+    buf = io.BytesIO()
+    file_count = 0
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        if selected_paths is not None:
+            for abs_path in selected_paths:
+                arcname = os.path.join('events', os.path.relpath(abs_path, events_root))
+                try:
+                    zf.write(abs_path, arcname)
+                    file_count += 1
+                except OSError:
+                    pass
+        elif os.path.isdir(events_root):
+            for dirpath, _dirs, files in os.walk(events_root):
+                for name in files:
+                    if not name.endswith('.jsonl'):
+                        continue
+                    abs_path = os.path.join(dirpath, name)
+                    # Keep the date-folder structure inside the archive.
+                    arcname = os.path.join('events', os.path.relpath(abs_path, events_root))
+                    try:
+                        zf.write(abs_path, arcname)
+                        file_count += 1
+                    except OSError:
+                        pass
+        if file_count == 0:
+            zf.writestr('events/README.txt',
+                        'No event log files were found for this installation.\n')
+
+    buf.seek(0)
+    event_logger.append('bug_report', 'download_logs', {'file_count': file_count})
+    filename = f"easyokapi-logs-{time.strftime('%Y%m%d-%H%M%S')}.zip"
+    return send_file(
+        buf,
+        mimetype='application/zip',
+        as_attachment=True,
+        attachment_filename=filename,
+    )
 
 
 @core_bp.route('/get_report_subjects', methods=['GET'])
