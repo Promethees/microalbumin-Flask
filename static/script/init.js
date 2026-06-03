@@ -641,7 +641,6 @@ const SETTINGS_DEFAULTS = {
     default_timeout_unit: 'seconds',
     default_interval: null,
     default_interval_unit: 'seconds',
-    max_resend_attempts: 3,
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -727,7 +726,6 @@ function _buildSettingsHTML(s, folders) {
                     `<option value="seconds" ${(s.default_interval_unit||'seconds')==='seconds'?'selected':''}>seconds</option>
                      <option value="minutes" ${s.default_interval_unit==='minutes'?'selected':''}>minutes</option>
                      <option value="hours"   ${s.default_interval_unit==='hours'?'selected':''}>hours</option>`))}
-                ${row('Max retries on read failure', 'Resend attempts before giving up (0 = no retry)', num('swal-max-resend', 0, s.max_resend_attempts ?? 3))}
             </div>
         </div>
         <div class="sm-section sm-section--full">
@@ -777,7 +775,6 @@ function _readSettingsForm() {
         default_timeout_unit: document.getElementById('swal-log-timeout-unit').value,
         default_interval: document.getElementById('swal-log-interval').value === '' ? null : parseFloat(document.getElementById('swal-log-interval').value),
         default_interval_unit: document.getElementById('swal-log-interval-unit').value,
-        max_resend_attempts: Math.max(0, parseInt(document.getElementById('swal-max-resend').value, 10) || 0),
     };
 }
 
@@ -812,7 +809,6 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-log-timeout-unit').value = s.default_timeout_unit || 'seconds';
     document.getElementById('swal-log-interval').value = s.default_interval ?? '';
     document.getElementById('swal-log-interval-unit').value = s.default_interval_unit || 'seconds';
-    document.getElementById('swal-max-resend').value = s.max_resend_attempts ?? 3;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
