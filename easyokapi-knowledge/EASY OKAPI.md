@@ -423,7 +423,7 @@ Proxy mode always takes priority over dev mode when both are present.
 | Build step | Not required | Required (`npm run build`) |
 | Deployment | Local machine | Heroku |
 | Real-time | No SocketIO | Flask-SocketIO with eventlet |
-| Flask version | 1.1.7 | Latest (with SocketIO support) |
+| Flask version | 1.1.4 | Latest (with SocketIO support) |
 | Shutdown endpoint | Present (`/shutdown`) | Not applicable |
 | `PRODUCTION_MODE` | `True` (in `state.py`) | `True` (always) |
 | Browser auto-launch | Yes (`browser_mgt.py`) | No |
