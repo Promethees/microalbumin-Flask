@@ -12,6 +12,11 @@ env:
   # Fallback version used on non-tag branch builds (CI smoke runs)
   APP_VERSION_FALLBACK: "1.1.8"
   AUTH_BASE_URL: ${{ secrets.AUTH_BASE_URL }}
+  # No-source freeze toggle (P3). Set repository variable ENCODE_SOURCE=true to
+  # additionally build + smoke-test the PyInstaller onedir bundle and publish the
+  # EasyOKAPI-bundle-<plat> update artifacts. Defaults to 'false' so the existing
+  # source installer pipeline is unchanged until you opt in.
+  ENCODE_SOURCE: ${{ vars.ENCODE_SOURCE || 'false' }}
 
 jobs:
   # ── Compute version ────────────────────────────────────────────────────────
@@ -22,6 +27,7 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
       bare_version: ${{ steps.ver.outputs.bare_version }}
+      encode_source: ${{ steps.flag.outputs.encode_source }}
     steps:
       - name: Compute version
         id: ver
@@ -34,6 +40,10 @@ jobs:
           BARE="${VERSION#v}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "bare_version=${BARE}" >> $GITHUB_OUTPUT
+
+      - name: Resolve ENCODE_SOURCE flag
+        id: flag
+        run: echo "encode_source=${{ env.ENCODE_SOURCE }}" >> $GITHUB_OUTPUT
 
   # ── Tests ──────────────────────────────────────────────────────────────────
   test:
@@ -81,6 +91,45 @@ jobs:
         with:
           name: EasyOKAPI-mac-${{ needs.setup.outputs.version }}
           path: "*.dmg"
+
+      # ── No-source frozen bundle (gated by ENCODE_SOURCE) ────────────────────
+      - name: Set up Python (frozen build)
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Build frozen bundle (PyInstaller)
+        if: needs.setup.outputs.encode_source == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-build.txt
+          python tools/package.py --encode
+
+      - name: Smoke test frozen bundle (/ping)
+        if: needs.setup.outputs.encode_source == 'true'
+        run: |
+          ./dist/EasyOKAPI/EasyOKAPI --port 5099 --alias 127.0.0.1 &
+          APP_PID=$!
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5099/ping >/dev/null 2>&1; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$APP_PID" 2>/dev/null || true
+          if [ "$ok" != "1" ]; then echo "Smoke test failed: /ping never returned 200"; exit 1; fi
+          echo "Smoke test passed."
+
+      - name: Package update bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        run: tar -C dist -czf EasyOKAPI-bundle-mac.tar.gz EasyOKAPI
+
+      - name: Upload bundle artifact
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyOKAPI-bundle-mac-${{ needs.setup.outputs.version }}
+          path: EasyOKAPI-bundle-mac.tar.gz
 
   # ── Windows build ──────────────────────────────────────────────────────────
   build-windows:
@@ -133,6 +182,47 @@ jobs:
           name: EasyOKAPI-win-${{ needs.setup.outputs.version }}
           path: installer-win/EasyOKAPI_Setup_${{ needs.setup.outputs.bare_version }}.exe
 
+      # ── No-source frozen bundle (gated by ENCODE_SOURCE) ────────────────────
+      - name: Set up Python (frozen build)
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Build frozen bundle (PyInstaller)
+        if: needs.setup.outputs.encode_source == 'true'
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-build.txt
+          python tools/package.py --encode
+
+      - name: Smoke test frozen bundle (/ping)
+        if: needs.setup.outputs.encode_source == 'true'
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\EasyOKAPI\EasyOKAPI.exe" -ArgumentList '--port','5099','--alias','127.0.0.1' -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            try { Invoke-WebRequest 'http://127.0.0.1:5099/ping' -UseBasicParsing -TimeoutSec 2 | Out-Null; $ok = $true; break }
+            catch { Start-Sleep -Seconds 1 }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Error 'Smoke test failed: /ping never returned 200'; exit 1 }
+          Write-Host 'Smoke test passed.'
+
+      - name: Package update bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        shell: pwsh
+        run: Compress-Archive -Path "dist\EasyOKAPI" -DestinationPath "EasyOKAPI-bundle-win.zip" -Force
+
+      - name: Upload bundle artifact
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyOKAPI-bundle-win-${{ needs.setup.outputs.version }}
+          path: EasyOKAPI-bundle-win.zip
+
   # ── Linux build ────────────────────────────────────────────────────────────
   build-linux:
     needs: [setup, test]
@@ -159,6 +249,47 @@ jobs:
         with:
           name: EasyOKAPI-linux-${{ needs.setup.outputs.version }}
           path: "*.tar.gz"
+
+      # ── No-source frozen bundle (gated by ENCODE_SOURCE) ────────────────────
+      - name: Set up Python (frozen build)
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Build frozen bundle (PyInstaller)
+        if: needs.setup.outputs.encode_source == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-build.txt
+          python tools/package.py --encode
+
+      - name: Smoke test frozen bundle (/ping)
+        if: needs.setup.outputs.encode_source == 'true'
+        run: |
+          ./dist/EasyOKAPI/EasyOKAPI --port 5099 --alias 127.0.0.1 &
+          APP_PID=$!
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5099/ping >/dev/null 2>&1; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$APP_PID" 2>/dev/null || true
+          if [ "$ok" != "1" ]; then echo "Smoke test failed: /ping never returned 200"; exit 1; fi
+          echo "Smoke test passed."
+
+      - name: Package update bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        # The onedir folder is renamed to avoid colliding with the installer
+        # tarball's own '*.tar.gz' glob in the upload above.
+        run: tar -C dist -czf EasyOKAPI-bundle-linux.tar.gz EasyOKAPI
+
+      - name: Upload bundle artifact
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyOKAPI-bundle-linux-${{ needs.setup.outputs.version }}
+          path: EasyOKAPI-bundle-linux.tar.gz
 
   # ── Release ────────────────────────────────────────────────────────────────
   # Runs on every v* tag push, including force-pushed tag updates.
@@ -188,6 +319,28 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: EasyOKAPI-linux-${{ needs.setup.outputs.version }}
+          path: dist/
+
+      # ── Frozen update bundles (gated) — consumed by the in-app swap updater ──
+      - name: Download macOS bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyOKAPI-bundle-mac-${{ needs.setup.outputs.version }}
+          path: dist/
+
+      - name: Download Windows bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyOKAPI-bundle-win-${{ needs.setup.outputs.version }}
+          path: dist/
+
+      - name: Download Linux bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyOKAPI-bundle-linux-${{ needs.setup.outputs.version }}
           path: dist/
 
       - name: Create or update GitHub Release
