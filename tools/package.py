@@ -52,6 +52,14 @@ def build_encoded():
     except ImportError:
         sys.exit("PyInstaller is not installed. Run: pip install -r requirements-build.txt")
 
+    # static/vendor/ (jQuery, Chart.js, MathJax, …) is git-ignored and normally
+    # fetched by the installer at runtime. A frozen build bundles static/ into the
+    # binary, so the assets must exist *before* PyInstaller runs or the packaged UI
+    # ships without its JS/fonts. Populate them first (idempotent).
+    print("==> Ensuring front-end vendor libraries are present…")
+    import fetch_vendor
+    fetch_vendor.ensure_vendor()
+
     print("==> Building frozen no-source bundle (PyInstaller onedir)…")
     cmd = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', SPEC]
     subprocess.run(cmd, cwd=ROOT, check=True)

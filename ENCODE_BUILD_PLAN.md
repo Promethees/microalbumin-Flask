@@ -176,6 +176,12 @@ update_service.download_and_apply()
 - `templates/`, `static/`, `guide_training.json`, `guide_translations/*.json`,
   `sample_data/`, and the **default/seed** `json/` content (the live `json/` becomes a
   writable folder — see §6).
+- **`static/vendor/`** (jQuery, Chart.js, SweetAlert2, numeric.js, MathJax + WOFF
+  fonts) is git-ignored and normally fetched by the installer at runtime, so it is
+  absent on a clean CI checkout. `tools/package.py` calls `tools/fetch_vendor.py`
+  **before** PyInstaller to populate it, or the frozen UI ships without its JS/fonts.
+  The CI smoke test asserts `/static/vendor/jquery-3.6.0.min.js` is served, so a
+  missing vendor tree fails the build instead of shipping a broken UI.
 
 ### 5.3 Hidden imports
 - The re-entrant collector and its deps: `log_cdc_data`, `send_command`,

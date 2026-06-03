@@ -116,9 +116,16 @@ jobs:
             if curl -fsS http://127.0.0.1:5099/ping >/dev/null 2>&1; then ok=1; break; fi
             sleep 1
           done
+          # Also assert a bundled vendor asset is served — catches a static/vendor
+          # tree missing from the freeze (the UI would otherwise break silently).
+          vendor=0
+          if [ "$ok" = "1" ] && curl -fsS http://127.0.0.1:5099/static/vendor/jquery-3.6.0.min.js >/dev/null 2>&1; then
+            vendor=1
+          fi
           kill "$APP_PID" 2>/dev/null || true
           if [ "$ok" != "1" ]; then echo "Smoke test failed: /ping never returned 200"; exit 1; fi
-          echo "Smoke test passed."
+          if [ "$vendor" != "1" ]; then echo "Smoke test failed: bundled vendor asset not served (static/vendor missing)"; exit 1; fi
+          echo "Smoke test passed (/ping + vendor asset)."
 
       - name: Package update bundle
         if: needs.setup.outputs.encode_source == 'true'
@@ -207,9 +214,15 @@ jobs:
             try { Invoke-WebRequest 'http://127.0.0.1:5099/ping' -UseBasicParsing -TimeoutSec 2 | Out-Null; $ok = $true; break }
             catch { Start-Sleep -Seconds 1 }
           }
+          # Also assert a bundled vendor asset is served (static/vendor in the freeze).
+          $vendor = $false
+          if ($ok) {
+            try { Invoke-WebRequest 'http://127.0.0.1:5099/static/vendor/jquery-3.6.0.min.js' -UseBasicParsing -TimeoutSec 5 | Out-Null; $vendor = $true } catch {}
+          }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           if (-not $ok) { Write-Error 'Smoke test failed: /ping never returned 200'; exit 1 }
-          Write-Host 'Smoke test passed.'
+          if (-not $vendor) { Write-Error 'Smoke test failed: bundled vendor asset not served (static/vendor missing)'; exit 1 }
+          Write-Host 'Smoke test passed (/ping + vendor asset).'
 
       - name: Package update bundle
         if: needs.setup.outputs.encode_source == 'true'
@@ -274,9 +287,16 @@ jobs:
             if curl -fsS http://127.0.0.1:5099/ping >/dev/null 2>&1; then ok=1; break; fi
             sleep 1
           done
+          # Also assert a bundled vendor asset is served — catches a static/vendor
+          # tree missing from the freeze (the UI would otherwise break silently).
+          vendor=0
+          if [ "$ok" = "1" ] && curl -fsS http://127.0.0.1:5099/static/vendor/jquery-3.6.0.min.js >/dev/null 2>&1; then
+            vendor=1
+          fi
           kill "$APP_PID" 2>/dev/null || true
           if [ "$ok" != "1" ]; then echo "Smoke test failed: /ping never returned 200"; exit 1; fi
-          echo "Smoke test passed."
+          if [ "$vendor" != "1" ]; then echo "Smoke test failed: bundled vendor asset not served (static/vendor missing)"; exit 1; fi
+          echo "Smoke test passed (/ping + vendor asset)."
 
       - name: Package update bundle
         if: needs.setup.outputs.encode_source == 'true'
