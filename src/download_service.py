@@ -75,6 +75,36 @@ def get_release_asset(platform: str, tag: str | None = None) -> dict | None:
     return None
 
 
+# Match the in-app update *bundle* (the PyInstaller onedir archive) per platform.
+# CI publishes EasyOKAPI-bundle-{mac,linux}.tar.gz and EasyOKAPI-bundle-win.zip.
+_BUNDLE_ASSET_SUFFIX = {
+    'mac': 'bundle-mac.tar.gz',
+    'win': 'bundle-win.zip',
+    'linux': 'bundle-linux.tar.gz',
+}
+
+
+def get_bundle_asset(platform: str, tag: str | None = None) -> dict | None:
+    """Return the GitHub Release asset for the no-source onedir *bundle* of a platform.
+
+    This is the artifact the desktop app's in-app binary-swap updater downloads
+    (GET /api/download?kind=bundle&platform=...). It is distinct from
+    get_release_asset(), which returns the installer (.dmg/.exe/installer .tar.gz).
+    Returns None when the platform is unknown, the release is missing, or the
+    release has no bundle asset.
+    """
+    suffix = _BUNDLE_ASSET_SUFFIX.get(platform)
+    if not suffix:
+        return None
+    release = get_release(tag)
+    if not release:
+        return None
+    for asset in release.get('assets', []):
+        if asset.get('name', '').lower().endswith(suffix):
+            return asset
+    return None
+
+
 def get_latest_release_tag() -> str | None:
     """Return the tag of the latest published GitHub Release (e.g. 'v1.1.4'), or None.
 

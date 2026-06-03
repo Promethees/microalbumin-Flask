@@ -1,7 +1,7 @@
 import os
 import re
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, render_template, Response, stream_with_context, session
+from flask import Blueprint, request, jsonify, render_template, Response, stream_with_context, session, redirect
 import jwt as pyjwt
 
 from account import db, User
@@ -9,7 +9,7 @@ from email_service import send_verification_email, send_password_reset_email
 from download_service import (
     generate_download_token, validate_download_token,
     fetch_github_release, issue_activation_token,
-    get_latest_release_tag,
+    get_latest_release_tag, get_bundle_asset,
 )
 
 account_bp = Blueprint('account', __name__)
@@ -386,6 +386,25 @@ def download():
     # fall back to the server's resolved tag (used by the in-app auto-updater,
     # which intentionally always pulls the latest).
     version_tag = _requested_version_tag() or _resolved_release_tag()
+
+    # No-source binary-swap updater: serve the per-platform onedir *bundle* asset
+    # (EasyOKAPI-bundle-{mac,linux}.tar.gz / -win.zip) instead of the source
+    # tarball. The desktop client sends ?kind=bundle&platform=mac|win|linux and
+    # follows the redirect to the release asset's public download URL. (Frozen
+    # builds have no .py on disk, so they swap the whole onedir — see the desktop
+    # repo's update_service._download_and_stage_bundle.)
+    if request.args.get('kind') == 'bundle':
+        platform = (request.args.get('platform') or '').strip().lower()
+        if platform not in ('mac', 'win', 'linux'):
+            return jsonify({'status': 'error', 'message': 'Invalid or missing platform'}), 400
+        asset = get_bundle_asset(platform, version_tag)
+        if not asset or not asset.get('browser_download_url'):
+            return jsonify({'status': 'error',
+                            'message': f'No {platform} bundle published for release {version_tag}'}), 404
+        user.last_download = datetime.utcnow()
+        db.session.commit()
+        return redirect(asset['browser_download_url'], code=302)
+
     try:
         upstream = fetch_github_release(version_tag)
     except Exception as e:
