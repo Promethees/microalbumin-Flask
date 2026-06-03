@@ -289,11 +289,22 @@ stays as-is. Flagged for coordination (§11.3).
 Rewriting three platform installers on top of a freeze that has never run on CI is
 high-risk and untestable locally, so it is sequenced **after** P3a proves the freeze.
 
-### macOS (`installer-mac/`)
-- `setup.sh`: drop Homebrew/pyenv/Python/venv/pip and source-tarball download. Instead:
-  place binary; the app self-creates per-user app-data dirs on first launch.
-- `build-dmg.sh` / `main.yml build-macos`: drop the onedir (or `.app`) into the DMG.
-  Signing/notarization now signs a real Mach-O.
+### macOS (`installer-mac/`) — ✅ done (additive, gated)
+New files (the source `build-dmg.sh` / `setup.sh` / `launch.sh` are untouched):
+- `run-frozen.scpt` — applet that just launches the embedded binary (no token
+  prompt, no sudo, no setup).
+- `launch-frozen.sh` — runs migration then `exec EasyOKAPI/EasyOKAPI --alias 127.0.0.1`
+  (loopback avoids the `/etc/hosts` edit that needed sudo). No pyenv/venv.
+- `migrate-frozen.sh` — one-time copy of `data/json/report/log` + settings from an old
+  `/Applications/microalbumin-Flask` source install into the app-data dir, then removes
+  the old install (marker-guarded, best-effort).
+- `build-dmg-frozen.sh` — embeds `dist/EasyOKAPI/` into `EasyOKAPI.app/Contents/Resources/`
+  and produces `EasyOKAPI_v<ver>_mac.dmg`. CI `build-macos` runs it + uploads the DMG when
+  `ENCODE_SOURCE=true`.
+- **Caveat (notarization):** an unsigned/un-notarized frozen binary trips Gatekeeper
+  ("developer cannot be verified"). `build-dmg-frozen.sh` does `codesign --deep` when
+  `SIGNING_IDENTITY` is set; full notarization of the embedded onedir is a follow-up
+  (see `SIGNING.md`). Until then users right-click→Open or `xattr -dr com.apple.quarantine`.
 
 ### Windows (`installer-win/`)
 - `setup.nsi` / `startwindow-*.bat`: remove git-clone, pyenv, venv steps. NSIS installs

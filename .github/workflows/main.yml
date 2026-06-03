@@ -138,6 +138,21 @@ jobs:
           name: EasyOKAPI-bundle-mac-${{ needs.setup.outputs.version }}
           path: EasyOKAPI-bundle-mac.tar.gz
 
+      - name: Build no-source DMG (embeds the frozen binary)
+        if: needs.setup.outputs.encode_source == 'true'
+        env:
+          APP_VERSION: ${{ needs.setup.outputs.bare_version }}
+        run: |
+          chmod +x ./installer-mac/build-dmg-frozen.sh
+          ./installer-mac/build-dmg-frozen.sh
+
+      - name: Upload no-source DMG artifact
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EasyOKAPI-mac-frozen-${{ needs.setup.outputs.version }}
+          path: "*_mac.dmg"
+
   # ── Windows build ──────────────────────────────────────────────────────────
   build-windows:
     needs: [setup, test]
