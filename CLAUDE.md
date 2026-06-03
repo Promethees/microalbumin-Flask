@@ -29,7 +29,7 @@ pytest tests/test_utils.py      # run a single test file
 pytest tests/ -k "test_ping"    # run a single test by name
 ```
 
-**Flask version is 1.1.5** — do not use APIs introduced after Flask 1.x (e.g., `app.json`, `current_app.ensure_sync`). Check Flask 1.x docs for compatibility.
+**Flask version is 1.1.6** — do not use APIs introduced after Flask 1.x (e.g., `app.json`, `current_app.ensure_sync`). Check Flask 1.x docs for compatibility.
 
 ---
 
@@ -39,7 +39,7 @@ Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and 
 
 ---
 
-## Current Version: 1.1.5
+## Current Version: 1.1.6
 
 ---
 

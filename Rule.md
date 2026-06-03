@@ -10,7 +10,7 @@
 |---|---|
 | **App name** | Easy OKAPI |
 | **Domain** | Colorimeter data visualization for bio-sensor experiments |
-| **Framework** | Flask 1.1.5 (Python 3.x via pyenv) |
+| **Framework** | Flask 1.1.6 (Python 3.x via pyenv) |
 | **Real-time** | No SocketIO. Standard request/response only |
 | **Deployment** | Local machine — auto-launches browser via `browser_mgt.py` |
 | **Default port** | `5099` (configurable via `--port`) |
