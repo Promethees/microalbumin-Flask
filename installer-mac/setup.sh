@@ -190,7 +190,6 @@ for d in tests .github installer-mac installer-win installer-linux; do
     [ -d "$INSTALL_DIR/$d" ] && rm -rf "$INSTALL_DIR/$d"
 done
 rm -f "$INSTALL_DIR"/*.bat \
-      "$INSTALL_DIR/requirements-win.txt" \
       "$INSTALL_DIR/generate-tree.sh" \
       "$INSTALL_DIR/BUILD_MAC.md" \
       "$INSTALL_DIR/Rule.md" 2>/dev/null
@@ -300,36 +299,6 @@ for font in "${MATHJAX_FONTS[@]}"; do
     fi
 done
 print_ok "Vendor libraries downloaded."
-
-# HID library path patch
-print_step "Configuring HID library"
-if [ ! -f "mac/libhidapi.dylib" ]; then
-    print_fail "mac/libhidapi.dylib not found."
-    osascript -e "display dialog \"libhidapi.dylib not found. The application may not be able to communicate with the colorimeter.\" buttons {\"OK\"} with title \"EasyOKAPI Setup\" $(_icon)"
-    exit 1
-fi
-HID_INIT="venv/lib/python3.8/site-packages/hid/__init__.py"
-if [ -f "$HID_INIT" ]; then
-    cp "$HID_INIT" "$HID_INIT.bak"
-    TEMP=$(mktemp)
-    {
-        echo "import os"
-        echo "import ctypes"
-        echo ""
-        echo "# Load libhidapi.dylib from the mac/ folder next to main.py"
-        echo "lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../../mac/libhidapi.dylib'))"
-        echo "hidapi = ctypes.cdll.LoadLibrary(lib_path)"
-        echo ""
-        cat "$HID_INIT"
-    } > "$TEMP"
-    sed -i '' '/hidapi = None/,/raise ImportError(/d' "$TEMP"
-    mv "$TEMP" "$HID_INIT"
-    print_ok "hid/__init__.py configured."
-else
-    print_fail "hid/__init__.py not found."
-    osascript -e "display dialog \"Could not configure HID library path.\" buttons {\"OK\"} with title \"EasyOKAPI Setup\" $(_icon)"
-    exit 1
-fi
 
 chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
 

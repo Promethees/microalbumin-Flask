@@ -4,7 +4,7 @@ This file serves as the primary orientation for any AI agent or developer regard
 
 ## 1. Project Overview
 The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.1.6**.
-It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over USB/Serial connection using HID. 
+It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over a USB CDC serial connection (with an HID-keyboard fallback the device triggers via its Left button). 
 
 The application provides a Web GUI (via Flask templates and vanilla JavaScript) for users to:
 1. Log raw measurement data directly from the PyBadge into local `.csv` files.
@@ -17,7 +17,8 @@ The application provides a Web GUI (via Flask templates and vanilla JavaScript) 
 
 ```mermaid
 graph TD
-    Device((PyBadge/Colorimeter)) -->|USB/Serial HID| Logger[[log_hid_data*.py]]
+    Device((PyBadge/Colorimeter)) -->|USB CDC serial| Logger[[log_cdc_data.py]]
+    Device -. HID keyboard fallback Left-button: types into any text field .-> Editor[Text editor]
     Logger -->|Logs to CSV via Subprocess| FileSys[(Local Filesystem)]
     
     UI[Frontend HTML/JS] -->|AJAX HTTP| API(Flask Blueprints)
@@ -90,8 +91,12 @@ graph TD
 | `range.py` | Returns display range input configuration |
 | `routes/__init__.py` | Empty package marker |
 
-### 2.3 HID Data Collection (`log_hid_data.py`)
-Collects and decodes incoming data from Adafruit PyBadge via `hidapi` over USB connection, spawning into log files configured via parameters.
+### 2.3 Data Collection (`log_cdc_data.py` — the only host logger)
+**CDC / USB serial:** `log_cdc_data.py` is spawned by `/run_script` and owns the single serial port for the whole session — it connects, sends `1`/`TIMEOUT:x`/`INTERVAL:x`, waits for ACKs, then reads clean UTF-8 data lines on the same connection and writes the CSV (+ `log/current_output.txt`). No `sudo`/admin, no keycode decoding, no `hidapi`/`pyusb`/`libusbK`, cross-platform. On SIGINT/SIGTERM it sends `0` so the device leaves talking mode.
+
+**Zero-software fallback (HID keyboard):** triggered by the device's **Left button** only — the firmware "types" the CSV via keyboard emulation into whatever text field has focus (e.g. a text editor). There is no host-side HID capture script. The app's automated flow does not use HID.
+
+Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` — host-initiated sessions use `transport="cdc"` (`usb_cdc.data`), button-initiated use `transport="hid"`.
 
 ### 2.4 Frontend (`static/script/` — 12 JS files)
 
@@ -164,7 +169,7 @@ English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (j
 ### 5.4 MCP Tools (available to the LLM — main branch only)
 | Tool | Description |
 |---|---|
-| `get_app_context` | Current directory, CSV/JSON file lists, HID subprocess status |
+| `get_app_context` | Current directory, CSV/JSON file lists, data-logger subprocess status |
 | `read_csv_file` | Read a CSV file (metadata + first N rows) |
 | `read_calibration_file` | Read a JSON calibration file from `json/<mode>/` |
 | `get_hardware_status` | PyBadge subprocess running/stopped |
@@ -227,7 +232,7 @@ Set `GROQ_API_KEY` in `.env`. The app detects this and calls Groq directly, bypa
 ```
 
 ### 5.2 Windows
-Requires `libusbK` driver installed via Zadig for PyBadge HID access.
+Uses the PyBadge CDC serial port (no `libusbK`/Zadig driver needed).
 ```cmd
 startwindow-1-git.bat
 startwindow-2-pyenv.bat
@@ -251,10 +256,9 @@ microalbumin-Flask/
 ├── CLAUDE.md                   # Claude Code entry point
 ├── Rule.md                     # AI coding rules
 ├── main.py                     # Flask app entry point (197 lines, blueprint registration only)
-├── log_hid_data.py             # HID data collection (Mac, hidapi)
-├── log_hid_data_pyusb.py       # HID data collection (Windows, pyusb)
-├── requirements.txt            # Python dependencies
-├── requirements-win.txt        # Windows-specific dependencies
+├── log_cdc_data.py             # CDC (USB serial) data collection — the only host logger
+├── requirements.txt            # Python runtime dependencies (all platforms)
+├── requirements-dev.txt        # Test-only dependencies (pytest)
 ├── setup-*.command             # Mac utility startup scripts
 ├── startwindow-*.bat           # Windows utility startup scripts
 ├── installer-mac/              # Mac .dmg installer assets
@@ -267,7 +271,7 @@ microalbumin-Flask/
 │   │   ├── __init__.py
 │   │   ├── core_routes.py      # Core + browse + report subjects
 │   │   ├── file_routes.py      # CSV/JSON CRUD + report CRUD
-│   │   ├── hardware_routes.py  # HID subprocess control
+│   │   ├── hardware_routes.py  # Data-logger subprocess control (CDC default)
 │   │   └── math_routes.py      # Regression math API
 │   ├── browser_mgt.py
 │   ├── export_cal_json.py
@@ -302,7 +306,7 @@ microalbumin-Flask/
 │   ├── index.html
 │   └── goodbye.html
 ├── data/                       # All user CSV data (auto-created); browsing restricted to here
-│   ├── <subfolder>/            # User-named subfolders (created on HID run or manually)
+│   ├── <subfolder>/            # User-named subfolders (created on data run or manually)
 │   └── root/                   # RESERVED: installer archive staging for loose data-root files (Rule.md §2.16); users cannot create this name
 ├── json/                       # Standard curve JSON files
 ├── log/                        # Script logs directory
@@ -411,7 +415,7 @@ Proxy mode always takes priority over dev mode when both are present.
 |---|---|---|
 | Data storage | Local filesystem (`os`, `open`, `Path`) | In-memory `USER_DATA` dict |
 | Directory browsing | OS filesystem navigation | N/A (upload-based) |
-| HID logging | Enabled (PyBadge USB) | Disabled |
+| Data logging | Enabled (PyBadge USB CDC serial) | Disabled |
 | Users | Single user, no sessions | Multi-user with Flask sessions |
 | Google Drive | Not present | Integrated (OAuth 2.0) |
 | Static serving | From `static/` (source) | From `static/dist/` (obfuscated) |

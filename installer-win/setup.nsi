@@ -680,12 +680,10 @@ Click Cancel to exit Setup without making any changes." \
   Delete "$R3\*.command"
   Delete "$R3\*.bat"
   Delete "$R3\*.sh"
-  Delete "$R3\log_hid_data.py"
   Delete "$R3\generate-tree.sh"
   Delete "$R3\BUILD_MAC.md"
   Delete "$R3\Rule.md"
   Delete "$R3\CLAUDE.md"
-  Delete "$R3\requirements.txt"
   Delete "$R3\test_browser.py"
   Delete "$R3\.gitignore"
   RMDir /r "$R3\mac"
@@ -808,10 +806,10 @@ Click Cancel to exit Setup." \
   DetailPrint "Removing setup scripts..."
   Delete "$INSTDIR\startwindow-*.bat"
 
-  ; requirements-win.txt is only needed by Step 4 (venv build), which has already
+  ; requirements.txt is only needed by Step 4 (venv build), which has already
   ; run. The in-app updater re-extracts it from the downloaded tarball before it
   ; runs pip, so removing it here does not break future updates.
-  Delete "$INSTDIR\code\requirements-win.txt"
+  Delete "$INSTDIR\code\requirements.txt"
 
   ; Act on the earlier sample choice: import copies the bundled sample CSVs into
   ; a data\sample_data\ folder and merges the staged sample calibration curves

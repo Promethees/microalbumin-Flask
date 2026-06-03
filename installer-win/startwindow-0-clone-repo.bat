@@ -187,12 +187,10 @@ pushd "!INSTALL_DIR!" >nul 2>&1
 del /s /q "*.command" >nul 2>&1
 del /s /q "*.bat" >nul 2>&1
 del /s /q "*.sh" >nul 2>&1
-del /s /q "log_hid_data.py" >nul 2>&1
 del /s /q "generate-tree.sh" >nul 2>&1
 del /s /q "BUILD_MAC.md" >nul 2>&1
 del /s /q "Rule.md" >nul 2>&1
 del /s /q "CLAUDE.MD" >nul 2>&1
-del /s /q "requirements.txt" >nul 2>&1
 del /s /q "test_browser.py" >nul 2>&1
 del /s /q ".gitignore" >nul 2>&1
 

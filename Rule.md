@@ -40,14 +40,18 @@
 - Global variables (`process`, `monitor_thread`, `current_directory`) are shared.
 - File locks (`filelock.FileLock`) are used for concurrent access to export files, not for multi-user isolation.
 
-### 2.3 HID Logging — PyBadge Communication
+### 2.3 Data Logging — PyBadge Communication
 
 - The application communicates with a physical **PyBadge** (Adafruit) colorimeter via USB.
-- **Mac**: Uses `hidapi` library directly (`log_hid_data.py`)
-- **Windows**: Uses `pyusb` (`log_hid_data_pyusb.py`, invoked via `venv/Scripts/python.exe`)
-- **Serial commands** are sent via `send_command.py` using `pyserial` before spawning the HID logger as a subprocess.
+- **Default transport is CDC (USB serial)**, not HID. `/run_script` spawns **`log_cdc_data.py`** as a subprocess that **owns the single serial port for the whole session**: it connects (`send_command.connect_to_device`), sends `1` / `TIMEOUT:x` / `INTERVAL:x`, waits for the device ACKs, then reads the data stream on the **same** connection. Flask must **not** also open the port — one owner only.
+  - **Anti-pattern**: do not open the serial port in the Flask process (e.g. to send commands or "0") while the CDC logger subprocess is running — the OS allows a single owner and the second open will fail.
+  - Same `python` interpreter for Mac/Windows (`sys.executable`, or the Windows `venv/Scripts/python.exe`); **no `sudo`/admin** — CDC serial needs no elevated privileges and no `libusbK` driver.
+- **HID keyboard is the zero-software fallback only**, triggered by the device's **Left button** (firmware `serial_manager.serial_talking(start_by_host=False)` → `transport="hid"`). The device "types" CSV as keystrokes into whatever text field has focus (e.g. a text editor) — there is **no host-side HID capture script**; the old `log_hid_data.py` / `log_hid_data_pyusb.py` (and the `hidapi`/`pyusb`/`libusbK` stack) have been removed. The host app's automated flow only uses CDC.
+- Firmware transport switch lives in `open_colorimeter_firmware/src/serial_manager.py` (`_write()` routes to `usb_cdc.data` for CDC or the HID `layout` for the fallback). The device boot must enable `usb_cdc.data` **and** leave HID keyboard on (`boot_for_CDC.py` does both — `usb_cdc.enable(data=True)` plus the default HID keyboard).
+- CDC delivers exact bytes, so `log_cdc_data.py` parses **clean text** (`# Measurement:`, `Timestamp,Value:1`) — unlike the HID path, which had to undo keyboard up-casing/modifier-stripping (`3 MEASUREMENT:` etc.).
+- Because CDC is a reliable byte stream, the old **missed-read / resend** machinery has been removed entirely (no `max_resend_attempts` setting, no `check_log_for_missed_read`, no resend state). `check_status` reports `running` / `success` (session completed, log has "New session started") / `failure`.
 - HID logging is **disabled in calibrate mode**.
-- The subprocess writes to `log/script_logs.txt`, which is monitored for errors.
+- The subprocess writes to `log/script_logs.txt`, which is monitored for errors (`script_monitor.check_log_for_errors` / `check_log_for_session_start`).
 - The PyBadge VID/PID: `0x239A` / `0x800B` (HID) or `0x8034` (serial)
 
 ### 2.4 Static Files — No Build Step
@@ -123,7 +127,7 @@ Timestamp,Value:1,Value:2,...
 ### 2.11 OS-Specific Behavior
 
 - **Path delimiters**: `\\\\` for Windows, `/` for Mac/Linux (set in `main.py` global).
-- **HID logging**: Different scripts for Mac (`log_hid_data.py` with `sudo`) vs. Windows (`log_hid_data_pyusb.py`).
+- **Data logging**: Single cross-platform path `log_cdc_data.py` (CDC serial, no `sudo`/admin, no `hidapi`/`pyusb`/`libusbK`). The device's Left-button HID-keyboard fallback needs no host script — it types into any focused text field.
 - **Process termination**: Windows uses `process.terminate()`, Mac uses `os.killpg(SIGTERM)`.
 - **Hosts file**: Windows at `C:\Windows\System32\drivers\etc\hosts`, Mac at `/etc/hosts`.
 
@@ -172,7 +176,7 @@ Timestamp,Value:1,Value:2,...
 - **Apply update**: `POST /update/apply` streams SSE events `{pct, label}` while downloading the zip via `GET <AI_SERVICE_URL>/api/download` (requires `Authorization: Bearer <license_token>`), extracts it in-place over `state.script_dir`, then restarts the process.
 - **Preserved paths**: `data/`, `report/`, `json/`, `log/`, `activation.json`, `ai_settings.json`, `user_settings.json`, `.env` are **never overwritten** by an update zip — they contain user data and credentials.
 - **Zip convention**: The update zip may have a single top-level directory prefix (GitHub archive convention). `update_service._shared_prefix()` detects and strips it automatically.
-- **Updates install dependencies**: `download_and_apply()` only overwrites source files — it does **not** rebuild the venv. So after `_apply_tarball()` it runs `_install_requirements()` (`pip install -r requirements-win.txt`/`requirements.txt` via `sys.executable`, idempotent) so an update that adds a new package doesn't relaunch into an `ImportError`. A pip failure raises, so the caller reports the update as failed instead of relaunching a broken app. The in-app update is otherwise **not** responsible for venv corruption — it never touches `venv/` (gitignored, absent from the tarball) and never deletes files; a broken venv comes from the *installer* rebuild racing a locked, still-running instance (see the venv-health rules below).
+- **Updates install dependencies**: `download_and_apply()` only overwrites source files — it does **not** rebuild the venv. So after `_apply_tarball()` it runs `_install_requirements()` (`pip install -r requirements.txt` via `sys.executable`, idempotent) so an update that adds a new package doesn't relaunch into an `ImportError`. A pip failure raises, so the caller reports the update as failed instead of relaunching a broken app. The in-app update is otherwise **not** responsible for venv corruption — it never touches `venv/` (gitignored, absent from the tarball) and never deletes files; a broken venv comes from the *installer* rebuild racing a locked, still-running instance (see the venv-health rules below).
 - **Process restart**: `restart_after_delay()` uses `os.execv` on Mac/Linux (atomic in-place image replacement). On Windows it spawns a **detached PowerShell relauncher** (`_restart_windows()` / `_build_windows_relaunch_script()`) that waits for the dev-server port to be released, starts a fresh hidden instance, and shows a dialog if the app never comes back up — and only then frees the port via `os._exit(0)`.
 - **Windows restart anti-pattern**: Do **not** revert to spawning the new instance *before* `os._exit(0)` on Windows. The old code raced the dying process for port `5099`, failed to bind (`app.run` → `sys.exit(1)`), and — being launched `-WindowStyle Hidden` — died with no visible window, bricking the app until the stray process was killed. The relaunch must happen only after the old process has freed the port.
 - **Windows relaunch argument quoting**: The app installs to `C:\Program Files\EasyOKAPI` (path contains a space). `Start-Process -ArgumentList` joins its elements with spaces and does **not** quote elements that contain spaces, so each child argument must be embedded in double quotes (`_ps_arg()` produces a PowerShell literal like `'"C:\Program Files\...\main.py"'`). Passing a bare path makes Python receive a split argv (`C:\Program`), fail to find the script, and — being hidden — die silently so the app never comes back. `-FilePath` and `-WorkingDirectory` are single-value params and use plain single-quoting (`_ps_quote()`); only `-ArgumentList` needs `_ps_arg()`. This mirrors `launcher.ps1` (`-ArgumentList "`"$app`""`).

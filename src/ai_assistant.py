@@ -804,10 +804,10 @@ _HELP_DOCS = {
     ),
     "hardware_setup": (
         "PyBadge colorimeter setup:\n"
-        "• Mac: hidapi library, run app with sudo for HID access\n"
-        "• Windows: install libusbK driver via Zadig, then pyusb\n"
-        "• VID/PID: 0x239A / 0x800B (HID) or 0x8034 (serial)\n"
-        "• Serial commands via pyserial before spawning the HID logger subprocess"
+        "• Connects over USB CDC serial (pyserial) — no admin/sudo, no driver needed\n"
+        "• Mac & Windows use the same cross-platform logger (log_cdc_data.py)\n"
+        "• VID/PID: 0x239A / 0x8034 (serial)\n"
+        "• Fallback: press the device's Left button to 'type' data via HID keyboard into any text field"
     ),
     "regression": (
         "Supported regression types:\n"

@@ -30,9 +30,7 @@ echo "Installing system dependencies..."
 apt-get update -y
 apt-get install -y \
     git curl build-essential libssl-dev zlib1g-dev libbz2-dev \
-    libreadline-dev libsqlite3-dev libffi-dev liblzma-dev \
-    libusb-1.0-0-dev libudev-dev \
-    libhidapi-hidraw0 libhidapi-dev
+    libreadline-dev libsqlite3-dev libffi-dev liblzma-dev
 echo "✅ System dependencies installed."
 
 # ── Step 2: Install pyenv ─────────────────────────────────────────────────────

@@ -115,8 +115,6 @@ apt-get update -y
 apt-get install -y \
     git curl build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev libffi-dev liblzma-dev \
-    libusb-1.0-0-dev libudev-dev \
-    libhidapi-hidraw0 libhidapi-dev \
     zenity whiptail
 if [ $? -ne 0 ]; then
     print_fail "Failed to install system dependencies."
@@ -228,7 +226,7 @@ rm -rf "$INSTALL_DIR/.git" "$INSTALL_DIR/.gitignore"
 rm -rf "$INSTALL_DIR/tests" "$INSTALL_DIR/.github"
 rm -rf "$INSTALL_DIR/installer-mac" "$INSTALL_DIR/installer-win" "$INSTALL_DIR/installer-linux"
 rm -rf "$INSTALL_DIR/easyokapi-knowledge" "$INSTALL_DIR/images"
-rm -f  "$INSTALL_DIR/log_hid_data_pyusb.py" "$INSTALL_DIR/generate-tree.sh"
+rm -f  "$INSTALL_DIR/generate-tree.sh"
 rm -f  "$INSTALL_DIR/BUILD_MAC.md" "$INSTALL_DIR/Rule.md"
 rm -f  "$INSTALL_DIR"/*.bat
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"

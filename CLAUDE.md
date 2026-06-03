@@ -14,7 +14,7 @@ Before writing any code, read these two files in order:
 ## Commands
 
 ```bash
-# Install dependencies (Python 3.8 via pyenv; Mac uses requirements.txt, Windows uses requirements-win.txt)
+# Install dependencies (Python 3.8 via pyenv; single cross-platform requirements.txt; requirements-dev.txt adds test-only deps)
 pip install -r requirements.txt
 
 # Run the app (default port 5099, alias easyokapi.com)
@@ -50,7 +50,7 @@ main.py (thin entry point)
   └── registers 5 Flask Blueprints from src/routes/
         ├── core_routes.py    — ping, index, shutdown, browse, JSON cal, report subjects
         ├── file_routes.py    — CSV/JSON CRUD, export, merge, report CRUD
-        ├── hardware_routes.py — HID subprocess control (run/check/terminate/logs)
+        ├── hardware_routes.py — data-logger subprocess control (run/check/terminate/logs); CDC serial by default, HID keyboard fallback via device Left button
         ├── math_routes.py    — server-side regression API
         └── ai_routes.py      — AI assistant: chat, settings, activation
 

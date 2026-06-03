@@ -36,29 +36,7 @@
 		+ Double click `setup-3-run.command` to run the application
 		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
 * On Windows:
-	- Install `libusbK` driver for the PyBadge:
-		+ Download [Zadig 2.9](https://zadig.akeo.ie/)
-		+ Run `Zadig`, make sure `List All Devices` under `Options` tab is selected 
-		<div align="center"> 
-			<img src="/images/zadig_all_devices.PNG" width="600">
-		</div>
-
-		+ Select `CircuitPython HID (Interface 3)` under the Dropdown
-		+ Install `libusbK 3.1.0.0` to the `Pybadge`
-		<div align="center">
-			<img src="/images/libusbK.PNG" width="600">
-		</div>
-
-		+ Verify the installation in `Device Manager` (open by `Win + R` > key in `devmgmt.msc`)
-		<div align="center">
-			<img src="/images/run.PNG" width="600">
-		</div>
-
-		+ Make sure that it is listed under `libusbK USB Devices` 
-		<div align="center">
-			<img src="/images/DevManager.PNG" width="600">
-		</div>
-
+	- **No USB driver needed.** The app communicates with the PyBadge over its USB serial (CDC) port, which Windows 10/11 enumerates automatically — no `libusbK`/Zadig setup required.
 	- Using Installer: 
 		+ Download the [![Latest release](https://img.shields.io/badge/latest-1.1.6-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
@@ -91,7 +69,7 @@ This document provides instruction on deploying a web interface that helps visua
 
 * ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
 
-* ***Log HID*** Get data being sent from the ***PyBadge*** colorimeter. Specifiying location and file pattern name in `--base-dir` and `--base-name`. The logged file is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
+* ***Log data*** Capture data sent from the ***PyBadge*** colorimeter over USB serial (CDC). Specify the save location and filename pattern via `--base-dir` and `--base-name`. The host log is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
 
 <div align="center">
 	<img src="/images/logHID.png" width="600">
@@ -178,12 +156,11 @@ This document provides instruction on deploying a web interface that helps visua
 microalbumin-Flask/
 |-- README.md
 |-- generate-tree.sh
-|-- log_hid_data.py
-|-- log_hid_data_pyusb.py
+|-- log_cdc_data.py
 |-- main.py
 |-- main_code.py
-|-- requirements-win.txt
 |-- requirements.txt
+|-- requirements-dev.txt
 |-- setup-1-install-pyenv.command
 |-- setup-2-install-venv.command
 |-- setup-3-run.command
