@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import time
 import state
 
 # activation.json is writable user data: in a frozen build it lives in the
@@ -82,3 +83,44 @@ def ensure_permanent_token():
     if not permanent or _token_has_expiry(permanent):
         return False
     return save(permanent)
+
+
+def _token_is_expired(token):
+    """True only when the token carries an 'exp' claim that is already past.
+
+    A permanent activation token (no 'exp') never expires. Best-effort: an
+    unparseable token is treated as NOT expired (it is still a present token the
+    server issued), so a present token is not rejected on a decode hiccup.
+    """
+    try:
+        seg = token.split('.')[1]
+        seg += '=' * (-len(seg) % 4)
+        exp = json.loads(base64.urlsafe_b64decode(seg)).get('exp')
+    except Exception:
+        return False
+    if exp is None:
+        return False
+    try:
+        return time.time() >= float(exp)
+    except (TypeError, ValueError):
+        return False
+
+
+def is_activated():
+    """True when a usable license token is stored.
+
+    A permanent activation token (saved after the server validated it via
+    /api/activate) counts; an expired raw download token does not.
+    """
+    token = get_license_token()
+    return bool(token) and not _token_is_expired(token)
+
+
+def needs_activation():
+    """Whether the app must show the activation gate before it can be used.
+
+    Frozen builds are licence-gated: a valid token is required to use the app,
+    matching the Windows installer's compulsory token. Always False in source/dev
+    so developers are never blocked.
+    """
+    return state._is_frozen() and not is_activated()

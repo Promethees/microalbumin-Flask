@@ -58,7 +58,7 @@ def _report(pct: int, label: str) -> None:
 _report(5, "Python runtime ready …")
 
 # ── Core stdlib + Flask ──────────────────────────────────────────────────────
-from flask import Flask
+from flask import Flask, request, redirect, render_template, jsonify
 _report(15, "Loading Flask framework …")
 
 import sys
@@ -124,6 +124,40 @@ app.register_blueprint(file_bp)
 app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(update_bp)
+
+# ── Activation gate (frozen builds) ──────────────────────────────────────────
+# A frozen build is licence-gated: until a valid activation token is stored, every
+# page redirects to /activate and every API/AI call returns 403. This makes the
+# token compulsory on macOS (drag-install DMG) and Linux (tarball) — which have no
+# install-time prompt — mirroring the Windows installer's required token. Source/
+# dev builds are never gated (activation.needs_activation() is False there).
+import activation as _activation
+
+# Paths reachable while unactivated: the gate page itself, the activation +
+# status endpoints it calls, the health check, and static assets (theme/JS).
+_ACTIVATION_OPEN_PATHS = {'/activate', '/ai/activate', '/ai/status', '/ping', '/favicon.ico'}
+
+
+@app.before_request
+def _enforce_activation():
+    if not _activation.needs_activation():
+        return
+    path = request.path
+    if path in _ACTIVATION_OPEN_PATHS or path.startswith('/static/'):
+        return
+    if path.startswith('/api/') or path.startswith('/ai/'):
+        return jsonify({'status': 'error', 'code': 'not_activated',
+                        'message': 'EasyOKAPI is not activated. Enter your activation token to continue.'}), 403
+    return redirect('/activate')
+
+
+@app.route('/activate')
+def activate_page():
+    # Already activated (or a non-gated dev build) → straight to the app.
+    if not _activation.needs_activation():
+        return redirect('/')
+    return render_template('activate.html', title='Activate EasyOKAPI',
+                           ai_service_url=_activation.AI_SERVICE_URL)
 
 # Endpoints moved to their respective blueprints
 

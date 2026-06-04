@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='ht.ico') }}">
+    <style>
+        :root {
+            --bg: #312e81;       /* indigo-900 */
+            --bg2: #1e1b4b;      /* indigo-950 */
+            --fg: #e2e8f0;       /* slate-200 */
+            --muted: #a5b4fc;    /* indigo-300 */
+            --accent: #6366f1;   /* indigo-500 */
+            --accent-hi: #818cf8;/* indigo-400 */
+            --err: #fca5a5;      /* red-300 */
+            --ok: #86efac;       /* green-300 */
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--fg);
+            background: radial-gradient(1200px 600px at 70% -10%, #4338ca 0%, var(--bg) 45%, var(--bg2) 100%);
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .card {
+            width: 100%; max-width: 440px;
+            background: rgba(30, 27, 75, 0.72);
+            border: 1px solid rgba(129, 140, 248, 0.25);
+            border-radius: 16px; padding: 32px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+            backdrop-filter: blur(6px);
+        }
+        .logo { display: block; width: 72px; height: 72px; margin: 0 auto 14px; object-fit: contain; }
+        h1 { font-size: 1.4rem; text-align: center; margin: 0 0 6px; }
+        p.sub { text-align: center; color: var(--muted); margin: 0 0 22px; font-size: 0.92rem; line-height: 1.5; }
+        label { display: block; font-size: 0.82rem; color: var(--muted); margin: 0 0 6px; }
+        input[type=text] {
+            width: 100%; padding: 12px 14px; border-radius: 10px;
+            border: 1px solid rgba(129,140,248,0.35); background: var(--bg2);
+            color: var(--fg); font-size: 0.95rem; outline: none;
+        }
+        input[type=text]:focus { border-color: var(--accent-hi); box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
+        button {
+            width: 100%; margin-top: 18px; padding: 12px 14px; border: none;
+            border-radius: 10px; background: var(--accent); color: #fff;
+            font-size: 0.98rem; font-weight: 600; cursor: pointer; transition: background .15s;
+        }
+        button:hover:not(:disabled) { background: var(--accent-hi); }
+        button:disabled { opacity: 0.6; cursor: progress; }
+        .msg { margin-top: 14px; font-size: 0.88rem; text-align: center; min-height: 1.2em; line-height: 1.45; }
+        .msg.error { color: var(--err); }
+        .msg.ok { color: var(--ok); }
+        .foot { margin-top: 22px; text-align: center; font-size: 0.82rem; color: var(--muted); }
+        .foot a { color: var(--accent-hi); text-decoration: none; }
+        .foot a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img class="logo" src="{{ url_for('static', filename='okapi.png') }}" alt="EasyOKAPI"
+             onerror="this.style.display='none'">
+        <h1>Activate EasyOKAPI</h1>
+        <p class="sub">A valid activation token is required to use EasyOKAPI. Paste your token below to activate this device.</p>
+
+        <label for="token">EasyOKAPI activation token</label>
+        <input type="text" id="token" autocomplete="off" spellcheck="false"
+               placeholder="Paste your token here" autofocus>
+
+        <button id="activateBtn" type="button">Activate</button>
+        <div id="msg" class="msg" role="status" aria-live="polite"></div>
+
+        <p class="foot">
+            Don't have a token? Get one at
+            <a href="{{ ai_service_url }}" target="_blank" rel="noopener">easyokapi.cbbiotec.vn</a>.
+            <br>An internet connection is required to validate it.
+        </p>
+    </main>
+
+    <script>
+        (function () {
+            var input = document.getElementById('token');
+            var btn = document.getElementById('activateBtn');
+            var msg = document.getElementById('msg');
+
+            function setMsg(text, kind) {
+                msg.textContent = text || '';
+                msg.className = 'msg' + (kind ? ' ' + kind : '');
+            }
+
+            function activate() {
+                var token = (input.value || '').trim();
+                if (!token) { setMsg('Please paste your activation token.', 'error'); input.focus(); return; }
+                btn.disabled = true;
+                setMsg('Validating token…');
+                fetch('/ai/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                }).then(function (res) {
+                    return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+                }).then(function (r) {
+                    if (r.ok && r.data && r.data.status === 'success') {
+                        setMsg('Activated! Starting EasyOKAPI…', 'ok');
+                        window.location.href = '/';
+                    } else {
+                        var m = (r.data && r.data.message) || 'Activation failed. Please check your token and try again.';
+                        setMsg(m, 'error');
+                        btn.disabled = false;
+                    }
+                }).catch(function () {
+                    setMsg('Could not reach the activation server. Check your internet connection and try again.', 'error');
+                    btn.disabled = false;
+                });
+            }
+
+            btn.addEventListener('click', activate);
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); activate(); }
+            });
+        })();
+    </script>
+</body>
+</html>
