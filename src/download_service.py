@@ -70,7 +70,13 @@ def get_release_asset(platform: str, tag: str | None = None) -> dict | None:
     if not release:
         return None
     for asset in release.get('assets', []):
-        if asset.get('name', '').lower().endswith(suffix):
+        name = asset.get('name', '').lower()
+        # Skip the in-app update *bundle* archives — on Linux they share the
+        # '.tar.gz' suffix with the installer and would otherwise shadow it.
+        # The public download must always resolve to the installer.
+        if 'bundle' in name:
+            continue
+        if name.endswith(suffix):
             return asset
     return None
 
