@@ -74,12 +74,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── Source installer (skipped on full no-source cutover, ENCODE_SOURCE=true) ─
       - name: Inject version and auth URL into installer scripts
+        if: needs.setup.outputs.encode_source != 'true'
         run: |
           sed -i '' "s/__APP_VERSION__/${{ needs.setup.outputs.version }}/g" installer-mac/setup.sh
           sed -i '' "s|__AUTH_BASE_URL__|${{ env.AUTH_BASE_URL }}|g" installer-mac/setup.sh
 
       - name: Build DMG
+        if: needs.setup.outputs.encode_source != 'true'
         env:
           APP_VERSION: ${{ needs.setup.outputs.bare_version }}
         run: |
@@ -87,6 +90,7 @@ jobs:
           ./installer-mac/build-dmg.sh
 
       - name: Upload DMG artifact
+        if: needs.setup.outputs.encode_source != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-mac-${{ needs.setup.outputs.version }}
@@ -162,7 +166,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── Source installer (skipped on full no-source cutover, ENCODE_SOURCE=true) ─
       - name: Inject version and auth URL into installer scripts
+        if: needs.setup.outputs.encode_source != 'true'
         shell: pwsh
         run: |
           $v   = "${{ needs.setup.outputs.version }}"
@@ -192,6 +198,7 @@ jobs:
           python installer-win/build-bitmaps.py
 
       - name: Build Runner and Installer
+        if: needs.setup.outputs.encode_source != 'true'
         shell: pwsh
         run: |
           Set-Location installer-win
@@ -199,6 +206,7 @@ jobs:
           & makensis "/DAPP_VERSION=$env:APP_VERSION" "/DAUTH_BASE_URL=$env:AUTH_BASE_URL" setup.nsi
 
       - name: Upload EXE artifact
+        if: needs.setup.outputs.encode_source != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-win-${{ needs.setup.outputs.version }}
@@ -270,7 +278,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── Source installer (skipped on full no-source cutover, ENCODE_SOURCE=true) ─
       - name: Inject version and auth URL into installer scripts
+        if: needs.setup.outputs.encode_source != 'true'
         run: |
           sed -i "s/__APP_VERSION__/${{ needs.setup.outputs.version }}/g" installer-linux/install.sh
           sed -i "s|__AUTH_BASE_URL__|${{ env.AUTH_BASE_URL }}|g" installer-linux/install.sh
@@ -278,6 +288,7 @@ jobs:
           sed -i "s|__AUTH_BASE_URL__|${{ env.AUTH_BASE_URL }}|g" installer-linux/install-1-deps-clone.sh
 
       - name: Build Linux tarball
+        if: needs.setup.outputs.encode_source != 'true'
         env:
           APP_VERSION: ${{ needs.setup.outputs.bare_version }}
         run: |
@@ -285,6 +296,7 @@ jobs:
           ./installer-linux/build-tarball.sh
 
       - name: Upload tarball artifact
+        if: needs.setup.outputs.encode_source != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-linux-${{ needs.setup.outputs.version }}
@@ -365,22 +377,48 @@ jobs:
     permissions:
       contents: write
     steps:
+      # ── Source installers (published only when NOT doing the no-source cutover) ──
       - name: Download macOS artifact
+        if: needs.setup.outputs.encode_source != 'true'
         uses: actions/download-artifact@v4
         with:
           name: EasyOKAPI-mac-${{ needs.setup.outputs.version }}
           path: dist/
 
       - name: Download Windows artifact
+        if: needs.setup.outputs.encode_source != 'true'
         uses: actions/download-artifact@v4
         with:
           name: EasyOKAPI-win-${{ needs.setup.outputs.version }}
           path: dist/
 
       - name: Download Linux artifact
+        if: needs.setup.outputs.encode_source != 'true'
         uses: actions/download-artifact@v4
         with:
           name: EasyOKAPI-linux-${{ needs.setup.outputs.version }}
+          path: dist/
+
+      # ── Frozen no-source installers (gated) — the public download in cutover mode ──
+      - name: Download macOS frozen installer
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyOKAPI-mac-frozen-${{ needs.setup.outputs.version }}
+          path: dist/
+
+      - name: Download Windows frozen installer
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyOKAPI-win-frozen-${{ needs.setup.outputs.version }}
+          path: dist/
+
+      - name: Download Linux frozen installer
+        if: needs.setup.outputs.encode_source == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: EasyOKAPI-linux-frozen-${{ needs.setup.outputs.version }}
           path: dist/
 
       # ── Frozen update bundles (gated) — consumed by the in-app swap updater ──
