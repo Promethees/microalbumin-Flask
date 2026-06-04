@@ -142,7 +142,7 @@ APPLESCRIPT
 hdiutil detach "$VOLUME" -force 2>/dev/null || hdiutil detach "$VOLUME" 2>/dev/null || true
 sleep 2
 
-echo "📦 Compressing → $DMG_NAME…"
+echo "📦 Compressing → ${DMG_NAME}…"
 hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_NAME"
 rm -f "$RW_DMG"; rm -rf "$TMP_DIR"
 echo "✅ $DMG_NAME created in $PROJECT_ROOT"

@@ -7,8 +7,10 @@
 ; $INSTDIR\code\) on first frozen install. Running the app needs no admin (CDC
 ; serial, not HID); only installing does.
 ;
-; Compile from the REPO ROOT so the relative paths below resolve:
-;   makensis /DAPP_VERSION=1.1.8 installer-win\setup-frozen.nsi
+; Compile from inside installer-win/ (like setup.nsi) so NSIS resolves the
+; relative paths below against this script's own directory:
+;   cd installer-win && makensis /DAPP_VERSION=1.1.8 setup-frozen.nsi
+; The frozen onedir lives at ..\dist\EasyOKAPI\ (repo-root dist/).
 
 !define APP_NAME "EasyOKAPI"
 !ifndef APP_VERSION
@@ -28,8 +30,8 @@ ShowUninstDetails show
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
-!define MUI_ICON "installer-win\setup.ico"
-!define MUI_UNICON "installer-win\setup.ico"
+!define MUI_ICON "setup.ico"
+!define MUI_UNICON "setup.ico"
 
 !define MUI_WELCOMEPAGE_TITLE "Welcome to EasyOKAPI Setup"
 !define MUI_WELCOMEPAGE_TEXT "This will install EasyOKAPI ${APP_VERSION} (no-source build).$\r$\n$\r$\nNo internet connection, token, or Python install is required — everything is bundled. Your measurement data, calibration curves, and reports are kept in your user profile and preserved across updates.$\r$\n$\r$\nClick Next to continue."
@@ -86,7 +88,7 @@ Section "Install" SEC01
 
   ; ── Lay down the frozen onedir (EasyOKAPI.exe + _internal\) ─────────────────
   SetOutPath "$INSTDIR"
-  File /r "dist\EasyOKAPI\*"
+  File /r "..\dist\EasyOKAPI\*"
 
   CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\EasyOKAPI.exe" "--port 5099 --alias 127.0.0.1"
   WriteUninstaller "$INSTDIR\Uninstall.exe"

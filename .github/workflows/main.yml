@@ -262,14 +262,16 @@ jobs:
       - name: Build no-source installer (NSIS, embeds the frozen binary)
         if: needs.setup.outputs.encode_source == 'true'
         shell: pwsh
-        run: makensis "/DAPP_VERSION=$env:APP_VERSION" installer-win\setup-frozen.nsi
+        run: |
+          Set-Location installer-win
+          makensis "/DAPP_VERSION=$env:APP_VERSION" setup-frozen.nsi
 
       - name: Upload no-source installer artifact
         if: needs.setup.outputs.encode_source == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-win-frozen-${{ needs.setup.outputs.version }}
-          path: EasyOKAPI_Setup_*_frozen.exe
+          path: installer-win/EasyOKAPI_Setup_*_frozen.exe
 
   # ── Linux build ────────────────────────────────────────────────────────────
   build-linux:
