@@ -51,14 +51,16 @@ Unicode true
 !define MUI_WELCOMEPAGE_TITLE "Welcome to the EasyOKAPI Setup"
 !define MUI_WELCOMEPAGE_TEXT "This wizard will install EasyOKAPI ${APP_VERSION} on your computer.$\r$\n$\r$\nBefore you begin, please have your EasyOKAPI activation token ready and make sure you are connected to the internet. If you don't have a token yet, you can get one at easyokapi.cbbiotec.vn.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder, and are kept safe whenever you update.$\r$\n$\r$\nClick Next to begin."
 
-; Finish page. We deliberately do NOT offer a "Run now" button: Setup runs as
-; administrator, so launching the app from here would start it elevated (and,
-; on a machine where someone else's admin account approved Setup, would look for
-; data in the wrong Documents folder). The user starts EasyOKAPI from the normal
-; Desktop / Start Menu shortcut instead, which runs as themselves and shows the
-; "Starting EasyOKAPI" splash.
+; Finish page: tick to start EasyOKAPI now (through the splash launcher) and/or
+; open the data folder. Note: Setup runs as administrator, so "Start now" launches
+; the app elevated this one time - fine on a normal single-user machine where the
+; same person installs and uses it. Day to day the user starts EasyOKAPI from the
+; Desktop / Start Menu shortcut, which runs un-elevated.
 !define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} is ready"
-!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed. To start it, double-click the EasyOKAPI icon on your Desktop (or find EasyOKAPI in your Start Menu).$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder."
+!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed. Shortcuts were added to your Desktop and Start Menu.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder."
+!define MUI_FINISHPAGE_RUN "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+!define MUI_FINISHPAGE_RUN_PARAMETERS "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $\"$INSTDIR\launcher-frozen.ps1$\""
+!define MUI_FINISHPAGE_RUN_TEXT "Start EasyOKAPI now"
 !define MUI_FINISHPAGE_SHOWREADME ""
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Open my EasyOKAPI data folder"
@@ -415,6 +417,13 @@ FunctionEnd
     Pop $0
 !macroend
 
+; Full copy of SRC into DST (used for the Documents\EasyOKAPI_data safety backup).
+!macro BackupDir SRC DST
+  IfFileExists "${SRC}\*.*" 0 +3
+    nsExec::ExecToLog 'robocopy "${SRC}" "${DST}" /E /NJH /NJS /NFL /NDL /NC /NS /NP'
+    Pop $0
+!macroend
+
 Section "Install" SEC01
   StrCpy $R0 "$DOCUMENTS\EasyOKAPI"   ; visible per-user data root (matches state.py)
 
@@ -468,6 +477,19 @@ Click Cancel to exit without making any changes." \
     FileWrite $9 "1"
     FileClose $9
   skip_migrate:
+
+  ; ── Safety backup of your data to Documents\EasyOKAPI_data ───────────────────
+  ; Keep a spare copy of your measurements, calibration curves and reports that
+  ; you can fall back on. Refreshed on every install/update. (Your working data
+  ; stays in Documents\EasyOKAPI; this is just an extra safety copy.)
+  StrCpy $R1 "$DOCUMENTS\EasyOKAPI_data"
+  IfFileExists "$R0\*.*" 0 skip_backup
+    DetailPrint "Saving a backup copy of your data to $R1..."
+    RMDir /r "$R1"
+    !insertmacro BackupDir "$R0\data"   "$R1\data"
+    !insertmacro BackupDir "$R0\json"   "$R1\json"
+    !insertmacro BackupDir "$R0\report" "$R1\report"
+  skip_backup:
 
   ; ── Remove any previous install payload (source code dir + old runner) ──────
   RMDir /r "$INSTDIR\code"
@@ -539,13 +561,57 @@ FunctionEnd
 
 Section "Uninstall"
   DetailPrint "Uninstalling EasyOKAPI $UninstVer ..."
+
+  ; ── Make sure EasyOKAPI is closed first ─────────────────────────────────────
+  ; If it is still running its program files are locked, so they cannot be fully
+  ; removed. Ask the user to close it and retry (same as the installer).
+  InitPluginsDir
+  FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
+  FileWrite $9 "$$r = $$args[0]$\r$\n"
+  FileWrite $9 "$$p = Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) }$\r$\n"
+  FileWrite $9 "if ($$p) { exit 1 } else { exit 0 }$\r$\n"
+  FileClose $9
+  un_check_running:
+  IfFileExists "$INSTDIR\EasyOKAPI.exe" 0 un_not_running
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1" "$INSTDIR\"'
+    Pop $0
+    ${If} $0 == 1
+      MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
+        "EasyOKAPI is currently open and needs to be closed before it can be removed.$\r$\n\
+$\r$\n\
+Please close the EasyOKAPI window, then click Retry. (If it is open in your web \
+browser, go to http://localhost:5099 and click the $\"Shutdown Program$\" button first.)$\r$\n\
+$\r$\n\
+Click Cancel to stop removing EasyOKAPI." \
+        IDRETRY un_check_running
+      Abort
+    ${EndIf}
+  un_not_running:
+
+  ; ── Keep a safety copy of the user's data before removing the program ───────
+  StrCpy $R1 "$DOCUMENTS\EasyOKAPI_data"
+  IfFileExists "$DOCUMENTS\EasyOKAPI\*.*" 0 un_no_backup
+    DetailPrint "Backing up your data to $R1..."
+    RMDir /r "$R1"
+    !insertmacro BackupDir "$DOCUMENTS\EasyOKAPI\data"   "$R1\data"
+    !insertmacro BackupDir "$DOCUMENTS\EasyOKAPI\json"   "$R1\json"
+    !insertmacro BackupDir "$DOCUMENTS\EasyOKAPI\report" "$R1\report"
+  un_no_backup:
+
+  ; ── Shortcuts + Add/Remove Programs entry ───────────────────────────────────
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\*.*"
   RMDir  "$SMPROGRAMS\${APP_NAME}"
-  ; Entry was registered under HKCU (see install); also clear any stale HKLM one.
   DeleteRegKey HKCU "${UNINST_KEY}"
   DeleteRegKey HKLM "${UNINST_KEY}"
-  Delete "$INSTDIR\Uninstall.exe"
+
+  ; ── Remove the program files completely ──────────────────────────────────────
+  ; Move out of $INSTDIR first (a folder can't be deleted while it is the working
+  ; directory). The uninstaller runs from a temporary copy of itself, so it can
+  ; remove $INSTDIR\Uninstall.exe and the whole folder.
+  SetOutPath "$TEMP"
   RMDir /r "$INSTDIR"
-  ; User data in Documents\EasyOKAPI is intentionally left intact.
+
+  MessageBox MB_OK|MB_ICONINFORMATION \
+    "EasyOKAPI has been removed.$\r$\n$\r$\nYour measurements, calibration curves and reports were kept here:$\r$\n$DOCUMENTS\EasyOKAPI$\r$\n$\r$\nA backup copy was also saved here:$\r$\n$DOCUMENTS\EasyOKAPI_data"
 SectionEnd

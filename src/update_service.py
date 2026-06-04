@@ -147,6 +147,30 @@ def check_for_update():
     }
 
 
+def _backup_user_data():
+    """Best-effort safety copy of the user's data before applying an update.
+
+    Mirrors the Windows installer's Documents\\EasyOKAPI_data backup so an in-app
+    update also leaves a fallback copy (the data folder itself is never touched by
+    the update, but a spare copy is reassuring). Copies data/json/report to a
+    sibling '<data-root>_data' folder. Frozen builds only; never raises.
+    """
+    if not _is_frozen():
+        return
+    try:
+        backup_root = os.path.normpath(state.script_dir) + '_data'
+        for name in ('data', 'json', 'report'):
+            src = os.path.join(state.script_dir, name)
+            if not os.path.isdir(src):
+                continue
+            dst = os.path.join(backup_root, name)
+            if os.path.isdir(dst):
+                shutil.rmtree(dst, ignore_errors=True)
+            shutil.copytree(src, dst)
+    except Exception:
+        pass
+
+
 def download_and_apply(progress_cb=None):
     """Download the update from the server and apply it.
 
@@ -161,6 +185,8 @@ def download_and_apply(progress_cb=None):
     token = activation_mod.get_license_token()
     if not token:
         raise RuntimeError('App is not activated — cannot download update.')
+
+    _backup_user_data()  # safety copy before any update work (best-effort)
 
     if _is_frozen():
         return _download_and_stage_bundle(token, progress_cb)
