@@ -64,8 +64,31 @@ def build_encoded():
     cmd = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', SPEC]
     subprocess.run(cmd, cwd=ROOT, check=True)
     out = os.path.join(DIST, 'EasyOKAPI')
+    # Stamp the onedir root with VERSION.txt (vX.Y.Z). It ships inside the
+    # installer AND every in-app update bundle, so $INSTDIR\VERSION.txt always
+    # reflects the running build — the uninstaller reads it instead of a
+    # compile-time constant that goes stale after a binary-swap update.
+    _write_version_file(out)
     print(f"==> Done. Frozen bundle at: {out}")
     return out
+
+
+def _write_version_file(bundle_root):
+    """Write VERSION.txt (vX.Y.Z) at the onedir root, from src/state.APP_VERSION."""
+    import re
+    version = '0.0.0'
+    try:
+        with open(os.path.join(ROOT, 'src', 'state.py'), encoding='utf-8') as f:
+            m = re.search(r'^APP_VERSION\s*=\s*["\']([^"\']+)["\']', f.read(), re.M)
+        if m:
+            version = m.group(1).lstrip('v')
+    except Exception:
+        pass
+    # No trailing newline: the NSIS uninstaller FileReads this verbatim into the
+    # displayed version, so a clean single token avoids newline-trimming there.
+    with open(os.path.join(bundle_root, 'VERSION.txt'), 'w', encoding='utf-8') as f:
+        f.write(f'v{version}')
+    print(f"==> Stamped VERSION.txt = v{version}")
 
 
 def build_source():

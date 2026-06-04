@@ -75,12 +75,31 @@ ShowUninstDetails show
 !include "MUI2.nsh"
 !include "WinMessages.nsh"
 !include "LogicLib.nsh"
+!include "nsDialogs.nsh"
 
-; ── Page order: Welcome → Directory → Install → Finish ───────────────────────
+; Activation server for the download-token → permanent-license exchange. Must
+; match the app's AI_SERVICE_URL default (src/activation.py) so the permanent
+; token the app's AI proxy validates is issued by the same server. Override at
+; compile time with /DACTIVATION_URL=https://...
+!ifndef ACTIVATION_URL
+  !define ACTIVATION_URL "https://www.easyokapi.cbbiotec.vn"
+!endif
+
+Var Dialog
+Var TokenInput
+Var EasyOKAPIToken
+Var BgBitmapHandle
+Var UninstVer
+
+; ── Page order: Welcome → Token → Directory → Install → Finish ────────────────
 ; Each MUI page gets a SHOW callback that recolours the inner controls. The
 ; uninstaller keeps the default theme (its callbacks would need un. twins).
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
 !insertmacro MUI_PAGE_WELCOME
+
+; Optional activation token (see TokenPage) — entering it activates AI features
+; and in-app updates now; leaving it blank lets the user activate later in-app.
+Page custom TokenPage TokenPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_DIRECTORY
@@ -304,6 +323,44 @@ Function OpenDataFolder
   ExecShell "open" "$DOCUMENTS\EasyOKAPI"
 FunctionEnd
 
+; ── EasyOKAPI activation-token page (optional) ────────────────────────────────
+; Collects the user's EasyOKAPI download token so the install can activate AI
+; features + in-app updates. Unlike the source installer this is OPTIONAL — the
+; binary is already bundled (the token is no longer a download credential), and
+; the user can activate any time in-app (AI Assistant → Activate). Themed to
+; match the other pages (indigo bg + dark controls).
+Function TokenPage
+  !insertmacro MUI_HEADER_TEXT "EasyOKAPI Activation" "Enter your EasyOKAPI token to activate AI features and in-app updates (optional)."
+  nsDialogs::Create 1018
+  Pop $Dialog
+  ${If} $Dialog == error
+    Abort
+  ${EndIf}
+
+  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+
+  ; Background bitmap (created first so it sits at the back of the Z-order).
+  ${NSD_CreateBitmap} 0 0 100% 100% ""
+  Pop $0
+  ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
+
+  ${NSD_CreateLabel} 0 0 100% 42u "Paste your Generated EasyOKAPI token to activate now — this unlocks the AI assistant and in-app updates.$\r$\n$\r$\nLeave it blank to skip: EasyOKAPI still installs and runs, and you can activate any time from the app (AI Assistant $\"Activate$\")."
+  Pop $0
+  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
+
+  ${NSD_CreateText} 0 46u 100% 12u ""
+  Pop $TokenInput
+  SetCtlColors $TokenInput "${CLR_FG}" "${CLR_INPUT}"
+
+  Call _DarkButtons
+  nsDialogs::Show
+FunctionEnd
+
+Function TokenPageLeave
+  ${NSD_GetText} $TokenInput $EasyOKAPIToken
+  ; Optional — an empty token is allowed (the user can activate later in-app).
+FunctionEnd
+
 ; Merge SRC into DST without overwriting newer/existing files (robocopy /XO skips
 ; older source files; existing same-time files are skipped). Exit codes 0-7 = ok.
 !macro MigrateDir SRC DST
@@ -386,23 +443,79 @@ Click Cancel to exit Setup without making any changes." \
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
   ; ── Add/Remove Programs entry (Windows Settings > Apps) ──────────────────────
-  WriteRegStr   HKLM "${UNINST_KEY}" "DisplayName"     "EasyOKAPI ${APP_VERSION}"
-  WriteRegStr   HKLM "${UNINST_KEY}" "DisplayVersion"  "${APP_VERSION}"
-  WriteRegStr   HKLM "${UNINST_KEY}" "DisplayIcon"     "$INSTDIR\EasyOKAPI.exe"
-  WriteRegStr   HKLM "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-  WriteRegStr   HKLM "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
-  WriteRegStr   HKLM "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
-  WriteRegStr   HKLM "${UNINST_KEY}" "Publisher"       "HTBiotec"
-  WriteRegDWORD HKLM "${UNINST_KEY}" "NoModify"        1
-  WriteRegDWORD HKLM "${UNINST_KEY}" "NoRepair"        1
+  ; Registered under HKCU so the un-elevated app can rewrite DisplayVersion after
+  ; an in-app binary-swap update (HKLM would need admin). Clear any stale HKLM
+  ; entry an older installer wrote, so only one EasyOKAPI row is shown.
+  DeleteRegKey  HKLM "${UNINST_KEY}"
+  WriteRegStr   HKCU "${UNINST_KEY}" "DisplayName"     "EasyOKAPI ${APP_VERSION}"
+  WriteRegStr   HKCU "${UNINST_KEY}" "DisplayVersion"  "${APP_VERSION}"
+  WriteRegStr   HKCU "${UNINST_KEY}" "DisplayIcon"     "$INSTDIR\EasyOKAPI.exe"
+  WriteRegStr   HKCU "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+  WriteRegStr   HKCU "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
+  WriteRegStr   HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
+  WriteRegStr   HKCU "${UNINST_KEY}" "Publisher"       "HTBiotec"
+  WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify"        1
+  WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair"        1
+
+  ; ── Activate the license (only if the user supplied a token) ────────────────
+  ; Persist the token to the visible data folder (where the app reads it), then
+  ; exchange the short-lived download token for a permanent license token via
+  ; ${ACTIVATION_URL}/api/activate (same server the app's AI proxy uses). The app
+  ; also retries this on startup (activation.ensure_permanent_token), so a
+  ; transient failure here is recovered automatically.
+  ${If} $EasyOKAPIToken != ""
+    CreateDirectory "$R0"
+    ; Write the raw token first so activation.json always exists even if the
+    ; exchange below cannot reach the server.
+    FileOpen $9 "$R0\activation.json" w
+    FileWrite $9 '{$\n  "license_token": "$EasyOKAPIToken"$\n}'
+    FileClose $9
+    ; Exchange helper written to a temp file to dodge NSIS/PowerShell quoting.
+    FileOpen $9 "$PLUGINSDIR\exchange-token.ps1" w
+    FileWrite $9 "$$tok = $$args[0]; $$auth = $$args[1]; $$dest = $$args[2]; $$license = $$tok$\r$\n"
+    FileWrite $9 "try {$\r$\n"
+    FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
+    FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\"}'$\r$\n"
+    FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
+    FileWrite $9 "  if ($$resp.license_token) { $$license = $$resp.license_token }$\r$\n"
+    FileWrite $9 "} catch {}$\r$\n"
+    FileWrite $9 "$$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$license + '$\"' + [char]10 + '}'$\r$\n"
+    FileWrite $9 "[System.IO.File]::WriteAllText($$dest, $$json, (New-Object System.Text.UTF8Encoding($$false)))$\r$\n"
+    FileClose $9
+    DetailPrint "Activating license..."
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\exchange-token.ps1" "$EasyOKAPIToken" "${ACTIVATION_URL}" "$R0\activation.json"'
+    Pop $0
+    DetailPrint "License activation finalized."
+  ${EndIf}
 
   DetailPrint "EasyOKAPI ${APP_VERSION} installed. Data lives in $R0."
 SectionEnd
 
+; un.onInit — read the CURRENT installed version from VERSION.txt, which ships in
+; the onedir and is carried by every in-app binary-swap update. This keeps the
+; uninstaller's reported version in step with the running build instead of the
+; (possibly older) version this uninstaller was compiled with. VERSION.txt is
+; written without a trailing newline (tools/package.py), so FileRead yields the
+; bare 'vX.Y.Z' token. Falls back to the compile-time version when absent.
+Function un.onInit
+  StrCpy $UninstVer "v${APP_VERSION}"
+  ClearErrors
+  FileOpen $9 "$INSTDIR\VERSION.txt" r
+  IfErrors uv_done
+    FileRead $9 $UninstVer
+    FileClose $9
+    StrCmp $UninstVer "" 0 uv_done
+      StrCpy $UninstVer "v${APP_VERSION}"
+  uv_done:
+FunctionEnd
+
 Section "Uninstall"
+  DetailPrint "Uninstalling EasyOKAPI $UninstVer ..."
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\*.*"
   RMDir  "$SMPROGRAMS\${APP_NAME}"
+  ; Entry was registered under HKCU (see install); also clear any stale HKLM one.
+  DeleteRegKey HKCU "${UNINST_KEY}"
   DeleteRegKey HKLM "${UNINST_KEY}"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir /r "$INSTDIR"

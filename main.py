@@ -218,6 +218,18 @@ if __name__ == '__main__':
             pass
     threading.Thread(target=_ensure_permanent_token, daemon=True).start()
 
+    # Keep the Windows uninstaller / Add-Remove Programs version in sync with this
+    # build. An in-app binary swap replaces the exe but not the registry, so the
+    # entry would otherwise advertise the previous version. Best-effort, off the
+    # launch path. See update_service.refresh_uninstall_entry().
+    def _refresh_uninstall_entry():
+        try:
+            import update_service
+            update_service.refresh_uninstall_entry()
+        except Exception:
+            pass
+    threading.Thread(target=_refresh_uninstall_entry, daemon=True).start()
+
     atexit.register(cleanup, state.process, state.log_file, state.args)
 
     def _shutdown_handler(signum, frame):

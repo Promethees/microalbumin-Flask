@@ -63,6 +63,54 @@ def _bundle_exe_name():
     return f'{_BUNDLE_NAME}.exe' if _platform_key() == 'win' else _BUNDLE_NAME
 
 
+_UNINSTALL_KEY = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\EasyOKAPI'
+
+
+def refresh_uninstall_entry():
+    """Keep the Windows Add/Remove Programs entry in sync with the running build.
+
+    The installer registers the uninstall entry, but an in-app binary swap
+    replaces the executable without touching the registry — so the entry (and the
+    version shown in Settings > Apps) would keep advertising the previous build.
+    On each startup we rewrite it to the current APP_VERSION.
+
+    Written under HKCU so the un-elevated app can update it (HKLM would need
+    admin, which the running app does not have). Also clears any stale HKLM entry
+    left by an older installer. Frozen Windows only; best-effort and silent.
+    """
+    if not _is_frozen() or not sys.platform.startswith('win'):
+        return
+    try:
+        import winreg
+    except Exception:
+        return
+    install_dir = _bundle_root()
+    version = state.APP_VERSION
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, _UNINSTALL_KEY) as k:
+            winreg.SetValueEx(k, 'DisplayName', 0, winreg.REG_SZ, f'EasyOKAPI {version}')
+            winreg.SetValueEx(k, 'DisplayVersion', 0, winreg.REG_SZ, version)
+            winreg.SetValueEx(k, 'DisplayIcon', 0, winreg.REG_SZ,
+                              os.path.join(install_dir, _bundle_exe_name()))
+            winreg.SetValueEx(k, 'UninstallString', 0, winreg.REG_SZ,
+                              '"' + os.path.join(install_dir, 'Uninstall.exe') + '"')
+            winreg.SetValueEx(k, 'QuietUninstallString', 0, winreg.REG_SZ,
+                              '"' + os.path.join(install_dir, 'Uninstall.exe') + '" /S')
+            winreg.SetValueEx(k, 'InstallLocation', 0, winreg.REG_SZ, install_dir)
+            winreg.SetValueEx(k, 'Publisher', 0, winreg.REG_SZ, 'HTBiotec')
+            winreg.SetValueEx(k, 'NoModify', 0, winreg.REG_DWORD, 1)
+            winreg.SetValueEx(k, 'NoRepair', 0, winreg.REG_DWORD, 1)
+    except Exception:
+        pass
+    # Best-effort: drop a stale machine-wide entry from an older HKLM installer so
+    # Add/Remove Programs does not show two EasyOKAPI rows. Silently ignored when
+    # the app is not elevated (the common case) — the installer also clears it.
+    try:
+        winreg.DeleteKey(winreg.HKEY_LOCAL_MACHINE, _UNINSTALL_KEY)
+    except Exception:
+        pass
+
+
 def _version_tuple(v):
     """Parse 'X.Y.Z' into (X, Y, Z). Returns None if v is not a semver string."""
     try:
@@ -516,6 +564,12 @@ def _build_windows_swap_script(live_root, staged_root, port, exe_name, extra_arg
         "  if (Test-Path $old) { Remove-Item -Recurse -Force $old }; "
         "  Move-Item -Force $live $old; "
         "  Move-Item -Force $new $live; "
+        # The new onedir bundle has no Uninstall.exe (that's installer-generated and
+        # lives beside the exe in a flat Windows install). Carry it across the swap
+        # so Add/Remove Programs keeps working; it reads VERSION.txt at runtime, so
+        # the preserved binary still reports the freshly-swapped version.
+        "  $u = Join-Path $old 'Uninstall.exe'; "
+        "  if (Test-Path $u) { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force }; "
         "  Remove-Item -Recurse -Force $old; "
         "  $exePath = Join-Path $live $exe; "
         f"  Start-Process -FilePath $exePath {arg_clause}-WorkingDirectory $live -WindowStyle Hidden "
