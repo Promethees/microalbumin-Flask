@@ -42,7 +42,7 @@
 
 ; Welcome page
 !define MUI_WELCOMEPAGE_TITLE "Welcome to EasyOKAPI Setup"
-!define MUI_WELCOMEPAGE_TEXT "This will install EasyOKAPI ${APP_VERSION} (no-source build).$\r$\n$\r$\nEverything is bundled — no internet connection, token, or Python install is required. Your measurement data, calibration curves, and reports are kept in your Documents\EasyOKAPI folder and preserved across updates.$\r$\n$\r$\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TEXT "This will install EasyOKAPI ${APP_VERSION} (no-source build).$\r$\n$\r$\nThe application is bundled — no Python install is required — but a valid EasyOKAPI activation token and an internet connection are needed to install. Have your token ready (get one at easyokapi.cbbiotec.vn).$\r$\n$\r$\nYour data is kept in your Documents\EasyOKAPI folder and preserved across updates.$\r$\n$\r$\nClick Next to continue."
 
 ; Finish page — launch the app, and a checkbox to open the data folder.
 !define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} Installed"
@@ -97,8 +97,9 @@ Var UninstVer
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
 !insertmacro MUI_PAGE_WELCOME
 
-; Optional activation token (see TokenPage) — entering it activates AI features
-; and in-app updates now; leaving it blank lets the user activate later in-app.
+; Required activation token (see TokenPage). The token is the license gate for
+; the whole product: it is validated against the activation server on Leave, and
+; installation cannot proceed without a valid one.
 Page custom TokenPage TokenPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
@@ -323,14 +324,12 @@ Function OpenDataFolder
   ExecShell "open" "$DOCUMENTS\EasyOKAPI"
 FunctionEnd
 
-; ── EasyOKAPI activation-token page (optional) ────────────────────────────────
-; Collects the user's EasyOKAPI download token so the install can activate AI
-; features + in-app updates. Unlike the source installer this is OPTIONAL — the
-; binary is already bundled (the token is no longer a download credential), and
-; the user can activate any time in-app (AI Assistant → Activate). Themed to
-; match the other pages (indigo bg + dark controls).
+; ── EasyOKAPI activation-token page (required) ────────────────────────────────
+; The token is the product's license gate: installation cannot proceed without a
+; valid one. TokenPageLeave validates it against the activation server before the
+; install begins. Themed to match the other pages (indigo bg + dark controls).
 Function TokenPage
-  !insertmacro MUI_HEADER_TEXT "EasyOKAPI Activation" "Enter your EasyOKAPI token to activate AI features and in-app updates (optional)."
+  !insertmacro MUI_HEADER_TEXT "EasyOKAPI Activation" "Enter your EasyOKAPI activation token to install (required)."
   nsDialogs::Create 1018
   Pop $Dialog
   ${If} $Dialog == error
@@ -344,7 +343,7 @@ Function TokenPage
   Pop $0
   ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
 
-  ${NSD_CreateLabel} 0 0 100% 42u "Paste your Generated EasyOKAPI token to activate now — this unlocks the AI assistant and in-app updates.$\r$\n$\r$\nLeave it blank to skip: EasyOKAPI still installs and runs, and you can activate any time from the app (AI Assistant $\"Activate$\")."
+  ${NSD_CreateLabel} 0 0 100% 42u "Paste your Generated EasyOKAPI token. A valid token is required to install EasyOKAPI — it activates the application, the AI assistant, and in-app updates.$\r$\n$\r$\nDon't have one yet? Get your token at easyokapi.cbbiotec.vn. An internet connection is required to validate it."
   Pop $0
   SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
 
@@ -356,9 +355,47 @@ Function TokenPage
   nsDialogs::Show
 FunctionEnd
 
+; TokenPageLeave — enforce the license gate. Require a non-empty token, then
+; validate it against ${ACTIVATION_URL}/api/activate. The exchange helper exits
+; 0 (valid — permanent license written to $PLUGINSDIR\activation.json), 1 (token
+; rejected: 4xx), or 2 (network/server error). The user cannot leave this page
+; until a valid token is accepted, so an invalid token never installs the app.
 Function TokenPageLeave
   ${NSD_GetText} $TokenInput $EasyOKAPIToken
-  ; Optional — an empty token is allowed (the user can activate later in-app).
+  ${If} $EasyOKAPIToken == ""
+    MessageBox MB_OK|MB_ICONEXCLAMATION "An EasyOKAPI activation token is required to install. Get yours at easyokapi.cbbiotec.vn."
+    Abort
+  ${EndIf}
+
+  FileOpen $9 "$PLUGINSDIR\exchange-token.ps1" w
+  FileWrite $9 "$$tok = $$args[0]; $$auth = $$args[1]; $$dest = $$args[2]$\r$\n"
+  FileWrite $9 "try {$\r$\n"
+  FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
+  FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\"}'$\r$\n"
+  FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
+  FileWrite $9 "  if ($$resp.license_token) {$\r$\n"
+  FileWrite $9 "    $$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$resp.license_token + '$\"' + [char]10 + '}'$\r$\n"
+  FileWrite $9 "    [System.IO.File]::WriteAllText($$dest, $$json, (New-Object System.Text.UTF8Encoding($$false)))$\r$\n"
+  FileWrite $9 "    exit 0$\r$\n"
+  FileWrite $9 "  } else { exit 1 }$\r$\n"
+  FileWrite $9 "} catch {$\r$\n"
+  FileWrite $9 "  $$s = 0$\r$\n"
+  FileWrite $9 "  try { $$s = [int]$$_.Exception.Response.StatusCode } catch {}$\r$\n"
+  FileWrite $9 "  if ($$s -ge 400 -and $$s -lt 500) { exit 1 } else { exit 2 }$\r$\n"
+  FileWrite $9 "}$\r$\n"
+  FileClose $9
+
+  nsExec::Exec '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\exchange-token.ps1" "$EasyOKAPIToken" "${ACTIVATION_URL}" "$PLUGINSDIR\activation.json"'
+  Pop $0
+  ${If} $0 == 0
+    ; Valid token — permanent license staged. Allow the wizard to advance.
+  ${ElseIf} $0 == 1
+    MessageBox MB_OK|MB_ICONSTOP "This token was rejected (invalid or expired). Get a fresh token at easyokapi.cbbiotec.vn, paste it, and click Next again."
+    Abort
+  ${Else}
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Could not reach the activation server to validate your token. Check your internet connection, then click Next to try again."
+    Abort
+  ${EndIf}
 FunctionEnd
 
 ; Merge SRC into DST without overwriting newer/existing files (robocopy /XO skips
@@ -457,38 +494,15 @@ Click Cancel to exit Setup without making any changes." \
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify"        1
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair"        1
 
-  ; ── Activate the license (only if the user supplied a token) ────────────────
-  ; Persist the token to the visible data folder (where the app reads it), then
-  ; exchange the short-lived download token for a permanent license token via
-  ; ${ACTIVATION_URL}/api/activate (same server the app's AI proxy uses). The app
-  ; also retries this on startup (activation.ensure_permanent_token), so a
-  ; transient failure here is recovered automatically.
-  ${If} $EasyOKAPIToken != ""
-    CreateDirectory "$R0"
-    ; Write the raw token first so activation.json always exists even if the
-    ; exchange below cannot reach the server.
-    FileOpen $9 "$R0\activation.json" w
-    FileWrite $9 '{$\n  "license_token": "$EasyOKAPIToken"$\n}'
-    FileClose $9
-    ; Exchange helper written to a temp file to dodge NSIS/PowerShell quoting.
-    FileOpen $9 "$PLUGINSDIR\exchange-token.ps1" w
-    FileWrite $9 "$$tok = $$args[0]; $$auth = $$args[1]; $$dest = $$args[2]; $$license = $$tok$\r$\n"
-    FileWrite $9 "try {$\r$\n"
-    FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
-    FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\"}'$\r$\n"
-    FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
-    FileWrite $9 "  if ($$resp.license_token) { $$license = $$resp.license_token }$\r$\n"
-    FileWrite $9 "} catch {}$\r$\n"
-    FileWrite $9 "$$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$license + '$\"' + [char]10 + '}'$\r$\n"
-    FileWrite $9 "[System.IO.File]::WriteAllText($$dest, $$json, (New-Object System.Text.UTF8Encoding($$false)))$\r$\n"
-    FileClose $9
-    DetailPrint "Activating license..."
-    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\exchange-token.ps1" "$EasyOKAPIToken" "${ACTIVATION_URL}" "$R0\activation.json"'
-    Pop $0
-    DetailPrint "License activation finalized."
-  ${EndIf}
+  ; ── Install the validated license ───────────────────────────────────────────
+  ; The token was required and validated on the Token page (TokenPageLeave),
+  ; which staged the permanent license token at $PLUGINSDIR\activation.json. Place
+  ; it in the visible data folder where the app reads it. We never reach here with
+  ; an invalid/empty token — the wizard cannot leave the Token page without one.
+  CreateDirectory "$R0"
+  CopyFiles /SILENT "$PLUGINSDIR\activation.json" "$R0\activation.json"
 
-  DetailPrint "EasyOKAPI ${APP_VERSION} installed. Data lives in $R0."
+  DetailPrint "EasyOKAPI ${APP_VERSION} installed and activated. Data lives in $R0."
 SectionEnd
 
 ; un.onInit — read the CURRENT installed version from VERSION.txt, which ships in
