@@ -121,32 +121,42 @@ os.makedirs(script_dir, exist_ok=True)
 
 
 def _migrate_legacy_app_data():
-    """One-time move of user data from an older hidden app-data dir into script_dir.
+    """One-time MOVE of user data from an older hidden app-data dir into script_dir.
 
-    Lets in-app (binary-swap) updates pick up data from a build that stored it
-    under %LOCALAPPDATA% etc.; the installer performs the same migration for
-    re-run-installer updates. Best-effort and marker-guarded so it runs once.
+    Early frozen builds stored data under a hidden dir (%LOCALAPPDATA%\\EasyOKAPI,
+    ~/Library/Application Support/EasyOKAPI, ~/.local/share/EasyOKAPI). We copy it
+    into the visible data folder once, then REMOVE the hidden source. Removing it
+    is important: the "already migrated" marker lives in script_dir, so if a user
+    clears their visible data folder the marker is gone too — and a hidden source
+    left behind would silently resurrect the old data on the next launch. The
+    hidden location is pure legacy (the current build only ever uses script_dir),
+    so deleting it is safe. Best-effort; never blocks startup.
     """
     if bundle_dir == script_dir:
         return
-    marker = os.path.join(script_dir, '.migrated_appdata')
-    if os.path.exists(marker):
-        return
     try:
-        for legacy in _legacy_app_data_dirs():
-            if os.path.abspath(legacy) == os.path.abspath(script_dir) or not os.path.isdir(legacy):
-                continue
-            for name in ('data', 'json', 'report', 'log'):
-                src = os.path.join(legacy, name)
-                dst = os.path.join(script_dir, name)
-                if os.path.isdir(src) and not (os.path.isdir(dst) and os.listdir(dst)):
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
-            for fname in ('activation.json', 'user_settings.json', '.env'):
-                s, d = os.path.join(legacy, fname), os.path.join(script_dir, fname)
-                if os.path.isfile(s) and not os.path.exists(d):
-                    shutil.copy2(s, d)
-        with open(marker, 'w', encoding='utf-8') as f:
-            f.write('1')
+        legacy_dirs = [l for l in _legacy_app_data_dirs()
+                       if os.path.abspath(l) != os.path.abspath(script_dir) and os.path.isdir(l)]
+        if not legacy_dirs:
+            return
+        marker = os.path.join(script_dir, '.migrated_appdata')
+        if not os.path.exists(marker):
+            for legacy in legacy_dirs:
+                for name in ('data', 'json', 'report', 'log'):
+                    src = os.path.join(legacy, name)
+                    dst = os.path.join(script_dir, name)
+                    if os.path.isdir(src) and not (os.path.isdir(dst) and os.listdir(dst)):
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                for fname in ('activation.json', 'user_settings.json', '.env'):
+                    s, d = os.path.join(legacy, fname), os.path.join(script_dir, fname)
+                    if os.path.isfile(s) and not os.path.exists(d):
+                        shutil.copy2(s, d)
+            with open(marker, 'w', encoding='utf-8') as f:
+                f.write('1')
+        # Always remove the hidden legacy folder(s) once we know the data has been
+        # migrated (marker present), so they can never resurrect cleared data.
+        for legacy in legacy_dirs:
+            shutil.rmtree(legacy, ignore_errors=True)
     except Exception:
         pass  # best-effort: never block startup
 
