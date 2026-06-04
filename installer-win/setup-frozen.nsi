@@ -15,6 +15,13 @@
 ; relative paths (setup.ico, bitmaps, ..\dist) against this script's directory:
 ;   cd installer-win && makensis /DAPP_VERSION=1.1.8 setup-frozen.nsi
 
+; Build a Unicode installer so accented characters and symbols in the on-screen
+; text render correctly on every Windows language/locale (an ANSI installer shows
+; them as garbage on non-Western code pages). MUST come before SetCompressor and
+; ReserveFile (which start writing/compressing the output) or NSIS aborts with
+; "Can't change target architecture after data already got compressed".
+Unicode true
+
 !define APP_NAME "EasyOKAPI"
 !ifndef APP_VERSION
   !error "APP_VERSION is not defined. Pass it with: makensis /DAPP_VERSION=x.x.x setup-frozen.nsi"
@@ -66,11 +73,6 @@ ReserveFile "page_bg.bmp"
 
 ; Install-log text / background on the InstFiles detail area
 InstallColors E2E8F0 312E81
-
-; Build a Unicode installer so accented characters and symbols in the on-screen
-; text render correctly on every Windows language/locale (an ANSI installer shows
-; them as garbage on non-Western code pages).
-Unicode true
 
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "EasyOKAPI_Setup_${APP_VERSION}_frozen.exe"
