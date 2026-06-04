@@ -242,10 +242,29 @@ def mark_demo_prompt_done():
 def seed_demo_content():
     """Copy the bundled default curves and sample measurements into writable data.
 
-    json/ defaults → json/ (kinetics, point); sample_data/*.csv → data/sample_data/.
-    Best-effort and idempotent; safe to call once on opt-in.
+    Bundled json/{kinetics,point}/*.json → json/{kinetics,point}/, and
+    sample_data/*.csv → data/sample_data/. Copies file-by-file and never clobbers
+    anything the user already has — so the empty kinetics/point folders created at
+    startup do NOT block the copy (the previous _seed_writable_from_bundle skipped
+    when the json/ folder was non-empty, which it always was). Best-effort.
     """
-    _seed_writable_from_bundle("json")
+    if bundle_dir == script_dir:
+        return
+    # Default calibration curves (walk the whole bundled json/ tree).
+    bundle_json = os.path.join(bundle_dir, "json")
+    if os.path.isdir(bundle_json):
+        for root, _dirs, files in os.walk(bundle_json):
+            rel = os.path.relpath(root, bundle_json)
+            dst_dir = json_root_path if rel == "." else os.path.join(json_root_path, rel)
+            os.makedirs(dst_dir, exist_ok=True)
+            for fname in files:
+                d = os.path.join(dst_dir, fname)
+                if not os.path.exists(d):
+                    try:
+                        shutil.copy2(os.path.join(root, fname), d)
+                    except Exception:
+                        pass
+    # Sample measurements → data/sample_data/.
     src = os.path.join(bundle_dir, "sample_data")
     if os.path.isdir(src):
         dst = os.path.join(data_root_path, "sample_data")

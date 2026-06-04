@@ -495,6 +495,23 @@ Click Cancel to exit without making any changes." \
   SetOutPath "$INSTDIR"
   File /r "..\dist\EasyOKAPI\*"
 
+  ; ── Map easyokapi.com -> 127.0.0.1 so the app opens at a friendly address ────
+  ; The app runs un-elevated and cannot edit the hosts file itself; do it here
+  ; (Setup is elevated). Skipped if the mapping already exists.
+  FileOpen $9 "$PLUGINSDIR\hosts-add.ps1" w
+  FileWrite $9 "$$h = $\"$$env:windir\System32\drivers\etc\hosts$\"$\r$\n"
+  FileWrite $9 "try {$\r$\n"
+  FileWrite $9 "  $$c = Get-Content -Path $$h -ErrorAction SilentlyContinue$\r$\n"
+  FileWrite $9 "  if (-not ($$c -match 'easyokapi\.com')) {$\r$\n"
+  FileWrite $9 "    Add-Content -Path $$h -Value ''$\r$\n"
+  FileWrite $9 "    Add-Content -Path $$h -Value '127.0.0.1 easyokapi.com'$\r$\n"
+  FileWrite $9 "  }$\r$\n"
+  FileWrite $9 "} catch {}$\r$\n"
+  FileClose $9
+  DetailPrint "Setting up the easyokapi.com address..."
+  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\hosts-add.ps1"'
+  Pop $0
+
   ; ── Shortcuts ───────────────────────────────────────────────────────────────
   ; Launch through launcher-frozen.ps1 so the user sees the "Starting EasyOKAPI"
   ; splash while the app loads (and a second click just reopens the browser). The
@@ -598,8 +615,8 @@ Click Cancel to stop removing EasyOKAPI." \
     FileWrite $9 "param($$src,$$ver,$$destDir)$\r$\n"
     FileWrite $9 "try {$\r$\n"
     FileWrite $9 "  Add-Type -AssemblyName System.IO.Compression.FileSystem$\r$\n"
-    FileWrite $9 "  $$date = Get-Date -Format 'yyyy-MM-dd'$\r$\n"
-    FileWrite $9 "  $$zip = Join-Path $$destDir ('EasyOKAPI_backup_' + $$date + '_' + $$ver + '.zip')$\r$\n"
+    FileWrite $9 "  $$stamp = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'$\r$\n"
+    FileWrite $9 "  $$zip = Join-Path $$destDir ('EasyOKAPI_backup_' + $$stamp + '_' + $$ver + '.zip')$\r$\n"
     FileWrite $9 "  if (Test-Path -LiteralPath $$zip) { Remove-Item -LiteralPath $$zip -Force }$\r$\n"
     FileWrite $9 "  [System.IO.Compression.ZipFile]::CreateFromDirectory($$src, $$zip)$\r$\n"
     FileWrite $9 "  exit 0$\r$\n"
@@ -625,6 +642,16 @@ Click Cancel to stop removing EasyOKAPI." \
   DeleteRegKey HKCU "${UNINST_KEY}"
   DeleteRegKey HKLM "${UNINST_KEY}"
 
+  ; ── Remove the easyokapi.com hosts mapping that Setup added ──────────────────
+  FileOpen $9 "$PLUGINSDIR\hosts-del.ps1" w
+  FileWrite $9 "$$h = $\"$$env:windir\System32\drivers\etc\hosts$\"$\r$\n"
+  FileWrite $9 "try {$\r$\n"
+  FileWrite $9 "  (Get-Content -Path $$h) | Where-Object { $$_ -notmatch 'easyokapi\.com' } | Set-Content -Path $$h$\r$\n"
+  FileWrite $9 "} catch {}$\r$\n"
+  FileClose $9
+  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\hosts-del.ps1"'
+  Pop $0
+
   ; ── Remove the program files completely ──────────────────────────────────────
   ; Move out of $INSTDIR first (a folder can't be deleted while it is the working
   ; directory). The uninstaller runs from a temporary copy of itself, so it can
@@ -643,7 +670,7 @@ Click Cancel to stop removing EasyOKAPI." \
   ${If} $R2 == "removed"
     MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI and all of your data have been completely removed."
   ${ElseIf} $R2 == "backedup"
-    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI and your data have been removed.$\r$\n$\r$\nA backup ZIP of your data was saved in your Documents folder, named EasyOKAPI_backup_<date>_$UninstVer.zip."
+    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI and your data have been removed.$\r$\n$\r$\nA backup ZIP of your data was saved in your Documents folder, named EasyOKAPI_backup_<date>_<time>_$UninstVer.zip."
   ${ElseIf} $R2 == "keepfail"
     MessageBox MB_OK|MB_ICONEXCLAMATION "EasyOKAPI has been removed.$\r$\n$\r$\nWe could not create the backup, so your data was kept (nothing was deleted) here:$\r$\n$DOCUMENTS\EasyOKAPI"
   ${Else}

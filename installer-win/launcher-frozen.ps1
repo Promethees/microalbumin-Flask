@@ -17,7 +17,9 @@ $script:ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else {
 }
 $script:Exe  = Join-Path $script:ScriptDir 'EasyOKAPI.exe'
 $script:Port = 5099
-$script:Url  = "http://127.0.0.1:$($script:Port)"
+# The installer adds a hosts entry (127.0.0.1 -> easyokapi.com) so the app can be
+# opened at this friendly address. The server still binds to 127.0.0.1.
+$script:Url  = "http://easyokapi.com:$($script:Port)"
 
 function Test-Listening {
     try {
@@ -136,7 +138,7 @@ $Timer.Add_Tick({
 $Window.Add_Loaded({
     try {
         Start-Process -FilePath $script:Exe `
-            -ArgumentList '--port', '5099', '--alias', '127.0.0.1' `
+            -ArgumentList '--port', '5099', '--alias', 'easyokapi.com' `
             -WorkingDirectory $script:ScriptDir `
             -WindowStyle Hidden -ErrorAction Stop
         $Timer.Start()
