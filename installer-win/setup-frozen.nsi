@@ -417,13 +417,6 @@ FunctionEnd
     Pop $0
 !macroend
 
-; Full copy of SRC into DST (used for the Documents\EasyOKAPI_data safety backup).
-!macro BackupDir SRC DST
-  IfFileExists "${SRC}\*.*" 0 +3
-    nsExec::ExecToLog 'robocopy "${SRC}" "${DST}" /E /NJH /NJS /NFL /NDL /NC /NS /NP'
-    Pop $0
-!macroend
-
 Section "Install" SEC01
   StrCpy $R0 "$DOCUMENTS\EasyOKAPI"   ; visible per-user data root (matches state.py)
 
@@ -478,18 +471,19 @@ Click Cancel to exit without making any changes." \
     FileClose $9
   skip_migrate:
 
-  ; ── Safety backup of your data to Documents\EasyOKAPI_data ───────────────────
-  ; Keep a spare copy of your measurements, calibration curves and reports that
-  ; you can fall back on. Refreshed on every install/update. (Your working data
-  ; stays in Documents\EasyOKAPI; this is just an extra safety copy.)
+  ; ── Restore data from the temporary EasyOKAPI_data folder, then remove it ────
+  ; An in-app update stages a temporary safety copy in Documents\EasyOKAPI_data.
+  ; Merge anything found there back into the working data folder (without
+  ; overwriting newer files), then delete the temporary folder so it does not
+  ; linger in Documents.
   StrCpy $R1 "$DOCUMENTS\EasyOKAPI_data"
-  IfFileExists "$R0\*.*" 0 skip_backup
-    DetailPrint "Saving a backup copy of your data to $R1..."
+  IfFileExists "$R1\*.*" 0 skip_restore
+    DetailPrint "Restoring your data from $R1..."
+    !insertmacro MigrateDir "$R1\data"   "$R0\data"
+    !insertmacro MigrateDir "$R1\json"   "$R0\json"
+    !insertmacro MigrateDir "$R1\report" "$R0\report"
     RMDir /r "$R1"
-    !insertmacro BackupDir "$R0\data"   "$R1\data"
-    !insertmacro BackupDir "$R0\json"   "$R1\json"
-    !insertmacro BackupDir "$R0\report" "$R1\report"
-  skip_backup:
+  skip_restore:
 
   ; ── Remove any previous install payload (source code dir + old runner) ──────
   RMDir /r "$INSTDIR\code"
@@ -588,15 +582,41 @@ Click Cancel to stop removing EasyOKAPI." \
     ${EndIf}
   un_not_running:
 
-  ; ── Keep a safety copy of the user's data before removing the program ───────
-  StrCpy $R1 "$DOCUMENTS\EasyOKAPI_data"
-  IfFileExists "$DOCUMENTS\EasyOKAPI\*.*" 0 un_no_backup
-    DetailPrint "Backing up your data to $R1..."
-    RMDir /r "$R1"
-    !insertmacro BackupDir "$DOCUMENTS\EasyOKAPI\data"   "$R1\data"
-    !insertmacro BackupDir "$DOCUMENTS\EasyOKAPI\json"   "$R1\json"
-    !insertmacro BackupDir "$DOCUMENTS\EasyOKAPI\report" "$R1\report"
-  un_no_backup:
+  ; ── Decide what to do with the user's data ──────────────────────────────────
+  ; Default is to keep it. The user may choose to remove it, and (if so) to save a
+  ; dated, versioned ZIP backup first. $R2: keep / removed / backedup / keepfail.
+  StrCpy $R2 "keep"
+  IfFileExists "$DOCUMENTS\EasyOKAPI\*.*" 0 un_data_done
+    MessageBox MB_YESNO|MB_ICONQUESTION \
+      "Do you also want to remove your EasyOKAPI data (your measurements, calibration curves and reports)?$\r$\n$\r$\nClick No to keep your data in:$\r$\n$DOCUMENTS\EasyOKAPI$\r$\n$\r$\nClick Yes to remove your data." \
+      IDNO un_data_done
+    MessageBox MB_YESNO|MB_ICONQUESTION \
+      "Would you like to save a backup of your data (a ZIP file in your Documents folder) before it is removed?$\r$\n$\r$\nClick Yes to save a backup, then remove your data.$\r$\nClick No to remove your data without a backup." \
+      IDNO un_mark_remove
+    ; Yes: build a dated + versioned ZIP backup in Documents (best-effort).
+    FileOpen $9 "$PLUGINSDIR\backup-zip.ps1" w
+    FileWrite $9 "param($$src,$$ver,$$destDir)$\r$\n"
+    FileWrite $9 "try {$\r$\n"
+    FileWrite $9 "  Add-Type -AssemblyName System.IO.Compression.FileSystem$\r$\n"
+    FileWrite $9 "  $$date = Get-Date -Format 'yyyy-MM-dd'$\r$\n"
+    FileWrite $9 "  $$zip = Join-Path $$destDir ('EasyOKAPI_backup_' + $$date + '_' + $$ver + '.zip')$\r$\n"
+    FileWrite $9 "  if (Test-Path -LiteralPath $$zip) { Remove-Item -LiteralPath $$zip -Force }$\r$\n"
+    FileWrite $9 "  [System.IO.Compression.ZipFile]::CreateFromDirectory($$src, $$zip)$\r$\n"
+    FileWrite $9 "  exit 0$\r$\n"
+    FileWrite $9 "} catch { exit 1 }$\r$\n"
+    FileClose $9
+    DetailPrint "Saving a backup ZIP of your data..."
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\backup-zip.ps1" "$DOCUMENTS\EasyOKAPI" "$UninstVer" "$DOCUMENTS"'
+    Pop $0
+    ${If} $0 == 0
+      StrCpy $R2 "backedup"
+    ${Else}
+      StrCpy $R2 "keepfail"   ; backup failed -> keep the data, do not delete
+    ${EndIf}
+    Goto un_data_done
+  un_mark_remove:
+    StrCpy $R2 "removed"
+  un_data_done:
 
   ; ── Shortcuts + Add/Remove Programs entry ───────────────────────────────────
   Delete "$DESKTOP\${APP_NAME}.lnk"
@@ -612,6 +632,21 @@ Click Cancel to stop removing EasyOKAPI." \
   SetOutPath "$TEMP"
   RMDir /r "$INSTDIR"
 
-  MessageBox MB_OK|MB_ICONINFORMATION \
-    "EasyOKAPI has been removed.$\r$\n$\r$\nYour measurements, calibration curves and reports were kept here:$\r$\n$DOCUMENTS\EasyOKAPI$\r$\n$\r$\nA backup copy was also saved here:$\r$\n$DOCUMENTS\EasyOKAPI_data"
+  ; ── Remove the data folders if the user asked to ────────────────────────────
+  ${If} $R2 == "removed"
+  ${OrIf} $R2 == "backedup"
+    RMDir /r "$DOCUMENTS\EasyOKAPI"
+    RMDir /r "$DOCUMENTS\EasyOKAPI_data"
+  ${EndIf}
+
+  ; ── Tell the user what happened ──────────────────────────────────────────────
+  ${If} $R2 == "removed"
+    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI and all of your data have been completely removed."
+  ${ElseIf} $R2 == "backedup"
+    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI and your data have been removed.$\r$\n$\r$\nA backup ZIP of your data was saved in your Documents folder, named EasyOKAPI_backup_<date>_$UninstVer.zip."
+  ${ElseIf} $R2 == "keepfail"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "EasyOKAPI has been removed.$\r$\n$\r$\nWe could not create the backup, so your data was kept (nothing was deleted) here:$\r$\n$DOCUMENTS\EasyOKAPI"
+  ${Else}
+    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI has been removed.$\r$\n$\r$\nYour data was kept here:$\r$\n$DOCUMENTS\EasyOKAPI"
+  ${EndIf}
 SectionEnd
