@@ -3,13 +3,15 @@
 #
 # The source build lived at /Applications/microalbumin-Flask with its user data
 # (data/ json/ report/ log/ + settings) beside the code. The frozen build keeps
-# user data in the per-user app-data dir instead, so on first frozen launch we
-# copy that data across and then remove the old install (per the migration
-# decision in ENCODE_BUILD_PLAN.md §11.5). Idempotent via a marker file and
-# best-effort throughout: a failure here must never block launch.
+# user data in a VISIBLE per-user folder (~/Documents/EasyOKAPI, matching
+# src/state.py) so on first frozen launch we copy that data across and then
+# remove the old install (per the migration decision in ENCODE_BUILD_PLAN.md
+# §11.5). The app itself also migrates any earlier hidden app-data dir
+# (~/Library/Application Support/EasyOKAPI) into this folder. Idempotent via a
+# marker file and best-effort throughout: a failure here must never block launch.
 
 OLD="/Applications/microalbumin-Flask"
-APPDATA="$HOME/Library/Application Support/EasyOKAPI"
+APPDATA="$HOME/Documents/EasyOKAPI"
 MARKER="$APPDATA/.migrated_from_source"
 
 [ -f "$MARKER" ] && exit 0

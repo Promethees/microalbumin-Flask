@@ -780,6 +780,34 @@
         <script src="{{ url_for('static', filename='script/report.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/ai-chat.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/bug-report.js') }}?v={{ STATIC_VERSION }}"></script>
+        {% if demo_prompt_pending %}
+        <script>
+            // First-run only (frozen builds): offer to load the bundled sample
+            // measurements + demo calibration curves. The server records the
+            // choice so this never reappears.
+            document.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    title: 'Welcome to EasyOKAPI',
+                    html: 'Would you like to load <b>sample measurements</b> and <b>demo calibration curves</b> so you can explore the app right away?<br><br>You can always start empty and add your own data later.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Load sample data',
+                    cancelButtonText: 'Start empty',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(function (result) {
+                    var load = !!(result && result.isConfirmed);
+                    fetch('/api/first-run/seed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ load: load })
+                    }).then(function () {
+                        if (load) { window.location.reload(); }
+                    }).catch(function () {});
+                });
+            });
+        </script>
+        {% endif %}
 </body>
 
 </html>

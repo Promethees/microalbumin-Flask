@@ -3,7 +3,7 @@
 #
 # Unlike launch.sh (the source build), this needs no sudo, pyenv, or venv: the
 # frozen binary embeds the Python runtime and all dependencies, and creates its
-# own writable per-user data folders (~/Library/Application Support/EasyOKAPI)
+# own writable per-user data folders in a visible ~/Documents/EasyOKAPI folder
 # on first run. It only migrates data from an older source install, then execs
 # the bundled binary.
 

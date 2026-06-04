@@ -75,8 +75,24 @@ def index():
                          production_mode=state.PRODUCTION_MODE,
                          app_version=state.APP_VERSION,
                          maintainer_email=state.MAINTAINER_EMAIL,
+                         demo_prompt_pending=state.demo_prompt_pending(),
                          user_settings=user_settings))
     return response
+
+
+@core_bp.route('/api/first-run/seed', methods=['POST'])
+def first_run_seed():
+    """Act on the first-run demo-content prompt.
+
+    Body: {"load": true|false}. When true, seed the bundled default calibration
+    curves and sample measurements into the user's writable data. Either way the
+    choice is recorded so the prompt never reappears.
+    """
+    data = request.get_json(silent=True) or {}
+    if data.get('load'):
+        state.seed_demo_content()
+    state.mark_demo_prompt_done()
+    return jsonify({'status': 'success', 'loaded': bool(data.get('load'))})
 
 def delayed_termination():
     time.sleep(5) 

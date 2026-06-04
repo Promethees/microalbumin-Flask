@@ -5,8 +5,9 @@
 # Python build, source download, venv, or vendor fetch — the frozen onedir embeds
 # all of that. It still needs root to place files under /opt, install a udev rule
 # for the PyBadge serial port, and add a desktop entry; but RUNNING the app needs
-# no root (CDC serial, not HID). User data lives in ~/.local/share/EasyOKAPI and
-# is migrated from any old source install first.
+# no root (CDC serial, not HID). User data lives in a VISIBLE ~/EasyOKAPI folder
+# (matching src/state.py) and is migrated from any old source install first; the
+# app also migrates any earlier hidden ~/.local/share/EasyOKAPI dir into it.
 #
 # Usage:  sudo ./EasyOKAPI/install-frozen.sh
 
@@ -30,7 +31,7 @@ CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/EasyOKAPI"
-APPDATA="$CURRENT_HOME/.local/share/EasyOKAPI"
+APPDATA="$CURRENT_HOME/EasyOKAPI"
 
 echo ""
 echo -e "  ${BOLD}${CYAN}⬡  HTBiotec · EasyOKAPI · No-source installer${RESET}"

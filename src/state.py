@@ -17,9 +17,15 @@ args = None
 #     (templates/, static/, json/ defaults, guide_training.json, sample_data/)
 #     are bundled and resolve from sys._MEIPASS; writable user data
 #     (data/, json/, report/, log/, user_settings.json, activation.json, .env)
-#     lives in a per-user app-data dir so it survives update / reinstall /
-#     recovery. These four folders are exactly what update_service._PRESERVE
-#     keeps, and the only things the user sees and owns.
+#     lives in a VISIBLE, user-owned folder so people can find and open their
+#     measurements/curves/reports directly: Documents/EasyOKAPI on Windows &
+#     macOS, ~/EasyOKAPI on Linux. It sits outside the install dir, so it
+#     survives update / reinstall / recovery untouched. Older frozen builds put
+#     this under a hidden app-data dir (%LOCALAPPDATA% etc.);
+#     _migrate_legacy_app_data() moves that content here once, so in-app updates
+#     migrate too (the installer migrates as well, for re-run-installer updates).
+#     Bundled json defaults + sample_data are seeded only on explicit first-run
+#     consent (demo_prompt_pending / seed_demo_content), never silently.
 #
 # Two roots make that split explicit:
 #   bundle_dir  → read-only bundled assets    (== project root in dev)
@@ -51,24 +57,101 @@ def _bundle_dir():
     return _find_project_root()
 
 
-def _app_data_dir():
-    """Writable per-user data root. Preserved across updates and reinstalls."""
-    if not _is_frozen():
-        return _find_project_root()
+def _windows_documents_dir():
+    r"""Resolve the user's real Documents folder, honouring redirection (OneDrive).
+
+    Reads the same shell-folder registry value NSIS's $DOCUMENTS uses, so the
+    installer and the running app always agree on one path. Falls back to
+    ~/Documents when the lookup fails.
+    """
+    try:
+        import winreg
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders'
+        ) as key:
+            val, _ = winreg.QueryValueEx(key, 'Personal')
+        val = os.path.expandvars(val)
+        if val:
+            return val
+    except Exception:
+        pass
+    return os.path.join(os.path.expanduser('~'), 'Documents')
+
+
+def _user_data_base():
+    """Parent of the visible EasyOKAPI data folder, per OS (frozen builds only)."""
     system = platform.system().lower()
     if system.startswith('win') or system == 'nt':
-        base = os.environ.get('LOCALAPPDATA') or os.path.expanduser('~')
-    elif system == 'darwin':
-        base = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support')
-    else:  # linux and others
-        base = os.environ.get('XDG_DATA_HOME') or os.path.join(
-            os.path.expanduser('~'), '.local', 'share')
-    return os.path.join(base, 'EasyOKAPI')
+        return _windows_documents_dir()
+    if system == 'darwin':
+        return os.path.join(os.path.expanduser('~'), 'Documents')
+    return os.path.expanduser('~')  # linux: ~/EasyOKAPI
+
+
+def _app_data_dir():
+    """Writable per-user data root — a VISIBLE folder the user can open directly.
+
+    Frozen: <Documents>/EasyOKAPI (win/mac) or ~/EasyOKAPI (linux). Source/dev:
+    the project root (unchanged).
+    """
+    if not _is_frozen():
+        return _find_project_root()
+    return os.path.join(_user_data_base(), 'EasyOKAPI')
+
+
+def _legacy_app_data_dirs():
+    """Hidden roots used by earlier frozen builds — migrated into the visible one once."""
+    if not _is_frozen():
+        return []
+    system = platform.system().lower()
+    if system.startswith('win') or system == 'nt':
+        base = os.environ.get('LOCALAPPDATA')
+        return [os.path.join(base, 'EasyOKAPI')] if base else []
+    if system == 'darwin':
+        return [os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'EasyOKAPI')]
+    base = os.environ.get('XDG_DATA_HOME') or os.path.join(
+        os.path.expanduser('~'), '.local', 'share')
+    return [os.path.join(base, 'EasyOKAPI')]
 
 
 bundle_dir = _bundle_dir()
 script_dir = _app_data_dir()
 os.makedirs(script_dir, exist_ok=True)
+
+
+def _migrate_legacy_app_data():
+    """One-time move of user data from an older hidden app-data dir into script_dir.
+
+    Lets in-app (binary-swap) updates pick up data from a build that stored it
+    under %LOCALAPPDATA% etc.; the installer performs the same migration for
+    re-run-installer updates. Best-effort and marker-guarded so it runs once.
+    """
+    if bundle_dir == script_dir:
+        return
+    marker = os.path.join(script_dir, '.migrated_appdata')
+    if os.path.exists(marker):
+        return
+    try:
+        for legacy in _legacy_app_data_dirs():
+            if os.path.abspath(legacy) == os.path.abspath(script_dir) or not os.path.isdir(legacy):
+                continue
+            for name in ('data', 'json', 'report', 'log'):
+                src = os.path.join(legacy, name)
+                dst = os.path.join(script_dir, name)
+                if os.path.isdir(src) and not (os.path.isdir(dst) and os.listdir(dst)):
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+            for fname in ('activation.json', 'user_settings.json', '.env'):
+                s, d = os.path.join(legacy, fname), os.path.join(script_dir, fname)
+                if os.path.isfile(s) and not os.path.exists(d):
+                    shutil.copy2(s, d)
+        with open(marker, 'w', encoding='utf-8') as f:
+            f.write('1')
+    except Exception:
+        pass  # best-effort: never block startup
+
+
+_migrate_legacy_app_data()
 
 
 def _seed_writable_from_bundle(name):
@@ -103,12 +186,78 @@ os.makedirs(os.path.dirname(log_file), exist_ok=True)
 json_root_path = os.path.join(script_dir, "json")
 report_root_path = os.path.join(script_dir, "report")
 data_root_path = os.path.join(script_dir, "data")
-# Seed bundled default calibration JSONs into the writable json/ on first run,
-# then create the writable working folders.
-_seed_writable_from_bundle("json")
+# Create the writable working folders empty. The bundled json defaults and
+# sample measurements are NOT seeded automatically — they are offered as an
+# opt-in on first run (see demo_prompt_pending()/seed_demo_content()).
 os.makedirs(json_root_path, exist_ok=True)
+os.makedirs(os.path.join(json_root_path, "kinetics"), exist_ok=True)
+os.makedirs(os.path.join(json_root_path, "point"), exist_ok=True)
 os.makedirs(report_root_path, exist_ok=True)
 os.makedirs(data_root_path, exist_ok=True)
+
+
+# ── First-run demo content (opt-in) ──────────────────────────────────────────
+# A frozen build bundles default calibration curves (json/) and sample
+# measurements (sample_data/). Rather than seeding them silently, the app asks
+# the user once on first launch whether to load them. The choice is recorded so
+# the prompt never reappears.
+_DEMO_MARKER = os.path.join(script_dir, ".demo_prompt_done")
+
+
+def _dir_has_content(path):
+    if not os.path.isdir(path):
+        return False
+    with os.scandir(path) as it:
+        return any(True for _ in it)
+
+
+def _has_user_content():
+    """True if the user already has saved curves or measurements."""
+    return (_dir_has_content(os.path.join(json_root_path, "kinetics"))
+            or _dir_has_content(os.path.join(json_root_path, "point"))
+            or _dir_has_content(data_root_path))
+
+
+def demo_prompt_pending():
+    """Show the first-run 'load demo content?' prompt?
+
+    Only for a frozen build that hasn't answered yet, has no user content, and
+    actually has bundled demo content to offer. Always False in source/dev.
+    """
+    if not _is_frozen() or os.path.exists(_DEMO_MARKER) or _has_user_content():
+        return False
+    return (os.path.isdir(os.path.join(bundle_dir, "json"))
+            or os.path.isdir(os.path.join(bundle_dir, "sample_data")))
+
+
+def mark_demo_prompt_done():
+    """Record that the first-run prompt was answered, so it never reappears."""
+    try:
+        with open(_DEMO_MARKER, "w", encoding="utf-8") as f:
+            f.write("1")
+    except Exception:
+        pass
+
+
+def seed_demo_content():
+    """Copy the bundled default curves and sample measurements into writable data.
+
+    json/ defaults → json/ (kinetics, point); sample_data/*.csv → data/sample_data/.
+    Best-effort and idempotent; safe to call once on opt-in.
+    """
+    _seed_writable_from_bundle("json")
+    src = os.path.join(bundle_dir, "sample_data")
+    if os.path.isdir(src):
+        dst = os.path.join(data_root_path, "sample_data")
+        os.makedirs(dst, exist_ok=True)
+        try:
+            for name in os.listdir(src):
+                if name.lower().endswith(".csv"):
+                    s = os.path.join(src, name)
+                    if os.path.isfile(s) and not os.path.exists(os.path.join(dst, name)):
+                        shutil.copy2(s, os.path.join(dst, name))
+        except Exception:
+            pass
 
 
 os_name = platform.system().lower()
