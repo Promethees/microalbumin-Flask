@@ -1,8 +1,10 @@
 name: CI/CD Build and Test
 
+# To save Actions minutes, a plain push to main does NOT build. The build +
+# release pipeline runs only when a version tag (v*) is pushed. Pull requests and
+# manual dispatch still run the cheap test job for feedback, but not the builds.
 on:
   push:
-    branches: [ main, master ]
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
@@ -70,6 +72,7 @@ jobs:
   # ── macOS build ────────────────────────────────────────────────────────────
   build-macos:
     needs: [setup, test]
+    if: github.ref_type == 'tag'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -160,6 +163,7 @@ jobs:
   # ── Windows build ──────────────────────────────────────────────────────────
   build-windows:
     needs: [setup, test]
+    if: github.ref_type == 'tag'
     runs-on: windows-latest
     env:
       APP_VERSION: ${{ needs.setup.outputs.bare_version }}
@@ -276,6 +280,7 @@ jobs:
   # ── Linux build ────────────────────────────────────────────────────────────
   build-linux:
     needs: [setup, test]
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
