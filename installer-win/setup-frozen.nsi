@@ -41,15 +41,17 @@
 !define MUI_ABORTWARNING_TEXT "Are you sure you want to cancel the EasyOKAPI installation?"
 
 ; Welcome page
-!define MUI_WELCOMEPAGE_TITLE "Welcome to EasyOKAPI Setup"
-!define MUI_WELCOMEPAGE_TEXT "This will install EasyOKAPI ${APP_VERSION} (no-source build).$\r$\n$\r$\nThe application is bundled — no Python install is required — but a valid EasyOKAPI activation token and an internet connection are needed to install. Have your token ready (get one at easyokapi.cbbiotec.vn).$\r$\n$\r$\nYour data is kept in your Documents\EasyOKAPI folder and preserved across updates.$\r$\n$\r$\nClick Next to continue."
+!define MUI_WELCOMEPAGE_TITLE "Welcome to the EasyOKAPI Setup"
+!define MUI_WELCOMEPAGE_TEXT "This wizard will install EasyOKAPI ${APP_VERSION} on your computer.$\r$\n$\r$\nBefore you begin, please have your EasyOKAPI activation token ready and make sure you are connected to the internet. If you don't have a token yet, you can get one at easyokapi.cbbiotec.vn.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder, and are kept safe whenever you update.$\r$\n$\r$\nClick Next to begin."
 
-; Finish page — launch the app, and a checkbox to open the data folder.
-!define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} Installed"
-!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed and Desktop + Start Menu shortcuts created.$\r$\n$\r$\nYour data lives in Documents\EasyOKAPI and is preserved across updates."
-!define MUI_FINISHPAGE_RUN "$INSTDIR\EasyOKAPI.exe"
-!define MUI_FINISHPAGE_RUN_PARAMETERS "--port 5099 --alias 127.0.0.1"
-!define MUI_FINISHPAGE_RUN_TEXT "Launch EasyOKAPI now"
+; Finish page. We deliberately do NOT offer a "Run now" button: Setup runs as
+; administrator, so launching the app from here would start it elevated (and,
+; on a machine where someone else's admin account approved Setup, would look for
+; data in the wrong Documents folder). The user starts EasyOKAPI from the normal
+; Desktop / Start Menu shortcut instead, which runs as themselves and shows the
+; "Starting EasyOKAPI" splash.
+!define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} is ready"
+!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed. To start it, double-click the EasyOKAPI icon on your Desktop (or find EasyOKAPI in your Start Menu).$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder."
 !define MUI_FINISHPAGE_SHOWREADME ""
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Open my EasyOKAPI data folder"
@@ -64,6 +66,11 @@ ReserveFile "page_bg.bmp"
 
 ; Install-log text / background on the InstFiles detail area
 InstallColors E2E8F0 312E81
+
+; Build a Unicode installer so accented characters and symbols in the on-screen
+; text render correctly on every Windows language/locale (an ANSI installer shows
+; them as garbage on non-Western code pages).
+Unicode true
 
 Name "${APP_NAME} ${APP_VERSION}"
 OutFile "EasyOKAPI_Setup_${APP_VERSION}_frozen.exe"
@@ -343,7 +350,7 @@ Function TokenPage
   Pop $0
   ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
 
-  ${NSD_CreateLabel} 0 0 100% 42u "Paste your Generated EasyOKAPI token. A valid token is required to install EasyOKAPI — it activates the application, the AI assistant, and in-app updates.$\r$\n$\r$\nDon't have one yet? Get your token at easyokapi.cbbiotec.vn. An internet connection is required to validate it."
+  ${NSD_CreateLabel} 0 0 100% 42u "Paste your EasyOKAPI activation token below. A valid token is required to install EasyOKAPI: it unlocks the application, the AI assistant, and automatic updates.$\r$\n$\r$\nDon't have a token yet? Get one at easyokapi.cbbiotec.vn. You will need an internet connection so we can check your token."
   Pop $0
   SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
 
@@ -363,7 +370,7 @@ FunctionEnd
 Function TokenPageLeave
   ${NSD_GetText} $TokenInput $EasyOKAPIToken
   ${If} $EasyOKAPIToken == ""
-    MessageBox MB_OK|MB_ICONEXCLAMATION "An EasyOKAPI activation token is required to install. Get yours at easyokapi.cbbiotec.vn."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Please enter your EasyOKAPI activation token to continue. If you don't have one, you can get it at easyokapi.cbbiotec.vn."
     Abort
   ${EndIf}
 
@@ -390,10 +397,10 @@ Function TokenPageLeave
   ${If} $0 == 0
     ; Valid token — permanent license staged. Allow the wizard to advance.
   ${ElseIf} $0 == 1
-    MessageBox MB_OK|MB_ICONSTOP "This token was rejected (invalid or expired). Get a fresh token at easyokapi.cbbiotec.vn, paste it, and click Next again."
+    MessageBox MB_OK|MB_ICONSTOP "That token could not be activated. It may be invalid or expired. Please get a fresh token at easyokapi.cbbiotec.vn, paste it, and click Next again."
     Abort
   ${Else}
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Could not reach the activation server to validate your token. Check your internet connection, then click Next to try again."
+    MessageBox MB_OK|MB_ICONEXCLAMATION "We couldn't reach the activation server to check your token. Please check your internet connection and click Next to try again."
     Abort
   ${EndIf}
 FunctionEnd
@@ -420,17 +427,17 @@ Section "Install" SEC01
   FileClose $9
   check_running:
   IfFileExists "$INSTDIR\EasyOKAPI.exe" 0 not_running
-    DetailPrint "Checking for a running EasyOKAPI instance..."
+    DetailPrint "Checking whether EasyOKAPI is already running..."
     nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1" "$INSTDIR\"'
     Pop $0
     ${If} $0 == 1
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-        "EasyOKAPI is still running and must be closed before it can be updated.$\r$\n\
+        "EasyOKAPI is currently open and needs to be closed before it can be updated.$\r$\n\
 $\r$\n\
-Close the EasyOKAPI window (or open http://localhost:5099 and click the \
-$\"Shutdown Program$\" button), then click Retry.$\r$\n\
+Please close the EasyOKAPI window, then click Retry. (If it is open in your web \
+browser, go to http://localhost:5099 and click the $\"Shutdown Program$\" button first.)$\r$\n\
 $\r$\n\
-Click Cancel to exit Setup without making any changes." \
+Click Cancel to exit without making any changes." \
         IDRETRY check_running
       Abort
     ${EndIf}
@@ -441,7 +448,7 @@ Click Cancel to exit Setup without making any changes." \
   ; exactly once. Sources: an older frozen build's hidden %LOCALAPPDATA%\EasyOKAPI,
   ; and an old source install ($INSTDIR\code\{data,json,report,log}).
   IfFileExists "$R0\.migrated_appdata" skip_migrate 0
-    DetailPrint "Migrating existing data into $R0..."
+    DetailPrint "Bringing your existing measurements and settings into $R0..."
     CreateDirectory "$R0"
     !insertmacro MigrateDir "$LOCALAPPDATA\EasyOKAPI\data"   "$R0\data"
     !insertmacro MigrateDir "$LOCALAPPDATA\EasyOKAPI\json"   "$R0\json"
@@ -471,9 +478,14 @@ Click Cancel to exit Setup without making any changes." \
   File /r "..\dist\EasyOKAPI\*"
 
   ; ── Shortcuts ───────────────────────────────────────────────────────────────
-  CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\EasyOKAPI.exe" "--port 5099 --alias 127.0.0.1"
+  ; Launch through launcher-frozen.ps1 so the user sees the "Starting EasyOKAPI"
+  ; splash while the app loads (and a second click just reopens the browser). The
+  ; shortcut still shows the EasyOKAPI icon; PowerShell runs hidden.
+  !define _PS "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
+  !define _PSARGS '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $\"$INSTDIR\launcher-frozen.ps1$\"'
+  CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "${_PS}" "${_PSARGS}" "$INSTDIR\EasyOKAPI.exe" 0
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortCut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\EasyOKAPI.exe" "--port 5099 --alias 127.0.0.1"
+  CreateShortCut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "${_PS}" "${_PSARGS}" "$INSTDIR\EasyOKAPI.exe" 0
   CreateShortCut "$SMPROGRAMS\${APP_NAME}\EasyOKAPI Data.lnk" "$R0"
   CreateShortCut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
 
@@ -502,7 +514,7 @@ Click Cancel to exit Setup without making any changes." \
   CreateDirectory "$R0"
   CopyFiles /SILENT "$PLUGINSDIR\activation.json" "$R0\activation.json"
 
-  DetailPrint "EasyOKAPI ${APP_VERSION} installed and activated. Data lives in $R0."
+  DetailPrint "EasyOKAPI ${APP_VERSION} is installed and activated. Your data is saved in $R0."
 SectionEnd
 
 ; un.onInit — read the CURRENT installed version from VERSION.txt, which ships in

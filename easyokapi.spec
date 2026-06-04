@@ -73,12 +73,20 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# App icon for EasyOKAPI.exe (also what the Windows shortcuts display). Windows
+# wants a .ico; on macOS/Linux we leave it unset so the cross-platform build is
+# unaffected.
+import sys as _sys
+_icon_path = os.path.join(ROOT, 'static', 'ht.ico')
+_exe_icon = _icon_path if (_sys.platform.startswith('win') and os.path.exists(_icon_path)) else None
+
 exe = EXE(
     pyz,
     a.scripts,
     [],
     exclude_binaries=True,
     name='EasyOKAPI',
+    icon=_exe_icon,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

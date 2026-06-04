@@ -69,8 +69,24 @@ def build_encoded():
     # reflects the running build — the uninstaller reads it instead of a
     # compile-time constant that goes stale after a binary-swap update.
     _write_version_file(out)
+    _bundle_extra_files(out)
     print(f"==> Done. Frozen bundle at: {out}")
     return out
+
+
+def _bundle_extra_files(bundle_root):
+    """Copy installer-managed helpers into the onedir root.
+
+    These ship beside EasyOKAPI.exe so they are laid down by the installer AND
+    carried by every in-app update bundle (the binary swap moves the whole onedir):
+      - launcher-frozen.ps1: the splash-screen launcher the shortcuts run.
+    """
+    import shutil
+    extras = [os.path.join(ROOT, 'installer-win', 'launcher-frozen.ps1')]
+    for src in extras:
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(bundle_root, os.path.basename(src)))
+            print(f"==> Bundled {os.path.basename(src)}")
 
 
 def _write_version_file(bundle_root):
