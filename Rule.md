@@ -212,6 +212,16 @@ Timestamp,Value:1,Value:2,...
 
 ---
 
+### 2.18 Windows Elevation & Running-Instance Guard (Frozen Build)
+
+- **`EasyOKAPI.exe` must NOT force elevation.** Do **not** set `uac_admin=True` in `easyokapi.spec`. An unsigned PyInstaller EXE that embeds a `requireAdministrator` manifest matches Windows Defender's ML heuristic for droppers and gets flagged as **`Trojan.Win32C!ml`** (a false positive that blocks the install). The app runs at the user's normal (medium) integrity. The §1 "no admin" rule stands for the frozen build too. *(If per-machine elevation is ever truly needed, it has to come together with Authenticode code-signing — see below — not a bare manifest on an unsigned binary.)*
+- **Installer/uninstaller still elevate** via NSIS `RequestExecutionLevel admin` (they need to write the hosts file, Program Files, etc.). That is unrelated to the app's own integrity level.
+- **Code-signing / AV note**: the EXE and NSIS installer are currently **unsigned**, so `!ml` false positives can recur intermittently regardless of the manifest. The durable fix is Authenticode signing (an EV cert gives near-instant Defender/SmartScreen reputation) plus a false-positive submission to Microsoft. Until then, avoid changes that raise the heuristic score (no `requireAdministrator` manifest, no UPX — `upx=False` already, keep onedir).
+- **The installer and uninstaller refuse to touch a running instance.** Both the install-side overwrite guard and the `Section "Uninstall"` in `setup-frozen.nsi` write a `detect-easyokapi.ps1` that enumerates `EasyOKAPI.exe` via `Get-CimInstance Win32_Process` and **fails safe**: a process named `EasyOKAPI.exe` whose `ExecutablePath` cannot be read (null across an integrity boundary) is treated as **still running**, and a readable path must start with `$INSTDIR`. Exit 1 = running, 0 = clear. **Anti-pattern**: do not gate the match on `-and $_.ExecutablePath` (drops processes whose path is unreadable → false "not running" → destructive `RMDir` against a locked folder). Keep both detectors identical.
+- **The uninstall is cancellable.** `Section "Uninstall"` opens with a `MB_YESNO` confirmation (No → `Quit`, nothing removed), and the running-instance prompt's Cancel also `Quit`s. Keep an explicit, non-destructive bail-out path before any deletion.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.

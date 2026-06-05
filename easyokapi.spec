@@ -95,6 +95,11 @@ exe = EXE(
     exclude_binaries=True,
     name='EasyOKAPI',
     icon=_exe_icon,
+    # NOTE: do NOT set uac_admin=True here. An unsigned PyInstaller EXE that embeds
+    # a requireAdministrator manifest matches Defender's ML heuristic for droppers
+    # and gets flagged as Trojan.Win32C!ml (a false positive). The app runs at the
+    # user's normal (medium) integrity; the installer/uninstaller still elevate via
+    # NSIS and the running-instance detector is fail-safe without needing elevation.
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

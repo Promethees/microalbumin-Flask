@@ -441,8 +441,16 @@ Section "Install" SEC01
   InitPluginsDir
   FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
   FileWrite $9 "$$r = $$args[0]$\r$\n"
-  FileWrite $9 "$$p = Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) }$\r$\n"
-  FileWrite $9 "if ($$p) { exit 1 } else { exit 0 }$\r$\n"
+  ; Fail SAFE: EasyOKAPI.exe runs elevated, so its ExecutablePath can come back
+  ; empty across the integrity boundary (WMI impersonates the caller). Treat any
+  ; EasyOKAPI.exe whose path we cannot read as "still running" rather than letting
+  ; the wipe proceed against a locked folder. Exit 1 = running, 0 = clear.
+  FileWrite $9 "$$procs = @(Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' })$\r$\n"
+  FileWrite $9 "foreach ($$p in $$procs) {$\r$\n"
+  FileWrite $9 "  if (-not $$p.ExecutablePath) { exit 1 }$\r$\n"
+  FileWrite $9 "  if ($$p.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase)) { exit 1 }$\r$\n"
+  FileWrite $9 "}$\r$\n"
+  FileWrite $9 "exit 0$\r$\n"
   FileClose $9
   check_running:
   IfFileExists "$INSTDIR\EasyOKAPI.exe" 0 not_running
@@ -586,6 +594,15 @@ Function un.onInit
 FunctionEnd
 
 Section "Uninstall"
+  ; ── Confirm before touching anything ────────────────────────────────────────
+  ; A clear, last chance to back out. Nothing has been removed yet, so No leaves
+  ; the installation exactly as it was.
+  MessageBox MB_YESNO|MB_ICONQUESTION \
+    "Are you sure you want to uninstall EasyOKAPI?$\r$\n$\r$\nClick No to cancel and keep EasyOKAPI installed." \
+    IDYES un_confirmed
+    Quit
+  un_confirmed:
+
   DetailPrint "Uninstalling EasyOKAPI $UninstVer ..."
 
   ; ── Make sure EasyOKAPI is closed first ─────────────────────────────────────
@@ -594,8 +611,16 @@ Section "Uninstall"
   InitPluginsDir
   FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
   FileWrite $9 "$$r = $$args[0]$\r$\n"
-  FileWrite $9 "$$p = Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' -and $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase) }$\r$\n"
-  FileWrite $9 "if ($$p) { exit 1 } else { exit 0 }$\r$\n"
+  ; Fail SAFE: EasyOKAPI.exe runs elevated, so its ExecutablePath can come back
+  ; empty across the integrity boundary (WMI impersonates the caller). Treat any
+  ; EasyOKAPI.exe whose path we cannot read as "still running" rather than letting
+  ; the wipe proceed against a locked folder. Exit 1 = running, 0 = clear.
+  FileWrite $9 "$$procs = @(Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' })$\r$\n"
+  FileWrite $9 "foreach ($$p in $$procs) {$\r$\n"
+  FileWrite $9 "  if (-not $$p.ExecutablePath) { exit 1 }$\r$\n"
+  FileWrite $9 "  if ($$p.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase)) { exit 1 }$\r$\n"
+  FileWrite $9 "}$\r$\n"
+  FileWrite $9 "exit 0$\r$\n"
   FileClose $9
   un_check_running:
   IfFileExists "$INSTDIR\EasyOKAPI.exe" 0 un_not_running
@@ -610,7 +635,7 @@ browser, go to http://localhost:5099 and click the $\"Shutdown Program$\" button
 $\r$\n\
 Click Cancel to stop removing EasyOKAPI." \
         IDRETRY un_check_running
-      Abort
+      Quit   ; user chose Cancel → leave the installation untouched
     ${EndIf}
   un_not_running:
 
