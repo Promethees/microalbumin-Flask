@@ -48,3 +48,12 @@ data/
 node_modules
 
 log/script_logs.txt
+
+# Activation signing keys: the PRIVATE key must never be committed (it lives in
+# the server's ACTIVATION_PRIVATE_KEY env var). The public key is embedded in
+# src/activation_pubkey.py, so the .pem copies here are just local working files.
+/keys/activation_private.pem
+/keys/activation_public.pem
+
+# Working artifact: the server-side (online branch) diff, not source.
+/online-hardware-lock.patch

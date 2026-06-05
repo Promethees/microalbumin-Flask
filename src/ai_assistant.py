@@ -1571,10 +1571,19 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
     """Generator yielding SSE event dicts via the online proxy server."""
     import requests as http_req
 
+    # Send this machine's fingerprint so the proxy can confirm the license token
+    # is being presented from the machine it was hardware-locked to.
+    try:
+        import hwid as _hwid_mod
+        machine_id = _hwid_mod.get_hwid()
+    except Exception:
+        machine_id = ''
+
     payload = {
         'messages': messages,
         'language': language,
         'license_token': license_token,
+        'hwid': machine_id,
         'model': model,
         'ui_context': ui_context or {},
     }

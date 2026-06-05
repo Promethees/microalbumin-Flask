@@ -382,7 +382,22 @@ Function TokenPageLeave
   FileWrite $9 "$$tok = $$args[0]; $$auth = $$args[1]; $$dest = $$args[2]$\r$\n"
   FileWrite $9 "try {$\r$\n"
   FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
-  FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\"}'$\r$\n"
+  ; Compute this machine's hwid EXACTLY as the app does (src/hwid.py): SHA-256 of
+  ; 'easyokapi-hwid-v1|win|<MachineGuid lowercased>'. Read MachineGuid from the
+  ; 64-bit registry view so a 32-bit installer sees the same value Python's
+  ; KEY_WOW64_64KEY read returns. The server binds the permanent token to this
+  ; hwid, and the app re-checks it on launch — keep the two recipes in lockstep.
+  FileWrite $9 "  $$hwid = 'unknown'$\r$\n"
+  FileWrite $9 "  try {$\r$\n"
+  FileWrite $9 "    $$base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)$\r$\n"
+  FileWrite $9 "    $$guid = $$base.OpenSubKey('SOFTWARE\Microsoft\Cryptography').GetValue('MachineGuid')$\r$\n"
+  FileWrite $9 "    if ($$guid) { $$raw = $$guid.Trim().ToLower() } else { $$raw = 'unknown' }$\r$\n"
+  FileWrite $9 "    $$canon = 'easyokapi-hwid-v1|win|' + $$raw$\r$\n"
+  FileWrite $9 "    $$bytes = [System.Text.Encoding]::UTF8.GetBytes($$canon)$\r$\n"
+  FileWrite $9 "    $$sha = [System.Security.Cryptography.SHA256]::Create()$\r$\n"
+  FileWrite $9 "    $$hwid = ($$sha.ComputeHash($$bytes) | ForEach-Object { $$_.ToString('x2') }) -join ''$\r$\n"
+  FileWrite $9 "  } catch {}$\r$\n"
+  FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\",$\"hwid$\":$\"' + $$hwid + '$\"}'$\r$\n"
   FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
   FileWrite $9 "  if ($$resp.license_token) {$\r$\n"
   FileWrite $9 "    $$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$resp.license_token + '$\"' + [char]10 + '}'$\r$\n"

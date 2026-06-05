@@ -60,6 +60,9 @@ src/
   ├── math_ops.py       ← scipy/numpy regression (linear, poly, log, exp, Michaelis-Menten)
   ├── ai_assistant.py   ← Groq chat client, MCP tool engine, multilingual system prompts
   ├── ai_settings.py    ← AI settings persistence (ai_settings.json)
+  ├── hwid.py           ← per-machine fingerprint (hardware-lock basis)
+  ├── activation_pubkey.py ← embedded RS256 public key (verify-only)
+  ├── activation.py     ← license gate: verify_token() = RS256 sig + hwid claim
   └── routes/           ← blueprint modules (see above)
 
 static/script/
@@ -83,7 +86,8 @@ ai_settings.json        ← AI assistant settings (auto-created on first run)
 - **Startup progress reporter**: `main.py` writes `pct label\n` to a FIFO (`/tmp/easyokapi_progress.pipe` on Mac) so launch scripts can show a progress bar.
 - **CLI flags**: `--port`, `--alias`, `--verbose` / `-v`, `--mem-monitor`.
 - **User-guide translations**: Step text for the interactive user guide lives in `guide_translations/<lang>.json` (one file per language: `en` is the baseline in `guide_training.json`; `vi`, `zh`, `fr`, `ja`, `ru` are in `guide_translations/`). Each file contains guide topics as objects with `id`, `steps` (array of strings), and `queries` (keyword list for AI matching). When adding or editing guide steps, update both `guide_training.json` (EN) and all language files in `guide_translations/`.
-- **Tests live in `tests/`** — `test_utils.py`, `test_core_logic.py`, `test_data_processing.py`, `test_app.py`. Run with `pytest tests/ --ignore=venv`.
+- **Tests live in `tests/`** — `test_utils.py`, `test_core_logic.py`, `test_data_processing.py`, `test_app.py`, `test_hwid.py`, `test_activation.py`. Run with `pytest tests/ --ignore=venv`.
+- **Hardware-locked activation** (frozen builds): a permanent license token is bound to one machine via an `hwid` claim (`src/hwid.py`) and RS256-signed by the server (`ACTIVATION_PRIVATE_KEY`), verified offline with the embedded public key (`src/activation_pubkey.py`). Copying `activation.json`/the install folder to another machine fails the check. The Windows installer PowerShell mirrors the `hwid` recipe byte-for-byte — keep them in lockstep. Server side lives on the `online` branch (`license_machines` seat table, `/api/activate` binding). See **Rule.md §2.17**.
 
 ---
 

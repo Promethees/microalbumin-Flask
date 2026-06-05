@@ -81,7 +81,9 @@ graph TD
 | `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete keys on read |
 | `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `default_mode`, `default_window_size`, `default_subfolder`, `event_log_retention_days` |
 | `event_logger.py` | Append/read user interaction events; logs go to `log/events/YYYY-MM-DD/HH-MM-SS.jsonl` (one file per app launch per day); `cleanup_old_logs()` removes date folders older than `event_log_retention_days` |
-| `activation.py` | Reads/writes `activation.json`; `get_license_token()` and `AI_SERVICE_URL` constant for proxy mode |
+| `hwid.py` | Stable per-machine fingerprint `get_hwid()` (SHA-256 of an OS machine id); basis of the hardware lock. Recipe mirrored by the Windows installer PowerShell |
+| `activation_pubkey.py` | Embedded RS256 public key (`ACTIVATION_PUBLIC_KEY_PEM`) for verifying permanent tokens offline |
+| `activation.py` | Reads/writes `activation.json`; `get_license_token()`, `AI_SERVICE_URL`; `verify_token()` = RS256 signature + `hwid`-claim check; `is_activated()`/`needs_activation()` gate; `get_hwid()`; `_ALLOW_LEGACY_HS256` grandfather toggle |
 | `update_service.py` | Auto-update: `check_for_update()` (calls `/api/version`, compares against the running `state.APP_VERSION`). `download_and_apply(progress_cb)` branches on `sys.frozen`: **source build** downloads a `.py` tarball via `/api/download`, overwrites files in place (preserving user data), `_install_requirements()`, then `restart_after_delay()` (Unix: `os.execv`; Windows: detached PowerShell relauncher that waits for the port to free, then relaunches hidden). **Frozen build** (no `.py` on disk) downloads the platform onedir bundle via `/api/download?platform=&kind=bundle`, stages + verifies it in app-data, and `apply_pending_swap_and_exit()` (driven by `/update/finalize`) spawns a detached PowerShell/`sh` helper that waits for the port, swaps the install dir (rollback on failure), and relaunches the new binary — no pip step |
 | `export_data.py` | CSV metadata parsing, header writing, sort by concentration |
 | `export_cal_json.py` | Standard curve coefficient processing, JSON export for calibration data |
@@ -347,22 +349,52 @@ User logs in at easyokapi.cbbiotec.vn
        ┌───────────┴────────────┐
        │  hits /api/download    │  gets app tarball from GitHub
        │  hits /api/activate    │  exchanges for permanent token
+       │    {token, hwid}       │  ← client also sends its machine fingerprint
        └───────────┬────────────┘
-                   │  server: validates sig + exp, checks User DB
+                   │  server: validates sig + exp, checks User DB,
+                   │          binds hwid in license_machines (seat cap),
+                   │          signs RS256 token with ACTIVATION_PRIVATE_KEY
                    ▼
   ┌─────────────────────────────────┐
-  │  Activation token  (permanent)  │  same payload, exp stripped
-  │  {"sub":"42", ...}              │  written to activation.json
+  │  Activation token  (permanent)  │  RS256, exp stripped, + "hwid" claim
+  │  {"sub":"42", "hwid":"<sha>"}   │  written to activation.json
   └────────────────┬────────────────┘
                    │  stored on disk, never in URLs
                    ▼
-  Desktop app → POST /ai/proxy/chat {messages, license_token}
-                   │  server: validates sig (no exp check)
-                   │          User.query.get(sub) → is_verified ✓
+  App startup → activation.verify_token():
+                   │  RS256 sig verified with EMBEDDED public key (offline),
+                   │  "hwid" claim must equal this machine's fingerprint
+                   ▼
+  Desktop app → POST /ai/proxy/chat {messages, license_token, hwid}
+                   │  server: validates RS256 sig (no exp check),
+                   │          User.query.get(sub) → is_verified ✓,
+                   │          confirms hwid matches a bound seat,
                    │          calls Groq with server-side API key
                    ▼
   Streaming SSE response back to desktop app
 ```
+
+**Hardware locking (v1.1.9+).** A permanent activation token is bound to exactly
+one machine, so copying `activation.json` (or the whole install folder) to another
+computer does not work:
+
+- **Fingerprint** — `src/hwid.py` derives a stable SHA-256 fingerprint from an
+  OS machine id (Windows `MachineGuid`, macOS `IOPlatformUUID`, Linux
+  `/etc/machine-id`). The Windows installer's PowerShell reproduces this recipe
+  byte-for-byte so the token it requests at install time matches what the app
+  computes at first launch. **Keep the two in lockstep.**
+- **Asymmetric signing** — permanent tokens are **RS256**, signed server-side with
+  `ACTIVATION_PRIVATE_KEY`; the client embeds only the public half
+  (`src/activation_pubkey.py`). The client can therefore verify a token offline
+  but can never mint one, so a hand-edited token fails the signature check.
+- **Server enforcement** — `license_machines` records `(user_id, hwid)` with a
+  seat cap (`MAX_MACHINES_PER_LICENSE`, default 1). `/api/download`,
+  `/ai/proxy/chat`, and `/api/version` re-check the presented `X-Machine-Id` /
+  `hwid` against the token and the bound seat. Transfer via
+  `POST /api/account/machines/deactivate`.
+- **Backward compatibility** — legacy HS256 tokens (no `hwid`) are still accepted
+  (grandfathered) until every install has re-activated; flip
+  `_ALLOW_LEGACY_HS256` in `src/activation.py` to enforce strictly.
 
 ### 7.2 Files Involved
 
@@ -370,19 +402,24 @@ User logs in at easyokapi.cbbiotec.vn
 
 | File | Role |
 |---|---|
-| `src/activation.py` | Reads/writes `activation.json`; exposes `get_license_token()` and `AI_SERVICE_URL` |
-| `src/routes/ai_routes.py` | `_get_api_mode()` selects proxy vs dev-direct; `POST /ai/activate` calls online server and saves token |
-| `src/ai_assistant.py` | `proxy_chat_stream()` — HTTP POST to `/ai/proxy/chat`, iterates SSE lines, yields event dicts |
-| `activation.json` | Permanent activation token stored at project root (gitignored) |
+| `src/hwid.py` | Stable per-machine fingerprint (`get_hwid()`); recipe mirrored by the Windows installer's PowerShell |
+| `src/activation_pubkey.py` | Embedded RS256 **public** key (verify-only) for offline token verification |
+| `src/activation.py` | Reads/writes `activation.json`; `verify_token()` checks RS256 sig + `hwid` claim; `is_activated()`/`needs_activation()`; `get_hwid()`; `_ALLOW_LEGACY_HS256` toggle |
+| `src/routes/ai_routes.py` | `_get_api_mode()` selects proxy vs dev-direct; `POST /ai/activate` sends `{token, hwid}` to the server and saves the returned token |
+| `src/ai_assistant.py` | `proxy_chat_stream()` — POST to `/ai/proxy/chat` with `license_token` + `hwid` |
+| `src/update_service.py` | `_auth_headers()` adds `X-Machine-Id` to `/api/version` and `/api/download` calls |
+| `activation.json` | Permanent activation token stored in the per-user data dir (gitignored) |
+| `keys/` | Local working copies of the keypair; **private key is gitignored**, lives in the server's `ACTIVATION_PRIVATE_KEY` env |
 | `.env` | Dev-only `GROQ_API_KEY` override; commented out in production packages |
 
 **Online branch (Heroku server):**
 
 | File | Role |
 |---|---|
-| `src/download_service.py` | `issue_activation_token()` — strips `exp`, re-signs; `validate_activation_token()` — decodes without expiry check |
-| `src/routes/account_routes.py` | `POST /api/activate` — validates 30-min download token, looks up `User`, returns permanent activation token |
-| `src/routes/ai_routes.py` | `POST /ai/proxy/chat` — validates activation token, DB-checks account is still active, calls Groq, streams SSE |
+| `src/download_service.py` | `issue_activation_token(payload, hwid)` — RS256-signs (or legacy HS256 fallback), adds `hwid`; `validate_activation_token()` — RS256-then-HS256, no expiry check; `_activation_private_key()`/`_activation_public_key()` |
+| `src/account.py` | `LicenseMachine` model — the `(user_id, hwid)` seat table |
+| `src/routes/account_routes.py` | `POST /api/activate` binds `hwid` (seat cap) and issues the locked token; `/api/download` machine-checks the Bearer token; `GET /api/account/machines` + `POST .../deactivate` (transfer); `GET /api/activation-pubkey` |
+| `src/routes/ai_routes.py` | `POST /ai/proxy/chat` — validates the token, confirms the `hwid` matches a bound seat, calls Groq, streams SSE |
 
 ### 7.3 API Mode Selection (main branch)
 

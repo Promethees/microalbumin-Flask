@@ -51,6 +51,14 @@ hiddenimports = [
     'routes.math_routes',
     'routes.ai_routes',
     'routes.update_routes',
+    # Offline RS256 verification of hardware-locked activation tokens
+    # (src/activation.py → import jwt + cryptography backend).
+    'hwid',
+    'activation_pubkey',
+    'jwt',
+    'cryptography',
+    'cryptography.hazmat.backends.openssl',
+    'cryptography.hazmat.bindings._rust',
 ]
 
 block_cipher = None

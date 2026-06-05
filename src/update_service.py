@@ -16,6 +16,20 @@ _PRESERVE = frozenset({
     '.env',
 })
 
+
+def _auth_headers(token):
+    """Bearer token + this machine's fingerprint.
+
+    The server binds a permanent token to one machine; sending X-Machine-Id lets
+    it reject a token presented from a different machine (hardware lock applied to
+    version checks and update downloads, not just the activation gate).
+    """
+    headers = {}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    headers['X-Machine-Id'] = activation_mod.get_hwid()
+    return headers
+
 # ── Frozen (no-source) vs source distribution ────────────────────────────────
 # Two update mechanisms share check_for_update() but diverge in download_and_apply:
 #   • Source build (dev / ENCODE_SOURCE=false): download a .py source tarball and
@@ -127,7 +141,7 @@ def check_for_update():
     Raises requests.RequestException on network failure.
     """
     token = activation_mod.get_license_token()
-    headers = {'Authorization': f'Bearer {token}'} if token else {}
+    headers = _auth_headers(token)
     url = f"{activation_mod.AI_SERVICE_URL}/api/version"
     resp = requests.get(url, headers=headers, timeout=10)
     resp.raise_for_status()
@@ -194,7 +208,7 @@ def download_and_apply(progress_cb=None):
     _emit(progress_cb, 5, 'Connecting to update server...')
 
     url = f"{activation_mod.AI_SERVICE_URL}/api/download"
-    headers = {'Authorization': f'Bearer {token}'}
+    headers = _auth_headers(token)
     resp = requests.get(url, headers=headers, stream=True, timeout=120)
     resp.raise_for_status()
 
@@ -374,7 +388,7 @@ def _download_and_stage_bundle(token, progress_cb=None):
     requests.RequestException on failure.
     """
     _emit(progress_cb, 5, 'Connecting to update server...')
-    headers = {'Authorization': f'Bearer {token}'}
+    headers = _auth_headers(token)
     resp = requests.get(_bundle_archive_url(), headers=headers, stream=True, timeout=180)
     resp.raise_for_status()
 

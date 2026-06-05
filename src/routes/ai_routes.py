@@ -65,7 +65,7 @@ def activate():
     try:
         resp = requests.post(
             f'{activation_mod.AI_SERVICE_URL}/api/activate',
-            json={'token': token}, timeout=15,
+            json={'token': token, 'hwid': activation_mod.get_hwid()}, timeout=15,
         )
     except requests.RequestException as e:
         return jsonify({'status': 'failure',

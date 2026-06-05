@@ -158,7 +158,7 @@ Timestamp,Value:1,Value:2,...
 ### 2.13 AI Assistant — Groq Cloud LLM
 
 - The AI assistant uses **Groq** (cloud API) — no local model server required.
-- Desktop instances authenticate via `activation.json` (permanent license token) and proxy requests through the online Heroku server. Developers can bypass this by setting `GROQ_API_KEY` in `.env`.
+- Desktop instances authenticate via `activation.json` (permanent license token, **hardware-locked** — see §2.17) and proxy requests through the online Heroku server, sending their `hwid` with each proxy call. Developers can bypass this by setting `GROQ_API_KEY` in `.env`.
 - Settings are stored in `ai_settings.json` at the project root via `src/ai_settings.py`.
 - All chat calls go through `src/ai_assistant.py` using the `requests` library.
 - The AI blueprint is `ai_bp` in `src/routes/ai_routes.py`, mounted at `/ai/*`.
@@ -173,7 +173,7 @@ Timestamp,Value:1,Value:2,...
 
 - Auto-update is handled by `src/update_service.py` and `src/routes/update_routes.py` (`update_bp`, mounted at `/update/*`).
 - **Version check**: `GET /update/check` calls `GET <AI_SERVICE_URL>/api/version` (unauthenticated or with Bearer token) and returns `{current, latest, update_available, release_notes}`.
-- **Apply update**: `POST /update/apply` streams SSE events `{pct, label}` while downloading the zip via `GET <AI_SERVICE_URL>/api/download` (requires `Authorization: Bearer <license_token>`), extracts it in-place over `state.script_dir`, then restarts the process.
+- **Apply update**: `POST /update/apply` streams SSE events `{pct, label}` while downloading the zip via `GET <AI_SERVICE_URL>/api/download` (requires `Authorization: Bearer <license_token>` plus an `X-Machine-Id` header — the server hardware-checks the token, see §2.17), extracts it in-place over `state.script_dir`, then restarts the process.
 - **Preserved paths**: `data/`, `report/`, `json/`, `log/`, `activation.json`, `ai_settings.json`, `user_settings.json`, `.env` are **never overwritten** by an update zip — they contain user data and credentials.
 - **Zip convention**: The update zip may have a single top-level directory prefix (GitHub archive convention). `update_service._shared_prefix()` detects and strips it automatically.
 - **Updates install dependencies**: `download_and_apply()` only overwrites source files — it does **not** rebuild the venv. So after `_apply_tarball()` it runs `_install_requirements()` (`pip install -r requirements.txt` via `sys.executable`, idempotent) so an update that adds a new package doesn't relaunch into an `ImportError`. A pip failure raises, so the caller reports the update as failed instead of relaunching a broken app. The in-app update is otherwise **not** responsible for venv corruption — it never touches `venv/` (gitignored, absent from the tarball) and never deletes files; a broken venv comes from the *installer* rebuild racing a locked, still-running instance (see the venv-health rules below).
@@ -197,6 +197,18 @@ Timestamp,Value:1,Value:2,...
 - The staging folder name (`root`) is the reserved folder name from §2.6 — the app forbids creating a real `data/root/` so the staging folder never collides with user data.
 - **Implementation is inline in each installer (no shared Python helper)** — at Windows restore time no Python interpreter exists yet (the venv is built in a later step), so the logic must be installer-native. Windows uses a small PowerShell script written to `$PLUGINSDIR\archive.ps1` (the `WriteArchiveHelper` / `RunArchive` NSIS macros, mirroring the `stop-easyokapi.ps1` file-not-inline pattern); Mac/Linux use shell `_archive_stash_root` / `_archive_unstash_root` functions (`find -maxdepth 1 -type f`).
 - **Anti-pattern**: Do not normalize the *live* install's `data/` directory — only the backup copy (on archive) and the restored copy (on restore), so a failed install never mutates the user's working data. Do not add normalization to `json/` or `report/`.
+
+---
+
+### 2.17 Hardware-Locked Activation
+
+- A **permanent activation token is bound to one machine**, so copying `activation.json` (or the whole install folder) to another computer must not unlock the app. Three layers enforce this; do not weaken any in isolation:
+  1. **Fingerprint** — `src/hwid.py` `get_hwid()` returns `SHA-256("easyokapi-hwid-v1|<os>|<raw-id>")` where `<raw-id>` is the Windows `MachineGuid` / macOS `IOPlatformUUID` / Linux `/etc/machine-id`. **The Windows installer's PowerShell (`installer-win/setup-frozen.nsi`) reproduces this recipe byte-for-byte** — if you change the salt (`_HWID_VERSION`), the `win` branch, or the canonical string, update that PowerShell or first-launch verification breaks. Read `MachineGuid` from the **64-bit** registry view on both sides.
+  2. **Asymmetric signing** — permanent tokens are **RS256**. The server signs with `ACTIVATION_PRIVATE_KEY` (env, never committed); the client embeds only the public half (`src/activation_pubkey.py`). `activation.verify_token()` verifies the signature offline **and** checks the `hwid` claim equals `get_hwid()`. The client must never hold a secret that can mint tokens — keep the private key off the client.
+  3. **Server enforcement** — `license_machines` (`(user_id, hwid)`, seat cap `MAX_MACHINES_PER_LICENSE`, default 1). `/api/activate` binds; `/api/download`, `/ai/proxy/chat`, `/api/version` re-check the presented `X-Machine-Id` / `hwid` against the token and seat. Transfer is `POST /api/account/machines/deactivate`.
+- **Backward compatibility**: legacy HS256 tokens (no `hwid`) are grandfathered by `verify_token()` while `_ALLOW_LEGACY_HS256` is `True`. An HS256 token that *claims* an `hwid` is treated as tampering and rejected. Flip the flag to `False` once every install has re-activated.
+- **Dependencies**: offline verification needs `PyJWT[crypto]` + `cryptography` (in `requirements.txt`, bundled via `easyokapi.spec` hidden imports). Dev/source builds are never gated (`needs_activation()` is False unless `sys.frozen`), and `verify_token()` falls back to claim-only checks when the libs are absent so developers are never blocked.
+- **Anti-pattern**: do not check the `hwid` claim without also verifying the RS256 signature (a hand-written token could then fake any `hwid`); do not embed the private key in the client; do not let the two hwid recipes (Python vs PowerShell) drift.
 
 ---
 
