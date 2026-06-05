@@ -440,22 +440,29 @@ Section "Install" SEC01
   ; run elevated, so we cannot force-kill it — ask the user to close it and retry.
   InitPluginsDir
   FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
-  FileWrite $9 "$$r = $$args[0]$\r$\n"
-  ; Fail SAFE: EasyOKAPI.exe runs elevated, so its ExecutablePath can come back
-  ; empty across the integrity boundary (WMI impersonates the caller). Treat any
-  ; EasyOKAPI.exe whose path we cannot read as "still running" rather than letting
-  ; the wipe proceed against a locked folder. Exit 1 = running, 0 = clear.
+  ; Bake $INSTDIR straight into the script (single-quoted) rather than passing it
+  ; as an argument: a path ending in "\" inside quotes is mangled by command-line
+  ; quote-escaping ( \" = escaped quote ), which silently broke the StartsWith
+  ; match and made the check always report "not running". Two independent fail-safe
+  ; signals: (1) any EasyOKAPI.exe whose image path is under the install dir — or
+  ; whose path we cannot read — counts as running; (2) if EasyOKAPI.exe cannot be
+  ; opened for writing, its files are locked = still in use. Exit 1 = running, 0 = clear.
+  FileWrite $9 "$$r = '$INSTDIR'$\r$\n"
+  FileWrite $9 "$$exe = Join-Path $$r 'EasyOKAPI.exe'$\r$\n"
   FileWrite $9 "$$procs = @(Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' })$\r$\n"
   FileWrite $9 "foreach ($$p in $$procs) {$\r$\n"
   FileWrite $9 "  if (-not $$p.ExecutablePath) { exit 1 }$\r$\n"
   FileWrite $9 "  if ($$p.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase)) { exit 1 }$\r$\n"
+  FileWrite $9 "}$\r$\n"
+  FileWrite $9 "if (Test-Path -LiteralPath $$exe) {$\r$\n"
+  FileWrite $9 "  try { $$fs = [System.IO.File]::Open($$exe,'Open','ReadWrite','None'); $$fs.Close() } catch { exit 1 }$\r$\n"
   FileWrite $9 "}$\r$\n"
   FileWrite $9 "exit 0$\r$\n"
   FileClose $9
   check_running:
   IfFileExists "$INSTDIR\EasyOKAPI.exe" 0 not_running
     DetailPrint "Checking whether EasyOKAPI is already running..."
-    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1" "$INSTDIR\"'
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1"'
     Pop $0
     ${If} $0 == 1
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
@@ -610,21 +617,28 @@ Section "Uninstall"
   ; removed. Ask the user to close it and retry (same as the installer).
   InitPluginsDir
   FileOpen $9 "$PLUGINSDIR\detect-easyokapi.ps1" w
-  FileWrite $9 "$$r = $$args[0]$\r$\n"
-  ; Fail SAFE: EasyOKAPI.exe runs elevated, so its ExecutablePath can come back
-  ; empty across the integrity boundary (WMI impersonates the caller). Treat any
-  ; EasyOKAPI.exe whose path we cannot read as "still running" rather than letting
-  ; the wipe proceed against a locked folder. Exit 1 = running, 0 = clear.
+  ; Bake $INSTDIR straight into the script (single-quoted) rather than passing it
+  ; as an argument: a path ending in "\" inside quotes is mangled by command-line
+  ; quote-escaping ( \" = escaped quote ), which silently broke the StartsWith
+  ; match and made the check always report "not running". Two independent fail-safe
+  ; signals: (1) any EasyOKAPI.exe whose image path is under the install dir — or
+  ; whose path we cannot read — counts as running; (2) if EasyOKAPI.exe cannot be
+  ; opened for writing, its files are locked = still in use. Exit 1 = running, 0 = clear.
+  FileWrite $9 "$$r = '$INSTDIR'$\r$\n"
+  FileWrite $9 "$$exe = Join-Path $$r 'EasyOKAPI.exe'$\r$\n"
   FileWrite $9 "$$procs = @(Get-CimInstance Win32_Process | Where-Object { $$_.Name -eq 'EasyOKAPI.exe' })$\r$\n"
   FileWrite $9 "foreach ($$p in $$procs) {$\r$\n"
   FileWrite $9 "  if (-not $$p.ExecutablePath) { exit 1 }$\r$\n"
   FileWrite $9 "  if ($$p.ExecutablePath.StartsWith($$r,[System.StringComparison]::OrdinalIgnoreCase)) { exit 1 }$\r$\n"
   FileWrite $9 "}$\r$\n"
+  FileWrite $9 "if (Test-Path -LiteralPath $$exe) {$\r$\n"
+  FileWrite $9 "  try { $$fs = [System.IO.File]::Open($$exe,'Open','ReadWrite','None'); $$fs.Close() } catch { exit 1 }$\r$\n"
+  FileWrite $9 "}$\r$\n"
   FileWrite $9 "exit 0$\r$\n"
   FileClose $9
   un_check_running:
   IfFileExists "$INSTDIR\EasyOKAPI.exe" 0 un_not_running
-    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1" "$INSTDIR\"'
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\detect-easyokapi.ps1"'
     Pop $0
     ${If} $0 == 1
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
