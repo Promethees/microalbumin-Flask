@@ -26,8 +26,8 @@ if [ ! -d "$DIST_BUNDLE" ]; then
     echo "❌ Frozen bundle not found at $DIST_BUNDLE. Run: python tools/package.py --encode"; exit 1
 fi
 VERSION="v${APP_VERSION}"
-DMG_NAME="${APP_NAME}_${VERSION}_mac.dmg"
-RW_DMG="${APP_NAME}_${VERSION}_mac_rw.dmg"
+DMG_NAME="${APP_NAME}_${VERSION}.dmg"
+RW_DMG="${APP_NAME}_${VERSION}_rw.dmg"
 
 echo "🚀 Building no-source DMG for $APP_NAME ($VERSION)…"
 cd "$PROJECT_ROOT"

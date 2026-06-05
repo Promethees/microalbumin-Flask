@@ -77,7 +77,7 @@ ReserveFile "page_bg.bmp"
 InstallColors E2E8F0 312E81
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "EasyOKAPI_Setup_${APP_VERSION}_frozen.exe"
+OutFile "EasyOKAPI_Setup_${APP_VERSION}.exe"
 InstallDir "${INSTALL_DIR}"
 BrandingText "EasyOKAPI ${APP_VERSION}"
 ShowInstDetails show

@@ -21,7 +21,7 @@ if [ ! -d "$DIST_BUNDLE" ]; then
     echo "❌ Frozen bundle not found at $DIST_BUNDLE. Run: python tools/package.py --encode"; exit 1
 fi
 VERSION="v${APP_VERSION}"
-TARBALL_NAME="${APP_NAME}_linux_${VERSION}_frozen.tar.gz"
+TARBALL_NAME="${APP_NAME}_linux_${VERSION}.tar.gz"
 
 echo "🚀 Building no-source Linux tarball for $APP_NAME ($VERSION)…"
 cd "$PROJECT_ROOT"
