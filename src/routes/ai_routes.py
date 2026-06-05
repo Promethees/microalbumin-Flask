@@ -96,6 +96,12 @@ def proxy_chat():
     if not user or not user.is_verified:
         return jsonify({'status': 'failure', 'message': 'Account not found or not verified'}), 403
 
+    # Hardware lock: a token bound to a machine may only be used from that machine.
+    from routes.account_routes import _machine_is_licensed
+    if not _machine_is_licensed(user, payload, data.get('hwid')):
+        return jsonify({'status': 'failure', 'code': 'machine_mismatch',
+                        'message': 'This license is not activated on this machine.'}), 403
+
     messages = data.get('messages', [])
     if not messages:
         return jsonify({'status': 'failure', 'message': 'No messages provided'}), 400

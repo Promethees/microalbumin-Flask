@@ -125,18 +125,97 @@ def get_latest_release_tag() -> str | None:
 
 
 # ── Token helpers ─────────────────────────────────────────────────────────────
+#
+# Two token kinds:
+#   * download token   — short-lived (30 min), HS256 (SECRET_KEY). Proves account
+#                        identity for the duration of a download. Unchanged.
+#   * activation token — permanent (no exp), RS256 (ACTIVATION_PRIVATE_KEY) and
+#                        bound to one machine via an 'hwid' claim. The desktop
+#                        client verifies it OFFLINE with the embedded public key,
+#                        so it must be asymmetrically signed — the client must
+#                        never hold a secret that could mint tokens.
+#
+# Backward compatibility: activation tokens issued before hardware locking were
+# HS256 with no 'hwid'. validate_activation_token() still accepts those (legacy),
+# and issue_activation_token() falls back to HS256 only when no signing key is
+# configured, so a half-configured server keeps working (without the hardware
+# lock) rather than failing outright.
 
-def issue_activation_token(validated_payload: dict) -> str:
-    """Re-sign a validated download token without expiry for permanent AI access."""
-    secret = os.environ.get('SECRET_KEY', 'change-me')
+
+def _activation_private_key():
+    """PEM private key used to sign permanent activation tokens, or None.
+
+    Lives in the ACTIVATION_PRIVATE_KEY env var (never in source). The matching
+    public key is embedded in the desktop client (src/activation_pubkey.py).
+    """
+    return (os.environ.get('ACTIVATION_PRIVATE_KEY') or '').strip() or None
+
+
+_pubkey_cache = {'pem': None, 'derived': False}
+
+
+def _activation_public_key():
+    """Derive (and cache) the PEM public key from the configured private key."""
+    if not _pubkey_cache['derived']:
+        priv = _activation_private_key()
+        pem = None
+        if priv:
+            try:
+                from cryptography.hazmat.primitives import serialization
+                obj = serialization.load_pem_private_key(priv.encode(), password=None)
+                pem = obj.public_key().public_bytes(
+                    serialization.Encoding.PEM,
+                    serialization.PublicFormat.SubjectPublicKeyInfo,
+                ).decode()
+            except Exception as e:
+                print(f'[activation] Could not load ACTIVATION_PRIVATE_KEY: {e}')
+        _pubkey_cache['pem'] = pem
+        _pubkey_cache['derived'] = True
+    return _pubkey_cache['pem']
+
+
+def issue_activation_token(validated_payload: dict, hwid: str = None) -> str:
+    """Mint a permanent activation token, hardware-locked to `hwid` when provided.
+
+    RS256-signed with ACTIVATION_PRIVATE_KEY so the desktop client can verify it
+    offline. Falls back to legacy HS256 (no hwid) only when no signing key is set.
+    """
     payload = {k: v for k, v in validated_payload.items() if k != 'exp'}
+    priv = _activation_private_key()
+    if priv:
+        if hwid:
+            payload['hwid'] = hwid
+        return jwt.encode(payload, priv, algorithm='RS256')
+    # Legacy fallback: no signing key configured → unbound HS256 token. Drop any
+    # hwid claim, because the client rejects an hwid on an (unverifiable) HS256
+    # token as tampering.
+    print('[activation] ACTIVATION_PRIVATE_KEY not set — issuing legacy HS256 token (no hardware lock)')
+    payload.pop('hwid', None)
+    secret = os.environ.get('SECRET_KEY', 'change-me')
     return jwt.encode(payload, secret, algorithm='HS256')
 
 
 def validate_activation_token(token: str) -> dict:
-    """Validate a stored activation token (no expiry check). Raises on bad signature."""
+    """Validate a permanent activation token; return its payload (incl. 'hwid').
+
+    Tries RS256 (embedded-key scheme) first, then legacy HS256. Never checks exp
+    (permanent tokens carry none). Raises jwt.InvalidTokenError on any failure.
+    """
+    pub = _activation_public_key()
+    rs_error = None
+    if pub:
+        try:
+            payload = jwt.decode(token, pub, algorithms=['RS256'], options={'verify_exp': False})
+            if payload.get('purpose') != _DOWNLOAD_PURPOSE:
+                raise jwt.InvalidTokenError('Token not valid for AI access')
+            return payload
+        except jwt.InvalidTokenError as e:
+            rs_error = e  # fall through to legacy HS256
     secret = os.environ.get('SECRET_KEY', 'change-me')
-    payload = jwt.decode(token, secret, algorithms=['HS256'], options={'verify_exp': False})
+    try:
+        payload = jwt.decode(token, secret, algorithms=['HS256'], options={'verify_exp': False})
+    except jwt.InvalidTokenError:
+        raise rs_error or jwt.InvalidTokenError('Invalid activation token')
     if payload.get('purpose') != _DOWNLOAD_PURPOSE:
         raise jwt.InvalidTokenError('Token not valid for AI access')
     return payload

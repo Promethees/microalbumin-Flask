@@ -4,17 +4,82 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, render_template, Response, stream_with_context, session, redirect
 import jwt as pyjwt
 
-from account import db, User
+from account import db, User, LicenseMachine
 from email_service import send_verification_email, send_password_reset_email
 from download_service import (
     generate_download_token, validate_download_token,
-    fetch_github_release, issue_activation_token,
-    get_latest_release_tag, get_bundle_asset,
+    fetch_github_release, issue_activation_token, validate_activation_token,
+    get_latest_release_tag, get_bundle_asset, _activation_public_key,
 )
 
 account_bp = Blueprint('account', __name__)
 
 _APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
+
+# How many distinct machines one license may be activated on at once. Default 1
+# (a license is locked to a single machine); raise via env for multi-seat plans.
+# Guard the parse so a malformed env var can never crash the app at import time.
+try:
+    _MAX_MACHINES = max(1, int(os.environ.get('MAX_MACHINES_PER_LICENSE', '1')))
+except (TypeError, ValueError):
+    _MAX_MACHINES = 1
+
+
+def _normalise_hwid(value):
+    """A machine fingerprint is a 64-char lowercase hex SHA-256 (see client hwid.py).
+
+    Returns the cleaned value, or '' if it is missing/malformed (treated as "no
+    fingerprint supplied" → no hardware lock applied for that request).
+    """
+    h = (value or '').strip().lower()
+    if len(h) == 64 and all(c in '0123456789abcdef' for c in h):
+        return h
+    return ''
+
+
+def _bind_machine(user, hwid):
+    """Record `hwid` as one of the user's licensed machines, enforcing the seat cap.
+
+    Returns (ok: bool, message: str). Re-activating an already-bound machine always
+    succeeds (and refreshes last_seen). A new machine is bound only while the user
+    is under _MAX_MACHINES; otherwise it is refused so the license cannot silently
+    spread to extra machines.
+    """
+    machines = LicenseMachine.query.filter_by(user_id=user.id).all()
+    for m in machines:
+        if m.hwid == hwid:
+            m.last_seen = datetime.utcnow()
+            db.session.commit()
+            return True, 'already bound'
+    if len(machines) >= _MAX_MACHINES:
+        return False, (
+            f'This license is already activated on {_MAX_MACHINES} machine(s). '
+            'Deactivate one from your account before activating a new machine.'
+        )
+    db.session.add(LicenseMachine(user_id=user.id, hwid=hwid, last_seen=datetime.utcnow()))
+    db.session.commit()
+    return True, 'bound'
+
+
+def _machine_is_licensed(user, payload, presented_hwid):
+    """Confirm a permanent token is being used from the machine it is bound to.
+
+    Legacy tokens (no 'hwid' claim) are grandfathered → always allowed. For a
+    hardware-locked token, the caller must present (X-Machine-Id / body hwid) the
+    same fingerprint the token carries, and that machine must still be a bound seat
+    for this user. Refreshes last_seen on success.
+    """
+    token_hwid = payload.get('hwid')
+    if not token_hwid:
+        return True  # legacy, unbound token
+    if _normalise_hwid(presented_hwid) != token_hwid:
+        return False
+    m = LicenseMachine.query.filter_by(user_id=user.id, hwid=token_hwid).first()
+    if not m:
+        return False
+    m.last_seen = datetime.utcnow()
+    db.session.commit()
+    return True
 
 
 def _resolved_release_tag() -> str:
@@ -320,9 +385,16 @@ def delete_account():
 
 @account_bp.route('/api/activate', methods=['POST'])
 def activate():
-    """Exchange a fresh download token for a permanent activation token (AI access)."""
+    """Exchange a fresh download token for a permanent, hardware-locked activation token.
+
+    The client sends its machine fingerprint (`hwid`); we bind it to the user's
+    license (subject to the seat cap) and embed it in the issued token so the token
+    only works on that machine. Omitting `hwid` yields an unbound token (legacy
+    clients / degraded hosts), preserving backward compatibility.
+    """
     data = request.get_json(silent=True) or {}
     token = (data.get('token') or '').strip()
+    hwid = _normalise_hwid(data.get('hwid'))
     if not token:
         return jsonify({'status': 'error', 'message': 'Token is required'}), 400
 
@@ -337,8 +409,70 @@ def activate():
     if not user or not user.is_verified:
         return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
 
-    activation_token = issue_activation_token(payload)
+    if hwid:
+        ok, message = _bind_machine(user, hwid)
+        if not ok:
+            return jsonify({'status': 'error', 'code': 'machine_limit', 'message': message}), 409
+
+    activation_token = issue_activation_token(payload, hwid or None)
     return jsonify({'status': 'success', 'license_token': activation_token})
+
+
+@account_bp.route('/api/activation-pubkey')
+def activation_pubkey():
+    """Public key used to verify permanent activation tokens (RS256).
+
+    Public by design — it can only verify tokens, never mint them. The desktop
+    client embeds its own copy; this endpoint exists for diagnostics and so an
+    installer could fetch the current key if needed.
+    """
+    pem = _activation_public_key()
+    if not pem:
+        return jsonify({'status': 'error', 'message': 'Activation signing key not configured'}), 503
+    return jsonify({'status': 'success', 'public_key': pem})
+
+
+@account_bp.route('/api/account/machines', methods=['GET'])
+def list_machines():
+    """List the machines the logged-in user's license is activated on."""
+    account_id = session.get('account_user_id')
+    if not account_id:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    machines = LicenseMachine.query.filter_by(user_id=account_id).order_by(LicenseMachine.activated_at).all()
+    return jsonify({
+        'status': 'success',
+        'max_machines': _MAX_MACHINES,
+        'machines': [{
+            'id': m.id,
+            'hwid': m.hwid,
+            'label': m.label,
+            'activated_at': m.activated_at.isoformat() if m.activated_at else None,
+            'last_seen': m.last_seen.isoformat() if m.last_seen else None,
+        } for m in machines],
+    })
+
+
+@account_bp.route('/api/account/machines/deactivate', methods=['POST'])
+def deactivate_machine():
+    """Free a machine seat so the license can be moved (license transfer).
+
+    Accepts {hwid} or {id}. After deactivation the token on that machine stops
+    passing the server-side machine check; the user can activate a new machine.
+    """
+    account_id = session.get('account_user_id')
+    if not account_id:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    data = request.get_json(silent=True) or {}
+    q = LicenseMachine.query.filter_by(user_id=account_id)
+    if data.get('id') is not None:
+        m = q.filter_by(id=data.get('id')).first()
+    else:
+        m = q.filter_by(hwid=_normalise_hwid(data.get('hwid'))).first()
+    if not m:
+        return jsonify({'status': 'error', 'message': 'Machine not found'}), 404
+    db.session.delete(m)
+    db.session.commit()
+    return jsonify({'status': 'success', 'message': 'Machine deactivated'})
 
 
 @account_bp.route('/api/version')
@@ -362,25 +496,39 @@ def app_version():
 
 @account_bp.route('/api/download')
 def download():
-    # Accept token from query param, X-Download-Token header, or Authorization: Bearer header.
-    # The desktop auto-updater sends its permanent activation token as Authorization: Bearer.
-    # validate_download_token() accepts activation tokens too (same purpose claim, no exp).
+    # Two credential paths:
+    #   * Authorization: Bearer <permanent activation token>  — the desktop
+    #     auto-updater. Validated as an activation token (RS256/legacy HS256) and
+    #     hardware-checked against X-Machine-Id.
+    #   * ?token= / X-Download-Token <short-lived download token> — the installer
+    #     fetching the source tarball. Validated as a download token (exp enforced).
     auth_header = request.headers.get('Authorization', '')
     bearer = auth_header[7:] if auth_header.startswith('Bearer ') else None
-    token = request.args.get('token') or request.headers.get('X-Download-Token') or bearer
-    if not token:
+    short_token = request.args.get('token') or request.headers.get('X-Download-Token')
+
+    if bearer:
+        try:
+            payload = validate_activation_token(bearer)
+        except pyjwt.InvalidTokenError as e:
+            return jsonify({'status': 'error', 'message': f'Invalid token: {e}'}), 401
+        user = User.query.get(int(payload['sub']))
+        if not user or not user.is_verified:
+            return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+        if not _machine_is_licensed(user, payload, request.headers.get('X-Machine-Id')):
+            return jsonify({'status': 'error', 'code': 'machine_mismatch',
+                            'message': 'This license is not activated on this machine.'}), 403
+    elif short_token:
+        try:
+            payload = validate_download_token(short_token)
+        except pyjwt.ExpiredSignatureError:
+            return jsonify({'status': 'error', 'message': 'Download token has expired. Please log in again.'}), 401
+        except pyjwt.InvalidTokenError as e:
+            return jsonify({'status': 'error', 'message': f'Invalid token: {e}'}), 401
+        user = User.query.get(int(payload['sub']))
+        if not user or not user.is_verified:
+            return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+    else:
         return jsonify({'status': 'error', 'message': 'Download token required'}), 401
-
-    try:
-        payload = validate_download_token(token)
-    except pyjwt.ExpiredSignatureError:
-        return jsonify({'status': 'error', 'message': 'Download token has expired. Please log in again.'}), 401
-    except pyjwt.InvalidTokenError as e:
-        return jsonify({'status': 'error', 'message': f'Invalid token: {e}'}), 401
-
-    user = User.query.get(int(payload['sub']))
-    if not user or not user.is_verified:
-        return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
 
     # Honour an explicit, validated ?version= (the installer pins its own build);
     # fall back to the server's resolved tag (used by the in-app auto-updater,

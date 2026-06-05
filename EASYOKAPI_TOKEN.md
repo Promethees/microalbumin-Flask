@@ -17,6 +17,49 @@ The user never sees or touches the GitHub PAT. The JWT acts as a short-lived cre
 
 ---
 
+## Hardware Locking (v1.1.9+)
+
+The **permanent activation token** the desktop app stores is bound to a single
+machine, so copying `activation.json` (or a whole install folder) to another
+computer does not unlock the app. This is independent of the short-lived download
+token described below (which is unchanged).
+
+**Machine fingerprint (`hwid`).** The desktop client computes a stable SHA-256
+fingerprint of an OS machine id (`src/hwid.py` on the *main* branch; the Windows
+installer's PowerShell reproduces it byte-for-byte). It sends this `hwid` to
+`/api/activate` and with each privileged call (`X-Machine-Id` header /
+`/ai/proxy/chat` body).
+
+**Asymmetric, hwid-stamped tokens.** Permanent activation tokens are now **RS256**:
+
+- `download_service._activation_private_key()` loads the PEM from the
+  `ACTIVATION_PRIVATE_KEY` env var; `_activation_public_key()` derives and caches
+  the public half. **Set `ACTIVATION_PRIVATE_KEY` in the server env** (see the
+  desktop repo's `keys/README.md`) — without it the server falls back to legacy
+  unbound HS256 tokens and logs a warning.
+- `issue_activation_token(payload, hwid)` embeds the `hwid` claim and RS256-signs.
+  The desktop client verifies the signature offline with its embedded public key,
+  so it can trust the token without being able to mint one.
+- `validate_activation_token()` accepts RS256 first, then legacy HS256, so tokens
+  issued before this change keep working.
+
+**Seat table + enforcement.** `account.LicenseMachine` records `(user_id, hwid)`
+with a per-license cap (`MAX_MACHINES_PER_LICENSE`, default 1):
+
+| Endpoint | Hardware check |
+|----------|----------------|
+| `POST /api/activate` | Binds the `hwid` (refuses beyond the seat cap → `409 machine_limit`), issues a token stamped with that `hwid`. |
+| `GET /api/download` (Bearer) | `_machine_is_licensed()` — the `X-Machine-Id` must match the token's `hwid` and a bound seat. |
+| `POST /ai/proxy/chat` | Same check against the request body's `hwid`. |
+| `GET /api/account/machines` | Lists the user's activated machines. |
+| `POST /api/account/machines/deactivate` | Frees a seat (license transfer). |
+| `GET /api/activation-pubkey` | Returns the RS256 public key (diagnostics). |
+
+Legacy tokens with no `hwid` claim are grandfathered (no machine check) so
+existing installs are not locked out.
+
+---
+
 ## Component Map
 
 ```

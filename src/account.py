@@ -75,6 +75,30 @@ class OAuthConnection(db.Model):
     )
 
 
+class LicenseMachine(db.Model):
+    """A machine a user's license is activated on (the hardware-lock seat table).
+
+    Each permanent activation token is bound to one machine fingerprint (hwid).
+    A user may hold up to MAX_MACHINES_PER_LICENSE distinct machines at once;
+    activating on a new machine beyond that limit is refused until an existing one
+    is deactivated (license transfer). Created by db.create_all() on startup.
+    """
+    __tablename__ = 'license_machines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    hwid = db.Column(db.String(64), nullable=False, index=True)
+    label = db.Column(db.String(255), nullable=True)  # optional friendly name
+    activated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_seen = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', backref=db.backref('machines', lazy=True, cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'hwid', name='uq_license_user_hwid'),
+    )
+
+
 def run_migrations(engine):
     """Add columns introduced after the initial schema was created."""
     from sqlalchemy import text
