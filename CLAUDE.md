@@ -39,7 +39,7 @@ Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and 
 
 ---
 
-## Current Version: 1.1.8
+## Current Version: 1.1.9
 
 ---
 

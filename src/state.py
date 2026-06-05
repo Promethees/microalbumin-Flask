@@ -297,7 +297,7 @@ else:
 
 # Configuration
 PRODUCTION_MODE = True
-APP_VERSION = "1.1.8"
+APP_VERSION = "1.1.9"
 
 # Address bug reports are sent to (used by the "Report a Bug" button to
 # pre-fill a mailto: link). This is the maintainer's inbox, not a per-machine
