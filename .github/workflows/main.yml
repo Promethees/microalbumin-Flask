@@ -158,7 +158,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-mac-frozen-${{ needs.setup.outputs.version }}
-          path: "*_mac.dmg"
+          path: "*.dmg"
 
   # ── Windows build ──────────────────────────────────────────────────────────
   build-windows:
@@ -275,7 +275,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-win-frozen-${{ needs.setup.outputs.version }}
-          path: installer-win/EasyOKAPI_Setup_*_frozen.exe
+          path: installer-win/EasyOKAPI_Setup_*.exe
 
   # ── Linux build ────────────────────────────────────────────────────────────
   build-linux:
@@ -370,7 +370,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: EasyOKAPI-linux-frozen-${{ needs.setup.outputs.version }}
-          path: "*_linux_*_frozen.tar.gz"
+          path: "*_linux_*.tar.gz"
 
   # ── Release ────────────────────────────────────────────────────────────────
   # Runs on every v* tag push, including force-pushed tag updates.
