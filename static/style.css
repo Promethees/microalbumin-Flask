@@ -115,6 +115,24 @@ body.dark .section {
     display: none !important;
 }
 
+/* Intro video banner (top of #main-content) */
+.intro-video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.intro-video-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
 .okapi-line {
     /* Enables Flexbox on the <h1> element */
     display: flex;

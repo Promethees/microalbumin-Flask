@@ -298,6 +298,21 @@
             });
         </script>
         <div id="main-content">
+            <div class="section" id="intro-video-section">
+                <h2 class="folder-section-toggle"
+                    onclick="toggleFolderList('intro-video-collapse', 'intro-video-chevron')">
+                    🎬 Introducing Easy OKAPI
+                    <span id="intro-video-chevron" class="folder-chevron">▼</span>
+                </h2>
+                <div id="intro-video-collapse" class="section-collapse">
+                    <div class="intro-video-frame">
+                        <iframe src="https://www.youtube-nocookie.com/embed/VvCwaEJMBJw?rel=0"
+                            title="Easy OKAPI introduction" loading="lazy" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
                     Select Coefficients for standard curve <span id="json-sel-chevron"
