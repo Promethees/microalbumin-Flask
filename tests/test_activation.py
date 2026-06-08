@@ -213,3 +213,79 @@ def test_ensure_returns_false_when_returned_token_still_expires(monkeypatch):
     monkeypatch.setattr(activation, 'save',
                         lambda t: pytest.fail('must not save a still-expiring token'))
     assert activation.ensure_permanent_token() is False
+
+
+# ── RS256 dev fallback (libs missing, not frozen) ─────────────────────────────
+#
+# When _verify_rs256 cannot verify (None), the meaning of None depends on the
+# environment: a frozen build always ships the crypto libs, so None there means a
+# bad signature → reject. On a dev box without the libs we cannot check the
+# signature at all, so rather than block the developer we fall back to the
+# unverified payload and apply ONLY the hwid claim check.
+
+def test_rs256_dev_fallback_accepts_when_libs_unavailable(monkeypatch):
+    token = _rs256({'sub': '4', 'hwid': _THIS_MACHINE})
+    monkeypatch.setattr(activation, '_verify_rs256', lambda t: None)
+    monkeypatch.setattr(activation, '_libs_available', lambda: False)
+    monkeypatch.setattr(activation.state, '_is_frozen', lambda: False)
+    assert activation.verify_token(token) is not None
+
+
+def test_rs256_dev_fallback_still_enforces_hwid(monkeypatch):
+    token = _rs256({'sub': '4', 'hwid': _OTHER_MACHINE})
+    monkeypatch.setattr(activation, '_verify_rs256', lambda t: None)
+    monkeypatch.setattr(activation, '_libs_available', lambda: False)
+    monkeypatch.setattr(activation.state, '_is_frozen', lambda: False)
+    assert activation.verify_token(token) is None
+
+
+def test_rs256_unverifiable_rejected_when_libs_available(monkeypatch):
+    # Libs present → None from _verify_rs256 means a bad signature, not a dev box.
+    token = _rs256({'sub': '4', 'hwid': _THIS_MACHINE})
+    monkeypatch.setattr(activation, '_verify_rs256', lambda t: None)
+    monkeypatch.setattr(activation, '_libs_available', lambda: True)
+    monkeypatch.setattr(activation.state, '_is_frozen', lambda: False)
+    assert activation.verify_token(token) is None
+
+
+def test_rs256_unverifiable_rejected_when_frozen(monkeypatch):
+    # Frozen build ships the libs, so an unverifiable token is always a bad one.
+    token = _rs256({'sub': '4', 'hwid': _THIS_MACHINE})
+    monkeypatch.setattr(activation, '_verify_rs256', lambda t: None)
+    monkeypatch.setattr(activation, '_libs_available', lambda: False)
+    monkeypatch.setattr(activation.state, '_is_frozen', lambda: True)
+    assert activation.verify_token(token) is None
+
+
+# ── RS256 with no hwid claim — not machine-bound ──────────────────────────────
+
+def test_rs256_without_hwid_claim_is_accepted_anywhere():
+    # A validly-signed RS256 token carrying no hwid claim is not machine-bound, so
+    # the binding check is skipped and it is accepted on any machine.
+    assert activation.verify_token(_rs256({'sub': '4', 'purpose': 'app_download'})) is not None
+
+
+# ── Legacy HS256 kill switch ──────────────────────────────────────────────────
+
+def test_legacy_hs256_refused_when_flag_disabled(monkeypatch):
+    # Flipping _ALLOW_LEGACY_HS256 off refuses even a genuine, well-formed legacy token.
+    monkeypatch.setattr(activation, '_ALLOW_LEGACY_HS256', False)
+    token = _hs256({'sub': '4', 'purpose': 'app_download'})
+    assert activation.verify_token(token) is None
+
+
+# ── needs_activation() gate ───────────────────────────────────────────────────
+
+def test_needs_activation_only_gates_frozen_builds(monkeypatch):
+    # Source/dev never gates, regardless of activation state.
+    monkeypatch.setattr(activation.state, '_is_frozen', lambda: False)
+    monkeypatch.setattr(activation, 'is_activated', lambda: False)
+    assert activation.needs_activation() is False
+
+    # Frozen + not activated → must show the gate.
+    monkeypatch.setattr(activation.state, '_is_frozen', lambda: True)
+    assert activation.needs_activation() is True
+
+    # Frozen + activated → no gate.
+    monkeypatch.setattr(activation, 'is_activated', lambda: True)
+    assert activation.needs_activation() is False
