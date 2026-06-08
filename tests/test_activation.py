@@ -107,3 +107,109 @@ def test_is_activated_reflects_verify(monkeypatch):
     bad = _rs256({'sub': '4', 'purpose': 'app_download', 'hwid': _OTHER_MACHINE})
     monkeypatch.setattr(activation, 'get_license_token', lambda: bad)
     assert activation.is_activated() is False
+
+
+# ── ensure_permanent_token() — download → permanent token exchange ─────────────
+#
+# Every installer persists the user's 30-minute *download* token. ensure_permanent_token
+# exchanges that, while still fresh, for a permanent (no-exp) token via /api/activate,
+# sending this machine's hwid so the server binds it. These cover the no-op short
+# circuits, the happy exchange, and each failure mode that must leave the stored
+# token untouched (return False) so a later run can retry.
+
+class _FakeResp:
+    def __init__(self, status_code=200, payload=None):
+        self.status_code = status_code
+        self._payload = payload if payload is not None else {}
+
+    def json(self):
+        return self._payload
+
+
+def _expiring():
+    return _rs256({'sub': '4', 'purpose': 'app_download', 'hwid': _THIS_MACHINE,
+                   'exp': int(time.time()) + 1800})
+
+
+def _permanent():
+    return _rs256({'sub': '4', 'purpose': 'app_download', 'hwid': _THIS_MACHINE})
+
+
+def _no_network(*_a, **_k):
+    raise AssertionError('ensure_permanent_token must not hit the network here')
+
+
+def test_ensure_noop_when_no_token(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    monkeypatch.setattr('requests.post', _no_network)
+    assert activation.ensure_permanent_token() is False
+
+
+def test_ensure_noop_when_token_already_permanent(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', _permanent)
+    monkeypatch.setattr('requests.post', _no_network)
+    assert activation.ensure_permanent_token() is False
+
+
+def test_ensure_exchanges_expiring_token_and_saves(monkeypatch):
+    perm = _permanent()
+    sent = {}
+
+    def fake_post(url, json=None, timeout=None):
+        sent['url'] = url
+        sent['json'] = json
+        return _FakeResp(200, {'license_token': perm})
+
+    saved = {}
+
+    def fake_save(token):
+        saved['token'] = token
+        return True
+
+    monkeypatch.setattr(activation, 'get_license_token', _expiring)
+    monkeypatch.setattr('requests.post', fake_post)
+    monkeypatch.setattr(activation, 'save', fake_save)
+
+    assert activation.ensure_permanent_token() is True
+    assert saved['token'] == perm
+    # the exchange must carry this machine's fingerprint so the server can bind it
+    assert sent['json']['hwid'] == _THIS_MACHINE
+    assert sent['url'].endswith('/api/activate')
+
+
+def test_ensure_returns_false_on_non_200(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', _expiring)
+    monkeypatch.setattr('requests.post', lambda *a, **k: _FakeResp(403, {}))
+    monkeypatch.setattr(activation, 'save',
+                        lambda t: pytest.fail('must not save on a non-200 response'))
+    assert activation.ensure_permanent_token() is False
+
+
+def test_ensure_returns_false_on_network_error(monkeypatch):
+    import requests
+
+    def boom(*_a, **_k):
+        raise requests.RequestException('server unreachable')
+
+    monkeypatch.setattr(activation, 'get_license_token', _expiring)
+    monkeypatch.setattr('requests.post', boom)
+    assert activation.ensure_permanent_token() is False
+
+
+def test_ensure_returns_false_when_server_returns_no_token(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', _expiring)
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: _FakeResp(200, {'license_token': ''}))
+    monkeypatch.setattr(activation, 'save',
+                        lambda t: pytest.fail('must not save an empty token'))
+    assert activation.ensure_permanent_token() is False
+
+
+def test_ensure_returns_false_when_returned_token_still_expires(monkeypatch):
+    # A returned token that still carries 'exp' is the wrong kind — reject, do not save.
+    monkeypatch.setattr(activation, 'get_license_token', _expiring)
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: _FakeResp(200, {'license_token': _expiring()}))
+    monkeypatch.setattr(activation, 'save',
+                        lambda t: pytest.fail('must not save a still-expiring token'))
+    assert activation.ensure_permanent_token() is False
