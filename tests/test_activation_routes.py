@@ -14,6 +14,7 @@ import pytest
 import requests
 
 import activation
+import routes.ai_routes as ai_routes
 from main import app
 
 _HWID = 'a' * 64
@@ -149,3 +150,48 @@ def test_happy_path_saves_permanent_token_and_sends_hwid(client, monkeypatch):
     # the exchange carries the stripped download token AND this machine's fingerprint
     assert sent['url'].endswith('/api/activate')
     assert sent['json'] == {'token': 'dl-token', 'hwid': _HWID}
+
+
+# ── /ai/status — _get_api_mode() reporting (proxy / dev / none) ────────────────
+#
+# The three (api_ready, activated, dev_mode) flags drive the activation UI, and
+# each comes from a distinct _get_api_mode() branch: a stored licence token
+# (proxy), a dev GROQ_API_KEY with no token (dev), or neither (none).
+
+def test_status_reports_proxy_when_token_present(client, monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: 'a-licence-token')
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is True
+    assert body['activated'] is True
+    assert body['dev_mode'] is False
+
+
+def test_status_reports_dev_when_only_dev_key_present(client, monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    monkeypatch.setattr(ai_routes, '_DEV_GROQ_KEY', 'gsk-dev')
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is True
+    assert body['activated'] is False
+    assert body['dev_mode'] is True
+
+
+def test_status_reports_none_when_unconfigured(client, monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    monkeypatch.setattr(ai_routes, '_DEV_GROQ_KEY', '')
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is False
+    assert body['activated'] is False
+    assert body['dev_mode'] is False
+
+
+# ── /update/apply — activation guard ──────────────────────────────────────────
+#
+# The update-apply SSE endpoint is the update-path twin of the gate: it refuses
+# to start without a stored token. Only the negative is exercised here — the
+# positive path would kick off the real download/apply machinery.
+
+def test_update_apply_refuses_without_token(client, monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    rv = client.post('/update/apply', json={})
+    assert rv.status_code == 403
+    assert rv.get_json() == {'status': 'error', 'message': 'Not activated'}
