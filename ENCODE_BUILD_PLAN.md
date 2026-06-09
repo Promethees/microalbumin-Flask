@@ -15,7 +15,7 @@ end-to-end on CI, sign/notarize, and the source→frozen cutover.
   source-tarball path and `/api/version` are unchanged. py_compile-clean; committed on
   `online` (not yet pushed).
 
-**P1 (backend freeze) — code complete, validated on v1.1.9:**
+**P1 (backend freeze) — code complete, validated on v1.1.10:**
 - `.env` / `.env.example` `ENCODE_SOURCE` flag; `tools/package.py`; `easyokapi.spec`
   (onedir); `requirements-build.txt` (pyinstaller 6.11.1).
 - `src/state.py` frozen-aware `bundle_dir` (assets, `sys._MEIPASS`) vs `script_dir`
@@ -80,7 +80,7 @@ end-to-end on CI, sign/notarize, and the source→frozen cutover.
   mac/win/linux runners — the first real validation of P1's PyInstaller spec.
 - **P3b (installer embedding + migration) pending** — deferred until the freeze is green.
 
-**What changed vs the original plan (v1.1.6 → v1.1.9):**
+**What changed vs the original plan (v1.1.6 → v1.1.10):**
 - **HID is gone.** The "Run" flow moved to the CDC serial collector
   (`log_cdc_data.py`); the HID logger scripts were removed (`log_hid_data*.py`).
   CDC needs **no elevated privileges**, so the original `src/privilege.py` sudo
@@ -402,7 +402,7 @@ the binary.
 ## 12. Phasing
 
 1. **P1 — Backend freeze:** `.env`/`tools/package.py`/`easyokapi.spec`; state/path split;
-   `--cdc-logger` re-entry; collector log-dir fix. ✅ **done (v1.1.9), pending a clean
+   `--cdc-logger` re-entry; collector log-dir fix. ✅ **done (v1.1.10), pending a clean
    CI/non-iCloud freeze + smoke test.**
 2. **P2 — Updater:** ✅ **done (client side).** `update_service` branches frozen→
    bundle download+stage+detached swap / source→unchanged; `/update/finalize` drives

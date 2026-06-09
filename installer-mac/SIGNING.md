@@ -157,10 +157,10 @@ spctl --assess --type exec -vvv tmp_dmg_root/EasyOKAPI.app
 
 ## Step 7 — Sign & Notarize the DMG
 
-After `build-dmg.sh` produces `EasyOKAPI_v1.1.9.dmg`:
+After `build-dmg.sh` produces `EasyOKAPI_v1.1.10.dmg`:
 
 ```bash
-DMG="EasyOKAPI_v1.1.9.dmg"
+DMG="EasyOKAPI_v1.1.10.dmg"
 
 # Sign the DMG itself
 codesign --sign "$SIGNING_IDENTITY" "$DMG"
