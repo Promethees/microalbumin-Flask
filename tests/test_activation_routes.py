@@ -158,11 +158,28 @@ def test_happy_path_saves_permanent_token_and_sends_hwid(client, monkeypatch):
 # each comes from a distinct _get_api_mode() branch: a stored licence token
 # (proxy), a dev GROQ_API_KEY with no token (dev), or neither (none).
 
-def test_status_reports_proxy_when_token_present(client, monkeypatch):
+def test_status_reports_proxy_when_token_is_valid(client, monkeypatch):
+    # Proxy mode requires a token that passes the hardware lock (is_activated),
+    # not mere presence — so pin is_activated() True, as a verified token would.
     monkeypatch.setattr(activation, 'get_license_token', lambda: 'a-licence-token')
+    monkeypatch.setattr(activation, 'is_activated', lambda: True)
     body = client.get('/ai/status').get_json()
     assert body['api_ready'] is True
     assert body['activated'] is True
+
+
+def test_status_reports_not_activated_for_invalid_token(client, monkeypatch):
+    # A stored-but-invalid token (expired / forged / copied from another machine —
+    # the hardware-lock scenario) must NOT report activated, even though a token
+    # string is present. Keying off presence alone would mislabel it "AI ready"
+    # while the gate simultaneously redirects every page to /activate.
+    monkeypatch.setattr(activation, 'get_license_token', lambda: 'expired-or-other-machine')
+    monkeypatch.setattr(activation, 'is_activated', lambda: False)
+    monkeypatch.setattr(ai_routes, '_DEV_GROQ_KEY', '')
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is False
+    assert body['activated'] is False
+    assert body['dev_mode'] is False
     assert body['dev_mode'] is False
 
 

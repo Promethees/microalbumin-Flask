@@ -26,10 +26,17 @@ _AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
 
 
 def _get_api_mode():
-    """Return ('proxy', license_token), ('dev', api_key), or (None, None)."""
-    token = activation_mod.get_license_token()
-    if token:
-        return 'proxy', token
+    """Return ('proxy', license_token), ('dev', api_key), or (None, None).
+
+    Proxy mode requires a token that passes the same hardware-lock check as the
+    activation gate (activation.is_activated() → verify_token(): RS256 signature +
+    hwid claim + not expired). Keying off mere token presence would report an
+    expired, forged, or copied-from-another-machine token as "activated/AI ready"
+    here while the gate simultaneously rejects it — so a copied activation.json
+    must be useless on the AI surface too, not just the page gate.
+    """
+    if activation_mod.is_activated():
+        return 'proxy', activation_mod.get_license_token()
     if _DEV_GROQ_KEY:
         return 'dev', _DEV_GROQ_KEY
     return None, None
