@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import requests
 from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
@@ -8,6 +9,23 @@ import activation as activation_mod
 import state
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+
+
+def _parse_env_value(raw):
+    """Parse the value half of a dotenv `KEY=value` line.
+
+    A quoted value is taken verbatim (so a literal '#' can be kept by quoting).
+    An UNquoted value drops any inline ' # comment' — without this the comment
+    glues onto the value and silently corrupts it; a `GROQ_API_KEY=gsk_… # note`
+    line then ships a malformed key that Groq rejects with 401 (api_key_invalid).
+    """
+    v = raw.strip()
+    if v[:1] in ('"', "'"):
+        quote = v[0]
+        end = v.find(quote, 1)
+        return v[1:end] if end != -1 else v[1:]
+    return re.split(r'\s#', v, maxsplit=1)[0].strip()
+
 
 # Load .env for dev-mode override (GROQ_API_KEY in .env bypasses activation — dev only).
 # .env is writable user data: it lives in the app-data dir for a frozen build,
@@ -19,7 +37,7 @@ if os.path.exists(_env_path):
             _line = _line.strip()
             if _line and not _line.startswith('#') and '=' in _line:
                 _k, _, _v = _line.partition('=')
-                os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+                os.environ.setdefault(_k.strip(), _parse_env_value(_v))
 
 _DEV_GROQ_KEY = os.environ.get('GROQ_API_KEY', '')
 _AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')

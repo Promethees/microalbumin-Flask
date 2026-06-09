@@ -243,6 +243,30 @@ def test_source_run_allows_dev_key_without_token(client, monkeypatch):
     assert body['activated'] is False
 
 
+# ── _parse_env_value — dotenv value parsing (inline-comment footgun) ───────────
+#
+# A trailing ' # comment' on a KEY=value line must NOT become part of the value:
+# left in, it corrupts e.g. `GROQ_API_KEY=gsk_… # note` so Groq 401s. Quoted
+# values are taken verbatim so a literal '#' can still be kept by quoting.
+
+def test_parse_env_value_strips_inline_comment():
+    assert ai_routes._parse_env_value('gsk_realkey # my groq key!!!') == 'gsk_realkey'
+
+
+def test_parse_env_value_plain_value_untouched():
+    assert ai_routes._parse_env_value('  gsk_realkey  ') == 'gsk_realkey'
+
+
+def test_parse_env_value_quoted_keeps_hash():
+    assert ai_routes._parse_env_value('"pa#ss word"') == 'pa#ss word'
+    assert ai_routes._parse_env_value("'tok#en'") == 'tok#en'
+
+
+def test_parse_env_value_hash_without_space_is_kept():
+    # No whitespace before '#': it is part of the value (standard dotenv rule).
+    assert ai_routes._parse_env_value('abc#def') == 'abc#def'
+
+
 # ── /update/apply — activation guard ──────────────────────────────────────────
 #
 # The update-apply SSE endpoint is the update-path twin of the gate: it refuses
