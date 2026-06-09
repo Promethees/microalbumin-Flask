@@ -15,6 +15,7 @@ import requests
 
 import activation
 import routes.ai_routes as ai_routes
+import state
 from main import app
 
 _HWID = 'a' * 64
@@ -199,6 +200,47 @@ def test_status_reports_none_when_unconfigured(client, monkeypatch):
     assert body['api_ready'] is False
     assert body['activated'] is False
     assert body['dev_mode'] is False
+
+
+# ── Frozen (installed) build vs source run — AI entitlement split ──────────────
+#
+# The .env GROQ_API_KEY dev bypass lets a SOURCE run use the chatbot with no
+# token, but an INSTALLED build (state.IS_FROZEN) must require a real activation
+# token — dropping a .env beside the binary must not unlock the AI. _dev_key()
+# enforces that, so both mode selection and the proxy fallback obey it.
+
+def test_frozen_build_ignores_dev_key_so_token_is_mandatory(client, monkeypatch):
+    # Installed build with a dev key present but no token → AI stays locked.
+    monkeypatch.setattr(state, 'IS_FROZEN', True)
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    monkeypatch.setattr(activation, 'is_activated', lambda: False)
+    monkeypatch.setattr(ai_routes, '_DEV_GROQ_KEY', 'gsk-dev')
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is False
+    assert body['dev_mode'] is False
+    assert body['activated'] is False
+
+
+def test_frozen_build_still_activates_with_valid_token(client, monkeypatch):
+    # The hardware-locked proxy path is unaffected by the frozen flag.
+    monkeypatch.setattr(state, 'IS_FROZEN', True)
+    monkeypatch.setattr(activation, 'get_license_token', lambda: 'a-licence-token')
+    monkeypatch.setattr(activation, 'is_activated', lambda: True)
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is True
+    assert body['activated'] is True
+
+
+def test_source_run_allows_dev_key_without_token(client, monkeypatch):
+    # Mirror image: not frozen + dev key + no token → dev mode unlocks the AI.
+    monkeypatch.setattr(state, 'IS_FROZEN', False)
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    monkeypatch.setattr(activation, 'is_activated', lambda: False)
+    monkeypatch.setattr(ai_routes, '_DEV_GROQ_KEY', 'gsk-dev')
+    body = client.get('/ai/status').get_json()
+    assert body['api_ready'] is True
+    assert body['dev_mode'] is True
+    assert body['activated'] is False
 
 
 # ── /update/apply — activation guard ──────────────────────────────────────────

@@ -158,7 +158,8 @@ Timestamp,Value:1,Value:2,...
 ### 2.13 AI Assistant — Groq Cloud LLM
 
 - The AI assistant uses **Groq** (cloud API) — no local model server required.
-- Desktop instances authenticate via `activation.json` (permanent license token, **hardware-locked** — see §2.17) and proxy requests through the online Heroku server, sending their `hwid` with each proxy call. Developers can bypass this by setting `GROQ_API_KEY` in `.env`.
+- Desktop instances authenticate via `activation.json` (permanent license token, **hardware-locked** — see §2.17) and proxy requests through the online Heroku server, sending their `hwid` with each proxy call.
+- **AI entitlement is split by build type** (`_get_api_mode()` / `_dev_key()` in `src/routes/ai_routes.py`): an **installed/frozen build** (`state.IS_FROZEN`) requires a valid activation token — the `.env` `GROQ_API_KEY` bypass is **ignored** there, so a token is genuinely mandatory and dropping a `.env` beside the binary cannot unlock the AI. A **source run** (`python main.py` / `setup-3-run.command`) needs no token: `GROQ_API_KEY` in `.env` enables `dev` mode (and the transient proxy-error fallback) directly. The frozen rule lives only in `_dev_key()` — both mode selection and the proxy fallback consult it, so do not re-derive it elsewhere. **Anti-pattern**: never honour a local Groq key in a frozen build.
 - Settings are stored in `ai_settings.json` at the project root via `src/ai_settings.py`.
 - All chat calls go through `src/ai_assistant.py` using the `requests` library.
 - The AI blueprint is `ai_bp` in `src/routes/ai_routes.py`, mounted at `/ai/*`.

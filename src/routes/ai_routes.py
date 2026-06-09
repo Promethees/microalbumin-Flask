@@ -25,6 +25,19 @@ _DEV_GROQ_KEY = os.environ.get('GROQ_API_KEY', '')
 _AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
 
 
+def _dev_key():
+    """The local Groq key, honoured ONLY in a source/dev run.
+
+    The .env GROQ_API_KEY is a developer convenience: it lets a source run
+    (`python main.py` / setup-3-run.command) use the AI chatbot with no
+    activation token. An installed/frozen build must NOT honour it — otherwise
+    dropping a .env beside the binary would bypass activation entirely — so a
+    real token is mandatory there. Centralising the rule here keeps every AI
+    code path (mode selection + proxy fallback) in lockstep.
+    """
+    return '' if state.IS_FROZEN else _DEV_GROQ_KEY
+
+
 def _get_api_mode():
     """Return ('proxy', license_token), ('dev', api_key), or (None, None).
 
@@ -34,11 +47,15 @@ def _get_api_mode():
     expired, forged, or copied-from-another-machine token as "activated/AI ready"
     here while the gate simultaneously rejects it — so a copied activation.json
     must be useless on the AI surface too, not just the page gate.
+
+    The dev (local Groq key) branch is suppressed in an installed build via
+    _dev_key(): there, only a valid activation token unlocks the AI assistant.
     """
     if activation_mod.is_activated():
         return 'proxy', activation_mod.get_license_token()
-    if _DEV_GROQ_KEY:
-        return 'dev', _DEV_GROQ_KEY
+    dev_key = _dev_key()
+    if dev_key:
+        return 'dev', dev_key
     return None, None
 
 
@@ -123,18 +140,23 @@ def ai_chat():
     _PROXY_TRANSIENT_ERRORS = frozenset({'proxy_unreachable', 'proxy_timeout'})
 
     if mode == 'proxy':
+        # On a transient proxy outage a source run can fall back to the local
+        # Groq key; an installed build cannot (_dev_key() is empty when frozen),
+        # so its AI stays strictly behind the activated proxy.
+        dev_fallback = _dev_key()
+
         def generate():
             fell_back = False
             for event in ai_assistant.proxy_chat_stream(
                 messages, language, credential,
                 activation_mod.AI_SERVICE_URL, _AI_MODEL, ui_context,
             ):
-                if event.get('type') == 'error' and event.get('error') in _PROXY_TRANSIENT_ERRORS and _DEV_GROQ_KEY:
+                if event.get('type') == 'error' and event.get('error') in _PROXY_TRANSIENT_ERRORS and dev_fallback:
                     fell_back = True
                     break
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             if fell_back:
-                for event in ai_assistant.chat_stream(messages, language, _DEV_GROQ_KEY, _AI_MODEL, ui_context):
+                for event in ai_assistant.chat_stream(messages, language, dev_fallback, _AI_MODEL, ui_context):
                     yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
     else:

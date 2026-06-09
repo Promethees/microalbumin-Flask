@@ -299,6 +299,13 @@ else:
 PRODUCTION_MODE = True
 APP_VERSION = "1.1.9"
 
+# True for an installed PyInstaller build (downloaded via the installer), False
+# when run from source (`python main.py` / setup-3-run.command). Gates dev-only
+# conveniences — notably the .env GROQ_API_KEY AI bypass in src/routes/ai_routes.py,
+# which must NOT be honoured in an installed build (a real activation token is
+# mandatory there).
+IS_FROZEN = _is_frozen()
+
 # Address bug reports are sent to (used by the "Report a Bug" button to
 # pre-fill a mailto: link). This is the maintainer's inbox, not a per-machine
 # user preference, so it lives here as a project constant.
