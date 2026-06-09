@@ -11,6 +11,7 @@ from download_service import (
     fetch_github_release, issue_activation_token, validate_activation_token,
     get_latest_release_tag, get_bundle_asset, _activation_public_key,
 )
+from rate_limit import limiter, ACTIVATE_LIMIT
 
 account_bp = Blueprint('account', __name__)
 
@@ -384,6 +385,7 @@ def delete_account():
 
 
 @account_bp.route('/api/activate', methods=['POST'])
+@limiter.limit(ACTIVATE_LIMIT)
 def activate():
     """Exchange a fresh download token for a permanent, hardware-locked activation token.
 

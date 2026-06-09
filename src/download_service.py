@@ -3,7 +3,12 @@ import time
 import jwt
 import requests
 
-_DOWNLOAD_PURPOSE = 'app_download'
+_DOWNLOAD_PURPOSE = 'app_download'   # short-lived (exp-bearing) download token
+_ACTIVATION_PURPOSE = 'activation'   # permanent (no-exp) activation token
+# Purposes accepted as a permanent activation credential. 'app_download' is kept
+# for backward compatibility: permanent tokens minted before the purpose split
+# inherited the download token's purpose. New tokens use _ACTIVATION_PURPOSE.
+_ACTIVATION_PURPOSES = frozenset({_ACTIVATION_PURPOSE, _DOWNLOAD_PURPOSE})
 _TOKEN_TTL = 30 * 60  # 30 minutes
 
 _GITHUB_REPO = 'Promethees/microalbumin-Flask'
@@ -180,45 +185,72 @@ def issue_activation_token(validated_payload: dict, hwid: str = None) -> str:
     RS256-signed with ACTIVATION_PRIVATE_KEY so the desktop client can verify it
     offline. Falls back to legacy HS256 (no hwid) only when no signing key is set.
     """
+    # Strip 'exp' — a permanent token never expires, and its ABSENCE is what
+    # distinguishes it from a short-lived download token in validate_*.
     payload = {k: v for k, v in validated_payload.items() if k != 'exp'}
     priv = _activation_private_key()
     if priv:
+        # RS256 permanent token: stamp the distinct 'activation' purpose so it is
+        # unambiguously not a download token. The desktop client verifies RS256
+        # by signature (it does not gate on purpose), so this is safe for it.
+        payload['purpose'] = _ACTIVATION_PURPOSE
         if hwid:
             payload['hwid'] = hwid
         return jwt.encode(payload, priv, algorithm='RS256')
-    # Legacy fallback: no signing key configured → unbound HS256 token. Drop any
-    # hwid claim, because the client rejects an hwid on an (unverifiable) HS256
-    # token as tampering.
+    # Legacy fallback: no signing key configured → unbound HS256 token. Keep the
+    # incoming 'app_download' purpose, because the desktop client's unverifiable-
+    # HS256 path requires exactly that purpose; these tokens carry no 'exp', so
+    # validate_activation_token still accepts them. Drop any hwid claim, because
+    # the client rejects an hwid on an (unverifiable) HS256 token as tampering.
     print('[activation] ACTIVATION_PRIVATE_KEY not set — issuing legacy HS256 token (no hardware lock)')
     payload.pop('hwid', None)
     secret = os.environ.get('SECRET_KEY', 'change-me')
     return jwt.encode(payload, secret, algorithm='HS256')
 
 
+def _assert_activation_claims(payload: dict) -> dict:
+    """Reject anything that is not a *permanent* activation credential.
+
+    Two independent checks, either of which closes the "download token doubles as
+    a license" hole:
+
+    * No 'exp'. A permanent activation token never carries one (issue_activation_
+      token strips it); a short-lived DOWNLOAD token always does. Since download
+      tokens are also HS256/SECRET_KEY-signed with purpose 'app_download', they
+      would otherwise pass the HS256 branch below — including *expired* ones,
+      because exp is not verified here. Rejecting any 'exp'-bearing token stops a
+      (possibly long-expired) download token being replayed as a permanent
+      license on /ai/proxy/chat and /api/download.
+    * Purpose in the activation allowlist (new 'activation' + legacy 'app_download').
+    """
+    if 'exp' in payload:
+        raise jwt.InvalidTokenError('Short-lived download token cannot be used as an activation token')
+    if payload.get('purpose') not in _ACTIVATION_PURPOSES:
+        raise jwt.InvalidTokenError('Token not valid for activation')
+    return payload
+
+
 def validate_activation_token(token: str) -> dict:
     """Validate a permanent activation token; return its payload (incl. 'hwid').
 
-    Tries RS256 (embedded-key scheme) first, then legacy HS256. Never checks exp
-    (permanent tokens carry none). Raises jwt.InvalidTokenError on any failure.
+    Tries RS256 (embedded-key scheme) first, then legacy HS256. Never verifies exp
+    (permanent tokens carry none) but REJECTS any token that has an exp claim — see
+    _assert_activation_claims. Raises jwt.InvalidTokenError on any failure.
     """
     pub = _activation_public_key()
     rs_error = None
     if pub:
         try:
             payload = jwt.decode(token, pub, algorithms=['RS256'], options={'verify_exp': False})
-            if payload.get('purpose') != _DOWNLOAD_PURPOSE:
-                raise jwt.InvalidTokenError('Token not valid for AI access')
-            return payload
+            return _assert_activation_claims(payload)
         except jwt.InvalidTokenError as e:
-            rs_error = e  # fall through to legacy HS256
+            rs_error = e  # bad RS256 signature/claims → fall through to legacy HS256
     secret = os.environ.get('SECRET_KEY', 'change-me')
     try:
         payload = jwt.decode(token, secret, algorithms=['HS256'], options={'verify_exp': False})
     except jwt.InvalidTokenError:
         raise rs_error or jwt.InvalidTokenError('Invalid activation token')
-    if payload.get('purpose') != _DOWNLOAD_PURPOSE:
-        raise jwt.InvalidTokenError('Token not valid for AI access')
-    return payload
+    return _assert_activation_claims(payload)
 
 
 def generate_download_token(user_id: int, email: str) -> str:

@@ -42,6 +42,12 @@ if not app.debug:
 socketio.init_app(app)
 db.init_app(app)
 
+# Rate limiting (abuse / cost-drain protection on the AI + activation endpoints).
+# Storage is Redis when REDIS_URL is set so limits hold across dynos; in-memory
+# otherwise. Decorators live on the routes (see routes/ai_routes.py).
+from rate_limit import limiter
+limiter.init_app(app)
+
 # Create account tables on first run, then apply any schema migrations
 with app.app_context():
     db.create_all()

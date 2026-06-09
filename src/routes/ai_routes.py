@@ -1,11 +1,12 @@
 import json
-from flask import Blueprint, jsonify, request, Response, stream_with_context
+from flask import Blueprint, jsonify, request, Response, stream_with_context, session
 from user_data import get_user_data
 import ai_settings
 import ai_assistant
 import jwt as pyjwt
 from account import User
 from download_service import validate_activation_token
+from rate_limit import limiter, AI_CHAT_LIMIT, AI_PROXY_LIMIT
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
@@ -45,8 +46,17 @@ def save_settings():
 
 
 @ai_bp.route('/chat', methods=['POST'])
+@limiter.limit(AI_CHAT_LIMIT)
 def ai_chat():
     from config import Config
+    # This endpoint spends the SERVER's Groq key, so it must not be open to the
+    # public: it is the website's logged-in chat. Without this gate anyone could
+    # POST here and drain the Groq quota, bypassing the activation/proxy scheme
+    # that /ai/proxy/chat enforces for desktop clients.
+    if not session.get('account_user_id'):
+        return jsonify({'status': 'failure', 'code': 'auth_required',
+                        'message': 'Sign in to use the assistant'}), 401
+
     data = request.get_json(silent=True) or {}
     messages = data.get('messages', [])
     if not messages:
@@ -78,6 +88,7 @@ def ai_chat():
 
 
 @ai_bp.route('/proxy/chat', methods=['POST'])
+@limiter.limit(AI_PROXY_LIMIT)
 def proxy_chat():
     """AI proxy for desktop app instances. Validates activation token + active account."""
     from config import Config

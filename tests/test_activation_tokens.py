@@ -59,9 +59,52 @@ def test_rs256_token_rejects_tampered_hwid(signing_key):
 
 
 def test_wrong_purpose_rejected(signing_key):
-    bad = ds.issue_activation_token({'sub': '7', 'purpose': 'something_else'}, _HWID)
+    # issue_activation_token now stamps the canonical 'activation' purpose, so a
+    # bad purpose can only arrive via a forged/hand-built token. Sign one with the
+    # configured key and confirm validate still enforces the purpose allowlist.
+    forged = jwt.encode({'sub': '7', 'purpose': 'something_else'}, signing_key, algorithm='RS256')
     with pytest.raises(jwt.InvalidTokenError):
-        ds.validate_activation_token(bad)
+        ds.validate_activation_token(forged)
+
+
+def test_rs256_token_carries_activation_purpose(signing_key):
+    # New permanent tokens are stamped 'activation' (distinct from the short-lived
+    # download token's 'app_download') and still validate.
+    token = ds.issue_activation_token(_PAYLOAD, _HWID)
+    assert jwt.decode(token, options={'verify_signature': False})['purpose'] == 'activation'
+    assert ds.validate_activation_token(token)['purpose'] == 'activation'
+
+
+def test_validate_accepts_legacy_rs256_app_download_purpose(signing_key):
+    # Permanent tokens minted before the split were RS256 with the inherited
+    # 'app_download' purpose and no exp — they must keep validating (in-app upgrade
+    # continuity for already-activated machines).
+    legacy = jwt.encode({'sub': '7', 'purpose': 'app_download', 'hwid': _HWID},
+                        signing_key, algorithm='RS256')
+    assert ds.validate_activation_token(legacy)['sub'] == '7'
+
+
+def test_live_download_token_rejected_as_activation(monkeypatch):
+    # A live (HS256, exp-bearing) download token shares the 'app_download' purpose
+    # but must NOT pass as a permanent activation credential — that was the hole.
+    monkeypatch.delenv('ACTIVATION_PRIVATE_KEY', raising=False)
+    ds._pubkey_cache.update(pem=None, derived=False)
+    monkeypatch.setenv('SECRET_KEY', 'unit-secret')
+    dl = ds.generate_download_token(7, 'a@b.c')
+    with pytest.raises(jwt.InvalidTokenError):
+        ds.validate_activation_token(dl)
+
+
+def test_expired_download_token_rejected_as_activation(monkeypatch):
+    # The old validator skipped exp, so an EXPIRED download token would have been
+    # accepted as a permanent license forever. The exp-presence check rejects it.
+    monkeypatch.delenv('ACTIVATION_PRIVATE_KEY', raising=False)
+    ds._pubkey_cache.update(pem=None, derived=False)
+    monkeypatch.setenv('SECRET_KEY', 'unit-secret')
+    expired = jwt.encode({'sub': '7', 'purpose': 'app_download', 'exp': 1},
+                         'unit-secret', algorithm='HS256')
+    with pytest.raises(jwt.InvalidTokenError):
+        ds.validate_activation_token(expired)
 
 
 def test_legacy_hs256_fallback_when_no_key(monkeypatch):
