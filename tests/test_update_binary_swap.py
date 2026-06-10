@@ -127,6 +127,48 @@ def test_apply_pending_swap_noop_when_not_frozen():
         assert u.apply_pending_swap_and_exit() is False
 
 
+def _patch_apply_pending(platform_key):
+    """Common patches so apply_pending_swap_and_exit reaches the swap branch."""
+    return [
+        patch.object(u, '_is_frozen', return_value=True),
+        patch.object(u, 'read_pending_swap', return_value=r'C:\staged\EasyOKAPI'),
+        patch.object(u, '_bundle_root', return_value=r'C:\App\EasyOKAPI'),
+        patch.object(u, '_current_port', return_value=5099),
+        patch.object(u, '_bundle_exe_name', return_value='EasyOKAPI.exe'),
+        patch.object(u, '_relaunch_extra_args', return_value=[]),
+        patch.object(u, '_platform_key', return_value=platform_key),
+        patch.object(u, '_shutdown_current_process'),
+        patch.object(u.os, '_exit'),  # apply_pending_swap_and_exit ends with os._exit(0)
+    ]
+
+
+def test_apply_pending_swap_windows_keeps_marker_for_coordinator():
+    # On Windows the swap is elevated + async, so the marker must NOT be cleared here
+    # — the coordinator clears it only after the swap actually succeeds. (The old bug
+    # cleared it unconditionally, orphaning the staged bundle when the swap failed.)
+    import contextlib
+    with contextlib.ExitStack() as es:
+        for p in _patch_apply_pending('win'):
+            es.enter_context(p)
+        spawn = es.enter_context(patch.object(u, '_spawn_windows_swapper'))
+        clear = es.enter_context(patch.object(u, '_clear_pending_swap'))
+        u.apply_pending_swap_and_exit()
+        spawn.assert_called_once()
+        clear.assert_not_called()
+
+
+def test_apply_pending_swap_posix_clears_marker():
+    import contextlib
+    with contextlib.ExitStack() as es:
+        for p in _patch_apply_pending('mac'):
+            es.enter_context(p)
+        spawn = es.enter_context(patch.object(u, '_spawn_posix_swapper'))
+        clear = es.enter_context(patch.object(u, '_clear_pending_swap'))
+        u.apply_pending_swap_and_exit()
+        spawn.assert_called_once()
+        clear.assert_called_once()
+
+
 # ── swap-relauncher script builders ──────────────────────────────────────────
 
 def test_posix_swap_script_has_move_and_relaunch():
@@ -136,12 +178,28 @@ def test_posix_swap_script_has_move_and_relaunch():
     assert '"$LIVE/$EXE" "$@" &' in s
 
 
-def test_windows_swap_script_has_swap_and_start():
+def test_windows_swap_script_is_elevated_helper_doing_only_the_move():
+    # The elevated helper does the privileged dir swap + ACL reset and writes a
+    # result marker — but must NOT relaunch the app (that happens non-elevated).
     s = u._build_windows_swap_script(
         r'C:\App\EasyOKAPI', r'C:\Data\_update_staging\EasyOKAPI',
-        5099, 'EasyOKAPI.exe', ['--port', '5099'])
+        'EasyOKAPI.exe', r'C:\Data\_update_swap_result.txt', r'C:\Data\log\update_swap.txt')
     assert 'Move-Item -Force $live $old' in s
     assert 'Move-Item -Force $new $live' in s
-    assert 'Start-Process' in s
+    assert 'icacls' in s                      # reset ACLs so the install stays admin-only
+    assert "Set-Content -Path $res -Value 'OK'" in s
+    assert 'Start-Process' not in s           # relaunch is the coordinator's job, not here
+
+
+def test_windows_coordinator_elevates_then_relaunches_nonelevated():
+    s = u._build_windows_coordinator_script(
+        r'C:\App\EasyOKAPI', 5099, 'EasyOKAPI.exe', ['--port', '5099'],
+        r'C:\Data\_update_swap.ps1', r'C:\Data\_update_swap_result.txt',
+        r'C:\Data\log\update_swap.txt')
     assert '$port = 5099' in s
+    assert '-Verb RunAs' in s                 # elevate the swap (UAC)
+    assert '-Wait' in s                       # wait for the elevated swap to finish
+    # relaunch is a plain (non-elevated) Start-Process of the app, carrying its args
+    assert 'Start-Process -FilePath $exePath' in s
     assert '--port' in s
+    assert 'Remove-Item -Force $pend' in s    # clear pending marker only on success

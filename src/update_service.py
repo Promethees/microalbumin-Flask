@@ -507,10 +507,14 @@ def apply_pending_swap_and_exit():
 
     if _platform_key() == 'win':
         _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra)
+        # Do NOT clear the pending marker here. The Windows swap runs elevated in a
+        # detached coordinator and may fail or be declined at the UAC prompt; the
+        # coordinator clears the marker only AFTER the swap actually succeeds, so a
+        # failed swap leaves the staged bundle in place for a retry instead of being
+        # silently orphaned (the old bug: marker cleared regardless → stuck on old).
     else:
         _spawn_posix_swapper(live_root, staged_root, port, exe_name, extra)
-
-    _clear_pending_swap()
+        _clear_pending_swap()
     _shutdown_current_process()
     os._exit(0)
 
@@ -558,67 +562,158 @@ def _build_posix_swap_script():
     )
 
 
+def _ps_sq(value):
+    """Escape a value for embedding inside a PowerShell single-quoted '...' literal."""
+    return str(value).replace("'", "''")
+
+
+# The install dir is normally under %PROGRAMFILES% (admin-only) while the app runs
+# NON-elevated, so the directory swap must be elevated. Two scripts cooperate:
+#
+#   • the ELEVATED helper (_WIN_SWAP_PS1) does ONLY the privileged work — move the
+#     live dir aside, move the staged bundle in, carry Uninstall.exe across, reset
+#     ACLs so a user-owned staging dir does not leave the install user-writable —
+#     then writes OK / FAIL: <msg> to a result file. Launched with -Verb RunAs (one
+#     UAC prompt).
+#   • the NON-elevated COORDINATOR (_WIN_COORD_PS1) waits for the app's port to
+#     free, runs the elevated helper and waits for it, then on success clears the
+#     pending-swap marker and relaunches the app — crucially as a child of THIS
+#     (non-elevated) process, so the relaunched app does NOT inherit admin (which
+#     would corrupt the user-owned data dir). On failure it leaves the staged
+#     bundle + marker for a retry and shows a dialog. Both log to update_swap.txt.
+#
+# Templates use @@PLACEHOLDER@@ markers (PowerShell's own {} braces make str.format
+# / f-strings impractical); values are substituted with _ps_sq-escaped literals.
+
+_WIN_SWAP_PS1 = r'''
+$live = '@@LIVE@@'; $new = '@@NEW@@'; $exe = '@@EXE@@'; $res = '@@RES@@'; $log = '@@LOG@@'
+function Log($m){ try { New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null; Add-Content -Path $log -Value ('[' + (Get-Date).ToString('s') + '] [elevated] ' + $m) } catch {} }
+$old = "$live.old"
+try {
+  Log 'swap start'
+  if (Test-Path $old) { Remove-Item -Recurse -Force $old }
+  Move-Item -Force $live $old
+  Move-Item -Force $new $live
+  $u = Join-Path $old 'Uninstall.exe'
+  if (Test-Path $u) { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force }
+  Remove-Item -Recurse -Force $old
+  try { icacls $live /reset /T /C /Q | Out-Null; Log 'acl reset ok' } catch { Log ('acl reset failed: ' + $_.Exception.Message) }
+  Set-Content -Path $res -Value 'OK' -Encoding ascii
+  Log 'swap ok'
+} catch {
+  if ((Test-Path $old) -and (-not (Test-Path $live))) { Move-Item -Force $old $live }
+  Set-Content -Path $res -Value ('FAIL: ' + $_.Exception.Message) -Encoding ascii
+  Log ('swap failed: ' + $_.Exception.Message)
+}
+'''
+
+_WIN_COORD_PS1 = r'''
+$live = '@@LIVE@@'; $port = @@PORT@@; $exe = '@@EXE@@'; $res = '@@RES@@'; $log = '@@LOG@@'; $pend = '@@PEND@@'
+function Log($m){ try { New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null; Add-Content -Path $log -Value ('[' + (Get-Date).ToString('s') + '] [coord] ' + $m) } catch {} }
+function Test-Listening($p){ try { $c = New-Object System.Net.Sockets.TcpClient; $c.Connect('127.0.0.1', $p); $c.Close(); return $true } catch { return $false } }
+Log 'waiting for app to exit'
+$deadline = (Get-Date).AddSeconds(25)
+while ((Get-Date) -lt $deadline) { if (-not (Test-Listening $port)) { break }; Start-Sleep -Milliseconds 300 }
+$ok = $false
+try {
+  Log 'launching elevated swap (UAC)'
+  Start-Process powershell -Verb RunAs -WindowStyle Hidden -Wait -ArgumentList '@@SWAPARGS@@'
+  if ((Test-Path $res) -and ((Get-Content $res -Raw).Trim() -eq 'OK')) { $ok = $true }
+} catch { Log ('elevation declined/failed: ' + $_.Exception.Message) }
+if ($ok) {
+  try { Remove-Item -Force $pend -ErrorAction SilentlyContinue } catch {}
+  $exePath = Join-Path $live $exe
+  Start-Process -FilePath $exePath @@ARGCLAUSE@@-WorkingDirectory $live -WindowStyle Hidden
+  Log 'swap ok; relaunched non-elevated'
+} else {
+  Log 'swap NOT applied; staged bundle + pending marker kept for retry'
+  try { Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('@@MSG@@', 'EasyOKAPI Update') | Out-Null } catch {}
+}
+'''
+
+
+def _swap_log_path():
+    return os.path.join(state.script_dir, 'log', 'update_swap.txt')
+
+
+def _build_windows_swap_script(live_root, staged_root, exe_name, result_txt, log_txt):
+    """The ELEVATED helper script (run via -Verb RunAs): the privileged swap only.
+
+    Moves the live install dir aside, moves the staged bundle in, carries
+    Uninstall.exe across, resets ACLs (so a user-owned staging dir does not leave
+    the install user-writable), and writes OK / FAIL: <msg> to result_txt. Does NOT
+    relaunch the app — that must happen non-elevated (see the coordinator).
+    """
+    return (_WIN_SWAP_PS1
+            .replace('@@LIVE@@', _ps_sq(live_root))
+            .replace('@@NEW@@', _ps_sq(staged_root))
+            .replace('@@EXE@@', _ps_sq(exe_name))
+            .replace('@@RES@@', _ps_sq(result_txt))
+            .replace('@@LOG@@', _ps_sq(log_txt)))
+
+
+def _build_windows_coordinator_script(live_root, port, exe_name, extra_args,
+                                      swap_ps1, result_txt, log_txt):
+    """The NON-elevated coordinator script: wait → elevate swap → relaunch / report.
+
+    Waits for the app's port to free, runs the elevated swap helper (one UAC
+    prompt) and waits for it, then on success clears the pending-swap marker and
+    relaunches the app as a child of THIS non-elevated process (so it does not
+    inherit admin). On failure it leaves the staged bundle + marker for a retry and
+    shows a dialog.
+    """
+    # Elevated launch args as ONE string so the -File path survives spaces (e.g. a
+    # Documents path under "C:\Users\First Last"); Start-Process -ArgumentList does
+    # not quote array elements, so we quote the path ourselves.
+    swap_args = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{}"'.format(swap_ps1)
+    arg_clause = ''
+    if extra_args:
+        arg_clause = '-ArgumentList @(' + ', '.join(_ps_arg(a) for a in extra_args) + ') '
+    msg = ('EasyOKAPI could not finish updating — it needs administrator permission '
+           'to replace its program files. Please relaunch EasyOKAPI and run Update '
+           'again, approving the permission prompt.')
+    return (_WIN_COORD_PS1
+            .replace('@@LIVE@@', _ps_sq(live_root))
+            .replace('@@PORT@@', str(int(port)))
+            .replace('@@EXE@@', _ps_sq(exe_name))
+            .replace('@@RES@@', _ps_sq(result_txt))
+            .replace('@@LOG@@', _ps_sq(log_txt))
+            .replace('@@PEND@@', _ps_sq(_pending_swap_path()))
+            .replace('@@SWAPARGS@@', _ps_sq(swap_args))
+            .replace('@@ARGCLAUSE@@', arg_clause)
+            .replace('@@MSG@@', _ps_sq(msg)))
+
+
 def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
     import subprocess
+
+    swap_ps1 = os.path.join(state.script_dir, '_update_swap.ps1')
+    coord_ps1 = os.path.join(state.script_dir, '_update_coordinator.ps1')
+    result_txt = os.path.join(state.script_dir, '_update_swap_result.txt')
+    log_txt = _swap_log_path()
+
+    # Clear any stale result so the coordinator never reads a previous run's outcome.
+    try:
+        if os.path.exists(result_txt):
+            os.remove(result_txt)
+    except OSError:
+        pass
+
+    with open(swap_ps1, 'w', encoding='utf-8') as f:
+        f.write(_build_windows_swap_script(live_root, staged_root, exe_name, result_txt, log_txt))
+    with open(coord_ps1, 'w', encoding='utf-8') as f:
+        f.write(_build_windows_coordinator_script(
+            live_root, port, exe_name, extra_args, swap_ps1, result_txt, log_txt))
 
     DETACHED_PROCESS = 0x00000008
     CREATE_NEW_PROCESS_GROUP = 0x00000200
     CREATE_NO_WINDOW = 0x08000000
-    script = _build_windows_swap_script(live_root, staged_root, port, exe_name, extra_args)
+    # List form → Python quotes the (possibly space-containing) -File path for us.
     subprocess.Popen(
         ['powershell', '-NoProfile', '-NonInteractive',
-         '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-Command', script],
+         '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', coord_ps1],
         creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
         close_fds=True,
-    )
-
-
-def _build_windows_swap_script(live_root, staged_root, port, exe_name, extra_args):
-    """PowerShell: wait for the port to free, swap the install dir, relaunch.
-
-    Mirrors _build_windows_relaunch_script's TcpClient port probe (works on every
-    PowerShell version, immune to SO_REUSEADDR), then Move-Item swaps the dirs and
-    Start-Process launches the new exe hidden.
-    """
-    live_q = _ps_quote(live_root)
-    new_q = _ps_quote(staged_root)
-    exe_q = _ps_quote(exe_name)
-    arg_clause = ''
-    if extra_args:
-        arg_clause = '-ArgumentList @(' + ', '.join(_ps_arg(a) for a in extra_args) + ') '
-    msg = ('EasyOKAPI could not finish updating. Please relaunch it from the Start '
-           'menu or desktop shortcut.')
-    return (
-        f"$live = {live_q}; $new = {new_q}; $port = {int(port)}; $exe = {exe_q}; "
-        "function Test-Listening($p) { "
-        "  try { $c = New-Object System.Net.Sockets.TcpClient; "
-        "    $c.Connect('127.0.0.1', $p); $c.Close(); return $true } "
-        "  catch { return $false } "
-        "}; "
-        "$deadline = (Get-Date).AddSeconds(25); "
-        "while ((Get-Date) -lt $deadline) { "
-        "  if (-not (Test-Listening $port)) { break }; Start-Sleep -Milliseconds 300 "
-        "} "
-        "$old = \"$live.old\"; "
-        "try { "
-        "  if (Test-Path $old) { Remove-Item -Recurse -Force $old }; "
-        "  Move-Item -Force $live $old; "
-        "  Move-Item -Force $new $live; "
-        # The new onedir bundle has no Uninstall.exe (that's installer-generated and
-        # lives beside the exe in a flat Windows install). Carry it across the swap
-        # so Add/Remove Programs keeps working; it reads VERSION.txt at runtime, so
-        # the preserved binary still reports the freshly-swapped version.
-        "  $u = Join-Path $old 'Uninstall.exe'; "
-        "  if (Test-Path $u) { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force }; "
-        "  Remove-Item -Recurse -Force $old; "
-        "  $exePath = Join-Path $live $exe; "
-        f"  Start-Process -FilePath $exePath {arg_clause}-WorkingDirectory $live -WindowStyle Hidden "
-        "} catch { "
-        "  if ((Test-Path $old) -and (-not (Test-Path $live))) { Move-Item -Force $old $live }; "
-        "  try { Add-Type -AssemblyName PresentationFramework; "
-        f"    [System.Windows.MessageBox]::Show({_ps_quote(msg)}, 'EasyOKAPI Update') | Out-Null "
-        "  } catch {} "
-        "}"
     )
 
 
