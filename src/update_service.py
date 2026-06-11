@@ -722,7 +722,13 @@ def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
         f.write(_build_windows_coordinator_script(
             live_root, port, exe_name, extra_args, swap_ps1, result_txt, log_txt))
 
-    DETACHED_PROCESS = 0x00000008
+    # NOTE: do NOT use DETACHED_PROCESS here. powershell.exe is a console app;
+    # DETACHED_PROCESS gives the child no console at all, so the PowerShell host
+    # fails to initialise and the process exits immediately WITHOUT running the
+    # script (no swap, no update_swap.txt — the silent "reopens on old version"
+    # failure). CREATE_NO_WINDOW already runs it hidden with its own console, and
+    # the child still outlives this (exiting) parent. CREATE_NEW_PROCESS_GROUP
+    # shields it from any Ctrl+C/Break aimed at our group.
     CREATE_NEW_PROCESS_GROUP = 0x00000200
     CREATE_NO_WINDOW = 0x08000000
     # List form → Python quotes the (possibly space-containing) -File path for us.
@@ -730,7 +736,7 @@ def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
     subprocess.Popen(
         [_powershell_exe(), '-NoProfile', '-NonInteractive',
          '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', coord_ps1],
-        creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+        creationflags=CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
         close_fds=True,
     )
 
@@ -856,7 +862,9 @@ def _restart_windows():
     cwd = os.getcwd()
     cmd = [sys.executable] + list(sys.argv)
 
-    DETACHED_PROCESS = 0x00000008
+    # Not DETACHED_PROCESS: powershell.exe needs a console or it exits before
+    # running. CREATE_NO_WINDOW runs it hidden (with a console) and it outlives
+    # this exiting parent. See _spawn_windows_swapper for the full rationale.
     CREATE_NEW_PROCESS_GROUP = 0x00000200
     CREATE_NO_WINDOW = 0x08000000
     try:
@@ -864,7 +872,7 @@ def _restart_windows():
             [_powershell_exe(), '-NoProfile', '-NonInteractive',
              '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
              '-Command', _build_windows_relaunch_script(cmd, cwd, port)],
-            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+            creationflags=CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
             close_fds=True,
         )
     except Exception as e:

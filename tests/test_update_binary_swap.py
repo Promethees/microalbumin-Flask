@@ -253,3 +253,33 @@ def test_spawn_windows_swapper_uses_resolved_powershell(tmp_path):
     # The coordinator + swap scripts were written to the data dir before the spawn.
     assert os.path.isfile(os.path.join(str(tmp_path), '_update_coordinator.ps1'))
     assert os.path.isfile(os.path.join(str(tmp_path), '_update_swap.ps1'))
+    # Flags must NOT include DETACHED_PROCESS: powershell.exe is a console app and
+    # DETACHED_PROCESS gives it no console, so it exits before running the script
+    # (the silent "no swap, no log, reopens on old version" failure). It must run
+    # hidden via CREATE_NO_WINDOW, which still gives the child a console.
+    DETACHED_PROCESS = 0x00000008
+    CREATE_NO_WINDOW = 0x08000000
+    flags = popen.call_args[1]['creationflags']
+    assert not (flags & DETACHED_PROCESS), 'DETACHED_PROCESS stops the powershell child from running'
+    assert flags & CREATE_NO_WINDOW
+
+
+def test_restart_windows_spawn_is_not_detached(monkeypatch):
+    # Same console-app constraint for the source-build relauncher: no DETACHED_PROCESS.
+    import subprocess
+    with patch.object(u, '_powershell_exe', return_value=r'C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe'), \
+         patch.object(u, '_current_port', return_value=5099), \
+         patch.object(u, '_build_windows_relaunch_script', return_value='echo hi'), \
+         patch.object(u, '_shutdown_current_process'), \
+         patch.object(u.os, '_exit', side_effect=SystemExit), \
+         patch.object(subprocess, 'Popen') as popen:
+        try:
+            u._restart_windows()
+        except SystemExit:
+            pass
+    popen.assert_called_once()
+    DETACHED_PROCESS = 0x00000008
+    CREATE_NO_WINDOW = 0x08000000
+    flags = popen.call_args[1]['creationflags']
+    assert not (flags & DETACHED_PROCESS)
+    assert flags & CREATE_NO_WINDOW
