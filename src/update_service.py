@@ -562,6 +562,23 @@ def _build_posix_swap_script():
     )
 
 
+def _powershell_exe():
+    """Absolute path to powershell.exe (frozen-safe).
+
+    A bare 'powershell' relies on PATH, but a PyInstaller-frozen process can run
+    with a stripped/sanitised PATH that does not include System32 — making
+    ``subprocess.Popen(['powershell', ...])`` raise FileNotFoundError. The swap
+    coordinator is spawned exactly this way, so a failed spawn silently aborted
+    the binary swap (the update reached 100% then reopened on the old version).
+    Resolve the full path from %SystemRoot% so the spawn does not depend on PATH;
+    fall back to bare 'powershell' only if the expected location is missing.
+    """
+    system_root = os.environ.get('SystemRoot') or r'C:\Windows'
+    candidate = os.path.join(system_root, 'System32', 'WindowsPowerShell',
+                             'v1.0', 'powershell.exe')
+    return candidate if os.path.isfile(candidate) else 'powershell'
+
+
 def _ps_sq(value):
     """Escape a value for embedding inside a PowerShell single-quoted '...' literal."""
     return str(value).replace("'", "''")
@@ -709,8 +726,9 @@ def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
     CREATE_NEW_PROCESS_GROUP = 0x00000200
     CREATE_NO_WINDOW = 0x08000000
     # List form → Python quotes the (possibly space-containing) -File path for us.
+    # Absolute powershell.exe path so a stripped frozen PATH can't fail the spawn.
     subprocess.Popen(
-        ['powershell', '-NoProfile', '-NonInteractive',
+        [_powershell_exe(), '-NoProfile', '-NonInteractive',
          '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', coord_ps1],
         creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
         close_fds=True,
@@ -843,7 +861,7 @@ def _restart_windows():
     CREATE_NO_WINDOW = 0x08000000
     try:
         subprocess.Popen(
-            ['powershell', '-NoProfile', '-NonInteractive',
+            [_powershell_exe(), '-NoProfile', '-NonInteractive',
              '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
              '-Command', _build_windows_relaunch_script(cmd, cwd, port)],
             creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,

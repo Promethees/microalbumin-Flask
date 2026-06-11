@@ -203,3 +203,53 @@ def test_windows_coordinator_elevates_then_relaunches_nonelevated():
     assert 'Start-Process -FilePath $exePath' in s
     assert '--port' in s
     assert 'Remove-Item -Force $pend' in s    # clear pending marker only on success
+
+
+# ── powershell resolution (frozen-safe spawn) ────────────────────────────────
+# A frozen PyInstaller process can run with a stripped PATH, so a bare
+# 'powershell' makes Popen raise FileNotFoundError — which silently aborted the
+# swap-coordinator spawn. _powershell_exe() resolves the absolute System32 path.
+
+def test_powershell_exe_resolves_absolute_path_under_system_root(tmp_path):
+    ps = tmp_path / 'System32' / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
+    ps.parent.mkdir(parents=True)
+    ps.write_bytes(b'')
+    with patch.dict(u.os.environ, {'SystemRoot': str(tmp_path)}):
+        resolved = u._powershell_exe()
+    assert resolved == str(ps)
+    assert os.path.isabs(resolved)
+
+
+def test_powershell_exe_falls_back_to_bare_name_when_missing(tmp_path):
+    # %SystemRoot% exists but holds no powershell.exe — fall back to bare 'powershell'
+    # rather than returning a path that does not exist.
+    with patch.dict(u.os.environ, {'SystemRoot': str(tmp_path)}):
+        assert u._powershell_exe() == 'powershell'
+
+
+def test_powershell_exe_defaults_systemroot_when_env_absent():
+    # %SystemRoot% can be absent in a sanitised frozen environment; the helper must
+    # still produce a candidate (default C:\Windows) instead of raising.
+    env = {k: v for k, v in u.os.environ.items() if k != 'SystemRoot'}
+    with patch.dict(u.os.environ, env, clear=True):
+        # No assertion on existence (depends on host); it must simply not raise and
+        # return a non-empty string.
+        assert u._powershell_exe()
+
+
+def test_spawn_windows_swapper_uses_resolved_powershell(tmp_path):
+    # The coordinator must be spawned via the resolved absolute powershell path,
+    # not bare 'powershell' (the root cause of the silent swap failure).
+    with patch.object(u.state, 'script_dir', str(tmp_path)), \
+         patch.object(u, '_powershell_exe', return_value=r'C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe'), \
+         patch('subprocess.Popen') as popen:
+        u._spawn_windows_swapper(
+            r'C:\App\EasyOKAPI', r'C:\Data\_update_staging\EasyOKAPI',
+            5099, 'EasyOKAPI.exe', [])
+    popen.assert_called_once()
+    argv = popen.call_args[0][0]
+    assert argv[0] == r'C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe'
+    assert argv[-1].endswith('_update_coordinator.ps1')
+    # The coordinator + swap scripts were written to the data dir before the spawn.
+    assert os.path.isfile(os.path.join(str(tmp_path), '_update_coordinator.ps1'))
+    assert os.path.isfile(os.path.join(str(tmp_path), '_update_swap.ps1'))

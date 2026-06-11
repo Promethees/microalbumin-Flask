@@ -93,13 +93,31 @@ def _delayed_shutdown(delay_secs=5):
     try:
         if update_service.apply_pending_swap_and_exit():
             return  # unreachable on success (process already replaced)
-    except Exception:
-        pass
+    except Exception as e:
+        # A failure here (e.g. the swap-coordinator spawn raising because
+        # powershell is unresolvable on a frozen PATH) used to vanish silently:
+        # the app fell through to a normal shutdown and reopened on the old
+        # version with no trace. Record it to the swap log so a stuck update is
+        # diagnosable instead of invisible.
+        _log_swap_failure(e)
     try:
         update_service._shutdown_current_process()
     except Exception:
         pass
     os.kill(os.getpid(), signal.SIGTERM)
+
+
+def _log_swap_failure(exc):
+    """Best-effort append of a pending-swap handoff failure to update_swap.txt."""
+    try:
+        log_path = update_service._swap_log_path()
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        stamp = time.strftime('%Y-%m-%dT%H:%M:%S')
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f'[{stamp}] [finalize] apply_pending_swap_and_exit failed: '
+                    f'{type(exc).__name__}: {exc}\n')
+    except Exception:
+        pass
 
 
 @update_bp.route('/finalize', methods=['POST'])
