@@ -184,8 +184,13 @@ def test_windows_swap_script_is_elevated_helper_doing_only_the_move():
     s = u._build_windows_swap_script(
         r'C:\App\EasyOKAPI', r'C:\Data\_update_staging\EasyOKAPI',
         'EasyOKAPI.exe', r'C:\Data\_update_swap_result.txt', r'C:\Data\log\update_swap.txt')
-    assert 'Move-Item -Force $live $old' in s
-    assert 'Move-Item -Force $new $live' in s
+    # MUST stop on the first error: otherwise a failed (non-terminating) Move-Item
+    # would fall through and nest the new build inside the old install.
+    assert "$ErrorActionPreference = 'Stop'" in s
+    assert 'Move-Item -Force -LiteralPath $live $old' in s
+    assert 'Move-Item -Force -LiteralPath $new $live' in s
+    # Guard so the new build is never moved INTO a surviving $live.
+    assert 'if (Test-Path $live) { throw' in s
     assert 'icacls' in s                      # reset ACLs so the install stays admin-only
     assert "Set-Content -Path $res -Value 'OK'" in s
     assert 'Start-Process' not in s           # relaunch is the coordinator's job, not here
@@ -262,6 +267,11 @@ def test_spawn_windows_swapper_uses_resolved_powershell(tmp_path):
     flags = popen.call_args[1]['creationflags']
     assert not (flags & DETACHED_PROCESS), 'DETACHED_PROCESS stops the powershell child from running'
     assert flags & CREATE_NO_WINDOW
+    # cwd must be the data dir, NOT the install dir: the coordinator stays alive
+    # during the elevated move, and Windows can't rename a dir that is a running
+    # process's cwd — holding the install dir would make the new build nest inside
+    # the old one.
+    assert popen.call_args[1].get('cwd') == str(tmp_path)
 
 
 def test_restart_windows_spawn_is_not_detached(monkeypatch):

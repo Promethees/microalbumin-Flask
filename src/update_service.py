@@ -602,25 +602,44 @@ def _ps_sq(value):
 # Templates use @@PLACEHOLDER@@ markers (PowerShell's own {} braces make str.format
 # / f-strings impractical); values are substituted with _ps_sq-escaped literals.
 
+# $ErrorActionPreference='Stop' is MANDATORY: without it a failed Move-Item is a
+# NON-terminating error that try/catch does NOT catch, so the script would blunder
+# past a failed "move live aside" straight into "move new in" — and since $live
+# still exists, Move-Item nests the new build INSIDE it (EasyOKAPI\EasyOKAPI) and
+# then writes OK. With 'Stop', a failed move is terminating → caught → rolled back
+# → reported FAIL → marker kept for retry. Only the two dir moves are fatal; the
+# Uninstall copy / .old cleanup / ACL reset are best-effort (wrapped) so they can't
+# turn an applied swap into a false failure (or a rollback over the new install).
 _WIN_SWAP_PS1 = r'''
+$ErrorActionPreference = 'Stop'
 $live = '@@LIVE@@'; $new = '@@NEW@@'; $exe = '@@EXE@@'; $res = '@@RES@@'; $log = '@@LOG@@'
 function Log($m){ try { New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null; Add-Content -Path $log -Value ('[' + (Get-Date).ToString('s') + '] [elevated] ' + $m) } catch {} }
 $old = "$live.old"
 try {
   Log 'swap start'
   if (Test-Path $old) { Remove-Item -Recurse -Force $old }
-  Move-Item -Force $live $old
-  Move-Item -Force $new $live
+  # The live install can stay briefly locked after the app exits (a lingering file
+  # handle, AV scan, etc.); retry the move-aside instead of failing on the first try.
+  $moved = $false
+  for ($i = 0; $i -lt 20; $i++) {
+    try { Move-Item -Force -LiteralPath $live $old; $moved = $true; break }
+    catch { Start-Sleep -Milliseconds 500 }
+  }
+  if (-not $moved) { throw ('live install still locked, could not move aside: ' + $live) }
+  # Guard against ever nesting the new build inside a surviving $live.
+  if (Test-Path $live) { throw ('live install dir unexpectedly still present: ' + $live) }
+  Move-Item -Force -LiteralPath $new $live
   $u = Join-Path $old 'Uninstall.exe'
-  if (Test-Path $u) { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force }
-  Remove-Item -Recurse -Force $old
+  if (Test-Path $u) { try { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force } catch { Log ('uninstall copy failed: ' + $_.Exception.Message) } }
+  try { Remove-Item -Recurse -Force $old } catch { Log ('old dir left for later cleanup: ' + $_.Exception.Message) }
   try { icacls $live /reset /T /C /Q | Out-Null; Log 'acl reset ok' } catch { Log ('acl reset failed: ' + $_.Exception.Message) }
   Set-Content -Path $res -Value 'OK' -Encoding ascii
   Log 'swap ok'
 } catch {
-  if ((Test-Path $old) -and (-not (Test-Path $live))) { Move-Item -Force $old $live }
-  Set-Content -Path $res -Value ('FAIL: ' + $_.Exception.Message) -Encoding ascii
-  Log ('swap failed: ' + $_.Exception.Message)
+  $msg = $_.Exception.Message
+  try { if ((Test-Path $old) -and (-not (Test-Path $live))) { Move-Item -Force $old $live } } catch {}
+  Set-Content -Path $res -Value ('FAIL: ' + $msg) -Encoding ascii
+  Log ('swap failed: ' + $msg)
 }
 '''
 
@@ -731,13 +750,19 @@ def _spawn_windows_swapper(live_root, staged_root, port, exe_name, extra_args):
     # shields it from any Ctrl+C/Break aimed at our group.
     CREATE_NEW_PROCESS_GROUP = 0x00000200
     CREATE_NO_WINDOW = 0x08000000
-    # List form → Python quotes the (possibly space-containing) -File path for us.
-    # Absolute powershell.exe path so a stripped frozen PATH can't fail the spawn.
+    # cwd MUST be outside the install dir. The coordinator inherits the app's cwd,
+    # which is the install dir ($live, set by the launcher's -WorkingDirectory). It
+    # stays alive (waiting on the elevated swap) during the move, and Windows cannot
+    # rename a directory that is a running process's current directory — so the
+    # elevated "move $live aside" would fail and the new build would nest inside the
+    # old one. Run the coordinator from the data dir instead, which is never inside
+    # the install dir.
     subprocess.Popen(
         [_powershell_exe(), '-NoProfile', '-NonInteractive',
          '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', coord_ps1],
         creationflags=CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
         close_fds=True,
+        cwd=state.script_dir,
     )
 
 
