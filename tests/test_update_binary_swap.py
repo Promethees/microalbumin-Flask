@@ -293,3 +293,31 @@ def test_restart_windows_spawn_is_not_detached(monkeypatch):
     flags = popen.call_args[1]['creationflags']
     assert not (flags & DETACHED_PROCESS)
     assert flags & CREATE_NO_WINDOW
+
+
+# ── version check: semver comparison ─────────────────────────────────────────
+# An update is offered only for a strictly greater semver (an equal version is
+# already installed). A non-semver server string ('latest', etc.) always offers.
+
+def _fake_version_resp(version, notes=''):
+    resp = MagicMock()
+    resp.raise_for_status.return_value = None
+    resp.json.return_value = {'version': version, 'release_notes': notes}
+    return resp
+
+
+@pytest.mark.parametrize('latest, current, expected', [
+    ('1.2.0', '1.1.11', True),     # newer → update available
+    ('1.1.11', '1.1.11', False),   # equal → no re-download (strict >)
+    ('1.1.10', '1.1.11', False),   # older → no update
+    ('latest', '1.1.11', True),    # non-semver → always available
+])
+def test_check_for_update_semver_comparison(latest, current, expected):
+    with patch.object(u.activation_mod, 'get_license_token', return_value='tok'), \
+         patch.object(u.activation_mod, 'get_hwid', return_value='hw'), \
+         patch.object(u.state, 'APP_VERSION', current), \
+         patch.object(u.requests, 'get', return_value=_fake_version_resp(latest)):
+        result = u.check_for_update()
+    assert result['update_available'] is expected
+    assert result['current'] == current
+    assert result['latest'] == latest
