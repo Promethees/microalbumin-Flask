@@ -368,3 +368,16 @@ def test_tar_shared_prefix_detects_wrapper_and_rejects_mixed():
     assert u._tar_shared_prefix([M('repo-abc/a.py'), M('repo-abc/b/c.py')]) == 'repo-abc'
     assert u._tar_shared_prefix([M('repo-abc/a.py'), M('other/b.py')]) is None
     assert u._tar_shared_prefix([]) is None
+
+
+# ── version parsing ──────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize('value, expected', [
+    ('1.2.3', (1, 2, 3)),
+    ('1.2', (1, 2)),       # partial semver still parses
+    ('latest', None),      # non-numeric → not comparable
+    ('', None),            # empty → not comparable
+    ('1.2.x', None),       # one bad segment fails the whole parse
+])
+def test_version_tuple_parsing(value, expected):
+    assert u._version_tuple(value) == expected
