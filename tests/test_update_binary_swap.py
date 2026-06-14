@@ -381,3 +381,43 @@ def test_tar_shared_prefix_detects_wrapper_and_rejects_mixed():
 ])
 def test_version_tuple_parsing(value, expected):
     assert u._version_tuple(value) == expected
+
+
+# ── pre-update data backup ───────────────────────────────────────────────────
+
+def test_backup_user_data_copies_dirs_when_frozen(tmp_path):
+    root = tmp_path / 'install'
+    (root / 'data').mkdir(parents=True)
+    (root / 'data' / 'a.csv').write_text('A')
+    (root / 'report').mkdir()
+    (root / 'report' / 'r.html').write_text('R')
+    with patch.object(u.state, 'script_dir', str(root)), \
+         patch.object(u, '_is_frozen', return_value=True):
+        u._backup_user_data()
+    backup = tmp_path / 'install_data'
+    assert (backup / 'data' / 'a.csv').read_text() == 'A'
+    assert (backup / 'report' / 'r.html').read_text() == 'R'
+
+
+def test_backup_user_data_noop_when_not_frozen(tmp_path):
+    root = tmp_path / 'install'
+    (root / 'data').mkdir(parents=True)
+    (root / 'data' / 'a.csv').write_text('A')
+    with patch.object(u.state, 'script_dir', str(root)), \
+         patch.object(u, '_is_frozen', return_value=False):
+        u._backup_user_data()
+    assert not (tmp_path / 'install_data').exists()
+
+
+def test_backup_user_data_replaces_stale_backup(tmp_path):
+    root = tmp_path / 'install'
+    (root / 'data').mkdir(parents=True)
+    (root / 'data' / 'new.csv').write_text('NEW')
+    backup = tmp_path / 'install_data'
+    (backup / 'data').mkdir(parents=True)
+    (backup / 'data' / 'stale.csv').write_text('STALE')  # must be cleared
+    with patch.object(u.state, 'script_dir', str(root)), \
+         patch.object(u, '_is_frozen', return_value=True):
+        u._backup_user_data()
+    assert (backup / 'data' / 'new.csv').read_text() == 'NEW'
+    assert not (backup / 'data' / 'stale.csv').exists()
