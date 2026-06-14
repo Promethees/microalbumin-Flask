@@ -471,3 +471,20 @@ def test_ps_arg_keeps_spaced_path_as_one_quoted_arg():
 
 def test_ps_arg_escapes_embedded_double_quote():
     assert u._ps_arg('a"b') == "'" + '"a\\"b"' + "'"
+
+
+# ── bundle extraction: path-traversal guard ──────────────────────────────────
+
+def test_extract_bundle_rejects_path_traversal(tmp_path):
+    archive = tmp_path / 'evil.tar.gz'
+    with tarfile.open(str(archive), 'w:gz') as tf:
+        data = b'x'
+        info = tarfile.TarInfo('../escape.txt')  # would land outside staging
+        info.size = len(data)
+        tf.addfile(info, io.BytesIO(data))
+    with patch.object(u.state, 'script_dir', str(tmp_path)), \
+         patch.object(u.sys, 'platform', 'darwin'):
+        with pytest.raises(RuntimeError, match='Unsafe path'):
+            u._extract_bundle(str(archive))
+    # Nothing escaped above the staging dir.
+    assert not (tmp_path / 'escape.txt').exists()

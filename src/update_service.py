@@ -422,6 +422,20 @@ def _download_and_stage_bundle(token, progress_cb=None):
     return [staged_root]
 
 
+def _reject_unsafe_members(names, dest):
+    """Raise if any archive member would resolve outside dest (path traversal).
+
+    Python 3.8's extractall() has no traversal filter, so a crafted archive with
+    '../' or absolute members could write outside the staging dir. We validate
+    every member name against the staging root before extracting either format.
+    """
+    dest = os.path.abspath(dest)
+    for name in names:
+        target = os.path.abspath(os.path.join(dest, name))
+        if target != dest and not target.startswith(dest + os.sep):
+            raise RuntimeError(f'Unsafe path in update archive: {name}')
+
+
 def _extract_bundle(archive_path):
     """Extract the bundle archive and return the staged onedir root.
 
@@ -435,9 +449,11 @@ def _extract_bundle(archive_path):
 
     if archive_path.endswith('.zip'):
         with zipfile.ZipFile(archive_path) as zf:
+            _reject_unsafe_members(zf.namelist(), staging)
             zf.extractall(staging)
     else:
         with tarfile.open(archive_path, 'r:gz') as tf:
+            _reject_unsafe_members(tf.getnames(), staging)
             tf.extractall(staging)
 
     # Prefer the conventional EasyOKAPI/ folder; otherwise find the dir holding
