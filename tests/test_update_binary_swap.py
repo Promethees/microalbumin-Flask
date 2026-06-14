@@ -421,3 +421,31 @@ def test_backup_user_data_replaces_stale_backup(tmp_path):
         u._backup_user_data()
     assert (backup / 'data' / 'new.csv').read_text() == 'NEW'
     assert not (backup / 'data' / 'stale.csv').exists()
+
+
+# ── VERSION.txt sync ─────────────────────────────────────────────────────────
+
+def _write_state(tmp_path, body):
+    (tmp_path / 'src').mkdir(parents=True, exist_ok=True)
+    (tmp_path / 'src' / 'state.py').write_text(body, encoding='utf-8')
+
+
+def test_sync_version_file_writes_v_prefixed(tmp_path):
+    _write_state(tmp_path, 'APP_VERSION = "1.2.3"\n')
+    with patch.object(u.state, 'script_dir', str(tmp_path)):
+        u._sync_version_file()
+    assert (tmp_path / 'VERSION.txt').read_text() == 'v1.2.3\n'
+
+
+def test_sync_version_file_strips_existing_v_prefix(tmp_path):
+    _write_state(tmp_path, "APP_VERSION = 'v2.0.0'\n")
+    with patch.object(u.state, 'script_dir', str(tmp_path)):
+        u._sync_version_file()
+    assert (tmp_path / 'VERSION.txt').read_text() == 'v2.0.0\n'
+
+
+def test_sync_version_file_silent_when_no_match(tmp_path):
+    _write_state(tmp_path, 'NOPE = 1\n')
+    with patch.object(u.state, 'script_dir', str(tmp_path)):
+        u._sync_version_file()  # must not raise
+    assert not (tmp_path / 'VERSION.txt').exists()
