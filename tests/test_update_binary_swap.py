@@ -321,3 +321,50 @@ def test_check_for_update_semver_comparison(latest, current, expected):
     assert result['update_available'] is expected
     assert result['current'] == current
     assert result['latest'] == latest
+
+
+# ── source-mode apply: _PRESERVE data protection + GitHub prefix strip ────────
+
+def _make_source_tar(path, names):
+    """Build a .tar.gz whose members are the given relative file paths."""
+    with tarfile.open(path, 'w:gz') as tf:
+        for name in names:
+            data = name.encode()
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+
+
+def test_apply_tarball_preserves_user_data_and_strips_prefix(tmp_path):
+    archive = tmp_path / 'src.tar.gz'
+    _make_source_tar(str(archive), [
+        'repo-abc123/main.py',
+        'repo-abc123/src/state.py',
+        'repo-abc123/data/keep.csv',      # _PRESERVE dir — must not be overwritten
+        'repo-abc123/activation.json',    # _PRESERVE file — license must survive
+    ])
+    # Pre-existing user data + license that an update must leave untouched.
+    (tmp_path / 'data').mkdir()
+    (tmp_path / 'data' / 'keep.csv').write_text('ORIGINAL')
+    (tmp_path / 'activation.json').write_text('LICENSE')
+
+    with patch.object(u.state, 'script_dir', str(tmp_path)):
+        updated = u._apply_tarball(str(archive))
+
+    # Source files applied, with the GitHub 'owner-repo-hash/' wrapper stripped.
+    assert os.path.isfile(os.path.join(str(tmp_path), 'main.py'))
+    assert os.path.isfile(os.path.join(str(tmp_path), 'src', 'state.py'))
+    assert 'main.py' in updated
+    assert 'src/state.py' in updated
+    # Preserved entries skipped — user data + license bytes unchanged.
+    assert (tmp_path / 'data' / 'keep.csv').read_text() == 'ORIGINAL'
+    assert (tmp_path / 'activation.json').read_text() == 'LICENSE'
+    assert 'data/keep.csv' not in updated
+    assert 'activation.json' not in updated
+
+
+def test_tar_shared_prefix_detects_wrapper_and_rejects_mixed():
+    M = lambda name: type('M', (), {'name': name})()
+    assert u._tar_shared_prefix([M('repo-abc/a.py'), M('repo-abc/b/c.py')]) == 'repo-abc'
+    assert u._tar_shared_prefix([M('repo-abc/a.py'), M('other/b.py')]) is None
+    assert u._tar_shared_prefix([]) is None
