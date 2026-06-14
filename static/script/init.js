@@ -18,6 +18,8 @@ document.getElementById("year").textContent = new Date().getFullYear();
             const btn = document.getElementById(`download-${platform}-btn`);
             const small = document.getElementById(`download-${platform}-small`);
             if (!btn) return;
+            // Manually flagged "Work in progress" buttons are authoritative — leave them as-is.
+            if (btn.classList.contains('download-btn--unavailable')) return;
             if (!data.available?.[platform]) {
                 btn.classList.add('download-btn--unavailable');
                 if (small) small.textContent = 'Not yet available';

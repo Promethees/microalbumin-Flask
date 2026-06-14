@@ -251,7 +251,9 @@
                     </div>
                     {% endif %}
                     <p id="download-version" class="download-version"></p>
+                    {# download_available master switch comes from main.py (DOWNLOAD_AVAILABLE) #}
                     <div class="download-btn-group">
+                        {% if download_available.mac %}
                         <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
                             <span class="download-btn-icon">🍎</span>
                             <span class="download-btn-text">
@@ -259,6 +261,20 @@
                                 <small id="download-mac-small">.dmg installer</small>
                             </span>
                         </a>
+                        {% else %}
+                        <div class="download-btn-wip">
+                            <span class="download-wip-label">Work in progress</span>
+                            <div class="download-btn mac-btn download-btn--unavailable" id="download-mac-btn"
+                                aria-disabled="true">
+                                <span class="download-btn-icon">🍎</span>
+                                <span class="download-btn-text">
+                                    <strong>macOS</strong>
+                                    <small id="download-mac-small">.dmg installer</small>
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if download_available.win %}
                         <a href="/download/win" class="download-btn win-btn" id="download-win-btn">
                             <span class="download-btn-icon">🪟</span>
                             <span class="download-btn-text">
@@ -266,6 +282,20 @@
                                 <small id="download-win-small">.exe installer</small>
                             </span>
                         </a>
+                        {% else %}
+                        <div class="download-btn-wip">
+                            <span class="download-wip-label">Work in progress</span>
+                            <div class="download-btn win-btn download-btn--unavailable" id="download-win-btn"
+                                aria-disabled="true">
+                                <span class="download-btn-icon">🪟</span>
+                                <span class="download-btn-text">
+                                    <strong>Windows</strong>
+                                    <small id="download-win-small">.exe installer</small>
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if download_available.linux %}
                         <a href="/download/linux" class="download-btn linux-btn" id="download-linux-btn">
                             <span class="download-btn-icon">🐧</span>
                             <span class="download-btn-text">
@@ -273,6 +303,19 @@
                                 <small id="download-linux-small">.tar.gz installer</small>
                             </span>
                         </a>
+                        {% else %}
+                        <div class="download-btn-wip">
+                            <span class="download-wip-label">Work in progress</span>
+                            <div class="download-btn linux-btn download-btn--unavailable" id="download-linux-btn"
+                                aria-disabled="true">
+                                <span class="download-btn-icon">🐧</span>
+                                <span class="download-btn-text">
+                                    <strong>Linux</strong>
+                                    <small id="download-linux-small">.tar.gz installer</small>
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div><!-- #top-left-scrollable -->

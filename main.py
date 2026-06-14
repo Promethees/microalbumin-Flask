@@ -160,6 +160,7 @@ def index():
                          cal_json_list=cal_json_list,
                          delimiter=delimiter,
                          production_mode= app.config['PRODUCTION_MODE'],
+                         download_available=DOWNLOAD_AVAILABLE,
                          account_user=account_user))
     return response
 
@@ -169,12 +170,20 @@ def index():
 # Release cache + _RELEASE_ASSET_SUFFIX live in download_service.py.
 # ------------------------------------------------------------------
 
+# Manual master switch for offline-build availability. Set a platform to False to
+# mark its build "Work in progress": the UI button is disabled and /download/<p>
+# refuses to serve. Keys must match _RELEASE_ASSET_SUFFIX ('mac', 'win', 'linux').
+DOWNLOAD_AVAILABLE = {'mac': False, 'win': True, 'linux': False}
+
 @app.route('/api/release-info')
 def api_release_info():
     try:
         release = get_release()
         version = (release.get('tag_name') if release else None) or 'unknown'  # e.g. "v1.1.4"
-        available = {p: get_release_asset(p) is not None for p in _RELEASE_ASSET_SUFFIX}
+        available = {
+            p: DOWNLOAD_AVAILABLE.get(p, False) and get_release_asset(p) is not None
+            for p in _RELEASE_ASSET_SUFFIX
+        }
         return jsonify({'version': version, 'available': available})
     except Exception as e:
         return jsonify({'error': str(e), 'version': None, 'available': {}}), 502
@@ -183,6 +192,8 @@ def api_release_info():
 def download_offline(platform):
     if platform not in _RELEASE_ASSET_SUFFIX:
         return jsonify({'status': 'error', 'message': 'Unknown platform'}), 404
+    if not DOWNLOAD_AVAILABLE.get(platform, False):
+        return jsonify({'status': 'error', 'message': f'The {platform} build is a work in progress'}), 403
     try:
         asset = get_release_asset(platform)
         if not asset:

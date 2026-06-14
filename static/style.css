@@ -2370,6 +2370,30 @@ body.dark .download-version { color: #9ca3af; }
     pointer-events: none;
 }
 
+.download-btn-wip {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.download-wip-label {
+    align-self: flex-start;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #b45309;
+    background: #fef3c7;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+body.dark .download-wip-label {
+    color: #fcd34d;
+    background: rgba(180, 83, 9, 0.25);
+}
+
 .download-btn-group {
     display: flex;
     flex-direction: column;
