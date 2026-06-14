@@ -449,3 +449,25 @@ def test_sync_version_file_silent_when_no_match(tmp_path):
     with patch.object(u.state, 'script_dir', str(tmp_path)):
         u._sync_version_file()  # must not raise
     assert not (tmp_path / 'VERSION.txt').exists()
+
+
+# ── PowerShell escaping helpers ──────────────────────────────────────────────
+# Paths flow into PS literals / Start-Process arg lists; mis-escaping a quote or
+# a space splits argv or breaks the literal — the class of bug these guard.
+
+def test_ps_sq_doubles_single_quotes():
+    assert u._ps_sq("a'b") == "a''b"
+    assert u._ps_sq('plain') == 'plain'
+
+
+def test_ps_quote_wraps_and_escapes():
+    assert u._ps_quote("a'b") == "'a''b'"
+
+
+def test_ps_arg_keeps_spaced_path_as_one_quoted_arg():
+    # Embedded double quotes keep a spaced path as a single Start-Process argv element.
+    assert u._ps_arg(r'C:\Program Files\app.py') == "'" + r'"C:\Program Files\app.py"' + "'"
+
+
+def test_ps_arg_escapes_embedded_double_quote():
+    assert u._ps_arg('a"b') == "'" + '"a\\"b"' + "'"
