@@ -36,3 +36,5 @@ index_temp.html
 generate_heavy_csv.py
 
 /static/vendor/
+
+*.pem
