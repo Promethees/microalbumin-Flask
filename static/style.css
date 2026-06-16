@@ -2449,6 +2449,77 @@ body.dark .download-wip-label {
     font-size: 0.75rem;
     opacity: 0.8;
 }
+
+/* Closable hint that points down the left column to the installer downloads.
+   Shown only while the installer buttons are scrolled out of view (toggled by
+   an IntersectionObserver in index.html). */
+.download-scroll-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 1.3vw;
+    max-width: 23.5vw;
+    z-index: 8000; /* below the AI FAB (9000), above page content */
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--border-radius);
+    background: var(--primary-gradient);
+    color: #ffffff;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    animation: download-scroll-hint-in 0.25s ease;
+}
+
+.download-scroll-hint:hover { box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45); }
+
+.download-scroll-hint__icon { font-size: 1.1rem; flex-shrink: 0; }
+.download-scroll-hint__text { flex: 1; line-height: 1.25; }
+
+.download-scroll-hint__arrow {
+    flex-shrink: 0;
+    font-weight: 700;
+    animation: download-scroll-hint-bounce 1.2s ease-in-out infinite;
+}
+
+.download-scroll-hint__close {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.download-scroll-hint__close:hover { background: rgba(255, 255, 255, 0.38); }
+
+@keyframes download-scroll-hint-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes download-scroll-hint-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(3px); }
+}
+
+@media (max-width: 768px) {
+    .download-scroll-hint {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+    }
+}
+
 /* ==========================================================================
    OKAPI AI Assistant — floating chat widget
    ========================================================================== */
