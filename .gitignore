@@ -2,6 +2,9 @@ __pycache__
 venv
 /data
 /export_data
+/installer-mac
+/installer-windows
+/installer-linux
 *.exe
 /installer-mac/**/
 /installer-mac/*.dmg
