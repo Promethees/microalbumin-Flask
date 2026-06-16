@@ -2568,8 +2568,8 @@ body.dark .download-wip-label {
 }
 
 @keyframes folder-pull-hint-glow {
-    0%, 100% { box-shadow: 0 6px 18px rgba(249, 115, 22, 0.30); }
-    50%      { box-shadow: 0 8px 26px rgba(249, 115, 22, 0.70); }
+    0%, 100% { box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25); }
+    50%      { box-shadow: 0 6px 20px rgba(249, 115, 22, 0.42); }
 }
 
 @keyframes folder-pull-hint-bounce {
