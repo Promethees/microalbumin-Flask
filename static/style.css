@@ -2490,7 +2490,6 @@ body.dark .download-wip-label {
 
 .download-scroll-hint:hover { box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45); }
 
-.download-scroll-hint__icon { font-size: 1.1rem; flex-shrink: 0; }
 .download-scroll-hint__text { flex: 1; line-height: 1.25; }
 
 .download-scroll-hint__arrow {
