@@ -2524,6 +2524,64 @@ body.dark .download-wip-label {
     50%      { transform: translateY(3px); }
 }
 
+/* ── Transient "Pull from Drive" hint ───────────────────────────────────── */
+#folder-pull-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+    color: #ffffff;
+    font-size: 0.85em;
+    font-weight: 600;
+    box-shadow: 0 6px 18px rgba(249, 115, 22, 0.35);
+}
+
+#folder-pull-hint .folder-pull-hint__text { flex: 1; line-height: 1.3; }
+#folder-pull-hint .folder-pull-hint__text strong { font-weight: 800; }
+
+#folder-pull-hint .folder-pull-hint__arrow {
+    flex-shrink: 0;
+    font-size: 1.05em;
+    animation: folder-pull-hint-bounce 1s ease-in-out infinite;
+}
+
+/* Entrance + attention-grabbing pulsing glow (glow starts after slide-in). */
+#folder-pull-hint.folder-pull-hint--show {
+    animation:
+        folder-pull-hint-in 0.3s ease both,
+        folder-pull-hint-glow 1.4s ease-in-out 0.3s infinite;
+}
+
+/* Graceful exit. */
+#folder-pull-hint.folder-pull-hint--hide {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+@keyframes folder-pull-hint-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes folder-pull-hint-glow {
+    0%, 100% { box-shadow: 0 6px 18px rgba(249, 115, 22, 0.30); }
+    50%      { box-shadow: 0 8px 26px rgba(249, 115, 22, 0.70); }
+}
+
+@keyframes folder-pull-hint-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #folder-pull-hint.folder-pull-hint--show { animation: folder-pull-hint-in 0.3s ease both; }
+    #folder-pull-hint .folder-pull-hint__arrow { animation: none; }
+}
+
 @media (max-width: 768px) {
     .download-scroll-hint {
         left: 12px;

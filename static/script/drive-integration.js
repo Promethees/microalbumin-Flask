@@ -235,21 +235,29 @@ function refreshFolderList(selectedId = null) {
  * Briefly reveal the "Pull from Drive" hint after a folder is selected,
  * then fade it out so it doesn't linger.
  */
-let _folderPullHintTimer = null;
+let _folderPullHintTimers = [];
 function showFolderPullHint() {
     const hint = $id('folder-pull-hint');
     if (!hint) return;
 
-    clearTimeout(_folderPullHintTimer);
-    hint.classList.remove('hidden');
-    // Next frame so the opacity transition runs from 0 -> 1.
-    requestAnimationFrame(() => { hint.style.opacity = '1'; });
+    // Cancel any in-flight cycle so rapid re-selects restart cleanly.
+    _folderPullHintTimers.forEach(clearTimeout);
+    _folderPullHintTimers = [];
 
-    _folderPullHintTimer = setTimeout(() => {
-        hint.style.opacity = '0';
-        // Hide after the 0.4s fade-out completes.
-        setTimeout(() => hint.classList.add('hidden'), 400);
-    }, 4000);
+    hint.classList.remove('hidden', 'folder-pull-hint--hide', 'folder-pull-hint--show');
+    // Force reflow so the entrance animation restarts on repeat selections.
+    void hint.offsetWidth;
+    hint.classList.add('folder-pull-hint--show');
+
+    _folderPullHintTimers.push(setTimeout(() => {
+        // Stop the glow, then fade out.
+        hint.classList.remove('folder-pull-hint--show');
+        hint.classList.add('folder-pull-hint--hide');
+        _folderPullHintTimers.push(setTimeout(() => {
+            hint.classList.add('hidden');
+            hint.classList.remove('folder-pull-hint--hide');
+        }, 450));
+    }, 4500));
 }
 
 /**
