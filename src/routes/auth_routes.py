@@ -14,6 +14,13 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/auth/google', methods=['GET'])
 def auth_google():
     """Initiate OAuth 2.0 flow for Google Drive."""
+    # Drive sync is disabled for logged-in accounts (Firebase is the store).
+    # Refusing here also prevents an 'account_N' id from ever being baked into
+    # the OAuth state — which would otherwise store Drive creds under the
+    # account and leak Firebase data into a later guest session.
+    if session.get('account_user_id'):
+        return jsonify({'status': 'error',
+                        'message': 'Google Drive sync is disabled while signed in.'}), 403
     try:
         token = secrets.token_urlsafe(32)
         uid = get_user_id()
@@ -46,15 +53,20 @@ def auth_google_callback():
                                 message='Invalid state parameter',
                                 debug=debug_info), 400
 
-        # State is valid — safe to recover the session
+        # State is valid — safe to recover the session. Only ever restore a
+        # guest UUID; never write an 'account_N' id into session['user_id'],
+        # which would make a guest session resolve to Firebase account data.
         if state and '|' in state:
             parts = state.split('|')
             if len(parts) >= 2:
                 recovered_uid = parts[0]
-                current_uid = session.get('user_id')
-                if not current_uid or current_uid != recovered_uid:
-                    print(f"[INFO] Recovering session for user: {recovered_uid}")
-                    session['user_id'] = recovered_uid
+                if recovered_uid.startswith('account_'):
+                    print(f"[WARN] Refusing to recover account-scoped uid in Drive callback: {recovered_uid}")
+                else:
+                    current_uid = session.get('user_id')
+                    if not current_uid or current_uid != recovered_uid:
+                        print(f"[INFO] Recovering session for user: {recovered_uid}")
+                        session['user_id'] = recovered_uid
 
         credentials = exchange_code_for_credentials(code, state)
         set_drive_credentials(credentials.to_json())
