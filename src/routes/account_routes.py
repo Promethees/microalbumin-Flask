@@ -336,10 +336,21 @@ def heartbeat():
 
 @account_bp.route('/api/account/logout', methods=['POST'])
 def logout():
-    session.pop('account_user_id', None)
-    session.pop('account_user_name', None)
-    session.pop('account_user_email', None)
-    session.pop('last_activity', None)
+    # Drop the pre-login guest workspace too. Otherwise a guest who connected
+    # Google Drive (loaded files + stored OAuth credentials) before signing in
+    # would see that stale workspace — and an active Drive connection — resurface
+    # after logout. Purging the blob clears the credentials; popping 'user_id'
+    # forces a fresh guest UUID on the next request.
+    guest_uid = session.get('user_id')
+    if guest_uid:
+        try:
+            from user_data import purge_user_data
+            purge_user_data(guest_uid)
+        except Exception as e:
+            print(f'[logout] Guest data purge failed (non-fatal): {e}')
+    for key in ('account_user_id', 'account_user_name', 'account_user_email',
+                'last_activity', 'user_id'):
+        session.pop(key, None)
     return jsonify({'status': 'success', 'message': 'Logged out'})
 
 
