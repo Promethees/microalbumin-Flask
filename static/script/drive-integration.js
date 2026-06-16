@@ -232,6 +232,27 @@ function refreshFolderList(selectedId = null) {
 }
 
 /**
+ * Briefly reveal the "Pull from Drive" hint after a folder is selected,
+ * then fade it out so it doesn't linger.
+ */
+let _folderPullHintTimer = null;
+function showFolderPullHint() {
+    const hint = $id('folder-pull-hint');
+    if (!hint) return;
+
+    clearTimeout(_folderPullHintTimer);
+    hint.classList.remove('hidden');
+    // Next frame so the opacity transition runs from 0 -> 1.
+    requestAnimationFrame(() => { hint.style.opacity = '1'; });
+
+    _folderPullHintTimer = setTimeout(() => {
+        hint.style.opacity = '0';
+        // Hide after the 0.4s fade-out completes.
+        setTimeout(() => hint.classList.add('hidden'), 400);
+    }, 4000);
+}
+
+/**
  * Select a Drive folder for storage
  */
 function selectDriveFolder() {
@@ -256,6 +277,7 @@ function selectDriveFolder() {
                 $id('selected-folder-display').classList.remove('hidden');
                 $id('current-folder-name').textContent = folderName;
                 $id('drive-sync-section').classList.remove('hidden');
+                showFolderPullHint();
                 if (!getBtnChecked("no-swal-checkbox")) {
                     Swal.fire({
                         title: 'Success',
