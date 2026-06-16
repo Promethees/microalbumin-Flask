@@ -22,7 +22,17 @@ class Config:
     # Google Drive API
     GOOGLE_CREDENTIALS_FILE = 'credentials.enc'  # Encrypted version
     GOOGLE_ENCRYPTION_KEY = os.environ.get('GOOGLE_ENCRYPTION_KEY')  # Required in env
-    GOOGLE_SCOPES = ['https://www.googleapis.com/auth/drive']  # Full Drive access
+    # NOTE: Google merges previously-granted scopes (from social sign-in:
+    # openid/email/profile) into the Drive token response because both flows
+    # share one OAuth client + include_granted_scopes=true. oauthlib aborts
+    # with "Scope has changed" unless the requested list matches what's
+    # returned, so the identity scopes must be listed here too.
+    GOOGLE_SCOPES = [
+        'https://www.googleapis.com/auth/drive',  # Full Drive access
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'openid',
+    ]
     GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5003/auth/google/callback')
     
     # OAuth — Social sign-in (Google & GitHub)
