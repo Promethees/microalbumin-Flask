@@ -2436,7 +2436,20 @@ body.dark .download-wip-label {
     box-shadow: 0 4px 12px rgba(233, 84, 32, 0.45);
 }
 
-.download-btn-icon { font-size: 1.3rem; flex-shrink: 0; }
+.download-btn-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Official brand logos (Apple, Windows) — inherit the button's text colour */
+.download-btn-icon .brand-logo {
+    width: 1.15rem;
+    height: 1.15rem;
+    display: block;
+}
 
 .download-btn-text {
     display: flex;
