@@ -167,40 +167,6 @@
                             style="margin-top: 10px; padding: 8px; background: #ecf0f1; border-radius: 4px;">
                             📁 <strong id="current-folder-name" style="color: #111111"></strong>
                         </div>
-                        <div>
-                            <label for="base-name">Base Name: </label>
-                            <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
-                            <span id="base-name-error" class="error"></span>
-                        </div>
-                        <div id="timeout-control">
-                            <label>Timeout: </label>
-                            <input type="checkbox" id="inf-timeout"><span
-                                style="font-weight: bold;">Infinite</span></input>
-                            <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
-                            <select id="timeout-unit">
-                                {% for unit in range_input.units %}
-                                <option value="{{ unit }}">{{ unit }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div id="interval-control">
-                            <label>Interval: </label>
-                            <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
-                            <select id="interval-unit">
-                                {% for unit in range_input.units %}
-                                <option value="{{ unit }}">{{ unit }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <span id="timeout-interval-error" class="error"></span>
-                        <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
-                        <br />
-                        <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
-                        <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
-                        <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                        <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live
-                            data</button>
-                        <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                     </div>
 
                     <!-- Sync Controls (shown when folder selected) -->
