@@ -4,11 +4,14 @@ function _calSubMode() {
     return (typeof calDiv !== 'undefined' && calDiv) ? calDiv.getAttribute('data-value') : null;
 }
 
-// Extract the point-mode calibration standards (Concentration, Value) currently
-// shown on screen — filtered to the selected time point, the same way
-// updatePlotBasedOnMode() builds the live chart — so the report mirrors the UI.
-function getPointCalibrationData() {
-    const timePoint = document.getElementById('regressed-time-point')?.value;
+// Extract the point-mode calibration standards (Concentration, Value), filtered
+// to a time point. When `timePointOverride` is provided (incl. '' = all points)
+// it wins; otherwise the live data-display picker is used, the same way
+// updatePlotBasedOnMode() builds the on-screen chart.
+function getPointCalibrationData(timePointOverride) {
+    const timePoint = (timePointOverride !== undefined && timePointOverride !== null)
+        ? timePointOverride
+        : document.getElementById('regressed-time-point')?.value;
     const rows = (AppState.responseData || []).filter(r =>
         !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
     const pts = rows
@@ -79,7 +82,28 @@ function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, a
 async function generateReport() {
     const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
 
-    // 1. Ask for a title, algorithm (calibrate only), and export format
+    // 1. Ask for a title, fit algorithm, the calibration selection (kinetics:
+    //    which metrics; point: which time point), and the export format.
+    const calSubMode    = isCalibrate ? _calSubMode() : null;
+    const isKineticsCal = calSubMode === 'kinetics';
+    const isPointCal    = calSubMode === 'point';
+
+    // Kinetics: the metrics present in the loaded standard curve. Let the user
+    // choose which to include instead of always using every metric on screen.
+    const availableMetrics = (AppState.calibrationDataPoints || []).map(d => d.metric);
+    const metricCheckboxes = availableMetrics.map(m =>
+        `<label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:2px 0;">
+            <input type="checkbox" class="swal-metric" value="${m}" checked> ${m}
+        </label>`).join('');
+
+    // Point: the time points available in the data (mirrors the data-display picker).
+    const pointTimePoints = [...new Set((AppState.responseData || [])
+        .map(r => r['TimePoint']).filter(v => v != null && v !== 'NONE'))]
+        .sort((a, b) => parseFloat(a) - parseFloat(b));
+    const currentTimePoint = document.getElementById('regressed-time-point')?.value ?? '';
+    const timePointOptions = `<option value="">All time points</option>` +
+        pointTimePoints.map(tp => `<option value="${tp}" ${String(tp) === String(currentTimePoint) ? 'selected' : ''}>${tp}</option>`).join('');
+
     const { value: formValues } = await Swal.fire({
         title: 'Report Details',
         html: `
@@ -95,6 +119,17 @@ async function generateReport() {
                     <option value="exponential">exponential</option>
                     <option value="Michaelis-Menten">Michaelis-Menten</option>
                 </select>` : ''}
+                ${isKineticsCal ? `
+                <label style="display:block; margin-bottom:5px;">Metrics to include</label>
+                <div id="swal-metrics" style="display:flex; flex-direction:column; gap:2px; margin:0 0 6px 4px;">
+                    ${metricCheckboxes || '<span style="color:#888;">No metrics available.</span>'}
+                </div>
+                <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">A metric with no fittable curve for the chosen fit is omitted, with a warning.</div>` : ''}
+                ${isPointCal ? `
+                <label style="display:block; margin-bottom:5px;">Time point for calibration</label>
+                <select id="swal-timepoint" class="swal2-input" style="width: 80%; margin: 0 0 15px 0;">
+                    ${timePointOptions}
+                </select>` : ''}
                 <label style="display:block; margin-bottom:5px;">Export Format</label>
                 <div style="display:flex; gap:20px;">
                     <label style="cursor:pointer;"><input type="radio" name="swal-fmt" value="pdf" checked> PDF (print)</label>
@@ -107,17 +142,39 @@ async function generateReport() {
         preConfirm: () => {
             const title  = document.getElementById('swal-input1').value;
             const algoEl = document.getElementById('swal-input2');
+            const algo   = algoEl ? algoEl.value : 'linear';
             const fmt    = document.querySelector('input[name="swal-fmt"]:checked')?.value || 'pdf';
-            return isCalibrate ? [title, algoEl ? algoEl.value : 'linear', fmt] : [title, null, fmt];
+            if (!isCalibrate) return { title, algo: null, fmt };
+            if (isKineticsCal) {
+                const metrics = Array.from(document.querySelectorAll('.swal-metric:checked')).map(c => c.value);
+                if (availableMetrics.length && metrics.length === 0) {
+                    Swal.showValidationMessage('Select at least one metric to include.');
+                    return false;
+                }
+                return { title, algo, fmt, metrics };
+            }
+            if (isPointCal) {
+                return { title, algo, fmt, timePoint: document.getElementById('swal-timepoint')?.value ?? '' };
+            }
+            return { title, algo, fmt };
         }
     });
 
     if (!formValues) return;
-    const [reportTitle, promptedAlgo, reportFormat] = formValues;
+    const reportTitle       = formValues.title;
+    const promptedAlgo      = formValues.algo;
+    const reportFormat      = formValues.fmt;
+    const selectedMetrics   = formValues.metrics || null;                         // kinetics calibrate
+    const selectedTimePoint = ('timePoint' in formValues) ? formValues.timePoint : null; // point calibrate
+    // Curves that could not be produced for the user's selection; surfaced as a
+    // warning (modal + in-report banner) once generation finishes.
+    const calibrationWarnings = [];
     logEvent('report', 'generate', { mode: AppState.currentMeasurementMode, format: reportFormat });
 
     if (reportFormat === 'excel') {
-        await generateReportExcelFromCurrent(reportTitle, promptedAlgo || 'linear');
+        await generateReportExcelFromCurrent(reportTitle, promptedAlgo || 'linear', {
+            metrics: selectedMetrics, timePoint: selectedTimePoint
+        });
         return;
     }
 
@@ -139,8 +196,10 @@ async function generateReport() {
     if (isCalibrate && _calSubMode() === 'point') {
         // Point-mode calibration: a single Value-vs-Concentration curve (point
         // mode never populates calibrationDataPoints, so it is handled on its own).
-        const pd = getPointCalibrationData();
+        const pd = getPointCalibrationData(selectedTimePoint);
         const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
+        const tpLabel = (selectedTimePoint !== null && selectedTimePoint !== '')
+            ? ` @ t=${selectedTimePoint}` : '';
         let chartsMarkup = '';
         let coefficientRows = '';
 
@@ -150,7 +209,7 @@ async function generateReport() {
             const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, promptedAlgo);
             const chartImg = await renderCalibrationChartImage({
                 xConc: pd.x, yMetric: pd.y, regLine,
-                title: `Calibration Curve (${measLabel})`, yLabel: measLabel, algo: promptedAlgo
+                title: `Calibration Curve (${measLabel}${tpLabel})`, yLabel: measLabel, algo: promptedAlgo
             });
             chartsMarkup = `
                 <div style="width: 70%; margin: 0 auto 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
@@ -166,6 +225,7 @@ async function generateReport() {
                 </tr>`;
         } else {
             chartsMarkup = `<p style="color:#888;">Not enough calibration points to fit a curve${pd.x.length ? '' : ' (no Concentration/Value data at the selected time point)'}.</p>`;
+            calibrationWarnings.push(`Point calibration${tpLabel ? ' ' + tpLabel : ''}: no curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
         }
 
         analyticalContent = `
@@ -193,16 +253,24 @@ async function generateReport() {
         let coefficientRows = '';
         let chartsMarkup = '<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px;">';
 
+        // Restrict to the metrics the user chose in the report dialog (null = all).
+        const metricsFilter = (selectedMetrics && selectedMetrics.length) ? new Set(selectedMetrics) : null;
+
         for (let i = 0; i < AppState.calibrationDataPoints.length; i++) {
             const dataPoint = AppState.calibrationDataPoints[i];
+            if (metricsFilter && !metricsFilter.has(dataPoint.metric)) continue;
 
             // Recalculate coefficients based on the user-selected algo for the report
             const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, promptedAlgo);
             // Skip metrics the fit could not resolve (e.g. a calibration column with
             // only one non-"NONE" point yields coefficients: null). Matches the other
             // report generators; without this guard `analysis.coefficients.length`
-            // below throws "Cannot read properties of null (reading 'length')".
-            if (!analysis || !analysis.coefficients) continue;
+            // below throws "Cannot read properties of null (reading 'length')". The
+            // user is warned about any metric they selected that has no curve.
+            if (!analysis || !analysis.coefficients) {
+                calibrationWarnings.push(`${dataPoint.metric}: no ${promptedAlgo} calibration curve could be fitted (insufficient or unsuitable data).`);
+                continue;
+            }
 
             // 1. Build table row
             const [a, b, c] = analysis.coefficients || [0, 0, 0];
@@ -409,6 +477,11 @@ async function generateReport() {
         `;
     }
 
+    const calibrationWarningBanner = calibrationWarnings.length ? `
+        <div style="background:#fff8e1; border:1px solid #ffe082; color:#8a6d3b; padding:12px 16px; border-radius:8px; margin-bottom:20px;">
+            ⚠️ <strong>Some calibration curves were not available:</strong><br>${calibrationWarnings.join('<br>')}
+        </div>` : '';
+
     const htmlContent = `
         <div class="report-header" style="position:relative; z-index:10; display:flex; justify-content:space-between; border-bottom:2px solid #3498db; padding-bottom:20px; margin-bottom:30px;">
             <div>
@@ -428,6 +501,7 @@ async function generateReport() {
         <img src="/static/cbb.png" class="report-watermark-bg" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); opacity:0.04; width:70%; z-index:1; pointer-events:none;" />
 
         <div class="report-body" style="position:relative; z-index:10;">
+            ${calibrationWarningBanner}
             ${analyticalContent}
         </div>
 
@@ -444,6 +518,17 @@ async function generateReport() {
     printContainer.classList.remove('hidden');
     printContainer.classList.add('report-mode');
 
+    // Warn the user about any curve they selected that could not be produced,
+    // before the print dialog opens.
+    if (calibrationWarnings.length) {
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Some calibration curves unavailable',
+            html: calibrationWarnings.map(w => `• ${w}`).join('<br>') +
+                  '<br><br>The report was generated with the available curves.'
+        });
+    }
+
     setTimeout(() => {
         console.log("Triggering window.print() for Quick Report");
         window.print();
@@ -452,7 +537,12 @@ async function generateReport() {
     }, 1000);
 }
 
-async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
+async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options = {}) {
+    // options.metrics  → kinetics calibrate: which metrics to include (null = all)
+    // options.timePoint → point calibrate: which time point ('' = all, null = use UI)
+    const selectedMetrics   = options.metrics || null;
+    const selectedTimePoint = (options.timePoint !== undefined) ? options.timePoint : null;
+    const calibrationWarnings = [];
     window.showSpinner();
     try {
         const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
@@ -488,18 +578,21 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
             // ── Point-mode calibration ──────────────────────────────────────
             // Single Value-vs-Concentration fit (no per-metric calibrationDataPoints).
             const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
-            const timePoint = document.getElementById('regressed-time-point')?.value;
+            const timePoint = (selectedTimePoint !== null)
+                ? selectedTimePoint
+                : document.getElementById('regressed-time-point')?.value;
             const rows = renderData.filter(r =>
                 !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
 
             itemData.csv_columns = ['Concentration', 'Value'];
             itemData.csv_rows = rows.map(row => ({ Concentration: row['Concentration'], Value: row['Value'] }));
 
-            const pd = getPointCalibrationData();
+            const pd = getPointCalibrationData(selectedTimePoint);
+            const tpLabel = (selectedTimePoint !== null && selectedTimePoint !== '') ? ` @ t=${selectedTimePoint}` : '';
             const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, promptedAlgo) : null;
             if (analysis && analysis.coefficients) {
                 const [ca, cb2, cc] = analysis.coefficients;
-                const fitLabel = `${measLabel} — ${promptedAlgo}`;
+                const fitLabel = `${measLabel}${tpLabel} — ${promptedAlgo}`;
                 itemData.coef_rows.push({
                     'Metric':      measLabel,
                     'Algorithm':   promptedAlgo,
@@ -514,6 +607,8 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
                     title: fitLabel, yLabel: measLabel, algo: promptedAlgo
                 });
                 if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+            } else {
+                calibrationWarnings.push(`Point calibration${tpLabel ? ' ' + tpLabel : ''}: no curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
             }
 
         } else if (isCalibrate && AppState.calibrationDataPoints && AppState.calibrationDataPoints.length > 0) {
@@ -528,9 +623,14 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
                 return r;
             });
 
+            const metricsFilter = (selectedMetrics && selectedMetrics.length) ? new Set(selectedMetrics) : null;
             for (const dataPoint of AppState.calibrationDataPoints) {
+                if (metricsFilter && !metricsFilter.has(dataPoint.metric)) continue;
                 const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, promptedAlgo);
-                if (!analysis || !analysis.coefficients) continue;
+                if (!analysis || !analysis.coefficients) {
+                    calibrationWarnings.push(`${dataPoint.metric}: no ${promptedAlgo} calibration curve could be fitted (insufficient or unsuitable data).`);
+                    continue;
+                }
 
                 const [ca, cb2, cc] = analysis.coefficients;
                 const niceMetric = dataPoint.metric.charAt(0).toUpperCase() +
@@ -693,7 +793,16 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
         document.body.removeChild(a);
         URL.revokeObjectURL(dlUrl);
 
-        Swal.fire('Success', 'Excel report downloaded.', 'success');
+        if (calibrationWarnings.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Excel report downloaded with warnings',
+                html: 'Some calibration curves were not available:<br>' +
+                      calibrationWarnings.map(w => `• ${w}`).join('<br>')
+            });
+        } else {
+            Swal.fire('Success', 'Excel report downloaded.', 'success');
+        }
 
     } catch (e) {
         console.error(e);
