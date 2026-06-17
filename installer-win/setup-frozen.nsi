@@ -51,20 +51,17 @@ Unicode true
 !define MUI_WELCOMEPAGE_TITLE "Welcome to the EasyOKAPI Setup"
 !define MUI_WELCOMEPAGE_TEXT "This wizard will install EasyOKAPI ${APP_VERSION} on your computer.$\r$\n$\r$\nBefore you begin, please have your EasyOKAPI activation token ready and make sure you are connected to the internet. If you don't have a token yet, you can get one at easyokapi.cbbiotec.vn.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder, and are kept safe whenever you update.$\r$\n$\r$\nClick Next to begin."
 
-; Finish page: tick to start EasyOKAPI now (through the splash launcher) and/or
-; open the data folder. Note: Setup runs as administrator, so "Start now" launches
-; the app elevated this one time - fine on a normal single-user machine where the
-; same person installs and uses it. Day to day the user starts EasyOKAPI from the
-; Desktop / Start Menu shortcut, which runs un-elevated.
+; Finish page: tick to start EasyOKAPI now (through the splash launcher). Note:
+; Setup runs as administrator, so "Start now" launches the app elevated this one
+; time - fine on a normal single-user machine where the same person installs and
+; uses it. Day to day the user starts EasyOKAPI from the Desktop / Start Menu
+; shortcut, which runs un-elevated. (The "open data folder" option was removed:
+; the data root is created by the app on first run and can be relocated in-app.)
 !define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} is ready"
 !define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed. Shortcuts were added to your Desktop and Start Menu.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder."
 !define MUI_FINISHPAGE_RUN "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
 !define MUI_FINISHPAGE_RUN_PARAMETERS "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $\"$INSTDIR\launcher-frozen.ps1$\""
 !define MUI_FINISHPAGE_RUN_TEXT "Start EasyOKAPI now"
-!define MUI_FINISHPAGE_SHOWREADME ""
-!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
-!define MUI_FINISHPAGE_SHOWREADME_TEXT "Open my EasyOKAPI data folder"
-!define MUI_FINISHPAGE_SHOWREADME_FUNCTION OpenDataFolder
 
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
@@ -101,8 +98,6 @@ Var TokenInput
 Var EasyOKAPIToken
 Var BgBitmapHandle
 Var UninstVer
-Var DataDir        ; user-chosen data root (default: $DOCUMENTS\EasyOKAPI)
-Var DataDirInput
 
 ; ── Page order: Welcome → Token → Directory → Install → Finish ────────────────
 ; Each MUI page gets a SHOW callback that recolours the inner controls. The
@@ -117,10 +112,6 @@ Page custom TokenPage TokenPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_DIRECTORY
-
-; Data-folder chooser: where the user's measurements/curves/reports live. Stored
-; via the .dataroot pointer so the app picks it up (see src/state.py / data_root.py).
-Page custom DataDirPage DataDirPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_PAGE_INSTFILES
@@ -336,70 +327,6 @@ Function _OnGUIInit
   Pop $R0
 FunctionEnd
 
-; Finish-page checkbox — open the user's data folder in Explorer.
-Function OpenDataFolder
-  ${If} $DataDir == ""
-    ExecShell "open" "$DOCUMENTS\EasyOKAPI"
-  ${Else}
-    ExecShell "open" "$DataDir"
-  ${EndIf}
-FunctionEnd
-
-; ── Data-folder chooser page ──────────────────────────────────────────────────
-; The data root defaults to Documents\EasyOKAPI (matches src/state.py). If the
-; user picks another folder, the install section writes a .dataroot pointer at the
-; default location so the app finds the data there.
-Function DataDirPage
-  !insertmacro MUI_HEADER_TEXT "Choose your data folder" "Select where EasyOKAPI stores your measurements, calibration curves and reports."
-  nsDialogs::Create 1018
-  Pop $Dialog
-  ${If} $Dialog == error
-    Abort
-  ${EndIf}
-  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
-
-  ${NSD_CreateBitmap} 0 0 100% 100% ""
-  Pop $0
-  ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
-
-  ${If} $DataDir == ""
-    StrCpy $DataDir "$DOCUMENTS\EasyOKAPI"
-  ${EndIf}
-
-  ${NSD_CreateLabel} 0 0 100% 40u "Your measurements, calibration curves and reports will be stored in the folder below. Keep the default in your Documents folder, or choose another location (for example a larger or shared drive). Your data is kept safe whenever you update."
-  Pop $0
-  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
-
-  ${NSD_CreateText} 0 46u 78% 12u "$DataDir"
-  Pop $DataDirInput
-  SetCtlColors $DataDirInput "${CLR_FG}" "${CLR_INPUT}"
-
-  ${NSD_CreateButton} 80% 46u 20% 12u "Browse…"
-  Pop $0
-  ${NSD_OnClick} $0 DataDirBrowse
-
-  Call _DarkButtons
-  nsDialogs::Show
-FunctionEnd
-
-Function DataDirBrowse
-  ${NSD_GetText} $DataDirInput $0
-  nsDialogs::SelectFolderDialog "Choose a folder to hold your EasyOKAPI data" "$0"
-  Pop $1
-  ${If} $1 != error
-    ; Keep our data in an EasyOKAPI subfolder of the chosen location so we never
-    ; scatter files loose into a folder the user picked.
-    ${NSD_SetText} $DataDirInput "$1\EasyOKAPI"
-  ${EndIf}
-FunctionEnd
-
-Function DataDirPageLeave
-  ${NSD_GetText} $DataDirInput $DataDir
-  ${If} $DataDir == ""
-    StrCpy $DataDir "$DOCUMENTS\EasyOKAPI"
-  ${EndIf}
-FunctionEnd
-
 ; ── EasyOKAPI activation-token page (required) ────────────────────────────────
 ; The token is the product's license gate: installation cannot proceed without a
 ; valid one. TokenPageLeave validates it against the activation server before the
@@ -498,13 +425,7 @@ FunctionEnd
 !macroend
 
 Section "Install" SEC01
-  ; Visible per-user data root: the user's choice from DataDirPage, defaulting to
-  ; Documents\EasyOKAPI (matches state.py). A custom choice is recorded below via
-  ; the .dataroot pointer.
-  StrCpy $R0 "$DataDir"
-  ${If} $R0 == ""
-    StrCpy $R0 "$DOCUMENTS\EasyOKAPI"
-  ${EndIf}
+  StrCpy $R0 "$DOCUMENTS\EasyOKAPI"   ; visible per-user data root (matches state.py)
 
   ; ── Refuse to overwrite a running instance ──────────────────────────────────
   ; A live EasyOKAPI.exe keeps its files open, so File /r below would fail. It may
@@ -572,12 +493,12 @@ Click Cancel to exit without making any changes." \
     FileClose $9
   skip_migrate:
 
-  ; ── Restore data from the temporary <data-root>_data folder, then remove it ──
-  ; An in-app update stages a temporary safety copy in a sibling '<data-root>_data'
-  ; folder (update_service._backup_user_data uses script_dir + '_data', so it
-  ; follows a relocated root). Merge anything found there back into the working
-  ; data folder (without overwriting newer files), then delete the temp folder.
-  StrCpy $R1 "$R0_data"
+  ; ── Restore data from the temporary EasyOKAPI_data folder, then remove it ────
+  ; An in-app update stages a temporary safety copy in Documents\EasyOKAPI_data.
+  ; Merge anything found there back into the working data folder (without
+  ; overwriting newer files), then delete the temporary folder so it does not
+  ; linger in Documents.
+  StrCpy $R1 "$DOCUMENTS\EasyOKAPI_data"
   IfFileExists "$R1\*.*" 0 skip_restore
     DetailPrint "Restoring your data from $R1..."
     !insertmacro MigrateDir "$R1\data"   "$R0\data"
@@ -585,18 +506,6 @@ Click Cancel to exit without making any changes." \
     !insertmacro MigrateDir "$R1\report" "$R0\report"
     RMDir /r "$R1"
   skip_restore:
-
-  ; ── Record a custom data folder via the .dataroot pointer ───────────────────
-  ; The pointer always lives at the DEFAULT location ($DOCUMENTS\EasyOKAPI) so the
-  ; app, which computes the same default, knows where to look. Written only when
-  ; the user chose a non-default folder.
-  ${If} $R0 != "$DOCUMENTS\EasyOKAPI"
-    CreateDirectory "$R0"
-    CreateDirectory "$DOCUMENTS\EasyOKAPI"
-    FileOpen $9 "$DOCUMENTS\EasyOKAPI\.dataroot" w
-    FileWrite $9 "$R0"
-    FileClose $9
-  ${EndIf}
 
   ; ── Remove any previous install payload (source code dir + old runner) ──────
   RMDir /r "$INSTDIR\code"

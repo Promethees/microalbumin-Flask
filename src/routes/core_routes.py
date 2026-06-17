@@ -181,17 +181,72 @@ def post_data_root():
     if state.process and state.process.poll() is None:
         return jsonify({'status': 'error',
                         'message': 'Cannot change the data folder while the data collection process is running'}), 423
-    data = request.get_json(silent=True)
-    if not data or 'path' not in data:
-        return jsonify({'status': 'error', 'message': 'No path provided'}), 400
+    data = request.get_json(silent=True) or {}
     try:
-        new_path = _data_root.set_data_root(data['path'])
+        if data.get('reset'):
+            new_path = _data_root.reset_to_default()
+        elif 'path' in data:
+            new_path = _data_root.set_data_root(data['path'])
+        else:
+            return jsonify({'status': 'error', 'message': 'No path provided'}), 400
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Could not move data folder: {e}'}), 500
     event_logger.append('settings', 'data_root', {'path': new_path})
     return jsonify({'status': 'success', 'path': new_path, 'restart_required': True})
+
+
+def _win_drives():
+    """List existing drive roots (Windows) as folder entries."""
+    import string
+    drives = []
+    for letter in string.ascii_uppercase:
+        root = f"{letter}:\\"
+        if os.path.exists(root):
+            drives.append({'name': root, 'path': root})
+    return drives
+
+
+def _dir_listing(path, is_win):
+    """Immediate non-hidden subdirectories of `path`, plus parent navigation."""
+    entries = []
+    try:
+        for name in sorted(os.listdir(path), key=str.lower):
+            if name.startswith('.'):
+                continue
+            full = os.path.join(path, name)
+            try:
+                if os.path.isdir(full):
+                    entries.append({'name': name, 'path': full})
+            except OSError:
+                continue
+    except OSError:
+        return {'status': 'error', 'message': 'This folder cannot be opened.'}, 403
+    parent = os.path.dirname(path)
+    if parent == path:  # already at a filesystem root
+        parent = '::drives' if is_win else None
+    return {'status': 'success', 'path': path, 'parent': parent,
+            'dirs': entries, 'home': os.path.expanduser('~'), 'is_drives': False}, 200
+
+
+@core_bp.route('/browse_dirs', methods=['GET'])
+def browse_dirs():
+    """Read-only directory browser for the data-folder picker (settings)."""
+    import platform
+    is_win = platform.system().lower().startswith('win')
+    raw = request.args.get('path', '')
+    if is_win and raw == '::drives':
+        return jsonify({'status': 'success', 'path': '', 'parent': None,
+                        'dirs': _win_drives(), 'home': os.path.expanduser('~'),
+                        'is_drives': True})
+    if not raw:
+        raw = os.path.expanduser('~')
+    path = os.path.abspath(os.path.expanduser(raw))
+    if not os.path.isdir(path):
+        return jsonify({'status': 'error', 'message': 'Not a folder'}), 400
+    body, code = _dir_listing(path, is_win)
+    return jsonify(body), code
 
 
 @core_bp.route('/event_log', methods=['GET'])

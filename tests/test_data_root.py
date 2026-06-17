@@ -50,55 +50,66 @@ class TestGetInfo:
     def test_relocated_is_custom(self, tmp_path, monkeypatch):
         _setup_roots(tmp_path, monkeypatch)
         monkeypatch.setattr(state, "script_dir", str(tmp_path / "elsewhere"))
-        info = data_root.get_info()
-        assert info["is_custom"] is True
+        assert data_root.get_info()["is_custom"] is True
 
 
 # ---------------------------------------------------------------------------
-# set_data_root: pointer + move-merge
+# set_data_root: copy into <parent>/EasyOKAPI + pointer
 # ---------------------------------------------------------------------------
 
 class TestSetDataRoot:
+    def test_target_is_easyokapi_subfolder_of_chosen(self, tmp_path, monkeypatch):
+        _setup_roots(tmp_path, monkeypatch)
+        parent = tmp_path / "BigDrive"
+        parent.mkdir()
+        target = data_root.set_data_root(str(parent))
+        assert target == str(parent / "EasyOKAPI")
+
     def test_writes_pointer_and_state_reads_it_back(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
-        new = tmp_path / "new_root"
-        data_root.set_data_root(str(new))
+        parent = tmp_path / "BigDrive"
+        target = data_root.set_data_root(str(parent))
         pointer = default / state._DATAROOT_POINTER
         assert pointer.is_file()
-        assert pointer.read_text(encoding="utf-8").strip() == str(new)
-        # state resolves the override back to the new path
-        assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(str(new))
+        assert pointer.read_text(encoding="utf-8").strip() == target
+        assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
 
-    def test_moves_data_to_new_root(self, tmp_path, monkeypatch):
+    def test_copies_data_and_keeps_original(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
         _seed_data(default)
-        new = tmp_path / "new_root"
-        data_root.set_data_root(str(new))
-        # arrived
-        assert (new / "data" / "exp1.csv").is_file()
-        assert (new / "json" / "kinetics" / "cal.json").is_file()
-        assert (new / "user_settings.json").is_file()
-        # gone from source
-        assert not (default / "data").exists()
-        assert not (default / "user_settings.json").exists()
+        parent = tmp_path / "BigDrive"
+        target = data_root.set_data_root(str(parent))
+        # copied to new root
+        assert os.path.isfile(os.path.join(target, "data", "exp1.csv"))
+        assert os.path.isfile(os.path.join(target, "json", "kinetics", "cal.json"))
+        assert os.path.isfile(os.path.join(target, "user_settings.json"))
+        # original is left untouched (copy, not move)
+        assert (default / "data" / "exp1.csv").is_file()
+        assert (default / "user_settings.json").is_file()
 
-    def test_does_not_clobber_existing_destination_file(self, tmp_path, monkeypatch):
+    def test_does_not_copy_pointer_or_update_artifacts(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
         _seed_data(default)
-        new = tmp_path / "new_root"
-        new.mkdir()
-        new.joinpath("user_settings.json").write_text('{"theme":"light"}', encoding="utf-8")
-        data_root.set_data_root(str(new))
-        # destination file is preserved, not overwritten by the source
-        assert (new / "user_settings.json").read_text(encoding="utf-8") == '{"theme":"light"}'
+        (default / "_update_download.tar.gz").write_text("x", encoding="utf-8")
+        # simulate a stray pointer inside the root (should never be copied)
+        (default / state._DATAROOT_POINTER).write_text("/somewhere", encoding="utf-8")
+        target = data_root.set_data_root(str(tmp_path / "BigDrive"))
+        assert not os.path.exists(os.path.join(target, "_update_download.tar.gz"))
+        assert not os.path.exists(os.path.join(target, state._DATAROOT_POINTER))
 
-    def test_reset_to_default_removes_pointer(self, tmp_path, monkeypatch):
+    def test_reset_to_default_copies_back_and_clears_pointer(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
-        new = tmp_path / "new_root"
-        data_root.set_data_root(str(new))
-        # now pretend we are running from the custom root
-        monkeypatch.setattr(state, "script_dir", str(new))
-        data_root.reset_to_default()
+        custom = tmp_path / "BigDrive" / "EasyOKAPI"
+        custom.mkdir(parents=True)
+        (custom / "data").mkdir()
+        (custom / "data" / "new.csv").write_text("x", encoding="utf-8")
+        # pretend we are running from the custom root
+        monkeypatch.setattr(state, "script_dir", str(custom))
+        # write a stale pointer so reset has something to clear
+        (default / state._DATAROOT_POINTER).write_text(str(custom), encoding="utf-8")
+        target = data_root.reset_to_default()
+        assert target == str(default)
+        assert (default / "data" / "new.csv").is_file()  # copied back
         assert not (default / state._DATAROOT_POINTER).exists()
 
 
@@ -112,20 +123,30 @@ class TestValidation:
         with pytest.raises(ValueError):
             data_root.set_data_root("   ")
 
-    def test_rejects_equal_to_current(self, tmp_path, monkeypatch):
-        default, _ = _setup_roots(tmp_path, monkeypatch)
-        with pytest.raises(ValueError):
-            data_root.set_data_root(str(default))
-
     def test_rejects_inside_bundle(self, tmp_path, monkeypatch):
         _default, bundle = _setup_roots(tmp_path, monkeypatch)
         with pytest.raises(ValueError):
             data_root.set_data_root(str(bundle / "sub"))
 
-    def test_rejects_nested_in_current(self, tmp_path, monkeypatch):
+    def test_rejects_container_inside_current(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
         with pytest.raises(ValueError):
             data_root.set_data_root(str(default / "child"))
+
+    def test_rejects_container_equal_to_current(self, tmp_path, monkeypatch):
+        default, _ = _setup_roots(tmp_path, monkeypatch)
+        with pytest.raises(ValueError):
+            data_root.set_data_root(str(default))
+
+    def test_rejects_when_target_equals_current(self, tmp_path, monkeypatch):
+        # current root is already <parent>/EasyOKAPI → choosing <parent> is a no-op
+        default, _ = _setup_roots(tmp_path, monkeypatch)
+        parent = tmp_path / "BigDrive"
+        custom = parent / "EasyOKAPI"
+        custom.mkdir(parents=True)
+        monkeypatch.setattr(state, "script_dir", str(custom))
+        with pytest.raises(ValueError):
+            data_root.set_data_root(str(parent))
 
     def test_rejects_path_that_is_a_file(self, tmp_path, monkeypatch):
         _setup_roots(tmp_path, monkeypatch)
@@ -148,7 +169,6 @@ class TestRoutes:
         assert "current" in body and "default" in body and "is_custom" in body
 
     def test_post_rejected_in_source_build(self, client, monkeypatch):
-        # Source build: relocation disabled.
         monkeypatch.setattr(state, "IS_FROZEN", False)
         resp = client.post('/data_root', json={"path": "/tmp/whatever"})
         assert resp.status_code == 400
@@ -156,4 +176,20 @@ class TestRoutes:
     def test_post_missing_path(self, client, monkeypatch):
         monkeypatch.setattr(state, "IS_FROZEN", True)
         resp = client.post('/data_root', json={})
+        assert resp.status_code == 400
+
+    def test_browse_dirs_lists_subfolders(self, client, tmp_path):
+        (tmp_path / "alpha").mkdir()
+        (tmp_path / "beta").mkdir()
+        (tmp_path / "afile.txt").write_text("x", encoding="utf-8")
+        resp = client.get('/browse_dirs?path=' + str(tmp_path))
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["status"] == "success"
+        names = sorted(d["name"] for d in body["dirs"])
+        assert names == ["alpha", "beta"]  # files excluded
+        assert body["path"] == str(tmp_path)
+
+    def test_browse_dirs_bad_path(self, client):
+        resp = client.get('/browse_dirs?path=/no/such/dir/xyz123')
         assert resp.status_code == 400

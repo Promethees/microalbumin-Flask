@@ -743,23 +743,19 @@ function _buildSettingsHTML(s, folders) {
             <p class="sm-section-title">Data folder location</p>
             <p class="sm-help" style="margin-bottom:6px;">
                 Your measurements, calibration curves and reports are stored here.
-                Choosing a new folder moves your existing data there; EasyOKAPI must
-                restart afterwards.
+                Choosing a new location copies your data into an <b>EasyOKAPI</b>
+                folder there and switches to it; the original is left untouched.
+                EasyOKAPI must restart afterwards.
             </p>
             <div class="sm-row">
                 <span class="sm-label">Current folder</span>
                 <input id="swal-data-root-current" type="text" class="swal2-input" readonly
                     value="${(typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.current : ''}">
             </div>
-            <div class="sm-row">
-                <span class="sm-label">New folder (absolute path)</span>
-                <input id="swal-data-root-new" type="text" class="swal2-input"
-                    placeholder="e.g. ${(typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.default : ''}">
-            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
                 <button type="button" onclick="changeDataRootFromSettings()"
                     style="font-size:0.8em;padding:4px 12px;border-radius:6px;border:1px solid #d1d5db;background:transparent;cursor:pointer;">
-                    Move data folder…
+                    Choose folder…
                 </button>
                 ${(typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO && DATA_ROOT_INFO.is_custom) ? `
                 <button type="button" onclick="resetDataRootFromSettings()"
@@ -1078,25 +1074,34 @@ function scheduleStartupUpdateCheck() {
 }
 
 // ── Data folder relocation (frozen builds) ───────────────────────────────────
-function _postDataRoot(path, statusEl) {
-    if (statusEl) statusEl.textContent = 'Moving data…';
+// Sends a relocation request to the server. `body` is either {path:<parent>} or
+// {reset:true}. On success the server has copied the data; we offer a restart.
+function _postDataRoot(body, statusEl) {
+    Swal.fire({
+        title: 'Copying data…',
+        html: 'This can take a moment for large data folders.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading(),
+    });
     return fetch('/data_root', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path })
+        body: JSON.stringify(body)
     })
         .then(r => r.json().then(d => ({ ok: r.ok, d })))
         .then(({ ok, d }) => {
             if (!ok || !d || d.status !== 'success') {
-                const msg = (d && d.message) || 'Could not move the data folder.';
-                if (statusEl) statusEl.textContent = msg;
+                const msg = (d && d.message) || 'Could not change the data folder.';
+                if (statusEl && statusEl.isConnected) statusEl.textContent = msg;
+                else Swal.fire('Could not change the data folder', msg, 'error');
                 return false;
             }
             logEvent('settings', 'data_root', { path: d.path });
             Swal.close();
             Swal.fire({
-                title: 'Data folder moved',
-                html: `Your data is now stored at:<br><b>${d.path}</b><br><br>` +
+                title: 'Data folder changed',
+                html: `Your data has been copied to:<br><b>${d.path}</b><br><br>` +
                     'EasyOKAPI needs to restart to use the new location.',
                 icon: 'success',
                 showCancelButton: true,
@@ -1116,27 +1121,104 @@ function _postDataRoot(path, statusEl) {
             return true;
         })
         .catch(() => {
-            if (statusEl) statusEl.textContent = 'Could not reach the server.';
+            if (statusEl && statusEl.isConnected) statusEl.textContent = 'Could not reach the server.';
+            else Swal.fire('Error', 'Could not reach the server.', 'error');
             return false;
         });
 }
 
-function changeDataRootFromSettings() {
-    const statusEl = document.getElementById('swal-data-root-status');
-    const input = document.getElementById('swal-data-root-new');
-    const path = (input && input.value || '').trim();
-    if (!path) {
-        if (statusEl) statusEl.textContent = 'Enter an absolute folder path first.';
-        return;
+// Folder navigator dialog. Resolves to the absolute path the user selects, or
+// null if cancelled. Data will be copied into an EasyOKAPI subfolder of it.
+async function pickDataRootFolder(startPath) {
+    let cur = startPath || '';
+
+    async function load(p) {
+        const url = '/browse_dirs' + (p ? ('?path=' + encodeURIComponent(p)) : '');
+        return fetch(url).then(r => r.json()).catch(() => null);
     }
-    _postDataRoot(path, statusEl);
+
+    function rowsHtml(data) {
+        if (data.is_drives) {
+            return data.dirs.map(d =>
+                `<div class="fb-item" data-path="${d.path.replace(/"/g, '&quot;')}">🖴 ${d.name}</div>`
+            ).join('') || '<div class="fb-empty">No drives found.</div>';
+        }
+        if (!data.dirs.length) return '<div class="fb-empty">No sub-folders here.</div>';
+        return data.dirs.map(d =>
+            `<div class="fb-item" data-path="${d.path.replace(/"/g, '&quot;')}">📁 ${d.name}</div>`
+        ).join('');
+    }
+
+    function render(popup, data) {
+        cur = data.path || '';
+        popup.querySelector('#fb-path').textContent = data.is_drives ? 'Select a drive' : (cur || '/');
+        popup.querySelector('#fb-list').innerHTML = rowsHtml(data);
+        const upBtn = popup.querySelector('#fb-up');
+        upBtn.dataset.parent = (data.parent == null ? '' : data.parent);
+        upBtn.disabled = (data.parent == null);
+        upBtn.style.opacity = upBtn.disabled ? '0.4' : '1';
+        // Selecting is meaningful only inside a real folder (not the drive list).
+        const confirmBtn = Swal.getConfirmButton();
+        if (confirmBtn) confirmBtn.style.display = data.is_drives ? 'none' : '';
+        popup.querySelectorAll('.fb-item').forEach(el => {
+            el.addEventListener('click', async () => {
+                const next = await load(el.dataset.path);
+                if (next && next.status === 'success') render(popup, next);
+            });
+        });
+    }
+
+    const result = await Swal.fire({
+        title: 'Choose a folder',
+        width: 'min(92vw, 560px)',
+        html: `
+            <style>
+              .fb-item{padding:6px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+              .fb-item:hover{background:rgba(99,102,241,0.15);}
+              .fb-empty{padding:10px;color:#888;text-align:center;}
+            </style>
+            <div style="text-align:left;font-size:0.85em;">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+                <button type="button" id="fb-up" class="swal2-styled"
+                    style="margin:0;padding:4px 10px;font-size:0.9em;background:#6366f1;">⬆ Up</button>
+                <span id="fb-path" style="word-break:break-all;color:#555;"></span>
+              </div>
+              <div id="fb-list" style="max-height:48vh;overflow:auto;border:1px solid #d1d5db;border-radius:8px;padding:4px;"></div>
+              <p style="margin:8px 0 0;color:#888;">An <b>EasyOKAPI</b> folder will be created inside the selected folder.</p>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Select this folder',
+        cancelButtonText: 'Cancel',
+        didOpen: async () => {
+            const popup = Swal.getPopup();
+            popup.querySelector('#fb-up').addEventListener('click', async (e) => {
+                const parent = e.currentTarget.dataset.parent || '';
+                const next = await load(parent);
+                if (next && next.status === 'success') render(popup, next);
+            });
+            Swal.showLoading();
+            const data = await load(cur);
+            Swal.hideLoading();
+            if (data && data.status === 'success') render(popup, data);
+            else popup.querySelector('#fb-list').innerHTML = '<div class="fb-empty">Could not open this folder.</div>';
+        },
+        preConfirm: () => cur || null,
+    });
+
+    return result.isConfirmed ? (result.value || null) : null;
+}
+
+async function changeDataRootFromSettings() {
+    const statusEl = document.getElementById('swal-data-root-status');
+    const start = (typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.current : '';
+    const chosen = await pickDataRootFolder(start);
+    if (!chosen) return;
+    _postDataRoot({ path: chosen }, statusEl);
 }
 
 function resetDataRootFromSettings() {
     const statusEl = document.getElementById('swal-data-root-status');
-    const def = (typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.default : '';
-    if (!def) return;
-    _postDataRoot(def, statusEl);
+    _postDataRoot({ reset: true }, statusEl);
 }
 
 function checkForUpdateFromSettings() {

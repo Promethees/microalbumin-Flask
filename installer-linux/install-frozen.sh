@@ -31,25 +31,11 @@ CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/EasyOKAPI"
-# DEFAULT_APPDATA is the canonical location src/state.py resolves to, and where
-# the .dataroot pointer is written when the user picks a different folder.
-DEFAULT_APPDATA="$CURRENT_HOME/EasyOKAPI"
-APPDATA="$DEFAULT_APPDATA"
+APPDATA="$CURRENT_HOME/EasyOKAPI"
 
 echo ""
 echo -e "  ${BOLD}${CYAN}⬡  HTBiotec · EasyOKAPI · No-source installer${RESET}"
 echo ""
-
-# ── Let the user choose where their data lives ───────────────────────────────
-echo -e "  Your measurements, calibration curves and reports will be stored in a"
-echo -e "  data folder. Press Enter to use the default, or type an absolute path."
-printf "  Data folder [%s]: " "$DEFAULT_APPDATA"
-read -r CHOSEN_APPDATA </dev/tty 2>/dev/null || CHOSEN_APPDATA=""
-if [ -n "$CHOSEN_APPDATA" ]; then
-    # Expand a leading ~ to the invoking user's home.
-    case "$CHOSEN_APPDATA" in "~"*) CHOSEN_APPDATA="$CURRENT_HOME${CHOSEN_APPDATA#\~}";; esac
-    APPDATA="$CHOSEN_APPDATA"
-fi
 
 # ── Migrate user data from an old source install (it also lived at $INSTALL_DIR) ─
 print_step "Migrating data from any previous installation"
@@ -81,18 +67,6 @@ cp "$SCRIPT_DIR/run-frozen.sh" "$INSTALL_DIR/run-frozen.sh"
 [ -f "$SCRIPT_DIR/okapi.png" ] && cp "$SCRIPT_DIR/okapi.png" "$INSTALL_DIR/okapi.png"
 chmod +x "$INSTALL_DIR/run-frozen.sh" "$INSTALL_DIR/EasyOKAPI/EasyOKAPI"
 print_ok "Installed to $INSTALL_DIR"
-
-# ── Record a custom data folder via the .dataroot pointer ────────────────────
-# The pointer always lives at the DEFAULT location so the app (which computes the
-# same default) knows where to look. Skip it when the default was chosen.
-mkdir -p "$APPDATA"
-chown -R "$CURRENT_USER:$CURRENT_USER" "$APPDATA" 2>/dev/null || true
-if [ "$APPDATA" != "$DEFAULT_APPDATA" ]; then
-    mkdir -p "$DEFAULT_APPDATA"
-    printf '%s' "$APPDATA" > "$DEFAULT_APPDATA/.dataroot"
-    chown -R "$CURRENT_USER:$CURRENT_USER" "$DEFAULT_APPDATA" 2>/dev/null || true
-    print_ok "Data folder set to $APPDATA"
-fi
 
 # ── udev rule: user-level access to the PyBadge CDC serial port ──────────────
 print_step "Installing udev rule for the colorimeter serial port"

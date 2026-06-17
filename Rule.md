@@ -238,34 +238,40 @@ Timestamp,Value:1,Value:2,...
 
 - The writable data root (`state.script_dir`) holds every user artifact (`data/`, `json/`,
   `report/`, `log/`, plus `user_settings.json`, `activation.json`, `ai_settings.json`, `.env`,
-  markers). In a **frozen build** the user may relocate it — in **App Settings** or at **install
-  time** — onto another drive or a shared folder. The default stays `<Documents>/EasyOKAPI`
-  (win/mac) / `~/EasyOKAPI` (linux). **Source/dev runs always use the project root and ignore all
-  of this.**
-- **The location lives in a `.dataroot` pointer file, NOT in `user_settings.json`.** `user_settings.json`
-  lives *inside* the data root, so it cannot record where the data root is (chicken-and-egg). The
-  pointer is a one-line file holding the absolute custom path, kept at the **default** location
-  (`state.default_data_root`, deterministic per OS) so the app and the installers agree on where to
-  look. `state._read_dataroot_override()` reads it at import; `state._dataroot_pointer_path()` and
-  `data_root._write_pointer()` write it. The default folder is always created (to hold the pointer)
-  even when the live data is elsewhere.
-- **Resolution is import-time**, so changing the root **requires an app restart** to take effect.
-  The settings flow (`POST /data_root` → `src/data_root.py:set_data_root`) validates the path,
-  **moves** the existing data into the new folder (merge, never clobbering an existing destination
-  file), writes the pointer, and returns `restart_required: true`; the UI then offers **Quit now**
-  (via the existing `POST /shutdown`). `reset_to_default()` moves data back and deletes the pointer.
+  markers). In a **frozen build** the user may relocate it from **App Settings** onto another drive
+  or a shared folder. The default stays `<Documents>/EasyOKAPI` (win/mac) / `~/EasyOKAPI` (linux).
+  **Source/dev runs always use the project root and ignore all of this.**
+- **The installers do NOT choose the data location.** They always lay the data root at the default
+  (the app creates it on first run). The Windows installer's finish-page "Open my EasyOKAPI data
+  folder" option was removed (the folder may not exist yet at end of install). Relocation is an
+  in-app action only.
+- **Relocation COPIES, it does not move.** `data_root.set_data_root(parent_dir)` copies the *whole*
+  current root into an **`EasyOKAPI` subfolder of the chosen folder** (`<parent>/EasyOKAPI`), points
+  the app there, and **leaves the original in place** as a fallback. The copy skips the `.dataroot`
+  pointer and transient `_update*` artifacts (`_copy_ignore`). `reset_to_default()` copies back to
+  `state.default_data_root` and clears the pointer. Both go through `_relocate(target)` →
+  `_validate_target` (absolute; not a file; not inside `bundle_dir`; not equal to / inside the
+  current root; parent writable).
+- **The location lives in a `.dataroot` pointer file, NOT in `user_settings.json`.**
+  `user_settings.json` lives *inside* the data root, so it cannot record where the data root is
+  (chicken-and-egg). The pointer is a one-line file holding the absolute path, kept at the
+  **default** location (`state.default_data_root`, deterministic per OS). `state._read_dataroot_override()`
+  reads it at import; `data_root._write_pointer()` writes/clears it. The default folder is always
+  created (to hold the pointer) even when the live data is elsewhere.
+- **Resolution is import-time**, so changing the root **requires an app restart**. `POST /data_root`
+  returns `restart_required: true`; the UI then offers **Quit now** (via the existing `POST /shutdown`).
+- **The folder is picked with an in-app browser, not a typed path.** `GET /browse_dirs?path=` lists a
+  directory's non-hidden subfolders (and Windows drives via `?path=::drives`) for the SweetAlert
+  navigator (`pickDataRootFolder` in `init.js`); the server then appends `EasyOKAPI`.
 - `GET /data_root` returns `{current, default, is_custom}`, injected into `index.html` as
   `DATA_ROOT_INFO` (with `IS_FROZEN`); the settings modal hides the section for source builds.
-  `POST /data_root` is frozen-only, `@423 LOCKED` while the data-collection process runs.
-- **Installers** write the same pointer at the default location when the user picks a non-default
-  folder: Windows `setup-frozen.nsi` (`DataDirPage` + `.dataroot` write), macOS `migrate-frozen.sh`
-  (`osascript choose folder`, once), Linux `install-frozen.sh` (stdin prompt). The Windows
-  in-app-update restore staging now reads `<data-root>_data` (sibling of the chosen root) instead of
-  the hardcoded `Documents\EasyOKAPI_data`, matching `update_service._backup_user_data`.
+  `POST /data_root` (`{path}` to relocate, or `{reset:true}`) is frozen-only, `@423 LOCKED` while the
+  data-collection process runs.
 - **Anti-patterns**: do **not** store the data-root path in `user_settings.json`; do **not** point
-  the data root inside `bundle_dir` (read-only assets); do **not** auto-restart (`os.execv`) from the
-  settings route — restart-on-exit is reserved for the update path (§2.15); do **not** let the
-  installer pointer location drift from `state.default_data_root`.
+  the data root inside `bundle_dir` (read-only assets); do **not** *move/delete* the original on
+  relocation (it is a copy — keep the source); do **not** auto-restart (`os.execv`) from the settings
+  route — restart-on-exit is reserved for the update path (§2.15); do **not** add a data-location
+  chooser back to the installers.
 
 ---
 

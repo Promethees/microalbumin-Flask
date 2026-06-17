@@ -4,7 +4,12 @@ The writable data root (``state.script_dir``) holds every user artifact: the
 ``data/``, ``json/``, ``report/`` and ``log/`` trees plus ``user_settings.json``,
 ``activation.json``, ``ai_settings.json``, ``.env`` and first-run markers. By
 default it lives at ``<Documents>/EasyOKAPI`` (win/mac) or ``~/EasyOKAPI``
-(linux); this module lets the user relocate it.
+(linux); this module lets the user relocate it from App Settings.
+
+Relocating **copies the whole current data folder into an ``EasyOKAPI``
+subfolder of the chosen location** and points the app at that copy — the
+original is left in place as-is. So choosing ``/Volumes/Big`` makes the new root
+``/Volumes/Big/EasyOKAPI``.
 
 The location can't be stored in ``user_settings.json`` (that file lives *inside*
 the data root — chicken-and-egg), so it is recorded in a tiny ``.dataroot``
@@ -13,7 +18,7 @@ pointer file kept at the DEFAULT location (``state.default_data_root``).
 resolved at import time, changing it requires an app restart to take effect.
 
 Source/dev runs always use the project root and ignore the pointer, so these
-functions are no-ops there beyond reporting the current root.
+functions are only wired up for frozen builds (the route is frozen-gated).
 """
 
 import os
@@ -21,16 +26,8 @@ import shutil
 
 import state
 
-# Everything that lives directly under the data root and must travel with it.
-_DATA_DIRS = ("data", "json", "report", "log")
-_DATA_FILES = (
-    "user_settings.json",
-    "activation.json",
-    "ai_settings.json",
-    ".env",
-    ".demo_prompt_done",
-    ".migrated_appdata",
-)
+# Folder name created inside the user's chosen location to hold the data root.
+_ROOT_FOLDER_NAME = "EasyOKAPI"
 
 
 def get_info() -> dict:
@@ -50,7 +47,6 @@ def _normalize(path: str) -> str:
 
 def _assert_writable(path: str) -> None:
     """Raise ValueError unless we can create/write inside ``path``."""
-    probe_dir = path if os.path.isdir(path) else os.path.dirname(path) or path
     try:
         os.makedirs(path, exist_ok=True)
         probe = os.path.join(path, ".dataroot_write_test")
@@ -58,54 +54,38 @@ def _assert_writable(path: str) -> None:
             f.write("ok")
         os.remove(probe)
     except OSError:
-        raise ValueError(f"The folder is not writable: {probe_dir}")
+        raise ValueError(f"The folder is not writable: {path}")
 
 
-def _validate(new_path: str) -> str:
-    if not new_path or not new_path.strip():
-        raise ValueError("A data folder path is required.")
-    target = _normalize(new_path)
+def _validate_target(target: str) -> str:
+    """Validate a candidate data-root path (the actual new root, not the parent)."""
+    target = _normalize(target)
     if not os.path.isabs(target):
-        raise ValueError("The data folder must be an absolute path.")
+        raise ValueError("The folder must be an absolute path.")
     if os.path.exists(target) and not os.path.isdir(target):
         raise ValueError("A file already exists at that path; choose a folder.")
     bundle = os.path.abspath(state.bundle_dir)
     if target == bundle or target.startswith(bundle + os.sep):
-        raise ValueError("The data folder cannot be inside the application files.")
+        raise ValueError("The folder cannot be inside the application files.")
     current = os.path.abspath(state.script_dir)
     if target == current:
         raise ValueError("That is already the current data folder.")
-    # Refuse a target nested inside the current root (moving a dir into itself).
+    # Don't copy a tree into itself.
     if target.startswith(current + os.sep):
-        raise ValueError("The data folder cannot be inside the current data folder.")
-    _assert_writable(target)
+        raise ValueError("Choose a folder outside the current data folder.")
+    _assert_writable(os.path.dirname(target) or target)
     return target
 
 
-def _move_merge(src_root: str, dst_root: str) -> None:
-    """Move every data artifact from ``src_root`` into ``dst_root``.
-
-    Never clobbers an item already present at the destination (mirrors the merge
-    style in state._migrate_legacy_app_data). Raises on failure, leaving the
-    source intact so a half-move can't lose data.
-    """
-    os.makedirs(dst_root, exist_ok=True)
-    for name in _DATA_DIRS:
-        src = os.path.join(src_root, name)
-        if not os.path.isdir(src):
-            continue
-        dst = os.path.join(dst_root, name)
-        # Merge into an existing destination tree without overwriting files.
-        shutil.copytree(src, dst, dirs_exist_ok=True)
-        shutil.rmtree(src, ignore_errors=True)
-    for name in _DATA_FILES:
-        src = os.path.join(src_root, name)
-        if not os.path.isfile(src):
-            continue
-        dst = os.path.join(dst_root, name)
-        if not os.path.exists(dst):
-            shutil.copy2(src, dst)
-        os.remove(src)
+def _copy_ignore(_dir, names):
+    """copytree ignore: skip the pointer file and transient update artifacts."""
+    skip = set()
+    for n in names:
+        if (n == state._DATAROOT_POINTER
+                or n == ".dataroot_write_test"
+                or n.startswith("_update")):
+            skip.add(n)
+    return skip
 
 
 def _write_pointer(target: str) -> None:
@@ -121,18 +101,29 @@ def _write_pointer(target: str) -> None:
         f.write(target)
 
 
-def set_data_root(new_path: str) -> str:
-    """Relocate the data root to ``new_path``: validate, move data, write pointer.
-
-    Returns the new absolute path. Raises ValueError on a bad/unwritable path.
-    The change takes effect on the next launch (the root is resolved at import).
-    """
-    target = _validate(new_path)
-    _move_merge(state.script_dir, target)
+def _relocate(target: str) -> str:
+    """Validate `target`, copy the whole current root into it, point the app there."""
+    target = _validate_target(target)
+    # Copy the entire current root tree into the new folder (newest wins on a
+    # re-copy into an existing folder). The original is left untouched.
+    shutil.copytree(state.script_dir, target, ignore=_copy_ignore, dirs_exist_ok=True)
     _write_pointer(target)
     return target
 
 
+def set_data_root(parent_dir: str) -> str:
+    """Relocate by COPYING the current data root into ``<parent_dir>/EasyOKAPI``.
+
+    The user picks a *container* folder; the data is copied into an ``EasyOKAPI``
+    subfolder of it, the pointer is written, and the new root path is returned.
+    The original data is left untouched. Raises ValueError on a bad or unwritable
+    choice. The change takes effect on the next launch (root resolved at import).
+    """
+    if not parent_dir or not parent_dir.strip():
+        raise ValueError("A folder is required.")
+    return _relocate(os.path.join(_normalize(parent_dir), _ROOT_FOLDER_NAME))
+
+
 def reset_to_default() -> str:
-    """Move the data back to the default location and remove the pointer."""
-    return set_data_root(state.default_data_root)
+    """Copy the data back to the default location and remove the pointer."""
+    return _relocate(state.default_data_root)
