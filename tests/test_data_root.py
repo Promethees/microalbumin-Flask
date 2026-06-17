@@ -66,12 +66,15 @@ class TestSetDataRoot:
         assert target == str(parent / "EasyOKAPI")
 
     def test_writes_pointer_and_state_reads_it_back(self, tmp_path, monkeypatch):
-        default, _ = _setup_roots(tmp_path, monkeypatch)
+        _setup_roots(tmp_path, monkeypatch)
         parent = tmp_path / "BigDrive"
         target = data_root.set_data_root(str(parent))
-        pointer = default / state._DATAROOT_POINTER
-        assert pointer.is_file()
-        assert pointer.read_text(encoding="utf-8").strip() == target
+        pointer = state._dataroot_pointer_path()
+        # pointer lives BESIDE the default folder, not inside it
+        assert os.path.dirname(pointer) == os.path.dirname(str(tmp_path / "default_root"))
+        assert os.path.isfile(pointer)
+        with open(pointer, encoding="utf-8") as f:
+            assert f.read().strip() == target
         assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
 
     def test_copies_data_and_keeps_original(self, tmp_path, monkeypatch):
@@ -86,6 +89,15 @@ class TestSetDataRoot:
         # original is left untouched (copy, not move)
         assert (default / "data" / "exp1.csv").is_file()
         assert (default / "user_settings.json").is_file()
+
+    def test_pointer_survives_default_folder_deletion(self, tmp_path, monkeypatch):
+        import shutil as _sh
+        default, _ = _setup_roots(tmp_path, monkeypatch)
+        target = data_root.set_data_root(str(tmp_path / "BigDrive"))
+        # user deletes the (now-stale) default folder entirely
+        _sh.rmtree(default)
+        # pointer is a sibling → override still resolves to the relocated data
+        assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
 
     def test_does_not_copy_pointer_or_update_artifacts(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
@@ -106,11 +118,13 @@ class TestSetDataRoot:
         # pretend we are running from the custom root
         monkeypatch.setattr(state, "script_dir", str(custom))
         # write a stale pointer so reset has something to clear
-        (default / state._DATAROOT_POINTER).write_text(str(custom), encoding="utf-8")
+        pointer = state._dataroot_pointer_path()
+        with open(pointer, "w", encoding="utf-8") as f:
+            f.write(str(custom))
         target = data_root.reset_to_default()
         assert target == str(default)
         assert (default / "data" / "new.csv").is_file()  # copied back
-        assert not (default / state._DATAROOT_POINTER).exists()
+        assert not os.path.exists(pointer)
 
 
 # ---------------------------------------------------------------------------

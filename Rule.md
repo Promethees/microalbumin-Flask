@@ -245,6 +245,12 @@ Timestamp,Value:1,Value:2,...
   (the app creates it on first run). The Windows installer's finish-page "Open my EasyOKAPI data
   folder" option was removed (the folder may not exist yet at end of install). Relocation is an
   in-app action only.
+- **The Windows uninstaller is pointer-aware.** `setup-frozen.nsi`'s `Section "Uninstall"` reads
+  `$DOCUMENTS\.easyokapi_dataroot` and acts on the **relocated** folder when it exists (prompt, backup
+  ZIP, removal); on removal it also wipes the default folder + both `_data` siblings + the pointer
+  file, so a leftover copy from an in-app relocation never lingers. Because the pointer is a sibling
+  it still works when the default folder is gone. (The mac/linux uninstall scripts are source-build
+  only and do not touch the frozen data folder.)
 - **Relocation COPIES, it does not move.** `data_root.set_data_root(parent_dir)` copies the *whole*
   current root into an **`EasyOKAPI` subfolder of the chosen folder** (`<parent>/EasyOKAPI`), points
   the app there, and **leaves the original in place** as a fallback. The copy skips the `.dataroot`
@@ -252,12 +258,15 @@ Timestamp,Value:1,Value:2,...
   `state.default_data_root` and clears the pointer. Both go through `_relocate(target)` →
   `_validate_target` (absolute; not a file; not inside `bundle_dir`; not equal to / inside the
   current root; parent writable).
-- **The location lives in a `.dataroot` pointer file, NOT in `user_settings.json`.**
+- **The location lives in a `.easyokapi_dataroot` pointer file, NOT in `user_settings.json`.**
   `user_settings.json` lives *inside* the data root, so it cannot record where the data root is
-  (chicken-and-egg). The pointer is a one-line file holding the absolute path, kept at the
-  **default** location (`state.default_data_root`, deterministic per OS). `state._read_dataroot_override()`
-  reads it at import; `data_root._write_pointer()` writes/clears it. The default folder is always
-  created (to hold the pointer) even when the live data is elsewhere.
+  (chicken-and-egg). The pointer is a one-line file holding the absolute path, kept **beside** the
+  default folder — i.e. in its parent (`<Documents>`/`<home>`, deterministic per OS), **not inside
+  it**. Keeping it outside means the pointer (and the link to the relocated data) **survives the user
+  deleting the now-empty default folder**, so both the app and the uninstaller can still find the real
+  data. On Windows the parent is exactly NSIS's `$DOCUMENTS`, so the uninstaller reads the same file.
+  `state._read_dataroot_override()` reads it at import; `data_root._write_pointer()` writes/clears it;
+  `state._dataroot_pointer_path()` is the single source of truth for its location.
 - **Resolution is import-time**, so changing the root **requires an app restart**. `POST /data_root`
   returns `restart_required: true`; the UI then offers **Quit now** (via the existing `POST /shutdown`).
 - **The folder is picked with an in-app browser, not a typed path.** `GET /browse_dirs?path=` lists a

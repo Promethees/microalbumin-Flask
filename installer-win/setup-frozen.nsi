@@ -645,13 +645,42 @@ Click Cancel to stop removing EasyOKAPI." \
     ${EndIf}
   un_not_running:
 
+  ; ── Locate the user's data (it may have been relocated in-app) ──────────────
+  ; The app can move the data root off Documents\EasyOKAPI. When it does it writes
+  ; the new absolute path into a pointer file BESIDE the default folder
+  ; ($DOCUMENTS\.easyokapi_dataroot — same path src/state.py uses). Read it so we
+  ; act on the REAL data folder. $R7 = raw relocated path (may be ""/missing);
+  ; $R3 = the folder we prompt about / back up (relocated if it exists, else default).
+  StrCpy $R4 "$DOCUMENTS\.easyokapi_dataroot"   ; pointer file
+  StrCpy $R7 ""                                  ; relocated data root (raw)
+  StrCpy $R3 "$DOCUMENTS\EasyOKAPI"              ; folder to act on (default)
+  ClearErrors
+  FileOpen $8 "$R4" r
+  IfErrors un_ptr_done
+    FileRead $8 $R5
+    FileClose $8
+    ; Trim any trailing CR/LF the pointer might carry (the app writes none).
+    un_ptr_trim:
+      StrCpy $0 $R5 1 -1
+      StrCmp $0 "$\r" un_ptr_strip 0
+      StrCmp $0 "$\n" un_ptr_strip un_ptr_trimmed
+      un_ptr_strip:
+        StrCpy $R5 $R5 -1
+        Goto un_ptr_trim
+    un_ptr_trimmed:
+    StrCmp $R5 "" un_ptr_done
+      StrCpy $R7 $R5                             ; remember the relocated path
+      IfFileExists "$R7\*.*" 0 un_ptr_done
+        StrCpy $R3 $R7                           ; relocated folder exists → act on it
+  un_ptr_done:
+
   ; ── Decide what to do with the user's data ──────────────────────────────────
   ; Default is to keep it. The user may choose to remove it, and (if so) to save a
   ; dated, versioned ZIP backup first. $R2: keep / removed / backedup / keepfail.
   StrCpy $R2 "keep"
-  IfFileExists "$DOCUMENTS\EasyOKAPI\*.*" 0 un_data_done
+  IfFileExists "$R3\*.*" 0 un_data_done
     MessageBox MB_YESNO|MB_ICONQUESTION \
-      "Do you also want to remove your EasyOKAPI data (your measurements, calibration curves and reports)?$\r$\n$\r$\nClick No to keep your data in:$\r$\n$DOCUMENTS\EasyOKAPI$\r$\n$\r$\nClick Yes to remove your data." \
+      "Do you also want to remove your EasyOKAPI data (your measurements, calibration curves and reports)?$\r$\n$\r$\nClick No to keep your data in:$\r$\n$R3$\r$\n$\r$\nClick Yes to remove your data." \
       IDNO un_data_done
     MessageBox MB_YESNO|MB_ICONQUESTION \
       "Would you like to save a backup of your data (a ZIP file in your Documents folder) before it is removed?$\r$\n$\r$\nClick Yes to save a backup, then remove your data.$\r$\nClick No to remove your data without a backup." \
@@ -669,7 +698,7 @@ Click Cancel to stop removing EasyOKAPI." \
     FileWrite $9 "} catch { exit 1 }$\r$\n"
     FileClose $9
     DetailPrint "Saving a backup ZIP of your data..."
-    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\backup-zip.ps1" "$DOCUMENTS\EasyOKAPI" "$UninstVer" "$DOCUMENTS"'
+    nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\backup-zip.ps1" "$R3" "$UninstVer" "$DOCUMENTS"'
     Pop $0
     ${If} $0 == 0
       StrCpy $R2 "backedup"
@@ -706,10 +735,20 @@ Click Cancel to stop removing EasyOKAPI." \
   RMDir /r "$INSTDIR"
 
   ; ── Remove the data folders if the user asked to ────────────────────────────
+  ; Remove the folder we acted on ($R3), the default folder + its update-backup
+  ; sibling (a leftover copy may linger there after an in-app relocation), the
+  ; relocated folder + its sibling ($R7, even if it was empty), and the pointer.
   ${If} $R2 == "removed"
   ${OrIf} $R2 == "backedup"
+    RMDir /r "$R3"
+    RMDir /r "$R3_data"
     RMDir /r "$DOCUMENTS\EasyOKAPI"
     RMDir /r "$DOCUMENTS\EasyOKAPI_data"
+    StrCmp $R7 "" un_skip_reloc 0
+      RMDir /r "$R7"
+      RMDir /r "$R7_data"
+    un_skip_reloc:
+    Delete "$R4"
   ${EndIf}
 
   ; ── Tell the user what happened ──────────────────────────────────────────────
@@ -718,8 +757,8 @@ Click Cancel to stop removing EasyOKAPI." \
   ${ElseIf} $R2 == "backedup"
     MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI and your data have been removed.$\r$\n$\r$\nA backup ZIP of your data was saved in your Documents folder, named EasyOKAPI_backup_<date>_<time>_$UninstVer.zip."
   ${ElseIf} $R2 == "keepfail"
-    MessageBox MB_OK|MB_ICONEXCLAMATION "EasyOKAPI has been removed.$\r$\n$\r$\nWe could not create the backup, so your data was kept (nothing was deleted) here:$\r$\n$DOCUMENTS\EasyOKAPI"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "EasyOKAPI has been removed.$\r$\n$\r$\nWe could not create the backup, so your data was kept (nothing was deleted) here:$\r$\n$R3"
   ${Else}
-    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI has been removed.$\r$\n$\r$\nYour data was kept here:$\r$\n$DOCUMENTS\EasyOKAPI"
+    MessageBox MB_OK|MB_ICONINFORMATION "EasyOKAPI has been removed.$\r$\n$\r$\nYour data was kept here:$\r$\n$R3"
   ${EndIf}
 SectionEnd

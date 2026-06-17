@@ -104,20 +104,25 @@ def _default_app_data_dir():
 
 
 # ── User-selectable data root (frozen builds) ────────────────────────────────
-# The data root can be relocated by the user (App Settings) or at install time
-# (installers). Its location cannot be stored in user_settings.json because that
-# file lives INSIDE the data root (chicken-and-egg). Instead a tiny pointer file
-# `.dataroot` is kept at the DEFAULT location (deterministic per OS, so the app
-# and the installers agree on where to look) holding the absolute custom path.
+# The data root can be relocated by the user from App Settings. Its location
+# cannot be stored in user_settings.json because that file lives INSIDE the data
+# root (chicken-and-egg). Instead a tiny pointer file `.easyokapi_dataroot` is
+# kept BESIDE the default data folder (i.e. in <Documents> / <home>, the parent
+# of the default EasyOKAPI folder, deterministic per OS). Keeping it OUTSIDE the
+# data folder means the pointer — and therefore the link to the relocated data —
+# survives the user deleting the (now-empty) default folder, so both the app and
+# the uninstaller can still find the real data. On Windows this parent is exactly
+# NSIS's $DOCUMENTS, so the uninstaller reads the same file.
 # Source/dev runs ignore the pointer entirely and always use the project root.
-_DATAROOT_POINTER = '.dataroot'
+_DATAROOT_POINTER = '.easyokapi_dataroot'
 
 
 def _dataroot_pointer_path():
-    # Use the module-level default_data_root once it exists (set just before
-    # script_dir at import), so the read and write sides agree on one location.
+    # Anchor on the PARENT of the default data folder, so the pointer is a sibling
+    # of <Documents>/EasyOKAPI rather than living inside it. Use the module-level
+    # default_data_root once it exists (set just before script_dir at import).
     base = globals().get('default_data_root') or _default_app_data_dir()
-    return os.path.join(base, _DATAROOT_POINTER)
+    return os.path.join(os.path.dirname(base), _DATAROOT_POINTER)
 
 
 def _read_dataroot_override():
@@ -155,11 +160,6 @@ def _app_data_dir():
         return default
     override = _read_dataroot_override()
     if override and os.path.abspath(override) != os.path.abspath(default):
-        # Keep the default folder around so the pointer always has a home.
-        try:
-            os.makedirs(default, exist_ok=True)
-        except Exception:
-            pass
         return override
     return default
 

@@ -89,14 +89,18 @@ def _copy_ignore(_dir, names):
 
 
 def _write_pointer(target: str) -> None:
-    """Point the default location's ``.dataroot`` at ``target`` (or clear it)."""
-    pointer = os.path.join(state.default_data_root, state._DATAROOT_POINTER)
+    """Point the ``.easyokapi_dataroot`` pointer at ``target`` (or clear it).
+
+    The pointer lives beside the default data folder (see state._dataroot_pointer_path),
+    so it survives the default folder being deleted.
+    """
+    pointer = state._dataroot_pointer_path()
     default = os.path.abspath(state.default_data_root)
     if os.path.abspath(target) == default:
         if os.path.isfile(pointer):
             os.remove(pointer)
         return
-    os.makedirs(state.default_data_root, exist_ok=True)
+    os.makedirs(os.path.dirname(pointer), exist_ok=True)
     with open(pointer, "w", encoding="utf-8") as f:
         f.write(target)
 
