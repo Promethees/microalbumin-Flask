@@ -1113,3 +1113,70 @@ function clearCustomColors() {
         localStorage.removeItem(`custom-source-color-${i}`);
     }
 }
+
+// Reset every control inside #data-display-section back to its default value.
+// Called whenever a new measurement file is selected so the analysis panel
+// starts fresh (checkboxes, dropdowns, number/text inputs, radios) instead of
+// carrying over the previous file's choices. Each element is guarded so a
+// missing/renamed node never throws mid-selection.
+function resetDataDisplayDefaults() {
+    const setVal = (id, val) => { const el = $id(id); if (el) el.value = val; };
+    const setChecked = (id, state) => { const el = $id(id); if (el) el.checked = state; };
+    const selectFirst = (id) => { const el = $id(id); if (el) el.selectedIndex = 0; };
+
+    // --- Time range ---
+    setVal("range-value-start", 0);
+    setVal("range-value-end", 1000);
+    const rs = $id("range-value-start"); if (rs) rs.disabled = false;
+    const re = $id("range-value-end"); if (re) re.disabled = false;
+    selectFirst("time-unit");
+    $text("range-value-error", "");
+
+    // --- Quantity / regression selection ---
+    document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
+    setVal("window-size", 4);
+    $text("wd-size-error", "");
+    selectFirst("regressed-quantity");
+    setVal("regressed-time-point", "");      // "ALL"
+    setVal("exp-json-regress-algo", "polynomial");
+
+    // --- Mode toggles ---
+    setChecked("split-source", false);
+    setChecked("normalize-mode", false);
+    setChecked("open-all-analysis", false);
+
+    // --- Export analysis for calibration ---
+    setVal("exp-json-source", "ALL");
+    setVal("exp-json-time-value", "");
+    $text("est-val-error", "");
+    $text("est-val-exp", "");
+    setChecked("same-dir-as-data", true);
+    const subfolderRow = $id("exp-subfolder-row");
+    if (subfolderRow) subfolderRow.style.display = "none";
+    selectFirst("exp-subfolder-select");
+    AppState.exportPath = AppState.currentDirectory || DATA_ROOT;
+    setVal("save-file", "");
+    $text("save-file-error", "");
+
+    // --- Export coefficients for standard curve ---
+    setChecked("json-mode-new", true);
+    setChecked("json-mode-overwrite", false);
+    const jsonNewRow = $id("json-new-row");
+    if (jsonNewRow) jsonNewRow.style.display = "block";
+    const jsonOverwriteRow = $id("json-overwrite-row");
+    if (jsonOverwriteRow) jsonOverwriteRow.style.display = "none";
+    setVal("save-json-file", "");
+    $text("save-json-file-error", "");
+    setVal("json-overwrite-select", "");
+    setVal("threshold-value", 0);
+
+    // --- Report ---
+    setChecked("report-mode-existing", true);
+    setChecked("report-mode-new", false);
+    const reportExistingRow = $id("report-existing-row");
+    if (reportExistingRow) reportExistingRow.style.display = "flex";
+    const reportNewRow = $id("report-new-row");
+    if (reportNewRow) reportNewRow.style.display = "none";
+    setVal("report-subject-select", "");
+    setVal("report-subject-name", "");
+}

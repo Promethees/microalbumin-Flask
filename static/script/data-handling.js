@@ -31,14 +31,9 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
             $id("copy-file-btn").disabled = false;
             if ($id("move-file-btn")) $id("move-file-btn").disabled = false;
 
-            // Reset range values
-            $id("range-value-start").value = 0;
-            $id("range-value-end").value = 1000;
-            $id("range-value-start").disabled = false;
-            $id("range-value-end").disabled = false;
-
-            // Check all quantity-checkbox elements
-            document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
+            // Reset every control in the data-display section to its default so
+            // the previous file's analysis choices don't carry over.
+            resetDataDisplayDefaults();
 
             await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
         }
