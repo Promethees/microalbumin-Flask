@@ -1123,6 +1123,14 @@ function resetDataDisplayDefaults() {
     const setVal = (id, val) => { const el = $id(id); if (el) el.value = val; };
     const setChecked = (id, state) => { const el = $id(id); if (el) el.checked = state; };
     const selectFirst = (id) => { const el = $id(id); if (el) el.selectedIndex = 0; };
+    // Restore a collapsible section + its chevron to a default open/closed state.
+    const setCollapsed = (collapseId, chevronId, collapsed) => {
+        const c = $id(collapseId); if (c) c.classList.toggle('collapsed', collapsed);
+        const v = $id(chevronId); if (v) v.classList.toggle('collapsed-chevron', collapsed);
+    };
+    // User-configurable defaults (settings modal). Fall back to built-ins when
+    // USER_SETTINGS is unavailable.
+    const settings = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS) ? USER_SETTINGS : {};
 
     // --- Time range ---
     setVal("range-value-start", 0);
@@ -1134,15 +1142,15 @@ function resetDataDisplayDefaults() {
 
     // --- Quantity / regression selection ---
     document.querySelectorAll(".quantity-checkbox").forEach(cb => cb.checked = true);
-    setVal("window-size", 4);
+    setVal("window-size", settings.default_window_size || 4);
     $text("wd-size-error", "");
     selectFirst("regressed-quantity");
     setVal("regressed-time-point", "");      // "ALL"
     setVal("exp-json-regress-algo", "polynomial");
 
-    // --- Mode toggles ---
-    setChecked("split-source", false);
-    setChecked("normalize-mode", false);
+    // --- Mode toggles (honour the user's configured defaults) ---
+    setChecked("split-source", !!settings.default_split_sources);
+    setChecked("normalize-mode", !!settings.default_normalize);
     setChecked("open-all-analysis", false);
 
     // --- Export analysis for calibration ---
@@ -1179,4 +1187,13 @@ function resetDataDisplayDefaults() {
     if (reportNewRow) reportNewRow.style.display = "none";
     setVal("report-subject-select", "");
     setVal("report-subject-name", "");
+
+    // --- Collapsible sub-sections back to their default open/closed state ---
+    // Range & "Export analysis" default to collapsed unless the user opted to
+    // have them expanded (settings modal). "Export coefficients" is always
+    // collapsed; "Report" is always expanded.
+    setCollapsed("range-collapse", "range-chevron", !settings.range_expanded_default);
+    setCollapsed("export-analysis-collapse", "export-analysis-chevron", !settings.export_expanded_default);
+    setCollapsed("export-coef-collapse", "export-coef-chevron", true);
+    setCollapsed("report-collapse", "report-chevron", false);
 }
