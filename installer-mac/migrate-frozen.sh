@@ -11,7 +11,35 @@
 # marker file and best-effort throughout: a failure here must never block launch.
 
 OLD="/Applications/microalbumin-Flask"
-APPDATA="$HOME/Documents/EasyOKAPI"
+# DEFAULT_APPDATA is the canonical location src/state.py resolves to and where
+# the .dataroot pointer always lives, even when the data is stored elsewhere.
+DEFAULT_APPDATA="$HOME/Documents/EasyOKAPI"
+POINTER="$DEFAULT_APPDATA/.dataroot"
+SETUP_MARKER="$DEFAULT_APPDATA/.dataroot_setup_done"
+
+# Resolve the active data folder: an existing pointer wins, else the default.
+APPDATA="$DEFAULT_APPDATA"
+if [ -f "$POINTER" ]; then
+    P="$(cat "$POINTER" 2>/dev/null)"
+    [ -n "$P" ] && APPDATA="$P"
+fi
+
+# First-run data-location chooser — shown once, only before anything is set up.
+if [ ! -f "$SETUP_MARKER" ] && [ ! -f "$POINTER" ]; then
+    CHOSEN="$(osascript -e 'try' \
+        -e 'POSIX path of (choose folder with prompt "Choose where EasyOKAPI should store your measurements, calibration curves and reports. Cancel to use the default in your Documents folder.")' \
+        -e 'end try' 2>/dev/null)"
+    if [ -n "$CHOSEN" ]; then
+        # `choose folder` returns the picked folder; keep our data in an
+        # EasyOKAPI subfolder of it so we never litter the chosen location.
+        APPDATA="${CHOSEN%/}/EasyOKAPI"
+        mkdir -p "$DEFAULT_APPDATA"
+        printf '%s' "$APPDATA" > "$POINTER"
+    fi
+    mkdir -p "$DEFAULT_APPDATA"
+    touch "$SETUP_MARKER"
+fi
+
 MARKER="$APPDATA/.migrated_from_source"
 
 [ -f "$MARKER" ] && exit 0

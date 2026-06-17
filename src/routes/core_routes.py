@@ -7,6 +7,7 @@ import threading
 import zipfile
 import state
 import user_settings as _user_settings
+import data_root as _data_root
 import event_logger
 from file_path import DATA_ROOT, get_data_subfolders
 from range import get_range_input
@@ -76,7 +77,9 @@ def index():
                          app_version=state.APP_VERSION,
                          maintainer_email=state.MAINTAINER_EMAIL,
                          demo_prompt_pending=state.demo_prompt_pending(),
-                         user_settings=user_settings))
+                         user_settings=user_settings,
+                         is_frozen=state.IS_FROZEN,
+                         data_root_info=_data_root.get_info()))
     return response
 
 
@@ -160,6 +163,35 @@ def post_settings():
     if _user_settings.save(data):
         return jsonify({'status': 'success'})
     return jsonify({'status': 'error', 'message': 'Could not save settings'}), 500
+
+
+@core_bp.route('/data_root', methods=['GET'])
+def get_data_root():
+    return jsonify({'status': 'success', **_data_root.get_info()})
+
+
+@core_bp.route('/data_root', methods=['POST'])
+def post_data_root():
+    # Relocating the data root only makes sense for an installed build — a source
+    # run always uses the project root (see src/data_root.py).
+    if not state.IS_FROZEN:
+        return jsonify({'status': 'error',
+                        'message': 'The data folder can only be changed in an installed build.'}), 400
+    # Don't move data out from under a running data-collection process.
+    if state.process and state.process.poll() is None:
+        return jsonify({'status': 'error',
+                        'message': 'Cannot change the data folder while the data collection process is running'}), 423
+    data = request.get_json(silent=True)
+    if not data or 'path' not in data:
+        return jsonify({'status': 'error', 'message': 'No path provided'}), 400
+    try:
+        new_path = _data_root.set_data_root(data['path'])
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Could not move data folder: {e}'}), 500
+    event_logger.append('settings', 'data_root', {'path': new_path})
+    return jsonify({'status': 'success', 'path': new_path, 'restart_required': True})
 
 
 @core_bp.route('/event_log', methods=['GET'])

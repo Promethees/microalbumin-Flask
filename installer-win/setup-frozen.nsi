@@ -101,6 +101,8 @@ Var TokenInput
 Var EasyOKAPIToken
 Var BgBitmapHandle
 Var UninstVer
+Var DataDir        ; user-chosen data root (default: $DOCUMENTS\EasyOKAPI)
+Var DataDirInput
 
 ; ── Page order: Welcome → Token → Directory → Install → Finish ────────────────
 ; Each MUI page gets a SHOW callback that recolours the inner controls. The
@@ -115,6 +117,10 @@ Page custom TokenPage TokenPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_DIRECTORY
+
+; Data-folder chooser: where the user's measurements/curves/reports live. Stored
+; via the .dataroot pointer so the app picks it up (see src/state.py / data_root.py).
+Page custom DataDirPage DataDirPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_PAGE_INSTFILES
@@ -332,7 +338,66 @@ FunctionEnd
 
 ; Finish-page checkbox — open the user's data folder in Explorer.
 Function OpenDataFolder
-  ExecShell "open" "$DOCUMENTS\EasyOKAPI"
+  ${If} $DataDir == ""
+    ExecShell "open" "$DOCUMENTS\EasyOKAPI"
+  ${Else}
+    ExecShell "open" "$DataDir"
+  ${EndIf}
+FunctionEnd
+
+; ── Data-folder chooser page ──────────────────────────────────────────────────
+; The data root defaults to Documents\EasyOKAPI (matches src/state.py). If the
+; user picks another folder, the install section writes a .dataroot pointer at the
+; default location so the app finds the data there.
+Function DataDirPage
+  !insertmacro MUI_HEADER_TEXT "Choose your data folder" "Select where EasyOKAPI stores your measurements, calibration curves and reports."
+  nsDialogs::Create 1018
+  Pop $Dialog
+  ${If} $Dialog == error
+    Abort
+  ${EndIf}
+  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+
+  ${NSD_CreateBitmap} 0 0 100% 100% ""
+  Pop $0
+  ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
+
+  ${If} $DataDir == ""
+    StrCpy $DataDir "$DOCUMENTS\EasyOKAPI"
+  ${EndIf}
+
+  ${NSD_CreateLabel} 0 0 100% 40u "Your measurements, calibration curves and reports will be stored in the folder below. Keep the default in your Documents folder, or choose another location (for example a larger or shared drive). Your data is kept safe whenever you update."
+  Pop $0
+  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
+
+  ${NSD_CreateText} 0 46u 78% 12u "$DataDir"
+  Pop $DataDirInput
+  SetCtlColors $DataDirInput "${CLR_FG}" "${CLR_INPUT}"
+
+  ${NSD_CreateButton} 80% 46u 20% 12u "Browse…"
+  Pop $0
+  ${NSD_OnClick} $0 DataDirBrowse
+
+  Call _DarkButtons
+  nsDialogs::Show
+FunctionEnd
+
+Function DataDirBrowse
+  ${NSD_GetText} $DataDirInput $0
+  nsDialogs::SelectFolderDialog "Choose a folder to hold your EasyOKAPI data" "$0"
+  Pop $1
+  ${If} $1 != error
+    ; Keep our data in an EasyOKAPI subfolder of the chosen location so we never
+    ; scatter files loose into a folder the user picked.
+    ${NSD_SetText} $DataDirInput "$1\EasyOKAPI"
+  ${EndIf}
+FunctionEnd
+
+Function DataDirPageLeave
+  ${NSD_GetText} $DataDirInput $DataDir
+  ${If} $DataDir == ""
+    StrCpy $DataDir "$DOCUMENTS\EasyOKAPI"
+  ${EndIf}
 FunctionEnd
 
 ; ── EasyOKAPI activation-token page (required) ────────────────────────────────
@@ -433,7 +498,13 @@ FunctionEnd
 !macroend
 
 Section "Install" SEC01
-  StrCpy $R0 "$DOCUMENTS\EasyOKAPI"   ; visible per-user data root (matches state.py)
+  ; Visible per-user data root: the user's choice from DataDirPage, defaulting to
+  ; Documents\EasyOKAPI (matches state.py). A custom choice is recorded below via
+  ; the .dataroot pointer.
+  StrCpy $R0 "$DataDir"
+  ${If} $R0 == ""
+    StrCpy $R0 "$DOCUMENTS\EasyOKAPI"
+  ${EndIf}
 
   ; ── Refuse to overwrite a running instance ──────────────────────────────────
   ; A live EasyOKAPI.exe keeps its files open, so File /r below would fail. It may
@@ -501,12 +572,12 @@ Click Cancel to exit without making any changes." \
     FileClose $9
   skip_migrate:
 
-  ; ── Restore data from the temporary EasyOKAPI_data folder, then remove it ────
-  ; An in-app update stages a temporary safety copy in Documents\EasyOKAPI_data.
-  ; Merge anything found there back into the working data folder (without
-  ; overwriting newer files), then delete the temporary folder so it does not
-  ; linger in Documents.
-  StrCpy $R1 "$DOCUMENTS\EasyOKAPI_data"
+  ; ── Restore data from the temporary <data-root>_data folder, then remove it ──
+  ; An in-app update stages a temporary safety copy in a sibling '<data-root>_data'
+  ; folder (update_service._backup_user_data uses script_dir + '_data', so it
+  ; follows a relocated root). Merge anything found there back into the working
+  ; data folder (without overwriting newer files), then delete the temp folder.
+  StrCpy $R1 "$R0_data"
   IfFileExists "$R1\*.*" 0 skip_restore
     DetailPrint "Restoring your data from $R1..."
     !insertmacro MigrateDir "$R1\data"   "$R0\data"
@@ -514,6 +585,18 @@ Click Cancel to exit without making any changes." \
     !insertmacro MigrateDir "$R1\report" "$R0\report"
     RMDir /r "$R1"
   skip_restore:
+
+  ; ── Record a custom data folder via the .dataroot pointer ───────────────────
+  ; The pointer always lives at the DEFAULT location ($DOCUMENTS\EasyOKAPI) so the
+  ; app, which computes the same default, knows where to look. Written only when
+  ; the user chose a non-default folder.
+  ${If} $R0 != "$DOCUMENTS\EasyOKAPI"
+    CreateDirectory "$R0"
+    CreateDirectory "$DOCUMENTS\EasyOKAPI"
+    FileOpen $9 "$DOCUMENTS\EasyOKAPI\.dataroot" w
+    FileWrite $9 "$R0"
+    FileClose $9
+  ${EndIf}
 
   ; ── Remove any previous install payload (source code dir + old runner) ──────
   RMDir /r "$INSTDIR\code"

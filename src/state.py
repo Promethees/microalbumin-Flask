@@ -89,15 +89,79 @@ def _user_data_base():
     return os.path.expanduser('~')  # linux: ~/EasyOKAPI
 
 
-def _app_data_dir():
-    """Writable per-user data root — a VISIBLE folder the user can open directly.
+def _default_app_data_dir():
+    """The DEFAULT writable per-user data root — a VISIBLE folder the user can
+    open directly.
 
     Frozen: <Documents>/EasyOKAPI (win/mac) or ~/EasyOKAPI (linux). Source/dev:
-    the project root (unchanged).
+    the project root (unchanged). This is the location the user can relocate
+    AWAY from via the data-root pointer (see _read_dataroot_override); it always
+    holds the pointer file even when the live data lives elsewhere.
     """
     if not _is_frozen():
         return _find_project_root()
     return os.path.join(_user_data_base(), 'EasyOKAPI')
+
+
+# ── User-selectable data root (frozen builds) ────────────────────────────────
+# The data root can be relocated by the user (App Settings) or at install time
+# (installers). Its location cannot be stored in user_settings.json because that
+# file lives INSIDE the data root (chicken-and-egg). Instead a tiny pointer file
+# `.dataroot` is kept at the DEFAULT location (deterministic per OS, so the app
+# and the installers agree on where to look) holding the absolute custom path.
+# Source/dev runs ignore the pointer entirely and always use the project root.
+_DATAROOT_POINTER = '.dataroot'
+
+
+def _dataroot_pointer_path():
+    # Use the module-level default_data_root once it exists (set just before
+    # script_dir at import), so the read and write sides agree on one location.
+    base = globals().get('default_data_root') or _default_app_data_dir()
+    return os.path.join(base, _DATAROOT_POINTER)
+
+
+def _read_dataroot_override():
+    """Return the user's custom data root from the pointer file, or None.
+
+    Frozen builds only. The pointer holds one absolute path; it is honoured only
+    when it is absolute and not inside the read-only bundle. The directory is
+    created if missing so a relocated root survives a wiped target. Best-effort:
+    any problem falls back to the default root.
+    """
+    if not _is_frozen():
+        return None
+    try:
+        path = _dataroot_pointer_path()
+        if not os.path.isfile(path):
+            return None
+        with open(path, 'r', encoding='utf-8') as f:
+            target = f.read().strip()
+        if not target:
+            return None
+        target = os.path.abspath(os.path.expanduser(os.path.expandvars(target)))
+        bundle = _bundle_dir()
+        if target == bundle or target.startswith(bundle + os.sep):
+            return None  # never point the data root inside the read-only bundle
+        os.makedirs(target, exist_ok=True)
+        return target
+    except Exception:
+        return None
+
+
+def _app_data_dir():
+    """Writable per-user data root, honouring a user-selected override (frozen)."""
+    default = _default_app_data_dir()
+    if not _is_frozen():
+        return default
+    override = _read_dataroot_override()
+    if override and os.path.abspath(override) != os.path.abspath(default):
+        # Keep the default folder around so the pointer always has a home.
+        try:
+            os.makedirs(default, exist_ok=True)
+        except Exception:
+            pass
+        return override
+    return default
 
 
 def _legacy_app_data_dirs():
@@ -116,7 +180,8 @@ def _legacy_app_data_dirs():
 
 
 bundle_dir = _bundle_dir()
-script_dir = _app_data_dir()
+default_data_root = _default_app_data_dir()  # where the .dataroot pointer lives
+script_dir = _app_data_dir()                 # honours the pointer (frozen only)
 os.makedirs(script_dir, exist_ok=True)
 
 

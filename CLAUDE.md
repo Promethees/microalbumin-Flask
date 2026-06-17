@@ -112,3 +112,5 @@ Checklist to run mentally for every new feature:
 If any answer is yes, add the setting to `src/user_settings.py` (`DEFAULTS` + validation in `save()`), expose it in the settings modal in `static/script/init.js` (`SETTINGS_DEFAULTS` + form field), apply it on page load (via `USER_SETTINGS` in `index.html` or `init.js`), and add backend tests in `tests/test_user_settings.py`.
 
 **Anti-pattern**: do not hardcode UI dimensions, row limits, default states, or feature flags directly in CSS or JS when a user might reasonably want a different value on their machine.
+
+**Exception — the data-root location**: the user-selectable data folder (frozen builds) is **not** a `user_settings.py` key, because `user_settings.json` lives *inside* the data root (chicken-and-egg). It is stored in a `.dataroot` pointer file at the default location and managed by `src/data_root.py` + `/data_root` (GET/POST). See **Rule.md §2.19**.

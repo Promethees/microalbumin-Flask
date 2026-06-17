@@ -738,6 +738,37 @@ function _buildSettingsHTML(s, folders) {
                 ${rowCheck('Expand export panel by default', 'swal-export-expanded', s.export_expanded_default)}
             </div>
         </div>
+        ${(typeof IS_FROZEN !== 'undefined' && IS_FROZEN) ? `
+        <div class="sm-section sm-section--full">
+            <p class="sm-section-title">Data folder location</p>
+            <p class="sm-help" style="margin-bottom:6px;">
+                Your measurements, calibration curves and reports are stored here.
+                Choosing a new folder moves your existing data there; EasyOKAPI must
+                restart afterwards.
+            </p>
+            <div class="sm-row">
+                <span class="sm-label">Current folder</span>
+                <input id="swal-data-root-current" type="text" class="swal2-input" readonly
+                    value="${(typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.current : ''}">
+            </div>
+            <div class="sm-row">
+                <span class="sm-label">New folder (absolute path)</span>
+                <input id="swal-data-root-new" type="text" class="swal2-input"
+                    placeholder="e.g. ${(typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.default : ''}">
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <button type="button" onclick="changeDataRootFromSettings()"
+                    style="font-size:0.8em;padding:4px 12px;border-radius:6px;border:1px solid #d1d5db;background:transparent;cursor:pointer;">
+                    Move data folder…
+                </button>
+                ${(typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO && DATA_ROOT_INFO.is_custom) ? `
+                <button type="button" onclick="resetDataRootFromSettings()"
+                    style="font-size:0.8em;padding:4px 12px;border-radius:6px;border:1px solid #d1d5db;background:transparent;cursor:pointer;">
+                    Reset to default
+                </button>` : ''}
+            </div>
+            <p id="swal-data-root-status" style="font-size:0.8em;color:#888;margin-top:5px;min-height:1.2em;"></p>
+        </div>` : ''}
         <div class="sm-section">
             <p class="sm-section-title">About</p>
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -1044,6 +1075,68 @@ function scheduleStartupUpdateCheck() {
         });
     };
     setTimeout(tryOnce, RETRY_DELAYS[attempt++]);
+}
+
+// ── Data folder relocation (frozen builds) ───────────────────────────────────
+function _postDataRoot(path, statusEl) {
+    if (statusEl) statusEl.textContent = 'Moving data…';
+    return fetch('/data_root', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+    })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok || !d || d.status !== 'success') {
+                const msg = (d && d.message) || 'Could not move the data folder.';
+                if (statusEl) statusEl.textContent = msg;
+                return false;
+            }
+            logEvent('settings', 'data_root', { path: d.path });
+            Swal.close();
+            Swal.fire({
+                title: 'Data folder moved',
+                html: `Your data is now stored at:<br><b>${d.path}</b><br><br>` +
+                    'EasyOKAPI needs to restart to use the new location.',
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: 'Quit now',
+                cancelButtonText: 'Later',
+            }).then(res => {
+                if (res.isConfirmed) {
+                    fetch('/shutdown', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: AppState.lightDisplay ? 'light' : 'dark' })
+                    }).then(r => r.text()).then(html => {
+                        document.open(); document.write(html); document.close();
+                    }).catch(() => { });
+                }
+            });
+            return true;
+        })
+        .catch(() => {
+            if (statusEl) statusEl.textContent = 'Could not reach the server.';
+            return false;
+        });
+}
+
+function changeDataRootFromSettings() {
+    const statusEl = document.getElementById('swal-data-root-status');
+    const input = document.getElementById('swal-data-root-new');
+    const path = (input && input.value || '').trim();
+    if (!path) {
+        if (statusEl) statusEl.textContent = 'Enter an absolute folder path first.';
+        return;
+    }
+    _postDataRoot(path, statusEl);
+}
+
+function resetDataRootFromSettings() {
+    const statusEl = document.getElementById('swal-data-root-status');
+    const def = (typeof DATA_ROOT_INFO !== 'undefined' && DATA_ROOT_INFO) ? DATA_ROOT_INFO.default : '';
+    if (!def) return;
+    _postDataRoot(def, statusEl);
 }
 
 function checkForUpdateFromSettings() {

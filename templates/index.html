@@ -757,6 +757,8 @@
             const MAINTAINER_EMAIL = "{{ maintainer_email }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
+            const IS_FROZEN = {{ is_frozen | tojson | safe }};
+            const DATA_ROOT_INFO = {{ data_root_info | tojson | safe }};
             document.documentElement.style.setProperty('--file-table-height', (USER_SETTINGS.file_table_height || 240) + 'px');
 
             function getNativePath(...paths) {

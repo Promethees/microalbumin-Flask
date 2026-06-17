@@ -234,6 +234,41 @@ Timestamp,Value:1,Value:2,...
 
 ---
 
+### 2.19 User-Selectable Data Root
+
+- The writable data root (`state.script_dir`) holds every user artifact (`data/`, `json/`,
+  `report/`, `log/`, plus `user_settings.json`, `activation.json`, `ai_settings.json`, `.env`,
+  markers). In a **frozen build** the user may relocate it — in **App Settings** or at **install
+  time** — onto another drive or a shared folder. The default stays `<Documents>/EasyOKAPI`
+  (win/mac) / `~/EasyOKAPI` (linux). **Source/dev runs always use the project root and ignore all
+  of this.**
+- **The location lives in a `.dataroot` pointer file, NOT in `user_settings.json`.** `user_settings.json`
+  lives *inside* the data root, so it cannot record where the data root is (chicken-and-egg). The
+  pointer is a one-line file holding the absolute custom path, kept at the **default** location
+  (`state.default_data_root`, deterministic per OS) so the app and the installers agree on where to
+  look. `state._read_dataroot_override()` reads it at import; `state._dataroot_pointer_path()` and
+  `data_root._write_pointer()` write it. The default folder is always created (to hold the pointer)
+  even when the live data is elsewhere.
+- **Resolution is import-time**, so changing the root **requires an app restart** to take effect.
+  The settings flow (`POST /data_root` → `src/data_root.py:set_data_root`) validates the path,
+  **moves** the existing data into the new folder (merge, never clobbering an existing destination
+  file), writes the pointer, and returns `restart_required: true`; the UI then offers **Quit now**
+  (via the existing `POST /shutdown`). `reset_to_default()` moves data back and deletes the pointer.
+- `GET /data_root` returns `{current, default, is_custom}`, injected into `index.html` as
+  `DATA_ROOT_INFO` (with `IS_FROZEN`); the settings modal hides the section for source builds.
+  `POST /data_root` is frozen-only, `@423 LOCKED` while the data-collection process runs.
+- **Installers** write the same pointer at the default location when the user picks a non-default
+  folder: Windows `setup-frozen.nsi` (`DataDirPage` + `.dataroot` write), macOS `migrate-frozen.sh`
+  (`osascript choose folder`, once), Linux `install-frozen.sh` (stdin prompt). The Windows
+  in-app-update restore staging now reads `<data-root>_data` (sibling of the chosen root) instead of
+  the hardcoded `Documents\EasyOKAPI_data`, matching `update_service._backup_user_data`.
+- **Anti-patterns**: do **not** store the data-root path in `user_settings.json`; do **not** point
+  the data root inside `bundle_dir` (read-only assets); do **not** auto-restart (`os.execv`) from the
+  settings route — restart-on-exit is reserved for the update path (§2.15); do **not** let the
+  installer pointer location drift from `state.default_data_root`.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.
