@@ -954,10 +954,34 @@ async function loadReportItems(subject) {
             }
 
             container.innerHTML = ''; // clear loading message
-            for (const item of dataFiles) {
+
+            // Pre-fetch every item's data once. This lets us tell a point-mode
+            // calibration file (Concentration/TimePoint/Value) apart from a
+            // kinetics standard curve (per-metric columns) and populate the point
+            // time-point picker. The response is passed to initItemPreview so it
+            // does not fetch a second time.
+            const itemResponses = await Promise.all(dataFiles.map(it =>
+                $.get('/get_data', { file: it.path }).then(r => r).catch(() => null)));
+
+            const reportAlgos = [
+                { id: 'polynomial', label: 'Poly' },
+                { id: 'linear', label: 'Lin' },
+                { id: 'logarithmic', label: 'Log' },
+                { id: 'exponential', label: 'Exp' },
+                { id: 'Michaelis-Menten', label: 'MM' }
+            ];
+
+            for (let _i = 0; _i < dataFiles.length; _i++) {
+                const item = dataFiles[_i];
+                const response = itemResponses[_i];
                 const itemID = `report-item-${item.filename.replace(/[^a-z0-9]/gi, '_')}`;
                 const isCalibrate = item.metadata.mode === 'calibrate';
                 const isKinetics = item.metadata.mode === 'kinetics';
+                const cols = (response && response.data && response.data[0]) ? Object.keys(response.data[0]) : [];
+                // A calibrate file carrying Concentration/TimePoint/Value columns is
+                // a point-mode standard curve; anything else is a kinetics curve.
+                const isPointCal = isCalibrate && cols.includes('Value') && cols.includes('TimePoint');
+                const calType = isPointCal ? 'point' : (isCalibrate ? 'kinetics' : null);
                 const card = document.createElement('div');
                 card.className = 'report-item-card';
                 card.id = itemID;
@@ -965,7 +989,37 @@ async function loadReportItems(subject) {
                 card.dataset.subject = subject;
 
                 let contentHtml = '';
-                if (isCalibrate) {
+                if (isPointCal) {
+                    // Point-mode calibration: one Value-vs-Concentration curve. Let
+                    // the user pick the time point and which fit algorithms to plot.
+                    const timePoints = [...new Set(response.data.map(r => r['TimePoint']).filter(v => v != null && v !== 'NONE'))]
+                        .sort((a, b) => parseFloat(a) - parseFloat(b));
+                    contentHtml = `
+                        <div class="point-cal-block" style="border: 1px solid #ddd; padding: 8px; border-radius: 6px; background: #fff; margin-top: 10px;">
+                            <div style="height: 140px; margin-bottom: 8px;">
+                                <canvas id="preview-chart-${itemID}-point"></canvas>
+                            </div>
+                            <div class="control-group" style="margin-bottom: 8px;">
+                                <label style="font-size:0.85rem; font-weight:700;">Time point</label>
+                                <select class="point-timepoint-select" data-filename="${item.filename}" onchange="updatePointPreview('${item.filename}')" style="width: 100%;">
+                                    <option value="">All time points</option>
+                                    ${timePoints.map(tp => `<option value="${tp}">${tp}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="control-group">
+                                <label style="font-size:0.85rem; font-weight:700;">Fit curves to include</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.7rem;">
+                                    ${reportAlgos.map(a => `
+                                        <label class="algo-include-label" title="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
+                                            <input type="checkbox" class="point-algo-checkbox" data-filename="${item.filename}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
+                                            ${a.label}
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (isCalibrate) {
                     const metrics = [
                         { id: 'Slope', label: 'Slope' },
                         { id: 'Time To Sat', label: 'Time To Sat' },
@@ -1088,8 +1142,8 @@ async function loadReportItems(subject) {
                 `;
                 container.appendChild(card);
 
-                // Initialize preview for this item
-                initItemPreview(item, itemID);
+                // Initialize preview for this item (reuse the pre-fetched data)
+                initItemPreview(item, itemID, response, calType);
 
                 const normCb = card.querySelector('.item-normalize-checkbox');
                 if (normCb) {
@@ -1140,20 +1194,22 @@ function updateReportChartsTheme() {
     });
 }
 
-async function initItemPreview(item, itemID) {
+async function initItemPreview(item, itemID, preloaded = null, calType = null) {
     try {
-        const response = await $.get('/get_data', { file: item.path });
+        const response = preloaded || await $.get('/get_data', { file: item.path });
         if (!response.data || response.data.length === 0) return;
 
         const isCalibrate = item.metadata.mode === 'calibrate';
         const isKinetics = item.metadata.mode === 'kinetics';
+        const isPointCal = calType === 'point';
         const numSources = response.num_sources || 1;
         const config = {
             data: response.data,
             metadata: { ...response.metadata, ...item.metadata },
             num_sources: numSources,
+            calType,
             visibleTraces: Array.from({ length: numSources }, (_, i) => i + 1),
-            visibleMetrics: isCalibrate ? ['Slope', 'Time To Sat', 'maxRate', 'Sat'] : [],
+            visibleMetrics: (isCalibrate && !isPointCal) ? ['Slope', 'Time To Sat', 'maxRate', 'Sat'] : [],
             calFile: null,
             layout: 'together',
             chart: null,
@@ -1162,7 +1218,29 @@ async function initItemPreview(item, itemID) {
         };
         window.ReportItemConfig[item.filename] = config;
 
-        if (isCalibrate) {
+        if (isPointCal) {
+            // Scatter of Value vs Concentration (all time points initially);
+            // updatePointPreview() re-renders when the time point changes.
+            const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
+            const ctx = document.getElementById(`preview-chart-${itemID}-point`).getContext('2d');
+            config.pointChart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: [{
+                    label: measLabel,
+                    data: response.data
+                        .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+                        .filter(p => !isNaN(p.x) && !isNaN(p.y)),
+                    backgroundColor: '#6366f1'
+                }]},
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: _darkScale({ type: 'linear', display: true }), y: _darkScale({ display: true }) },
+                    plugins: { legend: { display: false } },
+                    animation: false
+                }
+            });
+        } else if (isCalibrate) {
             const metrics = ['Slope', 'Time To Sat', 'maxRate', 'Sat'];
             const xCol = config.metadata.XColumn || 'Concentration';
             config.charts = {};
@@ -1271,6 +1349,21 @@ function updateMetricVisibility(filename, metric, visible) {
     }
 }
 
+// Re-render a point-calibration preview scatter for the selected time point.
+function updatePointPreview(filename) {
+    const config = window.ReportItemConfig[filename];
+    if (!config || !config.pointChart) return;
+    const card = document.querySelector(`.report-item-card[data-filename="${CSS.escape(filename)}"]`);
+    const tp = card ? card.querySelector('.point-timepoint-select')?.value : '';
+    const pts = (config.data || [])
+        .filter(r => (!tp || parseFloat(r['TimePoint']) === parseFloat(tp)))
+        .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+        .filter(p => !isNaN(p.x) && !isNaN(p.y));
+    config.pointChart.data.datasets[0].data = pts;
+    config.pointChart.update();
+}
+
 function updateMetricAlgo(filename, metric, algo) {
     const config = window.ReportItemConfig[filename];
     if (!config) return;
@@ -1358,7 +1451,71 @@ async function finalizeReport() {
             const isCalibrate = config.metadata.mode === 'calibrate';
             const card = cb.closest('.report-item-card');
 
-            if (isCalibrate) {
+            if (isCalibrate && config.calType === 'point') {
+                // Point-mode calibration item: one Value-vs-Concentration curve per
+                // selected fit algorithm, at the chosen time point.
+                const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
+                const timePoint = card.querySelector('.point-timepoint-select')?.value || '';
+                const tpLabel = timePoint ? ` @ t=${timePoint}` : '';
+                const includeAlgos = Array.from(card.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
+
+                const pts = (config.data || [])
+                    .filter(r => (!timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint)))
+                    .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+                    .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+                    .filter(p => !isNaN(p.x) && !isNaN(p.y))
+                    .sort((a, b) => a.x - b.x);
+                const xValues = pts.map(p => p.x);
+                const yValues = pts.map(p => p.y);
+
+                let itemChartsMarkup = '<div style="display: flex; flex-wrap: wrap; gap: 4%;">';
+                let coefficientRows = '';
+                for (const algo of includeAlgos) {
+                    if (xValues.length < 2) break;
+                    const analysis = calculateCoefAndRSquared(yValues, xValues, algo);
+                    if (!analysis || !analysis.coefficients) continue;
+                    const [ca, cb2, cc] = analysis.coefficients;
+                    const fitLabel = `${measLabel} - ${algo}`;
+                    coefficientRows += `
+                        <tr>
+                            <td style="padding:10px; border:1px solid #eee;"><strong>${fitLabel}</strong></td>
+                            <td style="padding:10px; border:1px solid #eee;">${ca.toFixed(5)}</td>
+                            <td style="padding:10px; border:1px solid #eee;">${cb2.toFixed(5)}</td>
+                            <td style="padding:10px; border:1px solid #eee;">${analysis.coefficients.length > 2 ? cc.toFixed(5) : '--'}</td>
+                            <td style="padding:10px; border:1px solid #eee;">${analysis.rSquared.toFixed(4)}</td>
+                        </tr>`;
+                    const regLine = buildCalibrationRegressionLine(xValues, analysis.coefficients, algo);
+                    const img = await renderCalibrationChartImage({
+                        xConc: xValues, yMetric: yValues, regLine, title: fitLabel, yLabel: measLabel, algo
+                    });
+                    if (img) itemChartsMarkup += `
+                        <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
+                            <img src="${img}" style="width: 100%; height: auto;"/>
+                        </div>`;
+                }
+                itemChartsMarkup += '</div>';
+
+                finalHtmlContent += `
+                    <div class="report-item-block" style="page-break-inside: auto; margin-bottom: 40px;">
+                        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration (point): ${filename}${tpLabel}</h2>
+                        ${xValues.length < 2 ? '<p style="color:#888;">Not enough calibration points to fit a curve at the selected time point.</p>' : itemChartsMarkup}
+                        ${coefficientRows ? `
+                        <table style="width:100%; border-collapse: collapse; margin-top:20px; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background:#f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding:10px; text-align:left;">Analysis</th>
+                                    <th style="padding:10px; text-align:left;">a (or Vmax)</th>
+                                    <th style="padding:10px; text-align:left;">b (or Km)</th>
+                                    <th style="padding:10px; text-align:left;">c</th>
+                                    <th style="padding:10px; text-align:left;">R²</th>
+                                </tr>
+                            </thead>
+                            <tbody>${coefficientRows}</tbody>
+                        </table>` : ''}
+                    </div>
+                `;
+
+            } else if (isCalibrate) {
                 const xCol = config.metadata.XColumn || 'Concentration';
                 const renderData = config.data;
                 const includeMetrics = Array.from(card.querySelectorAll('.metric-include-checkbox:checked'));
@@ -2089,7 +2246,47 @@ async function finalizeReportExcel() {
                 derived_lines: []
             };
 
-            if (isCalibrate) {
+            if (isCalibrate && config.calType === 'point') {
+                // Point-mode calibration: one Value-vs-Concentration fit per chosen
+                // algorithm at the selected time point.
+                const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
+                const timePoint = card.querySelector('.point-timepoint-select')?.value || '';
+                const includeAlgos = Array.from(card.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
+                const rows = (config.data || []).filter(r => !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
+
+                itemData.csv_columns = ['Concentration', 'Value'];
+                itemData.csv_rows = rows.map(r => ({ Concentration: r['Concentration'], Value: r['Value'] }));
+
+                const pts = rows
+                    .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+                    .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+                    .filter(p => !isNaN(p.x) && !isNaN(p.y))
+                    .sort((a, b) => a.x - b.x);
+                const xVals = pts.map(p => p.x);
+                const yVals = pts.map(p => p.y);
+                const tpLabel = timePoint ? ` @ t=${timePoint}` : '';
+
+                for (const algo of includeAlgos) {
+                    if (xVals.length < 2) break;
+                    const analysis = calculateCoefAndRSquared(yVals, xVals, algo);
+                    if (!analysis || !analysis.coefficients) continue;
+                    const [ca, cb2, cc] = analysis.coefficients;
+                    const fitLabel = `${measLabel}${tpLabel} - ${algo}`;
+                    itemData.coef_rows.push({
+                        'Analysis': fitLabel,
+                        'a (or Vmax)': ca.toFixed(5),
+                        'b (or Km)': cb2.toFixed(5),
+                        'c': analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
+                        'R²': analysis.rSquared.toFixed(4)
+                    });
+                    const regLine = buildCalibrationRegressionLine(xVals, analysis.coefficients, algo);
+                    const imgData = await renderCalibrationChartImage({
+                        xConc: xVals, yMetric: yVals, regLine, title: fitLabel, yLabel: measLabel, algo
+                    });
+                    if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                }
+
+            } else if (isCalibrate) {
                 const xCol = config.metadata.XColumn || 'Concentration';
                 const renderData = config.data;
                 const calMetrics = ['Slope', 'Time To Sat', 'maxRate', 'Sat'];
