@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Switching data folder — EasyOKAPI</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        @keyframes bgShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33%       { transform: translate(25px, -35px) scale(1.07); }
+            66%       { transform: translate(-18px, 18px) scale(0.95); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.55); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── Light mode ──────────────────────────────────── */
+        body.light {
+            background: linear-gradient(-45deg, #f0f4ff, #e8edf5, #f5f0ff, #edf5f0);
+            background-size: 400% 400%;
+            animation: bgShift 18s ease infinite;
+            color: #1e293b;
+        }
+        body.light .orb { opacity: 0.1; }
+        body.light .orb-1 { background: radial-gradient(circle, #6366f1, transparent 70%); }
+        body.light .orb-2 { background: radial-gradient(circle, #a855f7, transparent 70%); }
+        body.light .orb-3 { background: radial-gradient(circle, #10b981, transparent 70%); }
+
+        body.light .card {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        body.light .card-title    { color: #1e293b; }
+        body.light .card-subtitle { color: #64748b; }
+        body.light .spinner-track  { stroke: #e2e8f0; }
+        body.light .spinner-head   { stroke: #6366f1; }
+        body.light .info-badge {
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            color: #4338ca;
+        }
+
+        /* ── Dark mode ───────────────────────────────────── */
+        body.dark {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #0c1a3d, #0f172a);
+            background-size: 400% 400%;
+            animation: bgShift 14s ease infinite;
+            color: #f1f5f9;
+        }
+        body.dark .orb { opacity: 0.22; }
+        body.dark .orb-1 { background: radial-gradient(circle, #6366f1, transparent 70%); }
+        body.dark .orb-2 { background: radial-gradient(circle, #a855f7, transparent 70%); }
+        body.dark .orb-3 { background: radial-gradient(circle, #2dd4bf, transparent 70%); }
+
+        body.dark .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        body.dark .card-title    { color: #f1f5f9; }
+        body.dark .card-subtitle { color: rgba(226, 232, 240, 0.6); }
+        body.dark .spinner-track  { stroke: rgba(255, 255, 255, 0.1); }
+        body.dark .spinner-head   { stroke: #818cf8; }
+        body.dark .info-badge {
+            background: rgba(99, 102, 241, 0.14);
+            border: 1px solid rgba(129, 140, 248, 0.35);
+            color: #c7d2fe;
+        }
+
+        /* ── Ambient orbs ────────────────────────────────── */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(70px);
+            pointer-events: none;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+        .orb-1 { width: 520px; height: 520px; top: -160px; left: -160px; animation-duration: 22s; }
+        .orb-2 { width: 420px; height: 420px; bottom: -110px; right: -110px; animation-duration: 17s; animation-delay: -6s; }
+        .orb-3 { width: 280px; height: 280px; top: 40%; left: 55%; animation-duration: 15s; animation-delay: -10s; }
+
+        /* ── Card ────────────────────────────────────────── */
+        .card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+            padding: 3rem 3.5rem;
+            border-radius: 24px;
+            max-width: 460px;
+            width: 90%;
+            text-align: center;
+            animation: fadeInUp 0.5s ease both;
+        }
+
+        /* ── Spinner ─────────────────────────────────────── */
+        .spinner-wrap {
+            animation: scaleIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+        }
+        .spinner-svg {
+            width: 72px;
+            height: 72px;
+            animation: spin 1s linear infinite;
+        }
+        .spinner-track { fill: none; stroke-width: 5; }
+        .spinner-head  {
+            fill: none;
+            stroke-width: 5;
+            stroke-linecap: round;
+            stroke-dasharray: 150;
+            stroke-dashoffset: 112;
+        }
+
+        /* ── Text ────────────────────────────────────────── */
+        .card-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            animation: fadeInUp 0.5s ease 0.25s both;
+        }
+        .card-subtitle {
+            font-size: 0.95rem;
+            line-height: 1.65;
+            animation: fadeInUp 0.5s ease 0.35s both;
+        }
+
+        /* ── Location badge ──────────────────────────────── */
+        .info-badge {
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.55rem 1.15rem;
+            border-radius: 100px;
+            max-width: 100%;
+            word-break: break-all;
+            animation: fadeInUp 0.5s ease 0.4s both;
+        }
+    </style>
+</head>
+<body class="{{ mode }}">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="card">
+        <div class="spinner-wrap">
+            <svg class="spinner-svg" viewBox="0 0 50 50">
+                <circle class="spinner-track" cx="25" cy="25" r="22"/>
+                <circle class="spinner-head"  cx="25" cy="25" r="22"/>
+            </svg>
+        </div>
+
+        <h1 class="card-title" id="card-title">Switching data folder…</h1>
+        <p class="card-subtitle" id="card-subtitle">
+            EasyOKAPI is restarting to use the new data location.<br>
+            This window will refresh automatically when it's ready.
+        </p>
+
+        {% if new_path %}
+        <div class="info-badge" id="info-badge">{{ new_path }}</div>
+        {% endif %}
+    </div>
+
+    <script>
+        // The current server is about to exit and a fresh instance rebinds the same
+        // port (see update_service.restart_after_delay). We watch for that handover:
+        // ping until it FAILS (old instance gone), then ping until it SUCCEEDS again
+        // (new instance up), then reload into the new data root. We never reload on a
+        // success that was NOT preceded by a failure, because if the restart silently
+        // failed the still-running old instance points at the now-empty old folder —
+        // reloading there would be misleading. If the handover never completes within
+        // the deadline we show a manual-relaunch message instead.
+        const POLL_MS = 700;
+        const DEADLINE_MS = 45000;
+        const started = Date.now();
+        let seenDown = false;
+
+        const titleEl = document.getElementById('card-title');
+        const subtitleEl = document.getElementById('card-subtitle');
+
+        function ping() {
+            return fetch('/ping', { cache: 'no-store' })
+                .then(r => r.ok)
+                .catch(() => false);
+        }
+
+        function giveUp() {
+            titleEl.textContent = 'Almost there';
+            subtitleEl.innerHTML =
+                'EasyOKAPI did not come back up on its own.<br>' +
+                'Please relaunch it from your Desktop shortcut or Start menu — ' +
+                'it will open using the new data location.';
+        }
+
+        async function tick() {
+            if (Date.now() - started > DEADLINE_MS) {
+                giveUp();
+                return;
+            }
+            const up = await ping();
+            if (up && seenDown) {
+                // New instance is serving — reload into a clean app at the new root.
+                window.location.href = '/';
+                return;
+            }
+            if (!up) {
+                seenDown = true;
+            }
+            setTimeout(tick, POLL_MS);
+        }
+
+        setTimeout(tick, POLL_MS);
+    </script>
+</body>
+</html>

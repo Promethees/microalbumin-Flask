@@ -146,6 +146,41 @@ class TestSetDataRoot:
 
 
 # ---------------------------------------------------------------------------
+# preview: dry-run that validates without touching the filesystem
+# ---------------------------------------------------------------------------
+
+class TestPreview:
+    def test_preview_returns_target_and_moved_without_moving(self, tmp_path, monkeypatch):
+        # Leaving the default → moved is False and NOTHING is copied/removed.
+        default, _ = _setup_roots(tmp_path, monkeypatch)
+        _seed_data(default)
+        parent = tmp_path / "BigDrive"
+        parent.mkdir()
+        target, moved = data_root.preview_data_root(str(parent))
+        assert target == str(parent / "EasyOKAPI")
+        assert moved is False
+        assert not os.path.exists(target)                 # no copy happened
+        assert not os.path.isfile(state._dataroot_pointer_path())  # no pointer written
+        assert (default / "data" / "exp1.csv").is_file()  # default untouched
+
+    def test_preview_reports_move_for_custom_root(self, tmp_path, monkeypatch):
+        _setup_roots(tmp_path, monkeypatch)
+        custom = tmp_path / "BigDrive" / "EasyOKAPI"
+        custom.mkdir(parents=True)
+        monkeypatch.setattr(state, "script_dir", str(custom))
+        _target, moved = data_root.preview_data_root(str(tmp_path / "OtherDrive"))
+        assert moved is True
+        assert os.path.isdir(str(custom))                 # source still intact
+
+    def test_preview_validates_like_commit(self, tmp_path, monkeypatch):
+        _default, bundle = _setup_roots(tmp_path, monkeypatch)
+        with pytest.raises(ValueError):
+            data_root.preview_data_root(str(bundle / "sub"))
+        with pytest.raises(ValueError):
+            data_root.preview_data_root("   ")
+
+
+# ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
 
@@ -221,11 +256,14 @@ class TestRoutes:
         resp = client.post('/data_root', json={})
         assert resp.status_code == 400
 
-    def test_post_success_returns_moved(self, client, monkeypatch):
+    def test_post_previews_without_committing(self, client, monkeypatch):
+        # POST /data_root is a dry run: it calls preview_data_root, NOT set_data_root.
         from routes import core_routes
         monkeypatch.setattr(state, "IS_FROZEN", True)
-        monkeypatch.setattr(core_routes._data_root, "set_data_root",
+        monkeypatch.setattr(core_routes._data_root, "preview_data_root",
                             lambda p: ("/new/EasyOKAPI", True))
+        monkeypatch.setattr(core_routes._data_root, "set_data_root",
+                            lambda p: pytest.fail("commit must not happen during preview"))
         resp = client.post('/data_root', json={"path": "/new"})
         assert resp.status_code == 200
         body = resp.get_json()
@@ -233,6 +271,36 @@ class TestRoutes:
         assert body["path"] == "/new/EasyOKAPI"
         assert body["moved"] is True
         assert body["restart_required"] is True
+
+    def test_restart_rejected_in_source_build(self, client, monkeypatch):
+        monkeypatch.setattr(state, "IS_FROZEN", False)
+        resp = client.post('/data_root/restart', json={"path": "/new"})
+        assert resp.status_code == 400
+
+    def test_restart_missing_path(self, client, monkeypatch):
+        monkeypatch.setattr(state, "IS_FROZEN", True)
+        resp = client.post('/data_root/restart', json={"mode": "dark"})
+        assert resp.status_code == 400
+
+    def test_restart_commits_then_serves_page(self, client, monkeypatch):
+        # POST /data_root/restart is where the move actually happens; it then
+        # schedules the relaunch and returns the restarting page (HTML).
+        import update_service
+        from routes import core_routes
+        monkeypatch.setattr(state, "IS_FROZEN", True)
+        committed = {}
+
+        def fake_set(p):
+            committed["path"] = p
+            return "/new/EasyOKAPI", True
+
+        monkeypatch.setattr(core_routes._data_root, "set_data_root", fake_set)
+        # Don't actually exec/exit the test process.
+        monkeypatch.setattr(update_service, "restart_after_delay", lambda *a, **k: None)
+        resp = client.post('/data_root/restart', json={"path": "/new", "mode": "dark"})
+        assert resp.status_code == 200
+        assert 'text/html' in resp.headers.get('Content-Type', '')
+        assert committed["path"] == "/new"
 
     def test_browse_dirs_lists_subfolders(self, client, tmp_path):
         (tmp_path / "alpha").mkdir()

@@ -1075,13 +1075,14 @@ function scheduleStartupUpdateCheck() {
 }
 
 // ── Data folder relocation (frozen builds) ───────────────────────────────────
-// Sends a relocation request to the server. `body` is either {path:<parent>} or
-// {reset:true}. On success the server has relocated the data (moving a non-default
-// folder, copying when leaving the default); we offer a restart.
+// Two-step, deferred-commit flow. `body` is either {path:<parent>} or {reset:true}.
+// Step 1 (POST /data_root) only VALIDATES the choice and reports whether committing
+// would move or copy — nothing is moved yet. We confirm with the user, then step 2
+// (POST /data_root/restart, _commitDataRoot) does the actual move and relaunches.
+// So a Cancel leaves the data exactly where it was — no revert needed.
 function _postDataRoot(body, statusEl) {
     Swal.fire({
-        title: 'Moving data…',
-        html: 'This can take a moment for large data folders.',
+        title: 'Checking folder…',
         allowOutsideClick: false,
         allowEscapeKey: false,
         didOpen: () => Swal.showLoading(),
@@ -1099,26 +1100,19 @@ function _postDataRoot(body, statusEl) {
                 else Swal.fire('Could not change the data folder', msg, 'error');
                 return false;
             }
-            logEvent('settings', 'data_root', { path: d.path, moved: d.moved });
             Swal.close();
             Swal.fire({
-                title: 'Data folder changed',
-                html: `Your data has been ${d.moved ? 'moved' : 'copied'} to:<br><b>${d.path}</b><br><br>` +
-                    'EasyOKAPI needs to restart to use the new location.',
-                icon: 'success',
+                title: 'Change data folder?',
+                html: `Your data will be ${d.moved ? 'moved' : 'copied'} to:<br><b>${d.path}</b><br><br>` +
+                    'EasyOKAPI will restart to use the new location and reload ' +
+                    'automatically when it comes back up. Nothing changes if you cancel.',
+                icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Quit now',
-                cancelButtonText: 'Later',
+                confirmButtonText: 'Restart now',
+                cancelButtonText: 'Cancel',
             }).then(res => {
-                if (res.isConfirmed) {
-                    fetch('/shutdown', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ mode: AppState.lightDisplay ? 'light' : 'dark' })
-                    }).then(r => r.text()).then(html => {
-                        document.open(); document.write(html); document.close();
-                    }).catch(() => { });
-                }
+                // Confirm commits the move + relaunch; cancel is a true no-op.
+                if (res.isConfirmed) _commitDataRoot(body);
             });
             return true;
         })
@@ -1127,6 +1121,38 @@ function _postDataRoot(body, statusEl) {
             else Swal.fire('Error', 'Could not reach the server.', 'error');
             return false;
         });
+}
+
+// Step 2: commit the (already-validated) change and relaunch. Re-sends the original
+// {path}/{reset} body to /data_root/restart, which moves the data, then serves the
+// restarting page (polls /ping, reloads the tab once the fresh instance is up). A
+// committed-move failure comes back as JSON instead of the HTML page.
+function _commitDataRoot(body) {
+    Swal.fire({
+        title: 'Moving data…',
+        html: 'This can take a moment for large data folders.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => Swal.showLoading(),
+    });
+    logEvent('settings', 'data_root', body);
+    fetch('/data_root/restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ mode: AppState.lightDisplay ? 'light' : 'dark' }, body))
+    })
+        .then(async r => {
+            const ct = r.headers.get('content-type') || '';
+            if (r.ok && ct.includes('text/html')) {
+                const html = await r.text();
+                document.open(); document.write(html); document.close();
+                return;
+            }
+            const d = await r.json().catch(() => null);
+            Swal.fire('Could not change the data folder',
+                (d && d.message) || 'Please try again.', 'error');
+        })
+        .catch(() => Swal.fire('Error', 'Could not reach the server.', 'error'));
 }
 
 // Folder navigator dialog. Resolves to the absolute path the user selects, or

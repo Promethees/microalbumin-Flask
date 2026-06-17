@@ -109,6 +109,20 @@ def _write_pointer(target: str) -> None:
         f.write(target)
 
 
+def _plan(target: str):
+    """Validate `target` and report whether committing would move or copy.
+
+    Returns ``(validated_target, moved)`` with **no** filesystem changes. ``moved``
+    is True when the current root is not the default (the original is removed on
+    commit), False when leaving the default (it is kept as a fallback copy). This is
+    the dry-run shared by the preview endpoints and the commit in ``_relocate``.
+    """
+    target = _validate_target(target)
+    source = os.path.abspath(state.script_dir)
+    default = os.path.abspath(state.default_data_root)
+    return target, source != default
+
+
 def _relocate(target: str):
     """Validate `target`, copy the whole current root into it, point the app there.
 
@@ -118,18 +132,33 @@ def _relocate(target: str):
     before the source is removed, so an interrupted relocation never aims the
     pointer at a deleted folder.
     """
-    target = _validate_target(target)
+    target, moved = _plan(target)
     source = os.path.abspath(state.script_dir)
-    default = os.path.abspath(state.default_data_root)
     # Copy the entire current root tree into the new folder (newest wins on a
     # re-copy into an existing folder).
     shutil.copytree(state.script_dir, target, ignore=_copy_ignore, dirs_exist_ok=True)
     _write_pointer(target)
-    moved = source != default
     if moved:
         # The original was a relocated (non-default) folder — clean it up.
         shutil.rmtree(source, ignore_errors=True)
     return target, moved
+
+
+def preview_data_root(parent_dir: str):
+    """Dry-run for :func:`set_data_root`: validate the choice, return ``(target, moved)``.
+
+    Used to confirm the change with the user **before** any data is moved — the
+    actual copy is deferred until they accept (see ``set_data_root``). Raises the
+    same ``ValueError`` on a bad/unwritable choice.
+    """
+    if not parent_dir or not parent_dir.strip():
+        raise ValueError("A folder is required.")
+    return _plan(os.path.join(_normalize(parent_dir), _ROOT_FOLDER_NAME))
+
+
+def preview_reset():
+    """Dry-run for :func:`reset_to_default`: validate, return ``(default_root, moved)``."""
+    return _plan(state.default_data_root)
 
 
 def set_data_root(parent_dir: str):

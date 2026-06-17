@@ -172,8 +172,13 @@ def get_data_root():
 
 @core_bp.route('/data_root', methods=['POST'])
 def post_data_root():
-    # Relocating the data root only makes sense for an installed build — a source
-    # run always uses the project root (see src/data_root.py).
+    """Validate a proposed data-folder change **without** moving anything (dry run).
+
+    The actual copy/move is deferred to ``POST /data_root/restart`` so the user can
+    confirm first and a cancel leaves the data exactly where it was (no revert
+    needed). Returns the resolved target and whether committing would move or copy.
+    Relocating only makes sense for an installed build — a source run always uses the
+    project root (see src/data_root.py)."""
     if not state.IS_FROZEN:
         return jsonify({'status': 'error',
                         'message': 'The data folder can only be changed in an installed build.'}), 400
@@ -182,6 +187,44 @@ def post_data_root():
         return jsonify({'status': 'error',
                         'message': 'Cannot change the data folder while the data collection process is running'}), 423
     data = request.get_json(silent=True) or {}
+    try:
+        if data.get('reset'):
+            new_path, moved = _data_root.preview_reset()
+        elif 'path' in data:
+            new_path, moved = _data_root.preview_data_root(data['path'])
+        else:
+            return jsonify({'status': 'error', 'message': 'No path provided'}), 400
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    return jsonify({'status': 'success', 'path': new_path,
+                    'moved': moved, 'restart_required': True})
+
+
+@core_bp.route('/data_root/restart', methods=['POST'])
+def restart_for_data_root():
+    """Commit the data-folder change, then relaunch the app in place to adopt it.
+
+    This is where the move actually happens (the ``POST /data_root`` step is only a
+    dry run), so the same body — ``{path}`` to relocate or ``{reset: true}`` — is
+    re-sent here. After the copy/move we reuse the update path's relauncher
+    (``update_service.restart_after_delay``): mac/linux exec the same image in place,
+    Windows spawns a detached relauncher that waits for the port to free and starts a
+    fresh hidden instance. The browser is handed ``restarting.html``, which polls
+    ``/ping`` and reloads once the new instance is serving on the same port — so the
+    tab refreshes itself into the new data location. The location is read from the
+    pointer file at import time, which is why a restart is required at all.
+
+    Frozen-only and ``@423 LOCKED`` while the data-collection process runs, matching
+    ``POST /data_root`` (a source run never relocates; an in-flight capture must not
+    be killed by a restart)."""
+    if not state.IS_FROZEN:
+        return jsonify({'status': 'error',
+                        'message': 'The data folder can only be changed in an installed build.'}), 400
+    if state.process and state.process.poll() is None:
+        return jsonify({'status': 'error',
+                        'message': 'Cannot change the data folder while the data collection process is running'}), 423
+    data = request.get_json(silent=True) or {}
+    mode = data.get('mode', 'light')
     try:
         if data.get('reset'):
             new_path, moved = _data_root.reset_to_default()
@@ -194,8 +237,10 @@ def post_data_root():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Could not move data folder: {e}'}), 500
     event_logger.append('settings', 'data_root', {'path': new_path, 'moved': moved})
-    return jsonify({'status': 'success', 'path': new_path,
-                    'moved': moved, 'restart_required': True})
+    import update_service
+    update_service.restart_after_delay()
+    return render_template('restarting.html', production_mode=state.PRODUCTION_MODE,
+                           mode=mode, new_path=new_path)
 
 
 def _win_drives():

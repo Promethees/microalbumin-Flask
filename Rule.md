@@ -275,22 +275,34 @@ Timestamp,Value:1,Value:2,...
   data. On Windows the parent is exactly NSIS's `$DOCUMENTS`, so the uninstaller reads the same file.
   `state._read_dataroot_override()` reads it at import; `data_root._write_pointer()` writes/clears it;
   `state._dataroot_pointer_path()` is the single source of truth for its location.
-- **Resolution is import-time**, so changing the root **requires an app restart**. `POST /data_root`
-  returns `restart_required: true` and `moved: true|false`; the UI then offers **Quit now** (via the
-  existing `POST /shutdown`).
+- **The move is deferred-commit, in two steps.** Resolution is import-time, so changing the root
+  **requires an app restart** — and nothing is moved until the user accepts that restart. **Step 1**
+  `POST /data_root` is a **dry run**: `data_root.preview_data_root(parent)` / `preview_reset()` validate
+  the choice and return `{path, moved, restart_required: true}` **without touching the filesystem**. The
+  UI confirms, offering **Restart now** / **Cancel**. **Step 2 — Restart now** re-sends the same body to
+  `POST /data_root/restart`, which is where the copy/move actually happens (`set_data_root` /
+  `reset_to_default`), then relaunches the app in place via `update_service.restart_after_delay()`
+  (mac/linux `os.execv`; Windows detached relauncher) and serves `restarting.html` — a page that polls
+  `/ping` and reloads the tab once the fresh instance rebinds the same port, so the new data location
+  takes effect with no manual relaunch. **Cancel** is a true no-op: since nothing was committed, the
+  data stays exactly where it was (no revert needed).
 - **The folder is picked with an in-app browser, not a typed path.** `GET /browse_dirs?path=` lists a
   directory's non-hidden subfolders (and Windows drives via `?path=::drives`) for the SweetAlert
   navigator (`pickDataRootFolder` in `init.js`); the server then appends `EasyOKAPI`.
 - `GET /data_root` returns `{current, default, is_custom}`, injected into `index.html` as
   `DATA_ROOT_INFO` (with `IS_FROZEN`); the settings modal hides the section for source builds.
   `POST /data_root` (`{path}` to relocate, or `{reset:true}`) is frozen-only, `@423 LOCKED` while the
-  data-collection process runs; success returns `{path, moved, restart_required}`.
+  data-collection process runs; it **previews only** and returns `{path, moved, restart_required}`.
+  `POST /data_root/restart` (same `{path}`/`{reset:true}` body + `mode`) commits the move and relaunches,
+  serving `restarting.html` on success (or a JSON error on a commit failure); it carries the same
+  frozen + `@423 LOCKED` guards.
 - **Anti-patterns**: do **not** store the data-root path in `user_settings.json`; do **not** point
   the data root inside `bundle_dir` / the EasyOKAPI program folder (read-only, elevated — rejected
   both in `_validate_target` and on the installer's Data Folder page); do **not** delete the **default**
   folder on relocation (only a *non-default* source is removed — the default is the fallback); do
-  **not** write the pointer *after* removing the source (write it first); do **not** auto-restart
-  (`os.execv`) from the settings route — restart-on-exit is reserved for the update path (§2.15).
+  **not** write the pointer *after* removing the source (write it first); do **not** move data in
+  `POST /data_root` — it is a **dry run** (preview only) so a cancel needs no revert; the actual move
+  and the relaunch are confined to `POST /data_root/restart`.
 
 ---
 
