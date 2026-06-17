@@ -278,6 +278,14 @@ os.makedirs(data_root_path, exist_ok=True)
 # the prompt never reappears.
 _DEMO_MARKER = os.path.join(script_dir, ".demo_prompt_done")
 
+# One-shot sentinel set just before a restart (data-folder relocation or applied
+# update) and consumed on the next index render to tell the client to come up in
+# the default display (kinetics mode, default sections, no saved UI overrides).
+# Lives beside the .dataroot pointer in default_data_root — NOT script_dir —
+# because a relocation restart changes script_dir, and the new process must still
+# find the flag at a location that does not move.
+_RESET_DISPLAY_MARKER = os.path.join(default_data_root, ".reset_display_pending")
+
 
 def _dir_has_content(path):
     if not os.path.isdir(path):
@@ -352,6 +360,36 @@ def seed_demo_content():
                         shutil.copy2(s, os.path.join(dst, name))
         except Exception:
             pass
+
+
+def mark_reset_display_pending():
+    """Flag that the next page load should come up in the default display.
+
+    Called just before a restart (data-folder relocation or applied update) so the
+    relaunched instance opens cleanly in kinetics mode with default sections instead
+    of restoring the previous tab's localStorage layout. Best-effort.
+    """
+    try:
+        os.makedirs(os.path.dirname(_RESET_DISPLAY_MARKER), exist_ok=True)
+        with open(_RESET_DISPLAY_MARKER, "w", encoding="utf-8") as f:
+            f.write("1")
+    except Exception:
+        pass
+
+
+def consume_reset_display_pending():
+    """Return True (and clear the flag) if a default-display reset is pending.
+
+    One-shot: the sentinel is deleted on read so only the first load after a
+    restart resets; subsequent manual refreshes keep the user's layout.
+    """
+    try:
+        if os.path.exists(_RESET_DISPLAY_MARKER):
+            os.remove(_RESET_DISPLAY_MARKER)
+            return True
+    except Exception:
+        pass
+    return False
 
 
 os_name = platform.system().lower()

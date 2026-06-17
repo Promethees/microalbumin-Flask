@@ -538,7 +538,12 @@ const modeDiv = document.getElementById('measurement-mode');
 const modeButtons = modeDiv.querySelectorAll('button[data-mode]');
 
 if (modeButtons.length > 0) {
-    const preferredMode = (typeof USER_SETTINGS !== 'undefined') ? USER_SETTINGS.default_mode : null;
+    // After a restart, force kinetics regardless of the saved default_mode so the
+    // app always comes up in the default display (see RESET_DISPLAY in index.html).
+    const forceKinetics = (typeof RESET_DISPLAY !== 'undefined') && RESET_DISPLAY;
+    const preferredMode = forceKinetics
+        ? 'kinetics'
+        : ((typeof USER_SETTINGS !== 'undefined') ? USER_SETTINGS.default_mode : null);
     const defaultBtn = preferredMode
         ? (Array.from(modeButtons).find(b => b.getAttribute('data-mode') === preferredMode) || modeButtons[0])
         : modeButtons[0];

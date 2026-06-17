@@ -79,6 +79,7 @@ def index():
                          demo_prompt_pending=state.demo_prompt_pending(),
                          user_settings=user_settings,
                          is_frozen=state.IS_FROZEN,
+                         reset_display=state.consume_reset_display_pending(),
                          data_root_info=_data_root.get_info()))
     return response
 
@@ -237,6 +238,7 @@ def restart_for_data_root():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Could not move data folder: {e}'}), 500
     event_logger.append('settings', 'data_root', {'path': new_path, 'moved': moved})
+    state.mark_reset_display_pending()
     import update_service
     update_service.restart_after_delay()
     return render_template('restarting.html', production_mode=state.PRODUCTION_MODE,

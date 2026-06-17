@@ -128,6 +128,7 @@ def finalize_update():
     Auto-restart from inside the running process is unreliable, so instead we stop
     cleanly here and let the user relaunch — same shutdown mechanism as /shutdown.
     """
+    state.mark_reset_display_pending()
     threading.Thread(target=_delayed_shutdown, daemon=True).start()
     data = request.get_json(silent=True) or {}
     mode = data.get('mode', 'light')

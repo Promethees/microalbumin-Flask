@@ -304,6 +304,29 @@ Timestamp,Value:1,Value:2,...
   `POST /data_root` — it is a **dry run** (preview only) so a cancel needs no revert; the actual move
   and the relaunch are confined to `POST /data_root/restart`.
 
+### 2.20 Default Display on Restart
+
+- A **restart** (`POST /data_root/restart` relocation, or `POST /update/finalize` after an applied
+  update) must bring the app back up in the **default display** — kinetics mode with fresh per-view UI
+  state — not the previous tab's saved `localStorage` layout. The restart reloads the same browser
+  origin (same tab for the data-root in-place relaunch, a new tab for the manual post-update relaunch),
+  so client-only `localStorage` survives the process restart by itself; resetting requires a signal that
+  also survives it.
+- **Mechanism**: the restart routes call `state.mark_reset_display_pending()` *before* triggering the
+  relaunch. This writes a one-shot sentinel (`state._RESET_DISPLAY_MARKER`) in **`default_data_root`** —
+  the stable folder where the `.dataroot` pointer lives, **not** `script_dir` — because a relocation
+  restart changes `script_dir`, and the new process must still find the flag. The next `index` render
+  calls `state.consume_reset_display_pending()` (reads **and deletes** the sentinel) and passes
+  `reset_display` to the template. `index.html` exposes it as `const RESET_DISPLAY`; when true it drops
+  per-view `localStorage` keys (keeping genuine cross-session prefs: `theme`, `okapi_ai_lang`,
+  `okapi_ai_first_run`) **before** `init.js` runs, and `init.js` forces the kinetics mode button
+  regardless of `USER_SETTINGS.default_mode`.
+- **Anti-patterns**: do **not** put the sentinel in `script_dir` (lost across a relocation restart); do
+  **not** make the reset a client-only flag (`sessionStorage`/query param) — it will not survive the
+  manual post-update relaunch into a fresh tab; the flag is **one-shot** (consumed on first render) so a
+  plain refresh keeps the user's layout — do not leave it set; do **not** clear `theme` (it would lose
+  the user's chosen mode on every restart — it is preserved and re-derived from `USER_SETTINGS.theme`).
+
 ---
 
 ## 3. Autonomous Documentation Updates

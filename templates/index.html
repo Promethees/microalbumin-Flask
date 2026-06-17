@@ -759,6 +759,25 @@
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
             const IS_FROZEN = {{ is_frozen | tojson | safe }};
             const DATA_ROOT_INFO = {{ data_root_info | tojson | safe }};
+            // Set by the server on the first load after a restart (data-folder
+            // relocation or applied update). When true, come up in the default
+            // display: drop saved per-view UI state so sections/labels/colours
+            // start fresh, and force kinetics mode in init.js. Genuine cross-session
+            // preferences (theme, AI language) are preserved. Runs before init.js so
+            // the cleared state is in effect before any UI is built.
+            const RESET_DISPLAY = {{ reset_display | tojson | safe }};
+            if (RESET_DISPLAY) {
+                try {
+                    const _keep = new Set(['theme', 'okapi_ai_lang', 'okapi_ai_first_run']);
+                    const _drop = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && !_keep.has(k)) _drop.push(k);
+                    }
+                    _drop.forEach(k => localStorage.removeItem(k));
+                    sessionStorage.clear();
+                } catch (e) { /* private mode / quota — non-fatal */ }
+            }
             document.documentElement.style.setProperty('--file-table-height', (USER_SETTINGS.file_table_height || 240) + 'px');
 
             function getNativePath(...paths) {
