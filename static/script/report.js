@@ -1,3 +1,81 @@
+// The cal-mode-select toggle is a top-level const in init.js; expose its value
+// defensively (report generators may run before/without it in tests).
+function _calSubMode() {
+    return (typeof calDiv !== 'undefined' && calDiv) ? calDiv.getAttribute('data-value') : null;
+}
+
+// Extract the point-mode calibration standards (Concentration, Value) currently
+// shown on screen — filtered to the selected time point, the same way
+// updatePlotBasedOnMode() builds the live chart — so the report mirrors the UI.
+function getPointCalibrationData() {
+    const timePoint = document.getElementById('regressed-time-point')?.value;
+    const rows = (AppState.responseData || []).filter(r =>
+        !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
+    const pts = rows
+        .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+        .filter(p => !isNaN(p.x) && !isNaN(p.y))
+        .sort((a, b) => a.x - b.x);
+    return { x: pts.map(p => p.x), y: pts.map(p => p.y) };
+}
+
+// Build the {x,y} points of a calibration regression curve across the
+// concentration domain [xMin..xMax] (padded 10%), inverting the fitted
+// metric→concentration relationship. Mirrors getRegressionData() and the inline
+// loops in the kinetics report branches. Returns [] when there are no coefficients.
+function buildCalibrationRegressionLine(xConc, coefficients, algo) {
+    if (!coefficients || !xConc || xConc.length === 0) return [];
+    const xMin = Math.min(...xConc), xMax = Math.max(...xConc);
+    const range = (xMax - xMin) || Math.abs(xMax) || 1;
+    const pXMin = xMin - 0.1 * range, pXMax = xMax + 0.1 * range;
+    const step = (pXMax - pXMin) / 49;
+    const [a = 0, b = 0, c = 0] = coefficients;
+    const line = [];
+    for (let j = 0; j < 50; j++) {
+        const x = pXMin + j * step;
+        let y = 0;
+        if (algo === 'linear') y = a !== 0 ? (x - b) / a : 0;
+        else if (algo === 'polynomial') {
+            if (a === 0) y = b !== 0 ? (x - c) / b : 0;
+            else { const d = b * b - 4 * a * (c - x); y = d >= 0 ? (-b + Math.sqrt(d)) / (2 * a) : 0; }
+        } else if (algo === 'logarithmic') y = a !== 0 ? Math.exp((x - c) / a) - b : 0;
+        else if (algo === 'exponential') y = (a !== 0 && x > c && b !== 0) ? Math.log((x - c) / a) / b : 0;
+        else if (algo === 'Michaelis-Menten') y = (a * x) / (b + x);
+        line.push({ x, y });
+    }
+    return line;
+}
+
+// Render a calibration scatter (standards) + fit line to a PNG data URL,
+// off-screen at print resolution. Shared by the PDF and Excel generators.
+function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo }) {
+    return new Promise(resolve => {
+        const cv = document.createElement('canvas');
+        cv.width = 1600; cv.height = 800;
+        const tc = new Chart(cv.getContext('2d'), {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    { label: 'Standards', data: xConc.map((x, i) => ({ x, y: yMetric[i] })), backgroundColor: '#3498db', pointRadius: 6 },
+                    { label: `Fit (${algo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
+                ]
+            },
+            options: {
+                responsive: false, animation: false,
+                plugins: {
+                    title: { display: true, text: title, font: { size: 18 } },
+                    legend: { display: true, position: 'bottom' }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Concentration', font: { size: 14, weight: 'bold' } } },
+                    y: { title: { display: true, text: yLabel, font: { size: 14, weight: 'bold' } } }
+                }
+            }
+        });
+        setTimeout(() => { const img = cv.toDataURL('image/png'); tc.destroy(); resolve(img); }, 250);
+    });
+}
+
 async function generateReport() {
     const isCalibrate = AppState.currentMeasurementMode === 'calibrate';
 
@@ -58,7 +136,59 @@ async function generateReport() {
     let analysisSummaries = "";
     let derivedConcentrationHtml = "";
 
-    if (isCalibrate && AppState.calibrationDataPoints && AppState.lastAnalyses) {
+    if (isCalibrate && _calSubMode() === 'point') {
+        // Point-mode calibration: a single Value-vs-Concentration curve (point
+        // mode never populates calibrationDataPoints, so it is handled on its own).
+        const pd = getPointCalibrationData();
+        const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
+        let chartsMarkup = '';
+        let coefficientRows = '';
+
+        const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, promptedAlgo) : null;
+        if (analysis && analysis.coefficients) {
+            const [a, b, c] = analysis.coefficients;
+            const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, promptedAlgo);
+            const chartImg = await renderCalibrationChartImage({
+                xConc: pd.x, yMetric: pd.y, regLine,
+                title: `Calibration Curve (${measLabel})`, yLabel: measLabel, algo: promptedAlgo
+            });
+            chartsMarkup = `
+                <div style="width: 70%; margin: 0 auto 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
+                    <img src="${chartImg}" style="width: 100%; height: auto;"/>
+                </div>`;
+            coefficientRows = `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding:10px; font-weight:bold;">${measLabel}</td>
+                    <td style="padding:10px;">${a.toFixed(5)}</td>
+                    <td style="padding:10px;">${b.toFixed(5)}</td>
+                    <td style="padding:10px;">${analysis.coefficients.length > 2 ? c.toFixed(5) : '--'}</td>
+                    <td style="padding:10px;">${analysis.rSquared.toFixed(4)}</td>
+                </tr>`;
+        } else {
+            chartsMarkup = `<p style="color:#888;">Not enough calibration points to fit a curve${pd.x.length ? '' : ' (no Concentration/Value data at the selected time point)'}.</p>`;
+        }
+
+        analyticalContent = `
+            <div class="report-analysis">
+                <h3 style="color:#2c3e50; border-bottom: 1px solid #eee; padding-bottom:10px;">Calibration Curve</h3>
+                ${chartsMarkup}
+            </div>
+            ${coefficientRows ? `
+            <div class="report-results" style="margin-top:30px; margin-bottom:30px; border-left:4px solid #3498db; padding-left:20px;">
+                <h3 style="margin-top:0; color:#2c3e50;">Calibration Fit Analysis (${promptedAlgo})</h3>
+                <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
+                    <tr style="background:#f8fafc; border-bottom: 2px solid #3498db;">
+                        <th style="padding:10px;">Measurement</th>
+                        <th style="padding:10px;">a</th>
+                        <th style="padding:10px;">b</th>
+                        <th style="padding:10px;">c</th>
+                        <th style="padding:10px;">R²</th>
+                    </tr>
+                    ${coefficientRows}
+                </table>
+            </div>` : ''}
+        `;
+    } else if (isCalibrate && AppState.calibrationDataPoints && AppState.lastAnalyses) {
         // Specialized Calibration Quad-Report
         let coefficientRows = '';
         let chartsMarkup = '<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px;">';
@@ -1609,7 +1739,39 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo) {
             derived_lines: []
         };
 
-        if (isCalibrate && AppState.calibrationDataPoints && AppState.calibrationDataPoints.length > 0) {
+        if (isCalibrate && _calSubMode() === 'point') {
+            // ── Point-mode calibration ──────────────────────────────────────
+            // Single Value-vs-Concentration fit (no per-metric calibrationDataPoints).
+            const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
+            const timePoint = document.getElementById('regressed-time-point')?.value;
+            const rows = renderData.filter(r =>
+                !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
+
+            itemData.csv_columns = ['Concentration', 'Value'];
+            itemData.csv_rows = rows.map(row => ({ Concentration: row['Concentration'], Value: row['Value'] }));
+
+            const pd = getPointCalibrationData();
+            const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, promptedAlgo) : null;
+            if (analysis && analysis.coefficients) {
+                const [ca, cb2, cc] = analysis.coefficients;
+                const fitLabel = `${measLabel} — ${promptedAlgo}`;
+                itemData.coef_rows.push({
+                    'Metric':      measLabel,
+                    'Algorithm':   promptedAlgo,
+                    'a (or Vmax)': ca.toFixed(5),
+                    'b (or Km)':   cb2.toFixed(5),
+                    'c':           analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
+                    'R²':          analysis.rSquared.toFixed(4)
+                });
+                const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, promptedAlgo);
+                const imgData = await renderCalibrationChartImage({
+                    xConc: pd.x, yMetric: pd.y, regLine,
+                    title: fitLabel, yLabel: measLabel, algo: promptedAlgo
+                });
+                if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+            }
+
+        } else if (isCalibrate && AppState.calibrationDataPoints && AppState.calibrationDataPoints.length > 0) {
             const xCol       = dataResp.metadata?.XColumn || 'Concentration';
             const calMetrics = ['Slope', 'Time To Sat', 'maxRate', 'Sat'];
 
