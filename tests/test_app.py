@@ -687,6 +687,60 @@ def test_get_headers_path_traversal_rejected(client):
     assert rv.status_code == 400
 
 
+# ---------------------------------------------------------------------------
+# file_routes — export_to_report (data file -> report subject)
+# ---------------------------------------------------------------------------
+
+def test_export_to_report_copies_data_file(client, tmp_path):
+    """A measurement file under data/ exports into report/<subject>/.
+
+    Regression: the source must be confined to the DATA root (where
+    measurements live), not the report root. Anchoring on report_root made
+    every data-file export fail with 403 — and the failure surfaced after a
+    user relocated the data folder.
+    """
+    data_root = tmp_path / "data"
+    report_root = tmp_path / "report"
+    (data_root / "kinetics").mkdir(parents=True)
+    report_root.mkdir()
+    src = data_root / "kinetics" / "sample.csv"
+    src.write_text("time,abs\n0,0.1\n")
+
+    with patch('routes.file_routes.DATA_ROOT', str(data_root)), \
+         patch('file_path.DATA_ROOT', str(data_root)), \
+         patch.object(state, 'report_root_path', str(report_root)):
+        rv = client.post('/export_to_report', json={
+            'subject': 'Patient A',
+            'file_path': str(src),
+            'metadata': {'mode': 'kinetics'},
+        })
+
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert (report_root / "Patient A" / "sample.csv").exists()
+
+
+def test_export_to_report_rejects_path_outside_data_root(client, tmp_path):
+    """A source outside the data root is rejected with 403 (traversal guard)."""
+    data_root = tmp_path / "data"
+    report_root = tmp_path / "report"
+    data_root.mkdir()
+    report_root.mkdir()
+    outside = tmp_path / "secret.csv"
+    outside.write_text("x")
+
+    with patch('routes.file_routes.DATA_ROOT', str(data_root)), \
+         patch('file_path.DATA_ROOT', str(data_root)), \
+         patch.object(state, 'report_root_path', str(report_root)):
+        rv = client.post('/export_to_report', json={
+            'subject': 'S',
+            'file_path': str(outside),
+        })
+
+    assert rv.status_code == 403
+    assert rv.get_json()['status'] == 'error'
+
+
 def test_get_headers_empty_csv_returns_empty_list(client, tmp_path):
     f = tmp_path / "empty.csv"
     f.write_text("")

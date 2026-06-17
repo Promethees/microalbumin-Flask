@@ -816,13 +816,16 @@ def export_to_report(validated_data):
     metadata = validated_data.get('metadata', {})
     
     try:
-        # Resolve source path and restrict it to the report root
+        # The export copies a measurement file out of the data/ tree into a
+        # report subject, so the source must live inside the data root — not the
+        # report root. Relative paths resolve against the data root; absolute
+        # paths are confined to it (path-traversal guard).
         if not os.path.isabs(source_path):
-            source_path = os.path.abspath(os.path.join(state.report_root_path, source_path))
-        abs_source = os.path.abspath(source_path)
-        abs_report_root = os.path.abspath(state.report_root_path)
-        if not abs_source.startswith(abs_report_root + os.sep) and abs_source != abs_report_root:
-            return jsonify({"status": "error", "message": "Source file is outside the report directory"}), 403
+            source_path = os.path.join(DATA_ROOT, source_path)
+        abs_source = validate_in_data_root(source_path)
+        if abs_source is None:
+            return jsonify({"status": "error", "message": "Source file is outside the data directory"}), 403
+        source_path = abs_source
 
         if not os.path.exists(source_path):
             return jsonify({"status": "error", "message": f"Source file not found: {source_path}"}), 404
