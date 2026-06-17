@@ -184,17 +184,18 @@ def post_data_root():
     data = request.get_json(silent=True) or {}
     try:
         if data.get('reset'):
-            new_path = _data_root.reset_to_default()
+            new_path, moved = _data_root.reset_to_default()
         elif 'path' in data:
-            new_path = _data_root.set_data_root(data['path'])
+            new_path, moved = _data_root.set_data_root(data['path'])
         else:
             return jsonify({'status': 'error', 'message': 'No path provided'}), 400
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Could not move data folder: {e}'}), 500
-    event_logger.append('settings', 'data_root', {'path': new_path})
-    return jsonify({'status': 'success', 'path': new_path, 'restart_required': True})
+    event_logger.append('settings', 'data_root', {'path': new_path, 'moved': moved})
+    return jsonify({'status': 'success', 'path': new_path,
+                    'moved': moved, 'restart_required': True})
 
 
 def _win_drives():

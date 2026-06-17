@@ -743,9 +743,10 @@ function _buildSettingsHTML(s, folders) {
             <p class="sm-section-title">Data folder location</p>
             <p class="sm-help" style="margin-bottom:6px;">
                 Your measurements, calibration curves and reports are stored here.
-                Choosing a new location copies your data into an <b>EasyOKAPI</b>
-                folder there and switches to it; the original is left untouched.
-                EasyOKAPI must restart afterwards.
+                Choosing a new location moves your data into an <b>EasyOKAPI</b>
+                folder there and switches to it. (The default Documents folder, if
+                you ever move away from it, is kept as a backup.) EasyOKAPI must
+                restart afterwards.
             </p>
             <div class="sm-row">
                 <span class="sm-label">Current folder</span>
@@ -1075,10 +1076,11 @@ function scheduleStartupUpdateCheck() {
 
 // ── Data folder relocation (frozen builds) ───────────────────────────────────
 // Sends a relocation request to the server. `body` is either {path:<parent>} or
-// {reset:true}. On success the server has copied the data; we offer a restart.
+// {reset:true}. On success the server has relocated the data (moving a non-default
+// folder, copying when leaving the default); we offer a restart.
 function _postDataRoot(body, statusEl) {
     Swal.fire({
-        title: 'Copying data…',
+        title: 'Moving data…',
         html: 'This can take a moment for large data folders.',
         allowOutsideClick: false,
         allowEscapeKey: false,
@@ -1097,11 +1099,11 @@ function _postDataRoot(body, statusEl) {
                 else Swal.fire('Could not change the data folder', msg, 'error');
                 return false;
             }
-            logEvent('settings', 'data_root', { path: d.path });
+            logEvent('settings', 'data_root', { path: d.path, moved: d.moved });
             Swal.close();
             Swal.fire({
                 title: 'Data folder changed',
-                html: `Your data has been copied to:<br><b>${d.path}</b><br><br>` +
+                html: `Your data has been ${d.moved ? 'moved' : 'copied'} to:<br><b>${d.path}</b><br><br>` +
                     'EasyOKAPI needs to restart to use the new location.',
                 icon: 'success',
                 showCancelButton: true,
@@ -1128,7 +1130,7 @@ function _postDataRoot(body, statusEl) {
 }
 
 // Folder navigator dialog. Resolves to the absolute path the user selects, or
-// null if cancelled. Data will be copied into an EasyOKAPI subfolder of it.
+// null if cancelled. Data will be moved into an EasyOKAPI subfolder of it.
 async function pickDataRootFolder(startPath) {
     let cur = startPath || '';
 
@@ -1169,7 +1171,7 @@ async function pickDataRootFolder(startPath) {
     }
 
     const result = await Swal.fire({
-        title: 'Choose a folder',
+        title: 'Choose folder to move your data',
         width: 'min(92vw, 560px)',
         html: `
             <style>

@@ -7,9 +7,13 @@ default it lives at ``<Documents>/EasyOKAPI`` (win/mac) or ``~/EasyOKAPI``
 (linux); this module lets the user relocate it from App Settings.
 
 Relocating **copies the whole current data folder into an ``EasyOKAPI``
-subfolder of the chosen location** and points the app at that copy — the
-original is left in place as-is. So choosing ``/Volumes/Big`` makes the new root
-``/Volumes/Big/EasyOKAPI``.
+subfolder of the chosen location** and points the app at that copy. So choosing
+``/Volumes/Big`` makes the new root ``/Volumes/Big/EasyOKAPI``. The original is
+**moved** (deleted after the copy) when it is *not* the default location; the
+default folder is the one exception — it is left in place as a fallback (a
+"copy"). So relocating an already-relocated folder, or resetting back to the
+default, cleans up the old custom folder; relocating away from the default keeps
+it.
 
 The location can't be stored in ``user_settings.json`` (that file lives *inside*
 the data root — chicken-and-egg), so it is recorded in a tiny ``.dataroot``
@@ -66,7 +70,7 @@ def _validate_target(target: str) -> str:
         raise ValueError("A file already exists at that path; choose a folder.")
     bundle = os.path.abspath(state.bundle_dir)
     if target == bundle or target.startswith(bundle + os.sep):
-        raise ValueError("The folder cannot be inside the application files.")
+        raise ValueError("The folder cannot be inside the EasyOKAPI program folder.")
     current = os.path.abspath(state.script_dir)
     if target == current:
         raise ValueError("That is already the current data folder.")
@@ -105,29 +109,48 @@ def _write_pointer(target: str) -> None:
         f.write(target)
 
 
-def _relocate(target: str) -> str:
-    """Validate `target`, copy the whole current root into it, point the app there."""
+def _relocate(target: str):
+    """Validate `target`, copy the whole current root into it, point the app there.
+
+    Returns ``(target, moved)``. After the copy + pointer write, the original is
+    deleted (a "move") **unless** it is the default location, which is kept as a
+    fallback (a "copy"). ``moved`` reflects which happened. The pointer is written
+    before the source is removed, so an interrupted relocation never aims the
+    pointer at a deleted folder.
+    """
     target = _validate_target(target)
+    source = os.path.abspath(state.script_dir)
+    default = os.path.abspath(state.default_data_root)
     # Copy the entire current root tree into the new folder (newest wins on a
-    # re-copy into an existing folder). The original is left untouched.
+    # re-copy into an existing folder).
     shutil.copytree(state.script_dir, target, ignore=_copy_ignore, dirs_exist_ok=True)
     _write_pointer(target)
-    return target
+    moved = source != default
+    if moved:
+        # The original was a relocated (non-default) folder — clean it up.
+        shutil.rmtree(source, ignore_errors=True)
+    return target, moved
 
 
-def set_data_root(parent_dir: str) -> str:
-    """Relocate by COPYING the current data root into ``<parent_dir>/EasyOKAPI``.
+def set_data_root(parent_dir: str):
+    """Relocate the current data root into ``<parent_dir>/EasyOKAPI``.
 
     The user picks a *container* folder; the data is copied into an ``EasyOKAPI``
-    subfolder of it, the pointer is written, and the new root path is returned.
-    The original data is left untouched. Raises ValueError on a bad or unwritable
-    choice. The change takes effect on the next launch (root resolved at import).
+    subfolder of it and the pointer is written. The original folder is then
+    removed (a move) unless it is the default location, which is kept as a
+    fallback. Returns ``(new_root_path, moved)``. Raises ValueError on a bad or
+    unwritable choice. The change takes effect on the next launch (root resolved
+    at import).
     """
     if not parent_dir or not parent_dir.strip():
         raise ValueError("A folder is required.")
     return _relocate(os.path.join(_normalize(parent_dir), _ROOT_FOLDER_NAME))
 
 
-def reset_to_default() -> str:
-    """Copy the data back to the default location and remove the pointer."""
+def reset_to_default():
+    """Move the data back to the default location and remove the pointer.
+
+    The current (custom) folder is removed after the copy. Returns
+    ``(default_root_path, moved)``.
+    """
     return _relocate(state.default_data_root)

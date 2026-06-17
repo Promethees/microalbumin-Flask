@@ -241,23 +241,31 @@ Timestamp,Value:1,Value:2,...
   markers). In a **frozen build** the user may relocate it from **App Settings** onto another drive
   or a shared folder. The default stays `<Documents>/EasyOKAPI` (win/mac) / `~/EasyOKAPI` (linux).
   **Source/dev runs always use the project root and ignore all of this.**
-- **The installers do NOT choose the data location.** They always lay the data root at the default
-  (the app creates it on first run). The Windows installer's finish-page "Open my EasyOKAPI data
-  folder" option was removed (the folder may not exist yet at end of install). Relocation is an
-  in-app action only.
+- **The Windows installer lets the user choose the data location.** `setup-frozen.nsi` adds a custom
+  themed **Data Folder** page (`DataFolderPage`/`DataFolderPageLeave`) after the Directory page, so
+  `$INSTDIR` is known for validation. The user picks a *parent* folder (`$DataParent`, default
+  `$DOCUMENTS`); the data root is `$DataParent\EasyOKAPI`. When the choice is non-default the Install
+  section writes the `$DOCUMENTS\.easyokapi_dataroot` pointer the app reads on launch; when it's the
+  default it deletes any stale pointer. The page **rejects** `$INSTDIR` / anything under Program Files
+  (mirrors the in-app safeguard). Relocation afterwards is an in-app action.
 - **The Windows uninstaller is pointer-aware.** `setup-frozen.nsi`'s `Section "Uninstall"` reads
   `$DOCUMENTS\.easyokapi_dataroot` and acts on the **relocated** folder when it exists (prompt, backup
   ZIP, removal); on removal it also wipes the default folder + both `_data` siblings + the pointer
   file, so a leftover copy from an in-app relocation never lingers. Because the pointer is a sibling
   it still works when the default folder is gone. (The mac/linux uninstall scripts are source-build
   only and do not touch the frozen data folder.)
-- **Relocation COPIES, it does not move.** `data_root.set_data_root(parent_dir)` copies the *whole*
-  current root into an **`EasyOKAPI` subfolder of the chosen folder** (`<parent>/EasyOKAPI`), points
-  the app there, and **leaves the original in place** as a fallback. The copy skips the `.dataroot`
-  pointer and transient `_update*` artifacts (`_copy_ignore`). `reset_to_default()` copies back to
-  `state.default_data_root` and clears the pointer. Both go through `_relocate(target)` →
-  `_validate_target` (absolute; not a file; not inside `bundle_dir`; not equal to / inside the
-  current root; parent writable).
+- **Relocation MOVES, except away from the default (which copies).** `data_root.set_data_root(parent_dir)`
+  copies the *whole* current root into an **`EasyOKAPI` subfolder of the chosen folder**
+  (`<parent>/EasyOKAPI`) and points the app there. The copy skips the `.dataroot` pointer and transient
+  `_update*` artifacts (`_copy_ignore`). After the copy + pointer write, the **original is deleted (a
+  move)** — *unless* it is `state.default_data_root`, which is kept as a fallback (a "copy"). So
+  relocating an already-relocated folder, or `reset_to_default()` (custom → default), removes the old
+  custom folder; relocating away from the default keeps it. `_relocate(target)` returns
+  `(path, moved)`; `POST /data_root` surfaces `moved` so the UI says "moved" vs "copied". Both callers
+  go through `_relocate` → `_validate_target` (absolute; not a file; not inside `bundle_dir` — i.e. the
+  EasyOKAPI program folder; not equal to / inside the current root; parent writable). The pointer is
+  written **before** the source is removed, so an interrupted move never aims the pointer at a deleted
+  folder.
 - **The location lives in a `.easyokapi_dataroot` pointer file, NOT in `user_settings.json`.**
   `user_settings.json` lives *inside* the data root, so it cannot record where the data root is
   (chicken-and-egg). The pointer is a one-line file holding the absolute path, kept **beside** the
@@ -268,19 +276,21 @@ Timestamp,Value:1,Value:2,...
   `state._read_dataroot_override()` reads it at import; `data_root._write_pointer()` writes/clears it;
   `state._dataroot_pointer_path()` is the single source of truth for its location.
 - **Resolution is import-time**, so changing the root **requires an app restart**. `POST /data_root`
-  returns `restart_required: true`; the UI then offers **Quit now** (via the existing `POST /shutdown`).
+  returns `restart_required: true` and `moved: true|false`; the UI then offers **Quit now** (via the
+  existing `POST /shutdown`).
 - **The folder is picked with an in-app browser, not a typed path.** `GET /browse_dirs?path=` lists a
   directory's non-hidden subfolders (and Windows drives via `?path=::drives`) for the SweetAlert
   navigator (`pickDataRootFolder` in `init.js`); the server then appends `EasyOKAPI`.
 - `GET /data_root` returns `{current, default, is_custom}`, injected into `index.html` as
   `DATA_ROOT_INFO` (with `IS_FROZEN`); the settings modal hides the section for source builds.
   `POST /data_root` (`{path}` to relocate, or `{reset:true}`) is frozen-only, `@423 LOCKED` while the
-  data-collection process runs.
+  data-collection process runs; success returns `{path, moved, restart_required}`.
 - **Anti-patterns**: do **not** store the data-root path in `user_settings.json`; do **not** point
-  the data root inside `bundle_dir` (read-only assets); do **not** *move/delete* the original on
-  relocation (it is a copy — keep the source); do **not** auto-restart (`os.execv`) from the settings
-  route — restart-on-exit is reserved for the update path (§2.15); do **not** add a data-location
-  chooser back to the installers.
+  the data root inside `bundle_dir` / the EasyOKAPI program folder (read-only, elevated — rejected
+  both in `_validate_target` and on the installer's Data Folder page); do **not** delete the **default**
+  folder on relocation (only a *non-default* source is removed — the default is the fallback); do
+  **not** write the pointer *after* removing the source (write it first); do **not** auto-restart
+  (`os.execv`) from the settings route — restart-on-exit is reserved for the update path (§2.15).
 
 ---
 

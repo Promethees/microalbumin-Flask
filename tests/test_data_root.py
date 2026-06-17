@@ -62,13 +62,13 @@ class TestSetDataRoot:
         _setup_roots(tmp_path, monkeypatch)
         parent = tmp_path / "BigDrive"
         parent.mkdir()
-        target = data_root.set_data_root(str(parent))
+        target, moved = data_root.set_data_root(str(parent))
         assert target == str(parent / "EasyOKAPI")
 
     def test_writes_pointer_and_state_reads_it_back(self, tmp_path, monkeypatch):
         _setup_roots(tmp_path, monkeypatch)
         parent = tmp_path / "BigDrive"
-        target = data_root.set_data_root(str(parent))
+        target, _moved = data_root.set_data_root(str(parent))
         pointer = state._dataroot_pointer_path()
         # pointer lives BESIDE the default folder, not inside it
         assert os.path.dirname(pointer) == os.path.dirname(str(tmp_path / "default_root"))
@@ -77,23 +77,39 @@ class TestSetDataRoot:
             assert f.read().strip() == target
         assert os.path.abspath(state._read_dataroot_override()) == os.path.abspath(target)
 
-    def test_copies_data_and_keeps_original(self, tmp_path, monkeypatch):
+    def test_copies_data_and_keeps_original_when_leaving_default(self, tmp_path, monkeypatch):
+        # Relocating AWAY from the default keeps the default folder as a fallback.
         default, _ = _setup_roots(tmp_path, monkeypatch)
         _seed_data(default)
         parent = tmp_path / "BigDrive"
-        target = data_root.set_data_root(str(parent))
+        target, moved = data_root.set_data_root(str(parent))
         # copied to new root
         assert os.path.isfile(os.path.join(target, "data", "exp1.csv"))
         assert os.path.isfile(os.path.join(target, "json", "kinetics", "cal.json"))
         assert os.path.isfile(os.path.join(target, "user_settings.json"))
-        # original is left untouched (copy, not move)
+        # original (the default) is left untouched — this is a copy, not a move
+        assert moved is False
         assert (default / "data" / "exp1.csv").is_file()
         assert (default / "user_settings.json").is_file()
+
+    def test_moves_and_removes_original_when_current_is_custom(self, tmp_path, monkeypatch):
+        # Relocating a NON-default folder moves the data and deletes the source.
+        default, _ = _setup_roots(tmp_path, monkeypatch)
+        custom = tmp_path / "BigDrive" / "EasyOKAPI"
+        custom.mkdir(parents=True)
+        _seed_data(custom)
+        monkeypatch.setattr(state, "script_dir", str(custom))
+        parent = tmp_path / "OtherDrive"
+        target, moved = data_root.set_data_root(str(parent))
+        assert moved is True
+        # data is at the new root, and the old custom folder is gone
+        assert os.path.isfile(os.path.join(target, "data", "exp1.csv"))
+        assert not os.path.exists(str(custom))
 
     def test_pointer_survives_default_folder_deletion(self, tmp_path, monkeypatch):
         import shutil as _sh
         default, _ = _setup_roots(tmp_path, monkeypatch)
-        target = data_root.set_data_root(str(tmp_path / "BigDrive"))
+        target, _moved = data_root.set_data_root(str(tmp_path / "BigDrive"))
         # user deletes the (now-stale) default folder entirely
         _sh.rmtree(default)
         # pointer is a sibling → override still resolves to the relocated data
@@ -105,11 +121,11 @@ class TestSetDataRoot:
         (default / "_update_download.tar.gz").write_text("x", encoding="utf-8")
         # simulate a stray pointer inside the root (should never be copied)
         (default / state._DATAROOT_POINTER).write_text("/somewhere", encoding="utf-8")
-        target = data_root.set_data_root(str(tmp_path / "BigDrive"))
+        target, _moved = data_root.set_data_root(str(tmp_path / "BigDrive"))
         assert not os.path.exists(os.path.join(target, "_update_download.tar.gz"))
         assert not os.path.exists(os.path.join(target, state._DATAROOT_POINTER))
 
-    def test_reset_to_default_copies_back_and_clears_pointer(self, tmp_path, monkeypatch):
+    def test_reset_to_default_moves_back_and_clears_pointer(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
         custom = tmp_path / "BigDrive" / "EasyOKAPI"
         custom.mkdir(parents=True)
@@ -121,9 +137,11 @@ class TestSetDataRoot:
         pointer = state._dataroot_pointer_path()
         with open(pointer, "w", encoding="utf-8") as f:
             f.write(str(custom))
-        target = data_root.reset_to_default()
+        target, moved = data_root.reset_to_default()
         assert target == str(default)
-        assert (default / "data" / "new.csv").is_file()  # copied back
+        assert moved is True
+        assert (default / "data" / "new.csv").is_file()  # moved back
+        assert not os.path.exists(str(custom))            # custom source removed
         assert not os.path.exists(pointer)
 
 
@@ -141,6 +159,17 @@ class TestValidation:
         _default, bundle = _setup_roots(tmp_path, monkeypatch)
         with pytest.raises(ValueError):
             data_root.set_data_root(str(bundle / "sub"))
+
+    def test_rejects_program_folder_itself(self, tmp_path, monkeypatch):
+        # The data root must not equal the EasyOKAPI program folder (install dir,
+        # == bundle_dir for frozen builds). bundle is named EasyOKAPI so that
+        # <parent>/EasyOKAPI resolves exactly onto it.
+        _setup_roots(tmp_path, monkeypatch)
+        prog = tmp_path / "ProgramFiles" / "EasyOKAPI"
+        prog.mkdir(parents=True)
+        monkeypatch.setattr(state, "bundle_dir", str(prog))
+        with pytest.raises(ValueError):
+            data_root.set_data_root(str(tmp_path / "ProgramFiles"))
 
     def test_rejects_container_inside_current(self, tmp_path, monkeypatch):
         default, _ = _setup_roots(tmp_path, monkeypatch)
@@ -191,6 +220,19 @@ class TestRoutes:
         monkeypatch.setattr(state, "IS_FROZEN", True)
         resp = client.post('/data_root', json={})
         assert resp.status_code == 400
+
+    def test_post_success_returns_moved(self, client, monkeypatch):
+        from routes import core_routes
+        monkeypatch.setattr(state, "IS_FROZEN", True)
+        monkeypatch.setattr(core_routes._data_root, "set_data_root",
+                            lambda p: ("/new/EasyOKAPI", True))
+        resp = client.post('/data_root', json={"path": "/new"})
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["status"] == "success"
+        assert body["path"] == "/new/EasyOKAPI"
+        assert body["moved"] is True
+        assert body["restart_required"] is True
 
     def test_browse_dirs_lists_subfolders(self, client, tmp_path):
         (tmp_path / "alpha").mkdir()

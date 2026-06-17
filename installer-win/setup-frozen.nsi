@@ -5,11 +5,13 @@
 ; no git/pyenv/python/venv. Running the app needs no admin (CDC serial, not HID);
 ; only installing does.
 ;
-; User data (data/json/report/log) lives in a VISIBLE folder the user can open:
-; Documents\EasyOKAPI (matches src/state.py). It is migrated once from an older
-; frozen build's hidden %LOCALAPPDATA%\EasyOKAPI and from any old source install
-; ($INSTDIR\code\). Bundled sample data / demo curves are offered by the app on
-; first run, not by this installer.
+; User data (data/json/report/log) lives in a VISIBLE folder the user can open.
+; The Data Folder page lets the user choose where (default Documents\EasyOKAPI,
+; matches src/state.py); a non-default choice is recorded in the
+; $DOCUMENTS\.easyokapi_dataroot pointer the app + uninstaller read. It is
+; migrated once from an older frozen build's hidden %LOCALAPPDATA%\EasyOKAPI and
+; from any old source install ($INSTDIR\code\). Bundled sample data / demo curves
+; are offered by the app on first run, not by this installer.
 ;
 ; Compile from inside installer-win/ (like setup.nsi) so NSIS resolves the
 ; relative paths (setup.ico, bitmaps, ..\dist) against this script's directory:
@@ -49,7 +51,7 @@ Unicode true
 
 ; Welcome page
 !define MUI_WELCOMEPAGE_TITLE "Welcome to the EasyOKAPI Setup"
-!define MUI_WELCOMEPAGE_TEXT "This wizard will install EasyOKAPI ${APP_VERSION} on your computer.$\r$\n$\r$\nBefore you begin, please have your EasyOKAPI activation token ready and make sure you are connected to the internet. If you don't have a token yet, you can get one at easyokapi.cbbiotec.vn.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder, and are kept safe whenever you update.$\r$\n$\r$\nClick Next to begin."
+!define MUI_WELCOMEPAGE_TEXT "This wizard will install EasyOKAPI ${APP_VERSION} on your computer.$\r$\n$\r$\nBefore you begin, please have your EasyOKAPI activation token ready and make sure you are connected to the internet. If you don't have a token yet, you can get one at easyokapi.cbbiotec.vn.$\r$\n$\r$\nYou can choose where your measurements, calibration curves and reports are saved (your Documents\EasyOKAPI folder by default), and they are kept safe whenever you update.$\r$\n$\r$\nClick Next to begin."
 
 ; Finish page: tick to start EasyOKAPI now (through the splash launcher). Note:
 ; Setup runs as administrator, so "Start now" launches the app elevated this one
@@ -58,7 +60,7 @@ Unicode true
 ; shortcut, which runs un-elevated. (The "open data folder" option was removed:
 ; the data root is created by the app on first run and can be relocated in-app.)
 !define MUI_FINISHPAGE_TITLE "EasyOKAPI ${APP_VERSION} is ready"
-!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed. Shortcuts were added to your Desktop and Start Menu.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in your Documents\EasyOKAPI folder."
+!define MUI_FINISHPAGE_TEXT "EasyOKAPI has been installed. Shortcuts were added to your Desktop and Start Menu.$\r$\n$\r$\nYour measurements, calibration curves and reports are saved in the EasyOKAPI data folder you chose (use the $\"EasyOKAPI Data$\" Start Menu shortcut to open it)."
 !define MUI_FINISHPAGE_RUN "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe"
 !define MUI_FINISHPAGE_RUN_PARAMETERS "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $\"$INSTDIR\launcher-frozen.ps1$\""
 !define MUI_FINISHPAGE_RUN_TEXT "Start EasyOKAPI now"
@@ -98,8 +100,11 @@ Var TokenInput
 Var EasyOKAPIToken
 Var BgBitmapHandle
 Var UninstVer
+Var DataParent      ; parent folder chosen on the Data Folder page; root = $DataParent\EasyOKAPI
+Var DataInput       ; text-field handle on the Data Folder page
+Var DataBrowseBtn   ; Browse button handle on the Data Folder page
 
-; ── Page order: Welcome → Token → Directory → Install → Finish ────────────────
+; ── Page order: Welcome → Token → Directory → DataFolder → Install → Finish ───
 ; Each MUI page gets a SHOW callback that recolours the inner controls. The
 ; uninstaller keeps the default theme (its callbacks would need un. twins).
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
@@ -112,6 +117,11 @@ Page custom TokenPage TokenPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
 !insertmacro MUI_PAGE_DIRECTORY
+
+; Where to keep user data. Placed AFTER the Directory page so $INSTDIR is known
+; and the data folder can be validated against the program folder (see
+; DataFolderPageLeave). Themed to match the Token page.
+Page custom DataFolderPage DataFolderPageLeave
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
 !insertmacro MUI_PAGE_INSTFILES
@@ -137,6 +147,7 @@ Function _OnInit
   SetOutPath $PLUGINSDIR
   File "background.bmp"
   File "page_bg.bmp"
+  StrCpy $DataParent "$DOCUMENTS"   ; default data location = Documents\EasyOKAPI
 FunctionEnd
 
 Function .onGUIEnd
@@ -416,6 +427,95 @@ Function TokenPageLeave
   ${EndIf}
 FunctionEnd
 
+; ── EasyOKAPI data-folder page ────────────────────────────────────────────────
+; Lets the user pick WHERE their data lives. The chosen value is a *parent*
+; folder; the data root is "<parent>\EasyOKAPI" (matches the in-app relocation
+; semantics and src/data_root.py). Default is $DOCUMENTS. The app finds a
+; non-default location through the $DOCUMENTS\.easyokapi_dataroot pointer the
+; Install section writes (see Section "Install"). Themed like the Token page.
+Function DataFolderPage
+  !insertmacro MUI_HEADER_TEXT "EasyOKAPI Data Folder" "Choose where EasyOKAPI keeps your measurements and reports."
+  nsDialogs::Create 1018
+  Pop $Dialog
+  ${If} $Dialog == error
+    Abort
+  ${EndIf}
+
+  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+
+  ; Background bitmap (created first so it sits at the back of the Z-order).
+  ${NSD_CreateBitmap} 0 0 100% 100% ""
+  Pop $0
+  ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
+
+  ${NSD_CreateLabel} 0 0 100% 42u "Choose the folder where EasyOKAPI will store your measurements, calibration curves and reports. An $\"EasyOKAPI$\" folder is created inside the folder you pick.$\r$\n$\r$\nLeave the default (your Documents folder) unless you want your data on another drive or a shared location. You can also change this later from the app's Settings."
+  Pop $0
+  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
+
+  ${If} $DataParent == ""
+    StrCpy $DataParent "$DOCUMENTS"
+  ${EndIf}
+
+  ${NSD_CreateText} 0 48u 74% 12u "$DataParent"
+  Pop $DataInput
+  SetCtlColors $DataInput "${CLR_FG}" "${CLR_INPUT}"
+
+  ${NSD_CreateButton} 76% 47u 24% 14u "Browse…"
+  Pop $DataBrowseBtn
+  ${NSD_OnClick} $DataBrowseBtn DataFolderBrowse
+
+  Call _DarkButtons
+  nsDialogs::Show
+FunctionEnd
+
+; Browse button → native folder picker. Updates the text field with the choice.
+Function DataFolderBrowse
+  ${NSD_GetText} $DataInput $DataParent
+  nsDialogs::SelectFolderDialog "Select the folder to store your EasyOKAPI data" "$DataParent"
+  Pop $0
+  ${If} $0 != error
+    StrCpy $DataParent "$0"
+    ${NSD_SetText} $DataInput "$DataParent"
+  ${EndIf}
+FunctionEnd
+
+; DataFolderPageLeave — validate the chosen parent. The data root would be
+; "$DataParent\EasyOKAPI". Reject an empty value and, crucially, refuse to place
+; data inside the EasyOKAPI program folder ($INSTDIR) or anywhere under Program
+; Files — those are read-only/elevated locations and would clash with the app's
+; own in-app safeguard (src/data_root._validate_target). StrCmp ('==' in LogicLib)
+; is case-insensitive, so typed-case variations are handled.
+Function DataFolderPageLeave
+  ${NSD_GetText} $DataInput $DataParent
+  ${If} $DataParent == ""
+    MessageBox MB_OK|MB_ICONEXCLAMATION "Please choose a folder for your EasyOKAPI data."
+    Abort
+  ${EndIf}
+
+  StrCpy $R0 "$DataParent\EasyOKAPI"   ; the data root that would be created
+
+  ; (1) Equal to the program folder, or the parent IS the program folder.
+  StrLen $1 "$INSTDIR"
+  StrCpy $2 "$DataParent" $1
+  ${If} $DataParent == "$INSTDIR"
+  ${OrIf} $R0 == "$INSTDIR"
+  ${OrIf} $2 == "$INSTDIR"
+    MessageBox MB_OK|MB_ICONSTOP "You can't store your data inside the EasyOKAPI program folder ($INSTDIR). Please choose a different location, such as your Documents folder."
+    Abort
+  ${EndIf}
+
+  ; (2) Anywhere under Program Files (64- or 32-bit).
+  StrLen $1 "$PROGRAMFILES64"
+  StrCpy $2 "$DataParent" $1
+  StrLen $3 "$PROGRAMFILES"
+  StrCpy $4 "$DataParent" $3
+  ${If} $2 == "$PROGRAMFILES64"
+  ${OrIf} $4 == "$PROGRAMFILES"
+    MessageBox MB_OK|MB_ICONSTOP "Program Files is not a good place for your data (it needs administrator rights to change). Please choose a folder such as your Documents folder or another drive."
+    Abort
+  ${EndIf}
+FunctionEnd
+
 ; Merge SRC into DST without overwriting newer/existing files (robocopy /XO skips
 ; older source files; existing same-time files are skipped). Exit codes 0-7 = ok.
 !macro MigrateDir SRC DST
@@ -425,7 +525,8 @@ FunctionEnd
 !macroend
 
 Section "Install" SEC01
-  StrCpy $R0 "$DOCUMENTS\EasyOKAPI"   ; visible per-user data root (matches state.py)
+  ; Data root = the folder chosen on the Data Folder page (default Documents\EasyOKAPI).
+  StrCpy $R0 "$DataParent\EasyOKAPI"   ; per-user data root (matches state.py + pointer)
 
   ; ── Refuse to overwrite a running instance ──────────────────────────────────
   ; A live EasyOKAPI.exe keeps its files open, so File /r below would fail. It may
@@ -570,6 +671,21 @@ Click Cancel to exit without making any changes." \
   ; an invalid/empty token — the wizard cannot leave the Token page without one.
   CreateDirectory "$R0"
   CopyFiles /SILENT "$PLUGINSDIR\activation.json" "$R0\activation.json"
+
+  ; ── Record a non-default data location ──────────────────────────────────────
+  ; The app resolves its data root from a pointer file beside the default folder
+  ; ($DOCUMENTS\.easyokapi_dataroot — see src/state._read_dataroot_override and the
+  ; uninstaller below). Write it only when the user chose a folder other than the
+  ; default Documents location; otherwise clear any stale pointer so the default
+  ; wins. One line, no trailing CR/LF (the app's reader strips, but match the
+  ; in-app writer which writes none).
+  ${If} $DataParent == "$DOCUMENTS"
+    Delete "$DOCUMENTS\.easyokapi_dataroot"
+  ${Else}
+    FileOpen $9 "$DOCUMENTS\.easyokapi_dataroot" w
+    FileWrite $9 "$R0"
+    FileClose $9
+  ${EndIf}
 
   DetailPrint "EasyOKAPI ${APP_VERSION} is installed and activated. Your data is saved in $R0."
 SectionEnd
