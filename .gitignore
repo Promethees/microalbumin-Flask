@@ -57,3 +57,8 @@ log/script_logs.txt
 
 # Working artifact: the server-side (online branch) diff, not source.
 /online-hardware-lock.patch
+
+# Real git dir is kept here, out of iCloud sync (the .git symlink points to it).
+# The ".nosync" suffix tells iCloud (Desktop & Documents) to skip it; this keeps
+# the file-sync service from corrupting the repo. See README/setup notes.
+/.git.nosync/
