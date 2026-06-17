@@ -68,7 +68,11 @@ async function generateReport() {
 
             // Recalculate coefficients based on the user-selected algo for the report
             const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, promptedAlgo);
-            if (!analysis) continue;
+            // Skip metrics the fit could not resolve (e.g. a calibration column with
+            // only one non-"NONE" point yields coefficients: null). Matches the other
+            // report generators; without this guard `analysis.coefficients.length`
+            // below throws "Cannot read properties of null (reading 'length')".
+            if (!analysis || !analysis.coefficients) continue;
 
             // 1. Build table row
             const [a, b, c] = analysis.coefficients || [0, 0, 0];
