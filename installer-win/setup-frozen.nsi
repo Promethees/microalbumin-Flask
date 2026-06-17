@@ -460,7 +460,7 @@ Function DataFolderPage
   Pop $DataInput
   SetCtlColors $DataInput "${CLR_FG}" "${CLR_INPUT}"
 
-  ${NSD_CreateButton} 76% 47u 24% 14u "Browse…"
+  ${NSD_CreateButton} 76% 47u 24% 14u "Browse..."
   Pop $DataBrowseBtn
   ${NSD_OnClick} $DataBrowseBtn DataFolderBrowse
 

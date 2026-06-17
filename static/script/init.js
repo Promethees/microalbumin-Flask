@@ -1171,7 +1171,7 @@ async function pickDataRootFolder(startPath) {
     }
 
     const result = await Swal.fire({
-        title: 'Choose folder to move your data',
+        title: 'Change folder',
         width: 'min(92vw, 560px)',
         html: `
             <style>
