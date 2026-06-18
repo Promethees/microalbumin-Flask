@@ -151,12 +151,18 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             display.appendChild(table);
                         };
 
+                        const isPointMode = String(mode).toLowerCase() === "point";
+                        const qLabel = isPointMode ? "q" : "q (per minute)";
+                        const qDesc = isPointMode
+                            ? "<em>Measurement value</em> at the referenced time point."
+                            : "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.";
+
                         const infoData = {
                             "Current Mode": mode,
                             "Fit Type": fitType,
                             "Formula": getFormula(fitType),
                             "[S]": "Initial Substance Concentration",
-                            "q (per minute)": "<em>Quantity value</em> is either <strong>maxRate, Slope, Saturation, Time to Sat</strong>, whichever is set by user.",
+                            [qLabel]: qDesc,
                             "Measurement For": measFor
                         };
 
