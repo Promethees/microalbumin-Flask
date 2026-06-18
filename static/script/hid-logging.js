@@ -170,6 +170,9 @@ function resetUIAfterCompletion() {
     resetUI({ goToEnabled: true });
     // Refresh folder picker so any newly-created subfolder is visible
     if (typeof loadDataFolders === 'function') loadDataFolders();
+    // Authoritative clean-completion path: notify here so the "done" chime/popup
+    // no longer depends on the log poll winning the race against this status poll.
+    fireDoneNotification("Session ended due to timeout.");
 }
 
 // HID save-mode toggle handlers
@@ -374,31 +377,57 @@ async function clearLogs() {
     }
 }
 
+// --- Completion notice ---
+// Plays the completion chime + shows the "Reading Stopped" popup, honouring the
+// "Notify me when Done" checkbox. Guarded by _terminationNoticeFired so it fires
+// at most once per run, regardless of which poller detects the end first
+// (fetchLogs spotting "SESSION TIMEOUT" vs checkScriptStatus seeing the process
+// exit). Without this single source of truth the notify only fired when the log
+// poll happened to win the race against the status poll.
+function fireDoneNotification(message) {
+    if (_terminationNoticeFired) return;
+    _terminationNoticeFired = true;
+    const notifyEl = $id("notify-me");
+    if (!notifyEl || !notifyEl.checked) return;
+    new Audio("../static/done.mp3").play().catch(err => console.warn("Audio play blocked:", err));
+    Swal.fire({
+        title: "Reading Stopped",
+        text: message,
+        icon: "info",
+        background: "#f9f9f9",
+        color: "#333",
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true
+    });
+}
+
 // --- Termination notice ---
 function showTerminationNotice(message, iconType) {
     if (_terminationNoticeFired) return;
+
+    if (iconType === "info") {
+        // Clean completion detected via the logs: mirror the authoritative
+        // completion path. fireDoneNotification owns the guard + chime/popup.
+        AppState.scriptRunning = false;
+        stopSessionTimer();
+        terminateScript();
+        fireDoneNotification(message);
+        return;
+    }
+
+    // Error path: always surface, regardless of the notify preference.
     _terminationNoticeFired = true;
     AppState.scriptRunning = false;
     stopSessionTimer();
     terminateScript();
-
-    const baseOpts = {
-        title: iconType === "info" ? "Reading Stopped" : "Error!",
+    Swal.fire({
+        title: "Error!",
         text: message,
         icon: iconType,
         background: "#f9f9f9",
         color: "#333",
-        showConfirmButton: iconType !== "info",
-        confirmButtonText: "OK",
-        timer: iconType === "info" ? 4000 : undefined,
-        timerProgressBar: iconType === "info"
-    };
-
-    if (iconType === "info" && $id("notify-me").checked) {
-        new Audio("../static/done.mp3").play().catch(err => console.warn("Audio play blocked:", err));
-        Swal.fire(baseOpts);
-    } 
-    // else {
-    //     Swal.fire(baseOpts);
-    // }
+        showConfirmButton: true,
+        confirmButtonText: "OK"
+    });
 }
