@@ -322,11 +322,33 @@ Timestamp,Value:1,Value:2,...
   per-view `localStorage` keys (keeping genuine cross-session prefs: `theme`, `okapi_ai_lang`,
   `okapi_ai_first_run`) **before** `init.js` runs, and `init.js` forces the kinetics mode button
   regardless of `USER_SETTINGS.default_mode`.
+- **One-shot vs. the auto-opened tab (race)**: because the sentinel is consumed on the **first** index
+  render, only **one** tab may load `/` during a restart. The in-place relaunch (`update_service.restart_after_delay`
+  → `os.execv` / `_restart_windows`) re-runs `main.py`, which would normally auto-open a **second**
+  browser tab. That tab would race the user's existing tab (reloading itself from `restarting.html`) for
+  the marker; whichever lost would come up with `reset_display=false` — leaving the `#measurement-mode`
+  button on the saved `default_mode` instead of kinetics. The relaunch therefore passes `--no-browser`
+  (`update_service._relaunch_argv()`) so the fresh instance does **not** open a tab — the user's reloading
+  tab is the sole marker consumer.
+- **`AppState.reset()` mirrors the button**: `AppState.reset()` in `index.js` sets `currentMeasurementMode`
+  from the selected `#measurement-mode` button's `data-value` (fallback `"kinetics"`), **not** a hard-coded
+  `"kinetics"`. init.js sets that button before `reset()` runs (on `$(document).ready` and on server-down
+  recovery), so the internal mode and the button highlight can never desync. Do **not** reintroduce a
+  hard-coded mode in `reset()` — it silently diverges from the button whenever `default_mode` ≠ kinetics.
+- **`switchingModes` runs on load**: `$(document).ready` calls `switchingModes(_initialMode, { silent: true })`
+  **after** `initDefaultState()` so the selected mode's **section layout** (and, for report mode, the report
+  directory) is realized on load — previously that ran only on a button click, so a non-kinetics `default_mode`
+  came up with the kinetics layout. It must run after `initDefaultState()` (which hides sections point/calibrate
+  need shown), and the `default_subfolder` auto-select is skipped in report mode (it would override the report
+  directory). The `{ silent: true }` flag suppresses the `mode/switch` analytics event — this is the default
+  layout, not a user-initiated switch; pass it for any non-interactive `switchingModes` call.
 - **Anti-patterns**: do **not** put the sentinel in `script_dir` (lost across a relocation restart); do
   **not** make the reset a client-only flag (`sessionStorage`/query param) — it will not survive the
   manual post-update relaunch into a fresh tab; the flag is **one-shot** (consumed on first render) so a
   plain refresh keeps the user's layout — do not leave it set; do **not** clear `theme` (it would lose
-  the user's chosen mode on every restart — it is preserved and re-derived from `USER_SETTINGS.theme`).
+  the user's chosen mode on every restart — it is preserved and re-derived from `USER_SETTINGS.theme`); do
+  **not** let an in-place relaunch auto-open a browser tab (it races the user's tab for the one-shot
+  marker — pass `--no-browser`).
 
 ---
 

@@ -69,7 +69,11 @@ const AppState = {
     reset: function () {
         this.myChart = null;
         this.scriptRunning = false;
-        this.currentMeasurementMode = "kinetics";
+        // Mirror the selected mode button rather than hard-coding "kinetics", so the
+        // internal mode and the #measurement-mode highlight never desync. init.js sets
+        // the button on load (kinetics on a restart-reset, else USER_SETTINGS.default_mode);
+        // fall back to "kinetics" if the button is somehow unset.
+        this.currentMeasurementMode = (typeof modeDiv !== 'undefined' && modeDiv.getAttribute('data-value')) || "kinetics";
         this.currentFile = null;
         this.currentJSON = null;
         this.currentJSONcontent = null;
@@ -202,12 +206,25 @@ $(document).ready(function () {
 
     initDefaultState();
 
+    // Realize the selected mode's section layout on load. init.js sets the
+    // #measurement-mode button (kinetics on a restart-reset, else USER_SETTINGS.default_mode)
+    // and AppState.reset() mirrors it; switchingModes applies the matching sections (and, for
+    // report mode, the report directory) that previously only ran on a button click — so a
+    // non-kinetics default_mode no longer comes up with the kinetics layout. Runs after
+    // initDefaultState() because that hides sections point/calibrate modes need shown. Silent:
+    // this is the default layout, not a user-initiated switch.
+    const _initialMode = modeDiv.getAttribute('data-value') || 'kinetics';
+    switchingModes(_initialMode, { silent: true });
+    if (_initialMode === 'calibrate') $hidden(["num-sources-section"]);
+
     // Apply button text shrinking on page load
     setTimeout(() => shrinkAllButtonsToFit(), 100);
 
-    // Load data subfolders into the picker and selects; auto-select saved preference
+    // Load data subfolders into the picker and selects; auto-select saved preference.
+    // Skipped in report mode — switchingModes pointed the directory at the report root, and
+    // selecting a data subfolder would override it.
     loadDataFolders().then(function () {
-        if (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.default_subfolder) {
+        if (_initialMode !== 'report' && typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.default_subfolder) {
             const container = document.getElementById('data-folder-list');
             if (container) {
                 const item = container.querySelector(
@@ -617,8 +634,10 @@ function updateMultiSourceExportOptions() {
     }
 }
 
-function switchingModes(mode) {
-    logEvent('mode', 'switch', { mode });
+function switchingModes(mode, opts) {
+    // opts.silent: skip the analytics event (used for the initial load-time call,
+    // which realizes the default mode's layout rather than reflecting a user switch).
+    if (!(opts && opts.silent)) logEvent('mode', 'switch', { mode });
     const currentDir = AppState.currentDirectory;
     const prevMode = AppState.currentMeasurementMode;
     AppState.currentMeasurementMode = mode;

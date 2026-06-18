@@ -807,9 +807,23 @@ def restart_after_delay(delay_secs=1.5):
         if platform.system().lower().startswith('win'):
             _restart_windows()
         else:
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            os.execv(sys.executable, [sys.executable] + _relaunch_argv())
 
     threading.Thread(target=_do_restart, daemon=False).start()
+
+
+def _relaunch_argv():
+    """argv for the relaunched instance, forced to not auto-open a browser tab.
+
+    The restarting tab reloads itself (restarting.html) and consumes the one-shot
+    reset-display marker. A second tab auto-opened by the fresh instance would race
+    that reload for the marker, so the user-facing tab could miss the default-display
+    reset (kinetics mode + selected button). Suppress it with --no-browser.
+    """
+    argv = list(sys.argv)
+    if '--no-browser' not in argv:
+        argv.append('--no-browser')
+    return argv
 
 
 def _current_port():
@@ -902,7 +916,7 @@ def _restart_windows():
 
     port = _current_port()
     cwd = os.getcwd()
-    cmd = [sys.executable] + list(sys.argv)
+    cmd = [sys.executable] + _relaunch_argv()
 
     # Not DETACHED_PROCESS: powershell.exe needs a console or it exits before
     # running. CREATE_NO_WINDOW runs it hidden (with a console) and it outlives

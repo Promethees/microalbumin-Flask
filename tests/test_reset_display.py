@@ -46,3 +46,27 @@ def test_index_consumes_flag_and_injects_reset(client):
     second = client.get('/')
     assert b'const RESET_DISPLAY = false;' in second.data
     _cleanup()
+
+
+def test_relaunch_suppresses_browser():
+    """A restart relaunch must pass --no-browser.
+
+    The flag above is one-shot. The user's tab reloads itself (restarting.html)
+    and is meant to consume it. If the relaunched instance auto-opened a second
+    tab, that tab would race the reload for the marker — and whichever lost would
+    come up with reset_display=false, missing the default-display reset (kinetics
+    mode + selected button). Suppressing the second tab keeps the marker for the
+    one tab the user is looking at.
+    """
+    import update_service
+
+    saved = sys.argv
+    try:
+        sys.argv = ['main.py', '--port', '5099']
+        argv = update_service._relaunch_argv()
+        assert '--no-browser' in argv
+        # Idempotent: a relaunch of an already-suppressed instance adds no duplicate.
+        sys.argv = ['main.py', '--port', '5099', '--no-browser']
+        assert update_service._relaunch_argv().count('--no-browser') == 1
+    finally:
+        sys.argv = saved

@@ -167,6 +167,11 @@ if __name__ == '__main__':
     parser.add_argument('--alias', type=str, default='easyokapi.com', help='Optional domain alias (e.g., mydomain.com)')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output (e.g. detailed HTTP logging).')
     parser.add_argument('--mem-monitor', action='store_true', help='Enable memory monitoring to guard against memory leaks.')
+    parser.add_argument('--no-browser', action='store_true',
+                        help='Do not auto-open a browser tab on startup. Used by restart relaunches '
+                             '(data-folder relocation / applied update) where the existing tab reloads '
+                             'itself — opening a second tab would race it for the one-shot reset-display '
+                             'marker and leave the user-facing tab without the default-display reset.')
 
     # We assign to state args directly
     state.args = parser.parse_args()
@@ -237,9 +242,12 @@ if __name__ == '__main__':
     if alias and alias != '127.0.0.1':
         ensure_host_mapping(alias)
 
-    # Launch browser with alias
-    browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
-    browser_thread.start()
+    # Launch browser with alias. Skipped on a restart relaunch (--no-browser):
+    # the user's existing tab reloads itself, and opening a second tab here would
+    # race it for the one-shot reset-display marker (see update_service.restart_after_delay).
+    if not state.args.no_browser:
+        browser_thread = threading.Thread(target=open_browser, args=(alias, port), daemon=True)
+        browser_thread.start()
 
     # Best-effort: upgrade a freshly-installed raw download token to a permanent
     # license token while it is still valid. Runs off the launch path so a slow or

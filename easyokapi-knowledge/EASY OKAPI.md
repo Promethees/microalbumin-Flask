@@ -58,10 +58,10 @@ graph TD
 | `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream) | `init.js` |
 
 * **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
-* **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init.
+* **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init — suppressed by `--no-browser` (set on restart relaunches so a second tab doesn't steal the one-shot reset-display marker).
 * **Single-user process**: No isolation, no sessions, straight port serving.
 * **Startup progress reporter**: Writes `pct label\n` lines to `/tmp/easyokapi_progress.pipe` (Mac) or `%TEMP%\easyokapi_progress.txt` (Windows) for launch-script progress bars.
-* **CLI flags**: `--port` (default 5099), `--alias` (default `easyokapi.com`), `--verbose` / `-v`, `--mem-monitor`.
+* **CLI flags**: `--port` (default 5099), `--alias` (default `easyokapi.com`), `--verbose` / `-v`, `--mem-monitor`, `--no-browser` (skip the startup browser tab; auto-applied by restart relaunches).
 
 ### 2.2 Backend Modules (`src/`)
 
