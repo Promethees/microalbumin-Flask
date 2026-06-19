@@ -138,6 +138,11 @@ def check_status():
     # always logs "New session started"; a handshake failure does not.
     started = check_log_for_session_start(state.log_file)
     state.process = None
+    # Session is over — reset the log file here, the authoritative server-side
+    # completion point. The frontend only clears logs via terminateScript()
+    # (the fetchLogs/terminate path); when this status poll detects completion
+    # first, that path never runs, so without this the log file is left dirty.
+    clear_logs()
     if started:
         return jsonify({'status': 'success', 'message': 'Reading session completed.'})
     return jsonify({'status': 'failure', 'message': 'Reading session ended before any data was captured.'})
