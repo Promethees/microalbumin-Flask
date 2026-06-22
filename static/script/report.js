@@ -4,6 +4,217 @@ function _calSubMode() {
     return (typeof calDiv !== 'undefined' && calDiv) ? calDiv.getAttribute('data-value') : null;
 }
 
+// Fit-function descriptions shown in report exports (quick/full × PDF/Excel),
+// mirroring the "Formula" row of the calibration-curve JSON display. Plain
+// Unicode (not LaTeX) so they render in printed PDFs and Excel cells.
+//   [S] = initial analyte concentration, q = quantity value (per-minute for kinetics)
+const REPORT_FIT_FORMULAS = {
+    linear:             '[S] = a·q + b',
+    polynomial:         '[S] = a·q² + b·q + c',
+    logarithmic:        '[S] = a·ln(q + b) + c',
+    exponential:        '[S] = a·e^(b·q) + c',
+    'michaelis-menten': '[S] = (Km·q) / (Vmax − q)',
+};
+
+// Return the human-readable formula for a fit type, or '' if unknown/empty.
+function getReportFitFormula(fitType) {
+    if (!fitType) return '';
+    return REPORT_FIT_FORMULAS[String(fitType).toLowerCase()] || '';
+}
+
+// Per-algorithm parameter glossary — the symbols are the exact ones used by that
+// fit's formula (e.g. linear uses a, b; Michaelis-Menten uses Vmax, Km).
+const REPORT_FIT_PARAMS = {
+    linear:             'a = slope, b = y-intercept',
+    polynomial:         'a, b, c = quadratic, linear and constant coefficients',
+    logarithmic:        'a = scale, b = horizontal shift, c = vertical offset',
+    exponential:        'a = scale, b = growth/decay rate, c = vertical offset',
+    'michaelis-menten': 'Vmax = maximum rate, Km = half-saturation constant',
+};
+
+// Parameter notes for one fit type ('' if unknown).
+function getReportFitParams(fitType) {
+    if (!fitType) return '';
+    return REPORT_FIT_PARAMS[String(fitType).toLowerCase()] || '';
+}
+
+// Full "where" clause: the shared variables ([S], q) plus this fit's own params.
+function getReportFitWhere(fitType) {
+    const p = getReportFitParams(fitType);
+    return `[S] = initial analyte concentration; q = measured quantity value${p ? '; ' + p : ''}`;
+}
+
+// "Michaelis-Menten: [S] = (Km·q)/(Vmax − q) — where …" — formula + full notes.
+function getReportFitFunctionLabel(fitType) {
+    const formula = getReportFitFormula(fitType);
+    if (!fitType) return '';
+    return formula ? `${fitType}: ${formula} — where ${getReportFitWhere(fitType)}` : String(fitType);
+}
+
+// A legend line (HTML) for a calibration fit table: explains [S] and q once and
+// lists the parameter notes for each distinct algorithm present in the table.
+function _reportFormulaLegendHtml(algoList) {
+    const distinct = [...new Set((algoList || []).filter(Boolean).map(String))];
+    const perAlgo = distinct
+        .map(a => { const p = getReportFitParams(a); return p ? `<b>${a}</b> — ${p}` : ''; })
+        .filter(Boolean).join('; ');
+    return `<p style="font-size:0.78rem; color:#666; margin:6px 0 0;">
+        Where <b>[S]</b> = initial analyte concentration (the value the curve returns) and
+        <b>q</b> = measured quantity value (slope, maxRate, endpoint value, …)${perAlgo ? `. Fit parameters — ${perAlgo}` : ''}.
+    </p>`;
+}
+
+// Exact coefficient column names for each fit type. analysis.coefficients is
+// positional, so names[i] labels coefficients[i] (linear → a,b; MM → Vmax,Km).
+const REPORT_FIT_COEF_NAMES = {
+    linear:             ['a', 'b'],
+    polynomial:         ['a', 'b', 'c'],
+    logarithmic:        ['a', 'b', 'c'],
+    exponential:        ['a', 'b', 'c'],
+    'michaelis-menten': ['Vmax', 'Km'],
+};
+function getReportFitCoefNames(fitType) {
+    return REPORT_FIT_COEF_NAMES[String(fitType || '').toLowerCase()] || ['a', 'b', 'c'];
+}
+function _fmtCoef(v) {
+    return (v != null && !isNaN(v)) ? Number(v).toFixed(5) : '--';
+}
+
+// Render calibration fit results grouped by algorithm — one table per algorithm
+// with that algorithm's exact coefficient columns. `fits` is a list of
+// { entity, algo, coefficients: [...], rSquared }. `entityHeader` labels the
+// first column (e.g. "Metric" or "Time Point").
+function _renderCoefTablesHtml(entityHeader, fits) {
+    if (!fits || !fits.length) return '';
+    const groups = new Map();
+    for (const f of fits) {
+        const key = String(f.algo);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(f);
+    }
+    let html = '';
+    for (const [algo, rows] of groups) {
+        const names = getReportFitCoefNames(algo);
+        const headCols = names.map(n => `<th style="padding:10px; text-align:left;">${n}</th>`).join('');
+        const bodyRows = rows.map(f => {
+            const cells = names.map((n, i) => `<td style="padding:10px; border:1px solid #eee;">${_fmtCoef(f.coefficients[i])}</td>`).join('');
+            return `<tr>
+                <td style="padding:10px; border:1px solid #eee;"><strong>${f.entity}</strong></td>
+                ${cells}
+                <td style="padding:10px; border:1px solid #eee;">${Number(f.rSquared).toFixed(4)}</td>
+            </tr>`;
+        }).join('');
+        html += `
+            <div style="margin-top:18px;">
+                <h4 style="margin:0 0 6px; color:#2c3e50;">${algo} &nbsp;<span style="font-weight:normal; color:#555;">${getReportFitFormula(algo)}</span></h4>
+                <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; text-align:left;">
+                    <thead><tr style="background:#f8fafc; border-bottom: 2px solid #3498db;">
+                        <th style="padding:10px;">${entityHeader}</th>
+                        ${headCols}
+                        <th style="padding:10px;">R²</th>
+                    </tr></thead>
+                    <tbody>${bodyRows}</tbody>
+                </table>
+            </div>`;
+    }
+    html += _reportFormulaLegendHtml([...groups.keys()]);
+    return html;
+}
+
+// Same grouping for Excel: returns [{ title, columns, rows }] — one table per
+// algorithm with its exact coefficient columns — for the xlsx writer.
+function _buildCoefTables(entityHeader, fits) {
+    const groups = new Map();
+    for (const f of (fits || [])) {
+        const key = String(f.algo);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(f);
+    }
+    const tables = [];
+    for (const [algo, rows] of groups) {
+        const names = getReportFitCoefNames(algo);
+        const columns = [entityHeader, ...names, 'R²'];
+        const outRows = rows.map(f => {
+            const o = { [entityHeader]: f.entity };
+            names.forEach((n, i) => { o[n] = _fmtCoef(f.coefficients[i]); });
+            o['R²'] = Number(f.rSquared).toFixed(4);
+            return o;
+        });
+        tables.push({
+            title: `${algo} — ${getReportFitFormula(algo)}`,
+            note: `where ${getReportFitWhere(algo)}`,
+            columns, rows: outRows
+        });
+    }
+    return tables;
+}
+
+// Fit algorithms offered in report dialogs (matches the data-display picker).
+const REPORT_ALGO_OPTIONS = ['polynomial', 'linear', 'logarithmic', 'exponential', 'Michaelis-Menten'];
+
+// Build the set of algorithm checkboxes for one metric / time point. Multiple
+// fits can be selected so a single file's report can show several curves for the
+// same metric/time point. 'linear' is checked by default.
+function _reportAlgoChecksHtml(groupCls) {
+    return REPORT_ALGO_OPTIONS.map(a =>
+        `<label style="display:inline-flex; align-items:center; gap:3px; margin-right:10px; font-size:0.8rem; white-space:nowrap;">
+            <input type="checkbox" class="${groupCls}" value="${a}" ${a === 'linear' ? 'checked' : ''}> ${a}
+        </label>`).join('');
+}
+
+// Short algorithm labels used by the Full-report item cards.
+const REPORT_ALGO_CHOICES = [
+    { id: 'polynomial', label: 'Poly' },
+    { id: 'linear', label: 'Lin' },
+    { id: 'logarithmic', label: 'Log' },
+    { id: 'exponential', label: 'Exp' },
+    { id: 'Michaelis-Menten', label: 'MM' }
+];
+
+// One point-mode time-point entry for a Full-report card: a time-point <select>,
+// a remove button and its own multiple-fit checkboxes. Used both in the initial
+// card render and when the user clicks "+ Add time point".
+function _fullPointTpEntryHtml(filename, timePoints) {
+    return `<div class="point-tp-entry" style="border:1px solid #e2e8f0; border-radius:5px; padding:6px; margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+            <select class="point-timepoint-select" data-filename="${filename}" onchange="updatePointPreview('${filename}')" style="flex:1;">
+                <option value="">All time points</option>
+                ${timePoints.map(tp => `<option value="${tp}">${tp}</option>`).join('')}
+            </select>
+            <button type="button" class="point-tp-remove" onclick="removePointTimePoint(this, '${filename}')" title="Remove time point"
+                style="border:none; background:#fdecea; color:#c0392b; border-radius:4px; cursor:pointer; padding:2px 8px;">✕</button>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:5px; font-size:0.7rem;">
+            ${REPORT_ALGO_CHOICES.map(a => `
+                <label class="algo-include-label" title="${a.label}" style="cursor:pointer; background:#f0f0f0; padding:2px 4px; border-radius:3px;">
+                    <input type="checkbox" class="point-algo-checkbox" data-filename="${filename}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
+                    ${a.label}
+                </label>`).join('')}
+        </div>
+    </div>`;
+}
+
+// Recompute the available discrete time points for a Full-report item.
+function _reportItemTimePoints(filename) {
+    const config = window.ReportItemConfig ? window.ReportItemConfig[filename] : null;
+    if (!config) return [];
+    return [...new Set((config.data || []).map(r => r['TimePoint']).filter(v => v != null && v !== 'NONE'))]
+        .sort((a, b) => parseFloat(a) - parseFloat(b));
+}
+
+// "+ Add time point" / "✕ remove" handlers for Full-report point cards.
+function addPointTimePoint(filename) {
+    const list = document.querySelector(`.report-item-card[data-filename="${CSS.escape(filename)}"] .point-tp-list`);
+    if (list) list.insertAdjacentHTML('beforeend', _fullPointTpEntryHtml(filename, _reportItemTimePoints(filename)));
+}
+function removePointTimePoint(btn, filename) {
+    const list = btn.closest('.point-tp-list');
+    if (list && list.querySelectorAll('.point-tp-entry').length > 1) {
+        btn.closest('.point-tp-entry').remove();
+        updatePointPreview(filename);
+    }
+}
+
 // Extract the point-mode calibration standards (Concentration, Value), filtered
 // to a time point. When `timePointOverride` is provided (incl. '' = all points)
 // it wins; otherwise the live data-display picker is used, the same way
@@ -88,21 +299,42 @@ async function generateReport() {
     const isKineticsCal = calSubMode === 'kinetics';
     const isPointCal    = calSubMode === 'point';
 
-    // Kinetics: the metrics present in the loaded standard curve. Let the user
-    // choose which to include instead of always using every metric on screen.
+    // Kinetics: the metrics present in the loaded standard curve. Each metric has
+    // an include checkbox plus a set of fit-algorithm checkboxes (multiple fits
+    // allowed). Unchecking the metric disables its algorithm checkboxes.
     const availableMetrics = (AppState.calibrationDataPoints || []).map(d => d.metric);
-    const metricCheckboxes = availableMetrics.map(m =>
-        `<label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:2px 0;">
-            <input type="checkbox" class="swal-metric" value="${m}" checked> ${m}
-        </label>`).join('');
+    const metricRows = availableMetrics.map(m =>
+        `<div class="swal-metric-row" style="border:1px solid #eee; border-radius:6px; padding:6px 8px; margin:4px 0;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;">
+                <input type="checkbox" class="swal-metric" value="${m}" checked> ${m}
+            </label>
+            <div class="swal-metric-algos" style="margin-top:4px; margin-left:22px;">
+                ${_reportAlgoChecksHtml('swal-metric-algo')}
+            </div>
+        </div>`).join('');
 
     // Point: the time points available in the data (mirrors the data-display picker).
+    // The dialog starts with one time-point entry and the user can add more with a
+    // "+" button; each entry picks a time point and one or more fit algorithms.
     const pointTimePoints = [...new Set((AppState.responseData || [])
         .map(r => r['TimePoint']).filter(v => v != null && v !== 'NONE'))]
         .sort((a, b) => parseFloat(a) - parseFloat(b));
     const currentTimePoint = document.getElementById('regressed-time-point')?.value ?? '';
-    const timePointOptions = `<option value="">All time points</option>` +
-        pointTimePoints.map(tp => `<option value="${tp}" ${String(tp) === String(currentTimePoint) ? 'selected' : ''}>${tp}</option>`).join('');
+    const tpOptionsHtml = `<option value="">All time points (pooled)</option>` +
+        pointTimePoints.map(tp =>
+            `<option value="${tp}" ${String(tp) === String(currentTimePoint) ? 'selected' : ''}>t = ${tp}</option>`).join('');
+    // One time-point entry: a time-point <select>, a remove button and the algo checks.
+    const tpEntryHtml = () =>
+        `<div class="swal-tp-entry" style="border:1px solid #eee; border-radius:6px; padding:6px 8px; margin:4px 0;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <select class="swal-tp-select" style="margin:0; padding:2px 4px; height:auto; font-size:0.85rem; flex:1;">${tpOptionsHtml}</select>
+                <button type="button" class="swal-tp-remove" title="Remove this time point"
+                    style="border:none; background:#fdecea; color:#c0392b; border-radius:4px; cursor:pointer; padding:2px 8px;">✕</button>
+            </div>
+            <div class="swal-tp-algos" style="margin-top:4px;">
+                ${_reportAlgoChecksHtml('swal-tp-algo')}
+            </div>
+        </div>`;
 
     const { value: formValues } = await Swal.fire({
         title: 'Report Details',
@@ -110,26 +342,19 @@ async function generateReport() {
             <div style="text-align: left;">
                 <label style="display:block; margin-bottom:5px;">Report Title</label>
                 <input id="swal-input1" class="swal2-input" value="Colorimetric Analysis Report" style="width: 80%; margin: 0 0 15px 0;">
-                ${isCalibrate ? `
-                <label style="display:block; margin-bottom:5px;">Fit Curve for Report</label>
-                <select id="swal-input2" class="swal2-input" style="width: 80%; margin: 0 0 15px 0;">
-                    <option value="polynomial">polynomial</option>
-                    <option value="linear" selected>linear</option>
-                    <option value="logarithmic">logarithmic</option>
-                    <option value="exponential">exponential</option>
-                    <option value="Michaelis-Menten">Michaelis-Menten</option>
-                </select>` : ''}
                 ${isKineticsCal ? `
-                <label style="display:block; margin-bottom:5px;">Metrics to include</label>
+                <label style="display:block; margin-bottom:5px;">Metrics &amp; fit algorithms</label>
                 <div id="swal-metrics" style="display:flex; flex-direction:column; gap:2px; margin:0 0 6px 4px;">
-                    ${metricCheckboxes || '<span style="color:#888;">No metrics available.</span>'}
+                    ${metricRows || '<span style="color:#888;">No metrics available.</span>'}
                 </div>
-                <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">A metric with no fittable curve for the chosen fit is omitted, with a warning.</div>` : ''}
+                <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Tick one or more fits per metric. Unchecking a metric disables its fits. A fit that can't be resolved is omitted, with a warning.</div>` : ''}
                 ${isPointCal ? `
-                <label style="display:block; margin-bottom:5px;">Time point for calibration</label>
-                <select id="swal-timepoint" class="swal2-input" style="width: 80%; margin: 0 0 15px 0;">
-                    ${timePointOptions}
-                </select>` : ''}
+                <label style="display:block; margin-bottom:5px;">Time points &amp; fit algorithms</label>
+                <div id="swal-timepoints" style="display:flex; flex-direction:column; gap:2px; margin:0 0 6px 4px;">
+                    ${tpEntryHtml()}
+                </div>
+                <button type="button" id="swal-tp-add" style="margin:0 0 6px 4px; padding:3px 10px; border:1px solid #3498db; background:#eaf4fc; color:#2980b9; border-radius:5px; cursor:pointer; font-size:0.85rem;">+ Add time point</button>
+                <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Add a time point and tick one or more fits for it. One curve is produced per time point × fit.</div>` : ''}
                 <label style="display:block; margin-bottom:5px;">Export Format</label>
                 <div style="display:flex; gap:20px;">
                     <label style="cursor:pointer;"><input type="radio" name="swal-fmt" value="pdf" checked> PDF (print)</label>
@@ -139,42 +364,78 @@ async function generateReport() {
         `,
         focusConfirm: false,
         showCancelButton: true,
+        didOpen: () => {
+            // Kinetics: unchecking a metric disables its algorithm checkboxes.
+            const syncMetricRow = (rowEl) => {
+                const cb = rowEl.querySelector('.swal-metric');
+                rowEl.querySelectorAll('.swal-metric-algo').forEach(a => { a.disabled = !cb.checked; });
+                rowEl.style.opacity = cb.checked ? '1' : '0.5';
+            };
+            document.querySelectorAll('.swal-metric-row').forEach(rowEl => {
+                syncMetricRow(rowEl);
+                rowEl.querySelector('.swal-metric')?.addEventListener('change', () => syncMetricRow(rowEl));
+            });
+
+            // Point: "+ Add time point" appends an entry; "✕" removes one (keep ≥1).
+            const list = document.getElementById('swal-timepoints');
+            document.getElementById('swal-tp-add')?.addEventListener('click', () => {
+                list.insertAdjacentHTML('beforeend', tpEntryHtml());
+            });
+            list?.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('swal-tp-remove')) return;
+                const entries = list.querySelectorAll('.swal-tp-entry');
+                if (entries.length > 1) e.target.closest('.swal-tp-entry').remove();
+            });
+        },
         preConfirm: () => {
             const title  = document.getElementById('swal-input1').value;
-            const algoEl = document.getElementById('swal-input2');
-            const algo   = algoEl ? algoEl.value : 'linear';
             const fmt    = document.querySelector('input[name="swal-fmt"]:checked')?.value || 'pdf';
-            if (!isCalibrate) return { title, algo: null, fmt };
+            if (!isCalibrate) return { title, fmt };
             if (isKineticsCal) {
-                const metrics = Array.from(document.querySelectorAll('.swal-metric:checked')).map(c => c.value);
-                if (availableMetrics.length && metrics.length === 0) {
-                    Swal.showValidationMessage('Select at least one metric to include.');
+                // Map each *checked* metric to the list of fit algorithms ticked on its row.
+                const metricAlgos = {};
+                document.querySelectorAll('.swal-metric-row').forEach(rowEl => {
+                    const cb = rowEl.querySelector('.swal-metric');
+                    if (!cb || !cb.checked) return;
+                    const algos = Array.from(rowEl.querySelectorAll('.swal-metric-algo:checked')).map(c => c.value);
+                    if (algos.length) metricAlgos[cb.value] = algos;
+                });
+                if (availableMetrics.length && Object.keys(metricAlgos).length === 0) {
+                    Swal.showValidationMessage('Select at least one metric with at least one fit algorithm.');
                     return false;
                 }
-                return { title, algo, fmt, metrics };
+                return { title, fmt, metricAlgos };
             }
             if (isPointCal) {
-                return { title, algo, fmt, timePoint: document.getElementById('swal-timepoint')?.value ?? '' };
+                // One entry per time-point row, each with its list of ticked algorithms.
+                const timePointAlgos = [];
+                document.querySelectorAll('.swal-tp-entry').forEach(entry => {
+                    const sel   = entry.querySelector('.swal-tp-select');
+                    const algos = Array.from(entry.querySelectorAll('.swal-tp-algo:checked')).map(c => c.value);
+                    if (sel && algos.length) timePointAlgos.push({ timePoint: sel.value, algos });
+                });
+                if (timePointAlgos.length === 0) {
+                    Swal.showValidationMessage('Add at least one time point with a fit algorithm.');
+                    return false;
+                }
+                return { title, fmt, timePointAlgos };
             }
-            return { title, algo, fmt };
+            return { title, fmt };
         }
     });
 
     if (!formValues) return;
     const reportTitle       = formValues.title;
-    const promptedAlgo      = formValues.algo;
     const reportFormat      = formValues.fmt;
-    const selectedMetrics   = formValues.metrics || null;                         // kinetics calibrate
-    const selectedTimePoint = ('timePoint' in formValues) ? formValues.timePoint : null; // point calibrate
+    const metricAlgos       = formValues.metricAlgos || null;     // kinetics calibrate: { metric: [algos] }
+    const timePointAlgos    = formValues.timePointAlgos || null;  // point calibrate: [{ timePoint, algos: [algos] }]
     // Curves that could not be produced for the user's selection; surfaced as a
     // warning (modal + in-report banner) once generation finishes.
     const calibrationWarnings = [];
     logEvent('report', 'generate', { mode: AppState.currentMeasurementMode, format: reportFormat });
 
     if (reportFormat === 'excel') {
-        await generateReportExcelFromCurrent(reportTitle, promptedAlgo || 'linear', {
-            metrics: selectedMetrics, timePoint: selectedTimePoint
-        });
+        await generateReportExcelFromCurrent(reportTitle, { metricAlgos, timePointAlgos });
         return;
     }
 
@@ -183,9 +444,20 @@ async function generateReport() {
     const timestamp = new Date().toLocaleString();
     const measMode = AppState.currentMeasurementMode || "Unknown";
     const splitMode = AppState.multiSource ? `Yes (${AppState.numSources} sources)` : "No";
-    const calCurve = AppState.currentMeasurementMode === 'calibrate'
-        ? promptedAlgo
-        : (AppState.currentJSON || "None selected");
+    // For calibrate the algorithm now varies per metric / time point, so the
+    // header summarises the distinct fits used and the per-row tables carry the
+    // formulas. For standard mode the single curve JSON's fit_type is shown.
+    let calCurve, calFormula;
+    if (isCalibrate) {
+        const algosUsed = isKineticsCal
+            ? [...new Set(Object.values(metricAlgos || {}).flat())]
+            : [...new Set((timePointAlgos || []).flatMap(t => t.algos))];
+        calCurve = algosUsed.join(', ') || 'N/A';
+        calFormula = ''; // per-row Function columns carry the formulas
+    } else {
+        calCurve = AppState.currentJSON || "None selected";
+        calFormula = getReportFitFormula((AppState.currentJSONcontent && AppState.currentJSONcontent.fit_type) || '');
+    }
 
     // 2.1 Gather Analytical Content (Specialized for Calibration or Standard)
     let analyticalContent = "";
@@ -194,100 +466,79 @@ async function generateReport() {
     let analysisSummaries = "";
 
     if (isCalibrate && _calSubMode() === 'point') {
-        // Point-mode calibration: a single Value-vs-Concentration curve (point
-        // mode never populates calibrationDataPoints, so it is handled on its own).
-        const pd = getPointCalibrationData(selectedTimePoint);
+        // Point-mode calibration: one Value-vs-Concentration curve per selected
+        // time point × fit algorithm.
         const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
-        const tpLabel = (selectedTimePoint !== null && selectedTimePoint !== '')
-            ? ` @ t=${selectedTimePoint}` : '';
-        let chartsMarkup = '';
-        let coefficientRows = '';
+        let chartsMarkup = '<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px;">';
+        const fits = [];
 
-        const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, promptedAlgo) : null;
-        if (analysis && analysis.coefficients) {
-            const [a, b, c] = analysis.coefficients;
-            const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, promptedAlgo);
-            const chartImg = await renderCalibrationChartImage({
-                xConc: pd.x, yMetric: pd.y, regLine,
-                title: `Calibration Curve (${measLabel}${tpLabel})`, yLabel: measLabel, algo: promptedAlgo
-            });
-            chartsMarkup = `
-                <div style="width: 70%; margin: 0 auto 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
-                    <img src="${chartImg}" style="width: 100%; height: auto;"/>
-                </div>`;
-            coefficientRows = `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding:10px; font-weight:bold;">${measLabel}</td>
-                    <td style="padding:10px;">${a.toFixed(5)}</td>
-                    <td style="padding:10px;">${b.toFixed(5)}</td>
-                    <td style="padding:10px;">${analysis.coefficients.length > 2 ? c.toFixed(5) : '--'}</td>
-                    <td style="padding:10px;">${analysis.rSquared.toFixed(4)}</td>
-                </tr>`;
-        } else {
-            chartsMarkup = `<p style="color:#888;">Not enough calibration points to fit a curve${pd.x.length ? '' : ' (no Concentration/Value data at the selected time point)'}.</p>`;
-            calibrationWarnings.push(`Point calibration${tpLabel ? ' ' + tpLabel : ''}: no curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
+        for (const { timePoint, algos } of (timePointAlgos || [])) {
+            const pd = getPointCalibrationData(timePoint);
+            const tpLabel = (timePoint !== '' && timePoint != null) ? `t=${timePoint}` : 'all pooled';
+            for (const algo of algos) {
+                const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, algo) : null;
+                if (analysis && analysis.coefficients) {
+                    const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, algo);
+                    const chartImg = await renderCalibrationChartImage({
+                        xConc: pd.x, yMetric: pd.y, regLine,
+                        title: `Calibration Curve (${measLabel} @ ${tpLabel}) — ${algo}`, yLabel: measLabel, algo
+                    });
+                    chartsMarkup += `
+                        <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
+                            <img src="${chartImg}" style="width: 100%; height: auto;"/>
+                        </div>`;
+                    fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
+                } else {
+                    calibrationWarnings.push(`Point calibration @ ${tpLabel}: no ${algo} curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
+                }
+            }
         }
+        chartsMarkup += '</div>';
 
         analyticalContent = `
             <div class="report-analysis">
-                <h3 style="color:#2c3e50; border-bottom: 1px solid #eee; padding-bottom:10px;">Calibration Curve</h3>
-                ${chartsMarkup}
+                <h3 style="color:#2c3e50; border-bottom: 1px solid #eee; padding-bottom:10px;">Calibration Curves</h3>
+                ${fits.length ? chartsMarkup : '<p style="color:#888;">No calibration curve could be fitted for the selected time point(s).</p>'}
             </div>
-            ${coefficientRows ? `
+            ${fits.length ? `
             <div class="report-results" style="margin-top:30px; margin-bottom:30px; border-left:4px solid #3498db; padding-left:20px;">
-                <h3 style="margin-top:0; color:#2c3e50;">Calibration Fit Analysis (${promptedAlgo})</h3>
-                <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
-                    <tr style="background:#f8fafc; border-bottom: 2px solid #3498db;">
-                        <th style="padding:10px;">Measurement</th>
-                        <th style="padding:10px;">a</th>
-                        <th style="padding:10px;">b</th>
-                        <th style="padding:10px;">c</th>
-                        <th style="padding:10px;">R²</th>
-                    </tr>
-                    ${coefficientRows}
-                </table>
+                <h3 style="margin-top:0; color:#2c3e50;">Calibration Fit Analysis</h3>
+                ${_renderCoefTablesHtml('Time Point', fits)}
             </div>` : ''}
         `;
     } else if (isCalibrate && AppState.calibrationDataPoints && AppState.lastAnalyses) {
         // Specialized Calibration Quad-Report
-        let coefficientRows = '';
+        const fits = [];
         let chartsMarkup = '<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px;">';
-
-        // Restrict to the metrics the user chose in the report dialog (null = all).
-        const metricsFilter = (selectedMetrics && selectedMetrics.length) ? new Set(selectedMetrics) : null;
 
         for (let i = 0; i < AppState.calibrationDataPoints.length; i++) {
             const dataPoint = AppState.calibrationDataPoints[i];
-            if (metricsFilter && !metricsFilter.has(dataPoint.metric)) continue;
+            // Each metric is fitted with the algorithms ticked on its dialog row;
+            // metrics left unchecked have no entry in metricAlgos and are skipped.
+            const algos = metricAlgos ? metricAlgos[dataPoint.metric] : null;
+            if (!algos || !algos.length) continue;
 
-            // Recalculate coefficients based on the user-selected algo for the report
-            const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, promptedAlgo);
+            for (const algo of algos) {
+            // Recalculate coefficients based on the per-metric algo for the report
+            const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, algo);
             // Skip metrics the fit could not resolve (e.g. a calibration column with
             // only one non-"NONE" point yields coefficients: null). Matches the other
             // report generators; without this guard `analysis.coefficients.length`
             // below throws "Cannot read properties of null (reading 'length')". The
             // user is warned about any metric they selected that has no curve.
             if (!analysis || !analysis.coefficients) {
-                calibrationWarnings.push(`${dataPoint.metric}: no ${promptedAlgo} calibration curve could be fitted (insufficient or unsuitable data).`);
+                calibrationWarnings.push(`${dataPoint.metric}: no ${algo} calibration curve could be fitted (insufficient or unsuitable data).`);
                 continue;
             }
 
-            // 1. Build table row
-            const [a, b, c] = analysis.coefficients || [0, 0, 0];
-            coefficientRows += `
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding:10px; font-weight:bold;">${dataPoint.metric}</td>
-                    <td style="padding:10px;">${a.toFixed(5)}</td>
-                    <td style="padding:10px;">${b.toFixed(5)}</td>
-                    <td style="padding:10px;">${analysis.coefficients.length > 2 ? c.toFixed(5) : '--'}</td>
-                    <td style="padding:10px;">${analysis.rSquared.toFixed(4)}</td>
-                </tr>`;
+            // 1. Collect the fit (grouped into per-algorithm tables later)
+            fits.push({ entity: dataPoint.metric, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
 
             // 2. Build high-res chart for this metric
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = 1600; tempCanvas.height = 800;
             const tempCtx = tempCanvas.getContext('2d');
-            const regressAlgo = promptedAlgo;
+            const regressAlgo = algo;
 
             // Generate regression curve points
             const xMin = Math.min(...dataPoint.x);
@@ -366,6 +617,7 @@ async function generateReport() {
                     <img src="${chartImg}" style="width: 100%; height: auto;"/>
                 </div>`;
             tempChart.destroy();
+            } // end algo loop
         }
         chartsMarkup += '</div>';
 
@@ -376,16 +628,7 @@ async function generateReport() {
             </div>
             <div class="report-results" style="margin-top:30px; margin-bottom:30px; border-left:4px solid #3498db; padding-left:20px;">
                 <h3 style="margin-top:0; color:#2c3e50;">Calibration Fit Analysis</h3>
-                <table style="width:100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
-                    <tr style="background:#f8fafc; border-bottom: 2px solid #3498db;">
-                        <th style="padding:10px;">Metric</th>
-                        <th style="padding:10px;">a</th>
-                        <th style="padding:10px;">b</th>
-                        <th style="padding:10px;">c</th>
-                        <th style="padding:10px;">R²</th>
-                    </tr>
-                    ${coefficientRows}
-                </table>
+                ${_renderCoefTablesHtml('Metric', fits)}
             </div>
         `;
     } else {
@@ -464,6 +707,7 @@ async function generateReport() {
             ${concentrationResults ? `
             <div class="report-results" style="background:#f0f7ff; padding:20px; border-radius:8px; border:1px solid #d0e7ff; margin-bottom:20px;">
                 <h3 style="margin-top:0; color:#2980b9; border-bottom:1px solid #d0e7ff; padding-bottom:10px;">Analytical Results</h3>
+                ${calFormula ? `<p style="font-size:0.8rem; color:#555; margin:0 0 10px;">Derived using calibration function <strong>${calFormula}</strong> — where ${getReportFitWhere((AppState.currentJSONcontent && AppState.currentJSONcontent.fit_type) || '')}.</p>` : ''}
                 ${concentrationResults}
             </div>` : ''}
 
@@ -492,6 +736,7 @@ async function generateReport() {
                     <span>Mode: <strong>${measMode}</strong></span>
                     ${isCalibrate ? '' : `<span>Split Mode: <strong>${splitMode}</strong></span>`}
                     <span>${isCalibrate ? 'Calibration Fit Type' : 'Calibration Curve'}: <strong>${calCurve}</strong></span>
+                    ${calFormula ? `<span>Function: <strong>${calFormula}</strong></span>` : ''}
                     <span>Generated: <strong>${timestamp}</strong></span>
                 </div>
             </div>
@@ -537,11 +782,11 @@ async function generateReport() {
     }, 1000);
 }
 
-async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options = {}) {
-    // options.metrics  → kinetics calibrate: which metrics to include (null = all)
-    // options.timePoint → point calibrate: which time point ('' = all, null = use UI)
-    const selectedMetrics   = options.metrics || null;
-    const selectedTimePoint = (options.timePoint !== undefined) ? options.timePoint : null;
+async function generateReportExcelFromCurrent(reportTitle, options = {}) {
+    // options.metricAlgos    → kinetics calibrate: { metric: [algos] } for each chosen metric
+    // options.timePointAlgos → point calibrate: [{ timePoint, algos: [algos] }] for each chosen time point
+    const metricAlgos    = options.metricAlgos || null;
+    const timePointAlgos  = options.timePointAlgos || null;
     const calibrationWarnings = [];
     window.showSpinner();
     try {
@@ -571,45 +816,41 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options
             csv_rows:      [],
             analysis_rows: [],
             coef_rows:     [],
+            coef_tables:   [],
             derived_lines: []
         };
 
         if (isCalibrate && _calSubMode() === 'point') {
             // ── Point-mode calibration ──────────────────────────────────────
-            // Single Value-vs-Concentration fit (no per-metric calibrationDataPoints).
+            // One Value-vs-Concentration fit per selected time point × algorithm.
             const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
-            const timePoint = (selectedTimePoint !== null)
-                ? selectedTimePoint
-                : document.getElementById('regressed-time-point')?.value;
-            const rows = renderData.filter(r =>
-                !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
 
-            itemData.csv_columns = ['Concentration', 'Value'];
-            itemData.csv_rows = rows.map(row => ({ Concentration: row['Concentration'], Value: row['Value'] }));
+            itemData.csv_columns = ['Concentration', 'Value', 'TimePoint'];
+            itemData.csv_rows = renderData.map(row => ({
+                Concentration: row['Concentration'], Value: row['Value'], TimePoint: row['TimePoint']
+            }));
 
-            const pd = getPointCalibrationData(selectedTimePoint);
-            const tpLabel = (selectedTimePoint !== null && selectedTimePoint !== '') ? ` @ t=${selectedTimePoint}` : '';
-            const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, promptedAlgo) : null;
-            if (analysis && analysis.coefficients) {
-                const [ca, cb2, cc] = analysis.coefficients;
-                const fitLabel = `${measLabel}${tpLabel} — ${promptedAlgo}`;
-                itemData.coef_rows.push({
-                    'Metric':      measLabel,
-                    'Algorithm':   promptedAlgo,
-                    'a (or Vmax)': ca.toFixed(5),
-                    'b (or Km)':   cb2.toFixed(5),
-                    'c':           analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
-                    'R²':          analysis.rSquared.toFixed(4)
-                });
-                const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, promptedAlgo);
-                const imgData = await renderCalibrationChartImage({
-                    xConc: pd.x, yMetric: pd.y, regLine,
-                    title: fitLabel, yLabel: measLabel, algo: promptedAlgo
-                });
-                if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
-            } else {
-                calibrationWarnings.push(`Point calibration${tpLabel ? ' ' + tpLabel : ''}: no curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
+            const fits = [];
+            for (const { timePoint, algos } of (timePointAlgos || [])) {
+                const pd = getPointCalibrationData(timePoint);
+                const tpLabel = (timePoint !== '' && timePoint != null) ? `t=${timePoint}` : 'all pooled';
+                for (const algo of algos) {
+                const analysis = pd.x.length >= 2 ? calculateCoefAndRSquared(pd.y, pd.x, algo) : null;
+                if (analysis && analysis.coefficients) {
+                    const fitLabel = `${measLabel} @ ${tpLabel} — ${algo}`;
+                    fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
+                    const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, algo);
+                    const imgData = await renderCalibrationChartImage({
+                        xConc: pd.x, yMetric: pd.y, regLine,
+                        title: fitLabel, yLabel: measLabel, algo
+                    });
+                    if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                } else {
+                    calibrationWarnings.push(`Point calibration @ ${tpLabel}: no ${algo} curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
+                }
+                } // end algo loop
             }
+            itemData.coef_tables = _buildCoefTables('Time Point', fits);
 
         } else if (isCalibrate && AppState.calibrationDataPoints && AppState.calibrationDataPoints.length > 0) {
             // ── Calibrate mode ──────────────────────────────────────────────
@@ -623,28 +864,25 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options
                 return r;
             });
 
-            const metricsFilter = (selectedMetrics && selectedMetrics.length) ? new Set(selectedMetrics) : null;
+            const fits = [];
             for (const dataPoint of AppState.calibrationDataPoints) {
-                if (metricsFilter && !metricsFilter.has(dataPoint.metric)) continue;
-                const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, promptedAlgo);
+                // Fit each metric with the algorithms ticked on its dialog row;
+                // metrics left unchecked have no entry in metricAlgos and are skipped.
+                const algos = metricAlgos ? metricAlgos[dataPoint.metric] : null;
+                if (!algos || !algos.length) continue;
+                for (const algo of algos) {
+                const analysis = calculateCoefAndRSquared(dataPoint.y, dataPoint.x, algo);
                 if (!analysis || !analysis.coefficients) {
-                    calibrationWarnings.push(`${dataPoint.metric}: no ${promptedAlgo} calibration curve could be fitted (insufficient or unsuitable data).`);
+                    calibrationWarnings.push(`${dataPoint.metric}: no ${algo} calibration curve could be fitted (insufficient or unsuitable data).`);
                     continue;
                 }
 
                 const [ca, cb2, cc] = analysis.coefficients;
                 const niceMetric = dataPoint.metric.charAt(0).toUpperCase() +
                     dataPoint.metric.slice(1).replace(/([A-Z])/g, ' $1');
-                const fitLabel = `${niceMetric} — ${promptedAlgo}`;
+                const fitLabel = `${niceMetric} — ${algo}`;
 
-                itemData.coef_rows.push({
-                    'Metric':        dataPoint.metric,
-                    'Algorithm':     promptedAlgo,
-                    'a (or Vmax)':   ca.toFixed(5),
-                    'b (or Km)':     cb2.toFixed(5),
-                    'c':             analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
-                    'R²':            analysis.rSquared.toFixed(4)
-                });
+                fits.push({ entity: dataPoint.metric, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
 
                 // Build regression line
                 const xMin  = Math.min(...dataPoint.x);
@@ -657,13 +895,13 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options
                 for (let j = 0; j < 50; j++) {
                     const curX = pXMin + j * step;
                     let curY = 0;
-                    if (promptedAlgo === 'linear')      curY = ca !== 0 ? (curX - cb2) / ca : 0;
-                    else if (promptedAlgo === 'polynomial') {
+                    if (algo === 'linear')      curY = ca !== 0 ? (curX - cb2) / ca : 0;
+                    else if (algo === 'polynomial') {
                         if (ca === 0) curY = cb2 !== 0 ? (curX - cc) / cb2 : 0;
                         else { const d = cb2 * cb2 - 4 * ca * (cc - curX); curY = d >= 0 ? (-cb2 + Math.sqrt(d)) / (2 * ca) : 0; }
-                    } else if (promptedAlgo === 'logarithmic') curY = ca !== 0 ? Math.exp((curX - cc) / ca) - cb2 : 0;
-                    else if (promptedAlgo === 'exponential')   curY = (ca !== 0 && curX > cc && cb2 !== 0) ? Math.log((curX - cc) / ca) / cb2 : 0;
-                    else if (promptedAlgo === 'Michaelis-Menten') curY = (ca * curX) / (cb2 + curX);
+                    } else if (algo === 'logarithmic') curY = ca !== 0 ? Math.exp((curX - cc) / ca) - cb2 : 0;
+                    else if (algo === 'exponential')   curY = (ca !== 0 && curX > cc && cb2 !== 0) ? Math.log((curX - cc) / ca) / cb2 : 0;
+                    else if (algo === 'Michaelis-Menten') curY = (ca * curX) / (cb2 + curX);
                     regLine.push({ x: curX, y: curY });
                 }
 
@@ -676,7 +914,7 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options
                         data: {
                             datasets: [
                                 { label: 'Standards', data: dataPoint.x.map((x, i) => ({ x, y: dataPoint.y[i] })), backgroundColor: '#3498db', pointRadius: 6 },
-                                { label: `Fit (${promptedAlgo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
+                                { label: `Fit (${algo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
                             ]
                         },
                         options: {
@@ -694,7 +932,9 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options
                     setTimeout(() => { imgData = cv.toDataURL('image/png'); tc.destroy(); resolve(); }, 250);
                 });
                 if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                } // end algo loop
             }
+            itemData.coef_tables = _buildCoefTables('Metric', fits);
 
         } else {
             // ── Standard / kinetics / point mode ────────────────────────────
@@ -737,6 +977,12 @@ async function generateReportExcelFromCurrent(reportTitle, promptedAlgo, options
                     itemData.derived_lines.push(`Source ${idx + 1}: ${val} ng/µL`);
                 }
             });
+
+            // Prepend the calibration function used to derive those concentrations.
+            const stdFitType = AppState.currentJSONcontent && AppState.currentJSONcontent.fit_type;
+            if (itemData.derived_lines.length && stdFitType) {
+                itemData.derived_lines.unshift(`Calibration function — ${getReportFitFunctionLabel(stdFitType)}`);
+            }
 
             // Chart image from the live AppState chart instance
             const chartKeys = Object.keys(AppState.chartInstances || {});
@@ -963,14 +1209,6 @@ async function loadReportItems(subject) {
             const itemResponses = await Promise.all(dataFiles.map(it =>
                 $.get('/get_data', { file: it.path }).then(r => r).catch(() => null)));
 
-            const reportAlgos = [
-                { id: 'polynomial', label: 'Poly' },
-                { id: 'linear', label: 'Lin' },
-                { id: 'logarithmic', label: 'Log' },
-                { id: 'exponential', label: 'Exp' },
-                { id: 'Michaelis-Menten', label: 'MM' }
-            ];
-
             for (let _i = 0; _i < dataFiles.length; _i++) {
                 const item = dataFiles[_i];
                 const response = itemResponses[_i];
@@ -999,24 +1237,12 @@ async function loadReportItems(subject) {
                             <div style="height: 140px; margin-bottom: 8px;">
                                 <canvas id="preview-chart-${itemID}-point"></canvas>
                             </div>
-                            <div class="control-group" style="margin-bottom: 8px;">
-                                <label style="font-size:0.85rem; font-weight:700;">Time point</label>
-                                <select class="point-timepoint-select" data-filename="${item.filename}" onchange="updatePointPreview('${item.filename}')" style="width: 100%;">
-                                    <option value="">All time points</option>
-                                    ${timePoints.map(tp => `<option value="${tp}">${tp}</option>`).join('')}
-                                </select>
+                            <label style="font-size:0.85rem; font-weight:700;">Time points &amp; fit curves</label>
+                            <div class="point-tp-list" data-filename="${item.filename}">
+                                ${_fullPointTpEntryHtml(item.filename, timePoints)}
                             </div>
-                            <div class="control-group">
-                                <label style="font-size:0.85rem; font-weight:700;">Fit curves to include</label>
-                                <div style="display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.7rem;">
-                                    ${reportAlgos.map(a => `
-                                        <label class="algo-include-label" title="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
-                                            <input type="checkbox" class="point-algo-checkbox" data-filename="${item.filename}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
-                                            ${a.label}
-                                        </label>
-                                    `).join('')}
-                                </div>
-                            </div>
+                            <button type="button" onclick="addPointTimePoint('${item.filename}')"
+                                style="margin-top:4px; padding:3px 10px; border:1px solid #3498db; background:#eaf4fc; color:#2980b9; border-radius:5px; cursor:pointer; font-size:0.8rem;">+ Add time point</button>
                         </div>
                     `;
                 } else if (isCalibrate) {
@@ -1354,9 +1580,13 @@ function updatePointPreview(filename) {
     const config = window.ReportItemConfig[filename];
     if (!config || !config.pointChart) return;
     const card = document.querySelector(`.report-item-card[data-filename="${CSS.escape(filename)}"]`);
-    const tp = card ? card.querySelector('.point-timepoint-select')?.value : '';
+    // Preview the union of points across every selected time-point entry; an
+    // "All time points" selection (empty value) shows everything.
+    const tps = card ? Array.from(card.querySelectorAll('.point-timepoint-select')).map(s => s.value) : [];
+    const showAll = tps.length === 0 || tps.some(v => v === '');
+    const tpSet = new Set(tps.filter(v => v !== '').map(v => String(parseFloat(v))));
     const pts = (config.data || [])
-        .filter(r => (!tp || parseFloat(r['TimePoint']) === parseFloat(tp)))
+        .filter(r => showAll || tpSet.has(String(parseFloat(r['TimePoint']))))
         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
         .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
         .filter(p => !isNaN(p.x) && !isNaN(p.y));
@@ -1439,6 +1669,8 @@ async function finalizeReport() {
         const reportTitle = document.getElementById('console-title').value || 'Analysis Report';
 
         let finalHtmlContent = '';
+        // Per-item curves that could not be fitted (e.g. a time point with < 2 points).
+        const calibrationWarnings = [];
 
         for (let _cbIdx = 0; _cbIdx < selectedCheckboxes.length; _cbIdx++) {
             const cb = selectedCheckboxes[_cbIdx];
@@ -1453,65 +1685,51 @@ async function finalizeReport() {
 
             if (isCalibrate && config.calType === 'point') {
                 // Point-mode calibration item: one Value-vs-Concentration curve per
-                // selected fit algorithm, at the chosen time point.
+                // time-point entry × selected fit algorithm.
                 const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
-                const timePoint = card.querySelector('.point-timepoint-select')?.value || '';
-                const tpLabel = timePoint ? ` @ t=${timePoint}` : '';
-                const includeAlgos = Array.from(card.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
-
-                const pts = (config.data || [])
-                    .filter(r => (!timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint)))
-                    .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                    .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                    .filter(p => !isNaN(p.x) && !isNaN(p.y))
-                    .sort((a, b) => a.x - b.x);
-                const xValues = pts.map(p => p.x);
-                const yValues = pts.map(p => p.y);
+                const tpEntries = Array.from(card.querySelectorAll('.point-tp-entry'));
 
                 let itemChartsMarkup = '<div style="display: flex; flex-wrap: wrap; gap: 4%;">';
-                let coefficientRows = '';
-                for (const algo of includeAlgos) {
-                    if (xValues.length < 2) break;
-                    const analysis = calculateCoefAndRSquared(yValues, xValues, algo);
-                    if (!analysis || !analysis.coefficients) continue;
-                    const [ca, cb2, cc] = analysis.coefficients;
-                    const fitLabel = `${measLabel} - ${algo}`;
-                    coefficientRows += `
-                        <tr>
-                            <td style="padding:10px; border:1px solid #eee;"><strong>${fitLabel}</strong></td>
-                            <td style="padding:10px; border:1px solid #eee;">${ca.toFixed(5)}</td>
-                            <td style="padding:10px; border:1px solid #eee;">${cb2.toFixed(5)}</td>
-                            <td style="padding:10px; border:1px solid #eee;">${analysis.coefficients.length > 2 ? cc.toFixed(5) : '--'}</td>
-                            <td style="padding:10px; border:1px solid #eee;">${analysis.rSquared.toFixed(4)}</td>
-                        </tr>`;
-                    const regLine = buildCalibrationRegressionLine(xValues, analysis.coefficients, algo);
-                    const img = await renderCalibrationChartImage({
-                        xConc: xValues, yMetric: yValues, regLine, title: fitLabel, yLabel: measLabel, algo
-                    });
-                    if (img) itemChartsMarkup += `
-                        <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
-                            <img src="${img}" style="width: 100%; height: auto;"/>
-                        </div>`;
+                const fits = [];
+                for (const entry of tpEntries) {
+                    const timePoint = entry.querySelector('.point-timepoint-select')?.value || '';
+                    const tpLabel = timePoint ? `t=${timePoint}` : 'all pooled';
+                    const includeAlgos = Array.from(entry.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
+
+                    const pts = (config.data || [])
+                        .filter(r => (!timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint)))
+                        .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+                        .filter(p => !isNaN(p.x) && !isNaN(p.y))
+                        .sort((a, b) => a.x - b.x);
+                    const xValues = pts.map(p => p.x);
+                    const yValues = pts.map(p => p.y);
+
+                    for (const algo of includeAlgos) {
+                        if (xValues.length < 2) {
+                            calibrationWarnings.push(`Point calibration @ ${tpLabel}: no ${algo} curve could be fitted — at least two concentration points are required (found ${xValues.length}).`);
+                            continue;
+                        }
+                        const analysis = calculateCoefAndRSquared(yValues, xValues, algo);
+                        if (!analysis || !analysis.coefficients) continue;
+                        fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
+                        const regLine = buildCalibrationRegressionLine(xValues, analysis.coefficients, algo);
+                        const img = await renderCalibrationChartImage({
+                            xConc: xValues, yMetric: yValues, regLine, title: `${measLabel} @ ${tpLabel} - ${algo}`, yLabel: measLabel, algo
+                        });
+                        if (img) itemChartsMarkup += `
+                            <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
+                                <img src="${img}" style="width: 100%; height: auto;"/>
+                            </div>`;
+                    }
                 }
                 itemChartsMarkup += '</div>';
 
                 finalHtmlContent += `
                     <div class="report-item-block" style="page-break-inside: auto; margin-bottom: 40px;">
-                        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration (point): ${filename}${tpLabel}</h2>
-                        ${xValues.length < 2 ? '<p style="color:#888;">Not enough calibration points to fit a curve at the selected time point.</p>' : itemChartsMarkup}
-                        ${coefficientRows ? `
-                        <table style="width:100%; border-collapse: collapse; margin-top:20px; font-size: 0.9rem;">
-                            <thead>
-                                <tr style="background:#f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                    <th style="padding:10px; text-align:left;">Analysis</th>
-                                    <th style="padding:10px; text-align:left;">a (or Vmax)</th>
-                                    <th style="padding:10px; text-align:left;">b (or Km)</th>
-                                    <th style="padding:10px; text-align:left;">c</th>
-                                    <th style="padding:10px; text-align:left;">R²</th>
-                                </tr>
-                            </thead>
-                            <tbody>${coefficientRows}</tbody>
-                        </table>` : ''}
+                        <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration (point): ${filename}</h2>
+                        ${fits.length ? itemChartsMarkup : '<p style="color:#888;">Not enough calibration points to fit a curve for the selected time point(s).</p>'}
+                        ${fits.length ? _renderCoefTablesHtml('Time Point', fits) : ''}
                     </div>
                 `;
 
@@ -1527,7 +1745,8 @@ async function finalizeReport() {
                     if (includeAlgos.length === 0) continue;
 
                     let itemChartsMarkup = '<div style="display: flex; flex-wrap: wrap; gap: 4%;">';
-                    let coefficientRows = '';
+                    const fits = [];
+                    const niceMetricName = metric.charAt(0).toUpperCase() + metric.slice(1).replace(/([A-Z])/g, ' $1');
 
                     for (const aCheckbox of includeAlgos) {
                         const algo = aCheckbox.dataset.algo;
@@ -1545,19 +1764,11 @@ async function finalizeReport() {
                         const analysis = calculateCoefAndRSquared(yValues, xValues, algo);
                         if (!analysis || !analysis.coefficients) continue;
 
-                        const niceMetricName = metric.charAt(0).toUpperCase() + metric.slice(1).replace(/([A-Z])/g, ' $1');
                         const fitLabel = `${niceMetricName} - ${algo}`;
 
-                        // 1. Build table row
+                        // 1. Collect the fit (grouped into per-algorithm tables later)
                         const [ca, cb, cc] = analysis.coefficients || [0, 0, 0];
-                        coefficientRows += `
-                            <tr>
-                                <td style="padding:10px; border:1px solid #eee;"><strong>${fitLabel}</strong></td>
-                                <td style="padding:10px; border:1px solid #eee;">${ca.toFixed(5)}</td>
-                                <td style="padding:10px; border:1px solid #eee;">${cb.toFixed(5)}</td>
-                                <td style="padding:10px; border:1px solid #eee;">${analysis.coefficients.length > 2 ? cc.toFixed(5) : '--'}</td>
-                                <td style="padding:10px; border:1px solid #eee;">${analysis.rSquared.toFixed(4)}</td>
-                            </tr>`;
+                        fits.push({ entity: niceMetricName, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
 
                         // 2. High-res chart
                         const tempCanvas = document.createElement('canvas');
@@ -1645,18 +1856,7 @@ async function finalizeReport() {
                         <div class="report-item-block" style="page-break-inside: auto; margin-bottom: 40px;">
                             <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Calibration: ${filename} - ${metric}</h2>
                             ${itemChartsMarkup}
-                            <table style="width:100%; border-collapse: collapse; margin-top:20px; font-size: 0.9rem;">
-                                <thead>
-                                    <tr style="background:#f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                        <th style="padding:10px; text-align:left;">Analysis</th>
-                                        <th style="padding:10px; text-align:left;">a (or Vmax)</th>
-                                        <th style="padding:10px; text-align:left;">b (or Km)</th>
-                                        <th style="padding:10px; text-align:left;">c</th>
-                                        <th style="padding:10px; text-align:left;">R²</th>
-                                    </tr>
-                                </thead>
-                                <tbody>${coefficientRows}</tbody>
-                            </table>
+                            ${_renderCoefTablesHtml('Metric', fits)}
                         </div>
                     `;
                 }
@@ -1821,6 +2021,15 @@ async function finalizeReport() {
         printContainer.classList.remove('hidden');
         printContainer.classList.add('report-mode');
 
+        if (calibrationWarnings.length) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'Some calibration curves unavailable',
+                html: calibrationWarnings.map(w => `• ${w}`).join('<br>') +
+                      '<br><br>The report was generated with the available curves.'
+            });
+        }
+
         setTimeout(() => {
             console.log("Triggering window.print() for Advanced Report");
             window.print();
@@ -1926,6 +2135,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
                 <div class="report-derived-concentration" style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
                     <h3 style="margin:0 0 8px 0; color:#2980b9;">Derived Concentration</h3>
                     <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">From: <strong>${derivedQuantity}</strong> (per minute conversion applied where applicable)</div>
+                    ${getReportFitFormula(fitType) ? `<div style="font-size:0.85rem; color:#666; margin-bottom:8px;">Calibration function: <strong>${getReportFitFormula(fitType)}</strong> (${fitType})<br><span style="font-size:0.78rem;">where ${getReportFitWhere(fitType)}</span></div>` : ''}
                     ${rowsHtml}
                 </div>
             `;
@@ -1952,6 +2162,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
             <div class="report-derived-concentration" style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
                 <h3 style="margin:0 0 8px 0; color:#2980b9;">Derived Concentration</h3>
                 <div style="font-size:0.85rem; color:#666; margin-bottom:8px;">Endpoint: <strong>${json.time} ${timeUnit || 'minute'}</strong></div>
+                ${getReportFitFormula(fitType) ? `<div style="font-size:0.85rem; color:#666; margin-bottom:8px;">Calibration function: <strong>${getReportFitFormula(fitType)}</strong> (${fitType})<br><span style="font-size:0.78rem;">where ${getReportFitWhere(fitType)}</span></div>` : ''}
                 ${rowsHtml}
             </div>
         `;
@@ -2243,48 +2454,49 @@ async function finalizeReportExcel() {
                 csv_rows: [],
                 analysis_rows: [],
                 coef_rows: [],
+                coef_tables: [],
                 derived_lines: []
             };
 
             if (isCalibrate && config.calType === 'point') {
-                // Point-mode calibration: one Value-vs-Concentration fit per chosen
-                // algorithm at the selected time point.
+                // Point-mode calibration: one Value-vs-Concentration fit per
+                // time-point entry × chosen algorithm.
                 const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
-                const timePoint = card.querySelector('.point-timepoint-select')?.value || '';
-                const includeAlgos = Array.from(card.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
-                const rows = (config.data || []).filter(r => !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
+                const tpEntries = Array.from(card.querySelectorAll('.point-tp-entry'));
 
-                itemData.csv_columns = ['Concentration', 'Value'];
-                itemData.csv_rows = rows.map(r => ({ Concentration: r['Concentration'], Value: r['Value'] }));
+                itemData.csv_columns = ['Concentration', 'Value', 'TimePoint'];
+                itemData.csv_rows = (config.data || []).map(r => ({
+                    Concentration: r['Concentration'], Value: r['Value'], TimePoint: r['TimePoint']
+                }));
 
-                const pts = rows
-                    .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                    .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                    .filter(p => !isNaN(p.x) && !isNaN(p.y))
-                    .sort((a, b) => a.x - b.x);
-                const xVals = pts.map(p => p.x);
-                const yVals = pts.map(p => p.y);
-                const tpLabel = timePoint ? ` @ t=${timePoint}` : '';
+                const fits = [];
+                for (const entry of tpEntries) {
+                    const timePoint = entry.querySelector('.point-timepoint-select')?.value || '';
+                    const tpLabel = timePoint ? `t=${timePoint}` : 'all pooled';
+                    const includeAlgos = Array.from(entry.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
+                    const pts = (config.data || [])
+                        .filter(r => !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint))
+                        .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
+                        .filter(p => !isNaN(p.x) && !isNaN(p.y))
+                        .sort((a, b) => a.x - b.x);
+                    const xVals = pts.map(p => p.x);
+                    const yVals = pts.map(p => p.y);
 
-                for (const algo of includeAlgos) {
-                    if (xVals.length < 2) break;
-                    const analysis = calculateCoefAndRSquared(yVals, xVals, algo);
-                    if (!analysis || !analysis.coefficients) continue;
-                    const [ca, cb2, cc] = analysis.coefficients;
-                    const fitLabel = `${measLabel}${tpLabel} - ${algo}`;
-                    itemData.coef_rows.push({
-                        'Analysis': fitLabel,
-                        'a (or Vmax)': ca.toFixed(5),
-                        'b (or Km)': cb2.toFixed(5),
-                        'c': analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
-                        'R²': analysis.rSquared.toFixed(4)
-                    });
-                    const regLine = buildCalibrationRegressionLine(xVals, analysis.coefficients, algo);
-                    const imgData = await renderCalibrationChartImage({
-                        xConc: xVals, yMetric: yVals, regLine, title: fitLabel, yLabel: measLabel, algo
-                    });
-                    if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                    for (const algo of includeAlgos) {
+                        if (xVals.length < 2) break;
+                        const analysis = calculateCoefAndRSquared(yVals, xVals, algo);
+                        if (!analysis || !analysis.coefficients) continue;
+                        const fitLabel = `${measLabel} @ ${tpLabel} - ${algo}`;
+                        fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
+                        const regLine = buildCalibrationRegressionLine(xVals, analysis.coefficients, algo);
+                        const imgData = await renderCalibrationChartImage({
+                            xConc: xVals, yMetric: yVals, regLine, title: fitLabel, yLabel: measLabel, algo
+                        });
+                        if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                    }
                 }
+                itemData.coef_tables = _buildCoefTables('Time Point', fits);
 
             } else if (isCalibrate) {
                 const xCol = config.metadata.XColumn || 'Concentration';
@@ -2299,6 +2511,7 @@ async function finalizeReportExcel() {
                 });
 
                 const includeMetrics = Array.from(card.querySelectorAll('.metric-include-checkbox:checked'));
+                const fits = [];
                 for (const mCb of includeMetrics) {
                     const metric = mCb.dataset.metric;
                     const algoCbs = Array.from(card.querySelectorAll(`.algo-include-checkbox[data-metric="${metric}"]:checked`));
@@ -2322,13 +2535,7 @@ async function finalizeReportExcel() {
                         const niceMetric = metric.charAt(0).toUpperCase() + metric.slice(1).replace(/([A-Z])/g, ' $1');
                         const fitLabel = `${niceMetric} - ${algo}`;
 
-                        itemData.coef_rows.push({
-                            'Analysis': fitLabel,
-                            'a (or Vmax)': ca.toFixed(5),
-                            'b (or Km)': cb2.toFixed(5),
-                            'c': analysis.coefficients.length > 2 ? cc.toFixed(5) : '--',
-                            'R²': analysis.rSquared.toFixed(4)
-                        });
+                        fits.push({ entity: niceMetric, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
 
                         const pXMin = Math.min(...xVals) - 0.1 * (Math.max(...xVals) - Math.min(...xVals));
                         const pXMax = Math.max(...xVals) + 0.1 * (Math.max(...xVals) - Math.min(...xVals));
@@ -2371,6 +2578,7 @@ async function finalizeReportExcel() {
                         if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
                     }
                 }
+                itemData.coef_tables = _buildCoefTables('Metric', fits);
 
             } else {
                 const calFile        = card.querySelector('.cal-source-select').value;
@@ -2437,6 +2645,10 @@ async function finalizeReportExcel() {
                                 try { con = Number(computeFitForReport(Number(estValue), fitType, coef, 'Endpoint Value')).toFixed(4); } catch (_) {}
                                 itemData.derived_lines.push(`Source ${t}: ${con} ng/µL`);
                             }
+                        }
+                        // Lead with the calibration function used to derive the values.
+                        if (itemData.derived_lines.length && getReportFitFormula(fitType)) {
+                            itemData.derived_lines.unshift(`Calibration function — ${getReportFitFunctionLabel(fitType)}`);
                         }
                     } catch (_) {}
                 }
