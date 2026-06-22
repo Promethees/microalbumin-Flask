@@ -307,10 +307,10 @@ def _fake_version_resp(version, notes=''):
 
 
 @pytest.mark.parametrize('latest, current, expected', [
-    ('1.2.0', '1.1.16', True),     # newer → update available
-    ('1.1.16', '1.1.16', False),   # equal → no re-download (strict >)
-    ('1.1.10', '1.1.16', False),   # older → no update
-    ('latest', '1.1.16', True),    # non-semver → always available
+    ('1.2.0', '1.1.17', True),     # newer → update available
+    ('1.1.17', '1.1.17', False),   # equal → no re-download (strict >)
+    ('1.1.10', '1.1.17', False),   # older → no update
+    ('latest', '1.1.17', True),    # non-semver → always available
 ])
 def test_check_for_update_semver_comparison(latest, current, expected):
     with patch.object(u.activation_mod, 'get_license_token', return_value='tok'), \
