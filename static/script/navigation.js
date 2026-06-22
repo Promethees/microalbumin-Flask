@@ -29,7 +29,7 @@ async function loadDataFolders() {
         const folders = data.folders || [];
         _renderFolderList('data-folder-list', folders);
         _renderFolderList('data-folder-list-top', folders);
-        _populateFolderSelect('hid-subfolder-select', folders, true);
+        _populateFolderSelect('cdc-subfolder-select', folders, true);
         _populateFolderSelect('exp-subfolder-select', folders, false);
     } catch (e) {
         console.error('loadDataFolders error:', e);

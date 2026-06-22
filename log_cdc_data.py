@@ -1,9 +1,9 @@
 """CDC (USB serial) data collector — default transport for host-initiated
 measurement sessions with the PyBadge colorimeter.
 
-This replaces the HID-keyboard reader (``log_hid_data.py`` / ``log_hid_data_pyusb.py``,
-kept only as a manual fallback the device triggers via its Left button) for the
-app's automated "Run" flow. Unlike the HID path, this collector:
+This is the collector for the app's automated "Run" flow; the device's
+Left-button keyboard-typing path is kept only as a manual fallback. Unlike that
+fallback, this collector:
 
   * owns the single CDC serial port for BOTH control and data (one process),
   * sends the start command set ("1", "TIMEOUT:x", "INTERVAL:x") and waits for
@@ -57,8 +57,8 @@ class CDCDataCollector:
         self.session_started = False
 
         # CDC delivers the device's exact bytes, so these patterns match the
-        # clean text emitted by serial_manager._write() — no HID up-casing /
-        # modifier-stripping like the keyboard path had to undo.
+        # clean text emitted by serial_manager._write() — no up-casing /
+        # modifier-stripping like the old keyboard path had to undo.
         self.metadata_pattern = r"^#\s*(Measurement|Unit|Concentration):\s*(.+?)\s*$"
         self.header_pattern = r"^Timestamp,Value:\d+(?:,Value:\d+)*$"
         self.data_pattern = r"^\d+\.\d{1,2},(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
@@ -163,7 +163,7 @@ class CDCDataCollector:
 
     def start(self):
         # Handle SIGTERM/SIGINT so the finally block runs and the device is told
-        # to stop, mirroring the HID collector's clean-shutdown contract.
+        # to stop, mirroring the legacy collector's clean-shutdown contract.
         def _handle_signal(signum, frame):
             self.log(f"Received signal {signum}, stopping cleanly...")
             self.running = False

@@ -34,7 +34,7 @@
           "skipInteraction": true
         },
         {
-          "target": "#log-hid-data",
+          "target": "#log-cdc-data",
           "title": "Colorimeter Control Panel",
           "description": "This panel controls data recording from your PyBadge colorimeter. In this tutorial we will use sample data instead of a live device.",
           "position": "right",
@@ -617,7 +617,7 @@
         "log",
         "view log",
         "see log",
-        "hid log",
+        "cdc log",
         "device log",
         "show log",
         "log data",
@@ -1108,7 +1108,7 @@
           "skipInteraction": false
         },
         {
-          "target": "#log-hid-data",
+          "target": "#log-cdc-data",
           "title": "Reading Colorimeter Data Console",
           "description": "This console controls the colorimeter device. Make sure your PyBadge is connected via USB before starting.",
           "position": "right",
@@ -1554,21 +1554,21 @@
       "conditions": {},
       "steps": [
         {
-          "target": "#hid-save-section",
+          "target": "#cdc-save-section",
           "title": "Save Location",
           "description": "Choose where new measurement CSV files will be saved. Select 'Existing' to save into a current data subfolder, or 'New' to create a fresh subfolder on the fly.",
           "position": "right",
           "skipInteraction": true
         },
         {
-          "target": "#hid-subfolder-select",
+          "target": "#cdc-subfolder-select",
           "title": "Select Saving Subfolder",
           "description": "When 'Existing' is chosen, pick the data subfolder here. The dropdown lists all subfolders inside the data/ directory. Use ↻ to refresh after adding folders.",
           "position": "right",
           "skipInteraction": false
         },
         {
-          "target": "#hid-new-folder-name",
+          "target": "#cdc-new-folder-name",
           "title": "New Subfolder Name",
           "description": "When 'New' is chosen, type a name here. A new subfolder will be created inside data/ and your files will be saved there automatically.",
           "position": "right",

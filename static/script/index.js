@@ -34,7 +34,7 @@ const AppState = {
     currentDirectory: DATA_ROOT,
     exportPath: DATA_ROOT,
     processedExpPath: DATA_ROOT,
-    processedHidPath: DATA_ROOT,
+    processedCdcPath: DATA_ROOT,
     jsonPath: JSON_ROOT,
     chartInstances: {},
     responseData: null,
@@ -304,7 +304,7 @@ $(document).ready(function () {
         .classList.toggle('hidden', !AppState.currentFile);
 
     // bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-    // bindButtonToString("#go-to-btn", AppState.processedHidPath, false);
+    // bindButtonToString("#go-to-btn", AppState.processedCdcPath, false);
 
     // Initialize dynamic widths for range inputs
     ['range-value-start', 'range-value-end'].forEach(id => {
@@ -362,7 +362,7 @@ function kineticsModeBehaviour() {
         'json-display',
         'export-analysis',
         'range-display',
-        'log-hid-data',
+        'log-cdc-data',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -398,7 +398,7 @@ function reportModeBehaviour() {
         'json-display',
         'export-analysis',
         'range-display',
-        'log-hid-data',
+        'log-cdc-data',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -447,7 +447,7 @@ function pointModeBehaviour() {
         'export-analysis',
         'set-exp-point-section',
         'range-display',
-        'log-hid-data',
+        'log-cdc-data',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -479,7 +479,7 @@ function calModeBehaviour() {
         'range-display',
         'full-display-section',
         'split-source-section',
-        'log-hid-data',
+        'log-cdc-data',
         'window-size-section',
         'source-options',
         'normalize-mode-section',

@@ -577,8 +577,8 @@ if (typeof USER_SETTINGS !== 'undefined') {
     const _logEl = document.getElementById('log-display');
     if (_logEl) _logEl.style.maxHeight = (USER_SETTINGS.log_display_height || 300) + 'px';
     if (USER_SETTINGS.log_section_collapsed) {
-        const _lc = document.getElementById('hid-collapse');
-        const _lv = document.getElementById('hid-chevron');
+        const _lc = document.getElementById('cdc-collapse');
+        const _lv = document.getElementById('cdc-chevron');
         if (_lc) _lc.classList.add('collapsed');
         if (_lv) _lv.classList.add('collapsed-chevron');
     }

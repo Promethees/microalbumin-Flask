@@ -834,7 +834,7 @@ def _current_port():
 
 
 def _shutdown_current_process():
-    """Best-effort stop of the HID subprocess so it is not orphaned on exit."""
+    """Best-effort stop of the data-logger subprocess so it is not orphaned on exit."""
     try:
         import browser_mgt
         browser_mgt.cleanup(state.process, state.log_file, state.args)

@@ -657,7 +657,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_hardware_status",
-            "description": "Check whether the PyBadge colorimeter HID subprocess is running.",
+            "description": "Check whether the PyBadge colorimeter data-logger subprocess is running.",
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
@@ -726,7 +726,7 @@ TOOLS = [
                 "Focused spotlight guide for 2-5 specific UI elements. "
                 "Use for targeted how-to questions. "
                 "Collapsed sections are expanded automatically before spotlighting. "
-                "Valid IDs: #log-hid-data #hid-save-section #run-script-btn #terminate-script-btn "
+                "Valid IDs: #log-cdc-data #cdc-save-section #run-script-btn #terminate-script-btn "
                 "#base-name #timeout-control #interval-control #log-display #go-to-btn "
                 "#meas-mode-section #file-selection #cal-json-sel-section #merge-file-btn "
                 "#data-display-section #chart-container #range-display #window-size-section "
@@ -809,7 +809,7 @@ _HELP_DOCS = {
         "• Connects over USB CDC serial (pyserial) — no admin/sudo, no driver needed\n"
         "• Mac & Windows use the same cross-platform logger (log_cdc_data.py)\n"
         "• VID/PID: 0x239A / 0x8034 (serial)\n"
-        "• Fallback: press the device's Left button to 'type' data via HID keyboard into any text field"
+        "• Fallback: press the device's Left button to 'type' data via keyboard input into any text field"
     ),
     "regression": (
         "Supported regression types:\n"
@@ -1277,7 +1277,7 @@ def _get_pending_report_type(messages: list) -> str | None:
 # Keywords that strongly indicate the question is about Easy OKAPI
 _IN_SCOPE_KEYWORDS = {
     "okapi", "colorimeter", "absorbance", "kinetics", "calibrat", "csv",
-    "measurement", "pybadge", "hid", "regression", "standard curve", "r squared",
+    "measurement", "pybadge", "cdc", "regression", "standard curve", "r squared",
     "michaelis", "menten", "export", "report", "timeout", "interval", "biosensor",
     "mode", "chart", "graph", "file", "directory", "hardware", "device", "sensor",
     "concentration", "slope", "saturation", "maxrate", "threshold", "workflow",

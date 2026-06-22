@@ -349,19 +349,19 @@
                 </div>
                 <div id="error-message"></div>
             </div>
-            <div class="section script-controls" id="log-hid-data">
-                <h2 class="folder-section-toggle" onclick="toggleFolderList('hid-collapse', 'hid-chevron')">Reading
-                    Colorimetric Data <span id="hid-chevron" class="folder-chevron">▼</span></h2>
-                <div id="hid-collapse" class="section-collapse">
-                    <div id="hid-save-section" style="margin-bottom:8px;">
+            <div class="section script-controls" id="log-cdc-data">
+                <h2 class="folder-section-toggle" onclick="toggleFolderList('cdc-collapse', 'cdc-chevron')">Reading
+                    Colorimetric Data <span id="cdc-chevron" class="folder-chevron">▼</span></h2>
+                <div id="cdc-collapse" class="section-collapse">
+                    <div id="cdc-save-section" style="margin-bottom:8px;">
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                             <label style="font-weight:600; white-space:nowrap;">Save to:</label>
                             <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
-                                <input type="radio" name="hid-save-mode" id="hid-mode-existing" value="existing" checked
-                                    onchange="onHidSaveModeChange()"> Existing
+                                <input type="radio" name="cdc-save-mode" id="cdc-mode-existing" value="existing" checked
+                                    onchange="onCdcSaveModeChange()"> Existing
                             </label>
-                            <div id="hid-existing-row" style="display:flex; gap:5px; align-items:center;">
-                                <select id="hid-subfolder-select" onchange="onHidSubfolderChange(this)"
+                            <div id="cdc-existing-row" style="display:flex; gap:5px; align-items:center;">
+                                <select id="cdc-subfolder-select" onchange="onCdcSubfolderChange(this)"
                                     style="max-width:280px;">
                                     <option value="">— data root —</option>
                                 </select>
@@ -369,13 +369,13 @@
                                     style="padding:2px 6px;">↻</button>
                             </div>
                             <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
-                                <input type="radio" name="hid-save-mode" id="hid-mode-new" value="new"
-                                    onchange="onHidSaveModeChange()"> New
+                                <input type="radio" name="cdc-save-mode" id="cdc-mode-new" value="new"
+                                    onchange="onCdcSaveModeChange()"> New
                             </label>
-                            <div id="hid-new-row" style="display:none; align-items:center; gap:4px;">
-                                <input type="text" id="hid-new-folder-name" placeholder="New subfolder name"
-                                    style="width:200px;" oninput="validateFileName('hid-new-folder-name')">
-                                <span id="hid-new-folder-name-error" class="error"></span>
+                            <div id="cdc-new-row" style="display:none; align-items:center; gap:4px;">
+                                <input type="text" id="cdc-new-folder-name" placeholder="New subfolder name"
+                                    style="width:200px;" oninput="validateFileName('cdc-new-folder-name')">
+                                <span id="cdc-new-folder-name-error" class="error"></span>
                             </div>
                         </div>
                     </div>
@@ -789,7 +789,7 @@
         <script src="{{ url_for('static', filename='script/event-tracker.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/short-hands.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/init.js') }}?v={{ STATIC_VERSION }}"></script>
-        <script src="{{ url_for('static', filename='script/hid-logging.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/cdc-logging.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/navigation.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/generate-chart.js') }}?v={{ STATIC_VERSION }}"></script>

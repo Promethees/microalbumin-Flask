@@ -15,7 +15,7 @@ hardware_bp = Blueprint('hardware', __name__)
 # subprocess (log_cdc_data.py) owns the serial port for the whole session — it
 # sends the start commands, waits for the device ACKs, then reads the data
 # stream on the same connection. Flask must NOT also open the port (one owner
-# only). The device's HID-keyboard path is reserved as a manual fallback the
+# only). The device's keyboard-typing path is reserved as a manual fallback the
 # user triggers with the device's Left button (see firmware serial_manager.py).
 
 

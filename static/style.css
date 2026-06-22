@@ -941,7 +941,7 @@ body.dark .settings-btn:hover {
 #select-time-point,
 #select-regress-algo,
 #export-coef,
-#log-hid-data {
+#log-cdc-data {
     display: block;
 }
 
@@ -3817,8 +3817,8 @@ body.dark .okapi-ai-cmd-desc {
 }
 
 @media (max-width: 600px) {
-    #hid-existing-row,
-    #hid-new-row {
+    #cdc-existing-row,
+    #cdc-new-row {
         flex-basis: 100%;
     }
 }

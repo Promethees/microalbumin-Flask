@@ -137,10 +137,10 @@ function resetUI({ goToEnabled }) {
     const infTimeout = document.getElementById('inf-timeout');
 
     // Re-enable subfolder selection controls
-    document.querySelectorAll('input[name="hid-save-mode"]').forEach(r => (r.disabled = false));
-    const existingSel = document.getElementById('hid-subfolder-select');
+    document.querySelectorAll('input[name="cdc-save-mode"]').forEach(r => (r.disabled = false));
+    const existingSel = document.getElementById('cdc-subfolder-select');
     if (existingSel) existingSel.disabled = false;
-    const newInput = document.getElementById('hid-new-folder-name');
+    const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = false;
 
     const baseEnabled = ['base-name', 'run-script-btn', 'inf-timeout', 'interval', 'interval-unit'];
@@ -175,17 +175,17 @@ function resetUIAfterCompletion() {
     fireDoneNotification("Session ended due to timeout.");
 }
 
-// HID save-mode toggle handlers
-function onHidSaveModeChange() {
-    const mode = document.querySelector('input[name="hid-save-mode"]:checked')?.value || 'existing';
-    const existingRow = document.getElementById('hid-existing-row');
-    const newRow = document.getElementById('hid-new-row');
+// CDC save-mode toggle handlers
+function onCdcSaveModeChange() {
+    const mode = document.querySelector('input[name="cdc-save-mode"]:checked')?.value || 'existing';
+    const existingRow = document.getElementById('cdc-existing-row');
+    const newRow = document.getElementById('cdc-new-row');
     if (existingRow) existingRow.style.display = mode === 'existing' ? 'flex' : 'none';
     if (newRow) newRow.style.display = mode === 'new' ? 'flex' : 'none';
 }
 
-function onHidSubfolderChange(select) {
-    AppState.processedHidPath = select.value ? getNativePath(DATA_ROOT, select.value) : DATA_ROOT;
+function onCdcSubfolderChange(select) {
+    AppState.processedCdcPath = select.value ? getNativePath(DATA_ROOT, select.value) : DATA_ROOT;
 }
 
 // Main script runner
@@ -193,14 +193,14 @@ async function runScript() {
     if (!validateFileName("base-name") || !validateTimeoutInterval()) return;
     _terminationNoticeFired = false;
 
-    const saveMode = document.querySelector('input[name="hid-save-mode"]:checked')?.value || 'existing';
+    const saveMode = document.querySelector('input[name="cdc-save-mode"]:checked')?.value || 'existing';
     let subfolder = '';
 
     if (saveMode === 'existing') {
-        subfolder = (document.getElementById('hid-subfolder-select') || {}).value || '';
+        subfolder = (document.getElementById('cdc-subfolder-select') || {}).value || '';
     } else {
-        if (!validateFileName("hid-new-folder-name")) return;
-        subfolder = ($id("hid-new-folder-name").value || '').trim();
+        if (!validateFileName("cdc-new-folder-name")) return;
+        subfolder = ($id("cdc-new-folder-name").value || '').trim();
         if (!subfolder) {
             Swal.fire({ title: 'Name required', text: 'Please enter a name for the new subfolder.', icon: 'warning', confirmButtonText: 'OK' });
             return;
@@ -216,16 +216,16 @@ async function runScript() {
     const intervalEl = $id("interval");
     const infTimeout = $id("inf-timeout").checked;
 
-    AppState.processedHidPath = subfolder ? getNativePath(DATA_ROOT, subfolder) : DATA_ROOT;
+    AppState.processedCdcPath = subfolder ? getNativePath(DATA_ROOT, subfolder) : DATA_ROOT;
 
     clearStatusCheck();
     blinkingItem("log-display", 3000);
 
     // Disable inputs while running
-    document.querySelectorAll('input[name="hid-save-mode"]').forEach(r => (r.disabled = true));
-    const existingSel = document.getElementById('hid-subfolder-select');
+    document.querySelectorAll('input[name="cdc-save-mode"]').forEach(r => (r.disabled = true));
+    const existingSel = document.getElementById('cdc-subfolder-select');
     if (existingSel) existingSel.disabled = true;
-    const newInput = document.getElementById('hid-new-folder-name');
+    const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = true;
     $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit"]);
     $toggleClass("run-script-btn", "blinking", false);
@@ -323,10 +323,10 @@ function handleScriptTermination(message) {
     $disable(["terminate-script-btn", "go-to-btn"]);
     ["terminate-script-btn", "go-to-btn"].forEach(id => $toggleClass(id, "blinking", false));
     // Re-enable subfolder selection
-    document.querySelectorAll('input[name="hid-save-mode"]').forEach(r => (r.disabled = false));
-    const existingSel = document.getElementById('hid-subfolder-select');
+    document.querySelectorAll('input[name="cdc-save-mode"]').forEach(r => (r.disabled = false));
+    const existingSel = document.getElementById('cdc-subfolder-select');
     if (existingSel) existingSel.disabled = false;
-    const newInput = document.getElementById('hid-new-folder-name');
+    const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = false;
     ["base-name", "inf-timeout", "interval", "interval-unit"].forEach(id => $id(id).disabled = false);
     const timeoutDisabled = $id("inf-timeout").checked;
