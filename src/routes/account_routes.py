@@ -9,7 +9,8 @@ from email_service import send_verification_email, send_password_reset_email
 from download_service import (
     generate_download_token, validate_download_token,
     fetch_github_release, issue_activation_token, validate_activation_token,
-    get_latest_release_tag, get_bundle_asset, _activation_public_key,
+    get_latest_release_tag, get_bundle_asset, resolve_asset_location,
+    _activation_public_key,
 )
 from rate_limit import limiter, ACTIVATE_LIMIT
 
@@ -551,20 +552,31 @@ def download():
     # No-source binary-swap updater: serve the per-platform onedir *bundle* asset
     # (EasyOKAPI-bundle-{mac,linux}.tar.gz / -win.zip) instead of the source
     # tarball. The desktop client sends ?kind=bundle&platform=mac|win|linux and
-    # follows the redirect to the release asset's public download URL. (Frozen
-    # builds have no .py on disk, so they swap the whole onedir — see the desktop
-    # repo's update_service._download_and_stage_bundle.)
+    # follows the redirect to the asset's download URL. (Frozen builds have no .py
+    # on disk, so they swap the whole onedir — see the desktop repo's
+    # update_service._download_and_stage_bundle.)
     if request.args.get('kind') == 'bundle':
         platform = (request.args.get('platform') or '').strip().lower()
         if platform not in ('mac', 'win', 'linux'):
             return jsonify({'status': 'error', 'message': 'Invalid or missing platform'}), 400
         asset = get_bundle_asset(platform, version_tag)
-        if not asset or not asset.get('browser_download_url'):
+        if not asset:
             return jsonify({'status': 'error',
                             'message': f'No {platform} bundle published for release {version_tag}'}), 404
+        # Redirect to a presigned object-store URL rather than the asset's
+        # browser_download_url: the latter 404s for a PRIVATE repo (the client
+        # carries only its EasyOKAPI activation token, not a GitHub credential).
+        try:
+            location = resolve_asset_location(asset)
+        except Exception as e:
+            print(f'[download] bundle resolve failed for {platform} tag={version_tag!r}: {e}')
+            return jsonify({'status': 'error', 'message': 'Failed to resolve bundle download URL'}), 502
+        if not location:
+            return jsonify({'status': 'error',
+                            'message': f'Could not resolve {platform} bundle download URL'}), 502
         user.last_download = datetime.utcnow()
         db.session.commit()
-        return redirect(asset['browser_download_url'], code=302)
+        return redirect(location, code=302)
 
     try:
         upstream = fetch_github_release(version_tag)

@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify, make_response, send_
 import os
 import sys
 from datetime import datetime
-import requests as http_requests
 from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -22,7 +21,7 @@ from routes.data_routes import data_bp
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
-from download_service import get_release, get_release_asset, _RELEASE_ASSET_SUFFIX, _gh_headers
+from download_service import get_release, get_release_asset, _RELEASE_ASSET_SUFFIX, resolve_asset_location
 from routes.oauth_routes import oauth_bp
 from account import db, run_migrations
 
@@ -198,13 +197,8 @@ def download_offline(platform):
         asset = get_release_asset(platform)
         if not asset:
             return jsonify({'status': 'error', 'message': f'No {platform} build available yet'}), 404
-        # Ask GitHub for the presigned S3 URL (the asset API 302-redirects to it).
-        dl = http_requests.get(
-            asset['url'],
-            headers={**_gh_headers(), 'Accept': 'application/octet-stream'},
-            allow_redirects=False, timeout=10
-        )
-        location = dl.headers.get('Location')
+        # Ask GitHub for the presigned object-store URL (works for private repos too).
+        location = resolve_asset_location(asset)
         if not location:
             return jsonify({'status': 'error', 'message': 'Could not resolve download URL'}), 502
         return redirect(location)

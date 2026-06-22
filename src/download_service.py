@@ -22,6 +22,28 @@ def _gh_headers() -> dict:
     return h
 
 
+def resolve_asset_location(asset: dict) -> str | None:
+    """Resolve a GitHub Release asset to a directly-downloadable URL.
+
+    Hitting the asset's *API* URL with ``Accept: application/octet-stream`` makes
+    GitHub 302-redirect to a short-lived, presigned object-store URL that is
+    fetchable WITHOUT GitHub credentials. This is the only asset-download path
+    that works for a PRIVATE repo: the public ``browser_download_url`` 404s for
+    anonymous clients, and our callers (the desktop auto-updater, the website
+    download buttons) carry no GitHub token. Returns the presigned URL, or None
+    when it cannot be resolved.
+    """
+    api_url = asset.get('url')
+    if not api_url:
+        return None
+    resp = requests.get(
+        api_url,
+        headers={**_gh_headers(), 'Accept': 'application/octet-stream'},
+        allow_redirects=False, timeout=10,
+    )
+    return resp.headers.get('Location')
+
+
 # ── GitHub Release assets ─────────────────────────────────────────────────────
 # Version checks and the public download buttons resolve to the repo's latest
 # published GitHub Release and its built installers. No manual configuration is
