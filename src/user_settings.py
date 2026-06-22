@@ -29,6 +29,7 @@ DEFAULTS = {
     "default_interval": None,
     "default_interval_unit": "seconds",
     "merge_directory_picker": False,
+    "disable_popups": False,
 }
 
 
@@ -105,7 +106,8 @@ def save(updates: dict) -> bool:
     for bool_key in ("default_normalize", "default_split_sources",
                      "range_expanded_default", "export_expanded_default",
                      "log_section_collapsed", "default_notify",
-                     "default_inf_timeout", "merge_directory_picker"):
+                     "default_inf_timeout", "merge_directory_picker",
+                     "disable_popups"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])
     if "log_display_height" in updates:

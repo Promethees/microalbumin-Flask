@@ -30,7 +30,6 @@
                 document.getElementById('title').classList.remove('hidden');
                 document.getElementById('logo').classList.remove('hidden');
                 document.getElementById('meas-mode-section').classList.remove('hidden');
-                document.getElementById('options-section').classList.remove('hidden');
                 document.getElementById('report-bug-section').classList.remove('hidden');
             } catch (err) {
                 console.error('Initialization selection canceled or failed:', err);
@@ -267,7 +266,10 @@
                 </div>
                 <div class="section hidden" style="position: static;" id="options-section">
                     <h3>Options</h3>
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <!-- "Disable popups" moved to App Settings → General. The checkbox is
+                         kept hidden here so existing getBtnChecked("no-swal-checkbox")
+                         call sites keep working, mirrored from USER_SETTINGS.disable_popups. -->
+                    <div class="hidden" style="display: flex; flex-direction: column; gap: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="no-swal-checkbox">
                             Disable popups
@@ -779,6 +781,13 @@
                 } catch (e) { /* private mode / quota — non-fatal */ }
             }
             document.documentElement.style.setProperty('--file-table-height', (USER_SETTINGS.file_table_height || 240) + 'px');
+            // "Disable popups" now lives in App Settings (General). Mirror the saved
+            // preference onto the hidden #no-swal-checkbox that the rest of the app
+            // reads via getBtnChecked("no-swal-checkbox").
+            (function () {
+                const noSwalEl = document.getElementById('no-swal-checkbox');
+                if (noSwalEl) noSwalEl.checked = !!USER_SETTINGS.disable_popups;
+            })();
 
             function getNativePath(...paths) {
                 const isWindows = navigator.userAgent.includes('Windows');

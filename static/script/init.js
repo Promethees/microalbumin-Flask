@@ -647,6 +647,7 @@ const SETTINGS_DEFAULTS = {
     default_interval: null,
     default_interval_unit: 'seconds',
     merge_directory_picker: false,
+    disable_popups: false,
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -688,6 +689,10 @@ function _buildSettingsHTML(s, folders) {
     };
 
     return `<div id="settings-modal-body">
+        <div class="sm-section">
+            <p class="sm-section-title">General</p>
+            ${rowCheck('Disable popups', 'swal-disable-popups', s.disable_popups)}
+        </div>
         <div class="sm-section">
             <p class="sm-section-title">Appearance</p>
             ${row('Theme', '', sel('swal-theme',
@@ -811,6 +816,7 @@ function _readSettingsForm() {
         default_interval: document.getElementById('swal-log-interval').value === '' ? null : parseFloat(document.getElementById('swal-log-interval').value),
         default_interval_unit: document.getElementById('swal-log-interval-unit').value,
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
+        disable_popups: document.getElementById('swal-disable-popups').checked,
     };
 }
 
@@ -846,6 +852,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-log-interval').value = s.default_interval ?? '';
     document.getElementById('swal-log-interval-unit').value = s.default_interval_unit || 'seconds';
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
+    document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
@@ -890,6 +897,11 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
     // Update the live USER_SETTINGS object
     Object.assign(USER_SETTINGS, formValues);
+
+    // Apply "Disable popups" by mirroring it onto the hidden #no-swal-checkbox
+    // that the rest of the app reads via getBtnChecked("no-swal-checkbox").
+    const noSwalEl = document.getElementById('no-swal-checkbox');
+    if (noSwalEl) noSwalEl.checked = !!formValues.disable_popups;
 
     // Apply theme
     if (formValues.theme === 'auto') {

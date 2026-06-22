@@ -228,6 +228,18 @@ class TestSave:
         user_settings.save({"merge_directory_picker": False})
         assert user_settings.load()["merge_directory_picker"] is False
 
+    def test_disable_popups_default_is_false(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        result = user_settings.load()
+        assert result["disable_popups"] is False
+
+    def test_saves_disable_popups(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"disable_popups": True})
+        assert user_settings.load()["disable_popups"] is True
+        user_settings.save({"disable_popups": False})
+        assert user_settings.load()["disable_popups"] is False
+
 
 # ---------------------------------------------------------------------------
 # GET /settings route

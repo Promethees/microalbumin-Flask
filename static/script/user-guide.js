@@ -27,9 +27,8 @@ class UserGuide {
             common: [
                 this.createStep('#logo', 'Welcome to Easy OKAPI!', 'Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), developed by Center for Bioscience and Biotechnology, HCMUS-VNU. Click the logo anytime to scroll to the top of the page.', { position: 'bottom', skipInteraction: true }),
                 this.createStep('#toggleContainer', 'Theme Toggle', 'Switch between light and dark modes for comfortable viewing in any environment.', { position: 'bottom', skipInteraction: true }),
-                this.createStep('#settingsBtn', 'App Settings', 'Open the App Settings panel to customise the application: theme, default measurement mode, window size, default subfolder, file table row limits, colorimeter reading defaults (timeout, interval, notify), and data display defaults (normalise, split sources, panel expand states).', { position: 'bottom', skipInteraction: true }),
+                this.createStep('#settingsBtn', 'App Settings', 'Open the App Settings panel to customise the application: disable popups, theme, default measurement mode, window size, default subfolder, file table row limits, colorimeter reading defaults (timeout, interval, notify), and data display defaults (normalise, split sources, panel expand states).', { position: 'bottom', skipInteraction: true }),
                 this.createStep('#meas-mode-section', 'Measurement Mode', 'Select your measurement mode: "kinetics" for time-series data or "point" for single-point measurements, or "calibrate" to create standard curves.', { position: 'right', skipInteraction: true }),
-                this.createStep('#options-section', 'Options', 'Configure your preferences here. You can disable popups and filter data files by number of measurement sources.', { position: 'right', skipInteraction: true }),
                 this.createStep('#shutdown-btn', 'Shutdown the program', 'Terminate the program manually, your working data will always be saved locally.', { position: 'bottom', skipInteraction: true }),
                 this.createStep('#main-directory-section', 'Data Folder', 'Select the data subfolder you want to work with. All CSV files in the selected folder will appear in the file list below.', { position: 'right', skipInteraction: true, scrollIntoView: true }),
                 this.createStep('#data-folder-list', 'Choose a Data Folder', 'Click any folder in this list to switch to it. Use the search box to filter by name, and the ↻ button to refresh after adding new folders.', { position: 'right', skipInteraction: false, scrollIntoView: true }),
@@ -287,7 +286,7 @@ class UserGuide {
             const isReportConsoleVisible = reportConsole && !reportConsole.classList.contains('hidden');
             const REPORT_HEADER_SELECTORS = new Set([
                 '#logo', '#toggleContainer', '#settingsBtn', '#meas-mode-section',
-                '#options-section', '#shutdown-btn', '#main-directory-section', '#data-folder-list'
+                '#shutdown-btn', '#main-directory-section', '#data-folder-list'
             ]);
             this.steps = this.stepDefinitions.common.filter(s => REPORT_HEADER_SELECTORS.has(s.target));
             this.steps.push(...this.stepDefinitions.fileSelection);
