@@ -1208,6 +1208,7 @@ def export_report_excel(validated_data):
         csv_rows      = item.get('csv_rows', [])
         analysis_rows = item.get('analysis_rows', [])
         coef_rows     = item.get('coef_rows', [])
+        coef_tables   = item.get('coef_tables', [])
         derived_lines = item.get('derived_lines', [])
 
         _cell(ws, r, 1, filename, bold=True, size=13, color='2c3e50')
@@ -1279,7 +1280,26 @@ def export_report_excel(validated_data):
             r = _write_table(ws, r, 'Kinetics Analysis',
                              list(analysis_rows[0].keys()), analysis_rows)
 
-        if coef_rows:
+        # Per-algorithm coefficient tables (each with that fit's exact columns,
+        # e.g. linear → a, b; Michaelis-Menten → Vmax, Km). Falls back to the
+        # legacy flat coef_rows table when coef_tables isn't supplied.
+        if coef_tables:
+            for t in coef_tables:
+                rows = t.get('rows') or []
+                if not rows:
+                    continue
+                cols = t.get('columns') or list(rows[0].keys())
+                r = _write_table(ws, r, t.get('title', 'Calibration Fit Coefficients'),
+                                 cols, rows)
+                # Concentration-formula legend (e.g. "where [S] = …; q = …; a = slope, …").
+                note = t.get('note')
+                if note:
+                    _cell(ws, r, 1, note, size=9, color='666666')
+                    if len(cols) > 1:
+                        ws.merge_cells(start_row=r, start_column=1,
+                                       end_row=r, end_column=min(len(cols), 8))
+                    r += 2
+        elif coef_rows:
             r = _write_table(ws, r, 'Calibration Fit Coefficients',
                              list(coef_rows[0].keys()), coef_rows)
 
