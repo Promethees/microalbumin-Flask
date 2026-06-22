@@ -206,6 +206,8 @@ function createChartSection({
     // Get previous value from localStorage if it exists
     const previousValueKey = `con-value-read-source-${index}`;
     const previousValue = localStorage.getItem(previousValueKey) || '';
+    // The file-level `# Concentration:` is propagated to every source's reader.
+    const metaConcentration = getMetaConcentration(AppState.metaData);
 
     // Store parameters needed for dynamic label generation and handlers
     window.ChartDataStore[canvasId] = {
@@ -231,13 +233,16 @@ function createChartSection({
             <div id="${analysisId}"></div>
             ${`
                 <div id="concentration-reader-section-source-${index}">
-                    Concentration from source-${index + 1} sample is 
-                    <input type="number" id="con-value-read-source-${index}" 
+                    Concentration from source-${index + 1} sample is
+                    ${metaConcentration !== null
+                        ? `<span class="der-con-value" id="con-value-read-display-source-${index}">${metaConcentration}</span>
+                           <input type="hidden" id="con-value-read-source-${index}" value="${metaConcentration}">`
+                        : `<input type="number" id="con-value-read-source-${index}"
                         value="${previousValue}"
-                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')" 
+                        onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')"
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
-                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input> ng/µL
+                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ng/µL
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
@@ -430,12 +435,16 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
         html += `<button class="utility-btn" style="margin-top:4px;"
             title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
             onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
+        const metaConcentration = getMetaConcentration(AppState.metaData);
         html += `
             <div id="concentration-reader-section-source-${i}">
-                Concentration from source-${i + 1} sample is <input type="number" id="con-value-read-source-${i}" 
-                    value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}" 
+                Concentration from source-${i + 1} sample is ${metaConcentration !== null
+                    ? `<span class="der-con-value" id="con-value-read-display-source-${i}">${metaConcentration}</span>
+                       <input type="hidden" id="con-value-read-source-${i}" value="${metaConcentration}">`
+                    : `<input type="number" id="con-value-read-source-${i}"
+                    value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}"
                     oninput="adjustInputWidth(this)"
-                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input> ng/µL
+                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ng/µL
             </div>
             <div id="derived-concentration-section-source-${i}" class="hidden">
                 Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
@@ -472,7 +481,10 @@ function getLabel(yColumn, measUnit) {
     // let conValueRead = document.getElementById(elementId)?.value;
 
     // conValueRead = conValueRead ? 
-    const conValueRead = localStorage.getItem(elementId);
+    // Prefer a user-entered value; otherwise fall back to the concentration
+    // recorded in the file's metadata (shown read-only in the reader).
+    const conValueRead = localStorage.getItem(elementId)
+        || getMetaConcentration(AppState.metaData);
 
     return conValueRead
         ? `${AppState.metaData['Measurement']} at ${conValueRead} ng/µL ${unitDisplay(measUnit)}`
@@ -1019,6 +1031,18 @@ function getLabelsFromYColumn(YColumn, measurementLabel, unit) {
 
 function getMetaUnit(metadata) {
     return (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+}
+
+// Return the file-level Concentration recorded in the CSV metadata
+// (the `# Concentration:` line) when it is a real value, otherwise null.
+// When present, the concentration is known from the file itself, so the
+// reader shows it as static text instead of an editable input box.
+function getMetaConcentration(metadata) {
+    const raw = metadata && metadata['Concentration'];
+    if (raw === undefined || raw === null) return null;
+    const v = String(raw).trim();
+    if (v === '' || v.toUpperCase() === 'NONE') return null;
+    return v;
 }
 
 // Clear all concentration values for this session
