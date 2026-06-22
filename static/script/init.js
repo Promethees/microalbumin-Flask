@@ -646,6 +646,7 @@ const SETTINGS_DEFAULTS = {
     default_timeout_unit: 'seconds',
     default_interval: null,
     default_interval_unit: 'seconds',
+    merge_directory_picker: false,
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -709,6 +710,7 @@ function _buildSettingsHTML(s, folders) {
             <p class="sm-section-title">File Selection</p>
             ${rowLimit('Max CSV files shown', 'swal-max-csv', 'swal-max-csv-all', s.max_csv_rows || 0)}
             ${rowLimit('Max calibration JSON files shown', 'swal-max-json', 'swal-max-json-all', s.max_json_rows || 0)}
+            ${rowCheck('Pick merge files from a folder browser', 'swal-merge-picker', s.merge_directory_picker)}
         </div>
         <div class="sm-section">
             <p class="sm-section-title">Activity Log</p>
@@ -808,6 +810,7 @@ function _readSettingsForm() {
         default_timeout_unit: document.getElementById('swal-log-timeout-unit').value,
         default_interval: document.getElementById('swal-log-interval').value === '' ? null : parseFloat(document.getElementById('swal-log-interval').value),
         default_interval_unit: document.getElementById('swal-log-interval-unit').value,
+        merge_directory_picker: document.getElementById('swal-merge-picker').checked,
     };
 }
 
@@ -842,6 +845,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-log-timeout-unit').value = s.default_timeout_unit || 'seconds';
     document.getElementById('swal-log-interval').value = s.default_interval ?? '';
     document.getElementById('swal-log-interval-unit').value = s.default_interval_unit || 'seconds';
+    document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {

@@ -1115,6 +1115,177 @@ function showMergeModal() {
         return showMergeSubjectsModal();
     }
 
+    // Optional first step (App Settings → "Pick merge files from a folder browser"):
+    // browse a folder and tick the files to merge before ordering them.
+    if (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.merge_directory_picker) {
+        return showMergeDirectoryPicker();
+    }
+
+    return showMergeSortModal(null);
+}
+
+// Step 1 (optional): browse the data subfolders as an accordion and tick CSV
+// files to merge. Every subfolder is listed and independently expandable, so
+// files can be gathered from several folders at once — selections persist no
+// matter which folders are open. On "Next" the picked files are handed to
+// showMergeSortModal() for ordering, exactly as if the rows were added by hand.
+function showMergeDirectoryPicker() {
+    // key = `${folderPath}|||${fileName}` → { folderPath, fileName }
+    const selected = new Map();
+    const _key = (folderPath, fileName) => `${folderPath}|||${fileName}`;
+
+    Swal.fire({
+        title: 'Select Files to Merge',
+        width: 540,
+        html: `
+            <div style="text-align:left; display:flex; flex-direction:column; gap:8px;">
+                <div style="font-size:0.82rem; color:#666;">Expand any folders and tick the files to merge — you can pick from several folders at once.</div>
+                <div id="merge-pick-accordion" style="border:1px solid #ddd; border-radius:6px; max-height:340px; overflow-y:auto;">
+                    <div style="color:#888; font-size:0.85rem; padding:8px;">Loading…</div>
+                </div>
+                <div id="merge-pick-count" style="font-size:0.8rem; color:#666;">0 files selected</div>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Next',
+        didOpen: async () => {
+            const acc = document.getElementById('merge-pick-accordion');
+            const countEl = document.getElementById('merge-pick-count');
+
+            const updateTotal = () => {
+                const n = selected.size;
+                countEl.textContent = `${n} file${n === 1 ? '' : 's'} selected`;
+            };
+
+            const updateBadge = (group) => {
+                const path = group.dataset.path;
+                let c = 0;
+                selected.forEach(v => { if (v.folderPath === path) c++; });
+                group.querySelector('.merge-folder-badge').textContent = c ? `${c} selected` : '';
+            };
+
+            // Fetch data subfolders
+            let folders = [];
+            try {
+                const res = await fetch('/get_data_folders');
+                const data = await res.json();
+                folders = data.folders || [];
+            } catch (e) { }
+
+            if (!folders.length) {
+                acc.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:8px;">No folders found.</div>';
+                return;
+            }
+            acc.innerHTML = '';
+
+            // Lazily fetch + render a folder's CSV files the first time it opens.
+            const loadBody = async (group) => {
+                if (group.dataset.loaded === '1') return;
+                const body = group.querySelector('.merge-folder-body');
+                const path = group.dataset.path;
+                body.innerHTML = '<div style="color:#888; font-size:0.82rem; padding:4px;">Loading…</div>';
+                let csvFiles = [];
+                try {
+                    const fd = new FormData();
+                    fd.append('path', path);
+                    const res = await fetch('/browse', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    csvFiles = (data.files || []).filter(f => f.endsWith('.csv'));
+                } catch (e) {
+                    body.innerHTML = '<div style="color:#e74c3c; font-size:0.82rem; padding:4px;">Error loading files.</div>';
+                    return;
+                }
+                group.dataset.loaded = '1';
+                if (!csvFiles.length) {
+                    body.innerHTML = '<div style="color:#888; font-size:0.82rem; padding:4px;">No CSV files.</div>';
+                    return;
+                }
+                body.innerHTML = csvFiles.map(f => `
+                    <label style="display:flex; align-items:center; gap:8px; padding:3px 4px; cursor:pointer; font-size:0.85rem;">
+                        <input type="checkbox" class="merge-pick-cb" data-file="${_esc(f)}"
+                            ${selected.has(_key(path, f)) ? 'checked' : ''}>
+                        <span>${_escHtml(f)}</span>
+                    </label>
+                `).join('');
+            };
+
+            folders.forEach(f => {
+                const group = document.createElement('div');
+                group.className = 'merge-folder-group';
+                group.dataset.path = f.path;
+                group.dataset.loaded = '';
+                group.style.borderBottom = '1px solid #eee';
+
+                const head = document.createElement('button');
+                head.type = 'button';
+                head.className = 'merge-folder-head';
+                head.style.cssText = 'display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; padding:8px 10px; cursor:pointer; font-size:0.88rem; text-align:left;';
+
+                const caret = document.createElement('span');
+                caret.className = 'merge-folder-caret';
+                caret.textContent = '▶';
+                caret.style.cssText = 'font-size:0.7rem;';
+
+                const name = document.createElement('span');
+                name.style.flex = '1';
+                name.textContent = f.name;
+
+                const badge = document.createElement('span');
+                badge.className = 'merge-folder-badge';
+                badge.style.cssText = 'font-size:0.75rem; color:#2980b9;';
+
+                head.append(caret, name, badge);
+
+                const body = document.createElement('div');
+                body.className = 'merge-folder-body';
+                body.style.cssText = 'display:none; padding:2px 10px 8px 26px;';
+
+                head.addEventListener('click', async () => {
+                    const isOpen = body.style.display !== 'none';
+                    body.style.display = isOpen ? 'none' : 'block';
+                    caret.textContent = isOpen ? '▶' : '▼';
+                    if (!isOpen) await loadBody(group);
+                });
+
+                body.addEventListener('change', (e) => {
+                    if (!e.target.classList.contains('merge-pick-cb')) return;
+                    const fileName = e.target.getAttribute('data-file');
+                    const key = _key(f.path, fileName);
+                    if (e.target.checked) selected.set(key, { folderPath: f.path, fileName });
+                    else selected.delete(key);
+                    updateBadge(group);
+                    updateTotal();
+                });
+
+                group.append(head, body);
+                acc.appendChild(group);
+
+                // Auto-expand the folder the user is currently in.
+                if (AppState.currentDirectory && f.path === AppState.currentDirectory) {
+                    head.click();
+                }
+            });
+
+            updateTotal();
+        },
+        preConfirm: () => {
+            if (selected.size < 2) {
+                Swal.showValidationMessage('Please select at least two files to merge');
+                return false;
+            }
+            return Array.from(selected.values());
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        showMergeSortModal(result.value);
+    });
+}
+
+// Step 2 (or the only step when the picker is disabled): order the files and
+// choose the output. `preselected` is null (start with two empty rows) or an
+// array of { folderPath, fileName } to pre-populate one row each.
+function showMergeSortModal(preselected) {
     // Bare row — folder/file selects are populated async in didOpen
     const makeFileRow = () => `
         <div class="merge-file-row" style="display:grid; grid-template-columns:30px 1fr 30px; gap:5px; align-items:center; padding:7px 8px; border:1px solid #ddd; border-radius:6px; margin-bottom:6px;">
@@ -1132,12 +1303,17 @@ function showMergeModal() {
                 style="display:none; background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
         </div>`;
 
+    // One row per pre-selected file (from the folder picker), else two empty rows.
+    const initRowsData = (Array.isArray(preselected) && preselected.length >= 2)
+        ? preselected
+        : [null, null];
+
     Swal.fire({
         title: 'Merge CSV Files',
         width: 520,
         html: `
             <div style="text-align:left; display:flex; flex-direction:column; gap:6px;">
-                <div id="merge-file-list">${makeFileRow()}${makeFileRow()}</div>
+                <div id="merge-file-list">${initRowsData.map(() => makeFileRow()).join('')}</div>
                 <button type="button" id="merge-add-btn"
                     style="background:#2980b9; color:#fff; border:none; border-radius:4px; padding:7px; cursor:pointer; width:100%; font-size:0.9rem;">+ Add File</button>
                 <label style="margin-top:2px; font-size:0.85rem;">Output Name:</label>
@@ -1231,14 +1407,22 @@ function showMergeModal() {
             updateRemoveBtns();
             updateOrderBtns();
 
-            // Populate folder selects in initial rows, then load files
+            // Populate folder selects in initial rows, then load files. When the
+            // folder picker supplied files, pre-point each row at its file;
+            // otherwise default to the current directory (first row → current file).
             const initRows = list.querySelectorAll('.merge-file-row');
-            initRows.forEach(row => {
+            for (let i = 0; i < initRows.length; i++) {
+                const row = initRows[i];
+                const data = initRowsData[i];
                 row.querySelector('.merge-folder-select').innerHTML = folderOpts;
-                if (AppState.currentDirectory) row.querySelector('.merge-folder-select').value = AppState.currentDirectory;
-            });
-            await loadFilesForRow(initRows[0], AppState.currentFile);
-            await loadFilesForRow(initRows[1]);
+                if (data) {
+                    row.querySelector('.merge-folder-select').value = data.folderPath;
+                    await loadFilesForRow(row, data.fileName);
+                } else {
+                    if (AppState.currentDirectory) row.querySelector('.merge-folder-select').value = AppState.currentDirectory;
+                    await loadFilesForRow(row, i === 0 ? AppState.currentFile : null);
+                }
+            }
 
             // Event delegation: folder change reloads file list; file change updates output name
             list.addEventListener('change', async (e) => {

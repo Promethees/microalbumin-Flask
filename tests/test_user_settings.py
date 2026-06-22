@@ -216,6 +216,18 @@ class TestSave:
         result = user_settings.load()
         assert result["event_log_retention_days"] == 30
 
+    def test_merge_directory_picker_default_is_false(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        result = user_settings.load()
+        assert result["merge_directory_picker"] is False
+
+    def test_saves_merge_directory_picker(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"merge_directory_picker": True})
+        assert user_settings.load()["merge_directory_picker"] is True
+        user_settings.save({"merge_directory_picker": False})
+        assert user_settings.load()["merge_directory_picker"] is False
+
 
 # ---------------------------------------------------------------------------
 # GET /settings route
