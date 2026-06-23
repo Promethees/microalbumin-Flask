@@ -47,8 +47,12 @@ heroku config:set ADMIN_API_KEY=<the-key> -a easysensor-kit
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET`  | `/api/admin/users?q=&limit=` | List/search registered accounts (name/email substring) |
 | `GET`  | `/api/admin/lookup?email=` | Read a user + their machine seats |
 | `POST` | `/api/admin/revoke` | `{email, revoked}` → flip all seats, email on revoke |
 
-Both require the `X-Admin-Key` header and return `503` if the server has no
+The console auto-loads the user list on open; click any row to load that
+account's machines, then Revoke / Reinstate.
+
+All require the `X-Admin-Key` header and return `503` if the server has no
 `ADMIN_API_KEY` configured.

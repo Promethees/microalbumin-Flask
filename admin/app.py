@@ -87,6 +87,25 @@ def lookup():
     return _relay(r)
 
 
+@app.route('/api/users')
+def users():
+    if not ADMIN_API_KEY:
+        return jsonify({'status': 'error', 'message': 'ADMIN_API_KEY is not set in admin/.env'}), 503
+    params = {}
+    q = (request.args.get('q') or '').strip()
+    if q:
+        params['q'] = q
+    limit = (request.args.get('limit') or '').strip()
+    if limit:
+        params['limit'] = limit
+    try:
+        r = requests.get(f'{SERVER_URL}/api/admin/users',
+                         params=params, headers=_headers(), timeout=20)
+    except requests.RequestException as e:
+        return jsonify({'status': 'error', 'message': f'Cannot reach server: {e}'}), 502
+    return _relay(r)
+
+
 @app.route('/api/revoke', methods=['POST'])
 def revoke():
     if not ADMIN_API_KEY:

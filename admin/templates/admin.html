@@ -14,10 +14,17 @@
     .sub { color:var(--muted); font-size:13px; margin:0 0 18px; }
     .sub code { background:#eee; padding:1px 5px; border-radius:4px; }
     label { font-size:13px; font-weight:600; display:block; margin-bottom:6px; }
-    input[type=email] { width:100%; padding:10px 12px; font-size:15px; border:1px solid #ccc; border-radius:6px; }
+    input[type=email], input[type=text] { width:100%; padding:10px 12px; font-size:15px; border:1px solid #ccc; border-radius:6px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    .search-row { display:flex; gap:10px; margin-top:6px; }
+    .search-row input { flex:1; }
     button { padding:10px 18px; font-size:14px; font-weight:600; border:none; border-radius:6px; cursor:pointer; color:#fff; }
     button:disabled { opacity:.5; cursor:not-allowed; }
+    .btn-search { background:#264653; white-space:nowrap; }
+    .btn-ghost { background:#e5e7eb; color:#374151; white-space:nowrap; }
+    tr.clickable { cursor:pointer; }
+    tr.clickable:hover td { background:#f3f4f6; }
+    .users-head { display:flex; justify-content:space-between; align-items:baseline; }
     .btn-look { background:#264653; }
     .btn-revoke { background:var(--red); }
     .btn-reinstate { background:var(--green); }
@@ -54,6 +61,21 @@
         <button class="btn-reinstate" id="btnReinstate" disabled>Reinstate</button>
       </div>
       <div id="msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="users-head">
+        <label for="search">Registered users</label>
+        <span class="muted" id="usersCount"></span>
+      </div>
+      <div class="search-row">
+        <input id="search" type="text" placeholder="Search by name or email…" autocomplete="off" />
+        <button class="btn-search" id="btnSearch">Search</button>
+        <button class="btn-ghost" id="btnAll">Show all</button>
+      </div>
+      <table id="users"><thead>
+        <tr><th>Name</th><th>Email</th><th>Verified</th><th>Machines</th><th>Status</th></tr>
+      </thead><tbody></tbody></table>
     </div>
 
     <div class="card result" id="resultCard" style="display:none">
@@ -128,10 +150,57 @@ async function setRevoked(revoked) {
   } catch (e) { setMsg('Request failed: ' + e, 'err'); }
 }
 
+// ── Registered users list + search ──────────────────────────────────────────
+const searchEl = $('search'), usersCountEl = $('usersCount');
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function renderUsers(data) {
+  const tb = $('users').querySelector('tbody');
+  const rows = (data && data.users) || [];
+  usersCountEl.textContent = data
+    ? `${rows.length}${data.total > rows.length ? ' of ' + data.total : ''} shown`
+    : '';
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="5" class="muted">No users found.</td></tr>'; return; }
+  tb.innerHTML = rows.map(u =>
+    `<tr class="clickable" data-email="${escapeHtml(u.email)}">` +
+    `<td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td>` +
+    `<td>${u.is_verified ? 'yes' : '<span class="muted">no</span>'}</td>` +
+    `<td>${u.machine_count}</td>` +
+    `<td><span class="pill ${u.revoked ? 'revoked' : 'ok'}">${u.revoked ? 'revoked' : 'active'}</span></td></tr>`
+  ).join('');
+  tb.querySelectorAll('tr.clickable').forEach(tr => {
+    tr.addEventListener('click', () => {
+      emailEl.value = tr.getAttribute('data-email');
+      lookup();
+      $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+}
+
+async function loadUsers(q) {
+  usersCountEl.textContent = 'Loading…';
+  try {
+    const r = await fetch('/api/users' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    const d = await r.json();
+    if (!r.ok) { usersCountEl.textContent = ''; setMsg(d.message || 'Could not load users', 'err'); renderUsers(null); return; }
+    renderUsers(d);
+  } catch (e) { usersCountEl.textContent = ''; setMsg('Request failed: ' + e, 'err'); }
+}
+
 $('btnLook').onclick = lookup;
 $('btnRevoke').onclick = () => setRevoked(true);
 $('btnReinstate').onclick = () => setRevoked(false);
 emailEl.addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
+
+$('btnSearch').onclick = () => loadUsers(searchEl.value.trim());
+$('btnAll').onclick = () => { searchEl.value = ''; loadUsers(''); };
+searchEl.addEventListener('keydown', e => { if (e.key === 'Enter') loadUsers(searchEl.value.trim()); });
+
+{% if key_configured %}loadUsers('');{% endif %}  // auto-load the list on open
 </script>
 </body>
 </html>
