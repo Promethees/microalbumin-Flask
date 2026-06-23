@@ -4,8 +4,8 @@
   "for_blank_type": "MIXED",
   "time": 4,
   "time-unit": "minute",
-  "fit_coef": [
-    3,
-    4
-  ]
+  "fit_coef": {
+    "a": 3,
+    "b": 4
+  }
 }
