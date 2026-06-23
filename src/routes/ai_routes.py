@@ -132,6 +132,10 @@ def activate():
     if not activation_mod.save(license_token):
         return jsonify({'status': 'failure', 'message': 'Could not save activation token'}), 500
 
+    # Server just confirmed/bound the token — seed the revocation grace clock so
+    # the freshly-activated app doesn't immediately hit the reverify gate.
+    activation_mod.record_status('active')
+
     return jsonify({'status': 'success', 'message': 'AI assistant activated'})
 
 
