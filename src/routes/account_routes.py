@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify, render_template, Response, stream
 import jwt as pyjwt
 
 from account import db, User, LicenseMachine
-from email_service import send_verification_email, send_password_reset_email
+from email_service import send_verification_email, send_password_reset_email, send_license_revoked_email
 from download_service import (
     generate_download_token, validate_download_token,
     fetch_github_release, issue_activation_token, validate_activation_token,
@@ -77,8 +77,8 @@ def _machine_is_licensed(user, payload, presented_hwid):
     if _normalise_hwid(presented_hwid) != token_hwid:
         return False
     m = LicenseMachine.query.filter_by(user_id=user.id, hwid=token_hwid).first()
-    if not m:
-        return False
+    if not m or m.revoked:
+        return False  # no seat, or the admin has revoked this license
     m.last_seen = datetime.utcnow()
     db.session.commit()
     return True
@@ -487,6 +487,109 @@ def deactivate_machine():
     db.session.delete(m)
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Machine deactivated'})
+
+
+# ── Admin license control (shared-secret) ────────────────────────────────────
+# A tiny machine-to-machine surface for the local admin tool (the `offline`
+# branch). Guarded by ADMIN_API_KEY rather than a user session — there is no admin
+# UI on the server. With no key configured the endpoints refuse all callers (503),
+# so an unconfigured deployment can never be revoke-controlled by accident.
+
+def _require_admin():
+    """Return None when the request carries the right admin key, else an error tuple.
+
+    Constant-time compare so the key can't be guessed by timing. The key lives only
+    in the server's ADMIN_API_KEY env var and the admin's local tool — never in any
+    client build."""
+    import hmac
+    configured = os.environ.get('ADMIN_API_KEY', '')
+    if not configured:
+        return jsonify({'status': 'error', 'message': 'Admin control is not configured'}), 503
+    presented = request.headers.get('X-Admin-Key', '')
+    if not hmac.compare_digest(presented, configured):
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
+    return None
+
+
+def _machine_view(m):
+    return {
+        'id': m.id,
+        'hwid': m.hwid,
+        'label': m.label,
+        'revoked': bool(m.revoked),
+        'activated_at': m.activated_at.isoformat() if m.activated_at else None,
+        'last_seen': m.last_seen.isoformat() if m.last_seen else None,
+        'revoked_at': m.revoked_at.isoformat() if m.revoked_at else None,
+    }
+
+
+@account_bp.route('/api/admin/lookup')
+def admin_lookup():
+    """Look up an account and its machine seats by email (admin tool, read-only)."""
+    err = _require_admin()
+    if err:
+        return err
+    email = (request.args.get('email') or '').strip().lower()
+    if not email:
+        return jsonify({'status': 'error', 'message': 'email is required'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'status': 'error', 'message': 'Account not found'}), 404
+    machines = LicenseMachine.query.filter_by(user_id=user.id).order_by(LicenseMachine.activated_at).all()
+    return jsonify({
+        'status': 'success',
+        'user': {'id': user.id, 'email': user.email, 'name': user.name,
+                 'is_verified': bool(user.is_verified)},
+        'machines': [_machine_view(m) for m in machines],
+    })
+
+
+@account_bp.route('/api/admin/revoke', methods=['POST'])
+def admin_revoke():
+    """Revoke (or reinstate) a user's license across all their machines, by email.
+
+    Body: {"email": "...", "revoked": true|false}. On revoke=true every seat is
+    marked revoked (the server-side kill-switch) and a notification email is sent
+    once to the user; revoked=false reinstates every seat (no email). Idempotent.
+    """
+    err = _require_admin()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    revoke = bool(data.get('revoked', True))
+    if not email:
+        return jsonify({'status': 'error', 'message': 'email is required'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'status': 'error', 'message': 'Account not found'}), 404
+
+    machines = LicenseMachine.query.filter_by(user_id=user.id).all()
+    affected = 0
+    now = datetime.utcnow()
+    for m in machines:
+        if bool(m.revoked) != revoke:
+            m.revoked = revoke
+            m.revoked_at = now if revoke else None
+            affected += 1
+    db.session.commit()
+
+    email_sent = False
+    if revoke and affected:
+        try:
+            send_license_revoked_email(user.email, user.name, _APP_BASE_URL)
+            email_sent = True
+        except Exception:
+            email_sent = False  # best-effort: revocation still stands
+
+    return jsonify({
+        'status': 'success',
+        'revoked': revoke,
+        'affected': affected,
+        'machine_count': len(machines),
+        'email_sent': email_sent,
+        'machines': [_machine_view(m) for m in machines],
+    })
 
 
 @account_bp.route('/api/version')
