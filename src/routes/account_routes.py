@@ -12,7 +12,7 @@ from download_service import (
     get_latest_release_tag, get_bundle_asset, resolve_asset_location,
     _activation_public_key,
 )
-from rate_limit import limiter, ACTIVATE_LIMIT
+from rate_limit import limiter, ACTIVATE_LIMIT, LICENSE_CHECK_LIMIT
 
 account_bp = Blueprint('account', __name__)
 
@@ -430,6 +430,44 @@ def activate():
 
     activation_token = issue_activation_token(payload, hwid or None)
     return jsonify({'status': 'success', 'license_token': activation_token})
+
+
+@account_bp.route('/api/license/check', methods=['POST'])
+@limiter.limit(LICENSE_CHECK_LIMIT)
+def license_check():
+    """Lightweight 'is this license still good for this machine?' poll.
+
+    The desktop client posts its stored permanent activation token + machine
+    fingerprint; we answer 'active' or 'revoked' so the client can enforce admin
+    revocation locally (the token itself is permanent and verifies offline, so the
+    client cannot tell on its own that the admin has revoked it).
+
+    Always replies HTTP 200 with a `status` of 'active' or 'revoked' for the normal
+    cases, so the client has a single field to key off. A revoked verdict means:
+    account gone/unverified, the seat was deactivated/transferred, or the admin
+    revoked it. A malformed/missing token is a 400 (client bug, not a verdict) —
+    the client treats anything that is not an explicit 'revoked' as "no change", so
+    a server hiccup never wrongly blocks a paying user.
+    """
+    data = request.get_json(silent=True) or {}
+    token = (data.get('license_token') or '').strip()
+    hwid = data.get('hwid')
+    if not token:
+        return jsonify({'status': 'error', 'message': 'license_token is required'}), 400
+    try:
+        payload = validate_activation_token(token)
+    except pyjwt.InvalidTokenError:
+        # Signature/format we cannot trust. Not a revocation verdict — let the
+        # client keep its current state rather than block on a server-key mismatch.
+        return jsonify({'status': 'error', 'code': 'invalid_token',
+                        'message': 'Token could not be validated'}), 401
+
+    user = User.query.get(int(payload['sub']))
+    if not user or not user.is_verified:
+        return jsonify({'status': 'revoked', 'code': 'account_invalid'}), 200
+    if _machine_is_licensed(user, payload, hwid):
+        return jsonify({'status': 'active'}), 200
+    return jsonify({'status': 'revoked', 'code': 'machine_mismatch'}), 200
 
 
 @account_bp.route('/api/activation-pubkey')
