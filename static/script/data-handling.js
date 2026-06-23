@@ -1550,18 +1550,23 @@ function generatePointData() {
         return null;
     }
 
+    // The reference point is entered in the selected #time-unit, but exported
+    // calibration files always record the time point in minutes.
+    const timeUnit = (typeof getExpTimeUnit === 'function') ? getExpTimeUnit() : 'minutes';
+    const timePointMinutes = currExpTimePoint * getTimeUnitMultiplier(timeUnit) / getTimeUnitMultiplier('minutes');
+
     const sourceValue = document.getElementById("exp-json-source").value;
     if (sourceValue === "ALL") {
         return Array.from({ length: AppState.numSources }, (_, i) => ({
             estValue: AppState.globalEstimatedValue[i].toFixed(4),
-            timePoint: currExpTimePoint,
+            timePoint: timePointMinutes,
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
         }));
     } else {
         return [{
             estValue: AppState.globalEstimatedValue.toFixed(4),
-            timePoint: currExpTimePoint,
+            timePoint: timePointMinutes,
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
         }];

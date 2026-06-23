@@ -156,6 +156,44 @@ expPoint.addEventListener('change', updatePointEstimate);
 const expSource = document.getElementById('exp-json-source');
 expSource.addEventListener('change', updatePointEstimate);
 
+// Currently-selected time unit for the point-mode reference input. Reading the
+// select value directly (rather than getTimeUnitValue, which returns null when
+// the element is hidden) keeps the conversion working in every mode.
+function getExpTimeUnit() {
+    const el = document.getElementById('time-unit');
+    return (el && el.value) ? el.value : 'seconds';
+}
+
+// Update the unit label shown beside #exp-json-time-value to match #time-unit.
+function refreshExpTimeUnitLabel() {
+    const label = document.getElementById('exp-json-time-unit-label');
+    if (label) label.textContent = ` ${getExpTimeUnit().slice(0, -1)}. `;
+}
+
+// Remember the active unit so a unit change can rescale the entered value to the
+// same absolute time (e.g. 5 minutes -> 300 seconds).
+let prevExpTimeUnit = getExpTimeUnit();
+
+function refreshExpTimeValueForUnit() {
+    const newUnit = getExpTimeUnit();
+    const expInput = document.getElementById('exp-json-time-value');
+    const oldVal = parseFloat(expInput.value);
+    if (!isNaN(oldVal) && newUnit !== prevExpTimeUnit) {
+        const seconds = oldVal * getTimeUnitMultiplier(prevExpTimeUnit);
+        const converted = seconds / getTimeUnitMultiplier(newUnit);
+        // Trim floating-point noise without forcing trailing zeros.
+        expInput.value = parseFloat(converted.toFixed(6));
+    }
+    prevExpTimeUnit = newUnit;
+    refreshExpTimeUnitLabel();
+    // Only re-estimate when a reference point is actually set, so merely
+    // switching units on an empty field doesn't raise a "not set" error.
+    if (!isNaN(parseFloat(expInput.value))) updatePointEstimate();
+}
+
+document.getElementById('time-unit').addEventListener('change', refreshExpTimeValueForUnit);
+refreshExpTimeUnitLabel();
+
 function isNullOrArrayOfNull(value) {
     if (value === null) return true; // case 1: value is null
     if (Array.isArray(value)) {
@@ -168,6 +206,11 @@ function updatePointEstimate() {
     const estValError = document.getElementById('est-val-error');
     const estValExp = document.getElementById('est-val-exp');
     const currExpTimePoint = getValFloat("exp-json-time-value");
+    const timeUnit = getExpTimeUnit();
+    const timeUnitLabel = timeUnit.slice(0, -1);
+    // Raw data is in seconds; convert the user-entered reference point from the
+    // selected #time-unit to seconds before estimating.
+    const currExpTimeSeconds = currExpTimePoint * getTimeUnitMultiplier(timeUnit);
 
     console.log("response Data is", AppState.responseData);
 
@@ -175,12 +218,12 @@ function updatePointEstimate() {
         AppState.globalEstimatedValue = [];
         for (let i = 1; i <= AppState.numSources; i++) {
             AppState.globalEstimatedValue.push(
-                getEstimatedValue(AppState.responseData, currExpTimePoint * 60, i)
+                getEstimatedValue(AppState.responseData, currExpTimeSeconds, i)
             );
         }
     } else {
         const sourceIndex = getValInt("exp-json-source");
-        AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimePoint * 60, sourceIndex);
+        AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimeSeconds, sourceIndex);
     }
 
     console.log("Estimated value is ", AppState.globalEstimatedValue);
@@ -191,15 +234,15 @@ function updatePointEstimate() {
     } else {
         estValError.innerHTML = '';
         if (Array.isArray(AppState.globalEstimatedValue)) {
-            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} minute are: ${AppState.globalEstimatedValue
+            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} ${timeUnitLabel} are: ${AppState.globalEstimatedValue
                 .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
                 .join(", ")
                 }`;
         } else {
             if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
-                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
+                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} ${timeUnitLabel} is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
             else
-                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} minute is ${AppState.globalEstimatedValue.toFixed(4)}`;
+                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} ${timeUnitLabel} is ${AppState.globalEstimatedValue.toFixed(4)}`;
         }
     }
 }
