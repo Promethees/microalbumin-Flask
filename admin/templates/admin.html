@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Easy OKAPI — Admin Console</title>
+  <style>
+    :root { --green:#2d6a4f; --red:#9b2226; --muted:#6b7280; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background:#f4f4f4; margin:0; color:#222; }
+    .wrap { max-width: 760px; margin: 32px auto; padding: 0 16px; }
+    .card { background:#fff; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,.08); padding:24px; margin-bottom:18px; }
+    h1 { font-size:20px; margin:0 0 4px; }
+    .sub { color:var(--muted); font-size:13px; margin:0 0 18px; }
+    .sub code { background:#eee; padding:1px 5px; border-radius:4px; }
+    label { font-size:13px; font-weight:600; display:block; margin-bottom:6px; }
+    input[type=email] { width:100%; padding:10px 12px; font-size:15px; border:1px solid #ccc; border-radius:6px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    button { padding:10px 18px; font-size:14px; font-weight:600; border:none; border-radius:6px; cursor:pointer; color:#fff; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .btn-look { background:#264653; }
+    .btn-revoke { background:var(--red); }
+    .btn-reinstate { background:var(--green); }
+    .banner { padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:16px; }
+    .banner.warn { background:#fff3cd; color:#7a5b00; }
+    .result { margin-top:18px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid #eee; }
+    th { color:var(--muted); font-weight:600; }
+    .pill { display:inline-block; padding:2px 9px; border-radius:99px; font-size:12px; font-weight:700; }
+    .pill.ok { background:#d8f3dc; color:#1b4332; }
+    .pill.revoked { background:#ffd6d6; color:#9b2226; }
+    .msg { padding:10px 14px; border-radius:6px; font-size:14px; margin-top:14px; }
+    .msg.ok { background:#d8f3dc; color:#1b4332; }
+    .msg.err { background:#ffd6d6; color:#9b2226; }
+    .hwid { font-family: ui-monospace, Menlo, monospace; font-size:12px; color:#444; }
+    .muted { color:var(--muted); font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Easy OKAPI — Admin Console</h1>
+      <p class="sub">License kill-switch · server: <code>{{ server_url }}</code></p>
+      {% if not key_configured %}
+      <div class="banner warn"><strong>ADMIN_API_KEY is not set.</strong> Copy <code>.env.example</code> → <code>.env</code> and fill it in, then restart.</div>
+      {% endif %}
+
+      <label for="email">Customer email</label>
+      <input id="email" type="email" placeholder="user@example.com" autocomplete="off" />
+      <div class="row">
+        <button class="btn-look" id="btnLook">Look up</button>
+        <button class="btn-revoke" id="btnRevoke" disabled>Revoke license</button>
+        <button class="btn-reinstate" id="btnReinstate" disabled>Reinstate</button>
+      </div>
+      <div id="msg"></div>
+    </div>
+
+    <div class="card result" id="resultCard" style="display:none">
+      <div id="userInfo"></div>
+      <table id="machines"><thead>
+        <tr><th>HWID</th><th>Status</th><th>Last seen</th><th>Activated</th></tr>
+      </thead><tbody></tbody></table>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const emailEl = $('email'), msgEl = $('msg');
+let lastEmail = '';
+
+function setMsg(text, kind) {
+  msgEl.innerHTML = text ? `<div class="msg ${kind}">${text}</div>` : '';
+}
+function fmt(ts) { return ts ? new Date(ts).toLocaleString() : '—'; }
+
+function render(data) {
+  const card = $('resultCard');
+  if (!data || !data.user) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const u = data.user;
+  const anyRevoked = (data.machines || []).some(m => m.revoked);
+  $('userInfo').innerHTML =
+    `<strong>${u.name}</strong> &lt;${u.email}&gt; ` +
+    `<span class="pill ${anyRevoked ? 'revoked' : 'ok'}">${anyRevoked ? 'REVOKED' : 'active'}</span>` +
+    `<div class="muted">verified: ${u.is_verified} · ${ (data.machines||[]).length } machine(s)</div>`;
+  const tb = $('machines').querySelector('tbody');
+  tb.innerHTML = (data.machines || []).map(m =>
+    `<tr><td class="hwid">${m.hwid.slice(0,16)}…</td>` +
+    `<td><span class="pill ${m.revoked ? 'revoked' : 'ok'}">${m.revoked ? 'revoked' : 'active'}</span></td>` +
+    `<td>${fmt(m.last_seen)}</td><td>${fmt(m.activated_at)}</td></tr>`
+  ).join('') || '<tr><td colspan="4" class="muted">No machines activated.</td></tr>';
+  $('btnRevoke').disabled = false;
+  $('btnReinstate').disabled = false;
+}
+
+async function lookup() {
+  const email = emailEl.value.trim();
+  if (!email) { setMsg('Enter an email first.', 'err'); return; }
+  setMsg('Looking up…', 'ok');
+  try {
+    const r = await fetch('/api/lookup?email=' + encodeURIComponent(email));
+    const d = await r.json();
+    if (!r.ok) { setMsg(d.message || 'Lookup failed', 'err'); render(null); return; }
+    lastEmail = email; setMsg('', 'ok'); render(d);
+  } catch (e) { setMsg('Request failed: ' + e, 'err'); }
+}
+
+async function setRevoked(revoked) {
+  const email = emailEl.value.trim();
+  if (!email) { setMsg('Enter an email first.', 'err'); return; }
+  const verb = revoked ? 'REVOKE' : 'reinstate';
+  if (!confirm(`${verb} the license for ${email}?`)) return;
+  setMsg('Working…', 'ok');
+  try {
+    const r = await fetch('/api/revoke', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email, revoked })
+    });
+    const d = await r.json();
+    if (!r.ok) { setMsg(d.message || 'Action failed', 'err'); return; }
+    const tail = revoked
+      ? `${d.affected} seat(s) revoked${d.email_sent ? ', notification email sent' : ' (email NOT sent)'}.`
+      : `${d.affected} seat(s) reinstated.`;
+    setMsg(`Done — ${tail}`, 'ok');
+    render(d.machines ? { user: { name: email, email, is_verified: true }, machines: d.machines } : null);
+    lookup();  // refresh full view
+  } catch (e) { setMsg('Request failed: ' + e, 'err'); }
+}
+
+$('btnLook').onclick = lookup;
+$('btnRevoke').onclick = () => setRevoked(true);
+$('btnReinstate').onclick = () => setRevoked(false);
+emailEl.addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
+</script>
+</body>
+</html>
