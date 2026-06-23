@@ -21,6 +21,7 @@ from flask_limiter.util import get_remote_address
 AI_CHAT_LIMIT = "30 per minute"        # website logged-in chat (/ai/chat)
 AI_PROXY_LIMIT = "30 per minute"       # desktop proxy chat (/ai/proxy/chat)
 ACTIVATE_LIMIT = "10 per minute"       # token exchange (/api/activate)
+LICENSE_CHECK_LIMIT = "60 per minute"  # desktop revocation poll (/api/license/check)
 
 
 def _storage_uri():
