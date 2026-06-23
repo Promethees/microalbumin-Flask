@@ -215,7 +215,12 @@ def ensure_permanent_token():
         return False
     if not permanent or _token_has_expiry(permanent):
         return False
-    return save(permanent)
+    if not save(permanent):
+        return False
+    # The server just confirmed and bound this token (200 from /api/activate), so
+    # start the revocation grace clock from this known-good online event.
+    record_status('active')
+    return True
 
 
 def is_activated():
@@ -236,3 +241,110 @@ def needs_activation():
     so developers are never blocked.
     """
     return state._is_frozen() and not is_activated()
+
+
+# ── Admin revocation (client-side enforcement) ────────────────────────────────
+# A permanent activation token verifies entirely offline, so the client cannot
+# tell on its own that the admin has revoked the license server-side. We poll
+# POST /api/license/check and cache the verdict in license_status.json (beside
+# activation.json). The cache makes a 'revoked' verdict STICKY — it survives going
+# offline and restarting — while a recent 'active' verdict is trusted within a
+# grace window so a briefly-offline user is never blocked. Past the grace window,
+# with no fresh confirmation, the app asks the user to reconnect (a soft reverify
+# gate) rather than bricking; reconnecting re-checks and refreshes the cycle.
+
+_STATUS_PATH = os.path.join(state.script_dir, 'license_status.json')
+LICENSE_CHECK_URL = AI_SERVICE_URL + '/api/license/check'
+
+
+def _grace_seconds():
+    """Seconds an 'active' verdict is trusted before a re-check is required.
+
+    Env-tunable (LICENSE_GRACE_SECONDS); default 7 days, floored at 1 hour so a
+    misconfiguration can't make the grace window uselessly short.
+    """
+    try:
+        return max(3600, int(os.environ.get('LICENSE_GRACE_SECONDS', str(7 * 24 * 3600))))
+    except (TypeError, ValueError):
+        return 7 * 24 * 3600
+
+
+def load_status():
+    try:
+        with open(_STATUS_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def record_status(status):
+    """Persist a license verdict ('active'|'revoked') stamped with the current time."""
+    try:
+        with open(_STATUS_PATH, 'w', encoding='utf-8') as f:
+            json.dump({'status': status, 'checked_at': time.time()}, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+
+def check_revocation():
+    """Poll the server for this machine's license verdict and update the cache.
+
+    Returns 'active', 'revoked', or 'offline'. Best-effort: only an explicit
+    'active'/'revoked' (HTTP 200) changes the cached state, so an unreachable
+    server, a 4xx/5xx, or an untrusted reply ('offline') never flips a working
+    install to blocked — it just leaves the last known verdict in place.
+    """
+    token = get_license_token()
+    if not token:
+        return 'offline'
+    try:
+        import requests
+        resp = requests.post(LICENSE_CHECK_URL,
+                             json={'license_token': token, 'hwid': get_hwid()}, timeout=15)
+    except Exception:
+        return 'offline'
+    if resp.status_code != 200:
+        return 'offline'
+    try:
+        status = (resp.json().get('status') or '').lower()
+    except Exception:
+        return 'offline'
+    if status == 'revoked':
+        record_status('revoked')
+        return 'revoked'
+    if status == 'active':
+        record_status('active')
+        return 'active'
+    return 'offline'
+
+
+def license_state():
+    """Client-side license verdict for the gate: 'active' | 'revoked' | 'needs_recheck'.
+
+    Only meaningful for an activated, frozen build. Source/dev runs and not-yet-
+    activated builds (the activation gate handles those) are always 'active' here,
+    so revocation never interferes with them. For an activated frozen build:
+
+      * cached 'revoked'                    → 'revoked'        (sticky; works offline)
+      * cached 'active' within grace window → 'active'
+      * otherwise (no/stale confirmation)   → 'needs_recheck'  (ask to reconnect)
+    """
+    if not state._is_frozen() or not is_activated():
+        return 'active'
+    st = load_status()
+    status = st.get('status')
+    if status == 'revoked':
+        return 'revoked'
+    if status == 'active':
+        try:
+            if (time.time() - float(st.get('checked_at') or 0)) < _grace_seconds():
+                return 'active'
+        except (TypeError, ValueError):
+            pass
+    return 'needs_recheck'
+
+
+def license_blocked():
+    """True when the app must be blocked outright because the license was revoked."""
+    return license_state() == 'revoked'

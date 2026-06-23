@@ -159,6 +159,59 @@ def activate_page():
     return render_template('activate.html', title='Activate EasyOKAPI',
                            ai_service_url=_activation.AI_SERVICE_URL)
 
+
+# ── License revocation gate (frozen builds) ──────────────────────────────────
+# An activated machine whose license the admin has revoked server-side must stop
+# working, even though its permanent token still verifies offline. license_state()
+# reports 'revoked' (sticky, blocks outright), 'needs_recheck' (grace lapsed while
+# offline — ask the user to reconnect) or 'active'. See src/activation.py.
+_LICENSE_OPEN_PATHS = {'/license-blocked', '/license-reverify', '/license/recheck',
+                       '/ping', '/favicon.ico'}
+
+
+@app.before_request
+def _enforce_license():
+    state_ = _activation.license_state()
+    if state_ == 'active':
+        return
+    path = request.path
+    if path in _LICENSE_OPEN_PATHS or path.startswith('/static/'):
+        return
+    if path.startswith('/api/') or path.startswith('/ai/'):
+        code = 'license_revoked' if state_ == 'revoked' else 'license_recheck'
+        return jsonify({'status': 'error', 'code': code,
+                        'message': 'This license is not currently valid on this machine.'}), 403
+    return redirect('/license-blocked' if state_ == 'revoked' else '/license-reverify')
+
+
+@app.route('/license-blocked')
+def license_blocked_page():
+    # Only a revoked license sees this dead-end; anything else returns to the app.
+    if _activation.license_state() != 'revoked':
+        return redirect('/')
+    return render_template('license_blocked.html', title='License Deactivated',
+                           ai_service_url=_activation.AI_SERVICE_URL,
+                           support_email=state.MAINTAINER_EMAIL)
+
+
+@app.route('/license-reverify')
+def license_reverify_page():
+    st = _activation.license_state()
+    if st == 'active':
+        return redirect('/')
+    if st == 'revoked':
+        return redirect('/license-blocked')
+    return render_template('license_reverify.html', title='Verify License',
+                           ai_service_url=_activation.AI_SERVICE_URL)
+
+
+@app.route('/license/recheck', methods=['POST'])
+def license_recheck():
+    """Re-poll the server now (used by the reverify page) and report the verdict."""
+    result = _activation.check_revocation()  # 'active' | 'revoked' | 'offline'
+    return jsonify({'status': 'success', 'result': result,
+                    'state': _activation.license_state()})
+
 # Endpoints moved to their respective blueprints
 
 if __name__ == '__main__':
@@ -259,6 +312,25 @@ if __name__ == '__main__':
         except Exception:
             pass
     threading.Thread(target=_ensure_permanent_token, daemon=True).start()
+
+    # Best-effort: poll the server for admin revocation of this machine's license,
+    # once at startup and then periodically, so a revoke takes effect on a running
+    # app without a restart. Runs off the launch path; a successful 'active' check
+    # refreshes the grace clock, a 'revoked' verdict sticks. See activation.check_revocation().
+    def _license_revocation_watch():
+        import time as _t
+        import activation
+        # Re-upgrade race: give the token-upgrade thread a moment so a just-installed
+        # download token becomes permanent before the first check.
+        _t.sleep(3)
+        interval = max(900, int(os.environ.get('LICENSE_CHECK_INTERVAL', str(6 * 3600))))
+        while True:
+            try:
+                activation.check_revocation()
+            except Exception:
+                pass
+            _t.sleep(interval)
+    threading.Thread(target=_license_revocation_watch, daemon=True).start()
 
     # Keep the Windows uninstaller / Add-Remove Programs version in sync with this
     # build. An in-app binary swap replaces the exe but not the registry, so the

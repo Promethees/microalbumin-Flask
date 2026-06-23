@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='ht.ico') }}">
+    <style>
+        :root {
+            --bg: #4c0519; --bg2: #1f1115; --fg: #fde2e2; --muted: #fca5a5;
+            --accent: #be123c; --accent-hi: #e11d48; --ok: #86efac;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--fg);
+            background: radial-gradient(1200px 600px at 70% -10%, #7f1d1d 0%, var(--bg) 45%, var(--bg2) 100%);
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .card {
+            width: 100%; max-width: 460px;
+            background: rgba(31, 17, 21, 0.75);
+            border: 1px solid rgba(225, 29, 72, 0.3);
+            border-radius: 16px; padding: 32px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px); text-align: center;
+        }
+        .logo { display: block; width: 72px; height: 72px; margin: 0 auto 14px; object-fit: contain; }
+        h1 { font-size: 1.4rem; margin: 0 0 6px; }
+        p.sub { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; line-height: 1.55; }
+        a { color: #fda4af; }
+        button {
+            width: 100%; margin-top: 8px; padding: 12px 14px; border: none;
+            border-radius: 10px; background: var(--accent); color: #fff;
+            font-size: 0.98rem; font-weight: 600; cursor: pointer; transition: background .15s;
+        }
+        button:hover:not(:disabled) { background: var(--accent-hi); }
+        button:disabled { opacity: 0.6; cursor: progress; }
+        .msg { margin-top: 14px; font-size: 0.88rem; min-height: 1.2em; }
+        .msg.ok { color: var(--ok); }
+        .foot { margin-top: 20px; font-size: 0.82rem; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img class="logo" src="{{ url_for('static', filename='okapi.png') }}" alt="EasyOKAPI"
+             onerror="this.style.display='none'">
+        <h1>License deactivated</h1>
+        <p class="sub">This EasyOKAPI license has been deactivated by an administrator,
+            so the app is locked on this machine.</p>
+        <p class="sub">If you believe this is a mistake, contact
+            <a href="mailto:{{ support_email }}">{{ support_email }}</a> to have your
+            access restored. Once restored, click below to unlock.</p>
+
+        <button id="recheckBtn" type="button">Check again</button>
+        <div id="msg" class="msg" role="status" aria-live="polite"></div>
+    </main>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('recheckBtn');
+            var msg = document.getElementById('msg');
+            function setMsg(t, kind) { msg.textContent = t || ''; msg.className = 'msg' + (kind ? ' ' + kind : ''); }
+
+            btn.addEventListener('click', function () {
+                btn.disabled = true; setMsg('Checking…');
+                fetch('/license/recheck', { method: 'POST' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.state === 'active') { setMsg('Restored! Starting EasyOKAPI…', 'ok'); window.location.href = '/'; return; }
+                        btn.disabled = false;
+                        setMsg(d.result === 'offline'
+                            ? 'Could not reach the license server. Check your connection.'
+                            : 'Still deactivated. Contact support if this is unexpected.');
+                    })
+                    .catch(function () { btn.disabled = false; setMsg('Could not reach the license server. Check your connection.'); });
+            });
+        })();
+    </script>
+</body>
+</html>

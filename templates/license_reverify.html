@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='ht.ico') }}">
+    <style>
+        :root {
+            --bg: #312e81; --bg2: #1e1b4b; --fg: #e2e8f0; --muted: #a5b4fc;
+            --accent: #6366f1; --accent-hi: #818cf8; --err: #fca5a5; --ok: #86efac;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--fg);
+            background: radial-gradient(1200px 600px at 70% -10%, #4338ca 0%, var(--bg) 45%, var(--bg2) 100%);
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .card {
+            width: 100%; max-width: 460px;
+            background: rgba(30, 27, 75, 0.72);
+            border: 1px solid rgba(129, 140, 248, 0.25);
+            border-radius: 16px; padding: 32px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+            backdrop-filter: blur(6px); text-align: center;
+        }
+        .logo { display: block; width: 72px; height: 72px; margin: 0 auto 14px; object-fit: contain; }
+        h1 { font-size: 1.4rem; margin: 0 0 6px; }
+        p.sub { color: var(--muted); margin: 0 0 22px; font-size: 0.92rem; line-height: 1.5; }
+        button {
+            width: 100%; margin-top: 6px; padding: 12px 14px; border: none;
+            border-radius: 10px; background: var(--accent); color: #fff;
+            font-size: 0.98rem; font-weight: 600; cursor: pointer; transition: background .15s;
+        }
+        button:hover:not(:disabled) { background: var(--accent-hi); }
+        button:disabled { opacity: 0.6; cursor: progress; }
+        .msg { margin-top: 16px; font-size: 0.9rem; min-height: 1.2em; line-height: 1.45; }
+        .msg.error { color: var(--err); }
+        .msg.ok { color: var(--ok); }
+        .spinner {
+            width: 26px; height: 26px; margin: 6px auto 14px; border-radius: 50%;
+            border: 3px solid rgba(129,140,248,0.35); border-top-color: var(--accent-hi);
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img class="logo" src="{{ url_for('static', filename='okapi.png') }}" alt="EasyOKAPI"
+             onerror="this.style.display='none'">
+        <h1>Verify your license</h1>
+        <p class="sub">EasyOKAPI needs to confirm your license online. Please connect to
+            the internet — we'll check automatically and continue once it's confirmed.</p>
+
+        <div id="spinner" class="spinner"></div>
+        <button id="retryBtn" type="button" style="display:none">Check again</button>
+        <div id="msg" class="msg" role="status" aria-live="polite">Checking…</div>
+    </main>
+
+    <script>
+        (function () {
+            var spinner = document.getElementById('spinner');
+            var btn = document.getElementById('retryBtn');
+            var msg = document.getElementById('msg');
+
+            function setMsg(t, kind) { msg.textContent = t || ''; msg.className = 'msg' + (kind ? ' ' + kind : ''); }
+            function busy(on) {
+                spinner.style.display = on ? 'block' : 'none';
+                btn.style.display = on ? 'none' : 'block';
+                btn.disabled = on;
+            }
+
+            function check() {
+                busy(true); setMsg('Checking your license…');
+                fetch('/license/recheck', { method: 'POST' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.state === 'active') { setMsg('Verified! Starting EasyOKAPI…', 'ok'); window.location.href = '/'; return; }
+                        if (d.state === 'revoked') { window.location.href = '/license-blocked'; return; }
+                        busy(false);
+                        setMsg('Could not verify yet — you appear to be offline. Connect to the internet and try again.', 'error');
+                    })
+                    .catch(function () {
+                        busy(false);
+                        setMsg('Could not reach the license server. Check your connection and try again.', 'error');
+                    });
+            }
+
+            btn.addEventListener('click', check);
+            check();  // auto-check on load
+        })();
+    </script>
+</body>
+</html>
