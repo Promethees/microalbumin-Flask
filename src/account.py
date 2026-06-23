@@ -91,6 +91,12 @@ class LicenseMachine(db.Model):
     label = db.Column(db.String(255), nullable=True)  # optional friendly name
     activated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     last_seen = db.Column(db.DateTime, nullable=True)
+    # Admin kill-switch: when True the seat is disabled. The token stays valid
+    # cryptographically (still permanent, still hardware-matched) but the server
+    # refuses it — AI proxy + auto-update fail immediately, and the desktop
+    # license-check endpoint reports 'revoked'. Set per-account by the admin tool.
+    revoked = db.Column(db.Boolean, default=False, nullable=False)
+    revoked_at = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship('User', backref=db.backref('machines', lazy=True, cascade='all, delete-orphan'))
 
@@ -103,14 +109,23 @@ def run_migrations(engine):
     """Add columns introduced after the initial schema was created."""
     from sqlalchemy import text
     dialect = engine.dialect.name
-    cols = [('reset_token', 'VARCHAR(128)'), ('reset_expires', 'TIMESTAMP' if dialect == 'postgresql' else 'DATETIME')]
+    ts_type = 'TIMESTAMP' if dialect == 'postgresql' else 'DATETIME'
+    # (table, column, type) tuples for columns added after the initial schema.
+    cols = [
+        ('users', 'reset_token', 'VARCHAR(128)'),
+        ('users', 'reset_expires', ts_type),
+        # Admin revocation (license kill-switch) — see LicenseMachine.revoked.
+        ('license_machines', 'revoked', 'BOOLEAN DEFAULT FALSE NOT NULL'
+            if dialect == 'postgresql' else 'BOOLEAN DEFAULT 0 NOT NULL'),
+        ('license_machines', 'revoked_at', ts_type),
+    ]
     with engine.connect() as conn:
-        for col, col_type in cols:
+        for table, col, col_type in cols:
             try:
                 if dialect == 'postgresql':
-                    conn.execute(text(f'ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {col_type}'))
+                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}'))
                 else:
-                    conn.execute(text(f'ALTER TABLE users ADD COLUMN {col} {col_type}'))
+                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {col} {col_type}'))
                 conn.commit()
             except Exception:
                 conn.rollback()

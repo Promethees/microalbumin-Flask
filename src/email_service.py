@@ -117,3 +117,59 @@ def send_password_reset_email(to_email: str, name: str, token: str, base_url: st
         server.sendmail(sender, [to_email], msg.as_string())
     finally:
         server.quit()
+
+
+def send_license_revoked_email(to_email: str, name: str, base_url: str = ''):
+    """Notify a user that their Easy OKAPI license has been deactivated by the admin.
+
+    Sent from /api/admin/revoke when an account is revoked. Best-effort: the caller
+    swallows send failures so revocation still succeeds if mail is unavailable.
+    """
+    sender = os.environ.get('SMTP_USER', '')
+    support = os.environ.get('SUPPORT_EMAIL', sender)
+    app_name = 'Easy OKAPI'
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'Your {app_name} license has been deactivated'
+    msg['From'] = f'{app_name} <{sender}>'
+    msg['To'] = to_email
+
+    text_body = (
+        f"Hi {name},\n\n"
+        f"Your {app_name} license has been deactivated by an administrator.\n\n"
+        f"The app on your machine(s) will stop working: the AI assistant and "
+        f"in-app updates are disabled immediately, and the app itself will be "
+        f"blocked the next time it checks in online.\n\n"
+        f"If you believe this is a mistake, please reply to this email or contact "
+        f"{support} to have your access restored.\n\n"
+        f"— The {app_name} Team"
+    )
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0">
+  <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)">
+    <div style="background:#9b2226;padding:28px 32px">
+      <h1 style="color:#fff;margin:0;font-size:22px">{app_name}</h1>
+    </div>
+    <div style="padding:32px">
+      <p style="font-size:16px;color:#333">Hi <strong>{name}</strong>,</p>
+      <p style="font-size:15px;color:#555">Your {app_name} license has been <strong>deactivated</strong> by an administrator.</p>
+      <p style="font-size:15px;color:#555">The AI assistant and in-app updates are disabled immediately, and the app will be blocked the next time it checks in online.</p>
+      <p style="font-size:13px;color:#999">If you believe this is a mistake, contact <a href="mailto:{support}">{support}</a> to have your access restored.</p>
+    </div>
+    <div style="background:#f0f0f0;padding:16px 32px;text-align:center">
+      <p style="font-size:12px;color:#aaa;margin:0">&copy; Easy OKAPI — Colorimeter Data Visualizer</p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    msg.attach(MIMEText(text_body, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+
+    server, _ = _smtp_connection()
+    try:
+        server.sendmail(sender, [to_email], msg.as_string())
+    finally:
+        server.quit()
