@@ -2,7 +2,7 @@
   "theme": "auto",
   "default_mode": "kinetics",
   "default_window_size": 4,
-  "default_subfolder": "26012026_TSL2591_test",
+  "default_subfolder": null,
   "file_table_height": 240,
   "max_csv_rows": 0,
   "max_json_rows": 0,
