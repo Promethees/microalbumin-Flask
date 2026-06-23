@@ -137,19 +137,11 @@ function refreshNumSourcesOptions(path) {
     });
 }
 
-// Rebuild the per-source export dropdown (#exp-json-source) from the current
+// Rebuild the per-source export checkbox group from the current
 // AppState.numSources. Skipped in calibrate mode, which has no source export.
 function rebuildExportSourceOptions() {
     if (AppState.currentMeasurementMode === "calibrate") return;
-    const selectElement = document.getElementById('exp-json-source');
-    if (!selectElement) return;
-    selectElement.innerHTML = '<option value="ALL">ALL</option>';
-    for (let i = 1; i <= AppState.numSources; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = i;
-        selectElement.appendChild(option);
-    }
+    updateMultiSourceExportOptions();
 }
 
 document.getElementById('filter-source').addEventListener('change', function () {
@@ -212,8 +204,9 @@ document.getElementById('save-json-file').addEventListener('input', function () 
 
 const expPoint = document.getElementById('exp-json-time-value');
 expPoint.addEventListener('change', updatePointEstimate);
-const expSource = document.getElementById('exp-json-source');
-expSource.addEventListener('change', updatePointEstimate);
+// The export-source checkboxes (#exp-source-checkboxes) re-estimate via their own
+// change handlers (onExpSourceAllToggle / onExpSourceItemToggle) attached when the
+// group is (re)built in updateMultiSourceExportOptions().
 
 // Currently-selected time unit for the point-mode reference input. Reading the
 // select value directly (rather than getTimeUnitValue, which returns null when
@@ -273,16 +266,14 @@ function updatePointEstimate() {
 
     console.log("response Data is", AppState.responseData);
 
-    if (document.getElementById("exp-json-source").value === "ALL") {
-        AppState.globalEstimatedValue = [];
-        for (let i = 1; i <= AppState.numSources; i++) {
-            AppState.globalEstimatedValue.push(
-                getEstimatedValue(AppState.responseData, currExpTimeSeconds, i)
-            );
-        }
-    } else {
-        const sourceIndex = getValInt("exp-json-source");
-        AppState.globalEstimatedValue = getEstimatedValue(AppState.responseData, currExpTimeSeconds, sourceIndex);
+    // Estimate every source's value (the export step later picks the selected
+    // subset via getSelectedExportSources()), so globalEstimatedValue is always
+    // a per-source array indexed 0..numSources-1.
+    AppState.globalEstimatedValue = [];
+    for (let i = 1; i <= AppState.numSources; i++) {
+        AppState.globalEstimatedValue.push(
+            getEstimatedValue(AppState.responseData, currExpTimeSeconds, i)
+        );
     }
 
     console.log("Estimated value is ", AppState.globalEstimatedValue);
@@ -292,17 +283,10 @@ function updatePointEstimate() {
         estValExp.innerHTML = '';
     } else {
         estValError.innerHTML = '';
-        if (Array.isArray(AppState.globalEstimatedValue)) {
-            estValExp.innerHTML = `Estimated values at ${currExpTimePoint} ${timeUnitLabel} are: ${AppState.globalEstimatedValue
-                    .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
-                    .join(", ")
-                }`;
-        } else {
-            if (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit !== "NONE")
-                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} ${timeUnitLabel} is <span style="color:${AppState.plotColors[0]}">${AppState.globalEstimatedValue.toFixed(4)}${AppState.globalAnalysis.meas_unit}</span>`;
-            else
-                estValExp.innerHTML = `Estimated ${AppState.globalAnalysis.meas} value at ${currExpTimePoint} ${timeUnitLabel} is ${AppState.globalEstimatedValue.toFixed(4)}`;
-        }
+        estValExp.innerHTML = `Estimated values at ${currExpTimePoint} ${timeUnitLabel} are: ${AppState.globalEstimatedValue
+                .map((v, i) => `<span style="color:${AppState.plotColors[i]}">[#S${i + 1}] ${v.toFixed(4)} ${AppState.globalAnalysis.meas_unit}</span>`)
+                .join(", ")
+            }`;
     }
 }
 

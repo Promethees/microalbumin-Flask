@@ -626,16 +626,119 @@ function drawMeasurementChart() {
     document.getElementById("cal-time-unit").textContent = getTimeUnitValue().slice(0, -1);
 }
 
+// Rebuild the per-source export checkbox group (#exp-source-checkboxes) from the
+// current AppState.numSources. Users tick exactly the sources they want exported;
+// the "All" master checkbox ticks/unticks every source at once. All sources are
+// selected by default (mirrors the old "ALL" dropdown default).
 function updateMultiSourceExportOptions() {
-    const selectElement = document.getElementById('exp-json-source');
-    // Optional: Clear previous options except "ALL"
-    selectElement.innerHTML = '<option value="ALL">ALL</option>';
+    const container = document.getElementById('exp-source-checkboxes');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // "All" master toggle
+    const allLabel = document.createElement('label');
+    allLabel.className = 'exp-source-option';
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.id = 'exp-source-all';
+    allCb.checked = true;
+    allCb.addEventListener('change', onExpSourceAllToggle);
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(' All'));
+    container.appendChild(allLabel);
+
+    // One checkbox per source
     for (let i = 1; i <= AppState.numSources; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = i;
-        selectElement.appendChild(option);
+        const label = document.createElement('label');
+        label.className = 'exp-source-option';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'exp-source-cb';
+        cb.value = String(i);
+        cb.checked = true;
+        cb.addEventListener('change', onExpSourceItemToggle);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + i));
+        container.appendChild(label);
     }
+    updateExpSourceSummary();
+}
+
+// Refresh the dropdown trigger's summary text from the current selection.
+function updateExpSourceSummary() {
+    const summary = document.getElementById('exp-source-summary');
+    if (!summary) return;
+    const total = document.querySelectorAll('#exp-source-checkboxes .exp-source-cb').length;
+    const selected = getSelectedExportSources();
+    let text;
+    if (total === 0) text = 'No sources';
+    else if (selected.length === 0) text = 'None selected';
+    else if (selected.length === total) text = total === 1 ? 'Source 1' : 'All sources';
+    else if (selected.length <= 3) text = 'Source ' + selected.join(', ');
+    else text = selected.length + ' sources';
+    summary.textContent = text;
+}
+
+// Open/close the export-source dropdown panel.
+function toggleExpSourceDropdown(e) {
+    if (e) e.stopPropagation();
+    const dd = document.getElementById('exp-source-dropdown');
+    const panel = document.getElementById('exp-source-checkboxes');
+    const toggle = document.getElementById('exp-source-toggle');
+    if (!dd || !panel) return;
+    const willOpen = panel.hidden;
+    panel.hidden = !willOpen;
+    dd.classList.toggle('open', willOpen);
+    if (toggle) toggle.setAttribute('aria-expanded', String(willOpen));
+}
+
+function closeExpSourceDropdown() {
+    const dd = document.getElementById('exp-source-dropdown');
+    const panel = document.getElementById('exp-source-checkboxes');
+    const toggle = document.getElementById('exp-source-toggle');
+    if (panel) panel.hidden = true;
+    if (dd) dd.classList.remove('open');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+// Close the export-source dropdown when clicking anywhere outside it.
+document.addEventListener('click', function (e) {
+    const dd = document.getElementById('exp-source-dropdown');
+    if (dd && !dd.contains(e.target)) closeExpSourceDropdown();
+});
+
+// Return the selected source indices (1-based), in display order.
+function getSelectedExportSources() {
+    const selected = [];
+    document.querySelectorAll('#exp-source-checkboxes .exp-source-cb').forEach(cb => {
+        if (cb.checked) selected.push(parseInt(cb.value, 10));
+    });
+    return selected;
+}
+
+// "All" toggled -> apply its state to every source checkbox, then re-estimate.
+function onExpSourceAllToggle() {
+    const all = document.getElementById('exp-source-all');
+    const checked = !!(all && all.checked);
+    document.querySelectorAll('#exp-source-checkboxes .exp-source-cb')
+        .forEach(cb => { cb.checked = checked; });
+    updateExpSourceSummary();
+    if (typeof updatePointEstimate === 'function') updatePointEstimate();
+}
+
+// A single source toggled -> keep "All" in sync (ticked only when every source
+// is ticked), then re-estimate.
+function onExpSourceItemToggle() {
+    syncExpSourceAllCheckbox();
+    updateExpSourceSummary();
+    if (typeof updatePointEstimate === 'function') updatePointEstimate();
+}
+
+function syncExpSourceAllCheckbox() {
+    const all = document.getElementById('exp-source-all');
+    if (!all) return;
+    const cbs = Array.from(document.querySelectorAll('#exp-source-checkboxes .exp-source-cb'));
+    all.checked = cbs.length > 0 && cbs.every(cb => cb.checked);
 }
 
 function switchingModes(mode, opts) {

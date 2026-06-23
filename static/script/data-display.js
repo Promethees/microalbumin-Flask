@@ -1178,7 +1178,10 @@ function resetDataDisplayDefaults() {
     setChecked("open-all-analysis", false);
 
     // --- Export analysis for calibration ---
-    setVal("exp-json-source", "ALL");
+    // Re-tick every export-source checkbox (default = all sources, like old "ALL").
+    document.querySelectorAll('#exp-source-checkboxes input[type="checkbox"]')
+        .forEach(cb => { cb.checked = true; });
+    if (typeof updateExpSourceSummary === 'function') updateExpSourceSummary();
     setVal("exp-json-time-value", "");
     // The reference-point unit follows #time-unit (reset to its first option
     // above); keep its label and the tracked unit in sync.

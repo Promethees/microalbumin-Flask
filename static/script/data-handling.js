@@ -1663,23 +1663,17 @@ function warnToast(message) {
     });
 }
 
-// Validate concentration values based on source mode
+// Validate concentration values for the selected export sources
 function validateConcentration() {
-    const sourceValue = document.getElementById("exp-json-source").value;
-    if (sourceValue === "ALL") {
-        for (let i = 0; i < AppState.numSources; i++) {
-            const inputId = `con-value-read-source-${i}`;
-            if (!document.getElementById(inputId).value) {
-                warnToast(`Please enter a concentration value for source-${i + 1}.`);
-                blinkingItem(inputId, 5000);
-                return false;
-            }
-        }
-    } else {
-        const sourceIndex = getValInt("exp-json-source") - 1;
-        const inputId = `con-value-read-source-${sourceIndex}`;
+    const selected = getSelectedExportSources();
+    if (selected.length === 0) {
+        warnToast('Please select at least one source to export.');
+        return false;
+    }
+    for (const src of selected) {
+        const inputId = `con-value-read-source-${src - 1}`;
         if (!document.getElementById(inputId).value) {
-            warnToast(`Please enter a concentration value for source-${sourceIndex + 1}.`);
+            warnToast(`Please enter a concentration value for source-${src}.`);
             blinkingItem(inputId, 5000);
             return false;
         }
@@ -1699,29 +1693,19 @@ function generateAnalysisData() {
     return null;
 }
 
-// Generate kinetics mode data
+// Generate kinetics mode data for the selected export sources (in display order)
 function generateKineticsData() {
-    const sourceValue = document.getElementById("exp-json-source").value;
-    if (sourceValue === "ALL") {
-        return Array.from({ length: AppState.numSources }, (_, i) => ({
+    return getSelectedExportSources().map(src => {
+        const i = src - 1;
+        return {
             maxrate: AppState.globalAnalysis.sources[i].maxrate * getTimeUnitMultiplier('minutes'),
             slope: AppState.globalAnalysis.sources[i].slope * getTimeUnitMultiplier('minutes'),
             saturationValue: AppState.globalAnalysis.sources[i].sat,
             timeToSaturation: AppState.globalAnalysis.sources[i].time_to_sat / getTimeUnitMultiplier('minutes'),
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
-        }));
-    } else {
-        const exportSource = getValInt("exp-json-source") - 1;
-        return [{
-            maxrate: AppState.globalAnalysis.sources[exportSource].maxrate * getTimeUnitMultiplier('minutes'),
-            slope: AppState.globalAnalysis.sources[exportSource].slope * getTimeUnitMultiplier('minutes'),
-            saturationValue: AppState.globalAnalysis.sources[exportSource].sat,
-            timeToSaturation: AppState.globalAnalysis.sources[exportSource].time_to_sat / getTimeUnitMultiplier('minutes'),
-            measurement: AppState.globalAnalysis.meas,
-            measUnit: AppState.globalAnalysis.meas_unit
-        }];
-    }
+        };
+    });
 }
 
 // Generate point mode data
@@ -1737,22 +1721,17 @@ function generatePointData() {
     const timeUnit = (typeof getExpTimeUnit === 'function') ? getExpTimeUnit() : 'minutes';
     const timePointMinutes = currExpTimePoint * getTimeUnitMultiplier(timeUnit) / getTimeUnitMultiplier('minutes');
 
-    const sourceValue = document.getElementById("exp-json-source").value;
-    if (sourceValue === "ALL") {
-        return Array.from({ length: AppState.numSources }, (_, i) => ({
+    // globalEstimatedValue is always a per-source array (see updatePointEstimate);
+    // pick the selected sources in display order.
+    return getSelectedExportSources().map(src => {
+        const i = src - 1;
+        return {
             estValue: AppState.globalEstimatedValue[i].toFixed(4),
             timePoint: timePointMinutes,
             measurement: AppState.globalAnalysis.meas,
             measUnit: AppState.globalAnalysis.meas_unit
-        }));
-    } else {
-        return [{
-            estValue: AppState.globalEstimatedValue.toFixed(4),
-            timePoint: timePointMinutes,
-            measurement: AppState.globalAnalysis.meas,
-            measUnit: AppState.globalAnalysis.meas_unit
-        }];
-    }
+        };
+    });
 }
 
 // Send export data to sources
@@ -1769,18 +1748,23 @@ function sendExportDataToSources(processedExpPath, saveFile, analysisData) {
     let payload;
     let isBatch = false;
 
-    const sourceValue = document.getElementById("exp-json-source").value;
-    if (sourceValue === "ALL") {
+    // analysisData is produced in the same order as the selected sources, so
+    // entry N pairs with selected source N (and its concentration input).
+    const selected = getSelectedExportSources();
+    if (selected.length === 0) {
+        Swal.fire({ title: 'No sources selected', text: 'Please select at least one source to export.', icon: 'warning', confirmButtonText: 'OK' });
+        return;
+    }
+    if (selected.length > 1) {
         isBatch = true;
-        const entries = analysisData.map((data, i) => prepareExportEntry(data, `con-value-read-source-${i}`));
+        const entries = analysisData.map((data, idx) => prepareExportEntry(data, `con-value-read-source-${selected[idx] - 1}`));
         if (entries.length === 0) {
             Swal.fire({ title: 'Nothing to export', text: 'No analysis data available to export.', icon: 'warning', confirmButtonText: 'OK' });
             return;
         }
         payload = { ...commonData, newFile: true, entries };
     } else {
-        const sourceIndex = getValInt("exp-json-source") - 1;
-        const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${sourceIndex}`);
+        const entry = prepareExportEntry(analysisData[0], `con-value-read-source-${selected[0] - 1}`);
         if (!entry) {
             Swal.fire({ title: 'Nothing to export', text: 'No analysis data available to export.', icon: 'warning', confirmButtonText: 'OK' });
             return;
