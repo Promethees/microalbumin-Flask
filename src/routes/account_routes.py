@@ -582,6 +582,51 @@ def admin_lookup():
     })
 
 
+@account_bp.route('/api/admin/users')
+def admin_users():
+    """List registered accounts for the admin console, newest first (read-only).
+
+    Optional `q` filters by case-insensitive substring of email OR name. `limit`
+    caps the result (default 200, hard max 500) so a huge user base can't return an
+    unbounded payload. Each row carries a machine count and whether any seat is
+    revoked, so the console can show license status at a glance.
+    """
+    err = _require_admin()
+    if err:
+        return err
+    q = (request.args.get('q') or '').strip().lower()
+    try:
+        limit = min(500, max(1, int(request.args.get('limit', 200))))
+    except (TypeError, ValueError):
+        limit = 200
+    query = User.query
+    if q:
+        like = '%' + q + '%'
+        query = query.filter(db.or_(db.func.lower(User.email).like(like),
+                                    db.func.lower(User.name).like(like)))
+    total = query.count()
+    users = query.order_by(User.created_at.desc()).limit(limit).all()
+    rows = []
+    for u in users:
+        machines = u.machines  # backref; admin-scale N+1 is fine
+        rows.append({
+            'id': u.id,
+            'email': u.email,
+            'name': u.name,
+            'is_verified': bool(u.is_verified),
+            'created_at': u.created_at.isoformat() if u.created_at else None,
+            'machine_count': len(machines),
+            'revoked': any(m.revoked for m in machines),
+        })
+    return jsonify({
+        'status': 'success',
+        'count': len(rows),
+        'total': total,           # total matching before the limit
+        'limit': limit,
+        'users': rows,
+    })
+
+
 @account_bp.route('/api/admin/revoke', methods=['POST'])
 def admin_revoke():
     """Revoke (or reinstate) a user's license across all their machines, by email.

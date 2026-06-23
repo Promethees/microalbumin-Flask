@@ -50,6 +50,10 @@ def app(monkeypatch):
         db.session.flush()
         db.session.add(LicenseMachine(user_id=u.id, hwid=_HWID))
         db.session.add(LicenseMachine(user_id=u.id, hwid='b' * 64))
+        # A second account (no machines) for the user-listing / search tests.
+        a = User(email='alice@example.com', name='Alice Smith', is_verified=False)
+        a.set_password('password123')
+        db.session.add(a)
         db.session.commit()
     return app
 
@@ -121,6 +125,50 @@ def test_lookup_reports_machines(client):
     assert r.status_code == 200
     assert body['user']['email'] == 'user@example.com'
     assert len(body['machines']) == 2
+
+
+# ── user listing + search ─────────────────────────────────────────────────────
+
+def test_users_requires_key(client):
+    assert client.get('/api/admin/users').status_code == 401
+
+
+def test_users_lists_all(client):
+    r = client.get('/api/admin/users', headers=_hdr())
+    body = r.get_json()
+    assert r.status_code == 200
+    assert body['total'] == 2
+    emails = {u['email'] for u in body['users']}
+    assert emails == {'user@example.com', 'alice@example.com'}
+    by_email = {u['email']: u for u in body['users']}
+    assert by_email['user@example.com']['machine_count'] == 2
+    assert by_email['alice@example.com']['machine_count'] == 0
+    assert by_email['alice@example.com']['is_verified'] is False
+
+
+def test_users_search_by_name(client):
+    r = client.get('/api/admin/users?q=alice', headers=_hdr())
+    body = r.get_json()
+    assert body['count'] == 1
+    assert body['users'][0]['email'] == 'alice@example.com'
+
+
+def test_users_search_by_email_substring(client):
+    r = client.get('/api/admin/users?q=USER@example', headers=_hdr())  # case-insensitive
+    body = r.get_json()
+    assert body['count'] == 1
+    assert body['users'][0]['email'] == 'user@example.com'
+
+
+def test_users_search_no_match(client):
+    r = client.get('/api/admin/users?q=zzz-nobody', headers=_hdr())
+    assert r.get_json()['count'] == 0
+
+
+def test_users_revoked_flag_reflected(client):
+    client.post('/api/admin/revoke', json={'email': 'user@example.com'}, headers=_hdr())
+    r = client.get('/api/admin/users?q=user@example.com', headers=_hdr())
+    assert r.get_json()['users'][0]['revoked'] is True
 
 
 # ── revocation actually disables the seat ─────────────────────────────────────
