@@ -124,6 +124,7 @@ Timestamp,Value:1,Value:2,...
 - Data header starts with `Timestamp` followed by `Value:n` columns (for measurement data).
 - Calibration CSVs use: `Concentration,maxRate,Slope,Sat,Time To Sat` (kinetics) or `Concentration,Value,TimePoint` (point).
 - Multi-source files have multiple `Value:` columns (`Value:1`, `Value:2`, etc.).
+- **Point-mode reference unit**: the "Set reference point to export" input (`#exp-json-time-value`) is entered in the currently-selected `#time-unit`; its label and value rescale whenever `#time-unit` changes (`refreshExpTimeValueForUnit` in `init.js`). Estimates use the selected unit, but **exports always convert the reference point to minutes** (`generatePointData` in `data-handling.js`) so calibration files stay in minutes (`TimeUnit: minute`).
 
 ### 2.11 OS-Specific Behavior
 

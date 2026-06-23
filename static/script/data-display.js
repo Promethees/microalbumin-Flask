@@ -1180,6 +1180,10 @@ function resetDataDisplayDefaults() {
     // --- Export analysis for calibration ---
     setVal("exp-json-source", "ALL");
     setVal("exp-json-time-value", "");
+    // The reference-point unit follows #time-unit (reset to its first option
+    // above); keep its label and the tracked unit in sync.
+    if (typeof prevExpTimeUnit !== 'undefined') prevExpTimeUnit = getExpTimeUnit();
+    if (typeof refreshExpTimeUnitLabel === 'function') refreshExpTimeUnitLabel();
     $text("est-val-error", "");
     $text("est-val-exp", "");
     setChecked("same-dir-as-data", true);
