@@ -3214,3 +3214,81 @@ body.dark .okapi-ai-cmd-desc { color: #9ca3af; }
 @media (max-width: 440px) {
     #okapi-ai-panel { width: calc(100vw - 32px); right: 16px; }
 }
+
+/* ==========================================================================
+   Hover-hint tooltip component (driven by tooltip.js + [data-hint])
+   A single bubble appended to <body>, so it is never clipped by the app's
+   overflow:hidden collapsible sections. Light theme uses a dark bubble;
+   dark theme uses a light bubble — readable contrast in both.
+   ========================================================================== */
+#okapi-tooltip {
+    --okapi-tip-bg: #1f2933;
+    --okapi-tip-fg: #f5f7fa;
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* Above every app overlay: the 9999999 layer and SweetAlert2, so hints on
+       buttons inside swal dialogs / the AI panel stay visible. */
+    z-index: 2147483640;
+    max-width: 260px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: var(--okapi-tip-bg);
+    color: var(--okapi-tip-fg);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    font-weight: 500;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: break-word;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+#okapi-tooltip[data-placement="bottom"] {
+    transform: translateY(-4px);
+}
+
+#okapi-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#okapi-tooltip::after {
+    content: "";
+    position: absolute;
+    left: var(--arrow-x, 50%);
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+}
+
+#okapi-tooltip[data-placement="top"]::after {
+    top: 100%;
+    border-top-color: var(--okapi-tip-bg);
+}
+
+#okapi-tooltip[data-placement="bottom"]::after {
+    bottom: 100%;
+    border-bottom-color: var(--okapi-tip-bg);
+}
+
+body.dark #okapi-tooltip {
+    --okapi-tip-bg: #e8edf2;
+    --okapi-tip-fg: #1f2933;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #okapi-tooltip {
+        transition: opacity 0.14s ease;
+        transform: none;
+    }
+
+    #okapi-tooltip[data-placement="bottom"],
+    #okapi-tooltip.visible {
+        transform: none;
+    }
+}
