@@ -1,9 +1,11 @@
 {
-  "theme": "auto",
-  "default_mode": "kinetics",
+  "theme": "dark",
+  "time_tag_format": "iso",
+  "default_mode": "point",
   "default_window_size": 4,
   "default_subfolder": null,
   "file_table_height": 240,
+  "file_sort_order": "date_desc",
   "max_csv_rows": 0,
   "max_json_rows": 0,
   "event_log_retention_days": 30,
