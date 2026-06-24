@@ -61,7 +61,7 @@
         {% if status == 'success' %}
         <h2>✓ Connected!</h2>
         <p>Successfully connected to Google Drive.</p>
-        <button onclick="window.close()">Close Window</button>
+        <button onclick="window.close()" title="Close this window and return to Easy OKAPI">Close Window</button>
         <script>
             // Notify parent window
             if (window.opener) {
@@ -95,7 +95,7 @@
         </script>
         {% endif %}
 
-        <button onclick="window.close()">Close Window</button>
+        <button onclick="window.close()" title="Close this window and return to Easy OKAPI">Close Window</button>
         {% endif %}
     </div>
 </body>

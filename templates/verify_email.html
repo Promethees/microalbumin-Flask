@@ -54,11 +54,11 @@
       {% if success %}
         <div class="icon">✅</div>
         <p>{{ message }}</p>
-        <a href="/account/login" class="btn">Log in &amp; download</a>
+        <a href="/account/login" class="btn" title="Sign in to get your download token and installer">Log in &amp; download</a>
       {% else %}
         <div class="icon">❌</div>
         <p>{{ message }}</p>
-        <a href="/account/signup" class="btn">Sign up again</a>
+        <a href="/account/signup" class="btn" title="Start a new sign-up if your verification link expired">Sign up again</a>
       {% endif %}
     </div>
   </div>
