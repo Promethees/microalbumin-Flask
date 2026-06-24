@@ -887,6 +887,7 @@ async function refreshReportSubjects() {
     const res = await fetch('/get_report_subjects');
     const data = await res.json();
     if (data.status === 'success') {
+        AppState.reportMeta = data.subjects_meta || {};
         updateReportTable(data.subjects || []);
     } else {
         console.warn("Failed to refresh report subjects:", data.message);

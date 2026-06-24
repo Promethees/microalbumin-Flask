@@ -73,6 +73,13 @@ const AppState = {
     fileMeta: (typeof FILE_META !== 'undefined' && FILE_META) ? FILE_META : {},
     fileNames: [],
     fileSortOrder: (typeof FILE_SORT_ORDER !== 'undefined' && FILE_SORT_ORDER) ? FILE_SORT_ORDER : 'date_desc',
+    // Modified-date metadata + last-rendered names for the calibration-JSON table
+    // (#json-table) and the report-subject folder table (#file-table in report mode).
+    // Both reuse fileSortOrder as the shared sort preference.
+    jsonMeta: (typeof CAL_JSON_META !== 'undefined' && CAL_JSON_META) ? CAL_JSON_META : {},
+    jsonNames: [],
+    reportMeta: {},
+    reportNames: [],
     reset: function () {
         this.myChart = null;
         this.scriptRunning = false;
@@ -613,6 +620,7 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
         if (AppState.currentMeasurementMode === 'report') {
             $.get('/get_report_subjects', function (response) {
                 if (response.status === 'success') {
+                    AppState.reportMeta = response.subjects_meta || {};
                     updateReportTable(response.subjects);
                 }
                 resolve();
@@ -620,6 +628,7 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
         } else {
             $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
                 function (response) {
+                    AppState.jsonMeta = response.files_meta || {};
                     updateJSONTable(response.files);
                     resolve();
                 }).fail(resolve);

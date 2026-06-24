@@ -71,7 +71,7 @@ graph TD
 | `validators.py` | `@validate_json(schema)` decorator — validates and coerces JSON request payloads; injects `validated_data` kwarg into route handlers |
 | `math_ops.py` | Server-side regression: `calculate_coef_and_rsquared`, `calculate_kinetics_quantities`, `map_duplicates`, `get_rsquared_threshold` — uses `scipy.optimize.curve_fit` and `numpy` |
 | `file_path.py` | Data-folder constants and helpers: `DATA_ROOT`, `validate_in_data_root(path)`, `get_data_subfolders()`, `is_multi_value_timeseries_csv_header()`, `RESERVED_ARCHIVE_FOLDER` (`"root"`) + `is_reserved_data_folder_name(name)` (the `data/root/` archive staging folder is reserved — see Rule.md §2.16). CSV schema utilities: `parse_csv_metadata(lines)` (canonical `# Key: Value` parser), `detect_csv_schema(header_line)` (returns `CSV_SCHEMA_TIMESERIES / KINETICS_CAL / POINT_CAL`). No mutable state. |
-| `file.py` | File operations: `get_file_list` (glob), `get_file_meta` (per-file `{mtime, display}` map for the File Selection date column; `display` rendered via the `time_format` key → `TIME_TAG_FORMATS`), `sort_file_names` (order names by `name_asc`/`name_desc`/`date_asc`/`date_desc`), `_read_csv_raw` (shared CSV reader: returns meta lines + headers + rows), `get_dynamic_data` (parse CSV/JSON from disk), `merge_csv_files`, `replace_empty` |
+| `file.py` | File operations: `get_file_list` (glob), `build_meta` (stat arbitrary names — files *or* report-subject directories — into a `{mtime, display}` map; `display` rendered via the `time_format` key → `TIME_TAG_FORMATS`), `get_file_meta` (glob files → `build_meta`; powers the Modified-date column on the File Selection + calibration-JSON tables), `sort_file_names` (order names by `name_asc`/`name_desc`/`date_asc`/`date_desc`), `_read_csv_raw` (shared CSV reader: returns meta lines + headers + rows), `get_dynamic_data` (parse CSV/JSON from disk), `merge_csv_files`, `replace_empty` |
 | `file_operations.py` | `remove_csv_columns` — removes columns from CSV files on disk, renumbers `Value:` columns |
 | `measure.py` | `sort_csv_file` — sorts calibration CSV data on disk by concentration |
 | `browser_mgt.py` | `open_browser`, `close_port`, `cleanup`, `ensure_host_mapping` — browser/process lifecycle |
@@ -137,7 +137,7 @@ Reports are generated as standalone HTML files and organized under `report/<subj
 
 | Route | Method | Purpose |
 |---|---|---|
-| `/get_report_subjects` | GET | List subject subdirectories in `report/` |
+| `/get_report_subjects` | GET | List subject subdirectories in `report/` (also returns `subjects_meta` = `{name: {mtime, display}}` for the Modified-date column) |
 | `/save_report` | POST | Save HTML report to `report/<filename>/` |
 | `/export_to_report` | POST | Copy a report HTML file into a named subject folder |
 | `/get_report_items` | GET | List HTML files within a subject folder |

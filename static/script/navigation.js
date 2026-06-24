@@ -315,20 +315,35 @@ function arraysEqual(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function updateJSONTable(files) {
-    let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
+// Header row for the calibration-JSON table (name + modified-date columns are
+// click-to-sort). Matches the server-rendered markup in index.html.
+function _jsonTableHeaderHtml() {
+    return `<tr>
+        <th class="sortable-th" onclick="sortJsonTable('name')" data-hint="Click to sort by name">Calibrated JSON<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
+        <th class="sortable-th" onclick="sortJsonTable('date')" data-hint="Click to sort by last modified date">Modified<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
+        <th colspan="3">Action</th>
+    </tr>`;
+}
+
+// Render the calibration-JSON rows into #json-table, honouring the active sort
+// order, the max-JSON-rows limit and the modified-date column (AppState.jsonMeta).
+function renderJsonRows(files) {
+    AppState.jsonNames = (files || []).slice();
+    let html = _jsonTableHeaderHtml();
     if (files && files.length > 0) {
         const limit = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.max_json_rows > 0) ? USER_SETTINGS.max_json_rows : Infinity;
-        const shown = files.slice(0, limit);
+        const sorted = _sortNamesByMeta(files, AppState.jsonMeta);
+        const shown = sorted.slice(0, limit);
         shown.forEach(file => {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${_escHtml(file)}</td><td><button onclick="selectFile('${_esc(file)}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">✏️ Edit</button></td></tr>`;
+            const display = (AppState.jsonMeta[file] && AppState.jsonMeta[file].display) || '';
+            html += `<tr${isSelected}><td>${_escHtml(file)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button onclick="selectFile('${_esc(file)}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">✏️ Edit</button></td></tr>`;
         });
-        if (files.length > shown.length) {
-            html += `<tr><td colspan="4" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${files.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
+        if (sorted.length > shown.length) {
+            html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
         }
     } else {
-        html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
+        html += '<tr><td colspan="5">No Calibrated JSON is available.</td></tr>';
     }
     document.getElementById("json-table").innerHTML = html;
     const searchInput = document.getElementById('json-search');
@@ -337,22 +352,59 @@ function updateJSONTable(files) {
     }
 }
 
-function updateReportTable(subjects) {
-    let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="3">Action</th></tr>';
-    document.getElementById("file-search").placeholder = "Search subject folders...";
+// Render the calibration-JSON table. Called with the file list from /get_json_cal;
+// when called with no argument (post-copy/edit refreshes) it re-fetches the current
+// mode's list (and its date metadata) itself.
+function updateJSONTable(files) {
+    if (files === undefined) {
+        const mode = AppState.currentMeasurementMode;
+        return fetch(`/get_json_cal?mode=${encodeURIComponent(mode)}&numSources=${AppState.numSources}`)
+            .then(r => r.json())
+            .then(resp => {
+                AppState.jsonMeta = resp.files_meta || {};
+                renderJsonRows(resp.files || []);
+            })
+            .catch(() => { renderJsonRows([]); });
+    }
+    renderJsonRows(files);
+    return Promise.resolve();
+}
+
+// Header row for the report-subject folder table (name + modified-date columns
+// are click-to-sort).
+function _reportTableHeaderHtml() {
+    return `<tr>
+        <th id="file-table-header-name" class="sortable-th" onclick="sortReportTable('name')" data-hint="Click to sort by folder name">Folder Name<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
+        <th class="sortable-th" onclick="sortReportTable('date')" data-hint="Click to sort by last modified date">Modified<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
+        <th colspan="3">Action</th>
+    </tr>`;
+}
+
+// Render the report-subject folder rows into #file-table, honouring the active
+// sort order and the modified-date column (AppState.reportMeta).
+function renderReportRows(subjects) {
+    AppState.reportNames = (subjects || []).slice();
+    let html = _reportTableHeaderHtml();
     if (subjects && subjects.length > 0) {
-        subjects.forEach(subject => {
+        const sorted = _sortNamesByMeta(subjects, AppState.reportMeta);
+        sorted.forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
-            html += `<tr${isSelected}><td>${_escHtml(subject)}</td><td><button onclick="selectFile('${_esc(subject)}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${_esc(subject)}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${_esc(subject)}', this)">✏️ Edit</button></td></tr>`;
+            const display = (AppState.reportMeta[subject] && AppState.reportMeta[subject].display) || '';
+            html += `<tr${isSelected}><td>${_escHtml(subject)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button onclick="selectFile('${_esc(subject)}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${_esc(subject)}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${_esc(subject)}', this)">✏️ Edit</button></td></tr>`;
         });
     } else {
-        html += '<tr><td colspan="4">No report subjects found.</td></tr>';
+        html += '<tr><td colspan="5">No report subjects found.</td></tr>';
     }
     document.getElementById("file-table").innerHTML = html;
     const searchInput = document.getElementById('file-search');
     if (searchInput && searchInput.value) {
         filterTable('file-table', searchInput.value);
     }
+}
+
+function updateReportTable(subjects) {
+    document.getElementById("file-search").placeholder = "Search subject folders...";
+    renderReportRows(subjects);
 }
 
 // Return the ▲/▼ indicator for a column header given the active sort order,
@@ -373,24 +425,44 @@ function _fileTableHeaderHtml() {
     </tr>`;
 }
 
-// Order file names by the active sort order, using mtime from AppState.fileMeta
-// for date sorting (missing entries sort as oldest) and a case-insensitive
-// comparison for name sorting.
-function _sortFileNames(names) {
+// Order names by the active sort order (AppState.fileSortOrder, shared by all
+// folder/file tables), using mtime from the given meta map for date sorting
+// (missing entries sort as oldest) and a case-insensitive comparison for name
+// sorting.
+function _sortNamesByMeta(names, meta) {
     const order = AppState.fileSortOrder || 'date_desc';
     const dir = order.endsWith('asc') ? 1 : -1;
     const byDate = order.startsWith('date');
+    const m = meta || {};
     return names.slice().sort((a, b) => {
         let cmp;
         if (byDate) {
-            const ma = (AppState.fileMeta[a] && AppState.fileMeta[a].mtime) || 0;
-            const mb = (AppState.fileMeta[b] && AppState.fileMeta[b].mtime) || 0;
-            cmp = ma - mb;
+            cmp = ((m[a] && m[a].mtime) || 0) - ((m[b] && m[b].mtime) || 0);
         } else {
             cmp = a.toLowerCase().localeCompare(b.toLowerCase());
         }
         return cmp * dir;
     });
+}
+
+function _sortFileNames(names) {
+    return _sortNamesByMeta(names, AppState.fileMeta);
+}
+
+// Toggle the shared sort order for a clicked column header: clicking the active
+// column flips direction; switching columns starts descending (newest / Z-A
+// first). Persisted as the new default (best-effort). Returns the new order so
+// callers can re-render their table.
+function _applySortOrder(key) {
+    const order = AppState.fileSortOrder || 'date_desc';
+    let dir = 'desc';
+    if (order.startsWith(key)) {
+        dir = order.endsWith('asc') ? 'desc' : 'asc';
+    }
+    AppState.fileSortOrder = `${key}_${dir}`;
+    if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS.file_sort_order = AppState.fileSortOrder;
+    if (typeof saveUserSetting === 'function') saveUserSetting('file_sort_order', AppState.fileSortOrder);
+    return AppState.fileSortOrder;
 }
 
 // Render the CSV file rows (already passed through filterFiles) into #file-table,
@@ -421,19 +493,22 @@ function renderFileRows(names) {
     }
 }
 
-// Re-sort the File Selection table when a column header is clicked. Clicking the
-// active column toggles direction; switching columns starts descending (newest /
-// Z-A first). The chosen order is persisted as the new default (best-effort).
+// Re-sort the File Selection table when a column header is clicked.
 function sortFileTable(key) {
-    const order = AppState.fileSortOrder || 'date_desc';
-    let dir = 'desc';
-    if (order.startsWith(key)) {
-        dir = order.endsWith('asc') ? 'desc' : 'asc';
-    }
-    AppState.fileSortOrder = `${key}_${dir}`;
+    _applySortOrder(key);
     renderFileRows(AppState.fileNames);
-    if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS.file_sort_order = AppState.fileSortOrder;
-    if (typeof saveUserSetting === 'function') saveUserSetting('file_sort_order', AppState.fileSortOrder);
+}
+
+// Re-sort the calibration-JSON table when a column header is clicked.
+function sortJsonTable(key) {
+    _applySortOrder(key);
+    renderJsonRows(AppState.jsonNames);
+}
+
+// Re-sort the report-subject folder table when a column header is clicked.
+function sortReportTable(key) {
+    _applySortOrder(key);
+    renderReportRows(AppState.reportNames);
 }
 
 function updateFileTable(files, deselect) {

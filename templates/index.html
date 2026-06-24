@@ -432,13 +432,19 @@
                     <div class="scrollbar-style file-table-container">
                         <table id="json-table" class="table">
                             <tr>
-                                <th>Calibrated JSON</th>
+                                <th class="sortable-th" onclick="sortJsonTable('name')"
+                                    data-hint="Click to sort by name">Calibrated JSON <span
+                                        class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('name') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
+                                <th class="sortable-th" onclick="sortJsonTable('date')"
+                                    data-hint="Click to sort by last modified date">Modified <span
+                                        class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('date') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
                                 <th colspan="3">Action</th>
                             </tr>
                             {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
                                 <td>{{ file }}</td>
+                                <td class="file-mtime">{{ cal_json_meta.get(file, {}).get('display', '') }}</td>
                                 <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button>
                                 </td>
                                 <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button>
@@ -448,7 +454,7 @@
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="3">No Calibrated JSON is available.</td>
+                                <td colspan="5">No Calibrated JSON is available.</td>
                             </tr>
                             {% endif %}
                         </table>
@@ -792,6 +798,9 @@
             // navigation.js so re-sorting needs no server round-trip.
             const FILE_META = {{ file_meta | tojson | safe }};
             const FILE_SORT_ORDER = {{ file_sort_order | tojson | safe }};
+            // Modified-date metadata for the calibration-JSON table's first paint
+            // (kinetics dir); refreshed per mode from /get_json_cal thereafter.
+            const CAL_JSON_META = {{ cal_json_meta | tojson | safe }};
             const IS_FROZEN = {{ is_frozen | tojson | safe }};
             const DATA_ROOT_INFO = {{ data_root_info | tojson | safe }};
             // Set by the server on the first load after a restart (data-folder

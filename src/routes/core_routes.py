@@ -13,7 +13,7 @@ from file_path import DATA_ROOT, get_data_subfolders
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
-from file import get_file_list, get_file_meta, sort_file_names
+from file import get_file_list, get_file_meta, build_meta, sort_file_names
 
 core_bp = Blueprint('core', __name__)
 
@@ -55,7 +55,9 @@ def index():
     time_tag_format = user_settings.get("time_tag_format", "iso")
     file_meta = get_file_meta(DATA_ROOT, time_format=time_tag_format)
     file_list = sort_file_names(get_file_list(DATA_ROOT), file_meta, file_sort_order)
-    cal_json_list = get_file_list(os.path.join(state.json_root_path, "kinetics"), "*.json")
+    cal_json_dir = os.path.join(state.json_root_path, "kinetics")
+    cal_json_meta = get_file_meta(cal_json_dir, "*.json", time_format=time_tag_format)
+    cal_json_list = sort_file_names(get_file_list(cal_json_dir, "*.json"), cal_json_meta, file_sort_order)
 
     try:
         with open(state.log_file, 'w', encoding='utf-8') as f:
@@ -77,6 +79,7 @@ def index():
                          file_meta=file_meta,
                          file_sort_order=file_sort_order,
                          cal_json_list=cal_json_list,
+                         cal_json_meta=cal_json_meta,
                          delimiter=state.delimiter,
                          production_mode=state.PRODUCTION_MODE,
                          app_version=state.APP_VERSION,
@@ -156,7 +159,9 @@ def get_json_cal():
     json_path = os.path.join(state.json_root_path, mode)
     os.makedirs(json_path, exist_ok=True)
     json_files = get_file_list(json_path, "*.json")
-    return jsonify({'status': 'success', 'files': json_files})
+    time_tag_format = _user_settings.load().get("time_tag_format", "iso")
+    files_meta = get_file_meta(json_path, "*.json", time_format=time_tag_format)
+    return jsonify({'status': 'success', 'files': json_files, 'files_meta': files_meta})
 
 @core_bp.route('/settings', methods=['GET'])
 def get_settings():
@@ -441,5 +446,7 @@ def get_report_subjects():
         # List only directories
         subjects = [d for d in os.listdir(report_path) if os.path.isdir(os.path.join(report_path, d))]
         subjects.sort()
-        return jsonify({'status': 'success', 'subjects': subjects})
+        time_tag_format = _user_settings.load().get("time_tag_format", "iso")
+        subjects_meta = build_meta(report_path, subjects, time_format=time_tag_format)
+        return jsonify({'status': 'success', 'subjects': subjects, 'subjects_meta': subjects_meta})
     return jsonify({'status': 'error', 'message': "Report directory not found"})

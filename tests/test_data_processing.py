@@ -28,6 +28,21 @@ def test_get_file_meta(tmp_path):
     assert meta["a.csv"]["display"][4] == "-"
 
 
+def test_build_meta_handles_directories(tmp_path):
+    # Report subjects are directories, not files
+    (tmp_path / "subjectA").mkdir()
+    (tmp_path / "subjectB").mkdir()
+    meta = file.build_meta(str(tmp_path), ["subjectA", "subjectB"])
+    assert set(meta.keys()) == {"subjectA", "subjectB"}
+    assert meta["subjectA"]["mtime"] > 0
+    assert len(meta["subjectA"]["display"]) == 16  # default iso
+
+
+def test_build_meta_missing_entry_falls_back(tmp_path):
+    meta = file.build_meta(str(tmp_path), ["does_not_exist"])
+    assert meta["does_not_exist"] == {"mtime": 0, "display": ""}
+
+
 def test_get_file_meta_time_format(tmp_path):
     (tmp_path / "a.csv").write_text("data")
 

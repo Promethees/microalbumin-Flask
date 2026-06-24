@@ -35,32 +35,41 @@ def get_file_list(directory, fileType="*.csv"):
         return []
 
 
-def get_file_meta(directory, fileType="*.csv", time_format="iso"):
-    """Return per-file metadata for a directory keyed by file name.
+def build_meta(directory, names, time_format="iso"):
+    """Return modified-date metadata for the given ``names`` under ``directory``.
 
     The shape is ``{name: {"mtime": <epoch float>, "display": <formatted time tag>}}``.
-    ``mtime`` is the raw modified time used for client-side date sorting; ``display``
-    is the human-readable time tag shown in the File Selection table, rendered with
-    the ``time_format`` key (see ``TIME_TAG_FORMATS``; falls back to ``iso``). Files
-    that cannot be stat-ed fall back to ``mtime`` 0 and an empty display string.
+    Works for both files and directories (report subject folders). ``mtime`` is the
+    raw modified time used for client-side date sorting; ``display`` is the
+    human-readable time tag rendered with the ``time_format`` key (see
+    ``TIME_TAG_FORMATS``; falls back to ``iso``). Entries that cannot be stat-ed
+    fall back to ``mtime`` 0 and an empty display string.
     """
     pattern = TIME_TAG_FORMATS.get(time_format, TIME_TAG_FORMATS["iso"])
     meta = {}
+    for name in names:
+        try:
+            mtime = os.path.getmtime(os.path.join(directory, name))
+            display = datetime.fromtimestamp(mtime).strftime(pattern)
+        except OSError:
+            mtime, display = 0, ""
+        meta[name] = {"mtime": mtime, "display": display}
+    return meta
+
+
+def get_file_meta(directory, fileType="*.csv", time_format="iso"):
+    """Return per-file modified-date metadata for a directory keyed by file name.
+
+    Globs ``directory`` for ``fileType`` (skipping dotfiles) and delegates to
+    ``build_meta``. See ``build_meta`` for the returned shape.
+    """
     try:
         files = glob.glob(os.path.join(directory, fileType))
-        for f in files:
-            base = os.path.basename(f)
-            if base.startswith('.'):
-                continue
-            try:
-                mtime = os.path.getmtime(f)
-                display = datetime.fromtimestamp(mtime).strftime(pattern)
-            except OSError:
-                mtime, display = 0, ""
-            meta[base] = {"mtime": mtime, "display": display}
+        names = [os.path.basename(f) for f in files if not os.path.basename(f).startswith('.')]
     except Exception as e:
         print(f"Error reading file metadata in {directory}: {e}")
-    return meta
+        return {}
+    return build_meta(directory, names, time_format)
 
 
 def sort_file_names(names, meta, order="date_desc"):
