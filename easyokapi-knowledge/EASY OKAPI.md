@@ -101,11 +101,12 @@ graph TD
 
 Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` — host-initiated sessions use `transport="cdc"` (`usb_cdc.data`), button-initiated use `transport="hid"`.
 
-### 2.4 Frontend (`static/script/` — 15 JS files)
+### 2.4 Frontend (`static/script/` — 16 JS files)
 
 | File | Responsibility |
 |---|---|
 | `event-tracker.js` | `logEvent(type, action, details)` — fire-and-forget POST to `/event_log`; loaded before all other scripts |
+| `tooltip.js` | Styled hover-hint component. Any `[data-hint="…"]` element shows a single `#okapi-tooltip` bubble appended to `<body>` (so it escapes `overflow:hidden` collapsibles), positioned above/below the target on hover or keyboard focus. Replaces native `title=` tooltips; styling lives in `style.css` (`#okapi-tooltip`, light/dark themed) |
 | `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, etc.) |
 | `init.js` | Page initialization, event listeners, mode/filter setup |
 | `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus` |
@@ -305,6 +306,7 @@ microalbumin-Flask/
 │       ├── navigation.js
 │       ├── report.js           # Report generation + subject CRUD
 │       ├── short-hands.js
+│       ├── tooltip.js          # Styled [data-hint] hover tooltips
 │       ├── user-guide.js       # Interactive user guide
 │       └── ai-chat.js          # Floating AI chat widget
 ├── templates/

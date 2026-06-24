@@ -68,6 +68,7 @@ src/
 static/script/
   ├── report.js         ← report generation + subject CRUD UI
   ├── user-guide.js     ← interactive spotlight user guide
+  ├── tooltip.js        ← styled hover-hint component ([data-hint] → body-appended #okapi-tooltip; replaces native title=)
   └── ai-chat.js        ← floating AI chat widget (Groq-powered, 6 languages)
 
 report/                 ← saved HTML reports, organized by subject subdirectory
