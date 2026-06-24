@@ -404,7 +404,7 @@ function renderHtmlLegend(chart, canvasId, sourceIndex) {
             const pencil = document.createElement('button');
             pencil.className = 'legend-pencil';
             pencil.textContent = '✎';
-            pencil.title = 'Edit label and color';
+            pencil.setAttribute('data-hint', 'Edit label and color');
             pencil.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rect = pencil.getBoundingClientRect();

@@ -273,7 +273,7 @@
     function _injectWidget() {
         const fab = document.createElement('button');
         fab.id = 'okapi-ai-fab';
-        fab.title = 'OKAPI Assistant';
+        fab.setAttribute('data-hint', 'OKAPI Assistant');
         fab.innerHTML = `<span class="okapi-ai-label">AI Assistant</span><span class="okapi-ai-icon">&#129302;</span>`;
         fab.addEventListener('click', _togglePanel);
         document.body.appendChild(fab);
@@ -285,7 +285,7 @@
   <span id="okapi-ai-title">&#129302; OKAPI Assistant</span>
   <div id="okapi-ai-header-btns">
     <div id="okapi-ai-lang-select">
-      <button id="okapi-ai-lang-btn" title="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
+      <button id="okapi-ai-lang-btn" data-hint="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
       <div id="okapi-ai-lang-menu" class="okapi-hidden">
         <button class="okapi-ai-lang-opt" data-lang="en">English</button>
         <button class="okapi-ai-lang-opt" data-lang="vi">Ti&#7871;ng Vi&#7879;t</button>
@@ -295,7 +295,7 @@
         <button class="okapi-ai-lang-opt" data-lang="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</button>
       </div>
     </div>
-    <button id="okapi-ai-close-btn" title="Close" onclick="OkapiAI.close()">&#10005;</button>
+    <button id="okapi-ai-close-btn" data-hint="Close" onclick="OkapiAI.close()">&#10005;</button>
   </div>
 </div>
 
@@ -412,7 +412,7 @@
         if (!btn) return;
         const lang = AI.activeLang || 'en';
         btn.textContent = AI.LANG_LABELS[lang] || lang.toUpperCase();
-        btn.title = AI.LANG_NAMES[lang] || lang;
+        btn.setAttribute('data-hint', AI.LANG_NAMES[lang] || lang);
     }
 
     // ── Status bar ────────────────────────────────────────────────────────────
@@ -970,7 +970,7 @@
             input.disabled = true;
             if (sendBtn) {
                 sendBtn.innerHTML = '&#9632;';
-                sendBtn.title = 'Stop generation';
+                sendBtn.setAttribute('data-hint', 'Stop generation');
                 sendBtn.classList.add('okapi-ai-stop-mode');
                 sendBtn.onclick = () => OkapiAI.stopGeneration();
             }
@@ -1066,7 +1066,7 @@
                     AI.currentAbort = null;
                     if (sendBtn) {
                         sendBtn.innerHTML = '&#10148;';
-                        sendBtn.title = 'Send message';
+                        sendBtn.setAttribute('data-hint', 'Send message');
                         sendBtn.classList.remove('okapi-ai-stop-mode');
                         sendBtn.onclick = () => OkapiAI.send();
                         sendBtn.disabled = false;

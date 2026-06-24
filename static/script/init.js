@@ -1032,9 +1032,9 @@ function _showUpdateBanner(version) {
     }
     if (badge) {
         badge.classList.add('app-version-badge--update');
-        badge.title = isSemver
+        badge.setAttribute('data-hint', isSemver
             ? `Update available: v${version.replace(/^v/, '')} — click to update`
-            : 'Update available — click to update';
+            : 'Update available — click to update');
     }
 }
 
@@ -1048,7 +1048,7 @@ function _dismissBanner(e) {
     const sameVersion = _updateInfo.latest === _updateInfo.current;
     if (sameVersion) {
         badge.classList.remove('app-version-badge--update');
-        badge.title = 'Check for updates';
+        badge.setAttribute('data-hint', 'Check for updates');
     }
 }
 
