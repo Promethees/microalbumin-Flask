@@ -28,6 +28,8 @@
     .btn-look { background:#264653; }
     .btn-revoke { background:var(--red); }
     .btn-reinstate { background:var(--green); }
+    .btn-ban { background:#3a0a0c; }
+    .btn-unban { background:var(--green); }
     .banner { padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:16px; }
     .banner.warn { background:#fff3cd; color:#7a5b00; }
     .result { margin-top:18px; }
@@ -37,6 +39,7 @@
     .pill { display:inline-block; padding:2px 9px; border-radius:99px; font-size:12px; font-weight:700; }
     .pill.ok { background:#d8f3dc; color:#1b4332; }
     .pill.revoked { background:#ffd6d6; color:#9b2226; }
+    .pill.banned { background:#3a0a0c; color:#fff; }
     .msg { padding:10px 14px; border-radius:6px; font-size:14px; margin-top:14px; }
     .msg.ok { background:#d8f3dc; color:#1b4332; }
     .msg.err { background:#ffd6d6; color:#9b2226; }
@@ -59,7 +62,13 @@
         <button class="btn-look" id="btnLook">Look up</button>
         <button class="btn-revoke" id="btnRevoke" disabled>Revoke license</button>
         <button class="btn-reinstate" id="btnReinstate" disabled>Reinstate</button>
+        <button class="btn-ban" id="btnBan" disabled>Ban account</button>
+        <button class="btn-unban" id="btnUnban" disabled>Unban</button>
       </div>
+      <p class="sub" style="margin:10px 0 0">
+        <strong>Revoke</strong> disables a machine seat (license transfer). <strong>Ban</strong>
+        blocks the whole account — sign-in, download, and app usage everywhere.
+      </p>
       <div id="msg"></div>
     </div>
 
@@ -101,10 +110,13 @@ function render(data) {
   if (!data || !data.user) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   const u = data.user;
+  const banned = !!u.banned;
   const anyRevoked = (data.machines || []).some(m => m.revoked);
+  const statusPill = banned
+    ? '<span class="pill banned">BANNED</span>'
+    : `<span class="pill ${anyRevoked ? 'revoked' : 'ok'}">${anyRevoked ? 'REVOKED' : 'active'}</span>`;
   $('userInfo').innerHTML =
-    `<strong>${u.name}</strong> &lt;${u.email}&gt; ` +
-    `<span class="pill ${anyRevoked ? 'revoked' : 'ok'}">${anyRevoked ? 'REVOKED' : 'active'}</span>` +
+    `<strong>${u.name}</strong> &lt;${u.email}&gt; ` + statusPill +
     `<div class="muted">verified: ${u.is_verified} · ${ (data.machines||[]).length } machine(s)</div>`;
   const tb = $('machines').querySelector('tbody');
   tb.innerHTML = (data.machines || []).map(m =>
@@ -114,6 +126,8 @@ function render(data) {
   ).join('') || '<tr><td colspan="4" class="muted">No machines activated.</td></tr>';
   $('btnRevoke').disabled = false;
   $('btnReinstate').disabled = false;
+  $('btnBan').disabled = banned;
+  $('btnUnban').disabled = !banned;
 }
 
 async function lookup() {
@@ -150,6 +164,31 @@ async function setRevoked(revoked) {
   } catch (e) { setMsg('Request failed: ' + e, 'err'); }
 }
 
+async function setBanned(banned) {
+  const email = emailEl.value.trim();
+  if (!email) { setMsg('Enter an email first.', 'err'); return; }
+  const verb = banned ? 'BAN' : 'unban';
+  const warn = banned
+    ? `\n\nThis blocks sign-in, download, and app usage on every machine.`
+    : '';
+  if (!confirm(`${verb} the account for ${email}?${warn}`)) return;
+  setMsg('Working…', 'ok');
+  try {
+    const r = await fetch('/api/ban', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ email, banned })
+    });
+    const d = await r.json();
+    if (!r.ok) { setMsg(d.message || 'Action failed', 'err'); return; }
+    const tail = banned
+      ? `account banned${d.email_sent ? ', notification email sent' : ' (email NOT sent)'}.`
+      : 'account unbanned.';
+    setMsg(`Done — ${tail}`, 'ok');
+    lookup();      // refresh full view (reflects new banned state)
+    loadUsers(searchEl.value.trim());  // refresh the list badge
+  } catch (e) { setMsg('Request failed: ' + e, 'err'); }
+}
+
 // ── Registered users list + search ──────────────────────────────────────────
 const searchEl = $('search'), usersCountEl = $('usersCount');
 
@@ -170,7 +209,9 @@ function renderUsers(data) {
     `<td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td>` +
     `<td>${u.is_verified ? 'yes' : '<span class="muted">no</span>'}</td>` +
     `<td>${u.machine_count}</td>` +
-    `<td><span class="pill ${u.revoked ? 'revoked' : 'ok'}">${u.revoked ? 'revoked' : 'active'}</span></td></tr>`
+    `<td>${u.banned
+        ? '<span class="pill banned">banned</span>'
+        : `<span class="pill ${u.revoked ? 'revoked' : 'ok'}">${u.revoked ? 'revoked' : 'active'}</span>`}</td></tr>`
   ).join('');
   tb.querySelectorAll('tr.clickable').forEach(tr => {
     tr.addEventListener('click', () => {
@@ -194,6 +235,8 @@ async function loadUsers(q) {
 $('btnLook').onclick = lookup;
 $('btnRevoke').onclick = () => setRevoked(true);
 $('btnReinstate').onclick = () => setRevoked(false);
+$('btnBan').onclick = () => setBanned(true);
+$('btnUnban').onclick = () => setBanned(false);
 emailEl.addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
 
 $('btnSearch').onclick = () => loadUsers(searchEl.value.trim());

@@ -124,6 +124,30 @@ def revoke():
     return _relay(r)
 
 
+@app.route('/api/ban', methods=['POST'])
+def ban():
+    """Ban or unban a whole account (broader than a per-seat revoke).
+
+    Forwards to the server's /api/admin/ban, which sets the account-level
+    User.banned flag — blocking web sign-in, download, activation, and software
+    usage on every machine (even with zero seats).
+    """
+    if not ADMIN_API_KEY:
+        return jsonify({'status': 'error', 'message': 'ADMIN_API_KEY is not set in admin/.env'}), 503
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip()
+    banned = bool(data.get('banned', True))
+    if not email:
+        return jsonify({'status': 'error', 'message': 'email is required'}), 400
+    try:
+        r = requests.post(f'{SERVER_URL}/api/admin/ban',
+                          json={'email': email, 'banned': banned},
+                          headers=_headers(), timeout=20)
+    except requests.RequestException as e:
+        return jsonify({'status': 'error', 'message': f'Cannot reach server: {e}'}), 502
+    return _relay(r)
+
+
 if __name__ == '__main__':
     url = f'http://127.0.0.1:{PORT}'
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()

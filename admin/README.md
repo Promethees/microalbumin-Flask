@@ -9,16 +9,34 @@ never reaches the browser.
 > the admin's machine**. Do **not** deploy it, and do **not** push this branch to
 > a public remote. The `.env` (which holds the real key) is gitignored.
 
-## How revocation works
+## Revoke vs Ban
 
-1. You enter a customer email and click **Revoke license**.
-2. The server marks every machine seat for that account `revoked` and emails the
-   customer that their license was deactivated.
-3. Effective immediately: the AI assistant and in-app auto-update stop working
-   for that customer. The desktop app itself is blocked the next time it checks
-   in online (once the client-side license check ships — see the main branch
-   plan).
-4. **Reinstate** clears the flag on every seat (no email).
+This console exposes two kill-switches of different strength:
+
+| | **Revoke license** | **Ban account** |
+|---|---|---|
+| Scope | One machine **seat** (`LicenseMachine.revoked`) | The whole **account** (`User.banned`) |
+| App usage on every machine | Blocked | Blocked |
+| AI assistant / in-app auto-update | Blocked | Blocked |
+| Website sign-in | **Still allowed** | Blocked |
+| Download / re-download installer | **Still allowed** | Blocked |
+| Activation of a new machine | Allowed | Blocked |
+| Works with zero activated seats | No effect | Fully blocked |
+
+Use **Revoke** for a license transfer or a single-machine issue; use **Ban** to
+shut a customer out entirely.
+
+## How it works
+
+1. You enter a customer email and click **Revoke license** or **Ban account**.
+2. The server flips the flag and emails the customer that their access was
+   deactivated/suspended (once, on revoke or ban).
+3. Effective immediately: the AI assistant and in-app auto-update stop working,
+   and the desktop app itself is blocked the next time it checks in online (its
+   `/api/license/check` poll reports `revoked`). A **ban** additionally rejects
+   website sign-in, download, and activation right away.
+4. **Reinstate** clears the revoked flag on every seat; **Unban** lifts the
+   account ban and reinstates every seat (no email on either).
 
 ## Setup
 
@@ -48,11 +66,12 @@ heroku config:set ADMIN_API_KEY=<the-key> -a easysensor-kit
 | Method | Path | Purpose |
 |---|---|---|
 | `GET`  | `/api/admin/users?q=&limit=` | List/search registered accounts (name/email substring) |
-| `GET`  | `/api/admin/lookup?email=` | Read a user + their machine seats |
+| `GET`  | `/api/admin/lookup?email=` | Read a user (incl. `banned`) + their machine seats |
 | `POST` | `/api/admin/revoke` | `{email, revoked}` → flip all seats, email on revoke |
+| `POST` | `/api/admin/ban` | `{email, banned}` → set account-level ban, email on ban |
 
 The console auto-loads the user list on open; click any row to load that
-account's machines, then Revoke / Reinstate.
+account's machines, then Revoke / Reinstate or Ban / Unban.
 
 All require the `X-Admin-Key` header and return `503` if the server has no
 `ADMIN_API_KEY` configured.
