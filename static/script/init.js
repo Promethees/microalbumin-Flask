@@ -653,10 +653,12 @@ if (calButtons.length > 0) {
 // Defaults must stay in sync with user_settings.py:DEFAULTS
 const SETTINGS_DEFAULTS = {
     theme: 'auto',
+    time_tag_format: 'iso',
     default_mode: 'kinetics',
     default_window_size: 4,
     default_subfolder: null,
     file_table_height: 240,
+    file_sort_order: 'date_desc',
     max_csv_rows: 0,
     max_json_rows: 0,
     event_log_retention_days: 30,
@@ -719,6 +721,12 @@ function _buildSettingsHTML(s, folders) {
         <div class="sm-section">
             <p class="sm-section-title">General</p>
             ${rowCheck('Disable popups', 'swal-disable-popups', s.disable_popups)}
+            ${row('Date / time format', 'Used for file modified-date tags', sel('swal-time-format',
+                `<option value="iso"       ${(s.time_tag_format||'iso')==='iso'?'selected':''}>YYYY-MM-DD HH:MM</option>
+                 <option value="iso_sec"   ${s.time_tag_format==='iso_sec'?'selected':''}>YYYY-MM-DD HH:MM:SS</option>
+                 <option value="us"        ${s.time_tag_format==='us'?'selected':''}>MM/DD/YYYY hh:MM AM/PM</option>
+                 <option value="eu"        ${s.time_tag_format==='eu'?'selected':''}>DD/MM/YYYY HH:MM</option>
+                 <option value="date_only" ${s.time_tag_format==='date_only'?'selected':''}>YYYY-MM-DD (date only)</option>`))}
         </div>
         <div class="sm-section">
             <p class="sm-section-title">Appearance</p>
@@ -740,6 +748,11 @@ function _buildSettingsHTML(s, folders) {
         </div>
         <div class="sm-section">
             <p class="sm-section-title">File Selection</p>
+            ${row('Default file sort order', 'Initial order of the File Selection table', sel('swal-file-sort',
+                `<option value="date_desc" ${(s.file_sort_order||'date_desc')==='date_desc'?'selected':''}>Modified date (newest first)</option>
+                 <option value="date_asc"  ${s.file_sort_order==='date_asc'?'selected':''}>Modified date (oldest first)</option>
+                 <option value="name_asc"  ${s.file_sort_order==='name_asc'?'selected':''}>Name (A → Z)</option>
+                 <option value="name_desc" ${s.file_sort_order==='name_desc'?'selected':''}>Name (Z → A)</option>`))}
             ${rowLimit('Max CSV files shown', 'swal-max-csv', 'swal-max-csv-all', s.max_csv_rows || 0)}
             ${rowLimit('Max calibration JSON files shown', 'swal-max-json', 'swal-max-json-all', s.max_json_rows || 0)}
             ${rowCheck('Pick merge files from a folder browser', 'swal-merge-picker', s.merge_directory_picker)}
@@ -822,7 +835,9 @@ function _buildSettingsHTML(s, folders) {
 function _readSettingsForm() {
     return {
         theme: document.getElementById('swal-theme').value,
+        time_tag_format: document.getElementById('swal-time-format').value,
         file_table_height: Math.max(80, parseInt(document.getElementById('swal-table-height').value, 10) || 240),
+        file_sort_order: document.getElementById('swal-file-sort').value,
         default_mode: document.getElementById('swal-mode').value,
         default_window_size: Math.max(2, parseInt(document.getElementById('swal-window-size').value, 10) || 4),
         default_subfolder: document.getElementById('swal-subfolder').value || null,
@@ -849,7 +864,9 @@ function _readSettingsForm() {
 
 function _fillSettingsForm(s) {
     document.getElementById('swal-theme').value = s.theme;
+    document.getElementById('swal-time-format').value = s.time_tag_format || 'iso';
     document.getElementById('swal-table-height').value = s.file_table_height || 240;
+    document.getElementById('swal-file-sort').value = s.file_sort_order || 'date_desc';
     document.getElementById('swal-mode').value = s.default_mode;
     document.getElementById('swal-window-size').value = s.default_window_size || 4;
     document.getElementById('swal-subfolder').value = s.default_subfolder || '';
@@ -969,7 +986,10 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     const notifyEl = document.getElementById('notify-me');
     if (notifyEl) notifyEl.checked = formValues.default_notify !== false;
 
-    // Re-render file tables with updated row limits (if a folder is loaded)
+    // Apply default file sort order so the re-render below reflects the new choice
+    if (formValues.file_sort_order) AppState.fileSortOrder = formValues.file_sort_order;
+
+    // Re-render file tables with updated row limits / sort order (if a folder is loaded)
     if (typeof updateDirectory === 'function' && AppState.currentDirectory) {
         updateDirectory(AppState.currentDirectory, false);
     }

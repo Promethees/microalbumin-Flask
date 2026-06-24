@@ -5,13 +5,17 @@ import state
 _VALID_THEMES = {"light", "dark", "auto"}
 _VALID_MODES = {"kinetics", "point", "calibrate"}
 _VALID_UNITS = {"seconds", "minutes", "hours"}
+_VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
+_VALID_TIME_TAG_FORMATS = {"iso", "iso_sec", "us", "eu", "date_only"}
 
 DEFAULTS = {
     "theme": "auto",
+    "time_tag_format": "iso",
     "default_mode": "kinetics",
     "default_window_size": 4,
     "default_subfolder": None,
     "file_table_height": 240,
+    "file_sort_order": "date_desc",
     "max_csv_rows": 0,
     "max_json_rows": 0,
     "event_log_retention_days": 30,
@@ -65,6 +69,10 @@ def save(updates: dict) -> bool:
                 current["default_window_size"] = ws
         except (ValueError, TypeError):
             pass
+    if "file_sort_order" in updates and updates["file_sort_order"] in _VALID_SORT_ORDERS:
+        current["file_sort_order"] = updates["file_sort_order"]
+    if "time_tag_format" in updates and updates["time_tag_format"] in _VALID_TIME_TAG_FORMATS:
+        current["time_tag_format"] = updates["time_tag_format"]
     if "default_subfolder" in updates:
         val = updates["default_subfolder"]
         current["default_subfolder"] = val if (isinstance(val, str) and val) or val is None else None

@@ -351,6 +351,36 @@ Timestamp,Value:1,Value:2,...
   **not** let an in-place relaunch auto-open a browser tab (it races the user's tab for the one-shot
   marker — pass `--no-browser`).
 
+### 2.21 File Selection: Modified Date + Sortable Columns
+
+- The CSV **File Selection** table shows a **Modified** column (last-modified date) and supports
+  click-to-sort on the **File Name** and **Modified** column headers. Sort order is one of
+  `name_asc` / `name_desc` / `date_asc` / `date_desc`; the default is the `file_sort_order` user
+  setting (default `date_desc`), persisted via `POST /settings` and re-applied on load.
+- **Date metadata is server-supplied.** `get_file_meta()` (`src/file.py`) returns a
+  `{name: {mtime, display}}` map. The index route passes it as `file_meta` (embedded as the JS
+  `FILE_META` const) and `/browse` returns it as `files_meta`. `mtime` (epoch) drives client-side
+  date sorting; `display` is the cell text. `index.js` refreshes `AppState.fileMeta` from
+  `files_meta` on every `/browse`.
+- **The `display` time tag is formatted server-side** from the `time_tag_format` user setting
+  (App Settings → General; `iso`/`iso_sec`/`us`/`eu`/`date_only`, default `iso`) via
+  `TIME_TAG_FORMATS` in `file.py`. Both the index route **and** `/browse` must pass the setting to
+  `get_file_meta(time_format=...)` so a format change re-renders live (settings save → `updateDirectory`
+  → `/browse`). Do not format the tag client-side — it would diverge from the first server paint, and
+  `mtime` (not `display`) remains the sort key so changing the format never reorders rows.
+- **Dual render — keep them in lockstep.** The table is rendered **twice**: server-side Jinja in
+  `index.html` (first paint) and client-side `renderFileRows()` in `navigation.js` (every refresh /
+  re-sort). Both must produce the **same** column layout (Name, Modified, then 3 action columns →
+  empty/`+more` rows use `colspan="5"`) and the same clickable header markup (`sortFileTable('name')` /
+  `sortFileTable('date')` with the `.sort-arrow` indicator). Changing one without the other desyncs
+  first paint from later refreshes.
+- **`filterFiles` still operates on plain name strings** — do not change `files`/`response.files` to
+  carry dicts (it also feeds `deleteDataFolder`'s confirmation list). Sorting reads dates from
+  `AppState.fileMeta`, keyed by name, instead.
+- **Anti-pattern**: do not sort or compute dates only on the client from `localStorage`/guesswork, and
+  do not reuse the date column for the report/JSON tables (those share `#file-table`/`#json-table` but
+  are folder/JSON lists rebuilt by `updateReportTable` / `updateJSONTable` without a date column).
+
 ---
 
 ## 3. Autonomous Documentation Updates

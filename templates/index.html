@@ -470,13 +470,21 @@
                     <div class="scrollbar-style file-table-container">
                         <table id="file-table" class="table">
                             <tr>
-                                <th id="file-table-header-name">File Name</th>
+                                <th id="file-table-header-name" class="sortable-th"
+                                    onclick="sortFileTable('name')"
+                                    data-hint="Click to sort by file name">File Name <span
+                                        class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('name') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
+                                <th id="file-table-header-date" class="sortable-th"
+                                    onclick="sortFileTable('date')"
+                                    data-hint="Click to sort by last modified date">Modified <span
+                                        class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('date') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
                                 <th colspan="3">Action</th>
                             </tr>
                             {% if file_list %}
                             {% for file in file_list %}
                             <tr>
                                 <td>{{ file }}</td>
+                                <td class="file-mtime">{{ file_meta.get(file, {}).get('display', '') }}</td>
                                 <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
                                 <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
                                 <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
@@ -484,7 +492,7 @@
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="3">No CSV files found in the directory.</td>
+                                <td colspan="5">No CSV files found in the directory.</td>
                             </tr>
                             {% endif %}
                         </table>
@@ -779,6 +787,11 @@
             const MAINTAINER_EMAIL = "{{ maintainer_email }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
+            // Per-file metadata (name -> {mtime, display}) for the File Selection table,
+            // and the active sort order. Both feed the client-side date/name sorting in
+            // navigation.js so re-sorting needs no server round-trip.
+            const FILE_META = {{ file_meta | tojson | safe }};
+            const FILE_SORT_ORDER = {{ file_sort_order | tojson | safe }};
             const IS_FROZEN = {{ is_frozen | tojson | safe }};
             const DATA_ROOT_INFO = {{ data_root_info | tojson | safe }};
             // Set by the server on the first load after a restart (data-folder

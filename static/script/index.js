@@ -66,6 +66,13 @@ const AppState = {
 
     currentReportSubject: null,
     lastAnalyses: null,
+
+    // File Selection table state (CSV files). fileMeta maps name -> {mtime, display};
+    // fileNames is the last filtered list currently shown; fileSortOrder is the active
+    // sort order ("name_asc" | "name_desc" | "date_asc" | "date_desc").
+    fileMeta: (typeof FILE_META !== 'undefined' && FILE_META) ? FILE_META : {},
+    fileNames: [],
+    fileSortOrder: (typeof FILE_SORT_ORDER !== 'undefined' && FILE_SORT_ORDER) ? FILE_SORT_ORDER : 'date_desc',
     reset: function () {
         this.myChart = null;
         this.scriptRunning = false;
@@ -578,6 +585,9 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
                     updateFolderListSelection(response.path);
                 }
                 $hidden(["error-message"]);
+
+                // Refresh per-file modified-date metadata for the File Selection table.
+                AppState.fileMeta = response.files_meta || {};
 
                 // updateFileTable returns a Promise
                 if (AppState.currentMeasurementMode !== 'report') {

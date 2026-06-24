@@ -1038,6 +1038,37 @@ tr:last-child td {
     color: var(--text-color-dark);
 }
 
+/* Click-to-sort column headers in the File Selection table */
+.table th.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.table th.sortable-th:hover {
+    background-color: #e2e2e2;
+}
+
+.dark .table th.sortable-th:hover {
+    background-color: #666666;
+}
+
+.table th.sortable-th .sort-arrow {
+    font-size: 0.85em;
+    color: #2980b9;
+}
+
+/* Last-modified date cell: subdued and on a single line */
+.table td.file-mtime {
+    white-space: nowrap;
+    font-size: 0.88em;
+    color: #777;
+}
+
+.dark .table td.file-mtime {
+    color: #aaa;
+}
+
 body.light #swal-edit-table tr.selected {
     background-color: #e6f2ff !important;
 }

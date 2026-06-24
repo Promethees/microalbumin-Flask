@@ -13,7 +13,7 @@ from file_path import DATA_ROOT, get_data_subfolders
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
-from file import get_file_list
+from file import get_file_list, get_file_meta, sort_file_names
 
 core_bp = Blueprint('core', __name__)
 
@@ -50,7 +50,11 @@ def index():
     range_input = get_range_input()
     mode_input = get_mode_input()
     quantity_input = get_quantity_input()
-    file_list = get_file_list(DATA_ROOT)
+    user_settings = _user_settings.load()
+    file_sort_order = user_settings.get("file_sort_order", "date_desc")
+    time_tag_format = user_settings.get("time_tag_format", "iso")
+    file_meta = get_file_meta(DATA_ROOT, time_format=time_tag_format)
+    file_list = sort_file_names(get_file_list(DATA_ROOT), file_meta, file_sort_order)
     cal_json_list = get_file_list(os.path.join(state.json_root_path, "kinetics"), "*.json")
 
     try:
@@ -61,7 +65,6 @@ def index():
 
     event_logger.cleanup_old_logs()
     event_logger.append('session', 'start')
-    user_settings = _user_settings.load()
     response = make_response(render_template('index.html',
                          title="Easy OKAPI",
                          data_root=DATA_ROOT,
@@ -71,6 +74,8 @@ def index():
                          mode_input=mode_input,
                          quantity_input=quantity_input,
                          file_list=file_list,
+                         file_meta=file_meta,
+                         file_sort_order=file_sort_order,
                          cal_json_list=cal_json_list,
                          delimiter=state.delimiter,
                          production_mode=state.PRODUCTION_MODE,
@@ -126,7 +131,9 @@ def browse():
     if not os.path.isdir(abs_path):
         return jsonify({'status': 'error', 'message': 'Directory not found'})
     file_list = get_file_list(abs_path)
-    return jsonify({'status': 'success', 'path': abs_path, 'files': file_list})
+    time_tag_format = _user_settings.load().get("time_tag_format", "iso")
+    file_meta = get_file_meta(abs_path, time_format=time_tag_format)
+    return jsonify({'status': 'success', 'path': abs_path, 'files': file_list, 'files_meta': file_meta})
 
 @core_bp.route('/get_data_folders', methods=['GET'])
 def get_data_folders():

@@ -228,6 +228,40 @@ class TestSave:
         user_settings.save({"merge_directory_picker": False})
         assert user_settings.load()["merge_directory_picker"] is False
 
+    def test_time_tag_format_default_is_iso(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        result = user_settings.load()
+        assert result["time_tag_format"] == "iso"
+
+    def test_saves_valid_time_tag_format(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        for fmt in ("iso", "iso_sec", "us", "eu", "date_only"):
+            assert user_settings.save({"time_tag_format": fmt}) is True
+            assert user_settings.load()["time_tag_format"] == fmt
+
+    def test_rejects_invalid_time_tag_format(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"time_tag_format": "klingon"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["time_tag_format"] == user_settings.DEFAULTS["time_tag_format"]
+
+    def test_file_sort_order_default_is_date_desc(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        result = user_settings.load()
+        assert result["file_sort_order"] == "date_desc"
+
+    def test_saves_valid_file_sort_order(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        for order in ("name_asc", "name_desc", "date_asc", "date_desc"):
+            assert user_settings.save({"file_sort_order": order}) is True
+            assert user_settings.load()["file_sort_order"] == order
+
+    def test_rejects_invalid_file_sort_order(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"file_sort_order": "size_asc"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["file_sort_order"] == user_settings.DEFAULTS["file_sort_order"]
+
     def test_disable_popups_default_is_false(self, tmp_path, monkeypatch):
         monkeypatch.setattr(state, "script_dir", str(tmp_path))
         result = user_settings.load()

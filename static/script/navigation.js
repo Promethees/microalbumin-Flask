@@ -355,28 +355,90 @@ function updateReportTable(subjects) {
     }
 }
 
-function updateFileTable(files, deselect) {
-    let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
+// Return the ▲/▼ indicator for a column header given the active sort order,
+// or '' when the table is not currently sorted by that column.
+function _fileSortArrow(key) {
+    const order = AppState.fileSortOrder || 'date_desc';
+    if (!order.startsWith(key)) return '';
+    return order.endsWith('asc') ? ' ▲' : ' ▼';
+}
 
-    return filterFiles(files).then((filteredFiles) => {
-        if (filteredFiles && filteredFiles.length > 0) {
-            const limit = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.max_csv_rows > 0) ? USER_SETTINGS.max_csv_rows : Infinity;
-            const shown = filteredFiles.slice(0, limit);
-            shown.forEach(file => {
-                const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
-                html += `<tr${isSelected}><td>${_escHtml(file)}</td><td><button onclick="selectFile('${_esc(file)}', this)">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this)">✏️ Edit</button></td></tr>`;
-            });
-            if (filteredFiles.length > shown.length) {
-                html += `<tr><td colspan="4" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${filteredFiles.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
-            }
+// Header row for the CSV File Selection table (name + modified-date columns are
+// click-to-sort). Kept here so JS re-renders match the server-rendered markup.
+function _fileTableHeaderHtml() {
+    return `<tr>
+        <th id="file-table-header-name" class="sortable-th" onclick="sortFileTable('name')" data-hint="Click to sort by file name">File Name<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
+        <th id="file-table-header-date" class="sortable-th" onclick="sortFileTable('date')" data-hint="Click to sort by last modified date">Modified<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
+        <th colspan="3">Action</th>
+    </tr>`;
+}
+
+// Order file names by the active sort order, using mtime from AppState.fileMeta
+// for date sorting (missing entries sort as oldest) and a case-insensitive
+// comparison for name sorting.
+function _sortFileNames(names) {
+    const order = AppState.fileSortOrder || 'date_desc';
+    const dir = order.endsWith('asc') ? 1 : -1;
+    const byDate = order.startsWith('date');
+    return names.slice().sort((a, b) => {
+        let cmp;
+        if (byDate) {
+            const ma = (AppState.fileMeta[a] && AppState.fileMeta[a].mtime) || 0;
+            const mb = (AppState.fileMeta[b] && AppState.fileMeta[b].mtime) || 0;
+            cmp = ma - mb;
         } else {
-            html += '<tr><td colspan="4">No CSV files found in the directory.</td></tr>';
+            cmp = a.toLowerCase().localeCompare(b.toLowerCase());
         }
-        document.getElementById("file-table").innerHTML = html;
-        const searchInput = document.getElementById('file-search');
-        if (searchInput && searchInput.value) {
-            filterTable('file-table', searchInput.value);
+        return cmp * dir;
+    });
+}
+
+// Render the CSV file rows (already passed through filterFiles) into #file-table,
+// honouring the active sort order and the max-CSV-rows limit. Stores the rendered
+// (filtered) names on AppState so a sort click can re-render without re-fetching.
+function renderFileRows(names) {
+    AppState.fileNames = (names || []).slice();
+    let html = _fileTableHeaderHtml();
+    if (names && names.length > 0) {
+        const limit = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.max_csv_rows > 0) ? USER_SETTINGS.max_csv_rows : Infinity;
+        const sorted = _sortFileNames(names);
+        const shown = sorted.slice(0, limit);
+        shown.forEach(file => {
+            const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
+            const display = (AppState.fileMeta[file] && AppState.fileMeta[file].display) || '';
+            html += `<tr${isSelected}><td>${_escHtml(file)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button onclick="selectFile('${_esc(file)}', this)">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this)">✏️ Edit</button></td></tr>`;
+        });
+        if (sorted.length > shown.length) {
+            html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
         }
+    } else {
+        html += '<tr><td colspan="5">No CSV files found in the directory.</td></tr>';
+    }
+    document.getElementById("file-table").innerHTML = html;
+    const searchInput = document.getElementById('file-search');
+    if (searchInput && searchInput.value) {
+        filterTable('file-table', searchInput.value);
+    }
+}
+
+// Re-sort the File Selection table when a column header is clicked. Clicking the
+// active column toggles direction; switching columns starts descending (newest /
+// Z-A first). The chosen order is persisted as the new default (best-effort).
+function sortFileTable(key) {
+    const order = AppState.fileSortOrder || 'date_desc';
+    let dir = 'desc';
+    if (order.startsWith(key)) {
+        dir = order.endsWith('asc') ? 'desc' : 'asc';
+    }
+    AppState.fileSortOrder = `${key}_${dir}`;
+    renderFileRows(AppState.fileNames);
+    if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS.file_sort_order = AppState.fileSortOrder;
+    if (typeof saveUserSetting === 'function') saveUserSetting('file_sort_order', AppState.fileSortOrder);
+}
+
+function updateFileTable(files, deselect) {
+    return filterFiles(files).then((filteredFiles) => {
+        renderFileRows(filteredFiles || []);
         if (deselect) {
             AppState.currentFile = null;
             $toggleQueryClass("#file-table tr", "selected", false);

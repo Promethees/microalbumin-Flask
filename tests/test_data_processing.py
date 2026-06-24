@@ -15,6 +15,66 @@ def test_get_file_list(tmp_path):
     assert "test1.csv" in files
     assert "test3.csv" in files
 
+def test_get_file_meta(tmp_path):
+    (tmp_path / "a.csv").write_text("data")
+    (tmp_path / ".hidden.csv").write_text("data")
+    (tmp_path / "skip.txt").write_text("data")
+
+    meta = file.get_file_meta(str(tmp_path))
+    assert set(meta.keys()) == {"a.csv"}
+    assert meta["a.csv"]["mtime"] > 0
+    # Default ("iso") display string follows the "YYYY-MM-DD HH:MM" pattern
+    assert len(meta["a.csv"]["display"]) == 16
+    assert meta["a.csv"]["display"][4] == "-"
+
+
+def test_get_file_meta_time_format(tmp_path):
+    (tmp_path / "a.csv").write_text("data")
+
+    # date_only drops the time component
+    d = file.get_file_meta(str(tmp_path), time_format="date_only")["a.csv"]["display"]
+    assert len(d) == 10 and d[4] == "-"
+
+    # eu uses slashes and day-first ordering
+    eu = file.get_file_meta(str(tmp_path), time_format="eu")["a.csv"]["display"]
+    assert eu[2] == "/" and eu[5] == "/"
+
+    # iso_sec includes seconds
+    sec = file.get_file_meta(str(tmp_path), time_format="iso_sec")["a.csv"]["display"]
+    assert len(sec) == 19
+
+    # Unknown key falls back to iso
+    iso = file.get_file_meta(str(tmp_path), time_format="bogus")["a.csv"]["display"]
+    assert len(iso) == 16 and iso[4] == "-"
+
+
+def test_sort_file_names_by_name():
+    names = ["b.csv", "A.csv", "c.csv"]
+    meta = {}
+    assert file.sort_file_names(names, meta, "name_asc") == ["A.csv", "b.csv", "c.csv"]
+    assert file.sort_file_names(names, meta, "name_desc") == ["c.csv", "b.csv", "A.csv"]
+
+
+def test_sort_file_names_by_date():
+    names = ["old.csv", "new.csv", "mid.csv"]
+    meta = {
+        "old.csv": {"mtime": 100, "display": ""},
+        "mid.csv": {"mtime": 200, "display": ""},
+        "new.csv": {"mtime": 300, "display": ""},
+    }
+    assert file.sort_file_names(names, meta, "date_asc") == ["old.csv", "mid.csv", "new.csv"]
+    assert file.sort_file_names(names, meta, "date_desc") == ["new.csv", "mid.csv", "old.csv"]
+    # Missing metadata sorts as oldest
+    assert file.sort_file_names(["x.csv", "new.csv"], meta, "date_desc")[0] == "new.csv"
+
+
+def test_sort_file_names_invalid_order_falls_back():
+    names = ["new.csv", "old.csv"]
+    meta = {"old.csv": {"mtime": 100}, "new.csv": {"mtime": 300}}
+    # Unknown order behaves like the date_desc default
+    assert file.sort_file_names(names, meta, "bogus") == ["new.csv", "old.csv"]
+
+
 def test_get_dynamic_data_csv(tmp_path):
     csv_content = """# Measurement: ABS
 # MeasUnit: AU

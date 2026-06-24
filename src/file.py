@@ -2,9 +2,24 @@ import os
 import glob
 import json
 import csv
+from datetime import datetime
 from collections.abc import MutableMapping, Sequence
 
 from file_path import parse_csv_metadata
+
+VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
+
+# Friendly time-tag format keys -> strftime patterns. The key is what is stored in
+# user_settings ("time_tag_format"); "iso" is the default. Keep this in lockstep
+# with user_settings._VALID_TIME_TAG_FORMATS and the settings-modal dropdown.
+TIME_TAG_FORMATS = {
+    "iso": "%Y-%m-%d %H:%M",
+    "iso_sec": "%Y-%m-%d %H:%M:%S",
+    "us": "%m/%d/%Y %I:%M %p",
+    "eu": "%d/%m/%Y %H:%M",
+    "date_only": "%Y-%m-%d",
+}
+
 
 def get_file_list(directory, fileType="*.csv"):
     try:
@@ -18,6 +33,49 @@ def get_file_list(directory, fileType="*.csv"):
     except Exception as e:
         print(f"Error listing files in {directory}: {e}")
         return []
+
+
+def get_file_meta(directory, fileType="*.csv", time_format="iso"):
+    """Return per-file metadata for a directory keyed by file name.
+
+    The shape is ``{name: {"mtime": <epoch float>, "display": <formatted time tag>}}``.
+    ``mtime`` is the raw modified time used for client-side date sorting; ``display``
+    is the human-readable time tag shown in the File Selection table, rendered with
+    the ``time_format`` key (see ``TIME_TAG_FORMATS``; falls back to ``iso``). Files
+    that cannot be stat-ed fall back to ``mtime`` 0 and an empty display string.
+    """
+    pattern = TIME_TAG_FORMATS.get(time_format, TIME_TAG_FORMATS["iso"])
+    meta = {}
+    try:
+        files = glob.glob(os.path.join(directory, fileType))
+        for f in files:
+            base = os.path.basename(f)
+            if base.startswith('.'):
+                continue
+            try:
+                mtime = os.path.getmtime(f)
+                display = datetime.fromtimestamp(mtime).strftime(pattern)
+            except OSError:
+                mtime, display = 0, ""
+            meta[base] = {"mtime": mtime, "display": display}
+    except Exception as e:
+        print(f"Error reading file metadata in {directory}: {e}")
+    return meta
+
+
+def sort_file_names(names, meta, order="date_desc"):
+    """Return ``names`` ordered by the requested sort order.
+
+    ``order`` is one of ``name_asc`` / ``name_desc`` / ``date_asc`` / ``date_desc``.
+    Date sorting uses the ``mtime`` from ``meta`` (missing entries sort as oldest).
+    Falls back to ``date_desc`` for an unrecognised order.
+    """
+    if order not in VALID_SORT_ORDERS:
+        order = "date_desc"
+    reverse = order.endswith("_desc")
+    if order.startswith("date"):
+        return sorted(names, key=lambda n: meta.get(n, {}).get("mtime", 0), reverse=reverse)
+    return sorted(names, key=str.lower, reverse=reverse)
 
 
 def _read_csv_raw(path):
