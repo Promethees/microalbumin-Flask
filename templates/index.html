@@ -35,7 +35,8 @@
         </div>
     </div>
     <!-- User Guide Button -->
-    <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide">
+    <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide"
+        data-hint="Start the interactive step-by-step walkthrough of the app">
         User Guide
     </button>
 
@@ -44,6 +45,7 @@
             <div class="flex-group">
                 <img src="{{ url_for('static', filename='cbb.png') }}"
                     style="height: 70px; width: 60px; cursor: pointer;" id="logo"
+                    data-hint="Scroll back to the top of the page"
                     onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
 
                 <div id="title" class="title-place">
@@ -54,7 +56,7 @@
                     </h1>
                 </div>
 
-                <div class="toggle-container" id="toggleContainer">
+                <div class="toggle-container" id="toggleContainer" data-hint="Switch between light and dark theme">
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
             </div>
@@ -121,11 +123,13 @@
                     <!-- Connect/Disconnect Controls -->
                     <div id="drive-connection-controls" style="margin-bottom: 15px;">
                         <button id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
-                            style="padding: 8px 16px;">
+                            style="padding: 8px 16px;"
+                            data-hint="Link a Google Drive account so your data is saved to the cloud">
                             🔗 Connect Google Drive
                         </button>
                         <button id="drive-disconnect-btn" onclick="disconnectGoogleDrive()" class="hidden danger-btn"
-                            style="padding: 8px 16px;">
+                            style="padding: 8px 16px;"
+                            data-hint="Unlink Google Drive (your data stays on Drive but stops syncing)">
                             🔌 Disconnect Drive
                         </button>
                     </div>
@@ -152,6 +156,7 @@
                                 <option value="">Loading folders...</option>
                             </select>
                             <button onclick="refreshFolderList()" class="icon-btn"
+                                data-hint="Refresh the list of Google Drive folders"
                                 style="padding: 6px 12px;">🔄</button>
                         </div>
 
@@ -159,7 +164,8 @@
                         <div id="new-folder-create" class="hidden" style="margin-bottom: 10px;">
                             <input type="text" id="new-folder-name" placeholder="Easy OKAPI Data"
                                 style="width: 60%; margin-right: 5px;" />
-                            <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;">Create
+                            <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;"
+                                data-hint="Create a new folder on Google Drive to store your data">Create
                                 Folder</button>
                         </div>
 
@@ -177,15 +183,18 @@
                     <div id="drive-sync-section" class="hidden">
                         <h4 style="margin-top: 15px;">Sync Settings</h4>
                         <label class="checkbox-label" style="display: block; margin-bottom: 10px;">
-                            <input type="checkbox" id="auto-sync-checkbox" onchange="updateAutoSyncPreference()">
+                            <input type="checkbox" id="auto-sync-checkbox" onchange="updateAutoSyncPreference()"
+                                data-hint="Automatically push your data to Drive when you close the browser">
                             Auto-sync when closing browser
                         </label>
 
                         <div class="sync-buttons" style="margin-bottom: 10px;">
-                            <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;">
+                            <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;"
+                                data-hint="Upload your current local data to the selected Drive folder">
                                 ⬆️ Push to Drive
                             </button>
-                            <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;">
+                            <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;"
+                                data-hint="Download the data from the selected Drive folder into the app">
                                 ⬇️ Pull from Drive
                             </button>
                         </div>
@@ -203,21 +212,26 @@
                     {% if account_user %}
                     <div class="account-nav">
                         <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
-                        <button class="account-nav-btn logout-btn" onclick="accountLogout()">Log Out</button>
+                        <button class="account-nav-btn logout-btn" onclick="accountLogout()"
+                            data-hint="Sign out of your account on this browser">Log Out</button>
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <button class="account-nav-btn token-btn" onclick="revealDownloadToken()">🔑 Get Download
+                        <button class="account-nav-btn token-btn" onclick="revealDownloadToken()"
+                            data-hint="Show the token that activates the offline app on your machine">🔑 Get Download
                             Token</button>
                     </div>
                     <div style="margin-bottom: 12px;">
-                        <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()">🗑 Delete
+                        <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()"
+                            data-hint="Permanently delete your account and its stored data">🗑 Delete
                             Account</button>
                     </div>
                     {% else %}
                     <div class="account-nav">
                         <span class="account-nav-label">Register to download a local version?</span>
-                        <a href="/account/signup" class="account-nav-btn signup-btn">Sign Up</a>
-                        <a href="/account/login" class="account-nav-btn login-btn">Log In</a>
+                        <a href="/account/signup" class="account-nav-btn signup-btn"
+                            data-hint="Create an account to download the offline app and sync your data">Sign Up</a>
+                        <a href="/account/login" class="account-nav-btn login-btn"
+                            data-hint="Sign in to your existing account">Log In</a>
                     </div>
                     {% endif %}
                     <p id="download-version" class="download-version"></p>
@@ -371,13 +385,13 @@
                         </table>
                     </div>
                     <button id="deselect-json-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn">Deselect</button>
+                        class="utility-btn" data-hint="Clear the currently selected coefficient file">Deselect</button>
                     <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                        class="utility-btn">Copy</button>
+                        class="utility-btn" data-hint="Make a duplicate of the selected coefficient file">Copy</button>
                     <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn">Upload</button>
+                        class="utility-btn" data-hint="Upload a coefficient JSON file from your computer">Upload</button>
                     <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;"
-                        disabled class="utility-btn">Download</button>
+                        disabled class="utility-btn" data-hint="Download the selected coefficient file to your computer">Download</button>
                 </div>
             </div>
             <div id="error-message"></div>
@@ -413,15 +427,15 @@
                         </table>
                     </div>
                     <button id="deselect-file-btn" onclick="deselectFile()" style="cursor: pointer;"
-                        class="utility-btn">Deselect</button>
+                        class="utility-btn" data-hint="Clear the currently selected CSV file">Deselect</button>
                     <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
-                        class="utility-btn">Copy</button>
+                        class="utility-btn" data-hint="Make a duplicate of the selected CSV file">Copy</button>
                     <button id="upload-file-btn" onclick="uploadFile()" style="cursor: pointer;"
-                        class="utility-btn">Upload</button>
+                        class="utility-btn" data-hint="Upload a CSV file from your computer">Upload</button>
                     <button id="download-file-btn" onclick="downloadFile()" style="cursor: pointer;" disabled
-                        class="utility-btn">Download</button>
+                        class="utility-btn" data-hint="Download the selected CSV file to your computer">Download</button>
                     <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
-                        class="utility-btn">Merge Files</button>
+                        class="utility-btn" data-hint="Combine several CSV files into a single file">Merge Files</button>
                 </div>
             </div>
             <div class="section hidden" id="report-console-section" tabindex="-1">
@@ -445,10 +459,13 @@
                     <p style="color: #666;">Select a report subject folder to view items.</p>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="utility-btn" onclick="clearReportItems()">🗑️ Clear Selected Subject</button>
+                    <button class="utility-btn" onclick="clearReportItems()"
+                        data-hint="Remove all items from the selected report subject">🗑️ Clear Selected Subject</button>
                     <button class="utility-btn" onclick="finalizeReportExcel()"
+                        data-hint="Export this report subject as an Excel workbook"
                         style="padding: 10px 20px; font-size: 1.1rem;">📊 Export as Excel</button>
                     <button class="primary-btn" onclick="finalizeReport()"
+                        data-hint="Generate the final printable HTML report"
                         style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
                 </div>
             </div>
@@ -514,20 +531,20 @@
                         </select>
                         <span id="range-value-error" class="error"></span>
                         <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
-                            title="Save the rows in this time range to a new CSV file">💾 Save Range</button>
+                            data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
                         <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
-                            title="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
+                            data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
                     </div>
                 </div>
                 <div id="mode-toggle">
-                    <label id="split-source-section">
+                    <label id="split-source-section" data-hint="Plot each light source as its own separate curve">
                         <input type="checkbox" id="split-source" onchange="toggleMode()"> Split by Sources
                     </label>
-                    <label id="normalize-mode-section">
+                    <label id="normalize-mode-section" data-hint="Subtract the blank (each column minus its own minimum) before plotting">
                         <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove
                         Blank)
                     </label>
-                    <label id="open-all-analysis-section">
+                    <label id="open-all-analysis-section" data-hint="Expand or collapse every analysis panel at once">
                         <input type="checkbox" id="open-all-analysis" onchange="toggleMode()"> Expand/Collapse all
                         Analyses
                     </label>
@@ -562,8 +579,10 @@
                             style="width: 70%">
                         <span id="save-file-error" class="error"></span>
                     </div>
-                    <button id="export-btn" onclick="exportData()">Export Data to Calibrate</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)">Browse Saving
+                    <button id="export-btn" onclick="exportData()"
+                        data-hint="Save the derived analysis values to a calibration file">Export Data to Calibrate</button>
+                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)"
+                        data-hint="Open the folder where the exported file will be saved">Browse Saving
                         Location</button>
                     <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
                         Exporting data will automatically convert the kinetics quantities to per <span
@@ -581,7 +600,8 @@
                                 placeholder="Enter json file name to save coefficients to" style="width: 50%">
                             <span id="save-json-file-error" class="error"></span>
                         </div>
-                        <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
+                        <button id="export-json-btn" onclick="exportJSONCoef()"
+                            data-hint="Save the fitted standard-curve coefficients to a calibration JSON file">Export Calibrated Coefs</button>
                         <br />
                         Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
                             style="width:10%;">
@@ -592,10 +612,12 @@
                         Report <span id="report-chevron" class="folder-chevron">▼</span></h3>
                     <div id="report-collapse" class="section-collapse">
                         <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
+                            data-hint="Open a quick printable report of the current chart and data"
                             style="margin-top: 5px;">📋 Generate quick Report</button>
                         <div style="margin-top: 10px;">
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                 <button id="export-to-report-btn" onclick="exportToReport()" class="utility-btn"
+                                    data-hint="Add this data to a report subject for inclusion in the final report"
                                     style="background-color: #2ecc71; color: white;">🚀 Export Data to Report</button>
                                 <label style="font-weight:600;">Subject:</label>
                                 <label style="display:flex; align-items:center; gap:4px;">
@@ -607,7 +629,7 @@
                                         <option value="">— select subject —</option>
                                     </select>
                                     <button type="button" onclick="loadReportSubjectsForPicker()"
-                                        style="padding:3px 7px;">↻</button>
+                                        data-hint="Refresh the report subject list" style="padding:3px 7px;">↻</button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
@@ -915,6 +937,7 @@
         })();
     </script>
     {% if config.PRODUCTION_MODE %}
+    <script src="{{ url_for('static', filename='dist/tooltip.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/short-hands.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/init.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/index.min.js') }}"></script>
@@ -928,6 +951,7 @@
     <script src="{{ url_for('static', filename='dist/report.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/ai-chat.min.js') }}"></script>
     {% else %}
+    <script src="{{ url_for('static', filename='script/tooltip.js') }}"></script>
     <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
     <script src="{{ url_for('static', filename='script/init.js') }}"></script>
     <script src="{{ url_for('static', filename='script/index.js') }}"></script>
