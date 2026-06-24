@@ -86,10 +86,11 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
 | `download_service.py`                                    | JWT helpers: generate/validate download tokens (30 min) and activation tokens (permanent) |
 
-### 2.3 Frontend (`static/script/` — 12 JS files)
+### 2.3 Frontend (`static/script/` — 13 JS files)
 
 | File | Responsibility |
 |---|---|
+| `tooltip.js` | Styled hover-hint component. Any `[data-hint="…"]` element shows a single `#okapi-tooltip` bubble appended to `<body>` (so it escapes `overflow:hidden` collapsibles), positioned above/below the target on hover or keyboard focus. Replaces native `title=` tooltips; styling lives in `style.css` (`#okapi-tooltip`, light/dark themed); loaded first in the script block |
 | `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, `fetchJSON`, etc.) |
 | `init.js` | Page initialization, event listeners, mode/filter setup, socket.io connection |
 | `index.js` | `AppState` global state object, mode switching logic, directory updates, `checkServerStatus` |
@@ -325,7 +326,8 @@ microalbumin-Flask/
 │       └── account_routes.py   # Register/login/verify/reset/delete/download/activate
 ├── static/
 │   ├── style.css               # Source CSS
-│   ├── script/                 # Source JS (12 files)
+│   ├── script/                 # Source JS (13 files)
+│   │   ├── tooltip.js           # Styled [data-hint] hover tooltips
 │   │   ├── short-hands.js
 │   │   ├── init.js
 │   │   ├── index.js            # AppState global singleton
