@@ -173,3 +173,62 @@ def send_license_revoked_email(to_email: str, name: str, base_url: str = ''):
         server.sendmail(sender, [to_email], msg.as_string())
     finally:
         server.quit()
+
+
+def send_account_banned_email(to_email: str, name: str, base_url: str = ''):
+    """Notify a user that their Easy OKAPI account has been banned by the admin.
+
+    Sent once from /api/admin/ban when an account is banned. A ban is broader than
+    a license revocation: it blocks web sign-in, downloads, and software usage on
+    every machine. Best-effort: the caller swallows send failures so the ban still
+    succeeds if mail is unavailable.
+    """
+    sender = os.environ.get('SMTP_USER', '')
+    support = os.environ.get('SUPPORT_EMAIL', sender)
+    app_name = 'Easy OKAPI'
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'Your {app_name} account has been suspended'
+    msg['From'] = f'{app_name} <{sender}>'
+    msg['To'] = to_email
+
+    text_body = (
+        f"Hi {name},\n\n"
+        f"Your {app_name} account has been suspended by an administrator.\n\n"
+        f"While suspended you cannot sign in to the website, download the app, or "
+        f"activate it, and the installed app will stop working the next time it "
+        f"checks in online — the AI assistant and in-app updates are disabled "
+        f"immediately on every machine.\n\n"
+        f"If you believe this is a mistake, please reply to this email or contact "
+        f"{support} to have your access restored.\n\n"
+        f"— The {app_name} Team"
+    )
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0">
+  <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)">
+    <div style="background:#9b2226;padding:28px 32px">
+      <h1 style="color:#fff;margin:0;font-size:22px">{app_name}</h1>
+    </div>
+    <div style="padding:32px">
+      <p style="font-size:16px;color:#333">Hi <strong>{name}</strong>,</p>
+      <p style="font-size:15px;color:#555">Your {app_name} account has been <strong>suspended</strong> by an administrator.</p>
+      <p style="font-size:15px;color:#555">While suspended you cannot sign in to the website, download the app, or activate it, and the installed app will stop working the next time it checks in online. The AI assistant and in-app updates are disabled immediately on every machine.</p>
+      <p style="font-size:13px;color:#999">If you believe this is a mistake, contact <a href="mailto:{support}">{support}</a> to have your access restored.</p>
+    </div>
+    <div style="background:#f0f0f0;padding:16px 32px;text-align:center">
+      <p style="font-size:12px;color:#aaa;margin:0">&copy; Easy OKAPI — Colorimeter Data Visualizer</p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+    msg.attach(MIMEText(text_body, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+
+    server, _ = _smtp_connection()
+    try:
+        server.sendmail(sender, [to_email], msg.as_string())
+    finally:
+        server.quit()

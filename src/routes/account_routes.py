@@ -5,7 +5,10 @@ from flask import Blueprint, request, jsonify, render_template, Response, stream
 import jwt as pyjwt
 
 from account import db, User, LicenseMachine
-from email_service import send_verification_email, send_password_reset_email, send_license_revoked_email
+from email_service import (
+    send_verification_email, send_password_reset_email, send_license_revoked_email,
+    send_account_banned_email,
+)
 from download_service import (
     generate_download_token, validate_download_token,
     fetch_github_release, issue_activation_token, validate_activation_token,
@@ -17,6 +20,11 @@ from rate_limit import limiter, ACTIVATE_LIMIT, LICENSE_CHECK_LIMIT
 account_bp = Blueprint('account', __name__)
 
 _APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
+
+# Shown to a banned account on every blocked surface (login, token, activate,
+# download). A ban is account-wide; contact support to appeal.
+_BAN_MESSAGE = ('This account has been suspended. Please contact support if you '
+                'believe this is a mistake.')
 
 # How many distinct machines one license may be activated on at once. Default 1
 # (a license is locked to a single machine); raise via env for multi-seat plans.
@@ -70,7 +78,15 @@ def _machine_is_licensed(user, payload, presented_hwid):
     hardware-locked token, the caller must present (X-Machine-Id / body hwid) the
     same fingerprint the token carries, and that machine must still be a bound seat
     for this user. Refreshes last_seen on success.
+
+    A whole-account ban (User.banned) overrides everything below: no machine is
+    licensed, so the AI proxy, in-app auto-update, and /api/license/check (→
+    'revoked') all stop immediately for every machine — even a legacy unbound
+    token. This is the single choke point that makes a ban a superset of a
+    per-seat revocation.
     """
+    if getattr(user, 'banned', False):
+        return False
     token_hwid = payload.get('hwid')
     if not token_hwid:
         return True  # legacy, unbound token
@@ -262,6 +278,10 @@ def login():
             'message': 'Email not verified. Please check your inbox and click the verification link.'
         }), 403
 
+    if user.banned:
+        return jsonify({'status': 'error', 'code': 'account_banned',
+                        'message': _BAN_MESSAGE}), 403
+
     # Establish a persistent web session so the main app recognises this user
     session.permanent = True
     session['account_user_id'] = user.id
@@ -309,6 +329,9 @@ def get_token():
     user = User.query.get(account_id)
     if not user or not user.is_verified:
         return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+    if user.banned:
+        return jsonify({'status': 'error', 'code': 'account_banned',
+                        'message': _BAN_MESSAGE}), 403
 
     download_token = generate_download_token(user.id, user.email)
     return jsonify({
@@ -422,6 +445,9 @@ def activate():
     user = User.query.get(int(payload['sub']))
     if not user or not user.is_verified:
         return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+    if user.banned:
+        return jsonify({'status': 'error', 'code': 'account_banned',
+                        'message': _BAN_MESSAGE}), 403
 
     if hwid:
         ok, message = _bind_machine(user, hwid)
@@ -465,6 +491,11 @@ def license_check():
     user = User.query.get(int(payload['sub']))
     if not user or not user.is_verified:
         return jsonify({'status': 'revoked', 'code': 'account_invalid'}), 200
+    if user.banned:
+        # Account-wide ban. Report 'revoked' (a distinct code for diagnostics) so
+        # the desktop client's existing revocation gate blocks the app — no client
+        # change is needed to enforce a ban.
+        return jsonify({'status': 'revoked', 'code': 'account_banned'}), 200
     if _machine_is_licensed(user, payload, hwid):
         return jsonify({'status': 'active'}), 200
     return jsonify({'status': 'revoked', 'code': 'machine_mismatch'}), 200
@@ -577,7 +608,9 @@ def admin_lookup():
     return jsonify({
         'status': 'success',
         'user': {'id': user.id, 'email': user.email, 'name': user.name,
-                 'is_verified': bool(user.is_verified)},
+                 'is_verified': bool(user.is_verified),
+                 'banned': bool(user.banned),
+                 'banned_at': user.banned_at.isoformat() if user.banned_at else None},
         'machines': [_machine_view(m) for m in machines],
     })
 
@@ -614,6 +647,7 @@ def admin_users():
             'email': u.email,
             'name': u.name,
             'is_verified': bool(u.is_verified),
+            'banned': bool(u.banned),
             'created_at': u.created_at.isoformat() if u.created_at else None,
             'machine_count': len(machines),
             'revoked': any(m.revoked for m in machines),
@@ -675,6 +709,66 @@ def admin_revoke():
     })
 
 
+@account_bp.route('/api/admin/ban', methods=['POST'])
+def admin_ban():
+    """Ban (or unban) a whole account by email — the admin kill-switch's big hammer.
+
+    Body: {"email": "...", "banned": true|false}. A ban is broader than a license
+    revocation: it sets User.banned, which blocks web sign-in, download, activation
+    AND software usage on every machine (the desktop client's license check then
+    reports 'revoked', so its existing gate locks the app). On ban=true a seat is
+    NOT required — even an account with zero machines is fully blocked — and every
+    seat is also marked revoked so the AI proxy / auto-update stop immediately; a
+    notification email is sent once. banned=false lifts the ban and reinstates
+    every seat (no email). Idempotent.
+    """
+    err = _require_admin()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    ban = bool(data.get('banned', True))
+    if not email:
+        return jsonify({'status': 'error', 'message': 'email is required'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'status': 'error', 'message': 'Account not found'}), 404
+
+    now = datetime.utcnow()
+    changed = bool(user.banned) != ban
+    user.banned = ban
+    user.banned_at = now if ban else None
+
+    # Keep the per-seat revoked flag in lockstep so the seat-level surfaces
+    # (AI proxy, auto-update) reflect the ban without depending on User.banned.
+    machines = LicenseMachine.query.filter_by(user_id=user.id).all()
+    for m in machines:
+        if bool(m.revoked) != ban:
+            m.revoked = ban
+            m.revoked_at = now if ban else None
+    db.session.commit()
+
+    email_sent = False
+    if ban and changed:
+        try:
+            send_account_banned_email(user.email, user.name, _APP_BASE_URL)
+            email_sent = True
+        except Exception:
+            email_sent = False  # best-effort: the ban still stands
+
+    return jsonify({
+        'status': 'success',
+        'banned': ban,
+        'changed': changed,
+        'machine_count': len(machines),
+        'email_sent': email_sent,
+        'user': {'id': user.id, 'email': user.email, 'name': user.name,
+                 'is_verified': bool(user.is_verified), 'banned': bool(user.banned),
+                 'banned_at': user.banned_at.isoformat() if user.banned_at else None},
+        'machines': [_machine_view(m) for m in machines],
+    })
+
+
 @account_bp.route('/api/version')
 def app_version():
     """Return the current app release tag and optional release notes.
@@ -714,6 +808,9 @@ def download():
         user = User.query.get(int(payload['sub']))
         if not user or not user.is_verified:
             return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+        if user.banned:
+            return jsonify({'status': 'error', 'code': 'account_banned',
+                            'message': _BAN_MESSAGE}), 403
         if not _machine_is_licensed(user, payload, request.headers.get('X-Machine-Id')):
             return jsonify({'status': 'error', 'code': 'machine_mismatch',
                             'message': 'This license is not activated on this machine.'}), 403
@@ -727,6 +824,9 @@ def download():
         user = User.query.get(int(payload['sub']))
         if not user or not user.is_verified:
             return jsonify({'status': 'error', 'message': 'Account not found or not verified'}), 403
+        if user.banned:
+            return jsonify({'status': 'error', 'code': 'account_banned',
+                            'message': _BAN_MESSAGE}), 403
     else:
         return jsonify({'status': 'error', 'message': 'Download token required'}), 401
 

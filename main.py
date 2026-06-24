@@ -79,7 +79,21 @@ _ACTIVITY_REFRESH_PATHS = {'/', '/api/account/heartbeat'}
 
 @app.before_request
 def enforce_account_idle_timeout():
-    if not session.get('account_user_id'):
+    account_id = session.get('account_user_id')
+    if not account_id:
+        return
+
+    # Drop the session immediately if this account was banned mid-session, so a
+    # ban takes effect on the user's open tab on their very next request — not
+    # only at their next fresh login.
+    from account import User
+    banned_user = User.query.get(account_id)
+    if banned_user is not None and banned_user.banned:
+        for key in ('account_user_id', 'account_user_name', 'account_user_email', 'last_activity'):
+            session.pop(key, None)
+        if request.path.startswith('/api/'):
+            return jsonify({'status': 'error', 'code': 'account_banned',
+                            'message': 'This account has been suspended.'}), 403
         return
 
     now = datetime.utcnow()

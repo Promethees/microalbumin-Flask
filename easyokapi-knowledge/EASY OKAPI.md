@@ -179,6 +179,19 @@ The app includes a persistent account system backed by a **PostgreSQL** database
 | Delete account | POST | `/api/account/delete` | Requires password; wipes Firebase data, Redis cache, DB row |
 | Download | GET | `/api/download` | Validates JWT token; proxies GitHub release tarball to user |
 
+### Admin kill-switch (shared-secret `X-Admin-Key`)
+
+Machine-to-machine surface for the local admin tool (`offline` branch). All require the `X-Admin-Key` header (matched against `ADMIN_API_KEY`); unconfigured server → `503`.
+
+| Action | Method | Path | Notes |
+|---|---|---|---|
+| List/search users | GET | `/api/admin/users?q=&limit=` | Each row carries `banned` + `revoked` flags |
+| Lookup account | GET | `/api/admin/lookup?email=` | User (incl. `banned`/`banned_at`) + machine seats |
+| Revoke license | POST | `/api/admin/revoke` | `{email, revoked}` → flips every **seat** (`LicenseMachine.revoked`); seat-level only |
+| **Ban account** | POST | `/api/admin/ban` | `{email, banned}` → sets account-level `User.banned`; blocks **login, download, activation, and software usage on every machine** (even with zero seats); also mirrors the flag onto every seat; emails the user once on ban |
+
+**Revoke vs Ban**: revoke disables a machine *seat* (license transfer / per-machine) but a revoked user can still sign in and re-download. Ban is account-wide and a strict superset — enforced wherever a `User` is resolved (`/api/account/login`, `/api/account/token`, `/api/activate`, `/api/download`, the idle-guard) and routed through `_machine_is_licensed()` so `/api/license/check` reports `revoked` and the desktop client's existing gate locks the app (no client change needed).
+
 ### Session Keys
 
 When a user logs in, three keys are written to the Flask `session`:

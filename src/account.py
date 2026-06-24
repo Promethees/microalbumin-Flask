@@ -19,6 +19,13 @@ class User(db.Model):
     verification_expires = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     last_download = db.Column(db.DateTime, nullable=True)
+    # Account-level ban (the admin kill-switch's bigger hammer). Distinct from a
+    # per-machine LicenseMachine.revoked seat: a ban blocks the WHOLE account —
+    # web login, download, activation, and software usage on every machine —
+    # regardless of how many seats exist (even zero). Set per-account by the admin
+    # tool; enforced wherever a User is resolved. See routes/account_routes.py.
+    banned = db.Column(db.Boolean, default=False, nullable=False)
+    banned_at = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password: str):
         self.password_hash = bcrypt.hashpw(
@@ -114,6 +121,10 @@ def run_migrations(engine):
     cols = [
         ('users', 'reset_token', 'VARCHAR(128)'),
         ('users', 'reset_expires', ts_type),
+        # Account-level ban (the admin kill-switch) — see User.banned.
+        ('users', 'banned', 'BOOLEAN DEFAULT FALSE NOT NULL'
+            if dialect == 'postgresql' else 'BOOLEAN DEFAULT 0 NOT NULL'),
+        ('users', 'banned_at', ts_type),
         # Admin revocation (license kill-switch) — see LicenseMachine.revoked.
         ('license_machines', 'revoked', 'BOOLEAN DEFAULT FALSE NOT NULL'
             if dialect == 'postgresql' else 'BOOLEAN DEFAULT 0 NOT NULL'),
