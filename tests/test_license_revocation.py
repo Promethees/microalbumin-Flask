@@ -123,3 +123,25 @@ def test_check_revocation_non200_is_offline(status_file, frozen_activated, monke
     _patch_post(monkeypatch, _Resp(401, {'status': 'error'}))
     assert activation.check_revocation() == 'offline'
     assert not os.path.exists(status_file)  # nothing written
+
+
+# ── account ban (distinct from per-machine revocation) ────────────────────────
+
+def test_banned_is_sticky(status_file, frozen_activated):
+    _write(status_file, 'banned', age_seconds=999999)  # stale, still blocks
+    assert activation.license_state() == 'banned'
+    assert activation.license_blocked() is True
+
+
+def test_check_revocation_banned_writes_cache(status_file, frozen_activated, monkeypatch):
+    # Server reports a ban as status 'revoked' + code 'account_banned'.
+    _patch_post(monkeypatch, _Resp(200, {'status': 'revoked', 'code': 'account_banned'}))
+    assert activation.check_revocation() == 'banned'
+    assert json.load(open(status_file))['status'] == 'banned'
+
+
+def test_check_revocation_revoked_without_ban_code_stays_revoked(status_file, frozen_activated, monkeypatch):
+    # A plain seat revocation (other code, or none) must NOT be cached as banned.
+    _patch_post(monkeypatch, _Resp(200, {'status': 'revoked', 'code': 'machine_mismatch'}))
+    assert activation.check_revocation() == 'revoked'
+    assert json.load(open(status_file))['status'] == 'revoked'

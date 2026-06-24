@@ -100,3 +100,51 @@ def test_gate_off_lets_everything_through(client, monkeypatch):
     rv = client.get('/api/anything')
     assert rv.status_code == 404
     assert not _is_not_activated_403(rv)
+
+
+# ── Revocation / ban gate (main._enforce_license) ─────────────────────────────
+# Activation gate OFF (needs_activation False) so the revocation/ban gate is what
+# is under test; license_state() is pinned per-test.
+
+@pytest.fixture
+def activated(monkeypatch):
+    monkeypatch.setattr(activation, 'needs_activation', lambda: False)
+
+
+def _force_state(monkeypatch, value):
+    monkeypatch.setattr(activation, 'license_state', lambda: value)
+
+
+def test_banned_page_request_redirects_to_banned(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'banned')
+    rv = client.get('/')
+    assert rv.status_code in (301, 302)
+    assert rv.headers.get('Location', '').endswith('/license-banned')
+
+
+def test_banned_api_returns_license_banned_403(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'banned')
+    rv = client.get('/api/anything')
+    assert rv.status_code == 403
+    assert (rv.get_json() or {}).get('code') == 'license_banned'
+
+
+def test_banned_page_renders_when_banned(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'banned')
+    rv = client.get('/license-banned')
+    assert rv.status_code == 200
+    assert b'suspended' in rv.data.lower()
+
+
+def test_banned_page_redirects_home_when_not_banned(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'active')
+    rv = client.get('/license-banned')
+    assert rv.status_code in (301, 302)
+    assert rv.headers.get('Location', '').endswith('/')
+
+
+def test_revoked_still_uses_blocked_page(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'revoked')
+    rv = client.get('/')
+    assert rv.status_code in (301, 302)
+    assert rv.headers.get('Location', '').endswith('/license-blocked')

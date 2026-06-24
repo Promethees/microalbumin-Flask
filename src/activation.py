@@ -278,7 +278,7 @@ def load_status():
 
 
 def record_status(status):
-    """Persist a license verdict ('active'|'revoked') stamped with the current time."""
+    """Persist a license verdict ('active'|'revoked'|'banned') stamped with the current time."""
     try:
         with open(_STATUS_PATH, 'w', encoding='utf-8') as f:
             json.dump({'status': status, 'checked_at': time.time()}, f, indent=2)
@@ -290,10 +290,15 @@ def record_status(status):
 def check_revocation():
     """Poll the server for this machine's license verdict and update the cache.
 
-    Returns 'active', 'revoked', or 'offline'. Best-effort: only an explicit
-    'active'/'revoked' (HTTP 200) changes the cached state, so an unreachable
-    server, a 4xx/5xx, or an untrusted reply ('offline') never flips a working
-    install to blocked — it just leaves the last known verdict in place.
+    Returns 'active', 'revoked', 'banned', or 'offline'. Best-effort: only an
+    explicit 'active'/'revoked' (HTTP 200) changes the cached state, so an
+    unreachable server, a 4xx/5xx, or an untrusted reply ('offline') never flips a
+    working install to blocked — it just leaves the last known verdict in place.
+
+    A whole-account ban is reported by the server as status 'revoked' with code
+    'account_banned'; we cache it as the distinct sticky verdict 'banned' so the
+    gate can show a dedicated "account suspended" screen instead of the
+    per-machine "license deactivated" one.
     """
     token = get_license_token()
     if not token:
@@ -307,12 +312,15 @@ def check_revocation():
     if resp.status_code != 200:
         return 'offline'
     try:
-        status = (resp.json().get('status') or '').lower()
+        body = resp.json()
+        status = (body.get('status') or '').lower()
+        code = (body.get('code') or '').lower()
     except Exception:
         return 'offline'
     if status == 'revoked':
-        record_status('revoked')
-        return 'revoked'
+        verdict = 'banned' if code == 'account_banned' else 'revoked'
+        record_status(verdict)
+        return verdict
     if status == 'active':
         record_status('active')
         return 'active'
@@ -320,12 +328,13 @@ def check_revocation():
 
 
 def license_state():
-    """Client-side license verdict for the gate: 'active' | 'revoked' | 'needs_recheck'.
+    """Client-side license verdict for the gate: 'active' | 'revoked' | 'banned' | 'needs_recheck'.
 
     Only meaningful for an activated, frozen build. Source/dev runs and not-yet-
     activated builds (the activation gate handles those) are always 'active' here,
     so revocation never interferes with them. For an activated frozen build:
 
+      * cached 'banned'                     → 'banned'         (sticky; account-wide)
       * cached 'revoked'                    → 'revoked'        (sticky; works offline)
       * cached 'active' within grace window → 'active'
       * otherwise (no/stale confirmation)   → 'needs_recheck'  (ask to reconnect)
@@ -334,6 +343,8 @@ def license_state():
         return 'active'
     st = load_status()
     status = st.get('status')
+    if status == 'banned':
+        return 'banned'
     if status == 'revoked':
         return 'revoked'
     if status == 'active':
@@ -346,5 +357,5 @@ def license_state():
 
 
 def license_blocked():
-    """True when the app must be blocked outright because the license was revoked."""
-    return license_state() == 'revoked'
+    """True when the app must be blocked outright (license revoked or account banned)."""
+    return license_state() in ('revoked', 'banned')

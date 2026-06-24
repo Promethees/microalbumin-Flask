@@ -163,10 +163,11 @@ def activate_page():
 # ── License revocation gate (frozen builds) ──────────────────────────────────
 # An activated machine whose license the admin has revoked server-side must stop
 # working, even though its permanent token still verifies offline. license_state()
-# reports 'revoked' (sticky, blocks outright), 'needs_recheck' (grace lapsed while
-# offline — ask the user to reconnect) or 'active'. See src/activation.py.
-_LICENSE_OPEN_PATHS = {'/license-blocked', '/license-reverify', '/license/recheck',
-                       '/ping', '/favicon.ico'}
+# reports 'revoked' (sticky, per-machine deactivation), 'banned' (sticky, whole
+# account suspended), 'needs_recheck' (grace lapsed while offline — ask the user
+# to reconnect) or 'active'. See src/activation.py.
+_LICENSE_OPEN_PATHS = {'/license-blocked', '/license-banned', '/license-reverify',
+                       '/license/recheck', '/ping', '/favicon.ico'}
 
 
 @app.before_request
@@ -178,18 +179,32 @@ def _enforce_license():
     if path in _LICENSE_OPEN_PATHS or path.startswith('/static/'):
         return
     if path.startswith('/api/') or path.startswith('/ai/'):
-        code = 'license_revoked' if state_ == 'revoked' else 'license_recheck'
+        code = {'revoked': 'license_revoked', 'banned': 'license_banned'}.get(state_, 'license_recheck')
         return jsonify({'status': 'error', 'code': code,
                         'message': 'This license is not currently valid on this machine.'}), 403
+    if state_ == 'banned':
+        return redirect('/license-banned')
     return redirect('/license-blocked' if state_ == 'revoked' else '/license-reverify')
 
 
 @app.route('/license-blocked')
 def license_blocked_page():
-    # Only a revoked license sees this dead-end; anything else returns to the app.
+    # Only a revoked license sees this dead-end; anything else returns to the app
+    # (or, for a banned account, to its own page via the gate on '/').
     if _activation.license_state() != 'revoked':
         return redirect('/')
     return render_template('license_blocked.html', title='License Deactivated',
+                           ai_service_url=_activation.AI_SERVICE_URL,
+                           support_email=state.MAINTAINER_EMAIL)
+
+
+@app.route('/license-banned')
+def license_banned_page():
+    # The dead-end for a whole-account ban (User.banned on the server). Distinct
+    # from /license-blocked, which is a single-machine license deactivation.
+    if _activation.license_state() != 'banned':
+        return redirect('/')
+    return render_template('license_banned.html', title='Account Suspended',
                            ai_service_url=_activation.AI_SERVICE_URL,
                            support_email=state.MAINTAINER_EMAIL)
 
@@ -201,14 +216,16 @@ def license_reverify_page():
         return redirect('/')
     if st == 'revoked':
         return redirect('/license-blocked')
+    if st == 'banned':
+        return redirect('/license-banned')
     return render_template('license_reverify.html', title='Verify License',
                            ai_service_url=_activation.AI_SERVICE_URL)
 
 
 @app.route('/license/recheck', methods=['POST'])
 def license_recheck():
-    """Re-poll the server now (used by the reverify page) and report the verdict."""
-    result = _activation.check_revocation()  # 'active' | 'revoked' | 'offline'
+    """Re-poll the server now (used by the gate pages) and report the verdict."""
+    result = _activation.check_revocation()  # 'active' | 'revoked' | 'banned' | 'offline'
     return jsonify({'status': 'success', 'result': result,
                     'state': _activation.license_state()})
 

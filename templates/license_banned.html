@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='ht.ico') }}">
+    <style>
+        :root {
+            --bg: #1a0406; --bg2: #0b0405; --fg: #fde2e2; --muted: #f4a3a3;
+            --accent: #7f1d1d; --accent-hi: #991b1b; --ok: #86efac;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--fg);
+            background: radial-gradient(1200px 600px at 70% -10%, #450a0a 0%, var(--bg) 45%, var(--bg2) 100%);
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .card {
+            width: 100%; max-width: 460px;
+            background: rgba(11, 4, 5, 0.78);
+            border: 1px solid rgba(153, 27, 27, 0.45);
+            border-radius: 16px; padding: 32px 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            backdrop-filter: blur(6px); text-align: center;
+        }
+        .logo { display: block; width: 72px; height: 72px; margin: 0 auto 14px; object-fit: contain; }
+        .badge {
+            display: inline-block; margin: 0 0 12px; padding: 4px 12px; border-radius: 99px;
+            background: #450a0a; color: #fecaca; font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 0.08em; text-transform: uppercase;
+        }
+        h1 { font-size: 1.4rem; margin: 0 0 6px; }
+        p.sub { color: var(--muted); margin: 0 0 18px; font-size: 0.92rem; line-height: 1.55; }
+        a { color: #fda4af; }
+        button {
+            width: 100%; margin-top: 8px; padding: 12px 14px; border: none;
+            border-radius: 10px; background: var(--accent); color: #fff;
+            font-size: 0.98rem; font-weight: 600; cursor: pointer; transition: background .15s;
+        }
+        button:hover:not(:disabled) { background: var(--accent-hi); }
+        button:disabled { opacity: 0.6; cursor: progress; }
+        .msg { margin-top: 14px; font-size: 0.88rem; min-height: 1.2em; }
+        .msg.ok { color: var(--ok); }
+        .foot { margin-top: 20px; font-size: 0.82rem; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img class="logo" src="{{ url_for('static', filename='okapi.png') }}" alt="EasyOKAPI"
+             onerror="this.style.display='none'">
+        <span class="badge">Account suspended</span>
+        <h1>This account has been suspended</h1>
+        <p class="sub">An administrator has suspended this EasyOKAPI account. The app is
+            locked on this machine, and the account can no longer sign in to the website,
+            download, or activate EasyOKAPI on any machine.</p>
+        <p class="sub">If you believe this is a mistake, contact
+            <a href="mailto:{{ support_email }}">{{ support_email }}</a> to have your
+            account restored. Once it is restored, click below to unlock.</p>
+
+        <button id="recheckBtn" type="button">Check again</button>
+        <div id="msg" class="msg" role="status" aria-live="polite"></div>
+    </main>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('recheckBtn');
+            var msg = document.getElementById('msg');
+            function setMsg(t, kind) { msg.textContent = t || ''; msg.className = 'msg' + (kind ? ' ' + kind : ''); }
+
+            btn.addEventListener('click', function () {
+                btn.disabled = true; setMsg('Checking…');
+                fetch('/license/recheck', { method: 'POST' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        if (d.state === 'active') { setMsg('Restored! Starting EasyOKAPI…', 'ok'); window.location.href = '/'; return; }
+                        btn.disabled = false;
+                        setMsg(d.result === 'offline'
+                            ? 'Could not reach the license server. Check your connection.'
+                            : 'Still suspended. Contact support if this is unexpected.');
+                    })
+                    .catch(function () { btn.disabled = false; setMsg('Could not reach the license server. Check your connection.'); });
+            });
+        })();
+    </script>
+</body>
+</html>
