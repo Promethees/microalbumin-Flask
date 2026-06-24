@@ -42,7 +42,7 @@ function _renderFolderList(containerId, folders) {
                      data-path="${_esc(f.path)}"
                      data-name="${_esc(f.name.toLowerCase())}"
                      onclick="selectDataFolder('${_esc(f.name)}', '${_esc(f.path)}')"
-                     title="${_escHtml(f.path)}">${_escHtml(f.name)}</div>`;
+                     data-hint="${_escHtml(f.path)}">${_escHtml(f.name)}</div>`;
     }).join('');
 }
 

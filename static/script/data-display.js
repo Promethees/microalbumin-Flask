@@ -386,13 +386,13 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         if (analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
             document.getElementById(analysisId).insertAdjacentHTML('beforeend',
                 `<button class="utility-btn" style="margin-top:4px;"
-                    title="Save the linearity range rows for this source to a new CSV file"
+                    data-hint="Save the linearity range rows for this source to a new CSV file"
                     onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">📐 Save Linearity Range</button>`
             );
         }
         document.getElementById(analysisId).insertAdjacentHTML('beforeend',
             `<button class="utility-btn" style="margin-top:4px;"
-                title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
+                data-hint="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
                 onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`
         );
     }
@@ -429,11 +429,11 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
         html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
         if (analyses[i] && analyses[i].linearXMin != null && analyses[i].linearXMax != null) {
             html += `<button class="utility-btn" style="margin-top:4px;"
-                title="Save the linearity range rows for this source to a new CSV file"
+                data-hint="Save the linearity range rows for this source to a new CSV file"
                 onclick="saveLinearityRangeCsvForSource(${i}, ${analyses[i].linearXMin}, ${analyses[i].linearXMax})">📐 Save Linearity Range</button>`;
         }
         html += `<button class="utility-btn" style="margin-top:4px;"
-            title="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
+            data-hint="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
             onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
         const metaConcentration = getMetaConcentration(AppState.metaData);
         html += `
@@ -821,27 +821,18 @@ function createToggleButton(analysisId = "plot-analysis", showText = 'See the an
     <div style="position: relative; display: inline-block;">
         <button
             id="${buttonId}"
-            title="${initialTooltipText}"
+            data-hint="${initialTooltipText}"
             onclick="
-            let contentDiv = this.parentElement.nextElementSibling.nextElementSibling;
+            let contentDiv = this.parentElement.nextElementSibling;
             this.innerHTML = this.innerHTML === '+' ? '-' : '+';
-            let tooltip = this.nextElementSibling;
-            tooltip.innerText = this.innerHTML === '-' ? '${hideText}' : '${showText}';
-            this.title = this.innerHTML === '-' ? '${hideText}' : '${showText}';
+            this.setAttribute('data-hint', this.innerHTML === '-' ? '${hideText}' : '${showText}');
             if (this.innerHTML === '-') {
                 contentDiv.style.display = 'block';
             } else {
                 contentDiv.style.display = 'none';
             }
         " style="cursor: pointer; background: #ccc; color: #000; border: none; font-weight: bold; padding: 0; margin: 0; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px;">${initialSymbol}</button>
-        <span class="tooltip" style="position: absolute; top: 50%; left: 100%; margin-left: 5px; padding: 5px 10px; background: #333; color: #fff; border-radius: 4px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-50%) translateX(-10px); white-space: nowrap; pointer-events: none; z-index: 10;">${initialTooltipText}</span>
     </div>
-    <style>
-        button:hover + .tooltip {
-            opacity: 1;
-            transform: translateY(-50%) translateX(0);
-        }
-    </style>
     `;
 }
 

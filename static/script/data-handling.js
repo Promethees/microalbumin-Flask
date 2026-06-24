@@ -1027,10 +1027,10 @@ async function loadEditSwalItems(subjectName, container) {
             card.style.cssText = `margin-bottom:6px; padding:8px 10px; background:${isDark ? '#1f2937' : '#fff'}; border:1px solid ${isDark ? '#374151' : '#e2e8f0'}; border-radius:6px; transition: background 0.15s; color:${isDark ? '#f3f4f6' : 'inherit'};`;
             card.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="drag-handle" title="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
-                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.filename}">${item.filename}</span>
+                    <span class="drag-handle" data-hint="Drag to reorder" style="cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;">⠿</span>
+                    <span style="flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-hint="${item.filename}">${item.filename}</span>
                     <span style="font-size:0.75rem; color:${isDark ? '#a5b4fc' : '#6366f1'}; background:${isDark ? '#312e81' : '#eef2ff'}; padding:1px 7px; border-radius:8px; flex-shrink:0;">${item.metadata.mode || 'Measurement'}</span>
-                    <button data-card-id="${safeId}" data-filename="${item.filename}" title="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
+                    <button data-card-id="${safeId}" data-filename="${item.filename}" data-hint="Remove from subject" onclick="requestSwalItemDelete(this)" style="background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;">✕</button>
                 </div>
                 <div class="swal-delete-confirm" style="display:none; margin-top:6px; padding-top:6px; border-top:1px solid ${isDark ? '#7f1d1d' : '#fee2e2'}; text-align:right;">
                     <span style="font-size:0.8rem; color:#ef4444; margin-right:8px;">Remove this item from report folder?</span>
@@ -1062,7 +1062,7 @@ function cancelSwalItemDelete(btn) {
     card.style.background = isDark ? '#1f2937' : '#fff';
     card.style.borderColor = isDark ? '#374151' : '#e2e8f0';
     card.querySelector('.swal-delete-confirm').style.display = 'none';
-    card.querySelector('button[title="Remove from subject"]').disabled = false;
+    card.querySelector('button[data-hint="Remove from subject"]').disabled = false;
 }
 
 async function confirmSwalItemDelete(btn) {
@@ -1157,16 +1157,16 @@ function showMergeModal() {
     const makeFileRow = () => `
         <div class="merge-file-row" style="display:grid; grid-template-columns:30px 1fr 30px; gap:5px; align-items:center; padding:7px 8px; border:1px solid #ddd; border-radius:6px; margin-bottom:6px;">
             <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                <button type="button" class="merge-up-btn" title="Move up"
+                <button type="button" class="merge-up-btn" data-hint="Move up"
                     style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▲</button>
-                <button type="button" class="merge-dn-btn" title="Move down"
+                <button type="button" class="merge-dn-btn" data-hint="Move down"
                     style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▼</button>
             </div>
             <div style="display:flex; flex-direction:column; gap:4px;">
                 <select class="merge-folder-select swal2-input" style="margin:0; font-size:0.8rem; height:30px; width:100%; box-sizing:border-box;"></select>
                 <select class="merge-file-select swal2-input" style="margin:0; width:100%; box-sizing:border-box;"></select>
             </div>
-            <button type="button" class="merge-remove-btn" title="Remove"
+            <button type="button" class="merge-remove-btn" data-hint="Remove"
                 style="background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
         </div>`;
 
@@ -1762,13 +1762,13 @@ function showMergeModal() {
     const makeFileRow = () => `
         <div class="merge-file-row" style="display:grid; grid-template-columns:30px 1fr 30px; gap:5px; align-items:center; padding:7px 8px; border:1px solid #ddd; border-radius:6px; margin-bottom:6px;">
             <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                <button type="button" class="merge-up-btn" title="Move up"
+                <button type="button" class="merge-up-btn" data-hint="Move up"
                     style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▲</button>
-                <button type="button" class="merge-dn-btn" title="Move down"
+                <button type="button" class="merge-dn-btn" data-hint="Move down"
                     style="background:none; border:1px solid #bbb; border-radius:3px; width:24px; height:20px; cursor:pointer; font-size:0.6rem; padding:0; line-height:1;">▼</button>
             </div>
             <select class="merge-file-select swal2-input" style="margin:0; width:100%; box-sizing:border-box;">${fileOptions}</select>
-            <button type="button" class="merge-remove-btn" title="Remove"
+            <button type="button" class="merge-remove-btn" data-hint="Remove"
                 style="background:#e74c3c; color:#fff; border:none; border-radius:4px; width:26px; height:26px; cursor:pointer; font-size:0.8rem; padding:0; align-self:center;">✕</button>
         </div>`;
 
@@ -2013,12 +2013,12 @@ async function loadEditSwalItems(subjectName, container) {
             cardRow.style.cssText = 'display:flex; align-items:center; gap:8px;';
             const dragHandle = document.createElement('span');
             dragHandle.className = 'drag-handle';
-            dragHandle.title = 'Drag to reorder';
+            dragHandle.setAttribute('data-hint', 'Drag to reorder');
             dragHandle.style.cssText = 'cursor:grab; color:#94a3b8; font-size:1.1rem; user-select:none; flex-shrink:0;';
             dragHandle.textContent = '⠿';
             const nameSpan = document.createElement('span');
             nameSpan.style.cssText = 'flex:1; font-size:0.9rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
-            nameSpan.title = item.filename;
+            nameSpan.setAttribute('data-hint', item.filename);
             nameSpan.textContent = item.filename;
             const modeSpan = document.createElement('span');
             modeSpan.style.cssText = isDark
@@ -2028,7 +2028,7 @@ async function loadEditSwalItems(subjectName, container) {
             const removeBtn = document.createElement('button');
             removeBtn.dataset.cardId = safeId;
             removeBtn.dataset.filename = item.filename;
-            removeBtn.title = 'Remove from subject';
+            removeBtn.setAttribute('data-hint', 'Remove from subject');
             removeBtn.style.cssText = 'background:none; border:1px solid #fca5a5; cursor:pointer; color:#ef4444; font-size:0.75rem; padding:2px 8px; border-radius:4px; flex-shrink:0;';
             removeBtn.textContent = '✕';
             removeBtn.addEventListener('click', () => requestSwalItemDelete(removeBtn));
@@ -2082,7 +2082,7 @@ function cancelSwalItemDelete(btn) {
     card.style.background = isDark ? '#1f2937' : '#fff';
     card.style.borderColor = isDark ? '#374151' : '#e2e8f0';
     card.querySelector('.swal-delete-confirm').style.display = 'none';
-    card.querySelector('button[title="Remove from subject"]').disabled = false;
+    card.querySelector('button[data-hint="Remove from subject"]').disabled = false;
 }
 
 async function confirmSwalItemDelete(btn) {

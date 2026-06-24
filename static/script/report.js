@@ -181,12 +181,12 @@ function _fullPointTpEntryHtml(filename, timePoints) {
                 <option value="">All time points</option>
                 ${timePoints.map(tp => `<option value="${tp}">${tp}</option>`).join('')}
             </select>
-            <button type="button" class="point-tp-remove" onclick="removePointTimePoint(this, '${filename}')" title="Remove time point"
+            <button type="button" class="point-tp-remove" onclick="removePointTimePoint(this, '${filename}')" data-hint="Remove time point"
                 style="border:none; background:#fdecea; color:#c0392b; border-radius:4px; cursor:pointer; padding:2px 8px;">✕</button>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:5px; font-size:0.7rem;">
             ${REPORT_ALGO_CHOICES.map(a => `
-                <label class="algo-include-label" title="${a.label}" style="cursor:pointer; background:#f0f0f0; padding:2px 4px; border-radius:3px;">
+                <label class="algo-include-label" data-hint="${a.label}" style="cursor:pointer; background:#f0f0f0; padding:2px 4px; border-radius:3px;">
                     <input type="checkbox" class="point-algo-checkbox" data-filename="${filename}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
                     ${a.label}
                 </label>`).join('')}
@@ -328,7 +328,7 @@ async function generateReport() {
         `<div class="swal-tp-entry" style="border:1px solid #eee; border-radius:6px; padding:6px 8px; margin:4px 0;">
             <div style="display:flex; align-items:center; gap:8px;">
                 <select class="swal-tp-select" style="margin:0; padding:2px 4px; height:auto; font-size:0.85rem; flex:1;">${tpOptionsHtml}</select>
-                <button type="button" class="swal-tp-remove" title="Remove this time point"
+                <button type="button" class="swal-tp-remove" data-hint="Remove this time point"
                     style="border:none; background:#fdecea; color:#c0392b; border-radius:4px; cursor:pointer; padding:2px 8px;">✕</button>
             </div>
             <div class="swal-tp-algos" style="margin-top:4px;">
@@ -1299,7 +1299,7 @@ async function loadReportItems(subject) {
                                         </div>
                                         <div id="${itemID}-${m.id}-algo-checkboxes" style="display: flex; flex-wrap: wrap; gap: 5px; font-size: 0.7rem;">
                                             ${algos.map(a => `
-                                                <label class="algo-include-label" title="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
+                                                <label class="algo-include-label" data-hint="${a.label}" style="cursor: pointer; background: #f0f0f0; padding: 2px 4px; border-radius: 3px;">
                                                     <input type="checkbox" class="algo-include-checkbox" data-filename="${item.filename}" data-metric="${m.id}" data-algo="${a.id}" ${a.id === 'linear' ? 'checked' : ''}>
                                                     ${a.label}
                                                 </label>
@@ -1378,14 +1378,14 @@ async function loadReportItems(subject) {
 
                 card.innerHTML = `
                     <div class="report-item-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; margin: -10px -10px 10px -10px; padding: 5px 10px; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 8px;">
-                        <button class="move-card-btn" onclick="moveCardUp(this)" title="Move up" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▲</button>
-                        <button class="move-card-btn" onclick="moveCardDown(this)" title="Move down" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▼</button>
+                        <button class="move-card-btn" onclick="moveCardUp(this)" data-hint="Move up" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▲</button>
+                        <button class="move-card-btn" onclick="moveCardDown(this)" data-hint="Move down" style="background: none; border: 1px solid #cbd5e1; cursor: pointer; color: #64748b; font-size: 0.75rem; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">▼</button>
                         <label style="font-weight: 700; cursor: pointer; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             <input type="checkbox" class="report-console-item-checkbox" checked data-filename="${item.filename}" data-path="${item.path}" onchange="toggleItemCardOpacity('${itemID}', this.checked)">
                             ${item.filename}
                         </label>
                         <span class="item-mode-badge" style="font-size: 0.8rem; color: #6366f1; background: #eef2ff; padding: 2px 8px; border-radius: 10px; font-weight: bold; flex-shrink: 0;">${item.metadata.mode || 'Measurement'}</span>
-                        <button class="delete-item-btn" data-card-id="${itemID}" data-filename="${item.filename}" title="Remove from subject" onclick="deleteReportItem(this)" style="background: none; border: 1px solid #fca5a5; cursor: pointer; color: #ef4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;">✕ Remove</button>
+                        <button class="delete-item-btn" data-card-id="${itemID}" data-filename="${item.filename}" data-hint="Remove from subject" onclick="deleteReportItem(this)" style="background: none; border: 1px solid #fca5a5; cursor: pointer; color: #ef4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; flex-shrink: 0;">✕ Remove</button>
                     </div>
                     ${contentHtml}
                 `;
