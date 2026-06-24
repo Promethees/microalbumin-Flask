@@ -200,10 +200,11 @@
             </div>
         </div>
         <div id="top-right-btn-group">
-            <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide">
+            <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide"
+                data-hint="Start the interactive step-by-step walkthrough of the app">
                 User Guide
             </button>
-            <button id="shutdown-btn">Shutdown Program</button>
+            <button id="shutdown-btn" data-hint="Stop the server and close EasyOKAPI">Shutdown Program</button>
         </div>
     </div>
 
@@ -211,7 +212,8 @@
         <div class="top-left">
             <div class="flex-group">
                 <img src="../static/cbb.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo"
-                    class="hidden" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+                    class="hidden" data-hint="Scroll back to the top of the page"
+                    onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
 
                 <div id="title" class="title-place hidden">
                     <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
@@ -219,17 +221,17 @@
                         <span style="color: #3498db;">Easy</span> OKAPI
                         <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img">
                     </h1>
-                    <span class="app-version-badge" id="app-version-badge" title="Check for updates" style="cursor:pointer;">v{{ app_version }}</span>
+                    <span class="app-version-badge" id="app-version-badge" data-hint="Check for updates" style="cursor:pointer;">v{{ app_version }}</span>
                     <div id="update-banner" class="hidden" onclick="showUpdateModal()">
                         <span class="update-banner-label"><span class="update-banner-icon">↓</span> Update available<span id="update-banner-version"></span></span>
-                        <span class="update-banner-dismiss" onclick="_dismissBanner(event)" title="Dismiss">×</span>
+                        <span class="update-banner-dismiss" onclick="_dismissBanner(event)" data-hint="Dismiss">×</span>
                     </div>
                 </div>
 
-                <div class="toggle-container" id="toggleContainer">
+                <div class="toggle-container" id="toggleContainer" data-hint="Switch between light and dark theme">
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
-                <button id="settingsBtn" class="settings-btn" title="App Settings">⚙️</button>
+                <button id="settingsBtn" class="settings-btn" data-hint="App Settings">⚙️</button>
             </div>
             <div id="top-left-scrollable">
                 <div class="section hidden" style="position: static;" id="meas-mode-section">
@@ -245,7 +247,7 @@
                                 <input type="text" id="folder-search-top" placeholder="Search folders…"
                                     oninput="filterDataFolderList('data-folder-list-top', this.value)"
                                     style="flex:1; padding:3px 5px;">
-                                <button onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
+                                <button onclick="loadDataFolders()" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
                             </div>
                             <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                         </div>
@@ -291,7 +293,7 @@
                 </div>
                 <div class="section hidden" id="report-bug-section">
                     <button id="report-bug-btn" onclick="reportBug()"
-                        title="Report a bug or defect to the maintainer" aria-label="Report a Bug">
+                        data-hint="Report a bug or defect to the maintainer" aria-label="Report a Bug">
                         🐞 Report a Bug
                     </button>
                 </div>
@@ -343,7 +345,7 @@
                         <input type="text" id="folder-search-main" placeholder="Search folders…"
                             oninput="filterDataFolderList('data-folder-list', this.value)"
                             style="flex:1; padding:4px 6px;">
-                        <button onclick="loadDataFolders()" title="Refresh folder list">↻ Refresh</button>
+                        <button onclick="loadDataFolders()" data-hint="Refresh folder list">↻ Refresh</button>
                     </div>
                     <div id="data-folder-list" class="dir-blocks scrollbar-style">
                         <div style="color:#999; padding:6px;">Loading folders…</div>
@@ -367,7 +369,7 @@
                                     style="max-width:280px;">
                                     <option value="">— data root —</option>
                                 </select>
-                                <button type="button" onclick="loadDataFolders()" title="Refresh list"
+                                <button type="button" onclick="loadDataFolders()" data-hint="Refresh list"
                                     style="padding:2px 6px;">↻</button>
                             </div>
                             <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
@@ -388,7 +390,7 @@
                     </div>
                     <div id="timeout-control">
                         <label>Timeout: </label>
-                        <input type="checkbox" id="inf-timeout"><span style="font-weight: bold;">Infinite</span></input>
+                        <input type="checkbox" id="inf-timeout" data-hint="Keep reading with no time limit until you press Stop"><span style="font-weight: bold;">Infinite</span></input>
                         <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
                         <select id="timeout-unit">
                             {% for unit in range_input.units %}
@@ -406,12 +408,16 @@
                         </select>
                     </div>
                     <span id="timeout-interval-error" class="error"></span>
-                    <input type="checkbox" id="notify-me" checked>Notify me when Done</input>
+                    <input type="checkbox" id="notify-me" data-hint="Show a desktop notification when the reading finishes" checked>Notify me when Done</input>
                     <br />
-                    <button id="run-script-btn" onclick="runScript()" class="blinking">Start reading</button>
-                    <button id="terminate-script-btn" onclick="terminateScript()" disabled>Stop reading</button>
-                    <button id="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
-                    <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled>View live data</button>
+                    <button id="run-script-btn" onclick="runScript()" class="blinking"
+                        data-hint="Begin logging colorimetric data from the connected device">Start reading</button>
+                    <button id="terminate-script-btn" onclick="terminateScript()" disabled
+                        data-hint="Stop the current data-reading run">Stop reading</button>
+                    <button id="clear-logs-btn" onclick="clearLogs()"
+                        data-hint="Clear the log output shown below">Clear Logs</button>
+                    <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled
+                        data-hint="Open the folder where the live data is being saved">View live data</button>
                     <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
             </div>
@@ -448,9 +454,9 @@
                         </table>
                     </div>
                     <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn">Deselect</button>
+                        class="utility-btn" data-hint="Clear the currently selected coefficient file">Deselect</button>
                     <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                        class="utility-btn">Copy</button>
+                        class="utility-btn" data-hint="Make a duplicate of the selected coefficient file">Copy</button>
                 </div>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
@@ -484,13 +490,13 @@
                         </table>
                     </div>
                     <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;"
-                        class="utility-btn">Deselect</button>
+                        class="utility-btn" data-hint="Clear the currently selected CSV file">Deselect</button>
                     <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
-                        class="utility-btn">Copy</button>
+                        class="utility-btn" data-hint="Make a duplicate of the selected CSV file">Copy</button>
                     <button id="move-file-btn" onclick="moveFile()" style="cursor: pointer;" disabled
-                        class="utility-btn">Move</button>
+                        class="utility-btn" data-hint="Move the selected CSV file to another folder">Move</button>
                     <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
-                        class="utility-btn">Merge Files</button>
+                        class="utility-btn" data-hint="Combine several CSV files into a single file">Merge Files</button>
                 </div>
             </div>
 
@@ -519,10 +525,13 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="utility-btn" onclick="clearReportItems()">🗑️ Clear Selected Subject</button>
+                    <button class="utility-btn" onclick="clearReportItems()"
+                        data-hint="Remove all items from the selected report subject">🗑️ Clear Selected Subject</button>
                     <button class="utility-btn" onclick="finalizeReportExcel()"
+                        data-hint="Export this report subject as an Excel workbook"
                         style="padding: 10px 20px; font-size: 1.1rem;">📊 Export as Excel</button>
                     <button class="primary-btn" onclick="finalizeReport()"
+                        data-hint="Generate the final printable HTML report"
                         style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
                 </div>
             </div>
@@ -587,20 +596,20 @@
                         </select>
                         <span id="range-value-error" class="error"></span>
                         <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
-                            title="Save the rows in this time range to a new CSV file">💾 Save Range</button>
+                            data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
                         <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
-                            title="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
+                            data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
                     </div>
                 </div>
                 <div id="mode-toggle">
-                    <label id="split-source-section">
+                    <label id="split-source-section" data-hint="Plot each light source as its own separate curve">
                         <input type="checkbox" id="split-source" onchange="toggleMode()"> Split by Sources
                     </label>
-                    <label id="normalize-mode-section">
+                    <label id="normalize-mode-section" data-hint="Subtract the blank (each column minus its own minimum) before plotting">
                         <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove
                         Blank)
                     </label>
-                    <label id="open-all-analysis-section">
+                    <label id="open-all-analysis-section" data-hint="Expand or collapse every analysis panel at once">
                         <input type="checkbox" id="open-all-analysis" onchange="toggleAllAnalyses()"> Expand/Collapse all
                         Analyses
                     </label>
@@ -646,7 +655,7 @@
                                 style="flex:1; max-width:280px;">
                                 <option value="" data-path="">— data root —</option>
                             </select>
-                            <button type="button" onclick="loadDataFolders()" style="padding:3px 7px;">↻</button>
+                            <button type="button" onclick="loadDataFolders()" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
                         </div>
                         <div class="export-row">
                             <label for="save-file">File Name: </label>
@@ -655,8 +664,10 @@
                                 style="width: 70%">
                             <span id="save-file-error" class="error"></span>
                         </div>
-                        <button id="export-btn" onclick="exportData()">Export Data to Calibrate</button>
-                        <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)">Browse Saving
+                        <button id="export-btn" onclick="exportData()"
+                            data-hint="Save the derived analysis values to a calibration file">Export Data to Calibrate</button>
+                        <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)"
+                            data-hint="Open the folder where the exported file will be saved">Browse Saving
                             Location</button>
                         <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
                             Exporting data will automatically convert the kinetics quantities to per <span
@@ -689,10 +700,11 @@
                             <select id="json-overwrite-select" style="flex:1; max-width:300px;">
                                 <option value="">— select a calibrate file —</option>
                             </select>
-                            <button type="button" onclick="loadExistingJsonFiles()" style="padding:3px 7px;">↻</button>
+                            <button type="button" onclick="loadExistingJsonFiles()" data-hint="Refresh the calibration file list" style="padding:3px 7px;">↻</button>
                         </div>
                         <br>
-                        <button id="export-json-btn" onclick="exportJSONCoef()">Export Calibrated Coefs</button>
+                        <button id="export-json-btn" onclick="exportJSONCoef()"
+                            data-hint="Save the fitted standard-curve coefficients to a calibration JSON file">Export Calibrated Coefs</button>
                         <br />
                         Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
                             style="width:10%;">
@@ -703,10 +715,12 @@
                         Report <span id="report-chevron" class="folder-chevron">▼</span></h3>
                     <div id="report-collapse" class="section-collapse">
                         <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
+                            data-hint="Open a quick printable report of the current chart and data"
                             style="margin-top: 5px;">📋 Generate quick Report</button>
                         <div style="margin-top: 10px;">
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                 <button id="export-to-report-btn" onclick="exportToReport()" class="utility-btn"
+                                    data-hint="Add this data to a report subject for inclusion in the final report"
                                     style="background-color: #2ecc71; color: white;">🚀 Export Data to Report</button>
                                 <label style="font-weight:600;">Subject:</label>
                                 <label style="display:flex; align-items:center; gap:4px;">
@@ -718,7 +732,7 @@
                                         <option value="">— select subject —</option>
                                     </select>
                                     <button type="button" onclick="loadReportSubjectsForPicker()"
-                                        style="padding:3px 7px;">↻</button>
+                                        data-hint="Refresh the report subject list" style="padding:3px 7px;">↻</button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
@@ -802,6 +816,7 @@
             }
         </script>
         <script src="{{ url_for('static', filename='script/event-tracker.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/tooltip.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/short-hands.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/init.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/cdc-logging.js') }}?v={{ STATIC_VERSION }}"></script>
