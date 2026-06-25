@@ -562,7 +562,8 @@
                     </br>
                     <span id="add-json-section"></span>
                 </div>
-                <div class="section" id="window-size-section">
+                <div class="section" id="window-size-section"
+                    data-hint="Number of consecutive data points used to compute each local slope for maxRate regression (minimum: 3). Larger windows smooth noise; smaller windows track fast changes.">
                     Select window size for maxRate regression
                     <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
                     <div id="wd-size-error"></div>
@@ -581,15 +582,6 @@
                     <select id="regressed-time-point" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
-                </div>
-                <div class="section" id="concentration-unit-section"
-                    data-hint="Unit for concentration values — recorded in the file metadata (# ConcenUnit) and used for calibration exports">
-                    Concentration unit
-                    <select id="concen-unit" onchange="onConcenUnitChange()">
-                        {% for u in concen_units %}
-                        <option value="{{ u }}">{{ u }}</option>
-                        {% endfor %}
-                    </select>
                 </div>
                 <div id="select-regress-algo">
                     Select Regress Algo to export:
