@@ -1141,10 +1141,14 @@ function showMergeDirectoryPicker() {
         html: `
             <div style="text-align:left; display:flex; flex-direction:column; gap:8px;">
                 <div style="font-size:0.82rem; color:#666;">Expand any folders and tick the files to merge — you can pick from several folders at once.</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <div id="merge-pick-count" style="font-size:0.8rem; color:#666;">0 files selected</div>
+                    <button type="button" id="merge-pick-toggle-all"
+                        style="background:none; border:1px solid #2980b9; color:#2980b9; border-radius:4px; padding:3px 10px; cursor:pointer; font-size:0.8rem; white-space:nowrap;">Select all</button>
+                </div>
                 <div id="merge-pick-accordion" style="border:1px solid #ddd; border-radius:6px; max-height:340px; overflow-y:auto;">
                     <div style="color:#888; font-size:0.85rem; padding:8px;">Loading…</div>
                 </div>
-                <div id="merge-pick-count" style="font-size:0.8rem; color:#666;">0 files selected</div>
             </div>
         `,
         focusConfirm: false,
@@ -1153,10 +1157,12 @@ function showMergeDirectoryPicker() {
         didOpen: async () => {
             const acc = document.getElementById('merge-pick-accordion');
             const countEl = document.getElementById('merge-pick-count');
+            const toggleBtn = document.getElementById('merge-pick-toggle-all');
 
             const updateTotal = () => {
                 const n = selected.size;
                 countEl.textContent = `${n} file${n === 1 ? '' : 's'} selected`;
+                if (toggleBtn) toggleBtn.textContent = n > 0 ? 'Deselect all' : 'Select all';
             };
 
             const updateBadge = (group) => {
@@ -1166,6 +1172,18 @@ function showMergeDirectoryPicker() {
                 group.querySelector('.merge-folder-badge').textContent = c ? `${c} selected` : '';
             };
 
+            // Keep a folder's "Select all in this folder" checkbox in sync with its
+            // individual file checkboxes (checked when all are ticked, indeterminate
+            // when only some are).
+            const syncFolderAllCb = (body) => {
+                const allCb = body.querySelector('.merge-folder-all-cb');
+                if (!allCb) return;
+                const total = body.querySelectorAll('.merge-pick-cb').length;
+                const checked = body.querySelectorAll('.merge-pick-cb:checked').length;
+                allCb.checked = total > 0 && checked === total;
+                allCb.indeterminate = checked > 0 && checked < total;
+            };
+
             // Fetch data subfolders
             let folders = [];
             try {
@@ -1173,6 +1191,12 @@ function showMergeDirectoryPicker() {
                 const data = await res.json();
                 folders = data.folders || [];
             } catch (e) { }
+
+            // Include the data root itself so CSV files sitting directly in it
+            // (not only in subfolders) can be picked for merging.
+            if (typeof DATA_ROOT !== 'undefined' && DATA_ROOT) {
+                folders = [{ name: 'Main data folder', path: DATA_ROOT }, ...folders];
+            }
 
             if (!folders.length) {
                 acc.innerHTML = '<div style="color:#888; font-size:0.85rem; padding:8px;">No folders found.</div>';
@@ -1202,13 +1226,19 @@ function showMergeDirectoryPicker() {
                     body.innerHTML = '<div style="color:#888; font-size:0.82rem; padding:4px;">No CSV files.</div>';
                     return;
                 }
-                body.innerHTML = csvFiles.map(f => `
+                const allRow = `
+                    <label style="display:flex; align-items:center; gap:8px; padding:3px 4px; cursor:pointer; font-size:0.82rem; font-weight:600; color:#2980b9; border-bottom:1px solid #eee; margin-bottom:2px;">
+                        <input type="checkbox" class="merge-folder-all-cb">
+                        <span>Select all in this folder</span>
+                    </label>`;
+                body.innerHTML = allRow + csvFiles.map(f => `
                     <label style="display:flex; align-items:center; gap:8px; padding:3px 4px; cursor:pointer; font-size:0.85rem;">
                         <input type="checkbox" class="merge-pick-cb" data-file="${_esc(f)}"
                             ${selected.has(_key(path, f)) ? 'checked' : ''}>
                         <span>${_escHtml(f)}</span>
                     </label>
                 `).join('');
+                syncFolderAllCb(body);
             };
 
             folders.forEach(f => {
@@ -1250,11 +1280,27 @@ function showMergeDirectoryPicker() {
                 });
 
                 body.addEventListener('change', (e) => {
+                    // Per-folder "Select all in this folder" toggle.
+                    if (e.target.classList.contains('merge-folder-all-cb')) {
+                        const check = e.target.checked;
+                        body.querySelectorAll('.merge-pick-cb').forEach(cb => {
+                            cb.checked = check;
+                            const fileName = cb.getAttribute('data-file');
+                            const key = _key(f.path, fileName);
+                            if (check) selected.set(key, { folderPath: f.path, fileName });
+                            else selected.delete(key);
+                        });
+                        e.target.indeterminate = false;
+                        updateBadge(group);
+                        updateTotal();
+                        return;
+                    }
                     if (!e.target.classList.contains('merge-pick-cb')) return;
                     const fileName = e.target.getAttribute('data-file');
                     const key = _key(f.path, fileName);
                     if (e.target.checked) selected.set(key, { folderPath: f.path, fileName });
                     else selected.delete(key);
+                    syncFolderAllCb(body);
                     updateBadge(group);
                     updateTotal();
                 });
@@ -1267,6 +1313,38 @@ function showMergeDirectoryPicker() {
                     head.click();
                 }
             });
+
+            // Select all / Deselect all across every folder. When nothing is
+            // selected it loads each folder's files and ticks them all; otherwise
+            // it clears the selection (no need to load collapsed folders).
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', async () => {
+                    const check = selected.size === 0;
+                    toggleBtn.disabled = true;
+                    const groups = acc.querySelectorAll('.merge-folder-group');
+                    if (check) {
+                        for (const group of groups) {
+                            await loadBody(group);
+                            const path = group.dataset.path;
+                            const body = group.querySelector('.merge-folder-body');
+                            group.querySelectorAll('.merge-pick-cb').forEach(cb => {
+                                cb.checked = true;
+                                const fileName = cb.getAttribute('data-file');
+                                selected.set(_key(path, fileName), { folderPath: path, fileName });
+                            });
+                            syncFolderAllCb(body);
+                            updateBadge(group);
+                        }
+                    } else {
+                        selected.clear();
+                        acc.querySelectorAll('.merge-pick-cb').forEach(cb => { cb.checked = false; });
+                        acc.querySelectorAll('.merge-folder-body').forEach(syncFolderAllCb);
+                        groups.forEach(updateBadge);
+                    }
+                    toggleBtn.disabled = false;
+                    updateTotal();
+                });
+            }
 
             updateTotal();
         },
@@ -1340,7 +1418,12 @@ function showMergeSortModal(preselected) {
             try {
                 const res = await fetch('/get_data_folders');
                 const data = await res.json();
-                const folders = data.folders || [];
+                let folders = data.folders || [];
+                // Include the data root itself so files sitting directly in it are
+                // selectable as a merge source and as the output folder.
+                if (typeof DATA_ROOT !== 'undefined' && DATA_ROOT) {
+                    folders = [{ name: 'Main data folder', path: DATA_ROOT }, ...folders];
+                }
                 folderOpts = folders.map(f =>
                     `<option value="${_esc(f.path)}">${_escHtml(f.name)}</option>`
                 ).join('');
