@@ -24,5 +24,7 @@
     }
   },
   "fit_type": "Michaelis-Menten",
-  "for_meas": "ABSORBANCE"
+  "for_meas": "ABSORBANCE",
+  "meas_unit": "NONE",
+  "concen_unit": "ng/µL"
 }
