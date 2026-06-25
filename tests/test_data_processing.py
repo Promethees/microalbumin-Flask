@@ -503,3 +503,209 @@ def test_sort_csv_file_unknown_mode_sorts_by_first_col(tmp_path):
     measure.sort_csv_file(str(f), "unknown")
     lines = [l for l in f.read_text().splitlines() if not l.startswith('#') and l.strip()]
     assert lines[1].startswith('2')
+
+
+# ---------------------------------------------------------------------------
+# Concentration unit (# ConcenUnit) — metadata, export guard, helper
+# ---------------------------------------------------------------------------
+from src import file_path
+
+
+def test_concen_units_catalog():
+    # Exactly the three allowed units, default ng/µL.
+    assert file_path.CONCEN_UNITS == ["ng/µL", "nM", "%"]
+    assert file_path.DEFAULT_CONCEN_UNIT == "ng/µL"
+
+
+def test_get_concen_unit_defaults_when_absent():
+    assert file_path.get_concen_unit({}) == "ng/µL"
+    assert file_path.get_concen_unit({"ConcenUnit": ""}) == "ng/µL"
+    assert file_path.get_concen_unit(None) == "ng/µL"
+
+
+def test_get_concen_unit_reads_percent():
+    assert file_path.get_concen_unit({"ConcenUnit": "%"}) == "%"
+
+
+def test_get_concen_unit_reads_value():
+    assert file_path.get_concen_unit({"ConcenUnit": "nM"}) == "nM"
+
+
+def test_write_metadata_emits_concen_unit():
+    output = io.StringIO()
+    export_data.write_metadata(output, "ABS", "AU", "minutes", "kinetics", "nM")
+    assert "# ConcenUnit: nM" in output.getvalue()
+
+
+def test_write_metadata_concen_unit_defaults_to_ng_ul():
+    output = io.StringIO()
+    export_data.write_metadata(output, "ABS", "AU", "minutes", "kinetics")
+    assert "# ConcenUnit: ng/µL" in output.getvalue()
+
+
+def test_is_metadata_consistent_missing_concen_unit_treated_as_default():
+    # A legacy file with no ConcenUnit is assumed ng/µL: only a matching-default
+    # export is consistent with it.
+    meta = {'Measurement': 'ABS', 'MeasUnit': 'AU', 'TimeUnit': 'minutes', 'MeasMode': 'kinetics'}
+    assert export_data.is_metadata_consistent(meta, "ABS", "AU", "minutes", "kinetics", "ng/µL") is True
+    assert export_data.is_metadata_consistent(meta, "ABS", "AU", "minutes", "kinetics", "nM") is False
+
+
+def test_is_metadata_consistent_concen_unit_must_match():
+    meta = {'Measurement': 'ABS', 'MeasUnit': 'AU', 'TimeUnit': 'minutes',
+            'MeasMode': 'kinetics', 'ConcenUnit': 'nM'}
+    assert export_data.is_metadata_consistent(meta, "ABS", "AU", "minutes", "kinetics", "nM") is True
+    assert export_data.is_metadata_consistent(meta, "ABS", "AU", "minutes", "kinetics", "ng/µL") is False
+
+
+def _kinetics_cal_file(path, concen_unit_line=""):
+    path.write_text(
+        "# Measurement: ABS\n# MeasUnit: AU\n# TimeUnit: minutes\n# MeasMode: kinetics\n"
+        + concen_unit_line +
+        "Concentration,maxRate,Slope,Sat,Time To Sat\n5,0.1,0.2,0.3,10\n"
+    )
+
+
+def test_ensure_concen_unit_adds_line_to_legacy_file(tmp_path):
+    f = tmp_path / "a_kinetics.csv"
+    _kinetics_cal_file(f)
+    migrated = file.ensure_concen_unit_in_dir(str(tmp_path))
+    assert migrated == 1
+    text = f.read_text()
+    assert "# ConcenUnit: ng/µL" in text
+    # Inserted into the metadata block, before the data header
+    lines = text.splitlines()
+    header_idx = next(i for i, l in enumerate(lines) if l.startswith("Concentration"))
+    concen_idx = next(i for i, l in enumerate(lines) if l.startswith("# ConcenUnit"))
+    assert concen_idx < header_idx
+
+
+def test_ensure_concen_unit_is_idempotent(tmp_path):
+    f = tmp_path / "a_kinetics.csv"
+    _kinetics_cal_file(f)
+    assert file.ensure_concen_unit_in_dir(str(tmp_path)) == 1
+    # Second pass: already present → no rewrite
+    assert file.ensure_concen_unit_in_dir(str(tmp_path)) == 0
+    assert f.read_text().count("# ConcenUnit") == 1
+
+
+def test_ensure_concen_unit_skips_files_already_having_it(tmp_path):
+    f = tmp_path / "a_kinetics.csv"
+    _kinetics_cal_file(f, concen_unit_line="# ConcenUnit: nM\n")
+    assert file.ensure_concen_unit_in_dir(str(tmp_path)) == 0
+    assert "# ConcenUnit: nM" in f.read_text()
+
+
+def test_ensure_concen_unit_skips_unrecognized_schema(tmp_path):
+    f = tmp_path / "notes.csv"
+    f.write_text("# Some: thing\nfoo,bar\n1,2\n")
+    assert file.ensure_concen_unit_in_dir(str(tmp_path)) == 0
+    assert "ConcenUnit" not in f.read_text()
+
+
+def test_ensure_concen_unit_migrates_timeseries(tmp_path):
+    f = tmp_path / "raw.csv"
+    f.write_text(
+        "# Measurement: ABS\n# Unit: AU\n# Concentration: 5\n"
+        "Timestamp,Value:1\n0,0.1\n1,0.2\n"
+    )
+    assert file.ensure_concen_unit_in_dir(str(tmp_path)) == 1
+    assert "# ConcenUnit: ng/µL" in f.read_text()
+
+
+# ---------------------------------------------------------------------------
+# CDC logger — ConcenUnit metadata is recognized and mandated (4 keys)
+# ---------------------------------------------------------------------------
+
+def _make_collector(tmp_path, monkeypatch):
+    import state as _state
+    monkeypatch.setattr(_state, "script_dir", str(tmp_path))
+    import log_cdc_data
+    return log_cdc_data.CDCDataCollector(str(tmp_path / "data"))
+
+
+def test_cdc_metadata_pattern_matches_concen_unit(tmp_path, monkeypatch):
+    c = _make_collector(tmp_path, monkeypatch)
+    assert c.is_metadata("# ConcenUnit: nM")
+    c.handle_metadata("# ConcenUnit: nM")
+    assert c.metadata.get("ConcenUnit") == "nM"
+
+
+def test_cdc_main_header_requires_four_metadata(tmp_path, monkeypatch):
+    c = _make_collector(tmp_path, monkeypatch)
+    header = "Timestamp,Value:1"
+    c.is_main_header(header)  # sets num_values
+
+    # Only 3 legacy keys → header rejected, no session
+    c.metadata = {"Measurement": "ABS", "Unit": "AU", "Concentration": "5"}
+    c.handle_main_header(header)
+    assert c.session_started is False
+
+    # 4th key present → session starts and the file is written
+    c.metadata = {"Measurement": "ABS", "Unit": "AU", "Concentration": "5", "ConcenUnit": "nM"}
+    c.handle_main_header(header)
+    assert c.session_started is True
+    assert "# ConcenUnit: nM" in open(c.output_file, encoding="utf-8").read()
+
+
+# ---------------------------------------------------------------------------
+# CSV/JSON identity (Measurement / Unit / ConcenUnit) for CSV↔JSON matching
+# ---------------------------------------------------------------------------
+
+def test_build_csv_identity_kinetics_cal(tmp_path):
+    f = tmp_path / "cal_kinetics.csv"
+    f.write_text(
+        "# Measurement: ABS\n# MeasUnit: abs\n# TimeUnit: minutes\n# MeasMode: kinetics\n"
+        "# ConcenUnit: nM\nConcentration,maxRate,Slope,Sat,Time To Sat\n5,0.1,0.2,0.3,10\n"
+    )
+    ident = file.build_csv_identity(str(tmp_path), ["cal_kinetics.csv"])["cal_kinetics.csv"]
+    assert ident == {"measurement": "ABS", "unit": "abs", "concen_unit": "nM"}
+
+
+def test_build_csv_identity_timeseries_uses_unit_and_defaults_concen(tmp_path):
+    f = tmp_path / "raw.csv"
+    f.write_text("# Measurement: ABS\n# Unit: abs\n# Concentration: 5\nTimestamp,Value:1\n0,0.1\n")
+    ident = file.build_csv_identity(str(tmp_path), ["raw.csv"])["raw.csv"]
+    assert ident["measurement"] == "ABS"
+    assert ident["unit"] == "abs"
+    assert ident["concen_unit"] == "ng/µL"  # absent ⇒ default
+
+
+def test_build_json_identity_full_and_legacy(tmp_path):
+    (tmp_path / "curve.json").write_text(json.dumps(
+        {"fit_type": "linear", "for_meas": "ABS", "meas_unit": "abs", "concen_unit": "nM"}))
+    (tmp_path / "legacy.json").write_text(json.dumps({"fit_type": "linear", "for_meas": "ABS"}))
+    (tmp_path / "skip.meta.json").write_text(json.dumps({"for_meas": "X"}))
+    ident = file.build_json_identity(str(tmp_path), ["curve.json", "legacy.json", "skip.meta.json"])
+    assert ident["curve.json"] == {"measurement": "ABS", "unit": "abs", "concen_unit": "nM"}
+    # Legacy JSON: missing unit stays None (wildcard); concen defaults to ng/µL
+    assert ident["legacy.json"] == {"measurement": "ABS", "unit": None, "concen_unit": "ng/µL"}
+    assert "skip.meta.json" not in ident  # sidecar skipped
+
+
+def test_ensure_cal_units_fills_legacy_json(tmp_path):
+    legacy = tmp_path / "curve.json"
+    legacy.write_text(json.dumps({"fit_type": "linear", "for_meas": "ABS"}))
+    full = tmp_path / "full.json"
+    full.write_text(json.dumps({"fit_type": "linear", "for_meas": "ABS",
+                                "meas_unit": "abs", "concen_unit": "nM"}))
+    meta = tmp_path / "x.meta.json"
+    meta.write_text("{}")
+
+    assert file.ensure_cal_units_in_dir(str(tmp_path)) == 1  # only the legacy one
+    filled = json.loads(legacy.read_text())
+    assert filled["meas_unit"] == "NONE"
+    assert filled["concen_unit"] == "ng/µL"
+    # An already-complete file and the .meta sidecar are left untouched
+    assert json.loads(full.read_text())["meas_unit"] == "abs"
+    assert json.loads(meta.read_text()) == {}
+    # Idempotent on a second pass
+    assert file.ensure_cal_units_in_dir(str(tmp_path)) == 0
+
+
+def test_build_json_identity_none_meas_unit_is_wildcard(tmp_path):
+    (tmp_path / "filled.json").write_text(json.dumps(
+        {"fit_type": "linear", "for_meas": "ABS", "meas_unit": "NONE", "concen_unit": "ng/µL"}))
+    ident = file.build_json_identity(str(tmp_path), ["filled.json"])["filled.json"]
+    # A back-filled "NONE" meas_unit normalizes to None so it stays a matching wildcard
+    assert ident == {"measurement": "ABS", "unit": None, "concen_unit": "ng/µL"}

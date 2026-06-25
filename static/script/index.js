@@ -73,6 +73,11 @@ const AppState = {
     fileMeta: (typeof FILE_META !== 'undefined' && FILE_META) ? FILE_META : {},
     fileNames: [],
     fileSortOrder: (typeof FILE_SORT_ORDER !== 'undefined' && FILE_SORT_ORDER) ? FILE_SORT_ORDER : 'date_desc',
+    // Per-file identity (name -> {measurement, unit, concen_unit}) for the CSV and
+    // calibration-JSON tables — drives the identity badge and the CSV↔JSON pairing
+    // match. Refreshed from /browse and /get_json_cal alongside *Meta.
+    fileIdentity: (typeof FILE_IDENTITY !== 'undefined' && FILE_IDENTITY) ? FILE_IDENTITY : {},
+    jsonIdentity: (typeof CAL_JSON_IDENTITY !== 'undefined' && CAL_JSON_IDENTITY) ? CAL_JSON_IDENTITY : {},
     // Modified-date metadata + last-rendered names for the calibration-JSON table
     // (#json-table) and the report-subject folder table (#file-table in report mode).
     // Both reuse fileSortOrder as the shared sort preference.
@@ -595,6 +600,7 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
 
                 // Refresh per-file modified-date metadata for the File Selection table.
                 AppState.fileMeta = response.files_meta || {};
+                AppState.fileIdentity = response.files_identity || {};
 
                 // updateFileTable returns a Promise
                 if (AppState.currentMeasurementMode !== 'report') {
@@ -629,6 +635,7 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
             $.get('/get_json_cal', { mode: AppState.currentMeasurementMode, numSources: AppState.numSources },
                 function (response) {
                     AppState.jsonMeta = response.files_meta || {};
+                    AppState.jsonIdentity = response.files_identity || {};
                     updateJSONTable(response.files);
                     resolve();
                 }).fail(resolve);

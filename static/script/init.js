@@ -582,6 +582,33 @@ if (_wsInput && typeof USER_SETTINGS !== 'undefined') {
     _wsInput.value = USER_SETTINGS.default_window_size;
 }
 
+// Seed the concentration-unit dropdown from the user's default (no file is
+// loaded yet at this point; selecting a file later re-syncs it to that file's
+// recorded unit via syncConcenUnitDropdown()).
+const _concenSel = document.getElementById('concen-unit');
+if (_concenSel && typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.default_concentration_unit) {
+    _concenSel.value = USER_SETTINGS.default_concentration_unit;
+}
+
+// Reflect the currently-loaded file's concentration unit in the dropdown. Falls
+// back to the user default (then ng/µL) when the file predates # ConcenUnit.
+function syncConcenUnitDropdown() {
+    const sel = document.getElementById('concen-unit');
+    if (!sel) return;
+    const meta = (typeof AppState !== 'undefined') ? AppState.metaData : null;
+    const fromMeta = meta && meta['ConcenUnit'] && String(meta['ConcenUnit']).trim();
+    const fallback = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.default_concentration_unit) || 'ng/µL';
+    sel.value = fromMeta || fallback;
+}
+
+// User changed the concentration unit: re-render the display so labels pick up
+// the new unit, and use it as the unit for the next calibration export. This is
+// a label change only — it does not rewrite the loaded file (legacy files are
+// migrated when their data folder is selected).
+function onConcenUnitChange() {
+    if (typeof toggleMode === 'function') toggleMode();
+}
+
 if (typeof USER_SETTINGS !== 'undefined') {
     const _chartEl = document.getElementById('chart-container');
     if (_chartEl) _chartEl.style.maxHeight = (USER_SETTINGS.chart_height || 600) + 'px';
@@ -677,6 +704,7 @@ const SETTINGS_DEFAULTS = {
     default_interval_unit: 'seconds',
     merge_directory_picker: false,
     disable_popups: false,
+    default_concentration_unit: 'ng/µL',
 };
 
 function _buildSettingsHTML(s, folders) {
@@ -743,6 +771,9 @@ function _buildSettingsHTML(s, folders) {
                  <option value="point" ${s.default_mode==='point'?'selected':''}>Point</option>
                  <option value="calibrate" ${s.default_mode==='calibrate'?'selected':''}>Calibrate</option>`))}
             ${row('Default window size', 'Minimum 2', num('swal-window-size', 2, s.default_window_size || 4))}
+            ${row('Default concentration unit', 'Unit selected for new calibration exports', sel('swal-concen-unit',
+                (typeof CONCEN_UNITS !== 'undefined' ? CONCEN_UNITS : ['ng/µL', 'nM', '%'])
+                    .map(u => `<option value="${u}" ${(s.default_concentration_unit||'ng/µL')===u?'selected':''}>${u}</option>`).join('')))}
             ${row('Default subfolder', '', sel('swal-subfolder',
                 `<option value="" ${!s.default_subfolder?'selected':''}>(none)</option>${subfolderOptions}`))}
         </div>
@@ -840,6 +871,7 @@ function _readSettingsForm() {
         file_sort_order: document.getElementById('swal-file-sort').value,
         default_mode: document.getElementById('swal-mode').value,
         default_window_size: Math.max(2, parseInt(document.getElementById('swal-window-size').value, 10) || 4),
+        default_concentration_unit: document.getElementById('swal-concen-unit').value,
         default_subfolder: document.getElementById('swal-subfolder').value || null,
         max_csv_rows: document.getElementById('swal-max-csv-all').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-max-csv').value, 10) || 1),
         max_json_rows: document.getElementById('swal-max-json-all').checked ? 0 : Math.max(1, parseInt(document.getElementById('swal-max-json').value, 10) || 1),
@@ -869,6 +901,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-file-sort').value = s.file_sort_order || 'date_desc';
     document.getElementById('swal-mode').value = s.default_mode;
     document.getElementById('swal-window-size').value = s.default_window_size || 4;
+    document.getElementById('swal-concen-unit').value = s.default_concentration_unit || 'ng/µL';
     document.getElementById('swal-subfolder').value = s.default_subfolder || '';
     const csvAll = (s.max_csv_rows || 0) === 0;
     document.getElementById('swal-max-csv-all').checked = csvAll;

@@ -443,7 +443,7 @@
                             {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
-                                <td>{{ file }}</td>
+                                <td>{{ file }} <span class="file-identity">{{ cal_json_identity.get(file, {}).get('measurement') or '—' }}·{{ cal_json_identity.get(file, {}).get('unit') or '—' }}·{{ cal_json_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
                                 <td class="file-mtime">{{ cal_json_meta.get(file, {}).get('display', '') }}</td>
                                 <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button>
                                 </td>
@@ -489,7 +489,7 @@
                             {% if file_list %}
                             {% for file in file_list %}
                             <tr>
-                                <td>{{ file }}</td>
+                                <td>{{ file }} <span class="file-identity">{{ file_identity.get(file, {}).get('measurement') or '—' }}·{{ file_identity.get(file, {}).get('unit') or '—' }}·{{ file_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
                                 <td class="file-mtime">{{ file_meta.get(file, {}).get('display', '') }}</td>
                                 <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
                                 <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
@@ -579,6 +579,15 @@
                     <select id="regressed-time-point" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
+                </div>
+                <div class="section" id="concentration-unit-section"
+                    data-hint="Unit for concentration values — recorded in the file metadata (# ConcenUnit) and used for calibration exports">
+                    Concentration unit
+                    <select id="concen-unit" onchange="onConcenUnitChange()">
+                        {% for u in concen_units %}
+                        <option value="{{ u }}">{{ u }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div id="select-regress-algo">
                     Select Regress Algo to export:
@@ -798,6 +807,15 @@
             // navigation.js so re-sorting needs no server round-trip.
             const FILE_META = {{ file_meta | tojson | safe }};
             const FILE_SORT_ORDER = {{ file_sort_order | tojson | safe }};
+            // Per-file identity (name -> {measurement, unit, concen_unit}) for the
+            // File Selection + calibration-JSON tables: drives the identity badge and
+            // the CSV↔JSON pairing match. Refreshed from /browse and /get_json_cal.
+            const FILE_IDENTITY = {{ file_identity | tojson | safe }};
+            const CAL_JSON_IDENTITY = {{ cal_json_identity | tojson | safe }};
+            // The valid concentration units (single source of truth from
+            // src/file_path.py CONCEN_UNITS). Used by the settings dropdown and the
+            // Edit-metadata ConcenUnit dropdown.
+            const CONCEN_UNITS = {{ concen_units | tojson | safe }};
             // Modified-date metadata for the calibration-JSON table's first paint
             // (kinetics dir); refreshed per mode from /get_json_cal thereafter.
             const CAL_JSON_META = {{ cal_json_meta | tojson | safe }};

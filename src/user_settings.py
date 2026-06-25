@@ -7,6 +7,7 @@ _VALID_MODES = {"kinetics", "point", "calibrate"}
 _VALID_UNITS = {"seconds", "minutes", "hours"}
 _VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 _VALID_TIME_TAG_FORMATS = {"iso", "iso_sec", "us", "eu", "date_only"}
+_VALID_CONCEN_UNITS = {"ng/µL", "nM", "%"}
 
 DEFAULTS = {
     "theme": "auto",
@@ -34,6 +35,7 @@ DEFAULTS = {
     "default_interval_unit": "seconds",
     "merge_directory_picker": False,
     "disable_popups": False,
+    "default_concentration_unit": "ng/µL",
 }
 
 
@@ -73,6 +75,8 @@ def save(updates: dict) -> bool:
         current["file_sort_order"] = updates["file_sort_order"]
     if "time_tag_format" in updates and updates["time_tag_format"] in _VALID_TIME_TAG_FORMATS:
         current["time_tag_format"] = updates["time_tag_format"]
+    if "default_concentration_unit" in updates and updates["default_concentration_unit"] in _VALID_CONCEN_UNITS:
+        current["default_concentration_unit"] = updates["default_concentration_unit"]
     if "default_subfolder" in updates:
         val = updates["default_subfolder"]
         current["default_subfolder"] = val if (isinstance(val, str) and val) or val is None else None

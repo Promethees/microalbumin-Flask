@@ -1006,3 +1006,141 @@ def test_get_num_sources_csv_with_two_sources(client, tmp_path):
         rv = client.get(f'/get_num_sources?path={str(tmp_path)}')
     assert rv.status_code == 200
     assert rv.get_json()['num_sources'] == [2]
+
+
+# ---------------------------------------------------------------------------
+# Concentration unit — /export_data records # ConcenUnit + guards mismatch;
+# /browse migrates legacy CSVs in the selected data folder.
+# ---------------------------------------------------------------------------
+
+def _export_kinetics(client, save_dir, concen_unit):
+    return client.post('/export_data', json={
+        'save_dir': str(save_dir),
+        'save_file': 'result',
+        'measMode': 'kinetics',
+        'meas': 'ABS',
+        'measUnit': 'AU',
+        'concenUnit': concen_unit,
+        'newFile': True,
+        'entries': [{'con': '5', 'maxrate': '0.1', 'slope': '0.2', 'sat': '0.3', 'timeSat': '10'}],
+    })
+
+
+def test_export_data_writes_concen_unit(client, tmp_path):
+    rv = _export_kinetics(client, tmp_path, 'nM')
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    out = (tmp_path / 'result_kinetics.csv').read_text()
+    assert '# ConcenUnit: nM' in out
+
+
+def test_export_data_single_source_writes_real_values(client, tmp_path):
+    # Single-source export sends row values at the top level (no `entries`). They
+    # must be persisted, not written as NONE (regression: schema-stripped fields).
+    rv = client.post('/export_data', json={
+        'save_dir': str(tmp_path), 'save_file': 'one', 'measMode': 'kinetics',
+        'meas': 'ABS', 'measUnit': 'abs', 'concenUnit': 'nM', 'newFile': True,
+        'maxrate': '0.10', 'slope': '0.20', 'sat': '0.30', 'timeSat': '10', 'con': '5',
+    })
+    assert rv.get_json()['status'] == 'success'
+    rows = [l for l in (tmp_path / 'one_kinetics.csv').read_text().splitlines()
+            if l and not l.startswith('#') and not l.startswith('Concentration')]
+    assert rows == ['5,0.10,0.20,0.30,10']
+    assert 'NONE' not in rows[0]
+
+
+def test_export_data_single_source_point_mode(client, tmp_path):
+    rv = client.post('/export_data', json={
+        'save_dir': str(tmp_path), 'save_file': 'pt', 'measMode': 'point',
+        'meas': 'ABS', 'measUnit': 'abs', 'concenUnit': '%', 'newFile': True,
+        'estValue': '0.4567', 'timePoint': 3, 'con': '12',
+    })
+    assert rv.get_json()['status'] == 'success'
+    rows = [l for l in (tmp_path / 'pt_point.csv').read_text().splitlines()
+            if l and not l.startswith('#') and not l.startswith('Concentration')]
+    assert rows == ['12,0.4567,3']
+
+
+def test_export_data_blocks_concen_unit_mismatch(client, tmp_path):
+    assert _export_kinetics(client, tmp_path, 'nM').get_json()['status'] == 'success'
+    # Appending a ng/µL export into the nM file must be rejected.
+    body = _export_kinetics(client, tmp_path, 'ng/µL').get_json()
+    assert body['status'] == 'error'
+    assert 'unit mismatch' in body['message'].lower()
+
+
+def test_export_data_appends_when_concen_unit_matches(client, tmp_path):
+    assert _export_kinetics(client, tmp_path, 'nM').get_json()['status'] == 'success'
+    assert _export_kinetics(client, tmp_path, 'nM').get_json()['status'] == 'success'
+    out = (tmp_path / 'result_kinetics.csv').read_text()
+    assert out.count('# ConcenUnit: nM') == 1  # metadata written once
+    data_rows = [l for l in out.splitlines() if l and not l.startswith('#') and not l.startswith('Concentration')]
+    assert len(data_rows) == 2
+
+
+def test_browse_migrates_legacy_concen_unit(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(state, 'data_root_path', str(tmp_path))
+    legacy = tmp_path / 'cal_kinetics.csv'
+    legacy.write_text(
+        "# Measurement: ABS\n# MeasUnit: AU\n# TimeUnit: minutes\n# MeasMode: kinetics\n"
+        "Concentration,maxRate,Slope,Sat,Time To Sat\n5,0.1,0.2,0.3,10\n"
+    )
+    rv = client.post('/browse', data={'path': str(tmp_path)})
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    assert '# ConcenUnit: ng/µL' in legacy.read_text()
+
+
+def test_browse_returns_files_identity(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(state, 'data_root_path', str(tmp_path))
+    (tmp_path / 'raw.csv').write_text(
+        "# Measurement: ABS\n# Unit: abs\n# Concentration: 5\n# ConcenUnit: nM\n"
+        "Timestamp,Value:1\n0,0.1\n"
+    )
+    body = client.post('/browse', data={'path': str(tmp_path)}).get_json()
+    assert body['files_identity']['raw.csv'] == {
+        'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+
+
+def test_get_json_cal_returns_files_identity(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(state, 'json_root_path', str(tmp_path))
+    kdir = tmp_path / 'kinetics'
+    kdir.mkdir()
+    (kdir / 'curve.json').write_text(json.dumps(
+        {'fit_type': 'linear', 'for_meas': 'ABS', 'meas_unit': 'abs', 'concen_unit': 'nM'}))
+    body = client.get('/get_json_cal?mode=kinetics').get_json()
+    assert body['files_identity']['curve.json'] == {
+        'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+
+
+def test_get_json_cal_backfills_legacy_units(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(state, 'json_root_path', str(tmp_path))
+    kdir = tmp_path / 'kinetics'
+    kdir.mkdir()
+    legacy = kdir / 'legacy.json'
+    legacy.write_text(json.dumps({'fit_type': 'linear', 'for_meas': 'ABS'}))
+    client.get('/get_json_cal?mode=kinetics')  # triggers the back-fill
+    filled = json.loads(legacy.read_text())
+    assert filled['meas_unit'] == 'NONE'
+    assert filled['concen_unit'] == 'ng/µL'
+
+
+def test_export_cal_coefs_writes_identity(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(state, 'json_root_path', str(tmp_path))
+    rv = client.post('/export_cal_coefs', json={
+        'fit_type': 'linear',
+        'for_meas': 'ABS',
+        'measUnit': 'abs',
+        'concenUnit': 'nM',
+        'coef_content': [{'rSquared': 0.99, 'coefficients': [1.0, 2.0]}],
+        'file_name': 'curve',
+        'cal_mode': 'kinetics',
+        'cal_params': ['maxRate'],
+        'regress_algo': 'linear',
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['status'] == 'success'
+    out = json.loads(next((tmp_path / 'kinetics').glob('curve*.json')).read_text())
+    assert out['meas_unit'] == 'abs'
+    assert out['concen_unit'] == 'nM'
+    assert out['for_meas'] == 'ABS'

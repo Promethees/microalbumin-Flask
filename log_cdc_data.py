@@ -59,7 +59,7 @@ class CDCDataCollector:
         # CDC delivers the device's exact bytes, so these patterns match the
         # clean text emitted by serial_manager._write() — no up-casing /
         # modifier-stripping like the old keyboard path had to undo.
-        self.metadata_pattern = r"^#\s*(Measurement|Unit|Concentration):\s*(.+?)\s*$"
+        self.metadata_pattern = r"^#\s*(Measurement|Unit|Concentration|ConcenUnit):\s*(.+?)\s*$"
         self.header_pattern = r"^Timestamp,Value:\d+(?:,Value:\d+)*$"
         self.data_pattern = r"^\d+\.\d{1,2},(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
         self.end_pattern = r"^SESSION TIMEOUT$"
@@ -104,7 +104,11 @@ class CDCDataCollector:
             self.log(f"Received metadata: {key} = {value}")
 
     def handle_main_header(self, line):
-        if len(self.metadata) != 3:
+        # A host-initiated CDC session must send all four metadata lines —
+        # Measurement, Unit, Concentration, ConcenUnit — before the data header.
+        # The firmware (open_colorimeter_firmware, a separate repo) is updated in
+        # lockstep to always emit "# ConcenUnit:", so this gate now requires 4.
+        if len(self.metadata) != 4:
             self.log("Main header received but metadata incomplete.")
             return
         self.output_file = get_next_filename(self.extension, self.base_dir, self.base_name)

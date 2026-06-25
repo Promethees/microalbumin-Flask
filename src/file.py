@@ -5,7 +5,9 @@ import csv
 from datetime import datetime
 from collections.abc import MutableMapping, Sequence
 
-from file_path import parse_csv_metadata
+from file_path import (parse_csv_metadata, detect_csv_schema,
+                       get_concen_unit, DEFAULT_CONCEN_UNIT,
+                       CSV_SCHEMA_TIMESERIES)
 
 VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 
@@ -33,6 +35,195 @@ def get_file_list(directory, fileType="*.csv"):
     except Exception as e:
         print(f"Error listing files in {directory}: {e}")
         return []
+
+
+def ensure_concen_unit_in_dir(directory, default=DEFAULT_CONCEN_UNIT):
+    """Backfill a ``# ConcenUnit:`` metadata line into legacy CSV data files.
+
+    Older files predate the concentration-unit feature and have no
+    ``# ConcenUnit`` line; when one is absent the value is assumed to be the
+    documented default (``ng/µL``). This materializes that assumption onto disk
+    for every recognized CSV in ``directory`` (raw timeseries or calibration)
+    that lacks the line, so the unit travels with the file. It runs as a data
+    folder is selected (the ``/browse`` route).
+
+    Idempotent and best-effort: files that already carry ``ConcenUnit`` or whose
+    header is not a recognized schema are left untouched, and a failure on one
+    file never aborts the pass. Always writes ``default`` (never a user-preferred
+    unit) so it can never mislabel existing data. Returns the number of files
+    migrated.
+    """
+    migrated = 0
+    try:
+        paths = glob.glob(os.path.join(directory, "*.csv"))
+    except Exception as e:
+        print(f"ensure_concen_unit_in_dir: cannot scan {directory}: {e}")
+        return 0
+
+    for path in paths:
+        if os.path.basename(path).startswith('.'):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            meta = parse_csv_metadata(lines)
+            if 'ConcenUnit' in meta:
+                continue  # already has it — nothing to do
+
+            # Locate the data header: the first non-empty, non-metadata line.
+            header_idx = None
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith('#'):
+                    continue
+                header_idx = i
+                break
+            if header_idx is None:
+                continue  # no data header — not a data file we recognize
+
+            if detect_csv_schema(lines[header_idx]) is None:
+                continue  # unrecognized schema — don't touch it
+
+            # Insert the line just before the data header, preserving the line
+            # ending style already used in the file's metadata block.
+            newline = '\n'
+            if header_idx > 0 and lines[header_idx - 1].endswith('\r\n'):
+                newline = '\r\n'
+            lines.insert(header_idx, f"# ConcenUnit: {default}{newline}")
+
+            with open(path, "w", encoding="utf-8") as f:
+                f.writelines(lines)
+            migrated += 1
+        except Exception as e:
+            print(f"ensure_concen_unit_in_dir: skipped {path}: {e}")
+            continue
+
+    return migrated
+
+
+# Placeholder written for an unknown measurement unit — the codebase's convention
+# (mirrors export_data's measUnit default). Normalized back to a wildcard (None) when
+# matching, so a back-filled legacy calibration JSON still pairs with any unit.
+DEFAULT_MEAS_UNIT = "NONE"
+
+
+def _norm_identity_value(v):
+    """Normalize an identity value: blank or the ``NONE`` placeholder → ``None``
+    (a wildcard when matching); otherwise the stripped string."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if s == "" or s.upper() == "NONE":
+        return None
+    return s
+
+
+def ensure_cal_units_in_dir(directory, default_meas_unit=DEFAULT_MEAS_UNIT,
+                            default_concen_unit=DEFAULT_CONCEN_UNIT):
+    """Back-fill missing identity units into legacy calibration JSONs on disk.
+
+    A calibration JSON predating the identity feature lacks ``meas_unit`` /
+    ``concen_unit``. This writes the defaults for every non-meta JSON in
+    ``directory`` missing either key (``meas_unit`` → ``"NONE"``, a wildcard when
+    matching; ``concen_unit`` → ``ng/µL``), mirroring ``ensure_concen_unit_in_dir``
+    for CSVs. Runs as the calibration list is fetched (``/get_json_cal``).
+    Idempotent and best-effort. Returns the number of files migrated.
+    """
+    migrated = 0
+    try:
+        paths = glob.glob(os.path.join(directory, "*.json"))
+    except Exception as e:
+        print(f"ensure_cal_units_in_dir: cannot scan {directory}: {e}")
+        return 0
+
+    for path in paths:
+        name = os.path.basename(path)
+        if name.startswith('.') or name.lower().endswith('.meta.json'):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+            if not isinstance(content, dict):
+                continue
+            changed = False
+            if "meas_unit" not in content:
+                content["meas_unit"] = default_meas_unit
+                changed = True
+            if "concen_unit" not in content:
+                content["concen_unit"] = default_concen_unit
+                changed = True
+            if changed:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(content, f, indent=4)
+                migrated += 1
+        except Exception as e:
+            print(f"ensure_cal_units_in_dir: skipped {path}: {e}")
+            continue
+
+    return migrated
+
+
+def build_csv_identity(directory, names):
+    """Return the matching identity of each CSV in ``names`` under ``directory``.
+
+    Shape: ``{name: {"measurement": str|None, "unit": str|None, "concen_unit": str}}``.
+    ``unit`` is the absorbance/measurement unit — ``# Unit`` for a raw timeseries file,
+    ``# MeasUnit`` for a calibration file (mirrors the JS ``getMetaUnit``); ``concen_unit``
+    defaults to ``ng/µL`` when absent (see ``get_concen_unit``). Used by the File Selection
+    table to show each file's identity badge and to gate CSV↔JSON pairing. Best-effort: a
+    file that cannot be read yields an all-unknown identity (never raises).
+    """
+    identity = {}
+    for name in names:
+        info = {"measurement": None, "unit": None, "concen_unit": DEFAULT_CONCEN_UNIT}
+        try:
+            path = os.path.join(directory, name)
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            meta = parse_csv_metadata(lines)
+            info["measurement"] = _norm_identity_value(meta.get("Measurement"))
+            header = next((l for l in lines
+                           if l.strip() and not l.strip().startswith('#')), "")
+            schema = detect_csv_schema(header)
+            # Timeseries uses `# Unit`; calibration files use `# MeasUnit`.
+            unit = meta.get("Unit") if schema == CSV_SCHEMA_TIMESERIES else meta.get("MeasUnit")
+            info["unit"] = _norm_identity_value(unit if unit is not None else (meta.get("Unit") or meta.get("MeasUnit")))
+            info["concen_unit"] = get_concen_unit(meta)
+        except Exception as e:
+            print(f"build_csv_identity: skipped {name}: {e}")
+        identity[name] = info
+    return identity
+
+
+def build_json_identity(directory, names):
+    """Return the matching identity of each calibration JSON in ``names``.
+
+    Shape: ``{name: {"measurement": str|None, "unit": str|None, "concen_unit": str}}``
+    read from the JSON's ``for_meas`` / ``meas_unit`` / ``concen_unit`` keys. A field
+    absent from a legacy JSON stays ``None`` (treated as a wildcard when matching),
+    except ``concen_unit`` which defaults to ``ng/µL``. ``*.meta.json`` sidecars are
+    skipped. Best-effort: unreadable/invalid JSON yields an all-unknown identity.
+    """
+    identity = {}
+    for name in names:
+        if name.lower().endswith(".meta.json"):
+            continue
+        info = {"measurement": None, "unit": None, "concen_unit": DEFAULT_CONCEN_UNIT}
+        try:
+            with open(os.path.join(directory, name), "r", encoding="utf-8") as f:
+                content = json.load(f)
+            if isinstance(content, dict):
+                info["measurement"] = _norm_identity_value(content.get("for_meas"))
+                info["unit"] = _norm_identity_value(content.get("meas_unit"))
+                cu = content.get("concen_unit")
+                info["concen_unit"] = cu if (cu and str(cu).strip()) else DEFAULT_CONCEN_UNIT
+        except Exception as e:
+            print(f"build_json_identity: skipped {name}: {e}")
+        identity[name] = info
+    return identity
 
 
 def build_meta(directory, names, time_format="iso"):

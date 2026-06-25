@@ -13,7 +13,8 @@ import state
 from file_path import (DATA_ROOT, validate_in_data_root,
                        is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER,
                        parse_csv_metadata, detect_csv_schema,
-                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL)
+                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
+                       DEFAULT_CONCEN_UNIT)
 from file import get_dynamic_data, replace_empty, merge_csv_files
 from file_operations import remove_csv_columns
 from measure import sort_csv_file
@@ -693,8 +694,20 @@ def save_range_csv(validated_data):
     'save_dir': str,
     'meas': (str, 'NONE', False),
     'measUnit': (str, 'NONE', False),
+    'concenUnit': (str, DEFAULT_CONCEN_UNIT, False),
     'measMode': str,
-    'newFile': (bool, True, False)
+    'newFile': (bool, True, False),
+    # Single-entry (one source) export sends the row's values at the top level
+    # rather than in `entries`. Declare them so @validate_json keeps them in
+    # validated_data — otherwise extract_single_entry() reads nothing and the row
+    # is written as all NONE. Permissive type: each is a numeric value or "NONE".
+    'maxrate': ((str, int, float), 'NONE', False),
+    'slope': ((str, int, float), 'NONE', False),
+    'sat': ((str, int, float), 'NONE', False),
+    'timeSat': ((str, int, float), 'NONE', False),
+    'con': ((str, int, float), 'NONE', False),
+    'estValue': ((str, int, float), 'NONE', False),
+    'timePoint': ((str, int, float), 'NONE', False),
 })
 def export_data(validated_data):
     entries = validated_data['entries']
@@ -704,6 +717,7 @@ def export_data(validated_data):
     save_dir = validated_data['save_dir']
     measurement = validated_data['meas']
     meas_unit = validated_data['measUnit']
+    concen_unit = validated_data['concenUnit'] or DEFAULT_CONCEN_UNIT
     meas_mode = validated_data['measMode']
     newFile = validated_data['newFile']
     time_unit = "minute" if meas_mode == "point" else "minutes"
@@ -716,13 +730,20 @@ def export_data(validated_data):
 
         if file_exists:
             meta_dict = get_dynamic_data(full_path)['metadata']
-            if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):
+            if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode, concen_unit):
+                # Surface a concentration-unit clash explicitly — the most
+                # likely (and otherwise opaque) cause of an inconsistency.
+                existing_unit = meta_dict.get('ConcenUnit', DEFAULT_CONCEN_UNIT)
+                if existing_unit != concen_unit:
+                    return jsonify({"status": "error", "message": (
+                        f"Concentration unit mismatch: this file records {existing_unit}, "
+                        f"but the export is in {concen_unit}. Pick a different file or unit.")})
                 return jsonify({"status": "error", "message": "Metadata inconsistency"})
 
         with open(full_path, "a", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
-                write_metadata(f, measurement, meas_unit, time_unit, meas_mode)
+                write_metadata(f, measurement, meas_unit, time_unit, meas_mode, concen_unit)
                 write_headers(writer, meas_mode)
 
             if is_batch:
@@ -743,6 +764,8 @@ def export_data(validated_data):
 @validate_json({
     'fit_type': str,
     'for_meas': str,
+    'measUnit': (str, 'NONE', False),
+    'concenUnit': (str, DEFAULT_CONCEN_UNIT, False),
     'coef_content': ((list, dict), None, False),
     'time': (float, None, False),
     'file_name': (str, 'calibrate', False),
@@ -754,6 +777,8 @@ def export_data(validated_data):
 def export_cal_coefs(validated_data):
     fit_type = validated_data['fit_type']
     for_meas = validated_data['for_meas']
+    meas_unit = validated_data['measUnit']
+    concen_unit = validated_data['concenUnit'] or DEFAULT_CONCEN_UNIT
     coef_content = validated_data['coef_content']
     time = validated_data['time']
     time_unit = "minute"
@@ -763,14 +788,17 @@ def export_cal_coefs(validated_data):
     thres_val = validated_data['threshold_val']
     regress_algo = validated_data['regress_algo']
     export_path = os.path.join(state.json_root_path, cal_mode)
-    
+
     try:
         export_path = os.path.abspath(os.path.expanduser(export_path))
         os.makedirs(export_path, exist_ok=True)
         full_path = get_next_filename(".json", export_path, file_name)
 
         json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val, regress_algo), regress_algo)
-        json_content.update({"fit_type": fit_type, "for_meas": for_meas})
+        # Identity recorded with the calibration curve so a measurement CSV can be
+        # matched against it: Measurement (for_meas), measurement Unit, ConcenUnit.
+        json_content.update({"fit_type": fit_type, "for_meas": for_meas,
+                             "meas_unit": meas_unit, "concen_unit": concen_unit})
 
         if (cal_mode == "point"):
             json_content.update({"time": time, "time-unit": time_unit})

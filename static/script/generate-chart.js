@@ -286,7 +286,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     type: 'linear',
                     title: {
                         display: true,
-                        text: (AppState.currentMeasurementMode !== "calibrate") ? `Time (${getTimeUnitValue()})` : 'Concentration (ng/µL)',
+                        text: (AppState.currentMeasurementMode !== "calibrate") ? `Time (${getTimeUnitValue()})` : `Concentration (${typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL'})`,
                         color: getAxisStyle('label')
                     },
                     min: xMin,

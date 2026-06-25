@@ -1069,6 +1069,32 @@ tr:last-child td {
     color: #aaa;
 }
 
+/* Inline identity badge (Measurement·Unit·ConcenUnit) shown after a file name in
+   the File Selection + calibration-JSON tables. Muted so it reads as secondary. */
+.file-identity {
+    display: inline-block;
+    font-size: 0.78em;
+    color: #6366f1;
+    background: #eef2ff;
+    padding: 0 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.dark .file-identity {
+    color: #a5b4fc;
+    background: #312e81;
+}
+
+/* A Select button disabled because the file's identity doesn't match the loaded
+   counterpart (CSV↔JSON pairing). */
+.table button[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 body.light #swal-edit-table tr.selected {
     background-color: #e6f2ff !important;
 }

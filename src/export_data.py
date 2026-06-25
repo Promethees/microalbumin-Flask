@@ -1,19 +1,29 @@
 import csv
 import io
 
+from file_path import DEFAULT_CONCEN_UNIT
+
 # Helper: Check metadata consistency
-def is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):
+def is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode,
+                           concen_unit=DEFAULT_CONCEN_UNIT):
+    # The target file's concentration unit must match the unit being exported —
+    # you cannot append nM rows to a file recorded as ng/µL (or vice versa). A
+    # file predating ConcenUnit is treated as the default (ng/µL), so only a
+    # matching-default export may be appended to it.
     return (meta_dict.get('Measurement') == measurement and
             meta_dict.get('MeasUnit') == meas_unit and
             meta_dict.get('TimeUnit') == time_unit and
-            meta_dict.get('MeasMode') == meas_mode)
+            meta_dict.get('MeasMode') == meas_mode and
+            meta_dict.get('ConcenUnit', DEFAULT_CONCEN_UNIT) == concen_unit)
 
 # Helper: Write metadata
-def write_metadata(output, measurement, meas_unit, time_unit, meas_mode):
+def write_metadata(output, measurement, meas_unit, time_unit, meas_mode,
+                   concen_unit=DEFAULT_CONCEN_UNIT):
     output.write(f"# Measurement: {measurement}\n")
     output.write(f"# MeasUnit: {meas_unit}\n")
     output.write(f"# TimeUnit: {time_unit}\n")
     output.write(f"# MeasMode: {meas_mode}\n")
+    output.write(f"# ConcenUnit: {concen_unit}\n")
 
 # Helper: Write headers
 def write_headers(writer, meas_mode):

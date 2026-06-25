@@ -9,11 +9,13 @@ import state
 import user_settings as _user_settings
 import data_root as _data_root
 import event_logger
-from file_path import DATA_ROOT, get_data_subfolders
+from file_path import DATA_ROOT, get_data_subfolders, CONCEN_UNITS
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
-from file import get_file_list, get_file_meta, build_meta, sort_file_names
+from file import (get_file_list, get_file_meta, build_meta, sort_file_names,
+                  ensure_concen_unit_in_dir, ensure_cal_units_in_dir,
+                  build_csv_identity, build_json_identity)
 
 core_bp = Blueprint('core', __name__)
 
@@ -56,8 +58,13 @@ def index():
     file_meta = get_file_meta(DATA_ROOT, time_format=time_tag_format)
     file_list = sort_file_names(get_file_list(DATA_ROOT), file_meta, file_sort_order)
     cal_json_dir = os.path.join(state.json_root_path, "kinetics")
+    # NB: the on-disk back-fill runs in /get_json_cal (fired on mode/folder select),
+    # not here — the index render stays read-only. build_json_identity still normalizes
+    # legacy JSONs for the first-paint badge.
     cal_json_meta = get_file_meta(cal_json_dir, "*.json", time_format=time_tag_format)
     cal_json_list = sort_file_names(get_file_list(cal_json_dir, "*.json"), cal_json_meta, file_sort_order)
+    file_identity = build_csv_identity(DATA_ROOT, file_list)
+    cal_json_identity = build_json_identity(cal_json_dir, cal_json_list)
 
     try:
         with open(state.log_file, 'w', encoding='utf-8') as f:
@@ -77,15 +84,18 @@ def index():
                          quantity_input=quantity_input,
                          file_list=file_list,
                          file_meta=file_meta,
+                         file_identity=file_identity,
                          file_sort_order=file_sort_order,
                          cal_json_list=cal_json_list,
                          cal_json_meta=cal_json_meta,
+                         cal_json_identity=cal_json_identity,
                          delimiter=state.delimiter,
                          production_mode=state.PRODUCTION_MODE,
                          app_version=state.APP_VERSION,
                          maintainer_email=state.MAINTAINER_EMAIL,
                          demo_prompt_pending=state.demo_prompt_pending(),
                          user_settings=user_settings,
+                         concen_units=CONCEN_UNITS,
                          is_frozen=state.IS_FROZEN,
                          reset_display=state.consume_reset_display_pending(),
                          data_root_info=_data_root.get_info()))
@@ -133,10 +143,17 @@ def browse():
         return jsonify({'status': 'error', 'message': 'Invalid directory'})
     if not os.path.isdir(abs_path):
         return jsonify({'status': 'error', 'message': 'Directory not found'})
+    # Backfill the ConcenUnit metadata line into legacy CSVs in this folder as it
+    # is selected/parsed (idempotent, best-effort) before stat-ing for mtimes, so
+    # the Modified column reflects any rewrite. Only for data-root folders.
+    if in_data:
+        ensure_concen_unit_in_dir(abs_path)
     file_list = get_file_list(abs_path)
     time_tag_format = _user_settings.load().get("time_tag_format", "iso")
     file_meta = get_file_meta(abs_path, time_format=time_tag_format)
-    return jsonify({'status': 'success', 'path': abs_path, 'files': file_list, 'files_meta': file_meta})
+    files_identity = build_csv_identity(abs_path, file_list) if in_data else {}
+    return jsonify({'status': 'success', 'path': abs_path, 'files': file_list,
+                    'files_meta': file_meta, 'files_identity': files_identity})
 
 @core_bp.route('/get_data_folders', methods=['GET'])
 def get_data_folders():
@@ -158,10 +175,15 @@ def get_json_cal():
         return jsonify({'status': 'success', 'files': []})
     json_path = os.path.join(state.json_root_path, mode)
     os.makedirs(json_path, exist_ok=True)
+    # Back-fill identity units into legacy calibration JSONs as the list is fetched
+    # (idempotent, best-effort), mirroring the CSV back-fill on /browse.
+    ensure_cal_units_in_dir(json_path)
     json_files = get_file_list(json_path, "*.json")
     time_tag_format = _user_settings.load().get("time_tag_format", "iso")
     files_meta = get_file_meta(json_path, "*.json", time_format=time_tag_format)
-    return jsonify({'status': 'success', 'files': json_files, 'files_meta': files_meta})
+    files_identity = build_json_identity(json_path, json_files)
+    return jsonify({'status': 'success', 'files': json_files,
+                    'files_meta': files_meta, 'files_identity': files_identity})
 
 @core_bp.route('/settings', methods=['GET'])
 def get_settings():

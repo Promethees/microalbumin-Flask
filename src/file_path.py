@@ -96,3 +96,22 @@ def detect_csv_schema(header_line: str):
     if header_norm == 'Concentration,Value,TimePoint':
         return CSV_SCHEMA_POINT_CAL
     return None
+
+
+# ---------------------------------------------------------------------------
+# Concentration unit
+# ---------------------------------------------------------------------------
+# The unit a Concentration value (the ``# Concentration:`` metadata of a raw
+# timeseries file, or the ``Concentration`` column of a calibration file) is
+# expressed in. Recorded as a ``# ConcenUnit:`` metadata line. Older files
+# predate this line; when it is absent the value is assumed to be ``ng/µL``
+# (``DEFAULT_CONCEN_UNIT``). This is a label only — switching units never
+# converts the recorded numbers.
+CONCEN_UNITS = ['ng/µL', 'nM', '%']
+DEFAULT_CONCEN_UNIT = 'ng/µL'
+
+
+def get_concen_unit(meta: dict) -> str:
+    """Return the concentration unit from parsed metadata, defaulting to
+    ``DEFAULT_CONCEN_UNIT`` when the ``ConcenUnit`` key is absent or empty."""
+    return (meta or {}).get('ConcenUnit') or DEFAULT_CONCEN_UNIT

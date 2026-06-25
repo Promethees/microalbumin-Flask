@@ -110,6 +110,28 @@ class TestSave:
         saved = json.loads((tmp_path / "user_settings.json").read_text())
         assert saved["default_window_size"] == user_settings.DEFAULTS["default_window_size"]
 
+    def test_saves_valid_concentration_unit(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"default_concentration_unit": "nM"}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["default_concentration_unit"] == "nM"
+
+    def test_saves_percent_concentration_unit(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"default_concentration_unit": "%"}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["default_concentration_unit"] == "%"
+
+    def test_rejects_invalid_concentration_unit(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"default_concentration_unit": "mol/L"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["default_concentration_unit"] == user_settings.DEFAULTS["default_concentration_unit"]
+
+    def test_concentration_unit_default_is_ng_ul(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["default_concentration_unit"] == "ng/µL"
+
     def test_saves_valid_subfolder(self, tmp_path, monkeypatch):
         monkeypatch.setattr(state, "script_dir", str(tmp_path))
         assert user_settings.save({"default_subfolder": "experiment_1"}) is True
