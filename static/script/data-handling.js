@@ -462,6 +462,33 @@ function deselectFile(tableSelector = "#file-table") {
     }
 }
 
+// Re-check the active CSV↔JSON pairing against the freshly-loaded data, e.g. after
+// a metadata edit. Selection-time backstops (selectFile) only run when a file is
+// picked; editing either file's identity (Measurement / Unit / ConcenUnit) can
+// misalign a previously-matched pair while both stay selected. When that happens the
+// calibration curve must no longer be applied, so this unpairs it (deselects the
+// JSON, clearing any derived concentration) and tells the user. Uses the authoritative
+// loaded data — AppState.metaData (CSV) and AppState.currentJSONcontent (JSON) — not
+// the table identity maps, which may lag an edit. Returns true if it unpaired.
+function revalidateActivePairing() {
+    if (!['kinetics', 'point'].includes(AppState.currentMeasurementMode)) return false;
+    if (!AppState.currentFile || !AppState.currentJSON) return false;
+    if (!AppState.metaData || !AppState.currentJSONcontent) return false;
+    const csvId = csvIdentityFromMeta(AppState.metaData);
+    const jsonId = jsonIdentityFromContent(AppState.currentJSONcontent);
+    const m = identityMatch(csvId, jsonId);
+    if (m.ok) return false;
+    const curve = AppState.currentJSON;
+    deselectFile('#json-table');   // unpair: clears currentJSON + any derived concentration
+    Swal.fire({
+        title: `${identityMismatchLabel(m.reason)} mismatch`,
+        html: `${_escHtml(identityClashText(csvId, jsonId, m.reason))}<br><br>` +
+            `The calibration curve <b>${_escHtml(curve)}</b> no longer matches the data file and has been unpaired.`,
+        icon: 'warning', confirmButtonText: 'OK'
+    });
+    return true;
+}
+
 function deleteFile(fileName, button, tableSelector = "#file-table") {
     // Check if script is running
     checkScriptStatus().then((isRunning) => {

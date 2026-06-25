@@ -1013,7 +1013,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             path: filePath,
                             content: content,
                             calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp'
-                        }, function (response) {
+                        }, async function (response) {
                             if (response.status === 'success') {
                                 let textMsg;
                                 if (fileName !== newFileName) {
@@ -1025,29 +1025,38 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 } else {
                                     textMsg = `File ${fileName} content updated successfully.`;
                                 }
-                                // Update AppState and Data display if the currently selected file is being edited
+                                // If the edited file is the active one, reload it so the
+                                // display reflects the new content/metadata. Await it so the
+                                // pairing re-validation below sees the freshly-loaded data.
                                 if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
                                     console.log("Changing data display");
                                     deselectFile(tableSelector);
-                                    selectFile(newFileName, button, tableSelector);
+                                    await selectFile(newFileName, button, tableSelector);
                                     toggleMode();
                                 }
+                                // Refresh the table's identity maps + rows so badges and
+                                // pairing disable-states reflect the edited metadata.
+                                if (tableSelector === "#file-table") {
+                                    await updateDirectory(AppState.currentDirectory);
+                                } else if (tableSelector === "#json-table") {
+                                    await updateJSONTable();
+                                }
+                                // A metadata edit can misalign a previously-matched CSV↔JSON
+                                // pair; unpair the calibration curve if so (warns the user).
+                                const unpaired = revalidateActivePairing();
                                 if (getBtnChecked("no-swal-checkbox")) {
                                     console.log(textMsg);
-                                    if (tableSelector === "#file-table") {
-                                        updateDirectory(AppState.currentDirectory);
-                                    } else if (tableSelector === "#json-table") {
-                                        updateJSONTable();
-                                    }
                                     return; // Exit if no popup is needed
                                 }
-                                Swal.fire({
-                                    title: 'Updated!',
-                                    text: textMsg,
-                                    icon: 'success',
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                });
+                                if (!unpaired) {
+                                    Swal.fire({
+                                        title: 'Updated!',
+                                        text: textMsg,
+                                        icon: 'success',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
+                                }
                             } else {
                                 Swal.fire({
                                     title: 'Error!',
