@@ -1027,13 +1027,12 @@ function getMetaUnit(metadata) {
 }
 
 // Resolve the concentration unit to display. Prefers the unit recorded in the
-// file metadata (`# ConcenUnit`); falls back to the current #concen-unit
-// dropdown, then the documented default (ng/µL) for legacy files. Label only.
+// file metadata (`# ConcenUnit`); falls back to the documented default (ng/µL)
+// for legacy files that predate the metadata line. Label only — never converts
+// the numbers.
 function getMetaConcenUnit(metadata) {
     const fromMeta = metadata && metadata['ConcenUnit'];
     if (fromMeta && String(fromMeta).trim() !== '') return String(fromMeta).trim();
-    const sel = document.getElementById('concen-unit');
-    if (sel && sel.value) return sel.value;
     return 'ng/µL';
 }
 

@@ -1637,13 +1637,14 @@ function generatePointData() {
 // Send export data to sources
 // Send export data to sources
 function sendExportDataToSources(saveFile, analysisData) {
-    const concenSel = document.getElementById('concen-unit');
     const commonData = {
         save_file: saveFile,
         measMode: AppState.currentMeasurementMode,
         meas: analysisData[0]?.measurement || "NONE",  // Assume same for all; fallback to "NONE"
         measUnit: analysisData[0]?.measUnit || "NONE",  // Assume same for all; fallback to "NONE"
-        concenUnit: (concenSel && concenSel.value) || "ng/µL"  // unit for the Concentration column
+        // Unit for the Concentration column, resolved from the loaded file's
+        // metadata (# ConcenUnit); the Data Display dropdown was removed.
+        concenUnit: (typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : "ng/µL")
     };
 
     let payload;
@@ -1765,7 +1766,7 @@ function exportJSONCoef() {
                 fit_type: document.getElementById("exp-json-regress-algo").value,
                 for_meas: AppState.exp_json_content.meas,
                 measUnit: (typeof getMetaUnit === 'function' ? getMetaUnit(AppState.metaData) : (AppState.metaData && AppState.metaData['MeasUnit'])) || 'NONE',
-                concenUnit: (document.getElementById('concen-unit') && document.getElementById('concen-unit').value) || 'ng/µL',
+                concenUnit: (typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL'),
                 coef_content: AppState.exp_json_content.analysis,
                 time: document.getElementById("regressed-time-point").value,
                 file_name: document.getElementById("save-json-file").value,
