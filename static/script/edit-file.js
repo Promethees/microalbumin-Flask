@@ -101,6 +101,14 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         const configs = {
             fit_type: {
                 options: ["linear", "polynomial", "logarithmic", "exponential", "Michaelis-Menten"]
+            },
+            // ConcenUnit is constrained to the valid units (single source of truth:
+            // the CONCEN_UNITS JS const injected from src/file_path.py). A legacy
+            // value outside the list is preserved as an extra option (foreign-value
+            // handling below), mirroring the CSV-metadata ConcenUnit dropdown.
+            concen_unit: {
+                options: (typeof CONCEN_UNITS !== 'undefined' && CONCEN_UNITS && CONCEN_UNITS.length)
+                    ? CONCEN_UNITS : ['ng/µL', 'nM', '%']
             }
         };
 
