@@ -398,7 +398,7 @@ function kineticsModeBehaviour() {
     const tableHeader = document.getElementById("file-table-header-name");
     if (tableHeader) tableHeader.innerText = "File Name";
     const searchInput = document.getElementById("file-search");
-    if (searchInput) searchInput.placeholder = "Search CSV files...";
+    if (searchInput) searchInput.placeholder = "Search: name [meas] [unit] [concen]";
 }
 
 
@@ -485,7 +485,7 @@ function pointModeBehaviour() {
     const tableHeader = document.getElementById("file-table-header-name");
     if (tableHeader) tableHeader.innerText = "File Name";
     const searchInput = document.getElementById("file-search");
-    if (searchInput) searchInput.placeholder = "Search CSV files...";
+    if (searchInput) searchInput.placeholder = "Search: name [meas] [unit] [concen]";
 }
 
 
@@ -528,7 +528,7 @@ function calModeBehaviour() {
     const tableHeader = document.getElementById("file-table-header-name");
     if (tableHeader) tableHeader.innerText = "File Name";
     const searchInput = document.getElementById("file-search");
-    if (searchInput) searchInput.placeholder = "Search CSV files...";
+    if (searchInput) searchInput.placeholder = "Search: name [meas] [unit] [concen]";
 
     // Configure range input
     const rangeValue = document.getElementById('range-value');

@@ -636,21 +636,79 @@ function updateFileTable(files, deselect) {
     });
 }
 
+// Parse a file/JSON search query into positional, space-separated filters. The
+// positions are, in order: name, measurement, unit, ConcenUnit — all AND-ed
+// (set intersection) so each extra token narrows the result. A position is
+// skipped (no filter) with a bare `-` or empty quotes `""`; values containing
+// spaces must be quoted, e.g. `std "Total Protein" AU nM`. Extra tokens beyond
+// the four positions are ignored. All matching is case-insensitive substring
+// matching (see _identityFieldMatch / filterTable).
+function parseSearchQuery(query) {
+    const fields = { measurement: null, unit: null, concen_unit: null };
+    let name = '';
+    const ORDER = ['name', 'measurement', 'unit', 'concen_unit'];
+    const tokens = (query || '').match(/"[^"]*"|\S+/g) || [];
+    for (let i = 0; i < tokens.length && i < ORDER.length; i++) {
+        const val = tokens[i].replace(/^"|"$/g, '').trim();
+        if (val === '' || val === '-') continue;  // skipped position
+        if (ORDER[i] === 'name') name = val.toLowerCase();
+        else fields[ORDER[i]] = val.toLowerCase();
+    }
+    return { freeText: name, fields };
+}
+
+// True when a file's identity satisfies every active field filter (case-insensitive
+// substring). An absent ConcenUnit defaults to ng/µL (the documented default);
+// absent/wildcard Measurement·Unit (null) match only when no filter is set for them,
+// so a `-meas X` filter hides files that don't declare that field.
+function _identityFieldMatch(id, fields) {
+    const ident = id || {};
+    for (const key of ['measurement', 'unit', 'concen_unit']) {
+        const q = fields[key];
+        if (q === null) continue;
+        let val = ident[key];
+        if (key === 'concen_unit' && (val === undefined || val === null || val === '')) {
+            val = 'ng/µL';
+        }
+        val = (val === undefined || val === null) ? '' : String(val);
+        if (val.toLowerCase().indexOf(q) === -1) return false;
+    }
+    return true;
+}
+
+// Filter a file/JSON table's rows by the search box. Matches the file name and,
+// for the identity-bearing CSV/JSON tables, the `-meas`/`-unit`/`-concen` field
+// filters (see parseSearchQuery). The name cell also holds the identity badge, so
+// the badge text is stripped before name matching, and identity is looked up from
+// AppState rather than scraped from the DOM. Field filters do not apply to the
+// report-subject folder listing (which reuses #file-table without identity).
 function filterTable(tableId, query) {
     const table = document.getElementById(tableId);
     if (!table) return;
+    const { freeText, fields } = parseSearchQuery(query);
+    const hasFieldFilter = fields.measurement !== null || fields.unit !== null || fields.concen_unit !== null;
+    const isReport = (typeof AppState !== 'undefined' && AppState.currentMeasurementMode === 'report');
+    const identityMap = (tableId === 'file-table' && !isReport) ? (AppState.fileIdentity || {})
+        : tableId === 'json-table' ? (AppState.jsonIdentity || {})
+            : null;
     const trs = table.getElementsByTagName("tr");
-    const lowerQuery = query.toLowerCase();
     for (let i = 1; i < trs.length; i++) {
         const tds = trs[i].getElementsByTagName("td");
-        if (tds.length > 0) {
-            const textValue = tds[0].textContent || tds[0].innerText;
-            if (textValue.toLowerCase().indexOf(lowerQuery) > -1) {
-                trs[i].style.display = "";
-            } else {
-                trs[i].style.display = "none";
-            }
+        if (tds.length === 0) continue;
+        // The name cell also holds the identity badge span; strip it for name matching.
+        const nameCell = tds[0];
+        const badgeEl = nameCell.querySelector ? nameCell.querySelector('.file-identity') : null;
+        let name = (nameCell.textContent || nameCell.innerText || '');
+        if (badgeEl) name = name.replace(badgeEl.textContent || '', '');
+        name = name.trim();
+
+        let show = !freeText || name.toLowerCase().indexOf(freeText) > -1;
+        // Field filters only make sense for the identity-bearing tables; for other
+        // tables (e.g. folders) they are ignored rather than hiding everything.
+        if (show && hasFieldFilter && identityMap) {
+            show = _identityFieldMatch(identityMap[name], fields);
         }
+        trs[i].style.display = show ? "" : "none";
     }
 }
 
