@@ -121,6 +121,17 @@
 
 ---
 
+### 2.11 Concentration Unit + CSV↔JSON Identity
+
+- **Concentration unit (`# ConcenUnit`)**: the unit a concentration is expressed in — the `# Concentration:` metadata of a raw timeseries CSV, or the `Concentration` column of a calibration CSV. One of **`ng/µL`, `nM`, `%`** (`CONCEN_UNITS` in `src/file_path.py`, the single source of truth — injected into the page as the `CONCEN_UNITS` JS const). A **label only**: switching units never converts the recorded numbers. `get_concen_unit(meta)` returns the documented default `ng/µL` when the line is absent.
+- **No persisted default, no migration** (online specifics): the `#concen-unit` dropdown (Data Display section) defaults to `ng/µL` each session and reflects the loaded file (`getMetaConcenUnit`/`syncConcenUnitDropdown`); there is no settings store. Storage is in-memory (`user_data['csv']`/`['json'][mode]`), so an absent `ConcenUnit` is simply **defaulted at read time** — the line is materialized only when the user edits the unit (Edit-File metadata **dropdown**, built from `CONCEN_UNITS`) or exports. **Do not** back-fill stored content on `get_csv`/`get_json_cal` (avoids needless Firebase/Drive writes).
+- **Export**: `data_routes.export_data` reads `concenUnit` and threads it into `write_metadata` + `is_metadata_consistent`; appending a different unit to an existing calibration file is rejected with a `Concentration unit mismatch` error. `export_cal_coefs` records the curve's identity — `for_meas` (Measurement), `meas_unit`, `concen_unit` — into the JSON.
+- **CSV↔JSON identity matching**: a measurement CSV is paired with a calibration JSON only when they share **Measurement + Unit + ConcenUnit**. `file_path.build_csv_identity_from_store` / `build_json_identity_from_store` return `{name: {measurement, unit, concen_unit}}` from the in-memory stores; `get_csv` / `get_json_cal` return them as `files_identity` and the index injects `FILE_IDENTITY` / `CAL_JSON_IDENTITY`. Both tables show an inline `Measurement·Unit·ConcenUnit` badge (`.file-identity`); when a counterpart is selected, a non-matching row's **Select button is disabled** (`navigation.js` `_selectDisableAttrs`), and `selectFile` raises an explicit mismatch error as a backstop. Measurement/Unit are **wildcards when absent** on either side (legacy JSONs stay usable; `NONE`/blank normalized via `_norm_identity_value` / `_normIdent`); ConcenUnit is always enforced (absent ⇒ ng/µL).
+- Report derived-concentration lines and the calibrate chart axis use the actual unit (`_reportConcenUnit` / `getMetaConcenUnit`), not a hardcoded `ng/µL`.
+- **Build note**: all of the above edits live in `static/script/` source; run `npm run build` so `static/dist/*.min.js` (+ `style.min.css`) reflect them before a production deploy.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.

@@ -347,12 +347,27 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         <tbody>
                             ${Object.entries(metadata).map(([key, value]) => {
                 const isNonEditable = nonEditableMetadata.includes(key);
+                // ConcenUnit is constrained to the valid units — edit it via a
+                // dropdown rather than free text so an invalid unit can't be typed.
+                if (key === 'ConcenUnit') {
+                    const units = (typeof CONCEN_UNITS !== 'undefined') ? CONCEN_UNITS : ['ng/µL', 'nM', '%'];
+                    const opts = units.map(u =>
+                        `<option value="${u}" ${u === value ? 'selected' : ''}>${u}</option>`).join('');
+                    return `
+                                    <tr>
+                                        <td class="metadata-key">${key}</td>
+                                        <td class="metadata-value">
+                                            <select class="metadata-value-select" data-meta-key="${key}">${opts}</select>
+                                        </td>
+                                    </tr>
+                                `;
+                }
                 return `
                                     <tr>
                                         <td class="metadata-key">${key}</td>
-                                        <td 
-                                            ${isNonEditable ? '' : 'contenteditable="true"'} 
-                                            data-meta-key="${key}" 
+                                        <td
+                                            ${isNonEditable ? '' : 'contenteditable="true"'}
+                                            data-meta-key="${key}"
                                             class="metadata-value ${isNonEditable ? 'noneditable' : ''}"
                                         >
                                             ${value}
@@ -799,7 +814,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 const cells = row.querySelectorAll('td');
                                 if (cells.length === 2) {
                                     const key = cells[0].textContent.trim();
-                                    const value = cells[1].textContent.trim();
+                                    // Constrained metadata (e.g. ConcenUnit) is edited via a
+                                    // <select>; read its value, else fall back to the cell text.
+                                    const sel = cells[1].querySelector('select');
+                                    const value = sel ? sel.value.trim() : cells[1].textContent.trim();
                                     return `# ${key}: ${value}`;
                                 }
                                 return null;

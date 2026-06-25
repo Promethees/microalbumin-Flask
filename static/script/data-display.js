@@ -208,6 +208,7 @@ function createChartSection({
     const previousValue = localStorage.getItem(previousValueKey) || '';
     // The file-level `# Concentration:` is propagated to every source's reader.
     const metaConcentration = getMetaConcentration(AppState.metaData);
+    const concenUnit = getMetaConcenUnit(AppState.metaData);
 
     // Store parameters needed for dynamic label generation and handlers
     window.ChartDataStore[canvasId] = {
@@ -242,10 +243,10 @@ function createChartSection({
                         onchange="handleConValueReadChange('${canvasId}', ${index}, '${unit}')"
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
-                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ng/µL
+                        min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ${concenUnit}
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
-                    Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ng/µL
+                    Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
                 </div>
                 <div id="est-value-msg-source-${index}" class="est-value-msg"></div>
                 `}
@@ -436,6 +437,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
             data-hint="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
             onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
         const metaConcentration = getMetaConcentration(AppState.metaData);
+        const concenUnit = getMetaConcenUnit(AppState.metaData);
         html += `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is ${metaConcentration !== null
@@ -444,10 +446,10 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
                     : `<input type="number" id="con-value-read-source-${i}"
                     value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}"
                     oninput="adjustInputWidth(this)"
-                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ng/µL
+                    min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ${concenUnit}
             </div>
             <div id="derived-concentration-section-source-${i}" class="hidden">
-                Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ng/µL
+                Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
             </div>
             <div id="est-value-msg-source-${i}" class="est-value-msg"></div>
         `
@@ -487,7 +489,7 @@ function getLabel(yColumn, measUnit) {
         || getMetaConcentration(AppState.metaData);
 
     return conValueRead
-        ? `${AppState.metaData['Measurement']} at ${conValueRead} ng/µL ${unitDisplay(measUnit)}`
+        ? `${AppState.metaData['Measurement']} at ${conValueRead} ${getMetaConcenUnit(AppState.metaData)} ${unitDisplay(measUnit)}`
         : `${AppState.metaData['Measurement']} ${yColumn} ${unitDisplay(measUnit)}`;
 }
 
@@ -1022,6 +1024,17 @@ function getLabelsFromYColumn(YColumn, measurementLabel, unit) {
 
 function getMetaUnit(metadata) {
     return (AppState.currentMeasurementMode === "calibrate") ? metadata['MeasUnit'] : metadata['Unit'];
+}
+
+// Resolve the concentration unit to display. Prefers the unit recorded in the
+// file metadata (`# ConcenUnit`); falls back to the current #concen-unit
+// dropdown, then the documented default (ng/µL) for legacy files. Label only.
+function getMetaConcenUnit(metadata) {
+    const fromMeta = metadata && metadata['ConcenUnit'];
+    if (fromMeta && String(fromMeta).trim() !== '') return String(fromMeta).trim();
+    const sel = document.getElementById('concen-unit');
+    if (sel && sel.value) return sel.value;
+    return 'ng/µL';
 }
 
 // Return the file-level Concentration recorded in the CSV metadata

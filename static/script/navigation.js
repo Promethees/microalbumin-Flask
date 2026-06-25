@@ -2,6 +2,108 @@ const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').rep
 const _escAttr = s => _escHtml(String(s));
 const _esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, "\\'");
 
+// ── File identity (Measurement / Unit / ConcenUnit) — badge + CSV↔JSON match ──
+// A measurement CSV is paired with a calibration JSON to derive concentration; the
+// pair must share the same Measurement, Unit and ConcenUnit. Identity is recorded
+// per file (CSV metadata / JSON for_meas+meas_unit+concen_unit) and surfaced both as
+// a badge in the tables and as a gate on the Select buttons.
+const DEFAULT_CONCEN_UNIT_JS = 'ng/µL';
+
+// Normalize an identity value: blank or the "NONE" placeholder → null (a wildcard
+// when matching); else the trimmed string. Mirrors _norm_identity_value in file_path.py.
+function _normIdent(v) {
+    if (v === undefined || v === null) return null;
+    const s = String(v).trim();
+    if (s === '' || s.toUpperCase() === 'NONE') return null;
+    return s;
+}
+
+function csvIdentityFromMeta(meta) {
+    if (!meta) return null;
+    const calMode = (typeof AppState !== 'undefined') && AppState.currentMeasurementMode === 'calibrate';
+    const unit = calMode ? meta['MeasUnit'] : (meta['Unit'] || meta['MeasUnit']);
+    return {
+        measurement: _normIdent(meta['Measurement']),
+        unit: _normIdent(unit),
+        concen_unit: (meta['ConcenUnit'] && String(meta['ConcenUnit']).trim()) || DEFAULT_CONCEN_UNIT_JS,
+    };
+}
+
+function jsonIdentityFromContent(json) {
+    if (!json) return null;
+    return {
+        measurement: _normIdent(json['for_meas']),
+        unit: _normIdent(json['meas_unit']),
+        concen_unit: (json['concen_unit'] && String(json['concen_unit']).trim()) || DEFAULT_CONCEN_UNIT_JS,
+    };
+}
+
+// Compare a CSV identity with a JSON identity. Measurement/Unit are wildcards when
+// absent on either side (legacy JSONs); ConcenUnit is always enforced (absent → ng/µL).
+// Returns {ok, reason} with reason ∈ 'meas' | 'unit' | 'concen' | null.
+function identityMatch(csvId, jsonId) {
+    if (!csvId || !jsonId) return { ok: true, reason: null };
+    if (csvId.measurement && jsonId.measurement && csvId.measurement !== jsonId.measurement)
+        return { ok: false, reason: 'meas' };
+    if (csvId.unit && jsonId.unit && csvId.unit !== jsonId.unit)
+        return { ok: false, reason: 'unit' };
+    const cuA = csvId.concen_unit || DEFAULT_CONCEN_UNIT_JS;
+    const cuB = jsonId.concen_unit || DEFAULT_CONCEN_UNIT_JS;
+    if (cuA !== cuB) return { ok: false, reason: 'concen' };
+    return { ok: true, reason: null };
+}
+
+function identityMismatchLabel(reason) {
+    return reason === 'meas' ? 'Measurement' : reason === 'unit' ? 'Unit' : 'Concentration unit';
+}
+
+// Human sentence describing the clash, naming both sides' values.
+function identityClashText(csvId, jsonId, reason) {
+    const field = reason === 'meas' ? 'measurement' : reason === 'unit' ? 'unit' : 'concentration unit';
+    const a = reason === 'meas' ? csvId.measurement : reason === 'unit' ? csvId.unit : csvId.concen_unit;
+    const b = reason === 'meas' ? jsonId.measurement : reason === 'unit' ? jsonId.unit : jsonId.concen_unit;
+    return `The data file's ${field} (${a || '—'}) does not match the calibration curve's ${field} (${b || '—'}). Pick a matching file.`;
+}
+
+// Muted identity badge appended after a filename (escaped): Measurement·Unit·ConcenUnit.
+function _identityBadge(id) {
+    if (!id) return '';
+    const parts = [id.measurement || '—', id.unit || '—', id.concen_unit || DEFAULT_CONCEN_UNIT_JS];
+    return ` <span class="file-identity">${_escHtml(parts.join('·'))}</span>`;
+}
+
+// Disabled Select-button attributes for a row whose identity doesn't match the
+// loaded counterpart (tagged with __kind); '' when it matches or none is loaded.
+function _selectDisableAttrs(rowId, counterpart) {
+    if (!counterpart) return '';
+    const m = (counterpart.__kind === 'csv')
+        ? identityMatch(counterpart, rowId)   // selected is CSV, row is a JSON
+        : identityMatch(rowId, counterpart);  // selected is JSON, row is a CSV
+    if (m.ok) return '';
+    const msg = identityMismatchLabel(m.reason) + ' differs from the selected file — cannot pair';
+    return ` disabled title="${_escAttr(msg)}" data-hint="${_escAttr(msg)}"`;
+}
+
+// Identity of the loaded counterpart, only in kinetics/point mode (pairing is
+// meaningless in calibrate/report). Returns {..., __kind} or null.
+function _csvCounterpartForJsonTable() {
+    if (typeof AppState === 'undefined') return null;
+    if (!['kinetics', 'point'].includes(AppState.currentMeasurementMode)) return null;
+    if (!AppState.currentFile || !AppState.metaData) return null;
+    const id = csvIdentityFromMeta(AppState.metaData);
+    if (id) id.__kind = 'csv';
+    return id;
+}
+
+function _jsonCounterpartForFileTable() {
+    if (typeof AppState === 'undefined') return null;
+    if (!['kinetics', 'point'].includes(AppState.currentMeasurementMode)) return null;
+    if (!AppState.currentJSON || !AppState.currentJSONcontent) return null;
+    const id = jsonIdentityFromContent(AppState.currentJSONcontent);
+    if (id) id.__kind = 'json';
+    return id;
+}
+
 // ── Data-folder collapse toggle ──────────────────────────────────────────────
 
 function toggleFolderList(collapseId, chevronId) {
@@ -183,13 +285,17 @@ function arraysEqual(a, b) {
 }
 
 function updateJSONTable(files) {
+    if (files) AppState.jsonNames = files.slice();
     let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
     if (files && files.length > 0) {
+        const counterpart = _csvCounterpartForJsonTable();  // loaded CSV (kinetics/point)
         files.slice().sort((a, b) => a.localeCompare(b)).forEach(file => {
             const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
             const ef = _escAttr(file);
             const et = _escHtml(file);
-            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✏️ Edit</button></td></tr>`;
+            const badge = _identityBadge(AppState.jsonIdentity && AppState.jsonIdentity[file]);
+            const disableAttrs = _selectDisableAttrs(AppState.jsonIdentity && AppState.jsonIdentity[file], counterpart);
+            html += `<tr${isSelected}><td>${et}${badge}</td><td><button${disableAttrs} onclick="selectFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✏️ Edit</button></td></tr>`;
         })
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
@@ -239,15 +345,18 @@ function filterTable(tableId, query) {
 }
 
 function updateFileTable(files, deselect = false) {
-
+    if (files) AppState.fileNames = files.slice();
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
     if (files) {
         filterFiles(files).then((filteredFiles) => {
+            const counterpart = _jsonCounterpartForFileTable();  // loaded JSON (kinetics/point)
             if (filteredFiles && filteredFiles.length > 0) {
                 filteredFiles.slice().sort((a, b) => a.localeCompare(b)).forEach(file => {
                     const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
                     const et = _escHtml(file);
-                    html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(file))}, this)">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this)">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this)">✏️ Edit</button></td></tr>`;
+                    const badge = _identityBadge(AppState.fileIdentity && AppState.fileIdentity[file]);
+                    const disableAttrs = _selectDisableAttrs(AppState.fileIdentity && AppState.fileIdentity[file], counterpart);
+                    html += `<tr${isSelected}><td>${et}${badge}</td><td><button${disableAttrs} onclick="selectFile(${_escAttr(JSON.stringify(file))}, this)">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this)">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this)">✏️ Edit</button></td></tr>`;
                 });
             } else {
                 html += '<tr><td colspan="3">No CSV files is available.</td></tr>';

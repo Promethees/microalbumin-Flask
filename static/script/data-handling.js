@@ -17,6 +17,25 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                 AppState.currentReportSubject = fileName;
                 updateFileDisplay(fileName);
             } else {
+                // Backstop the table's disabled buttons: a data file may only be
+                // paired with a calibration curve of matching Measurement/Unit/ConcenUnit.
+                if (['kinetics', 'point'].includes(AppState.currentMeasurementMode)
+                    && AppState.currentJSON && AppState.currentJSONcontent
+                    && typeof identityMatch === 'function') {
+                    const csvId = (AppState.fileIdentity && AppState.fileIdentity[fileName]) || null;
+                    const jsonId = jsonIdentityFromContent(AppState.currentJSONcontent);
+                    const m = identityMatch(csvId, jsonId);
+                    if (!m.ok) {
+                        if (closestTr) closestTr.classList.remove('selected');
+                        Swal.fire({
+                            title: `${identityMismatchLabel(m.reason)} mismatch`,
+                            text: identityClashText(csvId, jsonId, m.reason),
+                            icon: 'error', confirmButtonText: 'OK'
+                        });
+                        return;
+                    }
+                }
+
                 AppState.prevFile = AppState.currentFile;
                 AppState.currentFile = fileName;
                 clearConcentrationValues();
@@ -31,9 +50,32 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                 resetDataDisplayDefaults();
 
                 await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+
+                // Refresh the calibration-JSON table so non-matching curves are
+                // disabled against the just-selected data file.
+                if (typeof updateJSONTable === 'function') updateJSONTable(AppState.jsonNames || []);
             }
         }
         else if (tableSelector === "#json-table") {
+            // Backstop: only pair a calibration curve with a loaded data file whose
+            // Measurement/Unit/ConcenUnit match.
+            if (['kinetics', 'point'].includes(AppState.currentMeasurementMode)
+                && AppState.currentFile && AppState.metaData
+                && typeof identityMatch === 'function') {
+                const csvId = csvIdentityFromMeta(AppState.metaData);
+                const jsonId = (AppState.jsonIdentity && AppState.jsonIdentity[fileName]) || null;
+                const m = identityMatch(csvId, jsonId);
+                if (!m.ok) {
+                    if (closestTr) closestTr.classList.remove('selected');
+                    Swal.fire({
+                        title: `${identityMismatchLabel(m.reason)} mismatch`,
+                        text: identityClashText(csvId, jsonId, m.reason),
+                        icon: 'error', confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+
             AppState.currentJSON = fileName;
 
             $id("copy-json-btn").disabled = false;
@@ -52,6 +94,8 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
 
                         const fitType = JSON_content.fit_type || "N/A";
                         const measFor = JSON_content.for_meas || "N/A";
+                        const measUnitFor = JSON_content.meas_unit || "—";
+                        const concenUnitFor = JSON_content.concen_unit || "ng/µL";
                         const mode = AppState.currentMeasurementMode || "N/A";
 
                         const labelCoefficients = (coefs) => {
@@ -97,7 +141,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             const tbody = document.createElement("tbody");
 
                             for (const [key, value] of Object.entries(json)) {
-                                if (["fit_type", "for_meas"].includes(key)) continue;
+                                if (["fit_type", "for_meas", "meas_unit", "concen_unit"].includes(key)) continue;
                                 const tr = document.createElement("tr");
                                 const tdKey = document.createElement("td");
                                 tdKey.textContent = key;
@@ -168,7 +212,9 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             "Formula": getFormula(fitType),
                             "[S]": "Initial Substance Concentration",
                             [qLabel]: qDesc,
-                            "Measurement For": measFor
+                            "Measurement For": measFor,
+                            "Measurement Unit": measUnitFor,
+                            "Concentration Unit": concenUnitFor
                         };
 
                         buildCoefTable(JSON_content);
@@ -182,6 +228,10 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                         if (AppState.currentFile) {
                             await processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
                         }
+
+                        // Refresh the data-file table so non-matching files are
+                        // disabled against the just-selected calibration curve.
+                        if (typeof updateFileTable === 'function') updateFileTable(AppState.fileNames || [], false);
                     } finally {
                         resolve();
                     }
@@ -426,6 +476,9 @@ function deselectFile(tableSelector = "#file-table") {
         $disable(["copy-file-btn", "download-file-btn"], true);
         $hidden(["data-display-section"], true);
 
+        // No data file selected → clear any disabling on the calibration-JSON table.
+        if (typeof updateJSONTable === 'function') updateJSONTable(AppState.jsonNames || []);
+
     } else if (tableSelector === "#json-table") {
         AppState.currentJSON = null;
         AppState.currentJSONcontent = null;
@@ -433,6 +486,9 @@ function deselectFile(tableSelector = "#file-table") {
         $hidden(["json-display", "top-right"], true);
         $text("json-display", "");
         processDataDisplay(AppState.currentFile, AppState.currentJSONcontent);
+
+        // No calibration curve selected → clear any disabling on the data-file table.
+        if (typeof updateFileTable === 'function') updateFileTable(AppState.fileNames || [], false);
 
         // Hide all JSON-related sections
         [
@@ -632,6 +688,11 @@ function processResponse(response, jsonFile) {
     AppState.responseData = response.data;
     AppState.metaData = response.metadata;
     AppState.numSources = response.num_sources || 1;
+
+    // Reflect the loaded file's concentration unit in the #concen-unit dropdown.
+    if (typeof syncConcenUnitDropdown === 'function') {
+        syncConcenUnitDropdown();
+    }
 
     // Hide split-source when there is only one Value column — splitting is meaningless
     if (AppState.currentMeasurementMode !== 'calibrate') {
@@ -1576,11 +1637,13 @@ function generatePointData() {
 // Send export data to sources
 // Send export data to sources
 function sendExportDataToSources(saveFile, analysisData) {
+    const concenSel = document.getElementById('concen-unit');
     const commonData = {
         save_file: saveFile,
         measMode: AppState.currentMeasurementMode,
         meas: analysisData[0]?.measurement || "NONE",  // Assume same for all; fallback to "NONE"
-        measUnit: analysisData[0]?.measUnit || "NONE"  // Assume same for all; fallback to "NONE"
+        measUnit: analysisData[0]?.measUnit || "NONE",  // Assume same for all; fallback to "NONE"
+        concenUnit: (concenSel && concenSel.value) || "ng/µL"  // unit for the Concentration column
     };
 
     let payload;
@@ -1701,6 +1764,8 @@ function exportJSONCoef() {
             const data = {
                 fit_type: document.getElementById("exp-json-regress-algo").value,
                 for_meas: AppState.exp_json_content.meas,
+                measUnit: (typeof getMetaUnit === 'function' ? getMetaUnit(AppState.metaData) : (AppState.metaData && AppState.metaData['MeasUnit'])) || 'NONE',
+                concenUnit: (document.getElementById('concen-unit') && document.getElementById('concen-unit').value) || 'ng/µL',
                 coef_content: AppState.exp_json_content.analysis,
                 time: document.getElementById("regressed-time-point").value,
                 file_name: document.getElementById("save-json-file").value,

@@ -14,6 +14,11 @@ from file_path import (
     CSV_SCHEMA_TIMESERIES,
     CSV_SCHEMA_KINETICS_CAL,
     CSV_SCHEMA_POINT_CAL,
+    CONCEN_UNITS,
+    DEFAULT_CONCEN_UNIT,
+    get_concen_unit,
+    build_csv_identity_from_store,
+    build_json_identity_from_store,
 )
 
 
@@ -163,3 +168,47 @@ def test_get_child_directories_empty_dir():
 def test_get_child_directories_non_dir_raises():
     with pytest.raises(ValueError):
         get_child_directories('/nonexistent/path/that/does/not/exist')
+
+
+# ---------------------------------------------------------------------------
+# Concentration unit + CSV↔JSON identity
+# ---------------------------------------------------------------------------
+
+def test_concen_units_catalog():
+    assert CONCEN_UNITS == ['ng/µL', 'nM', '%']
+    assert DEFAULT_CONCEN_UNIT == 'ng/µL'
+
+
+def test_get_concen_unit_default_and_value():
+    assert get_concen_unit({}) == 'ng/µL'
+    assert get_concen_unit({'ConcenUnit': ''}) == 'ng/µL'
+    assert get_concen_unit({'ConcenUnit': '%'}) == '%'
+
+
+def test_build_csv_identity_from_store():
+    store = {
+        'cal_kinetics.csv': ("# Measurement: ABS\n# MeasUnit: abs\n# TimeUnit: minutes\n"
+                             "# MeasMode: kinetics\n# ConcenUnit: nM\n"
+                             "Concentration,maxRate,Slope,Sat,Time To Sat\n5,0.1,0.2,0.3,10\n"),
+        'raw.csv': "# Measurement: ABS\n# Unit: abs\n# Concentration: 5\nTimestamp,Value:1\n0,0.1\n",
+    }
+    ident = build_csv_identity_from_store(store)
+    assert ident['cal_kinetics.csv'] == {'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+    # Timeseries uses # Unit; absent ConcenUnit defaults to ng/µL
+    assert ident['raw.csv'] == {'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'ng/µL'}
+
+
+def test_build_json_identity_from_store_full_and_legacy():
+    store = {
+        'curve.json': '{"fit_type":"linear","for_meas":"ABS","meas_unit":"abs","concen_unit":"nM"}',
+        'legacy.json': '{"fit_type":"linear","for_meas":"ABS"}',
+        'filled.json': '{"for_meas":"ABS","meas_unit":"NONE","concen_unit":"ng/µL"}',
+        'skip.meta.json': '{"for_meas":"X"}',
+    }
+    ident = build_json_identity_from_store(store)
+    assert ident['curve.json'] == {'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+    # Legacy: missing unit → None (wildcard); concen defaults ng/µL
+    assert ident['legacy.json'] == {'measurement': 'ABS', 'unit': None, 'concen_unit': 'ng/µL'}
+    # "NONE" meas_unit normalizes to None (wildcard)
+    assert ident['filled.json'] == {'measurement': 'ABS', 'unit': None, 'concen_unit': 'ng/µL'}
+    assert 'skip.meta.json' not in ident

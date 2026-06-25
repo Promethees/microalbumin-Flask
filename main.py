@@ -11,6 +11,8 @@ from user_data import init_user_data
 from range import get_range_input
 from mode import get_mode_input
 from quantity import get_quantity_input
+from file_path import (CONCEN_UNITS, build_csv_identity_from_store,
+                       build_json_identity_from_store)
 from config import Config
 from extensions import socketio
 
@@ -153,7 +155,10 @@ def index():
     user_data = init_user_data()
     file_list = list(user_data['csv'].keys())
     cal_json_list = list(user_data['json'].get('kinetics', {}).keys())
-    
+    # Per-file identity (Measurement/Unit/ConcenUnit) for the identity badge.
+    file_identity = build_csv_identity_from_store(user_data['csv'])
+    cal_json_identity = build_json_identity_from_store(user_data['json'].get('kinetics', {}))
+
     account_user = None
     if session.get('account_user_id'):
         account_user = {
@@ -170,7 +175,10 @@ def index():
                          mode_input=mode_input,
                          quantity_input=quantity_input,
                          file_list=file_list,
+                         file_identity=file_identity,
                          cal_json_list=cal_json_list,
+                         cal_json_identity=cal_json_identity,
+                         concen_units=CONCEN_UNITS,
                          delimiter=delimiter,
                          production_mode= app.config['PRODUCTION_MODE'],
                          download_available=DOWNLOAD_AVAILABLE,

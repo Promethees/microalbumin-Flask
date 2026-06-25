@@ -369,7 +369,7 @@
                             {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
-                                <td>{{ file }}</td>
+                                <td>{{ file }} <span class="file-identity">{{ cal_json_identity.get(file, {}).get('measurement') or '—' }}·{{ cal_json_identity.get(file, {}).get('unit') or '—' }}·{{ cal_json_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
                                 <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button>
                                 </td>
                                 <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button>
@@ -413,7 +413,7 @@
                             {% if file_list %}
                             {% for file in file_list %}
                             <tr>
-                                <td>{{ file }}</td>
+                                <td>{{ file }} <span class="file-identity">{{ file_identity.get(file, {}).get('measurement') or '—' }}·{{ file_identity.get(file, {}).get('unit') or '—' }}·{{ file_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
                                 <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
                                 <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
                                 <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
@@ -499,6 +499,14 @@
                     <select id="regressed-time-point" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
+                </div>
+                <div class="section" id="concentration-unit-section">
+                    Concentration unit
+                    <select id="concen-unit" onchange="onConcenUnitChange()">
+                        {% for u in concen_units %}
+                        <option value="{{ u }}">{{ u }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div id="select-regress-algo">
                     Select Regress Algo to export:
@@ -806,7 +814,13 @@
         const csvPath = {{ csv_path | tojson | safe }}
         const DELIMITER = "{{ delimiter }}" === "\\\\" ? "\\" : "{{ delimiter }}";
         const temp_quantity_input = {{ quantity_input | tojson | safe}};
+        // Valid concentration units (single source of truth: src/file_path.py
+        // CONCEN_UNITS) + per-file identity maps for the badge / CSV↔JSON match.
+        const CONCEN_UNITS = {{ concen_units | tojson | safe }};
+        const FILE_IDENTITY = {{ file_identity | tojson | safe }};
+        const CAL_JSON_IDENTITY = {{ cal_json_identity | tojson | safe }};
         $.get('/get_csv', { request: true }, function (response) {
+            if (typeof AppState !== 'undefined') AppState.fileIdentity = response.files_identity || {};
             updateFileTable(response.files, true);
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log("AJAX error:", textStatus, errorThrown);
@@ -814,6 +828,7 @@
         });
         $.get('/get_json_cal', { mode: "kinetics", numSources: 1 },
             function (response) {
+                if (typeof AppState !== 'undefined') AppState.jsonIdentity = response.files_identity || {};
                 updateJSONTable(response.files);
             }).fail(function (jqXHR, textStatus, errorThrown) {
                 console.log("AJAX error fetching JSON files:", textStatus, errorThrown);

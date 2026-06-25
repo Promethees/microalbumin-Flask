@@ -1,5 +1,6 @@
 import os
 import re
+import json
 
 # This will point to the directory where main.py is located
 current_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -96,3 +97,84 @@ def detect_csv_schema(header_line: str):
     if header_norm == 'Concentration,Value,TimePoint':
         return CSV_SCHEMA_POINT_CAL
     return None
+
+
+# ---------------------------------------------------------------------------
+# Concentration unit + CSV↔JSON identity
+# ---------------------------------------------------------------------------
+# The unit a Concentration value (the ``# Concentration:`` metadata of a raw
+# timeseries file, or the ``Concentration`` column of a calibration file) is
+# expressed in, recorded as a ``# ConcenUnit:`` line. One of three values; a
+# label only (switching units never converts the recorded numbers). Older files
+# predate the line — when absent the value is assumed ``ng/µL``.
+CONCEN_UNITS = ['ng/µL', 'nM', '%']
+DEFAULT_CONCEN_UNIT = 'ng/µL'
+
+
+def get_concen_unit(meta: dict) -> str:
+    """Concentration unit from parsed metadata, defaulting to ng/µL when the
+    ``ConcenUnit`` key is absent or empty."""
+    return (meta or {}).get('ConcenUnit') or DEFAULT_CONCEN_UNIT
+
+
+def _norm_identity_value(v):
+    """Normalize an identity value: blank or the ``NONE`` placeholder → ``None``
+    (a wildcard when matching); otherwise the stripped string."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if s == '' or s.upper() == 'NONE':
+        return None
+    return s
+
+
+def build_csv_identity_from_store(csv_dict) -> dict:
+    """Identity of each in-memory CSV → ``{name: {measurement, unit, concen_unit}}``.
+
+    ``csv_dict`` is the per-user ``user_data['csv']`` map (``{name: content}``).
+    ``unit`` is the absorbance/measurement unit — ``# Unit`` for a raw timeseries
+    file, ``# MeasUnit`` for a calibration file (mirrors the JS ``getMetaUnit``);
+    ``concen_unit`` defaults ng/µL. measurement/unit ``NONE``/blank → wildcard.
+    """
+    identity = {}
+    for name, content in (csv_dict or {}).items():
+        info = {'measurement': None, 'unit': None, 'concen_unit': DEFAULT_CONCEN_UNIT}
+        try:
+            lines = (content or '').splitlines()
+            meta = parse_csv_metadata(lines)
+            info['measurement'] = _norm_identity_value(meta.get('Measurement'))
+            header = next((l for l in lines if l.strip() and not l.strip().startswith('#')), '')
+            schema = detect_csv_schema(header)
+            unit = meta.get('Unit') if schema == CSV_SCHEMA_TIMESERIES else meta.get('MeasUnit')
+            info['unit'] = _norm_identity_value(unit if unit is not None else (meta.get('Unit') or meta.get('MeasUnit')))
+            info['concen_unit'] = get_concen_unit(meta)
+        except Exception:
+            pass
+        identity[name] = info
+    return identity
+
+
+def build_json_identity_from_store(json_dict) -> dict:
+    """Identity of each in-memory calibration JSON → ``{name: {measurement, unit,
+    concen_unit}}`` from its ``for_meas`` / ``meas_unit`` / ``concen_unit`` keys.
+
+    ``json_dict`` is ``user_data['json'][mode]`` (``{name: json_str}``). A field
+    absent from a legacy JSON → ``None`` (wildcard) except ``concen_unit`` which
+    defaults ng/µL. ``*.meta.json`` sidecars are skipped.
+    """
+    identity = {}
+    for name, content in (json_dict or {}).items():
+        if str(name).lower().endswith('.meta.json'):
+            continue
+        info = {'measurement': None, 'unit': None, 'concen_unit': DEFAULT_CONCEN_UNIT}
+        try:
+            obj = json.loads(content) if isinstance(content, str) else content
+            if isinstance(obj, dict):
+                info['measurement'] = _norm_identity_value(obj.get('for_meas'))
+                info['unit'] = _norm_identity_value(obj.get('meas_unit'))
+                cu = obj.get('concen_unit')
+                info['concen_unit'] = cu if (cu and str(cu).strip()) else DEFAULT_CONCEN_UNIT
+        except Exception:
+            pass
+        identity[name] = info
+    return identity

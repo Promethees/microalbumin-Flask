@@ -1,5 +1,22 @@
 document.getElementById("year").textContent = new Date().getFullYear();
 
+// Reflect the currently-loaded file's concentration unit in the #concen-unit
+// dropdown. Falls back to ng/µL for legacy files (online keeps no user default).
+function syncConcenUnitDropdown() {
+    const sel = document.getElementById('concen-unit');
+    if (!sel) return;
+    const meta = (typeof AppState !== 'undefined') ? AppState.metaData : null;
+    const fromMeta = meta && meta['ConcenUnit'] && String(meta['ConcenUnit']).trim();
+    sel.value = fromMeta || 'ng/µL';
+}
+
+// User changed the concentration unit: re-render the display so labels pick up
+// the new unit and use it as the unit for the next calibration export. Label
+// change only — it does not rewrite the loaded file.
+function onConcenUnitChange() {
+    if (typeof toggleMode === 'function') toggleMode();
+}
+
 (async function initDownloadLinks() {
     const versionEl = document.getElementById('download-version');
     try {
@@ -440,6 +457,7 @@ socket.on('update_csv', function () {
     fetchJSON('/get_csv?request=true')
         .then(response => {
             console.log("CSV files updated via SocketIO:", response.files);
+            AppState.fileIdentity = response.files_identity || {};
             updateFileTable(response.files, false);
 
             // Trigger redraw if we are currently viewing this file in live mode
@@ -457,6 +475,7 @@ socket.on('update_json', function (data) {
     if (data.mode === AppState.currentMeasurementMode) {
         fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`)
             .then(response => {
+                AppState.jsonIdentity = response.files_identity || {};
                 updateJSONTable(response.files, false);
             })
             .catch(error => {

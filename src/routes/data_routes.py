@@ -10,6 +10,8 @@ from export_data import (
     parse_metadata, is_metadata_consistent, write_metadata, write_headers,
     extract_single_entry, sort_csv_content, get_user_lock
 )
+from file_path import (DEFAULT_CONCEN_UNIT, build_csv_identity_from_store,
+                       build_json_identity_from_store)
 from get_next_filename import get_next_filename
 
 data_bp = Blueprint('data', __name__)
@@ -18,7 +20,11 @@ data_bp = Blueprint('data', __name__)
 def get_csv():
     user_data = get_user_data()
     file_list = list(user_data['csv'].keys())
-    return jsonify({'status': 'success', 'files': file_list})
+    # Per-file identity (Measurement/Unit/ConcenUnit) for the identity badge and
+    # the CSV↔JSON pairing match. Read-time only — no back-fill of stored content.
+    files_identity = build_csv_identity_from_store(user_data['csv'])
+    return jsonify({'status': 'success', 'files': file_list,
+                    'files_identity': files_identity})
 
 @data_bp.route('/get_json_cal', methods=['GET'])
 def get_json_cal():
@@ -27,7 +33,9 @@ def get_json_cal():
     if mode not in user_data['json']:
         user_data['json'][mode] = {}
     json_files = list(user_data['json'][mode].keys())
-    return jsonify({'status': 'success', 'files': json_files})
+    files_identity = build_json_identity_from_store(user_data['json'][mode])
+    return jsonify({'status': 'success', 'files': json_files,
+                    'files_identity': files_identity})
 
 @data_bp.route('/get_json_content', methods=['GET'])
 def get_json_content():
@@ -157,6 +165,7 @@ def export_data():
     file_name = data.get('save_file', 'result')
     measurement = data.get('meas', 'NONE')
     meas_unit = data.get('measUnit', 'NONE')
+    concen_unit = data.get('concenUnit') or DEFAULT_CONCEN_UNIT
     meas_mode = data.get('measMode')
     if meas_mode not in ('kinetics', 'point'):
         return jsonify({"status": "error", "message": "Invalid measMode"}), 400
@@ -169,12 +178,19 @@ def export_data():
             file_exists = content is not None
             if file_exists:
                 meta_dict = parse_metadata(content)
-                if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode):
+                if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode, concen_unit):
+                    # Surface a concentration-unit clash explicitly — the most
+                    # likely (and otherwise opaque) cause of an inconsistency.
+                    existing_unit = meta_dict.get('ConcenUnit', DEFAULT_CONCEN_UNIT)
+                    if existing_unit != concen_unit:
+                        return jsonify({"status": "error", "message": (
+                            f"Concentration unit mismatch: this file records {existing_unit}, "
+                            f"but the export is in {concen_unit}. Pick a different file or unit.")})
                     return jsonify({"status": "error", "message": "Metadata inconsistency"})
             output = StringIO()
             writer = csv.writer(output)
             if not file_exists and newFile:
-                write_metadata(output, measurement, meas_unit, time_unit, meas_mode)
+                write_metadata(output, measurement, meas_unit, time_unit, meas_mode, concen_unit)
                 write_headers(writer, meas_mode)
             elif file_exists:
                 output.write(content.rstrip('\n') + '\n')
@@ -194,6 +210,8 @@ def export_cal_coefs():
     data = request.get_json()
     fit_type = data.get('fit_type')
     for_meas = data.get('for_meas')
+    meas_unit = data.get('measUnit', 'NONE')
+    concen_unit = data.get('concenUnit') or DEFAULT_CONCEN_UNIT
     coef_content = data.get('coef_content')
     time = data.get('time')
     time_unit = "minute"
@@ -213,7 +231,10 @@ def export_cal_coefs():
             user_data['json'][cal_mode] = {}
         full_name = get_next_filename(".json", list(user_data['json'][cal_mode].keys()), file_name)
         json_content = processJSONCoef(cal_params, extractAnalysisCoefficients(coef_content, thres_val, regress_algo), regress_algo)
-        json_content.update({"fit_type": fit_type, "for_meas": for_meas})
+        # Identity recorded with the curve so a measurement CSV can be matched
+        # against it: Measurement (for_meas), measurement Unit, ConcenUnit.
+        json_content.update({"fit_type": fit_type, "for_meas": for_meas,
+                             "meas_unit": meas_unit, "concen_unit": concen_unit})
         if cal_mode == "point":
             json_content.update({"time": time, "time-unit": time_unit})
         user_data['json'][cal_mode][full_name] = json.dumps(json_content, cls=CustomEncoder, indent=4)

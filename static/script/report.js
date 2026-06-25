@@ -687,7 +687,7 @@ async function generateReport() {
             derConSections.forEach((sec, idx) => {
                 if (!sec.classList.contains('hidden')) {
                     const val = sec.querySelector('.der-con-value')?.innerText || "--";
-                    concentrationResults += `<div style="margin-bottom:8px; font-size: 1.1rem;">Concentration (Source ${idx + 1}): <strong style="color:#2980b9;">${val} ng/µL</strong></div>`;
+                    concentrationResults += `<div style="margin-bottom:8px; font-size: 1.1rem;">Concentration (Source ${idx + 1}): <strong style="color:#2980b9;">${val} ${_reportConcenUnit(AppState.currentJSONcontent)}</strong></div>`;
                 }
             });
         }
@@ -992,7 +992,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
             document.querySelectorAll('[id^="derived-concentration-section-source-"]').forEach((sec, idx) => {
                 if (!sec.classList.contains('hidden')) {
                     const val = sec.querySelector('.der-con-value')?.innerText || '--';
-                    itemData.derived_lines.push(`Source ${idx + 1}: ${val} ng/µL`);
+                    itemData.derived_lines.push(`Source ${idx + 1}: ${val} ${_reportConcenUnit(AppState.currentJSONcontent)}`);
                 }
             });
 
@@ -2158,7 +2158,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
                 } catch (e) {
                     con = `ERR: ${e.message}`;
                 }
-                rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ng/µL</strong></div>`;
+                rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ${_reportConcenUnit(json)}</strong></div>`;
             }
             return `
                 <div class="report-derived-concentration" style="margin-top:12px; background:#f0f7ff; padding:12px; border-radius:8px; border:1px solid #d0e7ff;">
@@ -2184,7 +2184,7 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
             } catch (e) {
                 con = `ERR: ${e.message}`;
             }
-            rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ng/µL</strong></div>`;
+            rowsHtml += `<div style="margin-bottom:6px;">Concentration (Source ${t}): <strong style="color:#2980b9;">${con} ${_reportConcenUnit(json)}</strong></div>`;
         }
 
         return `
@@ -2203,6 +2203,16 @@ async function buildDerivedConcentrationForReport({ mode, calFile, renderData, v
 function _unitDisplayForReport(unit) {
     if (!unit || unit === 'NONE') return '';
     return unit;
+}
+
+// The concentration unit to label a derived concentration in a report. Prefers the
+// calibration curve's own unit (`json.concen_unit`); for the live report builder
+// where the JSON object isn't in scope, falls back to the loaded file's ConcenUnit
+// (CSV↔JSON matching guarantees the two agree), then ng/µL for legacy data.
+function _reportConcenUnit(json) {
+    if (json && json.concen_unit && String(json.concen_unit).trim()) return String(json.concen_unit).trim();
+    if (typeof getMetaConcenUnit === 'function') return getMetaConcenUnit(AppState.metaData);
+    return 'ng/µL';
 }
 
 function _extractValidXYForTrace(renderData, traceIdx) {
@@ -2663,7 +2673,7 @@ async function finalizeReportExcel() {
                                 const qVal = _kineticsQuantityValuePerExportUnit(a, derivedQty);
                                 let con = '--';
                                 try { con = Number(computeFitForReport(qVal, fitType, coefNode, derivedQty)).toFixed(4); } catch (_) {}
-                                itemData.derived_lines.push(`Source ${t}: ${con} ng/µL (via ${derivedQty})`);
+                                itemData.derived_lines.push(`Source ${t}: ${con} ${_reportConcenUnit(json)} (via ${derivedQty})`);
                             }
                         } else {
                             const coef = json.fit_coef;
@@ -2672,7 +2682,7 @@ async function finalizeReportExcel() {
                                 const estValue = getEstimatedValue(renderData, timeSec, t);
                                 let con = '--';
                                 try { con = Number(computeFitForReport(Number(estValue), fitType, coef, 'Endpoint Value')).toFixed(4); } catch (_) {}
-                                itemData.derived_lines.push(`Source ${t}: ${con} ng/µL`);
+                                itemData.derived_lines.push(`Source ${t}: ${con} ${_reportConcenUnit(json)}`);
                             }
                         }
                         // Lead with the calibration function used to derive the values.

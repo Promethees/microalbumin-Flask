@@ -51,6 +51,12 @@ const AppState = {
     currentReportSubject: null,
     lastAnalyses: null,
     calibrationDataPoints: null,
+    // Last-rendered table names + per-file identity (Measurement/Unit/ConcenUnit)
+    // for the identity badge and the CSV↔JSON pairing match.
+    fileNames: [],
+    jsonNames: [],
+    fileIdentity: (typeof FILE_IDENTITY !== 'undefined' && FILE_IDENTITY) ? FILE_IDENTITY : {},
+    jsonIdentity: (typeof CAL_JSON_IDENTITY !== 'undefined' && CAL_JSON_IDENTITY) ? CAL_JSON_IDENTITY : {},
 
     reset: function () {
         this.myChart = null;
@@ -467,6 +473,7 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
     try {
         const csvResponse = await fetchJSON('/get_csv?request=true');
         console.log("CSV files updated:", csvResponse.files);
+        AppState.fileIdentity = csvResponse.files_identity || {};
         updateFileTable(csvResponse.files, deselect);
     } catch (error) {
         console.error("Error fetching CSV files:", error);
@@ -477,6 +484,7 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
     if (AppState.currentMeasurementMode !== "calibrate") {
         try {
             const jsonResponse = await fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`);
+            AppState.jsonIdentity = jsonResponse.files_identity || {};
             updateJSONTable(jsonResponse.files);
         } catch (error) {
             console.error("Error fetching JSON files:", error);

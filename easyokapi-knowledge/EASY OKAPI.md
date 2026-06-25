@@ -58,7 +58,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | Auth | `src/routes/auth_routes.py` | Google Drive OAuth2 flow and sync operations |
 | Account | `src/routes/account_routes.py` | User registration, login, password reset, account deletion, download, **AI activation** |
 | File Ops | `src/routes/file_routes.py` | CSV/JSON CRUD operations (Edit, Delete, Copy, Upload, Merge) |
-| Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export |
+| Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export; `export_data`/`export_cal_coefs` record the concentration unit + curve identity; `get_csv`/`get_json_cal` return `files_identity` for the CSV↔JSON match (Rule.md §2.11) |
 | AI | `src/routes/ai_routes.py` | AI assistant: chat, settings, guides, **desktop proxy** (`/ai/*`) |
 | Extensions | `src/extensions.py` | Centralized SocketIO instance to avoid circular imports |
 
@@ -69,10 +69,10 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | [[src/user_data.py\|user_data.py]]                       | In-memory per-session storage (`USER_DATA` dict), session management, Drive state helpers |
 | [[src/google_drive_service.py\|google_drive_service.py]] | OAuth 2.0 flow, Drive CRUD operations (folders, files), session-to-Drive sync             |
 | `config.py`                                              | Configuration class (`Config`): secret keys, Google/AI API settings, PRODUCTION_MODE      |
-| `export_data.py`                                         | CSV metadata parsing, header writing, export utilities with thread locks                  |
-| [[src/export_cal_json.py\|export_cal_json.py]]           | Standard curve coefficient processing, JSON export for calibration data                   |
+| `export_data.py`                                         | CSV metadata parsing, header writing, export utilities with thread locks; `write_metadata`/`is_metadata_consistent` carry the `# ConcenUnit` (concentration unit) — see Rule.md §2.11 |
+| [[src/export_cal_json.py\|export_cal_json.py]]           | Standard curve coefficient processing, JSON export for calibration data (the JSON also records its identity — `for_meas`/`meas_unit`/`concen_unit` — written by `export_cal_coefs`) |
 | [[src/file_merge.py\|file_merge.py]]                     | Merging CSV contents from two files                                                       |
-| `file_path.py`                                           | File path utilities                                                                       |
+| `file_path.py`                                           | File path utilities; CSV schema (`parse_csv_metadata`/`detect_csv_schema`) + concentration-unit (`CONCEN_UNITS` ng/µL·nM·%, `get_concen_unit`) + in-memory identity builders `build_csv_identity_from_store`/`build_json_identity_from_store` (powering the table badge + CSV↔JSON match, Rule.md §2.11) |
 | `get_next_filename.py`                                   | Auto-naming duplicates (e.g., `file_1.csv`, `file_2.csv`)                                 |
 | `mode.py`                                                | Returns available measurement modes: `kinetics`, `point`, `calibrate`, `report`           |
 | `quantity.py`                                            | Returns available quantity options for kinetics analysis                                  |

@@ -196,3 +196,32 @@ def test_get_user_lock_different_users_return_different_locks():
     lock_a = get_user_lock('user-a')
     lock_b = get_user_lock('user-b')
     assert lock_a is not lock_b
+
+
+# ---------------------------------------------------------------------------
+# Concentration unit (# ConcenUnit)
+# ---------------------------------------------------------------------------
+
+def test_write_metadata_emits_concen_unit():
+    buf = io.StringIO()
+    write_metadata(buf, 'ABS', 'AU', 'min', 'kinetics', '%')
+    assert '# ConcenUnit: %\n' in buf.getvalue()
+
+
+def test_write_metadata_concen_unit_defaults_to_ng_ul():
+    buf = io.StringIO()
+    write_metadata(buf, 'ABS', 'AU', 'min', 'kinetics')
+    assert '# ConcenUnit: ng/µL\n' in buf.getvalue()
+
+
+def test_is_metadata_consistent_missing_concen_unit_treated_as_default():
+    meta = {'Measurement': 'ABS', 'MeasUnit': 'AU', 'TimeUnit': 'min', 'MeasMode': 'kinetics'}
+    assert is_metadata_consistent(meta, 'ABS', 'AU', 'min', 'kinetics', 'ng/µL') is True
+    assert is_metadata_consistent(meta, 'ABS', 'AU', 'min', 'kinetics', 'nM') is False
+
+
+def test_is_metadata_consistent_concen_unit_must_match():
+    meta = {'Measurement': 'ABS', 'MeasUnit': 'AU', 'TimeUnit': 'min',
+            'MeasMode': 'kinetics', 'ConcenUnit': 'nM'}
+    assert is_metadata_consistent(meta, 'ABS', 'AU', 'min', 'kinetics', 'nM') is True
+    assert is_metadata_consistent(meta, 'ABS', 'AU', 'min', 'kinetics', '%') is False
