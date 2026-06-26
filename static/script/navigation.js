@@ -793,11 +793,23 @@ async function browseSavingLocation(changeToCalibrate = false, button = null, pa
                 // target CSV may not be listed on the first refresh. Retry locating
                 // the row for a short window so the spinner stays up until the file
                 // is actually selectable.
+                //
+                // The name cell holds the filename PLUS an identity badge span
+                // (.file-identity, e.g. "Absorbance·—·%"), so its textContent is
+                // never equal to the bare filename — strip the badge before
+                // matching, mirroring filterTable(). A live CSV always carries
+                // metadata, so an exact-text match here would always miss and the
+                // file would never get selected.
                 let cell = null;
                 for (let attempt = 0; attempt < 10 && !cell; attempt++) {
                     await new Promise(resolve => setTimeout(resolve, 100));
-                    const cells = document.querySelectorAll("#file-table tr td");
-                    cell = Array.from(cells).find(td => td.textContent.trim() === fileName);
+                    const nameCells = document.querySelectorAll("#file-table tr td:first-child");
+                    cell = Array.from(nameCells).find(td => {
+                        const badge = td.querySelector ? td.querySelector('.file-identity') : null;
+                        let name = td.textContent || '';
+                        if (badge) name = name.replace(badge.textContent || '', '');
+                        return name.trim() === fileName;
+                    });
                 }
 
                 if (cell) {
