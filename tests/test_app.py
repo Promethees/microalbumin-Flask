@@ -147,6 +147,37 @@ def test_check_status_completed(client):
         assert rv.get_json()['status'] == 'success'
         assert state.process is None
 
+
+def test_check_status_completed_announces_device_stop(client, tmp_path):
+    """A session ended by the device Left button (SESSION STOPPED in the log) is
+    announced with the manual-stop message, distinct from a timeout."""
+    log = tmp_path / 'script_logs.txt'
+    log.write_text("New session started.\n[t] SESSION STOPPED\n", encoding='utf-8')
+    state.process = MagicMock()
+    state.process.poll.return_value = 0  # process has exited
+    with patch.object(state, 'log_file', str(log)), \
+         patch('routes.hardware_routes.check_log_for_errors', return_value=None):
+        rv = client.get('/check_status')
+        assert rv.status_code == 200
+        data = rv.get_json()
+        assert data['status'] == 'success'
+        assert data['message'] == 'Session stopped manually on the device.'
+
+
+def test_check_status_completed_announces_timeout(client, tmp_path):
+    """A session ended by timeout keeps the timeout announcement."""
+    log = tmp_path / 'script_logs.txt'
+    log.write_text("New session started.\n[t] SESSION TIMEOUT\n", encoding='utf-8')
+    state.process = MagicMock()
+    state.process.poll.return_value = 0
+    with patch.object(state, 'log_file', str(log)), \
+         patch('routes.hardware_routes.check_log_for_errors', return_value=None):
+        rv = client.get('/check_status')
+        assert rv.status_code == 200
+        data = rv.get_json()
+        assert data['status'] == 'success'
+        assert data['message'] == 'Session ended due to timeout.'
+
 # File Routes Tests
 def test_get_json_content(client, tmp_path):
     """Test fetching JSON file content."""

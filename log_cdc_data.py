@@ -63,6 +63,9 @@ class CDCDataCollector:
         self.header_pattern = r"^Timestamp,Value:\d+(?:,Value:\d+)*$"
         self.data_pattern = r"^\d+\.\d{1,2},(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
         self.end_pattern = r"^SESSION TIMEOUT$"
+        # Device-side manual stop (Left button) of a host session — distinct from
+        # a timeout so the UI can announce it differently (firmware serial_manager).
+        self.stop_pattern = r"^SESSION STOPPED$"
 
         # Writable log dir: project root in dev, per-user app-data when frozen
         # (state.script_dir). Must match where Flask reads logs (state.log_file).
@@ -92,6 +95,9 @@ class CDCDataCollector:
 
     def is_end_session(self, line):
         return bool(re.match(self.end_pattern, line))
+
+    def is_stopped(self, line):
+        return bool(re.match(self.stop_pattern, line))
 
     # ── handlers ────────────────────────────────────────────────────────
     def handle_metadata(self, line):
@@ -142,17 +148,27 @@ class CDCDataCollector:
             elif self.is_valid_data(line) and self.session_started:
                 self.process_data(line)
             elif self.is_end_session(line) and self.session_started:
-                self.log("SESSION TIMEOUT")
-                self.session_started = False
-                self.metadata = {}
-                self.num_values = None
                 # A host-initiated session is one-shot: once the device times
                 # out we're done, so stop and let the app report completion.
-                self.running = False
+                self._finish_session("SESSION TIMEOUT")
+            elif self.is_stopped(line) and self.session_started:
+                # Manual stop from the device's Left button — same one-shot end as
+                # a timeout, but logged distinctly so the UI announces it as a
+                # device stop rather than a timeout.
+                self._finish_session("SESSION STOPPED")
             else:
                 self.log(f"Unexpected line: {line}")
         except Exception as e:
             self.log(f"Error processing line '{line}': {e}")
+
+    def _finish_session(self, reason):
+        """End the one-shot session, logging `reason` (SESSION TIMEOUT / STOPPED)
+        so the host UI can announce why the reading ended."""
+        self.log(reason)
+        self.session_started = False
+        self.metadata = {}
+        self.num_values = None
+        self.running = False
 
     # ── lifecycle ───────────────────────────────────────────────────────
     def _send_start_commands(self):

@@ -104,7 +104,9 @@ function checkScriptStatus() {
                         resetUIAfterError();
                     } else {
                         logDisplay.insertAdjacentText('beforeend', 'Script completed successfully\n');
-                        resetUIAfterCompletion();
+                        // Backend reports why it ended (timeout / device stop) so
+                        // the announcement matches the cause.
+                        resetUIAfterCompletion(response.message);
                     }
                     resolve(false); // Script is not running
                 } else if (response.status === 'resending') {
@@ -165,14 +167,16 @@ function resetUIAfterError() {
     resetUI({ goToEnabled: false });
 }
 
-function resetUIAfterCompletion() {
+function resetUIAfterCompletion(message) {
     stopSessionTimer();
     resetUI({ goToEnabled: true });
     // Refresh folder picker so any newly-created subfolder is visible
     if (typeof loadDataFolders === 'function') loadDataFolders();
     // Authoritative clean-completion path: notify here so the "done" chime/popup
     // no longer depends on the log poll winning the race against this status poll.
-    fireDoneNotification("Session ended due to timeout.");
+    // `message` is the backend's reason-aware text (timeout vs device stop);
+    // fall back to the timeout wording if it's somehow absent.
+    fireDoneNotification(message || "Session ended due to timeout.");
 }
 
 // CDC save-mode toggle handlers
@@ -353,6 +357,7 @@ async function fetchLogs() {
 
             if (/PyBadge not found/.test(logs)) showTerminationNotice("PyBadge not found. Please check the connection.", "error");
             else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice("Failed to find input endpoint. Please verify USB connection.", "error");
+            else if (/SESSION STOPPED/.test(logs)) showTerminationNotice("Session stopped manually on the device.", "info");
             else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice("Session ended due to timeout.", "info");
         }
     } catch (err) {

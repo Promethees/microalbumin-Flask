@@ -648,6 +648,42 @@ def test_cdc_main_header_requires_four_metadata(tmp_path, monkeypatch):
     assert "# ConcenUnit: nM" in open(c.output_file, encoding="utf-8").read()
 
 
+def _started_collector(tmp_path, monkeypatch):
+    """A CDCDataCollector with an active session (header written)."""
+    c = _make_collector(tmp_path, monkeypatch)
+    c.is_main_header("Timestamp,Value:1")  # sets num_values
+    c.metadata = {"Measurement": "ABS", "Unit": "AU", "Concentration": "5", "ConcenUnit": "nM"}
+    c.handle_main_header("Timestamp,Value:1")
+    assert c.session_started is True
+    return c
+
+
+def test_cdc_session_stopped_ends_session_and_logs_distinctly(tmp_path, monkeypatch):
+    """The device-button stop sentinel ends the one-shot session and is logged as
+    SESSION STOPPED (not TIMEOUT) so the UI can announce a manual device stop."""
+    c = _started_collector(tmp_path, monkeypatch)
+    assert c.is_stopped("SESSION STOPPED")
+
+    c.process_line("SESSION STOPPED")
+    assert c.session_started is False
+    assert c.running is False  # one-shot: logger loop exits
+
+    log = open(c.log_file_path, encoding="utf-8").read()
+    assert "SESSION STOPPED" in log
+    assert "SESSION TIMEOUT" not in log
+
+
+def test_cdc_session_timeout_still_logs_timeout(tmp_path, monkeypatch):
+    """The timeout sentinel remains distinct from the device-stop sentinel."""
+    c = _started_collector(tmp_path, monkeypatch)
+    c.process_line("SESSION TIMEOUT")
+    assert c.session_started is False
+    assert c.running is False
+    log = open(c.log_file_path, encoding="utf-8").read()
+    assert "SESSION TIMEOUT" in log
+    assert "SESSION STOPPED" not in log
+
+
 # ---------------------------------------------------------------------------
 # CSV/JSON identity (Measurement / Unit / ConcenUnit) for CSV↔JSON matching
 # ---------------------------------------------------------------------------

@@ -5,7 +5,7 @@ import platform
 import subprocess
 import signal
 import state
-from script_monitor import check_log_for_errors, check_log_for_session_start
+from script_monitor import check_log_for_errors, check_log_for_session_start, check_log_for_end_reason
 from file_path import is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER
 from validators import validate_json
 
@@ -159,6 +159,9 @@ def check_status():
     # The logger exited: a clean end-of-session (device timeout / user stop)
     # always logs "New session started"; a handshake failure does not.
     started = check_log_for_session_start(state.log_file)
+    # Why it ended (read BEFORE clear_logs) so the UI can announce a device-button
+    # stop distinctly from a timeout.
+    reason = check_log_for_end_reason(state.log_file)
     state.process = None
     # Session is over — reset the log file here, the authoritative server-side
     # completion point. The frontend only clears logs via terminateScript()
@@ -166,7 +169,11 @@ def check_status():
     # first, that path never runs, so without this the log file is left dirty.
     clear_logs()
     if started:
-        return jsonify({'status': 'success', 'message': 'Reading session completed.'})
+        message = {
+            'stopped': 'Session stopped manually on the device.',
+            'timeout': 'Session ended due to timeout.',
+        }.get(reason, 'Reading session completed.')
+        return jsonify({'status': 'success', 'message': message})
     return jsonify({'status': 'failure', 'message': 'Reading session ended before any data was captured.'})
 
 

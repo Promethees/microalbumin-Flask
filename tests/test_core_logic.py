@@ -151,3 +151,29 @@ def test_check_log_for_session_start_false_without_session(tmp_path):
     log = tmp_path / "run.log"
     log.write_text("PyBadge not found. Device (Pybadge) not found.")
     assert script_monitor.check_log_for_session_start(str(log)) is False
+
+
+# ---------------------------------------------------------------------------
+# script_monitor.check_log_for_end_reason — timeout vs device-button stop
+# ---------------------------------------------------------------------------
+
+def test_check_log_for_end_reason_missing_file():
+    assert script_monitor.check_log_for_end_reason("/nonexistent/log.txt") is None
+
+
+def test_check_log_for_end_reason_stopped(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("New session started.\n[t] SESSION STOPPED\n")
+    assert script_monitor.check_log_for_end_reason(str(log)) == "stopped"
+
+
+def test_check_log_for_end_reason_timeout(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("New session started.\n[t] SESSION TIMEOUT\n")
+    assert script_monitor.check_log_for_end_reason(str(log)) == "timeout"
+
+
+def test_check_log_for_end_reason_none_when_no_sentinel(tmp_path):
+    log = tmp_path / "run.log"
+    log.write_text("New session started.\nReceived: Timestamp: 0.00s, Values: 0.1\n")
+    assert script_monitor.check_log_for_end_reason(str(log)) is None
