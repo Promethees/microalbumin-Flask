@@ -27,6 +27,25 @@ def clear_logs():
         pass
 
 
+def clear_current_output_marker():
+    """Blank log/current_output.txt at the start of a run.
+
+    The logger writes this marker (the live CSV path) only once it has received
+    the device's full header (log_cdc_data.handle_main_header). Until then the
+    file still holds the *previous* session's path, so "View live data" — which
+    is enabled the instant run_script succeeds — would resolve /api/current_output
+    to a stale file from a prior run. Blanking it makes that endpoint return 204
+    ("still writing"), so the client keeps polling until the new session's header
+    lands. Kept in sync with file_routes.api_current_output / log_cdc_data.py."""
+    try:
+        marker_path = os.path.join(state.script_dir, 'log', 'current_output.txt')
+        os.makedirs(os.path.dirname(marker_path), exist_ok=True)
+        with open(marker_path, 'w', encoding='utf-8') as f:
+            f.write("")
+    except Exception:
+        pass
+
+
 def _logger_command(base_dir, base_name, timeout_sec, interval_sec):
     """Build the CDC logger subprocess command. CDC needs no elevated privileges.
 
@@ -95,6 +114,9 @@ def run_script(validated_data):
 
     # Fresh log so device/session detection reflects only this run.
     clear_logs()
+    # Stale-marker guard: clear the live-file marker so "View live data" can't
+    # resolve to the previous session's CSV before this run writes its header.
+    clear_current_output_marker()
 
     try:
         with open(state.log_file, 'a', encoding='utf-8') as f:

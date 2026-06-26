@@ -38,14 +38,21 @@ def test_run_script_already_running(client):
     assert rv.get_json()['status'] == 'failure'
     assert 'already running' in rv.get_json()['message']
 
-def test_run_script_success(client):
+def test_run_script_success(client, tmp_path):
     """A CDC logger subprocess that stays alive (wait() times out) => success.
 
     The CDC logger owns the serial port: it does the connect + command
     handshake itself, so run_script only launches it and treats a still-running
     process as a successfully started session.
+
+    state.script_dir / state.log_file are redirected under tmp_path so the test
+    never touches the real (possibly unwritable) log dir — run_script opens
+    state.log_file for the subprocess's stdout and would otherwise fail there.
     """
-    with patch('subprocess.Popen') as mock_popen:
+    (tmp_path / 'log').mkdir()
+    with patch.object(state, 'script_dir', str(tmp_path)), \
+         patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')), \
+         patch('subprocess.Popen') as mock_popen:
         proc = MagicMock()
         proc.wait.side_effect = subprocess.TimeoutExpired(cmd='log_cdc_data.py', timeout=2)
         mock_popen.return_value = proc
@@ -57,9 +64,47 @@ def test_run_script_success(client):
         assert rv.status_code == 200
         assert rv.get_json()['status'] == 'success'
 
-def test_run_script_device_not_found(client):
-    """A logger that exits immediately and logged a missing device => device_not_found."""
-    with patch('subprocess.Popen') as mock_popen, \
+def test_run_script_clears_stale_current_output_marker(client, tmp_path):
+    """run_script must blank log/current_output.txt before the logger starts.
+
+    Otherwise "View live data" (enabled the instant run_script succeeds) would
+    resolve /api/current_output to the *previous* session's CSV during the window
+    before the new session writes its header. After a successful start the marker
+    must be empty, so api_current_output returns 204 and the client keeps polling.
+    """
+    log_dir = tmp_path / 'log'
+    log_dir.mkdir()
+    marker = log_dir / 'current_output.txt'
+    # Simulate a leftover marker from a prior session.
+    marker.write_text('/old/data/26Jun2026/previous_session_0.csv', encoding='utf-8')
+
+    with patch.object(state, 'script_dir', str(tmp_path)), \
+         patch.object(state, 'log_file', str(log_dir / 'script_logs.txt')), \
+         patch('subprocess.Popen') as mock_popen:
+        proc = MagicMock()
+        proc.wait.side_effect = subprocess.TimeoutExpired(cmd='log_cdc_data.py', timeout=2)
+        mock_popen.return_value = proc
+        rv = client.post('/run_script', json={'base_name': 'test'})
+
+        assert rv.status_code == 200
+        assert rv.get_json()['status'] == 'success'
+        # Marker is blanked: the stale path is gone, so the endpoint reports 204.
+        assert marker.read_text(encoding='utf-8') == ''
+        rv2 = client.get('/api/current_output')
+        assert rv2.status_code == 204
+
+
+def test_run_script_device_not_found(client, tmp_path):
+    """A logger that exits immediately and logged a missing device => device_not_found.
+
+    state.script_dir / state.log_file are redirected under tmp_path so run_script
+    can open state.log_file (the subprocess stdout sink) without touching the real
+    log dir.
+    """
+    (tmp_path / 'log').mkdir()
+    with patch.object(state, 'script_dir', str(tmp_path)), \
+         patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')), \
+         patch('subprocess.Popen') as mock_popen, \
          patch('routes.hardware_routes.check_log_for_errors', return_value='device_not_found'):
         proc = MagicMock()
         proc.wait.return_value = 1  # exits quickly (no TimeoutExpired)
