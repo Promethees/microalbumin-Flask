@@ -28,5 +28,7 @@
     }
   },
   "fit_type": "exponential",
-  "for_meas": "ABSORBANCE"
+  "for_meas": "ABSORBANCE",
+  "meas_unit": "NONE",
+  "concen_unit": "ng/\u00b5L"
 }
