@@ -6,5 +6,7 @@
   "fit_coef": {
     "a": 3,
     "b": 4
-  }
+  },
+  "meas_unit": "NONE",
+  "concen_unit": "ng/\u00b5L"
 }
