@@ -101,6 +101,12 @@ graph TD
 
 Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` — host-initiated sessions use `transport="cdc"` (`usb_cdc.data`), button-initiated use `transport="hid"`.
 
+**Session-end sentinels (device → host):** a CDC session ends with one of two text lines the firmware streams and `log_cdc_data.py` parses (`_finish_session` logs them verbatim):
+- `SESSION TIMEOUT` — the configured timeout elapsed.
+- `SESSION STOPPED` — the user pressed the device's **Left button** mid-session (firmware emits it for `transport == "cdc" and not start_by_host`; the host's own `0`-command stop does not). Present on all firmware branches (`main`, `open-plus`, `open-uv`).
+
+`script_monitor.check_log_for_end_reason()` maps the log to `'timeout'`/`'stopped'`, which `check_status` turns into a reason-aware completion message; `cdc-logging.js` (`fetchLogs` + `resetUIAfterCompletion`) shows "Session ended due to timeout." vs "Session stopped manually on the device.".
+
 ### 2.4 Frontend (`static/script/` — 16 JS files)
 
 | File | Responsibility |
