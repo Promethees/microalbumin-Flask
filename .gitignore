@@ -1,0 +1,32 @@
+# --- Editor / tooling ---
+.claude/
+.git.nosync/
+.python-version
+
+# --- Secrets / runtime state ---
+.env
+activation.json
+license_status.json
+keys/
+
+# --- Python ---
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# --- Application code / assets (offline branch tracks admin/ only) ---
+src/
+tools/
+tests/
+static/
+
+# --- Generated data / logs / reports ---
+_data/
+data/
+json/
+log/
+report/
+
+# --- Stray CSV exports ---
+*.csv
