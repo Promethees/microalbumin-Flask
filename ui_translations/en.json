@@ -191,5 +191,6 @@
   "cdc.err_no_endpoint": "Failed to find input endpoint. Please verify USB connection.",
   "cdc.session_stopped": "Session stopped manually on the device.",
   "cdc.session_timeout": "Session ended due to timeout.",
-  "cdc.reading_stopped": "Reading Stopped"
+  "cdc.reading_stopped": "Reading Stopped",
+  "hint.base_name": "Each reading is saved as \"BaseName_N.csv\" in the selected folder, where N auto-increments from 0 (e.g. sample_0.csv, sample_1.csv …), so repeated readings with the same name never overwrite each other."
 }

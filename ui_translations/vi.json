@@ -191,5 +191,6 @@
   "cdc.err_no_endpoint": "Không tìm thấy điểm cuối đầu vào. Vui lòng kiểm tra kết nối USB.",
   "cdc.session_stopped": "Phiên đã được dừng thủ công trên thiết bị.",
   "cdc.session_timeout": "Phiên đã kết thúc do hết thời gian.",
-  "cdc.reading_stopped": "Đã dừng đọc"
+  "cdc.reading_stopped": "Đã dừng đọc",
+  "hint.base_name": "Mỗi lần đọc được lưu thành \"BaseName_N.csv\" trong thư mục đã chọn, trong đó N tự động tăng từ 0 (ví dụ: sample_0.csv, sample_1.csv …), nên các lần đọc trùng tên không bao giờ ghi đè lên nhau."
 }

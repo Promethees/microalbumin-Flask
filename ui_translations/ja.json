@@ -191,5 +191,6 @@
   "cdc.err_no_endpoint": "入力エンドポイントが見つかりません。USB 接続を確認してください。",
   "cdc.session_stopped": "セッションはデバイスで手動停止されました。",
   "cdc.session_timeout": "タイムアウトによりセッションが終了しました。",
-  "cdc.reading_stopped": "読み取り停止"
+  "cdc.reading_stopped": "読み取り停止",
+  "hint.base_name": "各読み取りは選択したフォルダーに \"BaseName_N.csv\" として保存され、N は 0 から自動的に増加します（例：sample_0.csv、sample_1.csv …）。そのため同じ名前で繰り返し読み取っても互いに上書きされません。"
 }

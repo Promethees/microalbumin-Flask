@@ -191,5 +191,6 @@
   "cdc.err_no_endpoint": "Impossible de trouver le point de terminaison d'entrée. Veuillez vérifier la connexion USB.",
   "cdc.session_stopped": "Session arrêtée manuellement sur l'appareil.",
   "cdc.session_timeout": "Session terminée en raison du délai d'expiration.",
-  "cdc.reading_stopped": "Lecture arrêtée"
+  "cdc.reading_stopped": "Lecture arrêtée",
+  "hint.base_name": "Chaque lecture est enregistrée sous \"BaseName_N.csv\" dans le dossier sélectionné, où N s'incrémente automatiquement à partir de 0 (par ex. sample_0.csv, sample_1.csv …), de sorte que des lectures répétées portant le même nom ne s'écrasent jamais."
 }

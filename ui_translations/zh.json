@@ -191,5 +191,6 @@
   "cdc.err_no_endpoint": "未能找到输入端点。请验证 USB 连接。",
   "cdc.session_stopped": "会话已在设备上手动停止。",
   "cdc.session_timeout": "会话因超时而结束。",
-  "cdc.reading_stopped": "读取已停止"
+  "cdc.reading_stopped": "读取已停止",
+  "hint.base_name": "每次读取都会以 \"BaseName_N.csv\" 保存到所选文件夹，其中 N 从 0 起自动递增（例如 sample_0.csv、sample_1.csv …），因此使用相同名称的多次读取不会相互覆盖。"
 }

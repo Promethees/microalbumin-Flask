@@ -389,7 +389,9 @@
                     </div>
                     <div>
                         <label for="base-name" data-i18n="cdc.base_name">Base Name: </label>
-                        <input type="text" id="base-name" data-i18n-ph="ph.enter_name" placeholder="Enter a name" style="width: 10em">
+                        <input type="text" id="base-name" data-i18n-ph="ph.enter_name" placeholder="Enter a name" style="width: 10em"
+                            data-i18n-hint="hint.base_name"
+                            data-hint="Each reading is saved as &quot;BaseName_N.csv&quot; in the selected folder, where N auto-increments from 0 (e.g. sample_0.csv, sample_1.csv …), so repeated readings with the same name never overwrite each other.">
                         <span id="base-name-error" class="error"></span>
                     </div>
                     <div id="timeout-control">
