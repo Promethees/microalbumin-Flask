@@ -1,5 +1,7 @@
 const _escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const _esc = s => _escHtml(String(s)).replace(/"/g, '&quot;').replace(/'/g, "\\'");
+// Escape a string for use inside a double-quoted HTML attribute value.
+const _attr = s => _escHtml(String(s)).replace(/"/g, '&quot;');
 
 // Folder name reserved by the data-archive feature (mirrors RESERVED_ARCHIVE_FOLDER
 // in src/file_path.py). Loose files at the data root are stashed under
@@ -426,9 +428,9 @@ function arraysEqual(a, b) {
 // click-to-sort). Matches the server-rendered markup in index.html.
 function _jsonTableHeaderHtml() {
     return `<tr>
-        <th class="sortable-th" onclick="sortJsonTable('name')" data-hint="Click to sort by name">Calibrated JSON<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
-        <th class="sortable-th" onclick="sortJsonTable('date')" data-hint="Click to sort by last modified date">Modified<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
-        <th colspan="3">Action</th>
+        <th class="sortable-th" onclick="sortJsonTable('name')" data-hint="${_attr(t('hint.sort_by_name','Click to sort by name'))}">${_escHtml(t('table.calibrated_json','Calibrated JSON'))}<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
+        <th class="sortable-th" onclick="sortJsonTable('date')" data-hint="${_attr(t('hint.sort_by_date','Click to sort by last modified date'))}">${_escHtml(t('table.modified','Modified'))}<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
+        <th colspan="3">${_escHtml(t('table.action','Action'))}</th>
     </tr>`;
 }
 
@@ -447,13 +449,13 @@ function renderJsonRows(files) {
             const display = (AppState.jsonMeta[file] && AppState.jsonMeta[file].display) || '';
             const badge = _identityBadge(AppState.jsonIdentity && AppState.jsonIdentity[file]);
             const disableAttrs = _selectDisableAttrs(AppState.jsonIdentity && AppState.jsonIdentity[file], counterpart);
-            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button${disableAttrs} onclick="selectFile('${_esc(file)}', this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button${disableAttrs} onclick="selectFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.select','✅ Select'))}</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
         });
         if (sorted.length > shown.length) {
-            html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
+            html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} ${_escHtml(t('table.more_adjust_limit','more — adjust limit in Settings ⚙️'))}</td></tr>`;
         }
     } else {
-        html += '<tr><td colspan="5">No Calibrated JSON is available.</td></tr>';
+        html += `<tr><td colspan="5">${_escHtml(t('caljson.none_available','No Calibrated JSON is available.'))}</td></tr>`;
     }
     document.getElementById("json-table").innerHTML = html;
     const searchInput = document.getElementById('json-search');
@@ -485,9 +487,9 @@ function updateJSONTable(files) {
 // are click-to-sort).
 function _reportTableHeaderHtml() {
     return `<tr>
-        <th id="file-table-header-name" class="sortable-th" onclick="sortReportTable('name')" data-hint="Click to sort by folder name">Folder Name<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
-        <th class="sortable-th" onclick="sortReportTable('date')" data-hint="Click to sort by last modified date">Modified<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
-        <th colspan="3">Action</th>
+        <th id="file-table-header-name" class="sortable-th" onclick="sortReportTable('name')" data-hint="${_attr(t('hint.sort_by_folder','Click to sort by folder name'))}">${_escHtml(t('table.folder_name','Folder Name'))}<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
+        <th class="sortable-th" onclick="sortReportTable('date')" data-hint="${_attr(t('hint.sort_by_date','Click to sort by last modified date'))}">${_escHtml(t('table.modified','Modified'))}<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
+        <th colspan="3">${_escHtml(t('table.action','Action'))}</th>
     </tr>`;
 }
 
@@ -501,10 +503,10 @@ function renderReportRows(subjects) {
         sorted.forEach(subject => {
             const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
             const display = (AppState.reportMeta[subject] && AppState.reportMeta[subject].display) || '';
-            html += `<tr${isSelected}><td>${_escHtml(subject)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button onclick="selectFile('${_esc(subject)}', this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject('${_esc(subject)}', this)">❌ Delete</button></td><td><button onclick="editReportSubject('${_esc(subject)}', this)">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${_escHtml(subject)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button onclick="selectFile('${_esc(subject)}', this)">${_escHtml(t('btn.select_subject','📁 Select Subject'))}</button></td><td><button onclick="deleteReportSubject('${_esc(subject)}', this)">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button onclick="editReportSubject('${_esc(subject)}', this)">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
         });
     } else {
-        html += '<tr><td colspan="5">No report subjects found.</td></tr>';
+        html += `<tr><td colspan="5">${_escHtml(t('report.none_found','No report subjects found.'))}</td></tr>`;
     }
     document.getElementById("file-table").innerHTML = html;
     const searchInput = document.getElementById('file-search');
@@ -514,7 +516,7 @@ function renderReportRows(subjects) {
 }
 
 function updateReportTable(subjects) {
-    document.getElementById("file-search").placeholder = "Search subject folders...";
+    document.getElementById("file-search").placeholder = t('ph.search_subject_folders', "Search subject folders...");
     renderReportRows(subjects);
 }
 
@@ -530,9 +532,9 @@ function _fileSortArrow(key) {
 // click-to-sort). Kept here so JS re-renders match the server-rendered markup.
 function _fileTableHeaderHtml() {
     return `<tr>
-        <th id="file-table-header-name" class="sortable-th" onclick="sortFileTable('name')" data-hint="Click to sort by file name">File Name<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
-        <th id="file-table-header-date" class="sortable-th" onclick="sortFileTable('date')" data-hint="Click to sort by last modified date">Modified<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
-        <th colspan="3">Action</th>
+        <th id="file-table-header-name" class="sortable-th" onclick="sortFileTable('name')" data-hint="${_attr(t('hint.sort_by_filename','Click to sort by file name'))}">${_escHtml(t('table.file_name','File Name'))}<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
+        <th id="file-table-header-date" class="sortable-th" onclick="sortFileTable('date')" data-hint="${_attr(t('hint.sort_by_date','Click to sort by last modified date'))}">${_escHtml(t('table.modified','Modified'))}<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
+        <th colspan="3">${_escHtml(t('table.action','Action'))}</th>
     </tr>`;
 }
 
@@ -592,13 +594,13 @@ function renderFileRows(names) {
             const display = (AppState.fileMeta[file] && AppState.fileMeta[file].display) || '';
             const badge = _identityBadge(AppState.fileIdentity && AppState.fileIdentity[file]);
             const disableAttrs = _selectDisableAttrs(AppState.fileIdentity && AppState.fileIdentity[file], counterpart);
-            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button${disableAttrs} onclick="selectFile('${_esc(file)}', this)">✅ Select</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">❌ Delete</button></td><td><button onclick="editFile('${_esc(file)}', this)">✏️ Edit</button></td></tr>`;
+            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button${disableAttrs} onclick="selectFile('${_esc(file)}', this)">${_escHtml(t('btn.select','✅ Select'))}</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button onclick="editFile('${_esc(file)}', this)">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
         });
         if (sorted.length > shown.length) {
-            html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} more — adjust limit in Settings ⚙️</td></tr>`;
+            html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} ${_escHtml(t('table.more_adjust_limit','more — adjust limit in Settings ⚙️'))}</td></tr>`;
         }
     } else {
-        html += '<tr><td colspan="5">No CSV files found in the directory.</td></tr>';
+        html += `<tr><td colspan="5">${_escHtml(t('files.none_found','No CSV files found in the directory.'))}</td></tr>`;
     }
     document.getElementById("file-table").innerHTML = html;
     const searchInput = document.getElementById('file-search');

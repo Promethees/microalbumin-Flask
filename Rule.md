@@ -408,6 +408,43 @@ Timestamp,Value:1,Value:2,...
   do not give each table its own sort setting (the preference is intentionally shared via
   `file_sort_order`).
 
+### 2.22 UI Localization (i18n)
+
+- The whole UI is translatable into the **same 6 languages as the AI chat** (`en`, `vi`,
+  `zh`, `fr`, `ja`, `ru`). The active language is the **`ui_language`** user setting
+  (App Settings → General; default `en`), independent of the AI chat's own language.
+- **Catalogs**: flat **key → string** JSON files in `ui_translations/<lang>.json`, shipped
+  beside the app and resolved from **`state.bundle_dir`** (the read-only program folder — **not**
+  `state.script_dir`, the writable data root), mirroring `ai_assistant.py`'s
+  `guide_translations/`. `en.json` is the **baseline source of truth**; a non-English file is
+  overlaid onto English, so any **missing key falls back to English**. Loading is best-effort and
+  cached (`src/i18n.py` `load_catalog(lang)` / `normalize_lang(lang)`); a missing/broken file never
+  raises into a request.
+- **Server injection**: `core_routes.index()` computes `ui_lang` + `ui_strings` from the setting and
+  injects them into `index.html` as `const UI_LANG` / `const UI_STRINGS`. `<html lang="{{ ui_lang }}">`.
+- **Client applier** (`static/script/i18n.js`, loaded right after `short-hands.js`, before all other
+  app scripts): exposes `window.t(key, fallback)` for dynamic strings and `window.applyTranslations(root)`
+  which translates tagged elements on `DOMContentLoaded`. Attribute contract on elements:
+  `data-i18n` → `textContent`, `data-i18n-html` → `innerHTML`, `data-i18n-hint` → `data-hint`,
+  `data-i18n-ph` → `placeholder`, `data-i18n-aria` → `aria-label`. **The English text stays in place
+  in the HTML as the fallback** — a missing catalog or source build still reads correctly.
+- **Dynamic strings** (`Swal.fire(...)`, JS-built tables) use `t('key', 'English literal')`. The
+  literal is the fallback, so an un-migrated dialog keeps working in English; migrate incrementally.
+  `navigation.js` table re-renders (`renderFileRows`/`renderJsonRows`/`renderReportRows` + the header
+  builders) must use `t()` so the JS re-render and the Jinja first paint stay in lockstep (Rule §2.21);
+  `t` is global and loaded before `navigation.js`.
+- **Changing the language reloads the page** (`init.js` settings save): the server re-renders with the
+  matching catalog, so every static label and dynamic dialog comes up consistently translated — there
+  is never a half-translated state and no live two-language switching.
+- **Keep technical terms in English** in every catalog: mode names (`kinetics`/`point`/`calibrate`/`report`),
+  units (`seconds`/`minutes`/`nM`/`ng/µL`), `Absorbance`, `maxRate`, `rSquared`, `Slope`, `Sat`, `Blank`,
+  `ConcenUnit`, `CSV`/`JSON`/`Excel`, and brand names (`Easy OKAPI`/`EasyOKAPI`/`CBBiotec`/`CBB`/`PyBadge`).
+- **Anti-patterns**: do **not** resolve the catalog dir from `state.script_dir` (it's the writable data
+  root, not where the shipped catalogs live — use `state.bundle_dir`); do **not** add a UI string without
+  giving it a key in **`en.json` and all five** `vi/zh/fr/ja/ru` files (keep them in lockstep — covered by
+  `tests/test_i18n.py`, which fails on key drift); do **not** strip the in-place English text when adding a
+  `data-i18n*` attribute (it is the fallback); do **not** translate the technical terms above.
+
 ---
 
 ## 3. Autonomous Documentation Updates

@@ -68,6 +68,7 @@ graph TD
 | Module | Purpose |
 |---|---|
 | `state.py` | **Global state singleton**: `process`, `monitor_thread`, `args`, `script_dir`, `default_data_root` (where the `.dataroot` pointer lives — see `data_root.py`), `log_file`, `json_root_path`, `report_root_path`, `os_name`, `delimiter`, `PRODUCTION_MODE`, `IS_FROZEN`. Also `mark_reset_display_pending()` / `consume_reset_display_pending()` — a one-shot sentinel (`_RESET_DISPLAY_MARKER`, in `default_data_root` so it survives a relocation restart) set before a restart and consumed on the next index render so the app comes up in the default display (kinetics mode, fresh UI state) — see Rule.md §2.20 |
+| `i18n.py` | UI localization: `load_catalog(lang)` (English baseline `ui_translations/en.json` overlaid by `<lang>.json`, missing keys fall back to English; cached, best-effort), `normalize_lang(lang)`, `SUPPORTED_UI_LANGUAGES` (shared with `ai_settings`). Catalogs resolved from `state.bundle_dir`. Drives the `ui_language` user setting + the `index()` `UI_STRINGS` injection — see Rule.md §2.22 |
 | `validators.py` | `@validate_json(schema)` decorator — validates and coerces JSON request payloads; injects `validated_data` kwarg into route handlers |
 | `math_ops.py` | Server-side regression: `calculate_coef_and_rsquared`, `calculate_kinetics_quantities`, `map_duplicates`, `get_rsquared_threshold` — uses `scipy.optimize.curve_fit` and `numpy` |
 | `file_path.py` | Data-folder constants and helpers: `DATA_ROOT`, `validate_in_data_root(path)`, `get_data_subfolders()`, `is_multi_value_timeseries_csv_header()`, `RESERVED_ARCHIVE_FOLDER` (`"root"`) + `is_reserved_data_folder_name(name)` (the `data/root/` archive staging folder is reserved — see Rule.md §2.16). CSV schema utilities: `parse_csv_metadata(lines)` (canonical `# Key: Value` parser), `detect_csv_schema(header_line)` (returns `CSV_SCHEMA_TIMESERIES / KINETICS_CAL / POINT_CAL`). Concentration-unit: `CONCEN_UNITS` (`ng/µL`, `nM`), `DEFAULT_CONCEN_UNIT` (`ng/µL`), `get_concen_unit(meta)` (default when `# ConcenUnit` absent — see Rule.md §2.10). No mutable state. |
@@ -79,7 +80,7 @@ graph TD
 | `send_command.py` | `connect_to_device` (find PyBadge via serial), `send_command_and_wait_ack` (serial protocol) |
 | `ai_assistant.py` | Groq chat (`_groq_chat`, `chat_stream`), MCP tool engine, multilingual system prompts, `proxy_chat_stream()` for desktop proxy mode |
 | `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete keys on read |
-| `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `time_tag_format` (date/time tag format for file modified-date tags: `iso`/`iso_sec`/`us`/`eu`/`date_only`, default `iso`; App Settings → General), `default_mode`, `default_window_size`, `default_subfolder`, `file_sort_order` (default File Selection sort: `name_asc`/`name_desc`/`date_asc`/`date_desc`, default `date_desc`), `default_concentration_unit` (unit selected for new calibration exports: `ng/µL`/`nM`, default `ng/µL`; the legacy back-fill always uses `ng/µL` regardless — see Rule.md §2.10), `event_log_retention_days`, `merge_directory_picker` (opt-in folder-browser step for the merge dialog; the accordion lists the data root itself plus subfolders, with a global Select all / Deselect all toggle and a per-folder "Select all in this folder" checkbox), `disable_popups` (suppress confirmation/alert popups; lives in App Settings → General, mirrored onto the hidden `#no-swal-checkbox`), … |
+| `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `ui_language` (interface language, one of `en`/`vi`/`zh`/`fr`/`ja`/`ru`, default `en`; App Settings → General — drives `i18n.load_catalog` for the page, see Rule.md §2.22), `time_tag_format` (date/time tag format for file modified-date tags: `iso`/`iso_sec`/`us`/`eu`/`date_only`, default `iso`; App Settings → General), `default_mode`, `default_window_size`, `default_subfolder`, `file_sort_order` (default File Selection sort: `name_asc`/`name_desc`/`date_asc`/`date_desc`, default `date_desc`), `default_concentration_unit` (unit selected for new calibration exports: `ng/µL`/`nM`, default `ng/µL`; the legacy back-fill always uses `ng/µL` regardless — see Rule.md §2.10), `event_log_retention_days`, `merge_directory_picker` (opt-in folder-browser step for the merge dialog; the accordion lists the data root itself plus subfolders, with a global Select all / Deselect all toggle and a per-folder "Select all in this folder" checkbox), `disable_popups` (suppress confirmation/alert popups; lives in App Settings → General, mirrored onto the hidden `#no-swal-checkbox`), … |
 | `data_root.py` | User-selectable data root (frozen builds, Rule.md §2.19): `get_info()` → `{current, default, is_custom}`, `set_data_root(parent)` → `(path, moved)` (copies the whole root into `<parent>/EasyOKAPI`, writes the pointer, then **moves** = removes the original **unless** it is the default, which is kept as a fallback), `reset_to_default()` → `(path, moved)`, plus dry-run previews `preview_data_root(parent)` / `preview_reset()` → `(target, moved)` that validate **without** touching the filesystem (the move is deferred until the user accepts the restart). The `.easyokapi_dataroot` pointer lives **beside** the default folder (`state._dataroot_pointer_path()`, i.e. in `<Documents>`/`<home>`) so it survives the default folder being deleted; resolution is in `state._read_dataroot_override()` (import-time, so a change needs an app restart). `POST /data_root` previews; `POST /data_root/restart` commits the move then relaunches in place via `update_service.restart_after_delay()` and serves `restarting.html`, which polls `/ping` and reloads the tab once the new instance is up. A data root inside `bundle_dir` (the EasyOKAPI program folder) is rejected. The folder is chosen via the `/browse_dirs` navigator. The Windows installer (`setup-frozen.nsi`) Data Folder page lets the user pick the location at install time, and the uninstaller reads the same pointer. |
 | `event_logger.py` | Append/read user interaction events; logs go to `log/events/YYYY-MM-DD/HH-MM-SS.jsonl` (one file per app launch per day); `cleanup_old_logs()` removes date folders older than `event_log_retention_days` |
 | `hwid.py` | Stable per-machine fingerprint `get_hwid()` (SHA-256 of an OS machine id); basis of the hardware lock. Recipe mirrored by the Windows installer PowerShell |
@@ -114,6 +115,7 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 | `event-tracker.js` | `logEvent(type, action, details)` — fire-and-forget POST to `/event_log`; loaded before all other scripts |
 | `tooltip.js` | Styled hover-hint component. Any `[data-hint="…"]` element shows a single `#okapi-tooltip` bubble appended to `<body>` (so it escapes `overflow:hidden` collapsibles), positioned above/below the target on hover or keyboard focus. Replaces native `title=` tooltips; styling lives in `style.css` (`#okapi-tooltip`, light/dark themed) |
 | `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, etc.) |
+| `i18n.js` | UI translation applier (loaded after `short-hands.js`, before all app scripts). Reads the injected `UI_STRINGS`/`UI_LANG`; `applyTranslations()` translates `[data-i18n]`/`-html`/`-hint`/`-ph`/`-aria` elements on load; `window.t(key, fallback)` for dynamic strings (Swal dialogs, JS-built tables). English text in the HTML is the fallback. See Rule.md §2.22 |
 | `init.js` | Page initialization, event listeners, mode/filter setup |
 | `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus` |
 | `navigation.js` | File table population (CSV and JSON), **data subfolder picker** (`loadDataFolders`, `selectDataFolder`, `filterDataFolderList`, `updateFolderListSelection`, `renameDataFolder`, `deleteDataFolder`), **identity-aware file search** (`filterTable` + `parseSearchQuery` / `_identityFieldMatch`: space-separated positional filters `name meas unit concen`, all AND-ed, matched against `AppState.fileIdentity`/`jsonIdentity` — see Rule.md §2.10) |
@@ -132,7 +134,7 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 
 | File | Purpose |
 |---|---|
-| `index.html` | Main SPA template. Jinja2-rendered with server-side data: `data_root`, `report_root`, `json_root` path constants (instead of `directory`), plus file list, mode, quantity, delimiter, etc. Also `reset_display` → `const RESET_DISPLAY`: when true (first load after a restart) it drops per-view `localStorage` UI state (keeping `theme`/`okapi_ai_lang`/`okapi_ai_first_run`) before `init.js` runs, which then forces kinetics mode — the default display — see Rule.md §2.20. |
+| `index.html` | Main SPA template. Jinja2-rendered with server-side data: `data_root`, `report_root`, `json_root` path constants (instead of `directory`), plus file list, mode, quantity, delimiter, etc. Also `ui_lang` → `<html lang>` + `const UI_LANG`, and `ui_strings` → `const UI_STRINGS` (the active i18n catalog) consumed by `i18n.js`; in-scope elements carry `data-i18n*` attributes with English text as the fallback (Rule.md §2.22). Also `reset_display` → `const RESET_DISPLAY`: when true (first load after a restart) it drops per-view `localStorage` UI state (keeping `theme`/`okapi_ai_lang`/`okapi_ai_first_run`) before `init.js` runs, which then forces kinetics mode — the default display — see Rule.md §2.20. |
 | `goodbye.html` | Displayed on `/shutdown` — shows farewell screen before process termination |
 
 ---
@@ -276,6 +278,7 @@ microalbumin-Flask/
 ├── installer-win/              # Windows .exe installer assets
 ├── src/
 │   ├── state.py                # Global state singleton
+│   ├── i18n.py                 # UI translation catalog loader (ui_translations/)
 │   ├── data_root.py            # User-selectable data root (.dataroot pointer)
 │   ├── validators.py           # @validate_json decorator
 │   ├── math_ops.py             # Server-side regression (scipy/numpy)
@@ -313,6 +316,7 @@ microalbumin-Flask/
 │       ├── report.js           # Report generation + subject CRUD
 │       ├── short-hands.js
 │       ├── tooltip.js          # Styled [data-hint] hover tooltips
+│       ├── i18n.js             # UI translation applier (t() + applyTranslations)
 │       ├── user-guide.js       # Interactive user guide
 │       └── ai-chat.js          # Floating AI chat widget
 ├── templates/
@@ -324,6 +328,7 @@ microalbumin-Flask/
 ├── json/                       # Standard curve JSON files
 ├── log/                        # Script logs directory
 ├── report/                     # Saved HTML reports (by subject subdirectory)
+├── ui_translations/            # UI translation catalogs: en.json (baseline) + vi/zh/fr/ja/ru
 ├── ai_settings.json            # AI assistant settings (auto-created)
 ├── user_settings.json          # User UI preferences (auto-created, gitignored)
 └── sample_data/

@@ -680,6 +680,7 @@ if (calButtons.length > 0) {
 // Defaults must stay in sync with user_settings.py:DEFAULTS
 const SETTINGS_DEFAULTS = {
     theme: 'auto',
+    ui_language: 'en',
     time_tag_format: 'iso',
     default_mode: 'kinetics',
     default_window_size: 4,
@@ -747,9 +748,16 @@ function _buildSettingsHTML(s, folders) {
 
     return `<div id="settings-modal-body">
         <div class="sm-section">
-            <p class="sm-section-title">General</p>
-            ${rowCheck('Disable popups', 'swal-disable-popups', s.disable_popups)}
-            ${row('Date / time format', 'Used for file modified-date tags', sel('swal-time-format',
+            <p class="sm-section-title">${t('settings.section.general', 'General')}</p>
+            ${row(t('settings.language', 'Language'), t('settings.language.help', 'Language for the app interface'), sel('swal-ui-language',
+                `<option value="en" ${(s.ui_language||'en')==='en'?'selected':''}>English</option>
+                 <option value="vi" ${s.ui_language==='vi'?'selected':''}>Tiếng Việt</option>
+                 <option value="zh" ${s.ui_language==='zh'?'selected':''}>中文 (简体)</option>
+                 <option value="fr" ${s.ui_language==='fr'?'selected':''}>Français</option>
+                 <option value="ja" ${s.ui_language==='ja'?'selected':''}>日本語</option>
+                 <option value="ru" ${s.ui_language==='ru'?'selected':''}>Русский</option>`))}
+            ${rowCheck(t('settings.disable_popups', 'Disable popups'), 'swal-disable-popups', s.disable_popups)}
+            ${row(t('settings.time_format', 'Date / time format'), t('settings.time_format.help', 'Used for file modified-date tags'), sel('swal-time-format',
                 `<option value="iso"       ${(s.time_tag_format||'iso')==='iso'?'selected':''}>YYYY-MM-DD HH:MM</option>
                  <option value="iso_sec"   ${s.time_tag_format==='iso_sec'?'selected':''}>YYYY-MM-DD HH:MM:SS</option>
                  <option value="us"        ${s.time_tag_format==='us'?'selected':''}>MM/DD/YYYY hh:MM AM/PM</option>
@@ -757,7 +765,7 @@ function _buildSettingsHTML(s, folders) {
                  <option value="date_only" ${s.time_tag_format==='date_only'?'selected':''}>YYYY-MM-DD (date only)</option>`))}
         </div>
         <div class="sm-section">
-            <p class="sm-section-title">Appearance</p>
+            <p class="sm-section-title">${t('settings.section.appearance', 'Appearance')}</p>
             ${row('Theme', '', sel('swal-theme',
                 `<option value="light" ${s.theme==='light'?'selected':''}>Light</option>
                  <option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option>
@@ -765,7 +773,7 @@ function _buildSettingsHTML(s, folders) {
             ${row('File &amp; JSON table height', 'Scroll-area max-height in px (min 80)', num('swal-table-height', 80, s.file_table_height || 240))}
         </div>
         <div class="sm-section">
-            <p class="sm-section-title">Measurement</p>
+            <p class="sm-section-title">${t('settings.section.measurement', 'Measurement')}</p>
             ${row('Default mode', '', sel('swal-mode',
                 `<option value="kinetics" ${s.default_mode==='kinetics'?'selected':''}>Kinetics</option>
                  <option value="point" ${s.default_mode==='point'?'selected':''}>Point</option>
@@ -778,7 +786,7 @@ function _buildSettingsHTML(s, folders) {
                 `<option value="" ${!s.default_subfolder?'selected':''}>(none)</option>${subfolderOptions}`))}
         </div>
         <div class="sm-section">
-            <p class="sm-section-title">File Selection</p>
+            <p class="sm-section-title">${t('settings.section.file_selection', 'File Selection')}</p>
             ${row('Default file sort order', 'Initial order of the File Selection table', sel('swal-file-sort',
                 `<option value="date_desc" ${(s.file_sort_order||'date_desc')==='date_desc'?'selected':''}>Modified date (newest first)</option>
                  <option value="date_asc"  ${s.file_sort_order==='date_asc'?'selected':''}>Modified date (oldest first)</option>
@@ -789,11 +797,11 @@ function _buildSettingsHTML(s, folders) {
             ${rowCheck('Pick merge files from a folder browser', 'swal-merge-picker', s.merge_directory_picker)}
         </div>
         <div class="sm-section">
-            <p class="sm-section-title">Activity Log</p>
+            <p class="sm-section-title">${t('settings.section.activity_log', 'Activity Log')}</p>
             ${rowLimit('Log retention (days)', 'swal-retention-days', 'swal-retention-forever', s.event_log_retention_days === 0 ? 0 : (s.event_log_retention_days ?? 30), 'Keep forever')}
         </div>
         <div class="sm-section sm-section--full">
-            <p class="sm-section-title">Colorimeter Reading</p>
+            <p class="sm-section-title">${t('settings.section.colorimeter_reading', 'Colorimeter Reading')}</p>
             <div class="sm-fields-grid">
                 ${row('Log display height', 'px (min 100)', num('swal-log-height', 100, s.log_display_height || 300))}
                 ${rowCheck('Collapsed by default', 'swal-log-collapsed', s.log_section_collapsed)}
@@ -812,7 +820,7 @@ function _buildSettingsHTML(s, folders) {
             </div>
         </div>
         <div class="sm-section sm-section--full">
-            <p class="sm-section-title">Data Display</p>
+            <p class="sm-section-title">${t('settings.section.data_display', 'Data Display')}</p>
             <div class="sm-fields-grid">
                 ${row('Data Display section max height', 'px (min 200)', num('swal-chart-height', 200, s.chart_height || 600))}
                 ${rowCheck('Normalize data by default', 'swal-normalize', s.default_normalize)}
@@ -823,7 +831,7 @@ function _buildSettingsHTML(s, folders) {
         </div>
         ${(typeof IS_FROZEN !== 'undefined' && IS_FROZEN) ? `
         <div class="sm-section sm-section--full">
-            <p class="sm-section-title">Data folder location</p>
+            <p class="sm-section-title">${t('settings.section.data_folder', 'Data folder location')}</p>
             <p class="sm-help" style="margin-bottom:6px;">
                 Your measurements, calibration curves and reports are stored here.
                 Choosing a new location moves your data into an <b>EasyOKAPI</b>
@@ -850,7 +858,7 @@ function _buildSettingsHTML(s, folders) {
             <p id="swal-data-root-status" style="font-size:0.8em;color:#888;margin-top:5px;min-height:1.2em;"></p>
         </div>` : ''}
         <div class="sm-section">
-            <p class="sm-section-title">About</p>
+            <p class="sm-section-title">${t('settings.section.about', 'About')}</p>
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
                 <span style="font-size:0.85em">Version: <b>v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?'}</b></span>
                 <button type="button" onclick="checkForUpdateFromSettings()"
@@ -866,6 +874,7 @@ function _buildSettingsHTML(s, folders) {
 function _readSettingsForm() {
     return {
         theme: document.getElementById('swal-theme').value,
+        ui_language: document.getElementById('swal-ui-language').value,
         time_tag_format: document.getElementById('swal-time-format').value,
         file_table_height: Math.max(80, parseInt(document.getElementById('swal-table-height').value, 10) || 240),
         file_sort_order: document.getElementById('swal-file-sort').value,
@@ -896,6 +905,7 @@ function _readSettingsForm() {
 
 function _fillSettingsForm(s) {
     document.getElementById('swal-theme').value = s.theme;
+    document.getElementById('swal-ui-language').value = s.ui_language || 'en';
     document.getElementById('swal-time-format').value = s.time_tag_format || 'iso';
     document.getElementById('swal-table-height').value = s.file_table_height || 240;
     document.getElementById('swal-file-sort').value = s.file_sort_order || 'date_desc';
@@ -941,14 +951,16 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? { ...USER_SETTINGS } : {});
     const folders = (foldersRes && Array.isArray(foldersRes.folders)) ? foldersRes.folders : [];
 
+    const prevUiLang = s.ui_language || 'en';
     const { value: formValues, isConfirmed } = await Swal.fire({
-        title: 'App Settings',
+        title: t('settings.title', 'App Settings'),
         width: 'min(92vw, 680px)',
         html: _buildSettingsHTML(s, folders),
         showCancelButton: true,
-        confirmButtonText: 'Save',
+        confirmButtonText: t('common.save', 'Save'),
+        cancelButtonText: t('common.cancel', 'Cancel'),
         showDenyButton: true,
-        denyButtonText: 'Revert to defaults',
+        denyButtonText: t('settings.revert_defaults', 'Revert to defaults'),
         returnInputValueOnDeny: false,
         preDeny: () => {
             _fillSettingsForm(SETTINGS_DEFAULTS);
@@ -966,7 +978,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     }).then(r => r.ok).catch(() => false);
 
     if (!ok) {
-        Swal.fire('Error', 'Could not save settings.', 'error');
+        Swal.fire(t('common.error_title', 'Error'), t('settings.save_failed', 'Could not save settings.'), 'error');
         return;
     }
 
@@ -974,6 +986,14 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
 
     // Update the live USER_SETTINGS object
     Object.assign(USER_SETTINGS, formValues);
+
+    // The UI language is applied by re-rendering the page in the new language
+    // (the server injects the matching catalog on the next load). Reload now so
+    // every static label and dynamic dialog comes up consistently translated.
+    if ((formValues.ui_language || 'en') !== prevUiLang) {
+        window.location.reload();
+        return;
+    }
 
     // Apply "Disable popups" by mirroring it onto the hidden #no-swal-checkbox
     // that the rest of the app reads via getBtnChecked("no-swal-checkbox").
@@ -1031,7 +1051,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     if (getBtnChecked("no-swal-checkbox")) {
         console.log("Settings saved successfully.");
     } else {
-        Swal.fire('Settings saved', 'Your configurations have been updated.', 'success');
+        Swal.fire(t('settings.saved_title', 'Settings saved'), t('settings.saved_text', 'Your configurations have been updated.'), 'success');
     }
 })
 

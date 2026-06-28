@@ -1,8 +1,10 @@
 import json
 import os
 import state
+from ai_settings import SUPPORTED_LANGUAGES
 
 _VALID_THEMES = {"light", "dark", "auto"}
+_VALID_UI_LANGUAGES = set(SUPPORTED_LANGUAGES)
 _VALID_MODES = {"kinetics", "point", "calibrate"}
 _VALID_UNITS = {"seconds", "minutes", "hours"}
 _VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
@@ -11,6 +13,7 @@ _VALID_CONCEN_UNITS = {"ng/µL", "nM", "%"}
 
 DEFAULTS = {
     "theme": "auto",
+    "ui_language": "en",
     "time_tag_format": "iso",
     "default_mode": "kinetics",
     "default_window_size": 4,
@@ -62,6 +65,8 @@ def save(updates: dict) -> bool:
     current = load()
     if "theme" in updates and updates["theme"] in _VALID_THEMES:
         current["theme"] = updates["theme"]
+    if "ui_language" in updates and updates["ui_language"] in _VALID_UI_LANGUAGES:
+        current["ui_language"] = updates["ui_language"]
     if "default_mode" in updates and updates["default_mode"] in _VALID_MODES:
         current["default_mode"] = updates["default_mode"]
     if "default_window_size" in updates:

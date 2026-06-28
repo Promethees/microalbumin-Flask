@@ -56,6 +56,7 @@ main.py (thin entry point)
 
 src/
   ├── state.py          ← global state singleton (process, paths, delimiter, PRODUCTION_MODE)
+  ├── i18n.py           ← UI translation catalogs (ui_translations/<lang>.json, 6 languages)
   ├── validators.py     ← @validate_json decorator for route input validation
   ├── math_ops.py       ← scipy/numpy regression (linear, poly, log, exp, Michaelis-Menten)
   ├── ai_assistant.py   ← Groq chat client, MCP tool engine, multilingual system prompts
@@ -69,7 +70,10 @@ static/script/
   ├── report.js         ← report generation + subject CRUD UI
   ├── user-guide.js     ← interactive spotlight user guide
   ├── tooltip.js        ← styled hover-hint component ([data-hint] → body-appended #okapi-tooltip; replaces native title=)
+  ├── i18n.js           ← UI translation applier (t() + applyTranslations over [data-i18n*]; UI_STRINGS injected)
   └── ai-chat.js        ← floating AI chat widget (Groq-powered, 6 languages)
+
+ui_translations/        ← UI translation catalogs: en.json (baseline) + vi/zh/fr/ja/ru (key→string)
 
 report/                 ← saved HTML reports, organized by subject subdirectory
 ai_settings.json        ← AI assistant settings (auto-created on first run)
@@ -87,7 +91,8 @@ ai_settings.json        ← AI assistant settings (auto-created on first run)
 - **Startup progress reporter**: `main.py` writes `pct label\n` to a FIFO (`/tmp/easyokapi_progress.pipe` on Mac) so launch scripts can show a progress bar.
 - **CLI flags**: `--port`, `--alias`, `--verbose` / `-v`, `--mem-monitor`, `--no-browser` (suppress the startup browser-open tab; passed automatically by restart relaunches so the one-shot reset-display marker isn't stolen by a second tab — see Rule.md §2.20).
 - **User-guide translations**: Step text for the interactive user guide lives in `guide_translations/<lang>.json` (one file per language: `en` is the baseline in `guide_training.json`; `vi`, `zh`, `fr`, `ja`, `ru` are in `guide_translations/`). Each file contains guide topics as objects with `id`, `steps` (array of strings), and `queries` (keyword list for AI matching). When adding or editing guide steps, update both `guide_training.json` (EN) and all language files in `guide_translations/`.
-- **Tests live in `tests/`** — `test_utils.py`, `test_core_logic.py`, `test_data_processing.py`, `test_app.py`, `test_hwid.py`, `test_activation.py`. Run with `pytest tests/ --ignore=venv`.
+- **UI localization (i18n)**: the interface is translatable into the same 6 languages as the AI chat (`en`/`vi`/`zh`/`fr`/`ja`/`ru`), selected via the **`ui_language`** user setting (App Settings → General). Catalogs are flat key→string JSON in `ui_translations/<lang>.json` (`en.json` is the English baseline; missing keys fall back to English), resolved from `state.bundle_dir` by `src/i18n.py`. `core_routes.index()` injects `UI_LANG`/`UI_STRINGS`; `static/script/i18n.js` applies them to `[data-i18n*]` elements and exposes `t(key, fallback)` for dynamic strings. **Technical terms stay in English** (mode names, units, Absorbance, maxRate, rSquared, CSV/JSON/Excel, brand names). Adding a UI string means adding its key to **all six** catalogs in lockstep. See **Rule.md §2.22**.
+- **Tests live in `tests/`** — `test_utils.py`, `test_core_logic.py`, `test_data_processing.py`, `test_app.py`, `test_hwid.py`, `test_activation.py`, `test_i18n.py`. Run with `pytest tests/ --ignore=venv`.
 - **Hardware-locked activation** (frozen builds): a permanent license token is bound to one machine via an `hwid` claim (`src/hwid.py`) and RS256-signed by the server (`ACTIVATION_PRIVATE_KEY`), verified offline with the embedded public key (`src/activation_pubkey.py`). Copying `activation.json`/the install folder to another machine fails the check. The Windows installer PowerShell mirrors the `hwid` recipe byte-for-byte — keep them in lockstep. Server side lives on the `online` branch (`license_machines` seat table, `/api/activate` binding). See **Rule.md §2.17**.
 - **Admin license revocation + account ban** (frozen builds): an admin can deactivate a customer's license server-side even though the permanent token still verifies offline. Two strengths: **Revoke** disables a per-machine seat (`revoked` flag on `license_machines`); **Ban** disables a whole account (`banned` flag on `users`) — blocking web sign-in, download, activation, and app usage on every machine. Server (`online`): shared-secret `POST /api/admin/revoke` + `POST /api/admin/ban` (both by email, send a notification email) + `GET /api/admin/lookup` (+ `/api/admin/users`), and `POST /api/license/check` (the client poll). A revoked seat or banned account fails the AI-proxy / auto-update machine check immediately; a banned account makes `/api/license/check` reply `revoked` + code `account_banned`. Client (`src/activation.py`): `check_revocation()` polls `/api/license/check` and caches the verdict in `license_status.json`; `license_state()` returns `active` / `revoked` (sticky) / `banned` (sticky; from the `account_banned` code) / `needs_recheck` (grace lapsed offline → reverify gate). `main.py` `_enforce_license` gate serves `license_blocked.html` (revoked) / `license_banned.html` (banned) / `license_reverify.html`. Grace window via `LICENSE_GRACE_SECONDS` (default 7d), poll interval via `LICENSE_CHECK_INTERVAL` (default 6h). The local admin console lives on the secret `offline` branch (`admin/`).
 
@@ -114,6 +119,8 @@ Checklist to run mentally for every new feature:
 If any answer is yes, add the setting to `src/user_settings.py` (`DEFAULTS` + validation in `save()`), expose it in the settings modal in `static/script/init.js` (`SETTINGS_DEFAULTS` + form field), apply it on page load (via `USER_SETTINGS` in `index.html` or `init.js`), and add backend tests in `tests/test_user_settings.py`.
 
 **Anti-pattern**: do not hardcode UI dimensions, row limits, default states, or feature flags directly in CSS or JS when a user might reasonably want a different value on their machine.
+
+**i18n coverage**: any new user-facing string (label, heading, button, tooltip, placeholder, or `Swal.fire` text) must get a translation key in **all six** `ui_translations/<lang>.json` catalogs and be wired via `data-i18n*` (static HTML) or `t('key', 'English')` (dynamic JS) — keep technical terms in English. See **Rule.md §2.22**.
 
 **Exception — the data-root location**: the user-selectable data folder (frozen builds) is **not** a `user_settings.py` key, because `user_settings.json` lives *inside* the data root (chicken-and-egg). It is stored in a `.easyokapi_dataroot` pointer file beside the default location and managed by `src/data_root.py` + `/data_root` (GET/POST). The Windows installer (`setup-frozen.nsi`) also lets the user choose this folder at install time (writing the same pointer). Relocating **moves** a non-default folder (the default is kept as a fallback copy); the data folder may not be the EasyOKAPI program folder. The move is deferred-commit: `POST /data_root` only **previews** the change (validates, reports move-vs-copy) and the UI confirms, offering **Restart now** (`/data_root/restart` commits the move, then relaunches in place via `update_service.restart_after_delay()` and serves `restarting.html`, which auto-reloads the tab once the new instance is up) or **Cancel** (a no-op — nothing was moved). See **Rule.md §2.19**.
 

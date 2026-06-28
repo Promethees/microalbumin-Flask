@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ ui_lang }}">
 
 <head>
     <meta charset="UTF-8">
@@ -100,14 +100,14 @@
                 const response = await fetch(`/browse_export?path=${encodeURIComponent(fullPath)}`);
                 const result = await response.json();
                 if (!result.exists) {
-                    Swal.fire({ title: 'Invalid directory', text: 'Please only select directories existing in the current path or immediate subdirectories of the displayed path only!', icon: 'warning', confirmButtonText: 'OK' });
+                    Swal.fire({ title: t('dialog.invalid_directory.title', 'Invalid directory'), text: t('dialog.invalid_directory.text', 'Please only select directories existing in the current path or immediate subdirectories of the displayed path only!'), icon: 'warning', confirmButtonText: t('common.ok', 'OK') });
                     console.warn(`Path "${fullPath}" does not exist on the server.`);
                     return false;
                 }
                 return true;
             } catch (fetchErr) {
                 console.error('Failed to verify path with server:', fetchErr);
-                Swal.fire({ title: 'Error!', text: 'Failed to verify the selected path with the server. Please try again.', icon: 'error', confirmButtonText: 'OK' });
+                Swal.fire({ title: t('common.error', 'Error!'), text: t('dialog.verify_path_failed', 'Failed to verify the selected path with the server. Please try again.'), icon: 'error', confirmButtonText: t('common.ok', 'OK') });
                 return false;
             }
         }
@@ -184,27 +184,30 @@
     <div id="global-spinner" class="hidden">
         <div class="spinner-container">
             <div class="spinner"></div>
-            <div class="spinner-message">Process is ongoing, please wait...</div>
+            <div class="spinner-message" data-i18n="spinner.processing">Process is ongoing, please wait...</div>
         </div>
     </div>
     <!-- Top-right controls: session timer + User Guide + Shutdown -->
     <div id="top-right-controls">
         <div id="session-timer" class="hidden">
             <div class="timer-row">
-                <span class="timer-label">Session</span>
+                <span class="timer-label" data-i18n="timer.session">Session</span>
                 <span id="session-elapsed">00:00:00</span>
             </div>
             <div class="timer-row">
-                <span class="timer-label">Next</span>
+                <span class="timer-label" data-i18n="timer.next">Next</span>
                 <span id="session-next">--:--</span>
             </div>
         </div>
         <div id="top-right-btn-group">
             <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide"
+                data-i18n-aria="topbar.user_guide.aria"
+                data-i18n="topbar.user_guide" data-i18n-hint="hint.user_guide"
                 data-hint="Start the interactive step-by-step walkthrough of the app">
                 User Guide
             </button>
-            <button id="shutdown-btn" data-hint="Stop the server and close EasyOKAPI">Shutdown Program</button>
+            <button id="shutdown-btn" data-i18n="topbar.shutdown" data-i18n-hint="hint.shutdown"
+                data-hint="Stop the server and close EasyOKAPI">Shutdown Program</button>
         </div>
     </div>
 
@@ -212,7 +215,7 @@
         <div class="top-left">
             <div class="flex-group">
                 <img src="../static/cbb.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo"
-                    class="hidden" data-hint="Scroll back to the top of the page"
+                    class="hidden" data-i18n-hint="hint.logo_scroll_top" data-hint="Scroll back to the top of the page"
                     onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
 
                 <div id="title" class="title-place hidden">
@@ -221,38 +224,38 @@
                         <span style="color: #3498db;">Easy</span> OKAPI
                         <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img">
                     </h1>
-                    <span class="app-version-badge" id="app-version-badge" data-hint="Check for updates" style="cursor:pointer;">v{{ app_version }}</span>
+                    <span class="app-version-badge" id="app-version-badge" data-i18n-hint="hint.check_updates" data-hint="Check for updates" style="cursor:pointer;">v{{ app_version }}</span>
                     <div id="update-banner" class="hidden" onclick="showUpdateModal()">
-                        <span class="update-banner-label"><span class="update-banner-icon">↓</span> Update available<span id="update-banner-version"></span></span>
-                        <span class="update-banner-dismiss" onclick="_dismissBanner(event)" data-hint="Dismiss">×</span>
+                        <span class="update-banner-label"><span class="update-banner-icon">↓</span> <span data-i18n="update.available">Update available</span><span id="update-banner-version"></span></span>
+                        <span class="update-banner-dismiss" onclick="_dismissBanner(event)" data-i18n-hint="hint.dismiss" data-hint="Dismiss">×</span>
                     </div>
                 </div>
 
-                <div class="toggle-container" id="toggleContainer" data-hint="Switch between light and dark theme">
+                <div class="toggle-container" id="toggleContainer" data-i18n-hint="hint.theme_toggle" data-hint="Switch between light and dark theme">
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
-                <button id="settingsBtn" class="settings-btn" data-hint="App Settings">⚙️</button>
+                <button id="settingsBtn" class="settings-btn" data-i18n-hint="hint.app_settings" data-hint="App Settings">⚙️</button>
             </div>
             <div id="top-left-scrollable">
                 <div class="section hidden" style="position: static;" id="meas-mode-section">
                     <div class="section" id="top-left-dir-section">
                         <h2 class="folder-section-toggle"
                             onclick="toggleFolderList('top-folder-collapse', 'top-folder-chevron')">
-                            Data Folder
+                            <span data-i18n="nav.data_folder">Data Folder</span>
                             <span id="top-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
                         </h2>
 
                         <div id="top-folder-collapse" class="folder-list-collapse collapsed">
                             <div style="display:flex; gap:4px; margin-top:5px; align-items:center;">
-                                <input type="text" id="folder-search-top" placeholder="Search folders…"
+                                <input type="text" id="folder-search-top" data-i18n-ph="ph.search_folders" placeholder="Search folders…"
                                     oninput="filterDataFolderList('data-folder-list-top', this.value)"
                                     style="flex:1; padding:3px 5px;">
-                                <button onclick="loadDataFolders()" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
+                                <button onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
                             </div>
                             <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                         </div>
                     </div>
-                    <h2>{{ mode_input.title }}</h2>
+                    <h2 data-i18n="mode.set_mode_title">{{ mode_input.title }}</h2>
                     <div id="measurement-mode" class="button-group" data-value="">
                         {% for mode in mode_input.modes %}
                         <button data-mode="{{ mode }}">{{ mode }}</button>
@@ -260,32 +263,32 @@
                     </div>
                 </div>
                 <div class="section hidden" style="position: static;" id="cal-json-exp-section">
-                    <h3>Calibrating for:</h3>
+                    <h3 data-i18n="caljson.calibrating_for">Calibrating for:</h3>
                     <div id="cal-mode-select" class="button-group" data-value="">
                         <button data-mode="kinetics">kinetics</button>
                         <button data-mode="point">point</button>
                     </div>
                 </div>
                 <div class="section hidden" style="position: static;" id="options-section">
-                    <h3>Options</h3>
+                    <h3 data-i18n="options.title">Options</h3>
                     <!-- "Disable popups" moved to App Settings → General. The checkbox is
                          kept hidden here so existing getBtnChecked("no-swal-checkbox")
                          call sites keep working, mirrored from USER_SETTINGS.disable_popups. -->
                     <div class="hidden" style="display: flex; flex-direction: column; gap: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="no-swal-checkbox">
-                            Disable popups
+                            <span data-i18n="options.disable_popups">Disable popups</span>
                         </label>
                     </div>
 
                     <div id="source-options">
                         <label style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="filter-source">
-                            Filter by number of sources
+                            <span data-i18n="options.filter_by_sources">Filter by number of sources</span>
                         </label>
 
                         <div id="num-sources-section" class="hidden">
-                            <label for="num-sources">Number of sources:</label>
+                            <label for="num-sources" data-i18n="options.num_sources">Number of sources:</label>
                             <select id="num-sources">
                             </select>
                         </div>
@@ -293,8 +296,9 @@
                 </div>
                 <div class="section hidden" id="report-bug-section">
                     <button id="report-bug-btn" onclick="reportBug()"
-                        data-hint="Report a bug or defect to the maintainer" aria-label="Report a Bug">
-                        🐞 Report a Bug
+                        data-i18n-hint="hint.report_bug" data-hint="Report a bug or defect to the maintainer"
+                        data-i18n-aria="bug.report.aria" aria-label="Report a Bug">
+                        <span data-i18n="bug.report">🐞 Report a Bug</span>
                     </button>
                 </div>
             </div>
@@ -319,13 +323,13 @@
                     </div>
                 </div>
 
-                <p class="init-tagline">
+                <p class="init-tagline" data-i18n-html="init.tagline">
                     Welcome to EasyOKAPI Software<br>
                     <span class="init-tagline-sub">The best low-cost solution for your colorimetric measurements.</span>
                 </p>
 
                 <button onclick="init()" id="init-button" class="init-cta-btn">
-                    <span>Get Started</span>
+                    <span data-i18n="init.get_started">Get Started</span>
                     <svg class="init-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
@@ -336,61 +340,61 @@
             <div class="section" id="main-directory-section">
                 <h2 class="folder-section-toggle"
                     onclick="toggleFolderList('main-folder-collapse', 'main-folder-chevron')">
-                    Data Folder
+                    <span data-i18n="nav.data_folder">Data Folder</span>
                     <span id="main-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
                 </h2>
 
                 <div id="main-folder-collapse" class="folder-list-collapse collapsed">
                     <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-                        <input type="text" id="folder-search-main" placeholder="Search folders…"
+                        <input type="text" id="folder-search-main" data-i18n-ph="ph.search_folders" placeholder="Search folders…"
                             oninput="filterDataFolderList('data-folder-list', this.value)"
                             style="flex:1; padding:4px 6px;">
-                        <button onclick="loadDataFolders()" data-hint="Refresh folder list">↻ Refresh</button>
+                        <button onclick="loadDataFolders()" data-i18n="btn.refresh" data-i18n-hint="hint.refresh_folders" data-hint="Refresh folder list">↻ Refresh</button>
                     </div>
                     <div id="data-folder-list" class="dir-blocks scrollbar-style">
-                        <div style="color:#999; padding:6px;">Loading folders…</div>
+                        <div style="color:#999; padding:6px;" data-i18n="nav.loading_folders">Loading folders…</div>
                     </div>
                 </div>
                 <div id="error-message"></div>
             </div>
             <div class="section script-controls" id="log-cdc-data">
-                <h2 class="folder-section-toggle" onclick="toggleFolderList('cdc-collapse', 'cdc-chevron')">Reading
-                    Colorimetric Data <span id="cdc-chevron" class="folder-chevron">▼</span></h2>
+                <h2 class="folder-section-toggle" onclick="toggleFolderList('cdc-collapse', 'cdc-chevron')"><span data-i18n="cdc.title">Reading
+                    Colorimetric Data</span> <span id="cdc-chevron" class="folder-chevron">▼</span></h2>
                 <div id="cdc-collapse" class="section-collapse">
                     <div id="cdc-save-section" style="margin-bottom:8px;">
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <label style="font-weight:600; white-space:nowrap;">Save to:</label>
+                            <label style="font-weight:600; white-space:nowrap;" data-i18n="cdc.save_to">Save to:</label>
                             <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
                                 <input type="radio" name="cdc-save-mode" id="cdc-mode-existing" value="existing" checked
-                                    onchange="onCdcSaveModeChange()"> Existing
+                                    onchange="onCdcSaveModeChange()"> <span data-i18n="cdc.existing">Existing</span>
                             </label>
                             <div id="cdc-existing-row" style="display:flex; gap:5px; align-items:center;">
                                 <select id="cdc-subfolder-select" onchange="onCdcSubfolderChange(this)"
                                     style="max-width:280px;">
-                                    <option value="">— data root —</option>
+                                    <option value="" data-i18n="cdc.data_root_option">— data root —</option>
                                 </select>
-                                <button type="button" onclick="loadDataFolders()" data-hint="Refresh list"
+                                <button type="button" onclick="loadDataFolders()" data-i18n-hint="hint.refresh_list" data-hint="Refresh list"
                                     style="padding:2px 6px;">↻</button>
                             </div>
                             <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
                                 <input type="radio" name="cdc-save-mode" id="cdc-mode-new" value="new"
-                                    onchange="onCdcSaveModeChange()"> New
+                                    onchange="onCdcSaveModeChange()"> <span data-i18n="cdc.new">New</span>
                             </label>
                             <div id="cdc-new-row" style="display:none; align-items:center; gap:4px;">
-                                <input type="text" id="cdc-new-folder-name" placeholder="New subfolder name"
+                                <input type="text" id="cdc-new-folder-name" data-i18n-ph="ph.new_subfolder" placeholder="New subfolder name"
                                     style="width:200px;" oninput="validateFileName('cdc-new-folder-name')">
                                 <span id="cdc-new-folder-name-error" class="error"></span>
                             </div>
                         </div>
                     </div>
                     <div>
-                        <label for="base-name">Base Name: </label>
-                        <input type="text" id="base-name" placeholder="Enter a name" style="width: 10em">
+                        <label for="base-name" data-i18n="cdc.base_name">Base Name: </label>
+                        <input type="text" id="base-name" data-i18n-ph="ph.enter_name" placeholder="Enter a name" style="width: 10em">
                         <span id="base-name-error" class="error"></span>
                     </div>
                     <div id="timeout-control">
-                        <label>Timeout: </label>
-                        <input type="checkbox" id="inf-timeout" data-hint="Keep reading with no time limit until you press Stop"><span style="font-weight: bold;">Infinite</span></input>
+                        <label data-i18n="cdc.timeout">Timeout: </label>
+                        <input type="checkbox" id="inf-timeout" data-i18n-hint="hint.inf_timeout" data-hint="Keep reading with no time limit until you press Stop"><span style="font-weight: bold;" data-i18n="cdc.infinite">Infinite</span></input>
                         <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
                         <select id="timeout-unit">
                             {% for unit in range_input.units %}
@@ -399,7 +403,7 @@
                         </select>
                     </div>
                     <div id="interval-control">
-                        <label>Interval: </label>
+                        <label data-i18n="cdc.interval">Interval: </label>
                         <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
                         <select id="interval-unit">
                             {% for unit in range_input.units %}
@@ -408,38 +412,43 @@
                         </select>
                     </div>
                     <span id="timeout-interval-error" class="error"></span>
-                    <input type="checkbox" id="notify-me" data-hint="Show a desktop notification when the reading finishes" checked>Notify me when Done</input>
+                    <input type="checkbox" id="notify-me" data-i18n-hint="hint.notify_done" data-hint="Show a desktop notification when the reading finishes" checked><span data-i18n="cdc.notify_done">Notify me when Done</span></input>
                     <br />
                     <button id="run-script-btn" onclick="runScript()" class="blinking"
+                        data-i18n="cdc.start_reading" data-i18n-hint="hint.start_reading"
                         data-hint="Begin logging colorimetric data from the connected device">Start reading</button>
                     <button id="terminate-script-btn" onclick="terminateScript()" disabled
+                        data-i18n="cdc.stop_reading" data-i18n-hint="hint.stop_reading"
                         data-hint="Stop the current data-reading run">Stop reading</button>
                     <button id="clear-logs-btn" onclick="clearLogs()"
+                        data-i18n="cdc.clear_logs" data-i18n-hint="hint.clear_logs"
                         data-hint="Clear the log output shown below">Clear Logs</button>
                     <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled
+                        data-i18n="cdc.view_live_data" data-i18n-hint="hint.view_live_data"
                         data-hint="Open the folder where the live data is being saved">View live data</button>
                     <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
             </div>
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
-                    Select Coefficients for standard curve <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    <span data-i18n="caljson.select_coefficients">Select Coefficients for standard curve</span> <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>
                 </h2>
                 <div id="json-sel-collapse" class="section-collapse collapsed">
                     <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
-                        placeholder="Search: name [meas] [unit] [concen]"
+                        data-i18n-ph="ph.search_identity" placeholder="Search: name [meas] [unit] [concen]"
+                        data-i18n-hint="hint.search_identity"
                         data-hint="Space-separated positional filters (all AND-ed): name, then measurement, unit, ConcenUnit. Use - to skip a position; quote values with spaces, e.g. std &quot;Total Protein&quot; AU nM."
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
                         <table id="json-table" class="table">
                             <tr>
                                 <th class="sortable-th" onclick="sortJsonTable('name')"
-                                    data-hint="Click to sort by name">Calibrated JSON <span
+                                    data-i18n-hint="hint.sort_by_name" data-hint="Click to sort by name"><span data-i18n="table.calibrated_json">Calibrated JSON</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('name') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
                                 <th class="sortable-th" onclick="sortJsonTable('date')"
-                                    data-hint="Click to sort by last modified date">Modified <span
+                                    data-i18n-hint="hint.sort_by_date" data-hint="Click to sort by last modified date"><span data-i18n="table.modified">Modified</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('date') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
-                                <th colspan="3">Action</th>
+                                <th colspan="3" data-i18n="table.action">Action</th>
                             </tr>
                             {% if cal_json_list %}
                             {% for file in cal_json_list %}
@@ -455,24 +464,25 @@
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="5">No Calibrated JSON is available.</td>
+                                <td colspan="5" data-i18n="caljson.none_available">No Calibrated JSON is available.</td>
                             </tr>
                             {% endif %}
                         </table>
                     </div>
                     <button id="deselect-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Clear the currently selected coefficient file">Deselect</button>
+                        class="utility-btn" data-i18n="btn.deselect" data-i18n-hint="hint.deselect_coef" data-hint="Clear the currently selected coefficient file">Deselect</button>
                     <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="Make a duplicate of the selected coefficient file">Copy</button>
+                        class="utility-btn" data-i18n="btn.copy" data-i18n-hint="hint.copy_coef" data-hint="Make a duplicate of the selected coefficient file">Copy</button>
                 </div>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
                 <h2 id="file-selection-header" class="folder-section-toggle"
-                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span id="file-selection-label">File Selection</span> <span
+                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span id="file-selection-label" data-i18n="files.title">File Selection</span> <span
                         id="file-sel-chevron" class="folder-chevron">▼</span></h2>
                 <div id="file-sel-collapse" class="section-collapse">
                     <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
-                        placeholder="Search: name [meas] [unit] [concen]"
+                        data-i18n-ph="ph.search_identity" placeholder="Search: name [meas] [unit] [concen]"
+                        data-i18n-hint="hint.search_identity"
                         data-hint="Space-separated positional filters (all AND-ed): name, then measurement, unit, ConcenUnit. Use - to skip a position; quote values with spaces, e.g. std &quot;Total Protein&quot; AU nM."
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
@@ -480,13 +490,13 @@
                             <tr>
                                 <th id="file-table-header-name" class="sortable-th"
                                     onclick="sortFileTable('name')"
-                                    data-hint="Click to sort by file name">File Name <span
+                                    data-i18n-hint="hint.sort_by_filename" data-hint="Click to sort by file name"><span data-i18n="table.file_name">File Name</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('name') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
                                 <th id="file-table-header-date" class="sortable-th"
                                     onclick="sortFileTable('date')"
-                                    data-hint="Click to sort by last modified date">Modified <span
+                                    data-i18n-hint="hint.sort_by_date" data-hint="Click to sort by last modified date"><span data-i18n="table.modified">Modified</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('date') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
-                                <th colspan="3">Action</th>
+                                <th colspan="3" data-i18n="table.action">Action</th>
                             </tr>
                             {% if file_list %}
                             {% for file in file_list %}
@@ -500,76 +510,77 @@
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="5">No CSV files found in the directory.</td>
+                                <td colspan="5" data-i18n="files.none_found">No CSV files found in the directory.</td>
                             </tr>
                             {% endif %}
                         </table>
                     </div>
                     <button id="deselect-btn" onclick="deselectFile()" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Clear the currently selected CSV file">Deselect</button>
+                        class="utility-btn" data-i18n="btn.deselect" data-i18n-hint="hint.deselect_csv" data-hint="Clear the currently selected CSV file">Deselect</button>
                     <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="Make a duplicate of the selected CSV file">Copy</button>
+                        class="utility-btn" data-i18n="btn.copy" data-i18n-hint="hint.copy_csv" data-hint="Make a duplicate of the selected CSV file">Copy</button>
                     <button id="move-file-btn" onclick="moveFile()" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="Move the selected CSV file to another folder">Move</button>
+                        class="utility-btn" data-i18n="btn.move" data-i18n-hint="hint.move_csv" data-hint="Move the selected CSV file to another folder">Move</button>
                     <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Combine several CSV files into a single file">Merge Files</button>
+                        class="utility-btn" data-i18n="btn.merge_files" data-i18n-hint="hint.merge_files" data-hint="Combine several CSV files into a single file">Merge Files</button>
                 </div>
             </div>
 
             <div class="section hidden" id="report-console-section" tabindex="-1">
-                <h2>📊 Report Modification Console</h2>
+                <h2 data-i18n="report.console_title">📊 Report Modification Console</h2>
                 <div id="report-subject-info" style="margin-bottom: 15px; font-weight: bold; color: #3498db;"></div>
 
                 <div class="report-layout-config"
                     style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
-                    <h3>Layout Configurations</h3>
+                    <h3 data-i18n="report.layout_config">Layout Configurations</h3>
                     <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
-                        <label><input type="checkbox" id="console-watermark" checked> Include Watermark</label>
-                        <label><input type="checkbox" id="console-logo" checked> Include CBB Logo</label>
-                        <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report"
+                        <label><input type="checkbox" id="console-watermark" checked> <span data-i18n="report.include_watermark">Include Watermark</span></label>
+                        <label><input type="checkbox" id="console-logo" checked> <span data-i18n="report.include_logo">Include CBB Logo</span></label>
+                        <label><span data-i18n="report.title_label">Title:</span> <input type="text" id="console-title" value="Colorimetric Analysis Report"
                                 style="width: 250px;"></label>
-                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per
-                            CSV)</label>
+                        <label><input type="checkbox" id="console-split-sheets" checked> <span data-i18n="report.split_sheets">Split sheets (one tab per
+                            CSV)</span></label>
                     </div>
                 </div>
 
-                <h3>Items in this Report Subject</h3>
+                <h3 data-i18n="report.items_in_subject">Items in this Report Subject</h3>
                 <div id="report-items-container" class="scrollbar-style"
                     style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; padding: 10px; margin-bottom: 15px; background: white;">
                     <!-- Items will be loaded here -->
-                    <p style="color: #666;">Select a report subject folder to view items.</p>
+                    <p style="color: #666;" data-i18n="report.select_subject_hint">Select a report subject folder to view items.</p>
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="utility-btn" onclick="clearReportItems()"
-                        data-hint="Remove all items from the selected report subject">🗑️ Clear Selected Subject</button>
+                        data-i18n="report.clear_subject" data-i18n-hint="hint.clear_subject" data-hint="Remove all items from the selected report subject">🗑️ Clear Selected Subject</button>
                     <button class="utility-btn" onclick="finalizeReportExcel()"
-                        data-hint="Export this report subject as an Excel workbook"
+                        data-i18n="report.export_excel" data-i18n-hint="hint.export_excel" data-hint="Export this report subject as an Excel workbook"
                         style="padding: 10px 20px; font-size: 1.1rem;">📊 Export as Excel</button>
                     <button class="primary-btn" onclick="finalizeReport()"
-                        data-hint="Generate the final printable HTML report"
+                        data-i18n="report.generate_final" data-i18n-hint="hint.generate_final" data-hint="Generate the final printable HTML report"
                         style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
                 </div>
             </div>
 
             <div class="section hidden" id="data-display-section">
-                <h2>Data Display</h2>
+                <h2 data-i18n="display.title">Data Display</h2>
                 <!-- Display selected file name -->
-                <div id="selected-file-display">No file selected</div>
+                <div id="selected-file-display" data-i18n="display.no_file_selected">No file selected</div>
                 <div class="section" id="point-json-exp-section">
-                    Reference point is at <span type="number" id="cal-point"></span>
+                    <span data-i18n="display.reference_point_at">Reference point is at</span> <span type="number" id="cal-point"></span>
                     <span id="cal-time-unit" style="font-weight: bold;">second</span>
                     </br>
                     <span id="add-json-section"></span>
                 </div>
                 <div class="section" id="window-size-section"
+                    data-i18n-hint="hint.window_size"
                     data-hint="Number of consecutive data points used to compute each local slope for maxRate regression (minimum: 3). Larger windows smooth noise; smaller windows track fast changes.">
-                    Select window size for maxRate regression
+                    <span data-i18n="display.window_size">Select window size for maxRate regression</span>
                     <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
                     <div id="wd-size-error"></div>
                 </div>
                 <div class="section" id="select-quantity-section">
-                    Select quantity to derive concentration from
+                    <span data-i18n="display.select_quantity">Select quantity to derive concentration from</span>
                     <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
                         {% set transformed = quantity.lower().replace(' ', '_') %}
@@ -578,13 +589,13 @@
                     </select>
                 </div>
                 <div id="select-time-point">
-                    Select time point to derive concentration from
+                    <span data-i18n="display.select_time_point">Select time point to derive concentration from</span>
                     <select id="regressed-time-point" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
                 <div id="select-regress-algo">
-                    Select Regress Algo to export:
+                    <span data-i18n="display.select_regress_algo">Select Regress Algo to export:</span>
                     <select id="exp-json-regress-algo" onchange="toggleMode()">
                         <option value="polynomial">polynomial</option>
                         <option value="linear">linear</option>
@@ -595,14 +606,14 @@
                 </div>
                 <div id="func-desc" class="hidden"></div>
                 <div class="section" id="range-display">
-                    <h3 class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')">{{
-                        range_input.title }} <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <h3 class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')"><span data-i18n="display.range_title">{{
+                        range_input.title }}</span> <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
                     <div id="range-collapse" class="section-collapse collapsed">
-                        From
+                        <span data-i18n="display.range_from">From</span>
                         <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
                             style="width: {{ [6, range_input.value_start|string|length + 5]|max }}ch;">
-                        To
+                        <span data-i18n="display.range_to">To</span>
                         <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
                             style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
@@ -613,46 +624,46 @@
                         </select>
                         <span id="range-value-error" class="error"></span>
                         <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
-                            data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
+                            data-i18n="display.save_range" data-i18n-hint="hint.save_range" data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
                         <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
-                            data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
+                            data-i18n="display.normalize_btn" data-i18n-hint="hint.normalize_btn" data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
                     </div>
                 </div>
                 <div id="mode-toggle">
-                    <label id="split-source-section" data-hint="Plot each light source as its own separate curve">
-                        <input type="checkbox" id="split-source" onchange="toggleMode()"> Split by Sources
+                    <label id="split-source-section" data-i18n-hint="hint.split_sources" data-hint="Plot each light source as its own separate curve">
+                        <input type="checkbox" id="split-source" onchange="toggleMode()"> <span data-i18n="display.split_sources">Split by Sources</span>
                     </label>
-                    <label id="normalize-mode-section" data-hint="Subtract the blank (each column minus its own minimum) before plotting">
-                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove
-                        Blank)
+                    <label id="normalize-mode-section" data-i18n-hint="hint.normalize_mode" data-hint="Subtract the blank (each column minus its own minimum) before plotting">
+                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> <span data-i18n="display.normalize_data">Normalize Data (remove
+                        Blank)</span>
                     </label>
-                    <label id="open-all-analysis-section" data-hint="Expand or collapse every analysis panel at once">
-                        <input type="checkbox" id="open-all-analysis" onchange="toggleAllAnalyses()"> Expand/Collapse all
-                        Analyses
+                    <label id="open-all-analysis-section" data-i18n-hint="hint.expand_all" data-hint="Expand or collapse every analysis panel at once">
+                        <input type="checkbox" id="open-all-analysis" onchange="toggleAllAnalyses()"> <span data-i18n="display.expand_all">Expand/Collapse all
+                        Analyses</span>
                     </label>
                 </div>
                 <div id="chart-container" tabindex="-1" class="scrollbar-style">
                     <!-- Chart sections will be dynamically generated by updatePlot -->
                 </div>
                 <div id="select-source-to-export">
-                    Select Sources to export:
+                    <span data-i18n="display.select_sources_export">Select Sources to export:</span>
                     <div id="exp-source-dropdown" class="ms-dropdown">
                         <button type="button" id="exp-source-toggle" class="ms-dropdown-toggle"
                             aria-haspopup="true" aria-expanded="false" onclick="toggleExpSourceDropdown(event)">
-                            <span id="exp-source-summary">All sources</span>
+                            <span id="exp-source-summary" data-i18n="display.all_sources">All sources</span>
                         </button>
                         <div id="exp-source-checkboxes" class="ms-dropdown-panel scrollbar-style" hidden>
-                            <label class="exp-source-option"><input type="checkbox" id="exp-source-all" checked> All</label>
+                            <label class="exp-source-option"><input type="checkbox" id="exp-source-all" checked> <span data-i18n="display.all">All</span></label>
                         </div>
                     </div>
                 </div>
                 <div id="export-analysis">
                     <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')">Export
-                        analysis for Calibration <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')"><span data-i18n="export.analysis_title">Export
+                        analysis for Calibration</span> <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
                     <div id="export-analysis-collapse" class="section-collapse collapsed">
                         <div class="section" id="set-exp-point-section">
-                            Set reference point to export: <input type="number" id="exp-json-time-value"
+                            <span data-i18n="export.set_reference_point">Set reference point to export:</span> <input type="number" id="exp-json-time-value"
                                 style="width: 5em;"> <span id="exp-json-time-unit-label" style="font-weight: bold;"> second. </span>
                             <br />
                             <span id="est-val-error" class="error"></span>
@@ -662,101 +673,105 @@
                         <div style="margin-bottom:6px;">
                             <label style="display:flex; align-items:center; gap:6px;">
                                 <input type="checkbox" id="same-dir-as-data" checked>
-                                Export to the same directory as this data file
+                                <span data-i18n="export.same_dir">Export to the same directory as this data file</span>
                             </label>
                         </div>
                         <div id="exp-subfolder-row"
                             style="display:none; margin-bottom:6px; align-items:center; gap:6px;">
-                            <label style="font-weight:600;">Save to subfolder:</label>
+                            <label style="font-weight:600;" data-i18n="export.save_to_subfolder">Save to subfolder:</label>
                             <select id="exp-subfolder-select" onchange="onExpSubfolderChange(this)"
                                 style="flex:1; max-width:280px;">
-                                <option value="" data-path="">— data root —</option>
+                                <option value="" data-path="" data-i18n="cdc.data_root_option">— data root —</option>
                             </select>
-                            <button type="button" onclick="loadDataFolders()" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
+                            <button type="button" onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
                         </div>
                         <div class="export-row">
-                            <label for="save-file">File Name: </label>
+                            <label for="save-file" data-i18n="export.file_name">File Name: </label>
                             <input type="text" id="save-file"
+                                data-i18n-ph="ph.calibrate_file_name"
                                 placeholder="Enter calibrate file name to save analysis data to (e.g., results)"
                                 style="width: 70%">
                             <span id="save-file-error" class="error"></span>
                         </div>
                         <button id="export-btn" onclick="exportData()"
-                            data-hint="Save the derived analysis values to a calibration file">Export Data to Calibrate</button>
+                            data-i18n="export.export_to_calibrate" data-i18n-hint="hint.export_to_calibrate" data-hint="Save the derived analysis values to a calibration file">Export Data to Calibrate</button>
                         <button id="go-to-exp-btn" onclick="browseSavingLocation(true, this)"
-                            data-hint="Open the folder where the exported file will be saved">Browse Saving
+                            data-i18n="export.browse_saving_location" data-i18n-hint="hint.browse_saving_location" data-hint="Open the folder where the exported file will be saved">Browse Saving
                             Location</button>
-                        <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
+                        <p id="export-data-warning" style="color: red;" data-i18n-html="export.minutes_warning"><span style="font-weight: bold;">Warning!</span>
                             Exporting data will automatically convert the kinetics quantities to per <span
                                 style="font-weight: bold;">"minutes"!</span></p>
                     </div>
                 </div>
                 <div id="export-coef">
                     <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')">Export coefficients
-                        for standard curve <span id="export-coef-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')"><span data-i18n="export.coef_title">Export coefficients
+                        for standard curve</span> <span id="export-coef-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
                     <div id="export-coef-collapse" class="section-collapse collapsed">
                         <div style="display:flex; gap:16px; margin-bottom:6px;">
                             <label style="display:flex; align-items:center; gap:4px;">
                                 <input type="radio" name="json-export-mode" id="json-mode-new" value="new" checked
-                                    onchange="onJsonExportModeChange()"> New file
+                                    onchange="onJsonExportModeChange()"> <span data-i18n="export.new_file">New file</span>
                             </label>
                             <label style="display:flex; align-items:center; gap:4px;">
                                 <input type="radio" name="json-export-mode" id="json-mode-overwrite" value="overwrite"
-                                    onchange="onJsonExportModeChange()"> Overwrite existing calibrate file
+                                    onchange="onJsonExportModeChange()"> <span data-i18n="export.overwrite_existing">Overwrite existing calibrate file</span>
                             </label>
                         </div>
                         <div id="json-new-row">
-                            <label for="save-json-file">File Name: </label>
+                            <label for="save-json-file" data-i18n="export.file_name">File Name: </label>
                             <input type="text" id="save-json-file"
+                                data-i18n-ph="ph.json_file_name"
                                 placeholder="Enter JSON file name to save coefficients to" style="width: 50%">
                             <span id="save-json-file-error" class="error"></span>
                         </div>
                         <div id="json-overwrite-row" style="display:none; align-items:center; gap:6px;">
-                            <label style="font-weight:600;">Existing file:</label>
+                            <label style="font-weight:600;" data-i18n="export.existing_file">Existing file:</label>
                             <select id="json-overwrite-select" style="flex:1; max-width:300px;">
-                                <option value="">— select a calibrate file —</option>
+                                <option value="" data-i18n="export.select_calibrate_file">— select a calibrate file —</option>
                             </select>
-                            <button type="button" onclick="loadExistingJsonFiles()" data-hint="Refresh the calibration file list" style="padding:3px 7px;">↻</button>
+                            <button type="button" onclick="loadExistingJsonFiles()" data-i18n-hint="hint.refresh_cal_list" data-hint="Refresh the calibration file list" style="padding:3px 7px;">↻</button>
                         </div>
                         <br>
                         <button id="export-json-btn" onclick="exportJSONCoef()"
-                            data-hint="Save the fitted standard-curve coefficients to a calibration JSON file">Export Calibrated Coefs</button>
+                            data-i18n="export.export_calibrated_coefs" data-i18n-hint="hint.export_calibrated_coefs" data-hint="Save the fitted standard-curve coefficients to a calibration JSON file">Export Calibrated Coefs</button>
                         <br />
-                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
+                        <span data-i18n="export.threshold_rsquared">Enter the threshold value for rSquared</span> <input type="number" id="threshold-value" value="0"
                             style="width:10%;">
                     </div>
                 </div>
                 <div id="report-section">
                     <h3 class="folder-section-toggle" onclick="toggleFolderList('report-collapse', 'report-chevron')">
-                        Report <span id="report-chevron" class="folder-chevron">▼</span></h3>
+                        <span data-i18n="report.section_title">Report</span> <span id="report-chevron" class="folder-chevron">▼</span></h3>
                     <div id="report-collapse" class="section-collapse">
                         <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
+                            data-i18n="report.generate_quick" data-i18n-hint="hint.generate_quick"
                             data-hint="Open a quick printable report of the current chart and data"
                             style="margin-top: 5px;">📋 Generate quick Report</button>
                         <div style="margin-top: 10px;">
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                 <button id="export-to-report-btn" onclick="exportToReport()" class="utility-btn"
+                                    data-i18n="report.export_to_report" data-i18n-hint="hint.export_to_report"
                                     data-hint="Add this data to a report subject for inclusion in the final report"
                                     style="background-color: #2ecc71; color: white;">🚀 Export Data to Report</button>
-                                <label style="font-weight:600;">Subject:</label>
+                                <label style="font-weight:600;" data-i18n="report.subject_label">Subject:</label>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-existing"
-                                        value="existing" checked onchange="onReportSaveModeChange()"> Existing
+                                        value="existing" checked onchange="onReportSaveModeChange()"> <span data-i18n="cdc.existing">Existing</span>
                                 </label>
                                 <div id="report-existing-row" style="display:flex; gap:5px; align-items:center;">
                                     <select id="report-subject-select" style="flex:1; max-width:250px;">
-                                        <option value="">— select subject —</option>
+                                        <option value="" data-i18n="report.select_subject_option">— select subject —</option>
                                     </select>
                                     <button type="button" onclick="loadReportSubjectsForPicker()"
-                                        data-hint="Refresh the report subject list" style="padding:3px 7px;">↻</button>
+                                        data-i18n-hint="hint.refresh_subjects" data-hint="Refresh the report subject list" style="padding:3px 7px;">↻</button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
-                                        onchange="onReportSaveModeChange()"> New
+                                        onchange="onReportSaveModeChange()"> <span data-i18n="cdc.new">New</span>
                                 </label>
                                 <div id="report-new-row" style="display:none; align-items:center; gap:4px;">
-                                    <input type="text" id="report-subject-name" placeholder="new subject name"
+                                    <input type="text" id="report-subject-name" data-i18n-ph="ph.new_subject_name" placeholder="new subject name"
                                         style="width: 150px;">
                                 </div>
                             </div>
@@ -772,7 +787,7 @@
             <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
                 class="hidden scrollbar-style"></div>
             <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
-                style="cursor: pointer;">Deselect</button>
+                style="cursor: pointer;" data-i18n="btn.deselect">Deselect</button>
         </div>
 
         <script>
@@ -796,6 +811,10 @@
             const MAINTAINER_EMAIL = "{{ maintainer_email }}";
             const temp_quantity_input = {{ quantity_input | tojson | safe}};
             const USER_SETTINGS = {{ user_settings | tojson | safe }};
+            // Active UI language + its translation catalog (flat key -> string).
+            // i18n.js applies these to [data-i18n*] elements and exposes t().
+            const UI_LANG = {{ ui_lang | tojson | safe }};
+            const UI_STRINGS = {{ ui_strings | tojson | safe }};
             // Per-file metadata (name -> {mtime, display}) for the File Selection table,
             // and the active sort order. Both feed the client-side date/name sorting in
             // navigation.js so re-sorting needs no server round-trip.
@@ -852,6 +871,7 @@
         <script src="{{ url_for('static', filename='script/event-tracker.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/tooltip.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/short-hands.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/i18n.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/init.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/cdc-logging.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}?v={{ STATIC_VERSION }}"></script>
@@ -872,12 +892,12 @@
             // choice so this never reappears.
             document.addEventListener('DOMContentLoaded', function () {
                 Swal.fire({
-                    title: 'Welcome to EasyOKAPI',
-                    html: 'Would you like to load <b>sample measurements</b> and <b>demo calibration curves</b> so you can explore the app right away?<br><br>You can always start empty and add your own data later.',
+                    title: t('demo.title', 'Welcome to EasyOKAPI'),
+                    html: t('demo.html', 'Would you like to load <b>sample measurements</b> and <b>demo calibration curves</b> so you can explore the app right away?<br><br>You can always start empty and add your own data later.'),
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Load sample data',
-                    cancelButtonText: 'Start empty',
+                    confirmButtonText: t('demo.load', 'Load sample data'),
+                    cancelButtonText: t('demo.start_empty', 'Start empty'),
                     allowOutsideClick: false,
                     allowEscapeKey: false
                 }).then(function (result) {

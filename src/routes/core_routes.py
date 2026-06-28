@@ -9,6 +9,7 @@ import state
 import user_settings as _user_settings
 import data_root as _data_root
 import event_logger
+import i18n as _i18n
 from file_path import DATA_ROOT, get_data_subfolders, CONCEN_UNITS
 from range import get_range_input
 from mode import get_mode_input
@@ -55,6 +56,8 @@ def index():
     user_settings = _user_settings.load()
     file_sort_order = user_settings.get("file_sort_order", "date_desc")
     time_tag_format = user_settings.get("time_tag_format", "iso")
+    ui_lang = _i18n.normalize_lang(user_settings.get("ui_language", "en"))
+    ui_strings = _i18n.load_catalog(ui_lang)
     file_meta = get_file_meta(DATA_ROOT, time_format=time_tag_format)
     file_list = sort_file_names(get_file_list(DATA_ROOT), file_meta, file_sort_order)
     cal_json_dir = os.path.join(state.json_root_path, "kinetics")
@@ -98,7 +101,9 @@ def index():
                          concen_units=CONCEN_UNITS,
                          is_frozen=state.IS_FROZEN,
                          reset_display=state.consume_reset_display_pending(),
-                         data_root_info=_data_root.get_info()))
+                         data_root_info=_data_root.get_info(),
+                         ui_lang=ui_lang,
+                         ui_strings=ui_strings))
     return response
 
 

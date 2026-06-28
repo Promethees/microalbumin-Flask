@@ -206,11 +206,11 @@ async function runScript() {
         if (!validateFileName("cdc-new-folder-name")) return;
         subfolder = ($id("cdc-new-folder-name").value || '').trim();
         if (!subfolder) {
-            Swal.fire({ title: 'Name required', text: 'Please enter a name for the new subfolder.', icon: 'warning', confirmButtonText: 'OK' });
+            Swal.fire({ title: t('cdc.name_required.title', 'Name required'), text: t('cdc.name_required.text', 'Please enter a name for the new subfolder.'), icon: 'warning', confirmButtonText: t('common.ok', 'OK') });
             return;
         }
         if (typeof isReservedDataFolderName === 'function' && isReservedDataFolderName(subfolder)) {
-            Swal.fire({ title: 'Reserved name', text: `"${subfolder}" is a reserved folder name and cannot be used.`, icon: 'error', confirmButtonText: 'OK' });
+            Swal.fire({ title: t('cdc.reserved_name.title', 'Reserved name'), text: `"${subfolder}" ${t('cdc.reserved_name.suffix', 'is a reserved folder name and cannot be used.')}`, icon: 'error', confirmButtonText: t('common.ok', 'OK') });
             return;
         }
     }
@@ -355,10 +355,10 @@ async function fetchLogs() {
                 onNewDataPoint();
             }
 
-            if (/PyBadge not found/.test(logs)) showTerminationNotice("PyBadge not found. Please check the connection.", "error");
-            else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice("Failed to find input endpoint. Please verify USB connection.", "error");
-            else if (/SESSION STOPPED/.test(logs)) showTerminationNotice("Session stopped manually on the device.", "info");
-            else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice("Session ended due to timeout.", "info");
+            if (/PyBadge not found/.test(logs)) showTerminationNotice(t('cdc.err_pybadge_not_found', "PyBadge not found. Please check the connection."), "error");
+            else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice(t('cdc.err_no_endpoint', "Failed to find input endpoint. Please verify USB connection."), "error");
+            else if (/SESSION STOPPED/.test(logs)) showTerminationNotice(t('cdc.session_stopped', "Session stopped manually on the device."), "info");
+            else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice(t('cdc.session_timeout', "Session ended due to timeout."), "info");
         }
     } catch (err) {
         console.error("fetchLogs error:", err);
@@ -396,7 +396,7 @@ function fireDoneNotification(message) {
     if (!notifyEl || !notifyEl.checked) return;
     new Audio("../static/done.mp3").play().catch(err => console.warn("Audio play blocked:", err));
     Swal.fire({
-        title: "Reading Stopped",
+        title: t('cdc.reading_stopped', "Reading Stopped"),
         text: message,
         icon: "info",
         background: "#f9f9f9",
@@ -427,12 +427,12 @@ function showTerminationNotice(message, iconType) {
     stopSessionTimer();
     terminateScript();
     Swal.fire({
-        title: "Error!",
+        title: t('common.error', "Error!"),
         text: message,
         icon: iconType,
         background: "#f9f9f9",
         color: "#333",
         showConfirmButton: true,
-        confirmButtonText: "OK"
+        confirmButtonText: t('common.ok', "OK")
     });
 }
