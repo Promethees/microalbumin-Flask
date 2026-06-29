@@ -147,6 +147,22 @@
         ru: { mode: 'режим', app_started: 'запущено', data_loaded: 'данные загружены', cal_mode: 'режим кал' },
     };
 
+    // Edit-and-resend controls on user messages
+    const _EDIT_HINT = {
+        en: 'Edit and resend', vi: 'Sửa và gửi lại', zh: '编辑并重新发送',
+        fr: 'Modifier et renvoyer', ja: '編集して再送信', ru: 'Изменить и отправить снова',
+    };
+
+    const _EDIT_SAVE = {
+        en: 'Save & resend', vi: 'Lưu & gửi lại', zh: '保存并重新发送',
+        fr: 'Enregistrer et renvoyer', ja: '保存して再送信', ru: 'Сохранить и отправить',
+    };
+
+    const _EDIT_CANCEL = {
+        en: 'Cancel', vi: 'Hủy', zh: '取消',
+        fr: 'Annuler', ja: 'キャンセル', ru: 'Отмена',
+    };
+
     // Natural-language phrases that mean "redo the last thing"
     const _REDO_VOCAB = new Set([
         // English
@@ -456,6 +472,91 @@
         div.innerHTML = _renderMarkdown(content);
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
+    }
+
+    // A user message that can be edited and resent. `msgIndex` is its position in
+    // AI.messages (the LLM history); editing truncates the history at that index and
+    // re-sends, so subsequent assistant replies are discarded. Only LLM queries get
+    // this treatment — slash-command/guide echoes stay plain via _addMsg.
+    function _addEditableUserMsg(content, msgIndex) {
+        const container = document.getElementById('okapi-ai-messages');
+        if (!container) return;
+        const div = document.createElement('div');
+        div.className = 'okapi-ai-msg okapi-ai-msg-user okapi-ai-msg-editable';
+        div.dataset.msgIndex = String(msgIndex);
+        div.dataset.raw = content;
+        _renderUserMsgView(div, content);
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // Render the read-only view of an editable user bubble (content + pencil button).
+    function _renderUserMsgView(div, content) {
+        const lang = AI.activeLang || 'en';
+        const hint = _esc(_EDIT_HINT[lang] || _EDIT_HINT.en);
+        div.dataset.raw = content;
+        div.classList.remove('okapi-ai-editing');
+        div.innerHTML =
+            `<div class="okapi-ai-msg-content">${_renderMarkdown(content)}</div>` +
+            `<button class="okapi-ai-edit-btn" type="button" data-hint="${hint}" aria-label="${hint}">&#9998;</button>`;
+        const btn = div.querySelector('.okapi-ai-edit-btn');
+        if (btn) btn.addEventListener('click', () => _enterEditMode(div));
+    }
+
+    // Swap an editable bubble into an inline textarea + Save/Cancel controls.
+    function _enterEditMode(div) {
+        if (AI.currentAbort) return;   // a reply is still streaming — don't edit mid-flight
+        const lang = AI.activeLang || 'en';
+        const raw = div.dataset.raw || '';
+        div.classList.add('okapi-ai-editing');
+        div.innerHTML =
+            `<textarea class="okapi-ai-edit-area" rows="2"></textarea>` +
+            `<div class="okapi-ai-edit-btns">` +
+            `<button class="okapi-ai-edit-save" type="button">${_esc(_EDIT_SAVE[lang] || _EDIT_SAVE.en)}</button>` +
+            `<button class="okapi-ai-edit-cancel" type="button">${_esc(_EDIT_CANCEL[lang] || _EDIT_CANCEL.en)}</button>` +
+            `</div>`;
+        const ta = div.querySelector('.okapi-ai-edit-area');
+        ta.value = raw;
+        const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+        ta.addEventListener('input', grow);
+        ta.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _saveEdit(div); }
+            else if (e.key === 'Escape') { e.preventDefault(); _renderUserMsgView(div, raw); }
+        });
+        div.querySelector('.okapi-ai-edit-save').addEventListener('click', () => _saveEdit(div));
+        div.querySelector('.okapi-ai-edit-cancel').addEventListener('click', () => _renderUserMsgView(div, raw));
+        ta.focus();
+        ta.setSelectionRange(raw.length, raw.length);
+        grow();
+        const container = document.getElementById('okapi-ai-messages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    // Commit an edit: truncate history at this message, clear the bubbles after it,
+    // and resend the new text through the normal LLM path.
+    function _saveEdit(div) {
+        const ta = div.querySelector('.okapi-ai-edit-area');
+        if (!ta) return;
+        const newText = (ta.value || '').trim();
+        const raw = div.dataset.raw || '';
+        if (!newText || newText === raw) { _renderUserMsgView(div, raw); return; }
+        const msgIndex = parseInt(div.dataset.msgIndex, 10);
+        if (isNaN(msgIndex)) { _renderUserMsgView(div, raw); return; }
+
+        // Drop this user turn and everything after it from the LLM history;
+        // _sendToLLM re-adds the edited query and streams a fresh reply.
+        AI.messages = AI.messages.slice(0, msgIndex);
+
+        // Remove this bubble and every node after it from the DOM.
+        const container = document.getElementById('okapi-ai-messages');
+        if (container) {
+            while (container.lastChild && container.lastChild !== div) {
+                container.removeChild(container.lastChild);
+            }
+            if (container.lastChild === div) container.removeChild(div);
+        }
+
+        OkapiAI._sendToLLM(newText);
     }
 
     function _addStreamingMsg() {
@@ -958,8 +1059,8 @@
 
             AI.lastAction = { type: 'llm', query: text };
 
-            _addMsg('user', text);
             AI.messages.push({ role: 'user', content: text });
+            _addEditableUserMsg(text, AI.messages.length - 1);
 
             const historyToSend = AI.messages.length > 10
                 ? AI.messages.slice(-10)
