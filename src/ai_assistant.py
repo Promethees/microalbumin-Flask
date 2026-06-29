@@ -390,6 +390,7 @@ _SYSTEM_PROMPTS = {
         "• 'where is the timeout setting?' → call trigger_custom_steps with target #timeout-control\n"
         "• 'how do I export?' → call trigger_custom_steps with target #export-analysis\n"
         "• 'how do I start the device?' → call trigger_custom_steps with target #run-script-btn\n"
+        "• 'how do I change the app language / open settings?' → call trigger_custom_steps with target #settingsBtn\n"
         "Only call trigger_guide when the user explicitly asks for a COMPLETE end-to-end workflow tour.\n"
         "Check [App state]: if mode already matches what the user wants, skip the mode-switch step.\n"
         "After calling a guide tool, confirm in one sentence that the guide launched.\n\n"
@@ -416,7 +417,14 @@ _SYSTEM_PROMPTS = {
         "• Sat — plateau (saturation) absorbance value when the reaction levels off.\n"
         "• Time To Sat — time in minutes until the signal reaches the plateau; useful for reaction-speed comparisons.\n\n"
         "SOURCES: A 'source' is one measurement channel inside a CSV file — each distinct sample or sensor "
-        "position recorded in the same run. A merged file can contain multiple sources.\n"
+        "position recorded in the same run. A merged file can contain multiple sources.\n\n"
+        "APP SETTINGS — the gear button (#settingsBtn) opens App Settings: interface Language (6 languages), "
+        "default mode & window size, concentration unit, table sort order, and (installed builds) the data-folder location.\n"
+        "CONCENTRATION UNITS: a concentration is labelled ng/µL, nM, or % — a label only (switching the unit never "
+        "converts the numbers). A measurement CSV pairs with a calibration JSON only when both share the same "
+        "Measurement, Unit, and concentration unit.\n"
+        "ASSISTANT CONTROLS: users can type / for slash commands, click + to start a new conversation, "
+        "edit a sent message to resend it, and rate answers with 👍/👎.\n"
         "Always respond in English."
     ),
     "vi": (
@@ -437,6 +445,7 @@ _SYSTEM_PROMPTS = {
         "• 'cách chuyển sang chế độ calibrate' → gọi trigger_custom_steps với target #meas-mode-section\n"
         "• 'timeout ở đâu?' → gọi trigger_custom_steps với target #timeout-control\n"
         "• 'cách xuất dữ liệu?' → gọi trigger_custom_steps với target #export-analysis\n"
+        "• 'đổi ngôn ngữ ứng dụng / mở cài đặt' → gọi trigger_custom_steps với target #settingsBtn\n"
         "Chỉ gọi trigger_guide khi người dùng yêu cầu hướng dẫn TOÀN BỘ quy trình từ đầu đến cuối.\n"
         "Kiểm tra [App state]: nếu mode đã đúng, bỏ qua bước chuyển chế độ.\n"
         "Sau khi gọi công cụ hướng dẫn, xác nhận trong một câu.\n\n"
@@ -457,7 +466,13 @@ _SYSTEM_PROMPTS = {
         "b=dịch chuyển trục X (giữ ln dương), c=đường cơ sở.\n"
         "• Hàm mũ  y=a·e^(b·x)+c  [a,b,c]: a=biên độ, "
         "b=tốc độ tăng/giảm (dương=tăng, âm=giảm), c=đường tiệm cận dưới.\n\n"
-        "R² (0–1): độ khớp; ≥0.99 là tiêu chuẩn cho đường chuẩn đáng tin cậy.\n"
+        "R² (0–1): độ khớp; ≥0.99 là tiêu chuẩn cho đường chuẩn đáng tin cậy.\n\n"
+        "CÀI ĐẶT ỨNG DỤNG — nút bánh răng (#settingsBtn) mở App Settings: Ngôn ngữ giao diện (6 ngôn ngữ), "
+        "chế độ & kích thước cửa sổ mặc định, đơn vị nồng độ, thứ tự sắp xếp bảng, và (bản cài đặt) vị trí thư mục dữ liệu.\n"
+        "ĐƠN VỊ NỒNG ĐỘ: nồng độ được gắn nhãn ng/µL, nM hoặc % — chỉ là nhãn (đổi đơn vị không chuyển đổi số liệu). "
+        "Một tệp CSV đo lường chỉ ghép với JSON hiệu chuẩn khi cả hai có cùng Measurement, Unit và đơn vị nồng độ.\n"
+        "ĐIỀU KHIỂN TRỢ LÝ: người dùng gõ / để xem lệnh, nhấn + để bắt đầu cuộc trò chuyện mới, "
+        "sửa tin nhắn đã gửi để gửi lại, và đánh giá câu trả lời bằng 👍/👎.\n"
         "Luôn trả lời bằng Tiếng Việt."
     ),
     "zh": (
@@ -475,6 +490,7 @@ _SYSTEM_PROMPTS = {
         "• '如何切换到校准模式' → 调用 trigger_custom_steps，目标 #meas-mode-section\n"
         "• '超时设置在哪里？' → 调用 trigger_custom_steps，目标 #timeout-control\n"
         "• '如何导出？' → 调用 trigger_custom_steps，目标 #export-analysis\n"
+        "• '如何更改应用语言 / 打开设置' → 调用 trigger_custom_steps，目标 #settingsBtn\n"
         "仅当用户明确要求完整端到端流程演示时才调用 trigger_guide。\n"
         "检查[App state]：如果模式已匹配，跳过模式切换步骤。\n"
         "调用引导工具后，用一句话确认引导已启动。\n\n"
@@ -489,7 +505,12 @@ _SYSTEM_PROMPTS = {
         "• 多项式  y=a·x²+b·x+c  [a,b,c]：a=曲率（正=开口向上，负=开口向下），b=线性灵敏度，c=Y轴截距。\n"
         "• 对数  y=a·ln(x+b)+c  [a,b,c]：a=动态范围缩放，b=X轴平移（保持ln参数为正），c=基线。\n"
         "• 指数  y=a·e^(b·x)+c  [a,b,c]：a=振幅，b=增长率（正=上升，负=下降），c=下渐近线。\n\n"
-        "R²（0–1）：拟合优度；≥0.99 为可靠校准曲线的标准。\n"
+        "R²（0–1）：拟合优度；≥0.99 为可靠校准曲线的标准。\n\n"
+        "应用设置——齿轮按钮（#settingsBtn）打开 App Settings：界面语言（6 种）、默认模式与窗口大小、浓度单位、表格排序，"
+        "以及（安装版）数据文件夹位置。\n"
+        "浓度单位：浓度标注为 ng/µL、nM 或 %——仅为标签（切换单位不会换算数值）。"
+        "测量 CSV 仅在与校准 JSON 的 Measurement、Unit 和浓度单位都相同时才能配对。\n"
+        "助手控制：用户可输入 / 查看命令、点击 + 开始新对话、编辑已发送的消息以重新发送、用 👍/👎 评价回答。\n"
         "始终用中文（简体）回答。"
     ),
     "fr": (
@@ -509,6 +530,7 @@ _SYSTEM_PROMPTS = {
         "• 'comment aller en mode calibration' → appeler trigger_custom_steps, cible #meas-mode-section\n"
         "• 'où est le délai d'attente ?' → appeler trigger_custom_steps, cible #timeout-control\n"
         "• 'comment exporter ?' → appeler trigger_custom_steps, cible #export-analysis\n"
+        "• 'comment changer la langue / ouvrir les paramètres ?' → appeler trigger_custom_steps, cible #settingsBtn\n"
         "N'appelez trigger_guide que pour un parcours complet de bout en bout explicitement demandé.\n"
         "Vérifiez [App state] : si le mode correspond déjà, ignorez l'étape de changement de mode.\n"
         "Après avoir appelé un outil guide, confirmez en une phrase.\n\n"
@@ -529,7 +551,14 @@ _SYSTEM_PROMPTS = {
         "b=décalage en x (garde ln positif), c=ligne de base.\n"
         "• Exponentielle  y=a·e^(b·x)+c  [a,b,c] : a=amplitude, "
         "b=taux de croissance (pos=courbe croissante, nég=décroissante), c=asymptote inférieure.\n\n"
-        "R² (0–1) : qualité d'ajustement ; ≥0.99 est attendu pour une calibration fiable.\n"
+        "R² (0–1) : qualité d'ajustement ; ≥0.99 est attendu pour une calibration fiable.\n\n"
+        "PARAMÈTRES — le bouton engrenage (#settingsBtn) ouvre App Settings : langue de l'interface (6 langues), "
+        "mode et taille de fenêtre par défaut, unité de concentration, tri des tableaux, et (versions installées) l'emplacement du dossier de données.\n"
+        "UNITÉS DE CONCENTRATION : une concentration est étiquetée ng/µL, nM ou % — une étiquette seulement "
+        "(changer d'unité ne convertit jamais les valeurs). Un CSV de mesure ne s'associe à un JSON d'étalonnage "
+        "que si les deux partagent les mêmes Measurement, Unit et unité de concentration.\n"
+        "CONTRÔLES DE L'ASSISTANT : tapez / pour les commandes, cliquez + pour une nouvelle conversation, "
+        "modifiez un message envoyé pour le renvoyer, et évaluez les réponses avec 👍/👎.\n"
         "Répondez toujours en français."
     ),
     "ja": (
@@ -549,6 +578,7 @@ _SYSTEM_PROMPTS = {
         "• 'キャリブレーションモードへの行き方' → target #meas-mode-section で trigger_custom_steps を呼び出す\n"
         "• 'タイムアウト設定はどこ？' → target #timeout-control で trigger_custom_steps を呼び出す\n"
         "• 'エクスポートの方法' → target #export-analysis で trigger_custom_steps を呼び出す\n"
+        "• 'アプリの言語を変える / 設定を開く' → target #settingsBtn で trigger_custom_steps を呼び出す\n"
         "明示的な完全ワークフローツアーのリクエストのみ trigger_guide を使用してください。\n"
         "[App state]を確認し、モードが既に一致している場合はモード切替ステップをスキップ。\n"
         "ガイドツール呼び出し後、一文で確認してください。\n\n"
@@ -566,7 +596,12 @@ _SYSTEM_PROMPTS = {
         "b=x軸シフト（lnの引数を正に保つ）、c=ベースライン。\n"
         "• 指数  y=a·e^(b·x)+c  [a,b,c]：a=振幅、"
         "b=増加率（正=上昇曲線、負=下降曲線）、c=下限漸近線。\n\n"
-        "R²（0–1）：適合度；信頼できる校正には ≥0.99 が必要。\n"
+        "R²（0–1）：適合度；信頼できる校正には ≥0.99 が必要。\n\n"
+        "アプリ設定 — 歯車ボタン（#settingsBtn）で App Settings を開きます：インターフェース言語（6 言語）、"
+        "既定モードとウィンドウサイズ、濃度単位、テーブルの並び順、（インストール版では）データフォルダの場所。\n"
+        "濃度単位：濃度は ng/µL、nM、% のいずれかのラベル（ラベルのみで、切り替えても数値は変換されません）。"
+        "測定 CSV は、Measurement・Unit・濃度単位がすべて一致する校正 JSON とのみ対応付けられます。\n"
+        "アシスタント操作：/ でコマンド一覧、+ で新しい会話、送信済みメッセージを編集して再送信、👍/👎 で回答を評価できます。\n"
         "常に日本語で回答してください。"
     ),
     "ru": (
@@ -586,6 +621,7 @@ _SYSTEM_PROMPTS = {
         "• 'как перейти в режим калибровки' → вызвать trigger_custom_steps с target #meas-mode-section\n"
         "• 'где настройка таймаута?' → вызвать trigger_custom_steps с target #timeout-control\n"
         "• 'как экспортировать?' → вызвать trigger_custom_steps с target #export-analysis\n"
+        "• 'как изменить язык приложения / открыть настройки' → вызвать trigger_custom_steps с target #settingsBtn\n"
         "Вызывайте trigger_guide только для явного полного обзора рабочего процесса.\n"
         "Проверьте [App state]: если режим уже совпадает, пропустите шаг переключения.\n"
         "После вызова инструмента подтвердите запуск одним предложением.\n\n"
@@ -606,7 +642,14 @@ _SYSTEM_PROMPTS = {
         "b=сдвиг по X (сохраняет ln положительным), c=базовая линия.\n"
         "• Экспоненциальная  y=a·e^(b·x)+c  [a,b,c]: a=амплитуда, "
         "b=скорость роста (положит.=возрастающая, отрицат.=убывающая), c=нижняя асимптота.\n\n"
-        "R² (0–1): качество подгонки; ≥0.99 требуется для надёжной калибровки.\n"
+        "R² (0–1): качество подгонки; ≥0.99 требуется для надёжной калибровки.\n\n"
+        "НАСТРОЙКИ — кнопка-шестерёнка (#settingsBtn) открывает App Settings: язык интерфейса (6 языков), "
+        "режим и размер окна по умолчанию, единица концентрации, порядок сортировки таблиц и (в установленных сборках) расположение папки данных.\n"
+        "ЕДИНИЦЫ КОНЦЕНТРАЦИИ: концентрация обозначается ng/µL, nM или % — только метка (переключение единицы "
+        "не пересчитывает значения). Измерительный CSV сопоставляется с калибровочным JSON только если у обоих "
+        "совпадают Measurement, Unit и единица концентрации.\n"
+        "УПРАВЛЕНИЕ АССИСТЕНТОМ: введите / для команд, нажмите + для нового разговора, "
+        "отредактируйте отправленное сообщение для повторной отправки и оцените ответы с помощью 👍/👎.\n"
         "Всегда отвечайте на русском языке."
     ),
 }
@@ -620,7 +663,7 @@ TOOLS = [
             "name": "get_app_context",
             "description": (
                 "Get the current state of the Easy OKAPI application: "
-                "current directory, CSV files, calibration JSON files, and hardware subprocess status."
+                "the data root folder, the CSV files in it, calibration JSON files, and hardware subprocess status."
             ),
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
@@ -746,7 +789,9 @@ TOOLS = [
                 "#split-source-section #normalize-mode-section #open-all-analysis-section "
                 "#export-analysis #report-section #cal-mode-select "
                 "#select-quantity-section #select-regress-algo #export-coef #threshold-value "
-                "#select-time-point #report-console-section #report-items-container"
+                "#select-time-point #report-console-section #report-items-container "
+                "#settingsBtn (opens App Settings: language, default mode, concentration unit, data folder) "
+                "#user-guide-btn (opens the interactive user guide)"
             ),
             "parameters": {
                 "type": "object",
@@ -809,11 +854,14 @@ _HELP_DOCS = {
     "calibration": (
         "Calibration converts absorbance to concentrations using a saved standard-curve JSON.\n"
         "Load the JSON via the dropdown, then run calibrate-mode measurements.\n"
-        "The app applies stored regression coefficients automatically."
+        "The app applies stored regression coefficients automatically.\n"
+        "Pairing rule: a measurement CSV and a calibration JSON can be paired only when both share the same "
+        "Measurement, Unit, and concentration unit (ConcenUnit); for a mismatched pair the Select button is disabled."
     ),
     "csv_format": (
         "CSV structure:\n"
-        "• Metadata lines start with #: Measurement, MeasUnit, TimeUnit, MeasMode\n"
+        "• Metadata lines start with #: Measurement, MeasUnit, TimeUnit, MeasMode, Concentration, ConcenUnit\n"
+        "• ConcenUnit is the concentration label — one of ng/µL, nM, or % (absent ⇒ ng/µL for legacy files)\n"
         "• Data header: Timestamp, Value:1, Value:2, …\n"
         "• Calibration CSVs: Concentration, maxRate/Value, Slope, Sat, Time To Sat"
     ),
@@ -835,8 +883,9 @@ _HELP_DOCS = {
     ),
     "reports": (
         "Reports are standalone HTML files saved under report/<subject>/.\n"
-        "• 'Generate quick Report' — snapshot current chart\n"
+        "• 'Generate quick Report' — snapshot the current chart\n"
         "• 'Export Data to Report' — push data into a named subject folder\n"
+        "• Full reports compile multiple report items; items can be exported to a formatted Excel workbook\n"
         "Subjects can be renamed, copied, or deleted from the Report panel."
     ),
     "file_operations": (
@@ -844,9 +893,11 @@ _HELP_DOCS = {
         "• Edit — modify CSV/JSON values in a modal editor\n"
         "• Delete — permanently remove files\n"
         "• Copy — duplicate files\n"
+        "• Move — move a CSV between data subfolders\n"
         "• Merge CSV — combine multiple CSV files\n"
         "• Remove columns — delete Value columns from CSV\n"
-        "• Export — save calibration results to new CSV/JSON"
+        "• Export — save calibration results to new CSV/JSON\n"
+        "Data files live in subfolders of the data root; subfolders can be created, renamed, and deleted from the file panel."
     ),
 }
 
@@ -885,7 +936,7 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
             candidate = os.path.join(DATA_ROOT, subfolder, filename) if subfolder else os.path.join(DATA_ROOT, filename)
             filepath = validate_in_data_root(candidate)
             if not filepath or not os.path.exists(filepath):
-                return json.dumps({"error": f"'{filename}' not found in current directory."})
+                return json.dumps({"error": f"'{filename}' not found in the selected data folder."})
             lines = []
             data_rows = 0
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -1296,6 +1347,8 @@ _IN_SCOPE_KEYWORDS = {
     "concentration", "slope", "saturation", "maxrate", "threshold", "workflow",
     "tutorial", "walkthrough", "overview", "getting started", "how to use",
     "how does this", "introduction", "guide me", "show me how",
+    "setting", "language", "concenunit", "data folder", "data root", "subfolder",
+    "rename", "feedback",
     # Multilingual inclusions
     "hiệu chuẩn", "động học", "báo cáo", "nồng độ", "kết quả", # vi
     "校准", "动力学", "测量", "报告", "浓度", # zh
