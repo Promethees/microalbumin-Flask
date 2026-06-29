@@ -1098,6 +1098,12 @@ def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
             "temperature": 0.1,
             "max_tokens": 500,
         }
+        # GPT-OSS are reasoning models: reasoning tokens count against the
+        # completion budget, so keep effort low and give the answer headroom
+        # (otherwise max_tokens is spent reasoning and content comes back empty).
+        if model.startswith("openai/gpt-oss"):
+            kwargs["reasoning_effort"] = "low"
+            kwargs["max_tokens"] = 1500
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"

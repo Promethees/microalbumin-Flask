@@ -43,7 +43,7 @@ class Config:
 
     # AI Assistant (Groq)
     GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
-    AI_MODEL = os.environ.get('AI_MODEL', 'llama-3.1-8b-instant')
+    AI_MODEL = os.environ.get('AI_MODEL', 'openai/gpt-oss-20b')
 
     # Account / download auth
     # SQLite by default; set DATABASE_URL to a PostgreSQL URL in production.

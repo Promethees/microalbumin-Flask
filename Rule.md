@@ -105,7 +105,8 @@
 
 - The AI assistant uses **Groq API** (`https://api.groq.com`) — never Ollama or a local LLM.
 - `GROQ_API_KEY` and `AI_MODEL` are read from environment variables via `src/config.py` (`Config.GROQ_API_KEY`, `Config.AI_MODEL`).
-- Default model: `llama-3.1-8b-instant`. Override via `AI_MODEL` env var on Heroku.
+- Default model: `openai/gpt-oss-20b` (GPT-OSS reasoning model). Override via `AI_MODEL` env var on Heroku.
+  - GPT-OSS models spend completion tokens on reasoning; `_groq_chat` sets `reasoning_effort="low"` and a larger `max_tokens` for any `openai/gpt-oss*` model so answers aren't truncated. Reasoning is returned in a separate field, not `content`.
 - Settings are stored **per-session** in Flask `session['ai_settings']` via `src/ai_settings.py`. No file-based persistence.
 - The AI blueprint is `ai_bp` in `src/routes/ai_routes.py`, mounted at `/ai/*`.
 - Routes: `GET /ai/status`, `GET|POST /ai/settings`, `POST /ai/chat`, `GET /ai/guides`.
