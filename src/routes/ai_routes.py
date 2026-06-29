@@ -5,8 +5,10 @@ import requests
 from flask import Blueprint, jsonify, request, Response, stream_with_context
 import ai_settings
 import ai_assistant
+import ai_feedback
 import activation as activation_mod
 import state
+from validators import validate_json
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
 
@@ -203,6 +205,40 @@ def get_guides():
         'status': 'success',
         'examples': ai_assistant.get_guide_examples(lang),
     })
+
+
+@ai_bp.route('/feedback', methods=['POST'])
+@validate_json({
+    'rating': (str, '', True),
+    'source': (str, '', False),
+    'guide_id': (str, '', False),
+    'query': (str, '', False),
+    'answer': (str, '', False),
+    'language': (str, 'en', False),
+    'comment': (str, '', False),
+})
+def ai_feedback_route(validated_data):
+    """Record a 👍/👎 on an AI answer.
+
+    Every rating is logged. When the answer was a locally matched guide
+    (`source == "guide"` with a `guide_id`), the rating also nudges that guide's
+    learned matcher coefficient (see src/ai_feedback.py). LLM answers are logged
+    only — Groq cannot be retrained from here.
+    """
+    rating = (validated_data.get('rating') or '').strip().lower()
+    if rating not in ('up', 'down'):
+        return jsonify({'status': 'failure', 'message': 'rating must be "up" or "down"'}), 400
+
+    new_weight = ai_feedback.record_feedback(
+        rating,
+        source=validated_data.get('source') or '',
+        guide_id=validated_data.get('guide_id') or '',
+        query=validated_data.get('query') or '',
+        answer=validated_data.get('answer') or '',
+        language=validated_data.get('language') or 'en',
+        comment=validated_data.get('comment') or '',
+    )
+    return jsonify({'status': 'success', 'weight': new_weight})
 
 
 @ai_bp.route('/match', methods=['POST'])

@@ -3332,6 +3332,117 @@ body.dark .okapi-ai-msg-system {
     color: #a5b4fc;
 }
 
+/* Answer rating (feedback) row */
+.okapi-ai-feedback {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    max-width: 88%;
+    margin: -2px 0 2px 4px;
+}
+
+.okapi-ai-fb-btn {
+    width: 30px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: transparent;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.okapi-ai-fb-btn:hover {
+    opacity: 1;
+    background: rgba(99, 102, 241, 0.08);
+    border-color: #6366f1;
+}
+
+body.dark .okapi-ai-fb-btn {
+    border-color: #374151;
+}
+
+body.dark .okapi-ai-fb-btn:hover {
+    background: rgba(165, 180, 252, 0.12);
+    border-color: #a5b4fc;
+}
+
+.okapi-ai-fb-thanks {
+    font-size: 0.76rem;
+    font-style: italic;
+    color: #16a34a;
+}
+
+body.dark .okapi-ai-fb-thanks {
+    color: #4ade80;
+}
+
+.okapi-ai-fb-comment {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    resize: none;
+    background: #fff;
+    color: #1f2937;
+}
+
+body.dark .okapi-ai-fb-comment {
+    background: #111827;
+    color: #f3f4f6;
+    border-color: #374151;
+}
+
+.okapi-ai-fb-actions {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+    margin-top: 5px;
+}
+
+.okapi-ai-fb-send,
+.okapi-ai-fb-cancel {
+    padding: 3px 12px;
+    border-radius: 7px;
+    border: 1px solid #6366f1;
+    font-family: inherit;
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.okapi-ai-fb-send {
+    background: #6366f1;
+    color: #fff;
+}
+
+.okapi-ai-fb-send:hover {
+    background: #4f52e0;
+}
+
+.okapi-ai-fb-cancel {
+    background: transparent;
+    color: #6366f1;
+}
+
+.okapi-ai-fb-cancel:hover {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+body.dark .okapi-ai-fb-cancel {
+    color: #a5b4fc;
+    border-color: #a5b4fc;
+}
+
 /* Markdown helpers */
 .okapi-ai-msg code {
     background: rgba(0, 0, 0, 0.08);

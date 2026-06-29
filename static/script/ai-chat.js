@@ -183,6 +183,41 @@
         fr: 'Nouvelle conversation', ja: '新規開始', ru: 'Начать',
     };
 
+    // Answer-rating (feedback) controls
+    const _FB_UP_HINT = {
+        en: 'Helpful', vi: 'Hữu ích', zh: '有帮助',
+        fr: 'Utile', ja: '役に立った', ru: 'Полезно',
+    };
+
+    const _FB_DOWN_HINT = {
+        en: 'Not helpful', vi: 'Không hữu ích', zh: '没帮助',
+        fr: 'Pas utile', ja: '役に立たない', ru: 'Бесполезно',
+    };
+
+    const _FB_THANKS = {
+        en: 'Thanks for your feedback!', vi: 'Cảm ơn phản hồi của bạn!', zh: '感谢您的反馈！',
+        fr: 'Merci pour votre retour !', ja: 'フィードバックありがとうございます！', ru: 'Спасибо за отзыв!',
+    };
+
+    const _FB_COMMENT_PH = {
+        en: 'What went wrong? (optional)',
+        vi: 'Điều gì chưa đúng? (không bắt buộc)',
+        zh: '哪里有问题？（可选）',
+        fr: 'Qu\'est-ce qui n\'allait pas ? (facultatif)',
+        ja: '何が問題でしたか？（任意）',
+        ru: 'Что было не так? (необязательно)',
+    };
+
+    const _FB_SEND = {
+        en: 'Send', vi: 'Gửi', zh: '发送',
+        fr: 'Envoyer', ja: '送信', ru: 'Отправить',
+    };
+
+    const _FB_SKIP = {
+        en: 'Skip', vi: 'Bỏ qua', zh: '跳过',
+        fr: 'Ignorer', ja: 'スキップ', ru: 'Пропустить',
+    };
+
     // Natural-language phrases that mean "redo the last thing"
     const _REDO_VOCAB = new Set([
         // English
@@ -493,6 +528,77 @@
         div.innerHTML = _renderMarkdown(content);
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
+        return div;
+    }
+
+    // ── Answer rating (feedback) ──────────────────────────────────────────────
+
+    // Append a 👍/👎 rating row directly under an assistant bubble. `meta` carries
+    // the context posted to /ai/feedback: { source: 'guide'|'llm', guide_id,
+    // query, answer }. For matched-guide answers this rating tunes the local guide
+    // matcher; for LLM answers it is logged for review.
+    function _attachFeedback(afterDiv, meta) {
+        const container = document.getElementById('okapi-ai-messages');
+        if (!container || !afterDiv) return;
+        const lang = AI.activeLang || 'en';
+        const up = _esc(_FB_UP_HINT[lang] || _FB_UP_HINT.en);
+        const down = _esc(_FB_DOWN_HINT[lang] || _FB_DOWN_HINT.en);
+        const row = document.createElement('div');
+        row.className = 'okapi-ai-feedback';
+        row.innerHTML =
+            `<button class="okapi-ai-fb-btn" type="button" data-fb="up" data-hint="${up}" aria-label="${up}">&#128077;</button>` +
+            `<button class="okapi-ai-fb-btn" type="button" data-fb="down" data-hint="${down}" aria-label="${down}">&#128078;</button>`;
+        afterDiv.insertAdjacentElement('afterend', row);
+        container.scrollTop = container.scrollHeight;
+        row.querySelectorAll('.okapi-ai-fb-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.fb === 'down') _fbCommentBox(row, meta);
+                else _fbSubmit(row, meta, 'up', '');
+            });
+        });
+    }
+
+    // 👎 reveals an optional comment box. Both Send and Skip record the down-vote
+    // (the rating always counts) — Send attaches the note, Skip leaves it empty.
+    function _fbCommentBox(row, meta) {
+        const lang = AI.activeLang || 'en';
+        row.innerHTML =
+            `<textarea class="okapi-ai-fb-comment" rows="2" placeholder="${_esc(_FB_COMMENT_PH[lang] || _FB_COMMENT_PH.en)}"></textarea>` +
+            `<div class="okapi-ai-fb-actions">` +
+            `<button class="okapi-ai-fb-send" type="button">${_esc(_FB_SEND[lang] || _FB_SEND.en)}</button>` +
+            `<button class="okapi-ai-fb-cancel" type="button">${_esc(_FB_SKIP[lang] || _FB_SKIP.en)}</button>` +
+            `</div>`;
+        const ta = row.querySelector('.okapi-ai-fb-comment');
+        ta.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _fbSubmit(row, meta, 'down', ta.value); }
+            else if (e.key === 'Escape') { e.preventDefault(); _fbSubmit(row, meta, 'down', ''); }
+        });
+        row.querySelector('.okapi-ai-fb-send').addEventListener('click', () => _fbSubmit(row, meta, 'down', ta.value));
+        row.querySelector('.okapi-ai-fb-cancel').addEventListener('click', () => _fbSubmit(row, meta, 'down', ''));
+        ta.focus();
+        const container = document.getElementById('okapi-ai-messages');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+
+    function _fbSubmit(row, meta, rating, comment) {
+        fetch('/ai/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rating,
+                source: meta.source || '',
+                guide_id: meta.guide_id || '',
+                query: meta.query || '',
+                answer: meta.answer || '',
+                language: AI.activeLang || 'en',
+                comment: (comment || '').trim(),
+            }),
+        }).catch(() => { });   // fire-and-forget; the UI confirms regardless
+        const lang = AI.activeLang || 'en';
+        row.classList.add('okapi-ai-feedback-done');
+        row.innerHTML = `<span class="okapi-ai-fb-thanks">${_esc(_FB_THANKS[lang] || _FB_THANKS.en)}</span>`;
+        const container = document.getElementById('okapi-ai-messages');
+        if (container) container.scrollTop = container.scrollHeight;
     }
 
     // A user message that can be edited and resent. `msgIndex` is its position in
@@ -691,7 +797,10 @@
                     return false;
                 }
                 _addMsg('user', text);
-                _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+                const aDiv = _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+                // Let the user rate whether this was the right guide — a 👍/👎 here
+                // tunes the local matcher's coefficient for this guide_id.
+                _attachFeedback(aDiv, { source: 'guide', guide_id: data.guide_id || '', query: text, answer: '' });
                 _launchCustomSteps(data.steps);   // sets AI.lastAction for /redo
                 return true;
             })
@@ -1168,6 +1277,7 @@
                     if (fullReply) {
                         AI.messages.push({ role: 'assistant', content: fullReply });
                         _finalizeStreamingMsg(msgDiv, fullReply, null);
+                        _attachFeedback(msgDiv, { source: 'llm', guide_id: '', query: text, answer: fullReply });
                         if (document.hidden || !AI.open) _notifyTabTitle();
                     } else {
                         const fallback = _EMPTY_REPLY[AI.activeLang] || _EMPTY_REPLY.en;

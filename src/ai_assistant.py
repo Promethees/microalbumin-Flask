@@ -6,6 +6,7 @@ import os
 from file_path import DATA_ROOT, validate_in_data_root
 from file import get_file_list
 import state
+import ai_feedback
 
 # ── Guide training examples (few-shot injection) ──────────────────────────────
 
@@ -200,8 +201,14 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
         if conditions.get("mode_in") is not None and mode not in conditions["mode_in"]:
             continue
 
+        ex_id = ex.get("id", "")
         keywords = ex.get("queries", [])
         score: float = sum(_score_keyword(kw, q_lower, q_content) for kw in keywords)
+        # Reinforced vocabulary from user 👍 feedback adds to the baseline signal,
+        # so phrasings the user confirmed for this guide score higher next time.
+        learned = ai_feedback.learned_terms(ex_id)
+        if learned:
+            score += sum(_score_keyword(kw, q_lower, q_content) for kw in learned)
         if score < 0.1:
             continue
         if conditions.get("mode") and mode == conditions["mode"]:
@@ -210,6 +217,12 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
             score += 2
         elif conditions.get("mode_not"):
             score += 1
+
+        # Learned coefficient: 👍 lifts this guide, 👎 suppresses it. Applied AFTER
+        # the baseline-relevance gate so a positive weight can never make an
+        # unrelated guide (zero keyword signal) fire; a negative weight can push a
+        # genuine match below the launch threshold (effectively un-firing it).
+        score += ai_feedback.learned_bonus(ex_id)
 
         if score > best_score:
             best_score = score

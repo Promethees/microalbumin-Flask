@@ -13,6 +13,7 @@ import activation as activation_mod
 _PRESERVE = frozenset({
     'data', 'report', 'json', 'log',
     'activation.json', 'ai_settings.json', 'user_settings.json',
+    'ai_feedback.jsonl', 'ai_guide_weights.json',
     '.env',
 })
 

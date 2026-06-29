@@ -39,6 +39,10 @@ generate_heavy_csv.py
 
 !user_settings.json
 
+# Per-machine AI feedback + learned guide-matcher weights (ai_guide_weights.json
+# is already covered by *.json; the .jsonl log needs its own rule)
+ai_feedback.jsonl
+
 # Build tooling (tracked despite the broad *.txt / *.env ignores above)
 !requirements-build.txt
 !.env.example
