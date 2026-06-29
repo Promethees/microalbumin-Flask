@@ -163,6 +163,26 @@
         fr: 'Annuler', ja: 'キャンセル', ru: 'Отмена',
     };
 
+    // New-conversation confirmation
+    const _NEW_CHAT_CONFIRM_TITLE = {
+        en: 'Start a new conversation?', vi: 'Bắt đầu cuộc trò chuyện mới?', zh: '开始新对话？',
+        fr: 'Démarrer une nouvelle conversation ?', ja: '新しい会話を始めますか？', ru: 'Начать новый разговор?',
+    };
+
+    const _NEW_CHAT_CONFIRM_TEXT = {
+        en: 'This clears the current chat and can\'t be undone.',
+        vi: 'Thao tác này sẽ xóa cuộc trò chuyện hiện tại và không thể hoàn tác.',
+        zh: '这将清除当前对话且无法撤销。',
+        fr: 'Cela efface la conversation actuelle et est irréversible.',
+        ja: '現在のチャットが消去され、元に戻せません。',
+        ru: 'Это очистит текущий чат без возможности отмены.',
+    };
+
+    const _NEW_CHAT_CONFIRM_OK = {
+        en: 'Start new', vi: 'Bắt đầu mới', zh: '开始新对话',
+        fr: 'Nouvelle conversation', ja: '新規開始', ru: 'Начать',
+    };
+
     // Natural-language phrases that mean "redo the last thing"
     const _REDO_VOCAB = new Set([
         // English
@@ -300,6 +320,7 @@
 <div id="okapi-ai-header">
   <span id="okapi-ai-title">&#129302; OKAPI Assistant</span>
   <div id="okapi-ai-header-btns">
+    <button id="okapi-ai-new-btn" data-hint="New conversation" onclick="OkapiAI.newChat()">&#43;</button>
     <div id="okapi-ai-lang-select">
       <button id="okapi-ai-lang-btn" data-hint="Change language" onclick="OkapiAI.toggleLangMenu()"></button>
       <div id="okapi-ai-lang-menu" class="okapi-hidden">
@@ -1182,6 +1203,41 @@
             AI.messages = [];
             const container = document.getElementById('okapi-ai-messages');
             if (container) container.innerHTML = '';
+        },
+
+        // Start a fresh conversation: drop history + on-screen messages and show the
+        // welcome again. Confirms first when there is a visible conversation to lose.
+        newChat() {
+            const container = document.getElementById('okapi-ai-messages');
+            const hasContent = !!(container && container.children.length);
+
+            const doReset = () => {
+                if (AI.currentAbort) OkapiAI.stopGeneration();
+                AI.messages = [];
+                AI.lastAction = null;
+                if (container) container.innerHTML = '';
+                const input = document.getElementById('okapi-ai-input');
+                if (input) input.value = '';
+                _pickerHide();
+                _clearTabNotification();
+                _addSystemMsg(_welcomeMsg());
+                if (input) input.focus();
+            };
+
+            const lang = AI.activeLang || 'en';
+            if (hasContent && typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: _NEW_CHAT_CONFIRM_TITLE[lang] || _NEW_CHAT_CONFIRM_TITLE.en,
+                    text: _NEW_CHAT_CONFIRM_TEXT[lang] || _NEW_CHAT_CONFIRM_TEXT.en,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: _NEW_CHAT_CONFIRM_OK[lang] || _NEW_CHAT_CONFIRM_OK.en,
+                    cancelButtonText: _EDIT_CANCEL[lang] || _EDIT_CANCEL.en,
+                    confirmButtonColor: '#6366f1',
+                }).then(res => { if (res.isConfirmed) doReset(); });
+            } else {
+                doReset();
+            }
         },
     };
 })();
