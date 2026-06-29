@@ -449,6 +449,31 @@ Timestamp,Value:1,Value:2,...
   `tests/test_i18n.py`, which fails on key drift); do **not** strip the in-place English text when adding a
   `data-i18n*` attribute (it is the fallback); do **not** translate the technical terms above.
 
+### 2.23 Excel Export — Native Calibration Charts
+
+- **Calibration fit charts must export as native, editable Excel charts, not baked-in PNGs.** A PNG
+  freezes the axis text into pixels, so the user can't rename axes when they edit the workbook. The
+  `/export_report_excel` route (`file_routes.py`) renders calibration "standards points + fit curve"
+  charts as openpyxl `ScatterChart`s (`_add_native_scatter_chart`): two series — standards as
+  markers (`Marker` + `graphicalProperties.line.noFill`), fit as a smooth line (`smooth=True`,
+  `Marker('none')`) — with `chart.title` / `x_axis.title` / `y_axis.title` as live Excel objects.
+  **You must set `x_axis.delete = False` and `y_axis.delete = False`** or openpyxl hides the axis
+  titles entirely.
+- **Data contract**: the client (`report.js`) sends each calibration chart as a `chart_series` entry
+  (`{ label, title, algo, xLabel, yLabel, points:[{x,y}], fit:[{x,y}] }`) built by
+  `buildScatterSeries()`, not as a `chart_images` base64 PNG. The backend prefers `chart_series` and
+  falls back to embedding `chart_images` only when `chart_series` is absent (back-compat + non-calibration
+  time-series snapshots). Keep both client export paths in lockstep — the per-view `generateReportExcelFromCurrent`
+  **and** the multi-file report-console `finalizeReportExcel`.
+- **Axis-label boxes**: both export dialogs expose editable, auto-filled X/Y label boxes (the
+  `generateReport` SweetAlert `#swal-xlabel`/`#swal-ylabel`, and the console `#console-xlabel`/`#console-ylabel`).
+  X defaults to `Concentration`; **Y left blank means "auto" — each chart uses its own metric/measurement
+  label** (`niceMetric` / `measLabel`), so do not force a single global Y onto charts that plot different
+  metrics. A non-blank box overrides every chart in that export.
+- **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
+  columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
+  move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
+
 ---
 
 ## 3. Autonomous Documentation Updates

@@ -153,6 +153,7 @@ Reports are generated as standalone HTML files and organized under `report/<subj
 | `/delete_report_subject` | POST | Delete a subject folder and all its reports |
 | `/copy_report_subject` | POST | Duplicate a subject folder |
 | `/rename_report_subject` | POST | Rename a subject folder |
+| `/export_report_excel` | POST | Build an `.xlsx` report (openpyxl). Items carry `csv_columns`/`csv_rows`, `coef_tables`, `analysis_rows`, `derived_lines`, plus charts. **Calibration fit charts ship as `chart_series` (raw `points` + `fit` arrays + `xLabel`/`yLabel`/`title`/`algo`) and render as native, editable Excel `ScatterChart`s** — points as markers, fit as a smooth line, with renameable axis titles. The X/Y axis labels are pre-filled and overridable in the export dialogs (`generateReport` SwAL boxes + the report-console `#console-xlabel`/`#console-ylabel` fields). Legacy `chart_images` (base64 PNG) is still embedded as a fallback when no `chart_series` is present, and is still used for non-calibration time-series snapshots. Helper data for each native chart is written to off-to-the-right columns (col AA onward, a per-sheet `_chart_helper_col` cursor) — kept visible because Excel does not plot hidden cells. |
 
 ---
 

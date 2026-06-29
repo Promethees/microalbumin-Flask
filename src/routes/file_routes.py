@@ -1126,7 +1126,9 @@ def export_report_excel(validated_data):
     import base64
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.chart import LineChart, Reference
+    from openpyxl.chart import LineChart, ScatterChart, Reference, Series
+    from openpyxl.chart.marker import Marker
+    from openpyxl.chart.shapes import GraphicalProperties
     from openpyxl.drawing.image import Image as XLImage
     from openpyxl.utils import get_column_letter
     from datetime import datetime as _dt
@@ -1177,6 +1179,81 @@ def export_report_excel(validated_data):
         chart.height = 12
         ws.add_chart(chart, f'A{anchor}')
         return anchor + CHART_ROW_RESERVE
+
+    def _add_native_scatter_chart(ws, s, anchor_row):
+        """Render a calibration fit as a *native* (editable) Excel ScatterChart.
+
+        Two series — the standards points (markers only) and the fitted curve
+        (smooth line, no markers). Unlike an embedded PNG, the chart title and
+        axis titles remain live Excel objects the user can rename after export.
+
+        The X/Y values are written to helper columns far to the right of the
+        report content (so they don't clutter it but stay *visible* — Excel does
+        not plot data in hidden cells). A per-sheet cursor (`_chart_helper_col`)
+        keeps successive charts from overwriting each other.
+        """
+        points = [p for p in (s.get('points') or [])
+                  if p.get('x') is not None and p.get('y') is not None]
+        fit = [p for p in (s.get('fit') or [])
+               if p.get('x') is not None and p.get('y') is not None]
+        if not points and not fit:
+            return anchor_row
+
+        hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
+        px_col, py_col, fx_col, fy_col = hc, hc + 1, hc + 2, hc + 3
+        _cell(ws, 1, px_col, 'pt_x'); _cell(ws, 1, py_col, 'pt_y')
+        _cell(ws, 1, fx_col, 'fit_x'); _cell(ws, 1, fy_col, 'fit_y')
+        for i, p in enumerate(points, start=2):
+            ws.cell(i, px_col, value=p.get('x'))
+            ws.cell(i, py_col, value=p.get('y'))
+        for i, p in enumerate(fit, start=2):
+            ws.cell(i, fx_col, value=p.get('x'))
+            ws.cell(i, fy_col, value=p.get('y'))
+
+        chart = ScatterChart()
+        # scatterStyle is *required* by the OOXML schema. Omitting it yields a
+        # technically-invalid chart that Excel silently "repairs" (dropping the
+        # marker series) and that Google Sheets refuses to render at all.
+        chart.scatterStyle = 'lineMarker'
+        chart.title = s.get('title') or s.get('label') or 'Calibration Curve'
+        chart.x_axis.title = s.get('xLabel') or 'Concentration'
+        chart.y_axis.title = s.get('yLabel') or 'Value'
+        # openpyxl defaults axes to delete=True, which hides the axis titles.
+        chart.x_axis.delete = False
+        chart.y_axis.delete = False
+        # ScatterChart leaves both value axes at axPos='l'; the X axis belongs at
+        # the bottom (some readers, incl. Google Sheets, mis-plot otherwise).
+        chart.x_axis.axPos = 'b'
+        chart.y_axis.axPos = 'l'
+        chart.style = 13
+        chart.width = 18
+        chart.height = 11
+
+        if points:
+            n = len(points)
+            xref = Reference(ws, min_col=px_col, min_row=2, max_row=n + 1)
+            yref = Reference(ws, min_col=py_col, min_row=2, max_row=n + 1)
+            sp = Series(yref, xref, title='Standards')
+            marker = Marker(symbol='circle', size=7)
+            marker.graphicalProperties = GraphicalProperties(solidFill='3498DB')
+            sp.marker = marker
+            sp.graphicalProperties.line.noFill = True  # markers only, no join line
+            chart.series.append(sp)
+        if fit:
+            n = len(fit)
+            fxref = Reference(ws, min_col=fx_col, min_row=2, max_row=n + 1)
+            fyref = Reference(ws, min_col=fy_col, min_row=2, max_row=n + 1)
+            algo = s.get('algo')
+            sf = Series(fyref, fxref, title=('Fit ({})'.format(algo) if algo else 'Fit'))
+            sf.marker = Marker(symbol='none')
+            sf.graphicalProperties.line.solidFill = 'E74C3C'
+            sf.graphicalProperties.line.width = 28000  # EMU (~2.2pt)
+            sf.smooth = True
+            chart.series.append(sf)
+
+        ws.add_chart(chart, 'A{}'.format(anchor_row))
+        ws._chart_helper_col = hc + 5  # leave a 1-column gap between blocks
+        return anchor_row + CHART_ROW_RESERVE
 
     def _embed_image(ws, b64_str, anchor_row):
         if b64_str.startswith('data:'):
@@ -1232,6 +1309,7 @@ def export_report_excel(validated_data):
         filename      = item.get('filename', 'Item')
         mode          = item.get('mode', 'N/A')
         chart_images  = item.get('chart_images', [])
+        chart_series  = item.get('chart_series', [])
         csv_columns   = item.get('csv_columns', [])
         csv_rows      = item.get('csv_rows', [])
         analysis_rows = item.get('analysis_rows', [])
@@ -1267,18 +1345,28 @@ def export_report_excel(validated_data):
                                 pass
                         ws.cell(r, ci, value=val).border = CELL_BORDER
                     r += 1
-                r += 1  # blank row before images
+                r += 1  # blank row before charts
 
-                # Embed canvas-rendered chart images (one per calibrated metric)
-                for ci_info in chart_images:
-                    label = ci_info.get('label', '')
-                    b64   = ci_info.get('b64', '')
-                    if not b64:
-                        continue
-                    if label:
-                        _cell(ws, r, 1, label, bold=True, size=11, color='555555')
-                        r += 1
-                    r = _embed_image(ws, b64, r)
+                # Prefer native (editable) ScatterCharts — points + fit line with
+                # live, renameable axis titles. Falls back to embedded PNGs only
+                # for older payloads that still send chart_images.
+                if chart_series:
+                    for s in chart_series:
+                        label = s.get('label', '')
+                        if label:
+                            _cell(ws, r, 1, label, bold=True, size=11, color='555555')
+                            r += 1
+                        r = _add_native_scatter_chart(ws, s, r)
+                else:
+                    for ci_info in chart_images:
+                        label = ci_info.get('label', '')
+                        b64   = ci_info.get('b64', '')
+                        if not b64:
+                            continue
+                        if label:
+                            _cell(ws, r, 1, label, bold=True, size=11, color='555555')
+                            r += 1
+                        r = _embed_image(ws, b64, r)
             else:
                 _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
                 if len(csv_columns) > 1:

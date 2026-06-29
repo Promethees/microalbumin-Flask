@@ -260,6 +260,23 @@ function buildCalibrationRegressionLine(xConc, coefficients, algo) {
     return line;
 }
 
+// Build a native-chart series descriptor for the Excel exporter. Instead of a
+// baked-in PNG, this ships the raw standards points + fit-line points and the
+// axis labels so the backend can emit an editable ScatterChart whose axis
+// titles can be renamed inside Excel. xLabel/yLabel may be user overrides from
+// the export dialog; blank falls back to the per-chart natural label.
+function buildScatterSeries({ xConc, yMetric, regLine, title, label, algo, xLabel, yLabel }) {
+    return {
+        label: label || title,
+        title: title,
+        algo: algo,
+        xLabel: (xLabel && xLabel.trim()) || 'Concentration',
+        yLabel: (yLabel && yLabel.trim()) || 'Value',
+        points: (xConc || []).map((x, i) => ({ x, y: (yMetric || [])[i] })),
+        fit: regLine || []
+    };
+}
+
 // Render a calibration scatter (standards) + fit line to a PNG data URL,
 // off-screen at print resolution. Shared by the PDF and Excel generators.
 function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo }) {
@@ -355,6 +372,13 @@ async function generateReport() {
                 </div>
                 <button type="button" id="swal-tp-add" style="margin:0 0 6px 4px; padding:3px 10px; border:1px solid #3498db; background:#eaf4fc; color:#2980b9; border-radius:5px; cursor:pointer; font-size:0.85rem;">+ Add time point</button>
                 <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Add a time point and tick one or more fits for it. One curve is produced per time point × fit.</div>` : ''}
+                ${isCalibrate ? `
+                <label style="display:block; margin:10px 0 5px;">Excel chart axis labels <span style="color:#888; font-weight:normal; font-size:0.8rem;">(editable later in Excel)</span></label>
+                <div style="display:flex; gap:10px; margin-bottom:6px;">
+                    <input id="swal-xlabel" class="swal2-input" placeholder="X-axis label" value="Concentration" style="margin:0; flex:1;">
+                    <input id="swal-ylabel" class="swal2-input" placeholder="Y-axis (auto per metric)" style="margin:0; flex:1;">
+                </div>
+                <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Calibration charts export as native Excel charts. Leave Y blank to auto-label each chart with its metric.</div>` : ''}
                 <label style="display:block; margin-bottom:5px;">Export Format</label>
                 <div style="display:flex; gap:20px;">
                     <label style="cursor:pointer;"><input type="radio" name="swal-fmt" value="pdf" checked> PDF (print)</label>
@@ -390,6 +414,11 @@ async function generateReport() {
         preConfirm: () => {
             const title  = document.getElementById('swal-input1').value;
             const fmt    = document.querySelector('input[name="swal-fmt"]:checked')?.value || 'pdf';
+            // Native Excel-chart axis-label overrides (calibration only).
+            const axisLabels = {
+                x: document.getElementById('swal-xlabel')?.value || '',
+                y: document.getElementById('swal-ylabel')?.value || ''
+            };
             if (!isCalibrate) return { title, fmt };
             if (isKineticsCal) {
                 // Map each *checked* metric to the list of fit algorithms ticked on its row.
@@ -404,7 +433,7 @@ async function generateReport() {
                     Swal.showValidationMessage('Select at least one metric with at least one fit algorithm.');
                     return false;
                 }
-                return { title, fmt, metricAlgos };
+                return { title, fmt, metricAlgos, axisLabels };
             }
             if (isPointCal) {
                 // One entry per time-point row, each with its list of ticked algorithms.
@@ -418,9 +447,9 @@ async function generateReport() {
                     Swal.showValidationMessage('Add at least one time point with a fit algorithm.');
                     return false;
                 }
-                return { title, fmt, timePointAlgos };
+                return { title, fmt, timePointAlgos, axisLabels };
             }
-            return { title, fmt };
+            return { title, fmt, axisLabels };
         }
     });
 
@@ -435,7 +464,7 @@ async function generateReport() {
     logEvent('report', 'generate', { mode: AppState.currentMeasurementMode, format: reportFormat });
 
     if (reportFormat === 'excel') {
-        await generateReportExcelFromCurrent(reportTitle, { metricAlgos, timePointAlgos });
+        await generateReportExcelFromCurrent(reportTitle, { metricAlgos, timePointAlgos, axisLabels: formValues.axisLabels });
         return;
     }
 
@@ -787,6 +816,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
     // options.timePointAlgos → point calibrate: [{ timePoint, algos: [algos] }] for each chosen time point
     const metricAlgos    = options.metricAlgos || null;
     const timePointAlgos  = options.timePointAlgos || null;
+    const axisLabels      = options.axisLabels || {};   // { x, y } native-chart label overrides
     const calibrationWarnings = [];
     window.showSpinner();
     try {
@@ -812,6 +842,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
             filename:      currentFile,
             mode:          AppState.currentMeasurementMode || 'N/A',
             chart_images:  [],
+            chart_series:  [],
             csv_columns:   [],
             csv_rows:      [],
             analysis_rows: [],
@@ -840,11 +871,11 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                     const fitLabel = `${measLabel} @ ${tpLabel} — ${algo}`;
                     fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
                     const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, algo);
-                    const imgData = await renderCalibrationChartImage({
+                    itemData.chart_series.push(buildScatterSeries({
                         xConc: pd.x, yMetric: pd.y, regLine,
-                        title: fitLabel, yLabel: measLabel, algo
-                    });
-                    if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                        title: fitLabel, label: fitLabel, algo,
+                        xLabel: axisLabels.x, yLabel: axisLabels.y || measLabel
+                    }));
                 } else {
                     calibrationWarnings.push(`Point calibration @ ${tpLabel}: no ${algo} curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
                 }
@@ -905,33 +936,11 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                     regLine.push({ x: curX, y: curY });
                 }
 
-                let imgData = null;
-                await new Promise(resolve => {
-                    const cv = document.createElement('canvas');
-                    cv.width = 1600; cv.height = 800;
-                    const tc = new Chart(cv.getContext('2d'), {
-                        type: 'scatter',
-                        data: {
-                            datasets: [
-                                { label: 'Standards', data: dataPoint.x.map((x, i) => ({ x, y: dataPoint.y[i] })), backgroundColor: '#3498db', pointRadius: 6 },
-                                { label: `Fit (${algo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
-                            ]
-                        },
-                        options: {
-                            responsive: false, animation: false,
-                            plugins: {
-                                title: { display: true, text: fitLabel, font: { size: 18 } },
-                                legend: { display: true, position: 'bottom' }
-                            },
-                            scales: {
-                                x: { title: { display: true, text: 'Concentration', font: { size: 14 } } },
-                                y: { title: { display: true, text: dataPoint.metric, font: { size: 14 } } }
-                            }
-                        }
-                    });
-                    setTimeout(() => { imgData = cv.toDataURL('image/png'); tc.destroy(); resolve(); }, 250);
-                });
-                if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                itemData.chart_series.push(buildScatterSeries({
+                    xConc: dataPoint.x, yMetric: dataPoint.y, regLine,
+                    title: fitLabel, label: fitLabel, algo,
+                    xLabel: axisLabels.x, yLabel: axisLabels.y || niceMetric
+                }));
                 } // end algo loop
             }
             itemData.coef_tables = _buildCoefTables('Metric', fits);
@@ -2438,6 +2447,10 @@ async function finalizeReportExcel() {
     try {
         const reportTitle = document.getElementById('console-title').value || 'Analysis Report';
         const splitSheets = document.getElementById('console-split-sheets').checked;
+        const axisLabels  = {
+            x: document.getElementById('console-xlabel')?.value || '',
+            y: document.getElementById('console-ylabel')?.value || ''
+        };
         const COLORS = [
             'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgba(190, 136, 9, 1)',
             'rgb(54, 162, 235)', 'rgb(153, 102, 255)', 'rgba(139, 144, 75, 1)',
@@ -2460,6 +2473,7 @@ async function finalizeReportExcel() {
                 filename,
                 mode: config.metadata.mode || 'N/A',
                 chart_images: [],
+                chart_series: [],
                 csv_columns: [],
                 csv_rows: [],
                 analysis_rows: [],
@@ -2500,10 +2514,11 @@ async function finalizeReportExcel() {
                         const fitLabel = `${measLabel} @ ${tpLabel} - ${algo}`;
                         fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
                         const regLine = buildCalibrationRegressionLine(xVals, analysis.coefficients, algo);
-                        const imgData = await renderCalibrationChartImage({
-                            xConc: xVals, yMetric: yVals, regLine, title: fitLabel, yLabel: measLabel, algo
-                        });
-                        if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                        itemData.chart_series.push(buildScatterSeries({
+                            xConc: xVals, yMetric: yVals, regLine,
+                            title: fitLabel, label: fitLabel, algo,
+                            xLabel: axisLabels.x, yLabel: axisLabels.y || measLabel
+                        }));
                     }
                 }
                 itemData.coef_tables = _buildCoefTables('Time Point', fits);
@@ -2564,28 +2579,11 @@ async function finalizeReportExcel() {
                             regLine.push({ x: curX, y: curY });
                         }
 
-                        let imgData = null;
-                        await new Promise(resolve => {
-                            const calCv = document.createElement('canvas');
-                            calCv.width = 1600; calCv.height = 800;
-                            const tc = new Chart(calCv.getContext('2d'), {
-                                type: 'scatter',
-                                data: {
-                                    datasets: [
-                                        { label: 'Standards', data: xVals.map((x, i) => ({ x, y: yVals[i] })), backgroundColor: '#3498db', pointRadius: 6 },
-                                        { label: `Fit (${algo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
-                                    ]
-                                },
-                                options: {
-                                    responsive: false, animation: false,
-                                    plugins: { title: { display: true, text: fitLabel, font: { size: 18 } }, legend: { display: true, position: 'bottom' } },
-                                    scales: { x: { title: { display: true, text: 'Concentration' } }, y: { title: { display: true, text: niceMetric } } }
-                                }
-                            });
-                            setTimeout(() => { imgData = calCv.toDataURL('image/png'); tc.destroy(); resolve(); }, 250);
-                        });
-
-                        if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
+                        itemData.chart_series.push(buildScatterSeries({
+                            xConc: xVals, yMetric: yVals, regLine,
+                            title: fitLabel, label: fitLabel, algo,
+                            xLabel: axisLabels.x, yLabel: axisLabels.y || niceMetric
+                        }));
                     }
                 }
                 itemData.coef_tables = _buildCoefTables('Metric', fits);
