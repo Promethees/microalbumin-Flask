@@ -706,9 +706,10 @@ const SETTINGS_DEFAULTS = {
     merge_directory_picker: false,
     disable_popups: false,
     default_concentration_unit: 'ng/µL',
+    ai_feedback_enabled: true,
 };
 
-function _buildSettingsHTML(s, folders) {
+function _buildSettingsHTML(s, folders, aiStats) {
     const subfolderOptions = folders.map(f =>
         `<option value="${f.name}" ${s.default_subfolder === f.name ? 'selected' : ''}>${f.name}</option>`
     ).join('');
@@ -857,6 +858,27 @@ function _buildSettingsHTML(s, folders) {
             </div>
             <p id="swal-data-root-status" style="font-size:0.8em;color:#888;margin-top:5px;min-height:1.2em;"></p>
         </div>` : ''}
+        <div class="sm-section sm-section--full">
+            <p class="sm-section-title">${t('settings.section.ai_assistant', 'AI Assistant')}</p>
+            ${rowCheck(t('settings.ai_feedback_enabled', 'Collect answer feedback &amp; learn'), 'swal-ai-feedback-enabled', s.ai_feedback_enabled !== false)}
+            <p class="sm-help" style="margin-top:2px;">${t('settings.ai_feedback.help', 'Rate AI answers with 👍/👎. Ratings stay on this machine and tune guide matching.')}</p>
+            <p id="swal-ai-feedback-summary" class="sm-help" style="margin-top:6px;">${
+                t('settings.ai_feedback.summary', '{n} ratings · {m} guides tuned')
+                    .replace('{n}', (aiStats && aiStats.ratings) || 0)
+                    .replace('{m}', (aiStats && aiStats.guides_tuned) || 0)
+            }</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                <button type="button" onclick="exportAiFeedback()"
+                    style="font-size:0.8em;padding:4px 12px;border-radius:6px;border:1px solid #d1d5db;background:transparent;cursor:pointer;">
+                    ${t('settings.ai_feedback.export', 'Export feedback')}
+                </button>
+                <button type="button" onclick="resetAiFeedback()"
+                    style="font-size:0.8em;padding:4px 12px;border-radius:6px;border:1px solid #d1d5db;background:transparent;cursor:pointer;">
+                    ${t('settings.ai_feedback.reset', 'Reset learning')}
+                </button>
+            </div>
+            <p id="swal-ai-feedback-status" style="font-size:0.8em;color:#888;margin-top:5px;min-height:1.2em;"></p>
+        </div>
         <div class="sm-section">
             <p class="sm-section-title">${t('settings.section.about', 'About')}</p>
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -900,6 +922,7 @@ function _readSettingsForm() {
         default_interval_unit: document.getElementById('swal-log-interval-unit').value,
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
+        ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
     };
 }
 
@@ -940,12 +963,14 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-log-interval-unit').value = s.default_interval_unit || 'seconds';
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
+    document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
-    const [settingsRes, foldersRes] = await Promise.all([
+    const [settingsRes, foldersRes, aiStatsRes] = await Promise.all([
         fetch('/settings').then(r => r.json()).catch(() => null),
-        fetch('/get_data_folders').then(r => r.json()).catch(() => [])
+        fetch('/get_data_folders').then(r => r.json()).catch(() => []),
+        fetch('/ai/feedback/stats').then(r => r.json()).catch(() => null)
     ]);
 
     const s = (settingsRes && settingsRes.settings) ? settingsRes.settings : (typeof USER_SETTINGS !== 'undefined' ? { ...USER_SETTINGS } : {});
@@ -955,7 +980,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     const { value: formValues, isConfirmed } = await Swal.fire({
         title: t('settings.title', 'App Settings'),
         width: 'min(92vw, 680px)',
-        html: _buildSettingsHTML(s, folders),
+        html: _buildSettingsHTML(s, folders, aiStatsRes),
         showCancelButton: true,
         confirmButtonText: t('common.save', 'Save'),
         cancelButtonText: t('common.cancel', 'Cancel'),
@@ -1368,6 +1393,42 @@ async function changeDataRootFromSettings() {
 function resetDataRootFromSettings() {
     const statusEl = document.getElementById('swal-data-root-status');
     _postDataRoot({ reset: true }, statusEl);
+}
+
+// Download the AI feedback log + learned weights as a zip (user-controlled archive).
+function exportAiFeedback() {
+    const a = document.createElement('a');
+    a.href = '/ai/feedback/export';
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    const statusEl = document.getElementById('swal-ai-feedback-status');
+    if (statusEl) statusEl.textContent = t('settings.ai_feedback.export_done', 'Archive downloaded.');
+}
+
+// Reset learning: clear the rating log + learned guide weights on this machine.
+async function resetAiFeedback() {
+    const res = await Swal.fire({
+        title: t('settings.ai_feedback.reset_confirm_title', 'Reset AI learning?'),
+        text: t('settings.ai_feedback.reset_confirm_text', 'This deletes all ratings and learned guide weights on this machine. This cannot be undone.'),
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: t('settings.ai_feedback.reset', 'Reset learning'),
+        cancelButtonText: t('common.cancel', 'Cancel'),
+        confirmButtonColor: '#d33',
+    });
+    if (!res.isConfirmed) return;
+    const statusEl = document.getElementById('swal-ai-feedback-status');
+    const ok = await fetch('/ai/feedback/reset', { method: 'POST' }).then(r => r.ok).catch(() => false);
+    if (ok) {
+        const summary = document.getElementById('swal-ai-feedback-summary');
+        if (summary) summary.textContent = t('settings.ai_feedback.summary', '{n} ratings · {m} guides tuned')
+            .replace('{n}', 0).replace('{m}', 0);
+        if (statusEl) statusEl.textContent = t('settings.ai_feedback.reset_done', 'AI feedback and learned weights cleared.');
+    } else if (statusEl) {
+        statusEl.textContent = t('settings.save_failed', 'Could not save settings.');
+    }
 }
 
 function checkForUpdateFromSettings() {

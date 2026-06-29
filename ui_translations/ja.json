@@ -192,5 +192,15 @@
   "cdc.session_stopped": "セッションはデバイスで手動停止されました。",
   "cdc.session_timeout": "タイムアウトによりセッションが終了しました。",
   "cdc.reading_stopped": "読み取り停止",
-  "hint.base_name": "各読み取りは選択したフォルダーに \"BaseName_N.csv\" として保存され、N は 0 から自動的に増加します（例：sample_0.csv、sample_1.csv …）。そのため同じ名前で繰り返し読み取っても互いに上書きされません。"
+  "hint.base_name": "各読み取りは選択したフォルダーに \"BaseName_N.csv\" として保存され、N は 0 から自動的に増加します（例：sample_0.csv、sample_1.csv …）。そのため同じ名前で繰り返し読み取っても互いに上書きされません。",
+  "settings.section.ai_assistant": "AI アシスタント",
+  "settings.ai_feedback_enabled": "回答フィードバックを収集して学習",
+  "settings.ai_feedback.help": "👍/👎 で AI の回答を評価します。フィードバックはこの端末に保存され、ガイドのマッチングを改善します。",
+  "settings.ai_feedback.summary": "{n} 件の評価 · {m} 件のガイドを調整",
+  "settings.ai_feedback.export": "フィードバックをエクスポート",
+  "settings.ai_feedback.export_done": "アーカイブをダウンロードしました。",
+  "settings.ai_feedback.reset": "学習をリセット",
+  "settings.ai_feedback.reset_confirm_title": "AI の学習をリセットしますか？",
+  "settings.ai_feedback.reset_confirm_text": "この端末のすべての評価と学習済みガイド重みを削除します。元に戻せません。",
+  "settings.ai_feedback.reset_done": "AI フィードバックと学習済み重みを消去しました。"
 }

@@ -296,6 +296,17 @@ class TestSave:
         user_settings.save({"disable_popups": False})
         assert user_settings.load()["disable_popups"] is False
 
+    def test_ai_feedback_enabled_default_is_true(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["ai_feedback_enabled"] is True
+
+    def test_saves_ai_feedback_enabled(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"ai_feedback_enabled": False})
+        assert user_settings.load()["ai_feedback_enabled"] is False
+        user_settings.save({"ai_feedback_enabled": True})
+        assert user_settings.load()["ai_feedback_enabled"] is True
+
 
 # ---------------------------------------------------------------------------
 # GET /settings route

@@ -540,6 +540,9 @@
     function _attachFeedback(afterDiv, meta) {
         const container = document.getElementById('okapi-ai-messages');
         if (!container || !afterDiv) return;
+        // Respect the opt-out toggle (App Settings → AI Assistant). Read live so a
+        // mid-session change takes effect on the next answer without a reload.
+        if (window.USER_SETTINGS && window.USER_SETTINGS.ai_feedback_enabled === false) return;
         const lang = AI.activeLang || 'en';
         const up = _esc(_FB_UP_HINT[lang] || _FB_UP_HINT.en);
         const down = _esc(_FB_DOWN_HINT[lang] || _FB_DOWN_HINT.en);

@@ -39,6 +39,7 @@ DEFAULTS = {
     "merge_directory_picker": False,
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
+    "ai_feedback_enabled": True,
 }
 
 
@@ -124,7 +125,7 @@ def save(updates: dict) -> bool:
                      "range_expanded_default", "export_expanded_default",
                      "log_section_collapsed", "default_notify",
                      "default_inf_timeout", "merge_directory_picker",
-                     "disable_popups"):
+                     "disable_popups", "ai_feedback_enabled"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])
     if "log_display_height" in updates:

@@ -140,6 +140,42 @@ def test_positive_weight_does_not_make_unrelated_guide_fire(feedback_dir):
     assert best is None
 
 
+def test_disabling_feedback_ignores_learned_weights(feedback_dir):
+    query = "how do I start a measurement"
+    best, base = ai_assistant._match_guide_example(query, KIN, "en")
+    gid = best["id"]
+    ai_feedback.record_feedback('up', source='guide', guide_id=gid, query=query)
+    _, boosted = ai_assistant._match_guide_example(query, KIN, "en")
+    assert boosted > base
+    # Opt out → the matcher must ignore the learned weights entirely.
+    with open(os.path.join(str(feedback_dir), 'user_settings.json'), 'w', encoding='utf-8') as f:
+        json.dump({'ai_feedback_enabled': False}, f)
+    assert ai_feedback.is_enabled() is False
+    _, off = ai_assistant._match_guide_example(query, KIN, "en")
+    assert off == pytest.approx(base)
+
+
+# ── Stats / clear ────────────────────────────────────────────────────────────
+
+def test_stats_counts(feedback_dir):
+    ai_feedback.record_feedback('up', source='guide', guide_id='g1', query='alpha beta')
+    ai_feedback.record_feedback('down', source='llm', query='x')
+    s = ai_feedback.stats()
+    assert s['ratings'] == 2 and s['up'] == 1 and s['down'] == 1
+    assert s['guides_tuned'] == 1
+
+
+def test_clear_removes_both_files(feedback_dir):
+    ai_feedback.record_feedback('up', source='guide', guide_id='g', query='persisted word')
+    log = os.path.join(str(feedback_dir), 'ai_feedback.jsonl')
+    weights = os.path.join(str(feedback_dir), 'ai_guide_weights.json')
+    assert os.path.exists(log) and os.path.exists(weights)
+    ai_feedback.clear()
+    assert not os.path.exists(log) and not os.path.exists(weights)
+    assert ai_feedback.learned_bonus('g') == 0.0
+    assert ai_feedback.stats()['ratings'] == 0
+
+
 # ── Route ────────────────────────────────────────────────────────────────────
 
 @pytest.fixture
@@ -173,3 +209,40 @@ def test_feedback_route_rejects_bad_rating(client):
 def test_feedback_route_requires_rating(client):
     rv = client.post('/ai/feedback', json={'source': 'llm'})
     assert rv.status_code == 400
+
+
+def test_feedback_stats_route(client):
+    rv = client.get('/ai/feedback/stats')
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    assert body['enabled'] is True
+    assert body['ratings'] == 0
+
+
+def test_feedback_reset_route(client, tmp_path):
+    client.post('/ai/feedback', json={
+        'rating': 'up', 'source': 'guide', 'guide_id': 'g', 'query': 'word here'})
+    assert os.path.exists(os.path.join(str(tmp_path), 'ai_guide_weights.json'))
+    rv = client.post('/ai/feedback/reset')
+    assert rv.status_code == 200
+    assert not os.path.exists(os.path.join(str(tmp_path), 'ai_guide_weights.json'))
+
+
+def test_feedback_export_route_returns_zip(client):
+    rv = client.get('/ai/feedback/export')
+    assert rv.status_code == 200
+    assert rv.mimetype == 'application/zip'
+    assert rv.data[:2] == b'PK'   # zip magic
+
+
+def test_feedback_route_respects_opt_out(client, tmp_path):
+    with open(os.path.join(str(tmp_path), 'user_settings.json'), 'w', encoding='utf-8') as f:
+        json.dump({'ai_feedback_enabled': False}, f)
+    rv = client.post('/ai/feedback', json={
+        'rating': 'up', 'source': 'guide', 'guide_id': 'g', 'query': 'x'})
+    assert rv.status_code == 200
+    assert rv.get_json().get('recorded') is False
+    # Nothing was written.
+    assert not os.path.exists(os.path.join(str(tmp_path), 'ai_guide_weights.json'))
+    assert not os.path.exists(os.path.join(str(tmp_path), 'ai_feedback.jsonl'))

@@ -192,5 +192,15 @@
   "cdc.session_stopped": "Session arrêtée manuellement sur l'appareil.",
   "cdc.session_timeout": "Session terminée en raison du délai d'expiration.",
   "cdc.reading_stopped": "Lecture arrêtée",
-  "hint.base_name": "Chaque lecture est enregistrée sous \"BaseName_N.csv\" dans le dossier sélectionné, où N s'incrémente automatiquement à partir de 0 (par ex. sample_0.csv, sample_1.csv …), de sorte que des lectures répétées portant le même nom ne s'écrasent jamais."
+  "hint.base_name": "Chaque lecture est enregistrée sous \"BaseName_N.csv\" dans le dossier sélectionné, où N s'incrémente automatiquement à partir de 0 (par ex. sample_0.csv, sample_1.csv …), de sorte que des lectures répétées portant le même nom ne s'écrasent jamais.",
+  "settings.section.ai_assistant": "Assistant IA",
+  "settings.ai_feedback_enabled": "Collecter les avis et apprendre",
+  "settings.ai_feedback.help": "Évaluez les réponses de l'IA avec 👍/👎. Les avis restent sur cette machine et affinent la correspondance des guides.",
+  "settings.ai_feedback.summary": "{n} avis · {m} guides affinés",
+  "settings.ai_feedback.export": "Exporter les avis",
+  "settings.ai_feedback.export_done": "Archive téléchargée.",
+  "settings.ai_feedback.reset": "Réinitialiser l'apprentissage",
+  "settings.ai_feedback.reset_confirm_title": "Réinitialiser l'apprentissage de l'IA ?",
+  "settings.ai_feedback.reset_confirm_text": "Cela supprime tous les avis et les poids de guides appris sur cette machine. Cette action est irréversible.",
+  "settings.ai_feedback.reset_done": "Avis de l'IA et poids appris effacés."
 }

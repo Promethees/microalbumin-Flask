@@ -191,6 +191,9 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
     mode = (ui_context or {}).get("mode", "")
     best_score: float = 0
     best = None
+    # Learned feedback weights apply only while the opt-out toggle is on. Read it
+    # once here, never inside the per-guide loop below.
+    fb_on = ai_feedback.is_enabled()
 
     for ex in examples:
         conditions = ex.get("conditions", {})
@@ -206,9 +209,10 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
         score: float = sum(_score_keyword(kw, q_lower, q_content) for kw in keywords)
         # Reinforced vocabulary from user 👍 feedback adds to the baseline signal,
         # so phrasings the user confirmed for this guide score higher next time.
-        learned = ai_feedback.learned_terms(ex_id)
-        if learned:
-            score += sum(_score_keyword(kw, q_lower, q_content) for kw in learned)
+        if fb_on:
+            learned = ai_feedback.learned_terms(ex_id)
+            if learned:
+                score += sum(_score_keyword(kw, q_lower, q_content) for kw in learned)
         if score < 0.1:
             continue
         if conditions.get("mode") and mode == conditions["mode"]:
@@ -222,7 +226,8 @@ def _match_guide_example(query: str, ui_context: dict, lang: str = "en") -> tupl
         # the baseline-relevance gate so a positive weight can never make an
         # unrelated guide (zero keyword signal) fire; a negative weight can push a
         # genuine match below the launch threshold (effectively un-firing it).
-        score += ai_feedback.learned_bonus(ex_id)
+        if fb_on:
+            score += ai_feedback.learned_bonus(ex_id)
 
         if score > best_score:
             best_score = score

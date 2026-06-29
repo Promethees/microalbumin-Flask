@@ -192,5 +192,15 @@
   "cdc.session_stopped": "Сессия остановлена вручную на устройстве.",
   "cdc.session_timeout": "Сессия завершена из-за тайм-аута.",
   "cdc.reading_stopped": "Считывание остановлено",
-  "hint.base_name": "Каждое считывание сохраняется как \"BaseName_N.csv\" в выбранной папке, где N автоматически увеличивается с 0 (например, sample_0.csv, sample_1.csv …), поэтому повторные считывания с тем же именем никогда не перезаписывают друг друга."
+  "hint.base_name": "Каждое считывание сохраняется как \"BaseName_N.csv\" в выбранной папке, где N автоматически увеличивается с 0 (например, sample_0.csv, sample_1.csv …), поэтому повторные считывания с тем же именем никогда не перезаписывают друг друга.",
+  "settings.section.ai_assistant": "ИИ-ассистент",
+  "settings.ai_feedback_enabled": "Собирать отзывы и обучаться",
+  "settings.ai_feedback.help": "Оценивайте ответы ИИ с помощью 👍/👎. Отзывы хранятся на этом компьютере и улучшают подбор руководств.",
+  "settings.ai_feedback.summary": "{n} оценок · {m} руководств настроено",
+  "settings.ai_feedback.export": "Экспорт отзывов",
+  "settings.ai_feedback.export_done": "Архив загружен.",
+  "settings.ai_feedback.reset": "Сбросить обучение",
+  "settings.ai_feedback.reset_confirm_title": "Сбросить обучение ИИ?",
+  "settings.ai_feedback.reset_confirm_text": "Это удалит все оценки и изученные веса руководств на этом компьютере. Действие необратимо.",
+  "settings.ai_feedback.reset_done": "Отзывы ИИ и изученные веса очищены."
 }

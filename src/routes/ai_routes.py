@@ -1,8 +1,11 @@
+import io
 import json
 import os
 import re
+import time
+import zipfile
 import requests
-from flask import Blueprint, jsonify, request, Response, stream_with_context
+from flask import Blueprint, jsonify, request, Response, stream_with_context, send_file
 import ai_settings
 import ai_assistant
 import ai_feedback
@@ -229,6 +232,10 @@ def ai_feedback_route(validated_data):
     if rating not in ('up', 'down'):
         return jsonify({'status': 'failure', 'message': 'rating must be "up" or "down"'}), 400
 
+    # Respect the opt-out toggle (defence-in-depth; the UI already hides the row).
+    if not ai_feedback.is_enabled():
+        return jsonify({'status': 'success', 'recorded': False})
+
     new_weight = ai_feedback.record_feedback(
         rating,
         source=validated_data.get('source') or '',
@@ -239,6 +246,45 @@ def ai_feedback_route(validated_data):
         comment=validated_data.get('comment') or '',
     )
     return jsonify({'status': 'success', 'weight': new_weight})
+
+
+@ai_bp.route('/feedback/stats', methods=['GET'])
+def ai_feedback_stats():
+    """Summary of feedback recorded on this machine, for the settings panel."""
+    data = ai_feedback.stats()
+    data['status'] = 'success'
+    data['enabled'] = ai_feedback.is_enabled()
+    return jsonify(data)
+
+
+@ai_bp.route('/feedback/reset', methods=['POST'])
+def ai_feedback_reset():
+    """Reset learning: delete the rating log and the learned guide weights."""
+    ai_feedback.clear(weights=True, log=True)
+    return jsonify({'status': 'success'})
+
+
+@ai_bp.route('/feedback/export', methods=['GET'])
+def ai_feedback_export():
+    """Download the feedback log + learned weights as a zip archive."""
+    paths = ai_feedback.file_paths()
+    buf = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for arcname, p in (('ai_feedback.jsonl', paths['log']),
+                           ('ai_guide_weights.json', paths['weights'])):
+            if os.path.exists(p):
+                try:
+                    zf.write(p, arcname)
+                    count += 1
+                except OSError:
+                    pass
+        if count == 0:
+            zf.writestr('README.txt', 'No AI feedback has been recorded on this machine yet.\n')
+    buf.seek(0)
+    filename = f"easyokapi-ai-feedback-{time.strftime('%Y%m%d-%H%M%S')}.zip"
+    return send_file(buf, mimetype='application/zip',
+                     as_attachment=True, attachment_filename=filename)
 
 
 @ai_bp.route('/match', methods=['POST'])

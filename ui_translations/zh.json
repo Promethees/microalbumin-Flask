@@ -192,5 +192,15 @@
   "cdc.session_stopped": "会话已在设备上手动停止。",
   "cdc.session_timeout": "会话因超时而结束。",
   "cdc.reading_stopped": "读取已停止",
-  "hint.base_name": "每次读取都会以 \"BaseName_N.csv\" 保存到所选文件夹，其中 N 从 0 起自动递增（例如 sample_0.csv、sample_1.csv …），因此使用相同名称的多次读取不会相互覆盖。"
+  "hint.base_name": "每次读取都会以 \"BaseName_N.csv\" 保存到所选文件夹，其中 N 从 0 起自动递增（例如 sample_0.csv、sample_1.csv …），因此使用相同名称的多次读取不会相互覆盖。",
+  "settings.section.ai_assistant": "AI 助手",
+  "settings.ai_feedback_enabled": "收集回答反馈并学习",
+  "settings.ai_feedback.help": "用 👍/👎 评价 AI 回答。反馈仅保存在本机并优化指南匹配。",
+  "settings.ai_feedback.summary": "{n} 条评价 · {m} 个指南已优化",
+  "settings.ai_feedback.export": "导出反馈",
+  "settings.ai_feedback.export_done": "已下载存档。",
+  "settings.ai_feedback.reset": "重置学习",
+  "settings.ai_feedback.reset_confirm_title": "重置 AI 学习？",
+  "settings.ai_feedback.reset_confirm_text": "这将删除本机上的所有评价和已学习的指南权重，且无法撤销。",
+  "settings.ai_feedback.reset_done": "已清除 AI 反馈和已学习的权重。"
 }

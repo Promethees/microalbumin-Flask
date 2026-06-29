@@ -192,5 +192,15 @@
   "cdc.session_stopped": "Session stopped manually on the device.",
   "cdc.session_timeout": "Session ended due to timeout.",
   "cdc.reading_stopped": "Reading Stopped",
-  "hint.base_name": "Each reading is saved as \"BaseName_N.csv\" in the selected folder, where N auto-increments from 0 (e.g. sample_0.csv, sample_1.csv …), so repeated readings with the same name never overwrite each other."
+  "hint.base_name": "Each reading is saved as \"BaseName_N.csv\" in the selected folder, where N auto-increments from 0 (e.g. sample_0.csv, sample_1.csv …), so repeated readings with the same name never overwrite each other.",
+  "settings.section.ai_assistant": "AI Assistant",
+  "settings.ai_feedback_enabled": "Collect answer feedback & learn",
+  "settings.ai_feedback.help": "Rate AI answers with 👍/👎. Ratings stay on this machine and tune guide matching.",
+  "settings.ai_feedback.summary": "{n} ratings · {m} guides tuned",
+  "settings.ai_feedback.export": "Export feedback",
+  "settings.ai_feedback.export_done": "Archive downloaded.",
+  "settings.ai_feedback.reset": "Reset learning",
+  "settings.ai_feedback.reset_confirm_title": "Reset AI learning?",
+  "settings.ai_feedback.reset_confirm_text": "This deletes all ratings and learned guide weights on this machine. This cannot be undone.",
+  "settings.ai_feedback.reset_done": "AI feedback and learned weights cleared."
 }

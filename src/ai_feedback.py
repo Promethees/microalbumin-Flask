@@ -26,6 +26,7 @@ import threading
 from datetime import datetime
 
 import state
+import user_settings
 
 _LOG_NAME = "ai_feedback.jsonl"
 _WEIGHTS_NAME = "ai_guide_weights.json"
@@ -59,11 +60,58 @@ def _path(name: str) -> str:
     return os.path.join(state.script_dir, name)
 
 
+def file_paths() -> dict:
+    """Absolute paths of the two feedback artifacts (for export/preserve)."""
+    return {"log": _path(_LOG_NAME), "weights": _path(_WEIGHTS_NAME)}
+
+
+def is_enabled() -> bool:
+    """Whether feedback collection + learning is on (the user opt-out toggle).
+
+    Read once per match in the matcher and once per request in the route — never
+    in a per-guide loop. Defaults to True if settings can't be read.
+    """
+    try:
+        return user_settings.load().get("ai_feedback_enabled", True) is not False
+    except Exception:
+        return True
+
+
 def reload() -> None:
     """Drop the in-memory weights cache (for tests / after an external edit)."""
     global _weights_cache
     with _lock:
         _weights_cache = None
+
+
+def stats() -> dict:
+    """Summary counts for the settings panel."""
+    rows = read_feedback()
+    up = sum(1 for r in rows if r.get("rating") == "up")
+    with _lock:
+        weights = dict(_load_weights_unlocked())
+    guides = sum(
+        1 for v in weights.values()
+        if isinstance(v, dict) and (v.get("weight") or v.get("terms"))
+    )
+    return {"ratings": len(rows), "up": up, "down": len(rows) - up, "guides_tuned": guides}
+
+
+def clear(weights: bool = True, log: bool = True) -> None:
+    """Delete the feedback artifacts (Reset learning). Best-effort; resets cache."""
+    global _weights_cache
+    with _lock:
+        if weights:
+            try:
+                os.remove(_path(_WEIGHTS_NAME))
+            except OSError:
+                pass
+            _weights_cache = {}
+        if log:
+            try:
+                os.remove(_path(_LOG_NAME))
+            except OSError:
+                pass
 
 
 # ── Weights persistence ──────────────────────────────────────────────────────
