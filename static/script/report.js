@@ -289,7 +289,7 @@ function _concenAxisLabel(metadata) {
 
 // Render a calibration scatter (standards) + fit line to a PNG data URL,
 // off-screen at print resolution. Shared by the PDF and Excel generators.
-function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo }) {
+function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo, xLabel }) {
     return new Promise(resolve => {
         const cv = document.createElement('canvas');
         cv.width = 1600; cv.height = 800;
@@ -308,7 +308,7 @@ function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, a
                     legend: { display: true, position: 'bottom' }
                 },
                 scales: {
-                    x: { title: { display: true, text: 'Concentration', font: { size: 14, weight: 'bold' } } },
+                    x: { title: { display: true, text: xLabel || 'Concentration', font: { size: 14, weight: 'bold' } } },
                     y: { title: { display: true, text: yLabel, font: { size: 14, weight: 'bold' } } }
                 }
             }
@@ -520,7 +520,8 @@ async function generateReport() {
                     const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, algo);
                     const chartImg = await renderCalibrationChartImage({
                         xConc: pd.x, yMetric: pd.y, regLine,
-                        title: `Calibration Curve (${measLabel} @ ${tpLabel}) — ${algo}`, yLabel: measLabel, algo
+                        title: `Calibration Curve (${measLabel} @ ${tpLabel}) — ${algo}`, yLabel: measLabel, algo,
+                        xLabel: _concenAxisLabel(AppState.metaData)
                     });
                     chartsMarkup += `
                         <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
@@ -644,7 +645,7 @@ async function generateReport() {
                         legend: { display: true, position: 'bottom' }
                     },
                     scales: {
-                        x: { title: { display: true, text: 'Concentration', font: { size: 14, weight: 'bold' } } },
+                        x: { title: { display: true, text: _concenAxisLabel(AppState.metaData), font: { size: 14, weight: 'bold' } } },
                         y: { title: { display: true, text: dataPoint.metric, font: { size: 14, weight: 'bold' } } }
                     }
                 }
@@ -1734,7 +1735,8 @@ async function finalizeReport() {
                         fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
                         const regLine = buildCalibrationRegressionLine(xValues, analysis.coefficients, algo);
                         const img = await renderCalibrationChartImage({
-                            xConc: xValues, yMetric: yValues, regLine, title: `${measLabel} @ ${tpLabel} - ${algo}`, yLabel: measLabel, algo
+                            xConc: xValues, yMetric: yValues, regLine, title: `${measLabel} @ ${tpLabel} - ${algo}`, yLabel: measLabel, algo,
+                            xLabel: _concenAxisLabel(config.metadata)
                         });
                         if (img) itemChartsMarkup += `
                             <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
@@ -1846,7 +1848,7 @@ async function finalizeReport() {
                                             legend: { display: true, position: 'bottom' }
                                         },
                                         scales: {
-                                            x: { title: { display: true, text: 'Concentration' } },
+                                            x: { title: { display: true, text: _concenAxisLabel(config.metadata) } },
                                             y: { title: { display: true, text: niceMetricName } }
                                         }
                                     }

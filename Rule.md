@@ -469,7 +469,10 @@ Timestamp,Value:1,Value:2,...
   `generateReport` SweetAlert `#swal-xlabel`/`#swal-ylabel`, and the console `#console-xlabel`/`#console-ylabel`).
   **X defaults to the concentration-unit-aware `Concentration (<unit>)`** (`_concenAxisLabel()` →
   `getMetaConcenUnit()`, the post-§2.10 `# ConcenUnit` schema — ng/µL, nM, %), matching the live chart
-  (`generate-chart.js`) and the report's derived-concentration lines. The single-file `generateReport`
+  (`generate-chart.js`) and the report's derived-concentration lines. `_concenAxisLabel()` is the **single
+  source** for every calibration chart's X-axis — the native Excel `chart_series`, the PDF/PNG path
+  (`renderCalibrationChartImage` via its `xLabel` arg, and the inline kinetics-cal canvases) — so do not
+  reintroduce a bare-`Concentration` axis in any of them. The single-file `generateReport`
   dialog **pre-fills** the exact unit from `AppState.metaData`; the multi-file console box is left **blank =
   "auto" per file** (each chart uses its own file's `config.metadata` unit), because different files in one
   report can carry different units. **Y left blank means "auto" — each chart uses its own metric/measurement
