@@ -1132,6 +1132,9 @@ def export_report_excel(validated_data):
     from openpyxl.chart.series import Series as XYSeries, SeriesLabel
     from openpyxl.chart.data_source import (
         NumRef, NumData, NumVal, NumDataSource, AxDataSource)
+    from openpyxl.chart.text import RichText
+    from openpyxl.drawing.text import (
+        Paragraph, ParagraphProperties, CharacterProperties, RichTextProperties)
     from openpyxl.drawing.line import LineProperties
     from openpyxl.drawing.image import Image as XLImage
     from openpyxl.utils import get_column_letter
@@ -1184,7 +1187,7 @@ def export_report_excel(validated_data):
         ws.add_chart(chart, f'A{anchor}')
         return anchor + CHART_ROW_RESERVE
 
-    def _add_native_scatter_chart(ws, s, anchor_row):
+    def _add_native_scatter_chart(ws, s, anchor_row, conc_values=None):
         """Render a calibration fit as a *native* (editable) category LineChart.
 
         Two markers-only series — the standards (blue diamonds) and the fitted curve
@@ -1192,6 +1195,10 @@ def export_report_excel(validated_data):
         concentration), so the X-axis shows the concentration-table values and never
         the fit's generated Xs. The 150 uniform fit rows fill the axis so a
         standard's row index ≈ its value position. Title/axis titles stay editable.
+
+        `conc_values` is the exact Concentration column parsed from the data file
+        (the Raw Data table) — the authoritative source for the axis tick labels;
+        each standard's X is snapped to it so the ticks are the file's own values.
 
         The X/Y values are written to helper columns far to the right of the
         report content (so they don't clutter it but stay *visible* — Excel does
@@ -1246,12 +1253,26 @@ def export_report_excel(validated_data):
             [(x, y, None) for (x, y) in points] + [(x, None, y) for (x, y) in fit],
             key=lambda r: r[0],
         )
+
+        # The axis ticks are the EXACT Concentration values parsed from the data
+        # file (`conc_values`, the Raw Data table's concentration column). Snap each
+        # standard's X to its nearest parsed concentration so the tick label is the
+        # file's own value (not a chart-payload approximation); fall back to the X.
+        conc_ticks = sorted({round(float(c), 6) for c in (conc_values or [])})
+
+        def _conc_label(x):
+            if conc_ticks:
+                near = min(conc_ticks, key=lambda c: abs(c - x))
+                if abs(near - x) <= max(1e-6, 1e-3 * abs(near or 1.0)):
+                    return near
+            return x
+
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
         cat_col, ys_col, yf_col = hc, hc + 1, hc + 2
         _cell(ws, 1, cat_col, 'conc'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
         for i, (x, ys, yf) in enumerate(merged, start=2):
             if ys is not None:
-                ws.cell(i, cat_col, value=x)   # axis label = this standard's conc
+                ws.cell(i, cat_col, value=_conc_label(x))   # tick = file concentration
                 ws.cell(i, ys_col, value=ys)
             if yf is not None:
                 ws.cell(i, yf_col, value=yf)   # fit row: no axis label
@@ -1266,6 +1287,16 @@ def export_report_excel(validated_data):
         chart.y_axis.delete = False
         chart.x_axis.axPos = 'b'
         chart.y_axis.axPos = 'l'
+        # The category axis has ~157 slots but only ~7 carry a label (the standards).
+        # Excel auto-skips labels on a dense axis (showing just a couple, rotated), so
+        # force every slot's label to render — the blank fit rows show nothing, so all
+        # the standard concentrations come through — and keep them horizontal.
+        chart.x_axis.tickLblSkip = 1
+        chart.x_axis.tickMarkSkip = 1
+        chart.x_axis.txPr = RichText(
+            bodyPr=RichTextProperties(rot=0, vert='horz'),
+            p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties()))],
+        )
         chart.style = 13
         chart.width = 18
         chart.height = 11
@@ -1287,7 +1318,7 @@ def export_report_excel(validated_data):
                                if v is not None])
 
         # The shared category axis is labelled only on the standard rows.
-        cat_values = [x if ys is not None else None for (x, ys, yf) in merged]
+        cat_values = [_conc_label(x) if ys is not None else None for (x, ys, yf) in merged]
 
         def _series(y_col, y_values, title):
             ser = XYSeries()
@@ -1422,12 +1453,25 @@ def export_report_excel(validated_data):
                 # fitted curve with live, renameable axis titles. Falls back to
                 # embedded PNGs only for older payloads that still send chart_images.
                 if chart_series:
+                    # Parse the exact Concentration values straight from the data
+                    # table (the file's Raw Data) — the first CSV column is the X /
+                    # concentration — so the chart's axis ticks are sourced from the
+                    # file itself, not just whatever the chart payload carries.
+                    conc_col = csv_columns[0] if csv_columns else 'Concentration'
+                    conc_values = []
+                    for rd in csv_rows:
+                        v = rd.get(conc_col)
+                        try:
+                            if v not in (None, '', 'NONE'):
+                                conc_values.append(float(v))
+                        except (ValueError, TypeError):
+                            pass
                     for s in chart_series:
                         label = s.get('label', '')
                         if label:
                             _cell(ws, r, 1, label, bold=True, size=11, color='555555')
                             r += 1
-                        r = _add_native_scatter_chart(ws, s, r)
+                        r = _add_native_scatter_chart(ws, s, r, conc_values)
                 else:
                     for ci_info in chart_images:
                         label = ci_info.get('label', '')
