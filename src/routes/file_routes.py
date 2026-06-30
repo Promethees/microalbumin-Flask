@@ -25,45 +25,6 @@ from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
 
-
-def _nice_num(x, round_it):
-    """Heckbert's 'nice number' — round x to a 1/2/5 × 10^k figure.
-
-    `round_it` rounds to the nearest nice number; otherwise rounds up (used to
-    size the overall range so it comfortably covers the data).
-    """
-    import math
-    if x <= 0:
-        return 1.0
-    exp = math.floor(math.log10(x))
-    frac = x / (10 ** exp)
-    if round_it:
-        nice = 1 if frac < 1.5 else 2 if frac < 3 else 5 if frac < 7 else 10
-    else:
-        nice = 1 if frac <= 1 else 2 if frac <= 2 else 5 if frac <= 5 else 10
-    return nice * (10 ** exp)
-
-
-def _nice_axis_ticks(lo, hi, target=6):
-    """A 'reasonably looking' tick series spanning [lo, hi] (e.g. 0,100,…,500).
-
-    Returns evenly-spaced round values (1/2/5 × 10^k step) — the classic axis
-    algorithm — covering the data range with about `target` ticks.
-    """
-    import math
-    if hi <= lo:
-        return [lo]
-    rng = _nice_num(hi - lo, False)
-    step = _nice_num(rng / max(1, target - 1), True)
-    start = math.floor(lo / step) * step
-    end = math.ceil(hi / step) * step
-    ticks, t, n = [], start, 0
-    while t <= end + 0.5 * step and n < 1000:
-        ticks.append(round(t, 10))
-        t += step
-        n += 1
-    return ticks
-
 _SCHEMA_VALIDATORS = {
     CSV_SCHEMA_KINETICS_CAL: {
         'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
@@ -1165,7 +1126,7 @@ def export_report_excel(validated_data):
     import base64
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from openpyxl.chart import LineChart, ScatterChart, Reference, Series
+    from openpyxl.chart import LineChart, Reference
     from openpyxl.chart.marker import Marker
     from openpyxl.chart.shapes import GraphicalProperties
     from openpyxl.chart.series import Series as XYSeries, SeriesLabel
@@ -1457,9 +1418,9 @@ def export_report_excel(validated_data):
                     r += 1
                 r += 1  # blank row before charts
 
-                # Prefer native (editable) ScatterCharts — points + fit line with
-                # live, renameable axis titles. Falls back to embedded PNGs only
-                # for older payloads that still send chart_images.
+                # Prefer the native (editable) calibration chart — standards +
+                # fitted curve with live, renameable axis titles. Falls back to
+                # embedded PNGs only for older payloads that still send chart_images.
                 if chart_series:
                     for s in chart_series:
                         label = s.get('label', '')

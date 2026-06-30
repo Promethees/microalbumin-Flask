@@ -21,7 +21,6 @@ from openpyxl import load_workbook
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from main import app  # noqa: E402
-from routes.file_routes import _nice_axis_ticks  # noqa: E402
 
 # Helper layout: AA(27)=conc (label — standards only), AB(28)=std_y, AC(29)=fit_y.
 CAT, STD_Y, FIT_Y = 27, 28, 29
@@ -71,16 +70,6 @@ def _calibrate_item(points, fit):
             'fit': fit,
         }],
     }
-
-
-# ── Nice-numbers tick algorithm ──────────────────────────────────────────────
-
-def test_nice_axis_ticks_round_and_evenly_spaced():
-    assert _nice_axis_ticks(5, 500) == [0, 100, 200, 300, 400, 500]
-    assert _nice_axis_ticks(5, 50) == [0, 10, 20, 30, 40, 50]
-    ticks = _nice_axis_ticks(0.2, 2.1)
-    steps = {round(b - a, 10) for a, b in zip(ticks, ticks[1:])}
-    assert len(steps) == 1, f"ticks not evenly spaced: {ticks}"
 
 
 # ── Cell writing ─────────────────────────────────────────────────────────────
