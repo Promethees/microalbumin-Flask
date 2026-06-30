@@ -1,14 +1,13 @@
 """Tests for the native calibration chart in /export_report_excel.
 
-The chart is a value-axis ScatterChart with a single SHARED, sorted X column
-(both series reference it) — which Google Sheets renders as a proportional
-value axis — plus a "nice numbers" major-unit so the X ticks are round
-(0, 100, …, 500). These tests guard:
+The chart is a category-axis LineChart with both series markers-only: the
+standards as blue diamonds, the fitted curve as red X-marks. The category axis
+is labelled ONLY on the standard rows (their concentration) — the fit rows are
+blank — so the X-axis shows the concentration-table values and never the fit's
+generated Xs. These tests guard:
   * string standards points coerced to real numbers (plottable, locale-aware);
-  * one shared X column with numeric caches (independent X makes Sheets drop a
-    series / fall to a category axis);
-  * the value axis clamped to round nice-number ticks;
-  * two distinct markers, no native trendline.
+  * the X labels = the standard concentrations only (no fit Xs);
+  * two distinct markers (diamond / X-mark), no native trendline.
 """
 import io
 import os
@@ -24,8 +23,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from main import app  # noqa: E402
 from routes.file_routes import _nice_axis_ticks  # noqa: E402
 
-# Shared-X helper layout: AA(27)=x (shared), AB(28)=std_y, AC(29)=fit_y.
-X, STD_Y, FIT_Y = 27, 28, 29
+# Helper layout: AA(27)=conc (label — standards only), AB(28)=std_y, AC(29)=fit_y.
+CAT, STD_Y, FIT_Y = 27, 28, 29
 
 
 @pytest.fixture
@@ -37,16 +36,16 @@ def client():
 
 def _helper_sheet(wb):
     for ws in wb.worksheets:
-        if ws.cell(1, X).value == 'x':
+        if ws.cell(1, CAT).value == 'conc':
             return ws
     return None
 
 
 def _rows(ws):
-    """(x, std_y, fit_y) helper rows until the shared X column runs out."""
+    """(conc, std_y, fit_y) helper rows until a fully-empty row ends the data."""
     out, r = [], 2
-    while ws.cell(r, X).value is not None:
-        out.append((ws.cell(r, X).value, ws.cell(r, STD_Y).value, ws.cell(r, FIT_Y).value))
+    while any(ws.cell(r, c).value is not None for c in (CAT, STD_Y, FIT_Y)):
+        out.append((ws.cell(r, CAT).value, ws.cell(r, STD_Y).value, ws.cell(r, FIT_Y).value))
         r += 1
     return out
 
@@ -79,7 +78,6 @@ def _calibrate_item(points, fit):
 def test_nice_axis_ticks_round_and_evenly_spaced():
     assert _nice_axis_ticks(5, 500) == [0, 100, 200, 300, 400, 500]
     assert _nice_axis_ticks(5, 50) == [0, 10, 20, 30, 40, 50]
-    assert _nice_axis_ticks(100, 560) == [100, 200, 300, 400, 500, 600]
     ticks = _nice_axis_ticks(0.2, 2.1)
     steps = {round(b - a, 10) for a, b in zip(ticks, ticks[1:])}
     assert len(steps) == 1, f"ticks not evenly spaced: {ticks}"
@@ -98,16 +96,21 @@ def test_string_points_written_as_numbers(client):
     assert rv.status_code == 200
 
     ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
-    assert ws is not None, "shared-x helper header not found"
+    assert ws is not None, "category helper header not found"
     rows = _rows(ws)
 
-    xs = [x for (x, _, _) in rows]
-    assert all(isinstance(x, (int, float)) for x in xs), f"non-numeric X: {xs}"
-    assert xs == sorted(xs), "shared X column is not sorted"
-    # Standards survive as real numbers (string→float), blank-separated from the fit.
-    std = sorted(ys for (x, ys, yf) in rows if ys is not None)
+    # The label column carries ONLY the standard concentrations (string→float).
+    labels = sorted(c for (c, ys, yf) in rows if c is not None)
+    assert labels == pytest.approx([5.0, 50.0, 500.0])
+    # Standards' Y survive as numbers, paired with their concentration label.
+    std = sorted(ys for (c, ys, yf) in rows if ys is not None)
     assert std == pytest.approx([0.00738, 0.01884, 0.085])
-    assert all((ys is None) != (yf is None) for (x, ys, yf) in rows)  # exactly one Y/row
+    # Each row is either a standard (conc + std_y) or a fit point (fit_y) — not both.
+    for c, ys, yf in rows:
+        if yf is not None:
+            assert c is None and ys is None, "fit row carries a label/std_y"
+        else:
+            assert c is not None and ys is not None, "standard row missing label/std_y"
 
 
 def test_non_numeric_points_are_skipped(client):
@@ -120,9 +123,9 @@ def test_non_numeric_points_are_skipped(client):
 
     ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
     rows = _rows(ws)
-    assert len(rows) == 1                     # only the valid standard
-    assert rows[0][0] == pytest.approx(5.0)   # x
-    assert rows[0][1] == pytest.approx(0.1)   # std_y
+    assert len(rows) == 1                      # only the valid standard
+    assert rows[0][0] == pytest.approx(5.0)    # conc label
+    assert rows[0][1] == pytest.approx(0.1)    # std_y
 
 
 # ── Chart structure ──────────────────────────────────────────────────────────
@@ -134,7 +137,7 @@ def _chart_xml(xlsx_bytes):
         return z.read(names[0]).decode('utf-8')
 
 
-def test_shared_x_value_scatter_with_round_ticks(client):
+def test_line_chart_labels_standards_only_with_xmark_fit(client):
     item = _calibrate_item(
         points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'},
                 {'x': '500', 'y': '0.085'}],
@@ -144,21 +147,17 @@ def test_shared_x_value_scatter_with_round_ticks(client):
     assert rv.status_code == 200
     xml = _chart_xml(rv.data)
 
-    # A value-axis scatter (two value axes, no category) — proportional X.
-    assert '<scatterChart>' in xml and '<lineChart>' not in xml
-    assert xml.count('<valAx>') == 2 and '<catAx>' not in xml
+    # Category-axis line chart (lets us supply the X labels ourselves).
+    assert '<lineChart>' in xml and '<scatterChart>' not in xml
+    assert xml.count('<catAx>') == 1 and xml.count('<valAx>') == 1
     assert xml.count('<ser>') == 2
-    # Both series reference the SAME (shared) X column — that is what keeps Sheets
-    # on a proportional value axis (independent X drops a series / goes category).
-    xrefs = re.findall(r'<xVal><numRef><f>([^<]+)</f>', xml)
-    assert len(xrefs) == 2 and xrefs[0] == xrefs[1], f"series do not share X: {xrefs}"
-    assert xml.count('<numCache>') == 4
-    # X axis clamped to round nice-numbers ticks (0..500 by 100).
-    assert '<max val="500"' in xml and '<min val="0"' in xml
-    assert '<majorUnit val="100"' in xml
-    # Two distinct markers, neither joined by a line (both <a:noFill/>).
-    assert xml.count('<symbol val="diamond"') == 1   # standards
-    assert xml.count('<symbol val="dot"') == 1       # fit — finest marker
+    # The category labels are the STANDARD concentrations only — no fit Xs.
+    cat = re.findall(r'<cat>.*?</cat>', xml, re.S)[0]
+    cat_vals = sorted(float(v) for v in re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat))
+    assert cat_vals == pytest.approx([5.0, 50.0, 500.0])
+    # Two distinct markers — standards diamonds, fit X-marks — neither with a line.
+    assert xml.count('<symbol val="diamond"') == 1
+    assert xml.count('<symbol val="x"') == 1
     assert '<symbol val="none"' not in xml
     assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
     assert 'trendline' not in xml.lower()

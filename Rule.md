@@ -482,24 +482,24 @@ Timestamp,Value:1,Value:2,...
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
-- **It is a value-axis `ScatterChart` with ONE shared, sorted X column.** Both series reference the **same** X
-  column (`x` at AA; `std_y`/`fit_y` at AB/AC, each blank on the other's rows), with the standards+fit rows merged
-  and **sorted** by concentration. This is the shape Google Sheets renders as a **proportional value axis** (the
-  numCache makes X numeric) — counter-intuitively a *shared* X works where independent per-series X does **not**
-  (Sheets drops the extra series and/or falls to a category axis). The shared X must be **monotonic** (hence the
-  sort) or Sheets reverts to category/index spacing. **Anti-pattern**: do not give the series separate X columns,
-  and do not switch to a `LineChart`/category axis (loses proportional X + hover). Covered by `tests/test_report_excel.py`.
-- **X axis clamped to "nice numbers" ticks.** `chart.x_axis.scaling.min/max` + `majorUnit` are set from
-  `_nice_axis_ticks(lo, hi)` (Heckbert 1/2/5 × 10^k — e.g. `[5,500]` → `0,100,…,500`) over the **standards'**
-  range (not the merged range — the fit's ±10 % extrapolation would skew it). On the proportional value axis this
-  yields round, evenly-spaced ticks (instead of the raw standard values like 50/200 that Sheets would otherwise
-  pick) and crops the extrapolation tail. **Anti-pattern**: do not blank the labels (`number_format=';;;'` — Sheets
-  ignores it), and do not size the ticks off the merged/fit range.
+- **It is a category-axis `LineChart`, both series markers-only, on the FULL merged grid.** The standards+fit rows
+  are merged and **sorted** by concentration (~157 rows); helper cols `conc` (AA), `std_y` (AB), `fit_y` (AC). Both
+  series are **markers only** (no lines). Why this shape: the 150 *uniform* fit rows fill the category axis so a
+  standard's row index ≈ its value position (proportional-looking, like the old shared-X scatter), **and** the
+  X-axis labels come from the `conc` column which we write **only on the standard rows** — so the axis shows the
+  measured **concentration-table values** and never the fit's generated Xs. (A value-axis scatter cannot do this:
+  Sheets either drops a series or auto-picks round ticks like 50/200 — not the table values.) **Anti-pattern**: do
+  not label the fit rows in `conc`; do not put all 150 fit Xs on the axis. Covered by `tests/test_report_excel.py`.
+- **Labels = the standard concentrations.** `conc` carries each standard's concentration on its own row, blank
+  elsewhere; both series share it as the `cat` reference. (`_nice_axis_ticks` is retained as a utility but the axis
+  is **not** clamped — the labels are the actual table values, not a nice-number series, and Sheets ignores
+  `majorUnit`/`number_format=';;;'` on this chart anyway.) Google Sheets may still thin a dense set of labels, but
+  they are always concentration-table values. **Anti-pattern**: do not blank the labels or relabel with round ticks.
 - **Series carry explicit numeric caches.** Series are built from the raw `XYSeries` class with
-  `xVal = AxDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `yVal = NumDataSource(...)` — each reference
-  embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no cache: Excel
-  recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text/empty and the series
-  is dropped (and X stops being numeric). **Anti-pattern**: do not fall back to the `Series(yref, xref)` factory.
+  `val = NumDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `cat = AxDataSource(numRef=NumRef(…))` —
+  each reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no cache:
+  Excel recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text/empty and the
+  series is dropped. **Anti-pattern**: do not fall back to the `Series(values, …)` factory.
 - **Fit resolution.** `buildCalibrationRegressionLine` (and the inline regline loops in `report.js`) sample the
   curve at **150 points** so it reads as a smooth line in Excel and a smooth dotted trace in Google Sheets
   (which draws the fit as markers). All five generators share the `/ 149` + `j < 150` pattern — keep them in step.
@@ -510,11 +510,11 @@ Timestamp,Value:1,Value:2,...
   locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
   General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
   `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
-- **Standards = diamond markers, fit = fine red dots — markers only, and the fit must not be a native trendline.**
-  The standards are blue **diamonds** (`Marker('diamond', size=8)`), the fit the 150-point dense sampling as the
-  smallest red **dots** (`Marker('dot', size=2)`); **neither series has a line** (`LineProperties.noFill = True`).
-  On a scatter a line series gets dropped / line-chart-imported by Sheets, so markers only — the dense dots read
-  as a thin smooth curve and stay value-positioned. Do
+- **Standards = blue diamonds, fit = red X-marks — markers only, and the fit must not be a native trendline.**
+  The standards are blue **diamonds** (`Marker('diamond', size=8)`), the fit the 150-point sampling as red
+  **X-marks** (`Marker('x', size=4)`); **neither series has a line** (`LineProperties.noFill = True`). Markers only
+  on this category LineChart: the standards are sparse and never on adjacent rows (so nothing joins them), and the
+  dense X-marks trace the curve, clearly distinct from the diamonds. Do
   **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline
