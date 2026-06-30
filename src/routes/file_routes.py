@@ -1224,27 +1224,31 @@ def export_report_excel(validated_data):
         if not points and not fit:
             return anchor_row
 
-        # Both series share ONE X column (col AA), with each Y column blank on the
-        # other dataset's rows. Google Sheets' scatter model permits only a single
-        # X column per chart — independent per-series X (valid in Excel's true XY
-        # model) makes Sheets silently DROP the extra series, so the fitted curve
-        # never appears there. A shared X + blank-separated Y columns renders in
-        # both: standards on rows 2..1+nP, the fit on the rows after. Values are
-        # written as floats (General format) so Excel plots them and shows the
-        # decimals in the user's own locale — do not stringify or pin a format.
+        # Merge both datasets onto a single, SORTED shared X column (col AA), with
+        # each Y column blank on the other dataset's rows. Two requirements force
+        # this shape:
+        #   1. Google Sheets' scatter model permits only ONE X column per chart, so
+        #      independent per-series X (valid in Excel's true XY model) makes Sheets
+        #      silently drop the fit series — the curve never appears.
+        #   2. That shared X must be MONOTONIC, or Sheets falls back to a *category*
+        #      axis (points placed by row index, not value — standards crammed left,
+        #      the fit splayed right). Sorting the merged rows keeps the axis numeric.
+        # Values are written as floats (General format) so Excel plots them and shows
+        # the decimals in the user's own locale — do not stringify or pin a format.
+        merged = sorted(
+            [(x, y, None) for (x, y) in points] + [(x, None, y) for (x, y) in fit],
+            key=lambda r: r[0],
+        )
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
         x_col, ys_col, yf_col = hc, hc + 1, hc + 2
         _cell(ws, 1, x_col, 'x'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
-        row = 2
-        for (x, y) in points:
-            ws.cell(row, x_col, value=x)
-            ws.cell(row, ys_col, value=y)   # fit_y left blank → ignored
-            row += 1
-        for (x, y) in fit:
-            ws.cell(row, x_col, value=x)
-            ws.cell(row, yf_col, value=y)   # std_y left blank → ignored
-            row += 1
-        last = row - 1
+        for i, (x, ys, yf) in enumerate(merged, start=2):
+            ws.cell(i, x_col, value=x)
+            if ys is not None:
+                ws.cell(i, ys_col, value=ys)   # fit_y left blank → skipped
+            if yf is not None:
+                ws.cell(i, yf_col, value=yf)   # std_y left blank → skipped
+        last = len(merged) + 1
 
         chart = ScatterChart()
         # scatterStyle is *required* by the OOXML schema. Omitting it yields a
@@ -1264,6 +1268,10 @@ def export_report_excel(validated_data):
         chart.style = 13
         chart.width = 18
         chart.height = 11
+        # The fit's Y is blank on the interspersed standard rows; 'span' makes the
+        # line bridge those gaps so the curve stays continuous (vs. 'gap', which
+        # would chop it into segments wherever a standard X falls between fit Xs).
+        chart.display_blanks = 'span'
 
         # Both series reference the SAME X column (rows 2..last); the blank Y rows
         # are skipped (dispBlanksAs defaults to 'gap'), so each series plots only

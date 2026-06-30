@@ -38,6 +38,17 @@ def _helper_sheet(wb):
     return None
 
 
+def _read_helper_rows(ws):
+    """Read the (x, std_y, fit_y) helper rows until the shared X runs out."""
+    rows, r = [], 2
+    while ws.cell(r, X_COL).value is not None:
+        rows.append((ws.cell(r, X_COL).value,
+                     ws.cell(r, STD_Y).value,
+                     ws.cell(r, FIT_Y).value))
+        r += 1
+    return rows
+
+
 def _calibrate_item(points, fit):
     return {
         'filename': 'cal.csv',
@@ -67,23 +78,25 @@ def test_string_points_written_as_numbers(client):
     wb = load_workbook(io.BytesIO(rv.data))
     ws = _helper_sheet(wb)
     assert ws is not None, "shared-x helper header not found"
+    rows = _read_helper_rows(ws)
 
-    # The two standards sit on the first rows: shared X in AA, std_y in AB; both
-    # must be real numbers (not text) so Excel plots them and Sheets honours them.
-    for row in (2, 3):
-        assert isinstance(ws.cell(row, X_COL).value, (int, float)), \
-            f"x row {row} is {ws.cell(row, X_COL).value!r} (text → unplottable)"
-        assert isinstance(ws.cell(row, STD_Y).value, (int, float)), \
-            f"std_y row {row} is {ws.cell(row, STD_Y).value!r}"
-    assert ws.cell(2, X_COL).value == 5.0
-    assert ws.cell(2, STD_Y).value == pytest.approx(0.00738)
-    # std_y is blank on the standards' rows' fit column, and vice-versa.
-    assert ws.cell(2, FIT_Y).value is None
-    # The fit curve follows on the next rows (shared X in AA, fit_y in AC).
-    fit_row = 2 + 2  # after the two standards
-    assert isinstance(ws.cell(fit_row, X_COL).value, (int, float))
-    assert isinstance(ws.cell(fit_row, FIT_Y).value, (int, float))
-    assert ws.cell(fit_row, STD_Y).value is None
+    xs = [x for (x, _, _) in rows]
+    # Shared X must be all-numeric (not text) and MONOTONIC — non-monotonic X makes
+    # Google Sheets fall back to a category axis (the "horrible" mis-render).
+    assert all(isinstance(x, (int, float)) for x in xs), f"non-numeric X: {xs}"
+    assert xs == sorted(xs), f"shared X column is not sorted: {xs}"
+    # Every row carries exactly one series' Y (blank-separated datasets).
+    for x, ys, yf in rows:
+        assert (ys is None) != (yf is None), f"row x={x} has both/neither Y: {ys!r},{yf!r}"
+    # Both standards survive as real numbers at their own X.
+    std = {x: ys for (x, ys, yf) in rows if ys is not None}
+    assert std[5.0] == pytest.approx(0.00738)
+    assert std[50.0] == pytest.approx(0.01884)
+    assert all(isinstance(v, (int, float)) for v in std.values())
+    # Both fit points survive as numbers too.
+    fit = {x: yf for (x, ys, yf) in rows if yf is not None}
+    assert set(fit) == {1.5, 2.5}
+    assert all(isinstance(v, (int, float)) for v in fit.values())
 
 
 def test_non_numeric_points_are_skipped(client):
@@ -128,6 +141,8 @@ def test_fit_series_has_markers_for_google_sheets(client):
     # ...while the Y columns differ (standards vs fit).
     yrefs = re.findall(r'<yVal><numRef><f>([^<]+)</f>', xml)
     assert len(yrefs) == 2 and yrefs[0] != yrefs[1]
+    # 'span' keeps the fit line continuous across the interspersed standard rows.
+    assert '<dispBlanksAs val="span"' in xml
     # Every series carries a real marker; none uses a marker-less symbol "none"
     # (the line-only series that Google Sheets won't draw on a scatter).
     assert '<symbol val="none"' not in xml, "a series still has marker symbol 'none'"
