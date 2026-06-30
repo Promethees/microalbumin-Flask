@@ -7,6 +7,7 @@ locale decimal separator.
 """
 import io
 import os
+import re
 import sys
 import zipfile
 
@@ -17,8 +18,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from main import app  # noqa: E402
 
-# Helper columns: AA(27)=pt_x, AB(28)=pt_y, AC(29)=fit_x, AD(30)=fit_y
-PT_X, PT_Y, FIT_X, FIT_Y = 27, 28, 29, 30
+# Shared-X helper layout: AA(27)=x (shared), AB(28)=std_y, AC(29)=fit_y.
+# Standards occupy the first rows, the fit curve the rows after.
+X_COL, STD_Y, FIT_Y = 27, 28, 29
 
 
 @pytest.fixture
@@ -29,9 +31,9 @@ def client():
 
 
 def _helper_sheet(wb):
-    """The worksheet whose row-1 header at column AA is 'pt_x'."""
+    """The worksheet whose row-1 header at column AA is the shared 'x'."""
     for ws in wb.worksheets:
-        if ws.cell(1, PT_X).value == 'pt_x':
+        if ws.cell(1, X_COL).value == 'x':
             return ws
     return None
 
@@ -64,19 +66,24 @@ def test_string_points_written_as_numbers(client):
 
     wb = load_workbook(io.BytesIO(rv.data))
     ws = _helper_sheet(wb)
-    assert ws is not None, "pt_x helper header not found"
+    assert ws is not None, "shared-x helper header not found"
 
-    # Both standards must be real numbers (not text) in pt_x / pt_y.
+    # The two standards sit on the first rows: shared X in AA, std_y in AB; both
+    # must be real numbers (not text) so Excel plots them and Sheets honours them.
     for row in (2, 3):
-        assert isinstance(ws.cell(row, PT_X).value, (int, float)), \
-            f"pt_x row {row} is {ws.cell(row, PT_X).value!r} (text → unplottable)"
-        assert isinstance(ws.cell(row, PT_Y).value, (int, float)), \
-            f"pt_y row {row} is {ws.cell(row, PT_Y).value!r}"
-    assert ws.cell(2, PT_X).value == 5.0
-    assert ws.cell(2, PT_Y).value == pytest.approx(0.00738)
-    # Fit values stay numeric too.
-    assert isinstance(ws.cell(2, FIT_X).value, (int, float))
-    assert isinstance(ws.cell(2, FIT_Y).value, (int, float))
+        assert isinstance(ws.cell(row, X_COL).value, (int, float)), \
+            f"x row {row} is {ws.cell(row, X_COL).value!r} (text → unplottable)"
+        assert isinstance(ws.cell(row, STD_Y).value, (int, float)), \
+            f"std_y row {row} is {ws.cell(row, STD_Y).value!r}"
+    assert ws.cell(2, X_COL).value == 5.0
+    assert ws.cell(2, STD_Y).value == pytest.approx(0.00738)
+    # std_y is blank on the standards' rows' fit column, and vice-versa.
+    assert ws.cell(2, FIT_Y).value is None
+    # The fit curve follows on the next rows (shared X in AA, fit_y in AC).
+    fit_row = 2 + 2  # after the two standards
+    assert isinstance(ws.cell(fit_row, X_COL).value, (int, float))
+    assert isinstance(ws.cell(fit_row, FIT_Y).value, (int, float))
+    assert ws.cell(fit_row, STD_Y).value is None
 
 
 def test_non_numeric_points_are_skipped(client):
@@ -89,8 +96,8 @@ def test_non_numeric_points_are_skipped(client):
 
     ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
     # Only the valid standard is written; the 'NONE' x is dropped (not text).
-    assert ws.cell(2, PT_X).value == 5.0
-    assert ws.cell(3, PT_X).value is None
+    assert ws.cell(2, X_COL).value == 5.0
+    assert ws.cell(3, X_COL).value is None
 
 
 def _chart_xml(xlsx_bytes):
@@ -114,6 +121,13 @@ def test_fit_series_has_markers_for_google_sheets(client):
 
     assert '<scatterChart>' in xml
     assert xml.count('<ser>') == 2          # standards + fit
+    # Both series must reference the SAME X column — Google Sheets' scatter model
+    # allows only one X column per chart and drops series with a different X.
+    xrefs = re.findall(r'<xVal><numRef><f>([^<]+)</f>', xml)
+    assert len(xrefs) == 2 and xrefs[0] == xrefs[1], f"series do not share an X column: {xrefs}"
+    # ...while the Y columns differ (standards vs fit).
+    yrefs = re.findall(r'<yVal><numRef><f>([^<]+)</f>', xml)
+    assert len(yrefs) == 2 and yrefs[0] != yrefs[1]
     # Every series carries a real marker; none uses a marker-less symbol "none"
     # (the line-only series that Google Sheets won't draw on a scatter).
     assert '<symbol val="none"' not in xml, "a series still has marker symbol 'none'"

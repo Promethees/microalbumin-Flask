@@ -482,8 +482,15 @@ Timestamp,Value:1,Value:2,...
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
+- **Both series share ONE X column.** The helper block is three columns — shared `x` (col AA), `std_y` (AB),
+  `fit_y` (AC) — with the standards on the first rows and the fit curve on the rows after; each Y column is
+  left *blank* on the other dataset's rows (`dispBlanksAs` defaults to `gap`, so the blanks are skipped). Both
+  the Standards and Fit `Series` reference the **same** X `Reference`. This is mandatory for **Google Sheets**:
+  its scatter model permits only a single X column per chart, so independent per-series X (col `pt_x`/`fit_x`,
+  valid in Excel's true XY model) makes Sheets **silently drop the fit series** — the curve never appears.
+  **Anti-pattern**: do not give the two series separate X columns. Covered by `tests/test_report_excel.py`.
 - **Helper values must be written as numbers, not text.** The standards `points` arrive from the client as
-  *strings* (parsed out of the CSV); `_add_native_scatter_chart` coerces every `pt_x`/`pt_y`/`fit_x`/`fit_y`
+  *strings* (parsed out of the CSV); `_add_native_scatter_chart` coerces every `x`/`std_y`/`fit_y`
   to `float` (`_num()`, skipping non-numeric like `'NONE'`) before writing. A string cell makes Excel (a)
   refuse to plot it on the scatter — the green "number stored as text" marker — and (b) ignore the user's
   locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
