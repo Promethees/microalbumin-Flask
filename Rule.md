@@ -482,30 +482,24 @@ Timestamp,Value:1,Value:2,...
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
-- **It is a category-axis `LineChart` on a SMALL grid, not a `ScatterChart`.** A scatter's *value* X axis cannot
-  be relabelled (Google Sheets labels it from the X data), so the chart is a `LineChart` on a **category** axis we
-  label ourselves. Crucially the grid must be **small** — Sheets self-skips category labels on a dense axis (it
-  thinned a ~170-slot version down to a *single* tick and **ignores `tickLblSkip`**), so the fit's 150 points
-  cannot be categories. The grid (`_add_native_scatter_chart`) is the nice ticks (see below) ∪ the standards' own
-  X ∪ one midpoint per tick interval — **~12 categories** — and the smooth fit is **interpolated** onto it
-  (`_interp`, linear over the dense client fit). Helper columns: `conc` (AA, axis label), `std_y` (AB, standard
-  markers), `fit_y` (AC, the interpolated line value at *every* grid row). Both series share the one `conc`
-  category reference; points position by row index (rows sorted by concentration → index ≈ value). **Anti-pattern**:
-  do not feed all 150 fit points in as categories (Sheets drops the labels), and do not revert to a `ScatterChart`.
-  Covered by `tests/test_report_excel.py`.
-- **Axis labels are a "nice numbers" tick series.** The grid's labelled rows are the round ticks from
-  `_nice_axis_ticks(lo, hi)` (Heckbert 1/2/5 × 10^k — e.g. `[5,500]` → `0,100,…,500`) over the standards' range;
-  `conc` is blank on the non-tick rows. Round, evenly-spaced ticks read like a real axis. We still set
-  `tickLblSkip = 1` / `tickMarkSkip = 1` and horizontal text (`RichText` `bodyPr rot=0`) for readers that honour
-  them, but the **small grid** is what actually makes Sheets show every label. **Anti-pattern**: do not put the raw
-  standard/fit Xs in `conc`.
-- **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
-  `val = NumDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `cat = AxDataSource(numRef=NumRef(…))` — i.e.
-  each cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
-  cache: Excel recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text. The
-  cache keeps the values and the axis labels numeric. Blanks (the other series' rows, the fit rows in `conc`) are
-  omitted from the cache by 0-based `idx`. **Anti-pattern**: do not fall back to the `Series(values, …)` factory —
-  it drops the caches.
+- **It is a value-axis `ScatterChart` with ONE shared, sorted X column.** Both series reference the **same** X
+  column (`x` at AA; `std_y`/`fit_y` at AB/AC, each blank on the other's rows), with the standards+fit rows merged
+  and **sorted** by concentration. This is the shape Google Sheets renders as a **proportional value axis** (the
+  numCache makes X numeric) — counter-intuitively a *shared* X works where independent per-series X does **not**
+  (Sheets drops the extra series and/or falls to a category axis). The shared X must be **monotonic** (hence the
+  sort) or Sheets reverts to category/index spacing. **Anti-pattern**: do not give the series separate X columns,
+  and do not switch to a `LineChart`/category axis (loses proportional X + hover). Covered by `tests/test_report_excel.py`.
+- **X axis clamped to "nice numbers" ticks.** `chart.x_axis.scaling.min/max` + `majorUnit` are set from
+  `_nice_axis_ticks(lo, hi)` (Heckbert 1/2/5 × 10^k — e.g. `[5,500]` → `0,100,…,500`) over the **standards'**
+  range (not the merged range — the fit's ±10 % extrapolation would skew it). On the proportional value axis this
+  yields round, evenly-spaced ticks (instead of the raw standard values like 50/200 that Sheets would otherwise
+  pick) and crops the extrapolation tail. **Anti-pattern**: do not blank the labels (`number_format=';;;'` — Sheets
+  ignores it), and do not size the ticks off the merged/fit range.
+- **Series carry explicit numeric caches.** Series are built from the raw `XYSeries` class with
+  `xVal = AxDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `yVal = NumDataSource(...)` — each reference
+  embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no cache: Excel
+  recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text/empty and the series
+  is dropped (and X stops being numeric). **Anti-pattern**: do not fall back to the `Series(yref, xref)` factory.
 - **Fit resolution.** `buildCalibrationRegressionLine` (and the inline regline loops in `report.js`) sample the
   curve at **150 points** so it reads as a smooth line in Excel and a smooth dotted trace in Google Sheets
   (which draws the fit as markers). All five generators share the `/ 149` + `j < 150` pattern — keep them in step.
@@ -516,15 +510,11 @@ Timestamp,Value:1,Value:2,...
   locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
   General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
   `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
-- **Standards = diamond markers, fit = thin smooth line — and the fit must not be a native trendline.** The
-  standards are blue **diamonds** (`Marker('diamond', size=8)`, no-fill line); the fit is a thin smooth red
-  **line** (`LineProperties` `solidFill='E74C3C'`, `w=19050` ≈ 1.5pt, `smooth=True`, marker `none`) through the
-  interpolated grid — a clean continuous curve over the ~12 points, unmistakably distinct from the diamonds. (The
-  fit is a *line* now because the grid is small; on the earlier dense-scatter version a line triggered Sheets'
-  line-chart/category import, but here the chart is already a category LineChart.) **No two standards may sit on
-  adjacent grid rows** — Google Sheets ignores the standards' no-fill line and draws a connecting segment between
-  consecutive non-blank points, so the grid build inserts a midpoint between any adjacent standard pair (a blank
-  fit-only row breaks the segment); the std-marker series thus has a gap around every point. Do
+- **Standards = diamond markers, fit = fine red dots — markers only, and the fit must not be a native trendline.**
+  The standards are blue **diamonds** (`Marker('diamond', size=8)`), the fit the 150-point dense sampling as the
+  smallest red **dots** (`Marker('dot', size=2)`); **neither series has a line** (`LineProperties.noFill = True`).
+  On a scatter a line series gets dropped / line-chart-imported by Sheets, so markers only — the dense dots read
+  as a thin smooth curve and stay value-positioned. Do
   **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline
