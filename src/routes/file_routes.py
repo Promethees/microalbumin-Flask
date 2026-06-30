@@ -1312,6 +1312,21 @@ def export_report_excel(validated_data):
         tick_set = {round(float(t), 6) for t in ticks}
         std_y_by_x = {round(float(x), 6): y for (x, y) in points}
 
+        # Separate any two standards that landed on ADJACENT grid rows by inserting a
+        # midpoint between them. Google Sheets draws a connecting line between
+        # consecutive non-blank points of a line series — it ignores the no-fill we
+        # set on the standards' line — so adjacent standards would get joined by a
+        # stray segment; a blank (fit-only) row between them breaks it. (Standards
+        # already separated by a tick midpoint, e.g. 200/300, are fine.)
+        seps = [(a + b) / 2.0 for a, b in zip(grid, grid[1:])
+                if round(a, 6) in std_y_by_x and round(b, 6) in std_y_by_x]
+        if seps:
+            grid2 = []
+            for g in sorted(set(grid) | set(seps)):
+                if not grid2 or abs(g - grid2[-1]) > 1e-6:
+                    grid2.append(g)
+            grid = grid2
+
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
         cat_col, ys_col, yf_col = hc, hc + 1, hc + 2
         _cell(ws, 1, cat_col, 'conc'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')

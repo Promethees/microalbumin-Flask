@@ -521,7 +521,10 @@ Timestamp,Value:1,Value:2,...
   **line** (`LineProperties` `solidFill='E74C3C'`, `w=19050` ≈ 1.5pt, `smooth=True`, marker `none`) through the
   interpolated grid — a clean continuous curve over the ~12 points, unmistakably distinct from the diamonds. (The
   fit is a *line* now because the grid is small; on the earlier dense-scatter version a line triggered Sheets'
-  line-chart/category import, but here the chart is already a category LineChart.) Do
+  line-chart/category import, but here the chart is already a category LineChart.) **No two standards may sit on
+  adjacent grid rows** — Google Sheets ignores the standards' no-fill line and draws a connecting segment between
+  consecutive non-blank points, so the grid build inserts a midpoint between any adjacent standard pair (a blank
+  fit-only row breaks the segment); the std-marker series thus has a gap around every point. Do
   **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline

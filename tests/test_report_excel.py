@@ -168,6 +168,13 @@ def test_category_line_chart_with_nice_tick_labels(client):
     assert '<a:ln w="19050"' in xml and '<smooth val="1"' in xml  # thin smooth fit line
     assert xml.count('<a:noFill') == 1, "standards line should be the only no-fill line"
     assert 'trendline' not in xml.lower()
+    # No two standards may sit on ADJACENT grid rows, or Google Sheets joins them
+    # with a stray line (it ignores the series' no-fill). A blank row separates them.
+    std_ser = [s for s in re.findall(r'<ser>.*?</ser>', xml, re.S) if 'Standards' in s][0]
+    std_idx = sorted(int(i) for i in re.findall(r'<pt idx="(\d+)"',
+                                                 re.search(r'<val>.*?</val>', std_ser, re.S).group(0)))
+    assert all(b - a > 1 for a, b in zip(std_idx, std_idx[1:])), \
+        f"adjacent standards would be line-joined in Sheets: {std_idx}"
 
 
 def test_no_native_trendline_for_michaelis_menten(client):
