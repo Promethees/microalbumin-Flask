@@ -482,6 +482,13 @@ Timestamp,Value:1,Value:2,...
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
+- **Helper values must be written as numbers, not text.** The standards `points` arrive from the client as
+  *strings* (parsed out of the CSV); `_add_native_scatter_chart` coerces every `pt_x`/`pt_y`/`fit_x`/`fit_y`
+  to `float` (`_num()`, skipping non-numeric like `'NONE'`) before writing. A string cell makes Excel (a)
+  refuse to plot it on the scatter — the green "number stored as text" marker — and (b) ignore the user's
+  locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
+  General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
+  `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
 
 ---
 

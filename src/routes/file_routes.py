@@ -1192,10 +1192,35 @@ def export_report_excel(validated_data):
         not plot data in hidden cells). A per-sheet cursor (`_chart_helper_col`)
         keeps successive charts from overwriting each other.
         """
-        points = [p for p in (s.get('points') or [])
-                  if p.get('x') is not None and p.get('y') is not None]
-        fit = [p for p in (s.get('fit') or [])
-               if p.get('x') is not None and p.get('y') is not None]
+        def _num(v):
+            """Coerce a chart value to float for a numeric Excel cell, else None.
+
+            The standards points arrive from the client as *strings* (parsed out
+            of the CSV), so writing them verbatim makes openpyxl emit text cells:
+            Excel then refuses to plot them on the scatter (the green "number
+            stored as text" marker) and ignores the user's locale decimal
+            separator. Writing a real float fixes both — the point plots, and the
+            cell is formatted per the user's regional settings (no forced format).
+            """
+            if v is None or isinstance(v, bool):
+                return None
+            if isinstance(v, (int, float)):
+                return float(v)
+            try:
+                t = str(v).strip()
+                return float(t) if t else None
+            except (TypeError, ValueError):
+                return None
+
+        points, fit = [], []
+        for p in (s.get('points') or []):
+            x, y = _num(p.get('x')), _num(p.get('y'))
+            if x is not None and y is not None:
+                points.append((x, y))
+        for p in (s.get('fit') or []):
+            x, y = _num(p.get('x')), _num(p.get('y'))
+            if x is not None and y is not None:
+                fit.append((x, y))
         if not points and not fit:
             return anchor_row
 
@@ -1203,12 +1228,14 @@ def export_report_excel(validated_data):
         px_col, py_col, fx_col, fy_col = hc, hc + 1, hc + 2, hc + 3
         _cell(ws, 1, px_col, 'pt_x'); _cell(ws, 1, py_col, 'pt_y')
         _cell(ws, 1, fx_col, 'fit_x'); _cell(ws, 1, fy_col, 'fit_y')
-        for i, p in enumerate(points, start=2):
-            ws.cell(i, px_col, value=p.get('x'))
-            ws.cell(i, py_col, value=p.get('y'))
-        for i, p in enumerate(fit, start=2):
-            ws.cell(i, fx_col, value=p.get('x'))
-            ws.cell(i, fy_col, value=p.get('y'))
+        # Written as floats (General format) so Excel plots them and renders the
+        # decimals in the user's own locale — do not stringify or pin a format.
+        for i, (x, y) in enumerate(points, start=2):
+            ws.cell(i, px_col, value=x)
+            ws.cell(i, py_col, value=y)
+        for i, (x, y) in enumerate(fit, start=2):
+            ws.cell(i, fx_col, value=x)
+            ws.cell(i, fy_col, value=y)
 
         chart = ScatterChart()
         # scatterStyle is *required* by the OOXML schema. Omitting it yields a
