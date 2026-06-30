@@ -1311,11 +1311,13 @@ def export_report_excel(validated_data):
                 positions = [round(PTS_TOTAL * (c - c0) / total_span) for c in labelled]
             else:
                 positions = list(range(len(labelled)))
-            # Force strictly-increasing slots so near-equal concentrations never
-            # collide onto the same row.
+            # Keep ≥1 free slot between consecutive labels, so every interval gets at
+            # least one fit point. That guarantees the fit_y column never has two
+            # adjacent blanks (the label rows) — the fit line then only ever spans a
+            # SINGLE blank between fit points, which keeps its segments connected.
             for j in range(1, len(positions)):
-                if positions[j] <= positions[j - 1]:
-                    positions[j] = positions[j - 1] + 1
+                if positions[j] <= positions[j - 1] + 1:
+                    positions[j] = positions[j - 1] + 2
             for j, c in enumerate(labelled):
                 merged.append((c, std_by_tick.get(c), None))  # labelled standard row
                 if j < len(labelled) - 1:
