@@ -1272,7 +1272,18 @@ def export_report_excel(validated_data):
             fyref = Reference(ws, min_col=fy_col, min_row=2, max_row=n + 1)
             algo = s.get('algo')
             sf = Series(fyref, fxref, title=('Fit ({})'.format(algo) if algo else 'Fit'))
-            sf.marker = Marker(symbol='none')
+            # The fit is a dense sampling (50 pts) of the *exact* fitted curve.
+            # Excel draws it as a smooth line, but Google Sheets ignores a
+            # marker-less line series on a scatter — it only draws curves via its
+            # own Trendline feature, which is unusable here: the chart plots
+            # metric-vs-concentration while the app fits concentration-vs-metric
+            # and inverts it, so a native trendline would recompute the *wrong*
+            # functional family (log<->exp swap, etc.) and has no Michaelis-Menten
+            # type. So we also give the curve small markers: Google Sheets then
+            # renders the exact curve as fine points, Excel keeps the smooth line.
+            fmarker = Marker(symbol='circle', size=3)
+            fmarker.graphicalProperties = GraphicalProperties(solidFill='E74C3C')
+            sf.marker = fmarker
             sf.graphicalProperties.line.solidFill = 'E74C3C'
             sf.graphicalProperties.line.width = 28000  # EMU (~2.2pt)
             sf.smooth = True

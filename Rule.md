@@ -489,6 +489,15 @@ Timestamp,Value:1,Value:2,...
   locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
   General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
   `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
+- **The fit curve carries markers, not a bare line — and must not be a native trendline.** Excel renders a
+  marker-less line series on a scatter, but **Google Sheets does not** (it only draws curves via its own
+  Trendline feature), so the fit series gets small markers (`Marker('circle', size=3)`, red) *in addition to*
+  the smooth line: Excel shows the line, Google Sheets shows the exact curve as fine points. Do **not** replace
+  it with an OOXML `Trendline`: the chart plots **metric-vs-concentration** while the app fits
+  **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
+  an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline
+  would recompute the *wrong* functional family with its *own* coefficients, and **Michaelis-Menten has no
+  native trendline type at all**. Markers show the app's true fitted curve everywhere with no per-algo casing.
 
 ---
 
