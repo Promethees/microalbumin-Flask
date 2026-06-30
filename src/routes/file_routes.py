@@ -1257,8 +1257,11 @@ def export_report_excel(validated_data):
         chart = ScatterChart()
         # scatterStyle is *required* by the OOXML schema. Omitting it yields a
         # technically-invalid chart that Excel silently "repairs" (dropping the
-        # marker series) and that Google Sheets refuses to render at all.
-        chart.scatterStyle = 'lineMarker'
+        # marker series) and that Google Sheets refuses to render at all. Both
+        # series are markers-only (no lines), so 'marker' is the honest style and
+        # keeps Google Sheets importing this as a scatter (value axis) rather than
+        # a line chart (category axis that labels every concentration).
+        chart.scatterStyle = 'marker'
         chart.title = s.get('title') or s.get('label') or 'Calibration Curve'
         chart.x_axis.title = s.get('xLabel') or 'Concentration'
         chart.y_axis.title = s.get('yLabel') or 'Value'
@@ -1272,10 +1275,9 @@ def export_report_excel(validated_data):
         chart.style = 13
         chart.width = 18
         chart.height = 11
-        # The fit's Y is blank on the interspersed standard rows; 'span' makes the
-        # line bridge those gaps so the curve stays continuous (vs. 'gap', which
-        # would chop it into segments wherever a standard X falls between fit Xs).
-        chart.display_blanks = 'span'
+        # Each Y column is blank on the other series' rows; 'gap' just leaves those
+        # cells empty (both series are markers-only, so there is no line to bridge).
+        chart.display_blanks = 'gap'
 
         # Build the two series with explicit numeric CACHES. openpyxl writes bare
         # cell references with no cached values; Excel recomputes them on open, but
@@ -1318,19 +1320,22 @@ def export_report_excel(validated_data):
             algo = s.get('algo')
             sf = _cached_series(yf_col, [yf for (x, ys, yf) in merged],
                                 'Fit ({})'.format(algo) if algo else 'Fit')
-            # The fit is a dense sampling of the *exact* fitted curve. Excel draws it
-            # as a smooth line; Google Sheets ignores a marker-less line on a scatter,
-            # so we also give the curve small markers — Sheets then renders the exact
-            # curve as fine points. NOT a native trendline: the chart plots
-            # metric-vs-concentration while the app fits concentration-vs-metric and
-            # inverts it, so a native trendline would recompute the *wrong* functional
-            # family (log<->exp swap, etc.) and has no Michaelis-Menten type.
-            fmarker = Marker(symbol='circle', size=3)
+            # The fit is a dense (150-pt) sampling of the *exact* fitted curve, drawn
+            # as small markers with NO connecting line. Two reasons it must be
+            # markers-only: (1) a line series makes Google Sheets import the whole
+            # chart as a *line* chart — a category X axis that prints every point's
+            # concentration along the bottom; markers-only keeps it a true scatter
+            # (value axis, clean ticks); (2) the dense line rendered as a thick band.
+            # 150 fine points read as a smooth curve in both apps. NOT a native
+            # trendline: the chart plots metric-vs-concentration while the app fits
+            # concentration-vs-metric and inverts it, so a native trendline would
+            # recompute the *wrong* functional family (log<->exp swap) and has no
+            # Michaelis-Menten type.
+            fmarker = Marker(symbol='circle', size=2)
             fmarker.graphicalProperties = GraphicalProperties(solidFill='E74C3C')
             sf.marker = fmarker
-            line = LineProperties(); line.solidFill = 'E74C3C'; line.w = 28000  # ~2.2pt
+            line = LineProperties(); line.noFill = True   # markers only — see above
             sf.graphicalProperties.line = line
-            sf.smooth = True
             chart.series.append(sf)
 
         ws.add_chart(chart, 'A{}'.format(anchor_row))

@@ -122,8 +122,9 @@ def _chart_xml(xlsx_bytes):
 
 
 def test_fit_series_has_markers_for_google_sheets(client):
-    # Google Sheets drops a marker-less line series on a scatter, so the fit
-    # curve must carry markers to render there (the standards already do).
+    # Both series are markers-only (no lines): a line series makes Google Sheets
+    # import the chart as a *line* chart (category axis labelling every point),
+    # and the fit must show as scatter points there anyway.
     item = _calibrate_item(
         points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'}],
         fit=[{'x': 1.5, 'y': 0.002}, {'x': 2.5, 'y': 0.004}],
@@ -133,6 +134,7 @@ def test_fit_series_has_markers_for_google_sheets(client):
     xml = _chart_xml(rv.data)
 
     assert '<scatterChart>' in xml
+    assert '<scatterStyle val="marker"' in xml      # markers-only style
     assert xml.count('<ser>') == 2          # standards + fit
     # Both series must reference the SAME X column — Google Sheets' scatter model
     # allows only one X column per chart and drops series with a different X.
@@ -141,16 +143,15 @@ def test_fit_series_has_markers_for_google_sheets(client):
     # ...while the Y columns differ (standards vs fit).
     yrefs = re.findall(r'<yVal><numRef><f>([^<]+)</f>', xml)
     assert len(yrefs) == 2 and yrefs[0] != yrefs[1]
-    # 'span' keeps the fit line continuous across the interspersed standard rows.
-    assert '<dispBlanksAs val="span"' in xml
     # Each series ref carries an explicit numeric cache (xVal + yVal × 2 series) so
     # importers read a value axis with clean ticks instead of labelling every point.
     assert xml.count('<numCache>') == 4
     assert xml.count('<valAx>') == 2 and '<catAx>' not in xml
-    # Every series carries a real marker; none uses a marker-less symbol "none"
-    # (the line-only series that Google Sheets won't draw on a scatter).
+    # Both series are markers; NEITHER carries a connecting line — both series
+    # lines are <a:noFill/> (a real line would trigger Sheets' line-chart import).
     assert '<symbol val="none"' not in xml, "a series still has marker symbol 'none'"
     assert xml.count('<symbol val="circle"') == 2
+    assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
     # And we must NOT delegate to a native trendline (wrong curve for this chart).
     assert 'trendline' not in xml.lower()
 

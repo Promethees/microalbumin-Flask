@@ -488,11 +488,9 @@ Timestamp,Value:1,Value:2,...
   Two Google-Sheets requirements force this: (1) its scatter model permits only a single X column per chart, so
   independent per-series X (col `pt_x`/`fit_x`, valid in Excel's true XY model) makes Sheets **silently drop the
   fit series**; (2) the shared X must be **monotonic**, or Sheets falls back to a **category axis** — points
-  placed by row index, not value (standards crammed left, fit splayed right: the "horrible" mis-render). Because
-  the fit's Y is then blank on the interspersed standard rows, set `chart.display_blanks = 'span'` (openpyxl's
-  attribute is snake_case — `displayBlanksAs` is a silent no-op) so the fit line bridges those gaps instead of
-  fragmenting. **Anti-pattern**: do not give the series separate X columns, and do not write an unsorted shared
-  X. Covered by `tests/test_report_excel.py`.
+  placed by row index, not value (standards crammed left, fit splayed right: the "horrible" mis-render).
+  **Anti-pattern**: do not give the series separate X columns, and do not write an unsorted shared X. Covered by
+  `tests/test_report_excel.py`.
 - **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
   `xVal = AxDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `yVal = NumDataSource(...)` — i.e. each
   cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
@@ -511,11 +509,13 @@ Timestamp,Value:1,Value:2,...
   locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
   General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
   `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
-- **The fit curve carries markers, not a bare line — and must not be a native trendline.** Excel renders a
-  marker-less line series on a scatter, but **Google Sheets does not** (it only draws curves via its own
-  Trendline feature), so the fit series gets small markers (`Marker('circle', size=3)`, red) *in addition to*
-  the smooth line: Excel shows the line, Google Sheets shows the exact curve as fine points. Do **not** replace
-  it with an OOXML `Trendline`: the chart plots **metric-vs-concentration** while the app fits
+- **Both series are markers-only (no connecting line) — and the fit must not be a native trendline.** The fit
+  is the 150-pt dense sampling drawn as small red markers (`Marker('circle', size=2)`), the standards as larger
+  blue markers (`size=7`); **neither series has a line** (both `LineProperties.noFill = True`), and the chart
+  uses `scatterStyle = 'marker'`. A connecting line makes **Google Sheets import the whole chart as a *line*
+  chart** — a category X axis that prints every point's concentration along the bottom — and rendered the dense
+  fit as a thick band; markers-only keeps it a true scatter (value axis, clean ticks) and a thin curve. Do
+  **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline
   would recompute the *wrong* functional family with its *own* coefficients, and **Michaelis-Menten has no
