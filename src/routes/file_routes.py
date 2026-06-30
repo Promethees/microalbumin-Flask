@@ -1132,6 +1132,9 @@ def export_report_excel(validated_data):
     from openpyxl.chart.series import Series as XYSeries, SeriesLabel
     from openpyxl.chart.data_source import (
         NumRef, NumData, NumVal, NumDataSource, AxDataSource)
+    from openpyxl.chart.text import RichText
+    from openpyxl.drawing.text import (
+        Paragraph, ParagraphProperties, CharacterProperties, RichTextProperties)
     from openpyxl.drawing.line import LineProperties
     from openpyxl.drawing.image import Image as XLImage
     from openpyxl.utils import get_column_letter
@@ -1267,6 +1270,17 @@ def export_report_excel(validated_data):
         chart.y_axis.delete = False
         chart.x_axis.axPos = 'b'
         chart.y_axis.axPos = 'l'
+        # The category axis has ~157 slots (7 standards + 150 fit rows). Left to
+        # auto-skip, Google Sheets shows a label only every Nth slot — which mostly
+        # lands on the *blank* fit rows, so only a couple of standards appear (and
+        # rotated). Force every slot's label to render: the blank fit rows show
+        # nothing, so all the standard concentrations come through, kept horizontal.
+        chart.x_axis.tickLblSkip = 1
+        chart.x_axis.tickMarkSkip = 1
+        chart.x_axis.txPr = RichText(
+            bodyPr=RichTextProperties(rot=0, vert='horz'),
+            p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties()))],
+        )
         chart.style = 13
         chart.width = 18
         chart.height = 11

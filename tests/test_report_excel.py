@@ -146,6 +146,10 @@ def test_category_line_chart_with_custom_concentration_labels(client):
     assert cat_blocks, "no category data on the series"
     cat_vals = re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat_blocks[0])
     assert sorted(float(v) for v in cat_vals) == [5.0, 50.0]
+    # Every slot's label renders (so all standards show, not just the few Sheets
+    # would auto-pick from the ~157 mostly-blank category slots), kept horizontal.
+    assert '<tickLblSkip val="1"' in xml
+    assert 'rot="0"' in xml
     # Two DISTINCT marker shapes, neither with a connecting line (both <a:noFill/>).
     assert '<symbol val="none"' not in xml
     assert xml.count('<symbol val="diamond"') == 1  # standards
