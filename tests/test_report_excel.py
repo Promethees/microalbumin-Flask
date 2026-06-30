@@ -102,6 +102,38 @@ def test_string_points_written_as_numbers(client):
             assert c is not None and ys is not None, "standard row missing label/std_y"
 
 
+def test_fit_rows_per_interval_are_value_proportional(client):
+    # Concentrations 0, 100, 300 → intervals span 100 and 200 (ratio 1:2). On the
+    # equal-slot category axis, the fit-row count between consecutive labels must be
+    # PROPORTIONAL to the value span, so the labels keep their true value distances
+    # (100 sits ~1/3 of the way to 300, not halfway).
+    item = _calibrate_item(
+        points=[{'x': '0', 'y': '0.0'}, {'x': '100', 'y': '0.02'},
+                {'x': '300', 'y': '0.06'}],
+        fit=_fit_grid(0, 300, 60),
+    )
+    rv = client.post('/export_report_excel', json={'items': [item]})
+    assert rv.status_code == 200
+
+    ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
+    rows = _rows(ws)
+
+    # Count fit rows (fit_y set, no label) between consecutive concentration labels.
+    runs, run = [], None
+    for c, ys, yf in rows:
+        if c is not None:               # a concentration label row
+            if run is not None:
+                runs.append(run)
+            run = 0
+        elif yf is not None and run is not None:
+            run += 1
+    # (fit rows only ever sit BETWEEN labels, so there's no trailing run to flush.)
+    # Two gaps (0→100, 100→300); the second spans 2× the value, so ~2× the fit rows.
+    assert len(runs) == 2
+    assert runs[0] > 0 and runs[1] > 0
+    assert runs[1] / runs[0] == pytest.approx(2.0, abs=0.4)
+
+
 def test_non_numeric_points_are_skipped(client):
     item = _calibrate_item(
         points=[{'x': '5', 'y': '0.1'}, {'x': 'NONE', 'y': '0.2'}],

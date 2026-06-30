@@ -1193,8 +1193,14 @@ def export_report_excel(validated_data):
         Two markers-only series — the standards (blue diamonds) and the fitted curve
         (red X-marks) — on a category axis labelled ONLY at the standard rows (their
         concentration), so the X-axis shows the concentration-table values and never
-        the fit's generated Xs. The 150 uniform fit rows fill the axis so a
-        standard's row index ≈ its value position. Title/axis titles stay editable.
+        the fit's generated Xs. The fitted curve is resampled so each concentration
+        interval carries a number of fit rows PROPORTIONAL to its value span: on a
+        category (equal-slot) axis that makes each concentration label land at a
+        value-proportional row index, so 5 / 50 / 500 keep their true value distances
+        (a small gap stays small, a wide gap stays wide). Title/axis titles stay
+        editable. Total fit density is kept modest so the renderer (esp. Google
+        Sheets, which thins dense category labels) has a better chance of showing
+        every standard's label.
 
         `conc_values` is the exact Concentration column parsed from the data file
         (the Raw Data table) — the authoritative source for the axis tick labels;
@@ -1237,23 +1243,6 @@ def export_report_excel(validated_data):
         if not points and not fit:
             return anchor_row
 
-        # Merge both datasets onto a single, SORTED set of rows. The chart is a
-        # category LINE chart with both series MARKERS-ONLY (no lines). Two things
-        # this buys us in Google Sheets:
-        #   * Proportional spacing — the 150 *uniform* fit rows fill the category
-        #     axis, so a standard's row index ≈ its value position.
-        #   * Control over the X labels — they come from a column WE write. We label
-        #     ONLY the standard rows (with their concentration), leaving the fit rows
-        #     blank, so the axis shows the concentration-TABLE values and never the
-        #     fitted curve's generated Xs. (A value-axis scatter can't do this: Sheets
-        #     either drops a series or auto-picks round ticks, not the table values.)
-        # Values are floats (General format) → Excel/Sheets render decimals per
-        # locale; never stringify (a text cell is unplottable / locale-wrong).
-        merged = sorted(
-            [(x, y, None) for (x, y) in points] + [(x, None, y) for (x, y) in fit],
-            key=lambda r: r[0],
-        )
-
         # The axis ticks are the EXACT Concentration values parsed from the data
         # file (`conc_values`, the Raw Data table's concentration column). Snap each
         # standard's X to its nearest parsed concentration so the tick label is the
@@ -1267,12 +1256,90 @@ def export_report_excel(validated_data):
                     return near
             return x
 
+        # Build the rows for a category LINE chart with both series MARKERS-ONLY.
+        # The category axis is labelled ONLY on the standard rows (their snapped
+        # concentration); the fit rows stay blank, so the axis shows the
+        # concentration-TABLE values and never the fit's generated Xs. (A value-axis
+        # scatter can't do this: Sheets drops a series or auto-picks round ticks.)
+        #
+        # The fitted curve is RESAMPLED so the number of fit rows between two
+        # consecutive concentration labels is PROPORTIONAL to that interval's value
+        # span. Because the axis is categorical (every row is one equal-width slot),
+        # proportional fit-row counts place each label at a value-proportional row
+        # index — so 5 / 50 / 500 keep their true value distances instead of being
+        # squashed to equal spacing. Concretely each label j is pinned to an integer
+        # slot `positions[j] ∝ (c_j - c_0)`, and the gap to the next label is filled
+        # with that many fit rows. Values are floats (General format) so Excel/Sheets
+        # render decimals per locale; never stringify (a text cell is unplottable).
+        labelled = sorted({_conc_label(x) for (x, y) in points})
+        std_by_tick = {_conc_label(x): y for (x, y) in points}
+
+        fit_sorted = sorted(fit, key=lambda p: p[0])
+
+        def _interp_fit(x):
+            """Linear-interpolate the fitted y at concentration x (clamped to range)."""
+            if not fit_sorted:
+                return None
+            if x <= fit_sorted[0][0]:
+                return fit_sorted[0][1]
+            if x >= fit_sorted[-1][0]:
+                return fit_sorted[-1][1]
+            lo, hi = 0, len(fit_sorted) - 1
+            while hi - lo > 1:
+                mid = (lo + hi) // 2
+                if fit_sorted[mid][0] <= x:
+                    lo = mid
+                else:
+                    hi = mid
+            x0, y0 = fit_sorted[lo]
+            x1, y1 = fit_sorted[hi]
+            return y0 if x1 == x0 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+
+        # Total fit rows spread across the whole axis (≈ category count). Kept
+        # modest — denser axes make Google Sheets thin/skip category labels — while
+        # still giving enough resolution to space uneven concentrations faithfully.
+        PTS_TOTAL = 80
+
+        merged = []  # (cat_label_or_None, std_y_or_None, fit_y_or_None)
+        if len(labelled) >= 2 and fit_sorted:
+            c0, cN = labelled[0], labelled[-1]
+            total_span = cN - c0
+            # Pin each label to a value-proportional integer slot (label 0 → slot 0,
+            # last label → slot PTS_TOTAL). Degenerate (all-equal) spans fall back to
+            # consecutive slots.
+            if total_span > 0:
+                positions = [round(PTS_TOTAL * (c - c0) / total_span) for c in labelled]
+            else:
+                positions = list(range(len(labelled)))
+            # Force strictly-increasing slots so near-equal concentrations never
+            # collide onto the same row.
+            for j in range(1, len(positions)):
+                if positions[j] <= positions[j - 1]:
+                    positions[j] = positions[j - 1] + 1
+            for j, c in enumerate(labelled):
+                merged.append((c, std_by_tick.get(c), None))  # labelled standard row
+                if j < len(labelled) - 1:
+                    gap = positions[j + 1] - positions[j] - 1  # fit rows in interval
+                    c_lo, c_hi = c, labelled[j + 1]
+                    for k in range(1, gap + 1):
+                        xk = c_lo + (c_hi - c_lo) * k / (gap + 1)
+                        merged.append((None, None, _interp_fit(xk)))  # fit-only row
+        else:
+            # Too few labelled concentrations (or no fit) to define equal intervals:
+            # keep the standards + raw fit points merged on a shared sorted axis.
+            fallback = sorted(
+                [(x, y, None) for (x, y) in points] + [(x, None, y) for (x, y) in fit],
+                key=lambda r: r[0],
+            )
+            merged = [(_conc_label(x) if ys is not None else None, ys, yf)
+                      for (x, ys, yf) in fallback]
+
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
         cat_col, ys_col, yf_col = hc, hc + 1, hc + 2
         _cell(ws, 1, cat_col, 'conc'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
-        for i, (x, ys, yf) in enumerate(merged, start=2):
-            if ys is not None:
-                ws.cell(i, cat_col, value=_conc_label(x))   # tick = file concentration
+        for i, (cat, ys, yf) in enumerate(merged, start=2):
+            if cat is not None:
+                ws.cell(i, cat_col, value=cat)   # tick = file concentration
                 ws.cell(i, ys_col, value=ys)
             if yf is not None:
                 ws.cell(i, yf_col, value=yf)   # fit row: no axis label
@@ -1287,7 +1354,7 @@ def export_report_excel(validated_data):
         chart.y_axis.delete = False
         chart.x_axis.axPos = 'b'
         chart.y_axis.axPos = 'l'
-        # The category axis has ~157 slots but only ~7 carry a label (the standards).
+        # The category axis has many slots but only the standards carry a label.
         # Excel auto-skips labels on a dense axis (showing just a couple, rotated), so
         # force every slot's label to render — the blank fit rows show nothing, so all
         # the standard concentrations come through — and keep them horizontal.
@@ -1318,7 +1385,7 @@ def export_report_excel(validated_data):
                                if v is not None])
 
         # The shared category axis is labelled only on the standard rows.
-        cat_values = [_conc_label(x) if ys is not None else None for (x, ys, yf) in merged]
+        cat_values = [cat for (cat, ys, yf) in merged]
 
         def _series(y_col, y_values, title):
             ser = XYSeries()
@@ -1329,7 +1396,7 @@ def export_report_excel(validated_data):
             return ser
 
         if points:
-            sp = _series(ys_col, [ys for (x, ys, yf) in merged], 'Standards')
+            sp = _series(ys_col, [ys for (cat, ys, yf) in merged], 'Standards')
             # Blue DIAMONDS for the measured standards, markers only (no line). The
             # standards are sparse and never on adjacent rows, so nothing joins them.
             marker = Marker(symbol='diamond', size=8)
@@ -1340,7 +1407,7 @@ def export_report_excel(validated_data):
             chart.series.append(sp)
         if fit:
             algo = s.get('algo')
-            sf = _series(yf_col, [yf for (x, ys, yf) in merged],
+            sf = _series(yf_col, [yf for (cat, ys, yf) in merged],
                          'Fit ({})'.format(algo) if algo else 'Fit')
             # Red X-MARKS for the fitted-curve points (markers only) — the 150 dense
             # X's trace the curve, clearly distinct from the diamonds. NOT a native
