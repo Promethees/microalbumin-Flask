@@ -147,11 +147,15 @@ def test_fit_series_has_markers_for_google_sheets(client):
     # importers read a value axis with clean ticks instead of labelling every point.
     assert xml.count('<numCache>') == 4
     assert xml.count('<valAx>') == 2 and '<catAx>' not in xml
-    # Both series are markers; NEITHER carries a connecting line — both series
-    # lines are <a:noFill/> (a real line would trigger Sheets' line-chart import).
+    # Two DISTINCT marker shapes, neither with a connecting line (both <a:noFill/>;
+    # a real line would trigger Sheets' line-chart import).
     assert '<symbol val="none"' not in xml, "a series still has marker symbol 'none'"
-    assert xml.count('<symbol val="circle"') == 2
+    assert xml.count('<symbol val="diamond"') == 1  # standards
+    assert xml.count('<symbol val="dot"') == 1      # fit — smallest marker
     assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
+    # X tick labels blanked via a hide-everything number format — Sheets would
+    # otherwise label every value in the shared category column.
+    assert 'formatCode=";;;"' in xml
     # And we must NOT delegate to a native trendline (wrong curve for this chart).
     assert 'trendline' not in xml.lower()
 

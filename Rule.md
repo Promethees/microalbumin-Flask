@@ -491,6 +491,13 @@ Timestamp,Value:1,Value:2,...
   placed by row index, not value (standards crammed left, fit splayed right: the "horrible" mis-render).
   **Anti-pattern**: do not give the series separate X columns, and do not write an unsorted shared X. Covered by
   `tests/test_report_excel.py`.
+- **The X tick labels are blanked.** Because Sheets reads that shared X as a *category* axis, it labels **every**
+  value in the column — all 150 fitted concentrations — and the labelling cannot be made selective (keep
+  standards, drop fit). So the X axis is given a hide-everything number format, `chart.x_axis.number_format =
+  ';;;'` with `numFmt.sourceLinked = False`, which blanks the tick labels in both Excel and Sheets. The axis
+  *title* still names the quantity and the exact standard concentrations live in the Raw Data table. Note
+  `tickLblPos = 'none'` is a **silent no-op** in openpyxl (it maps `'none'` → unset), so the number format is the
+  working lever. **Trade-off**: this also hides the standards' own X labels — unavoidable on a shared category axis.
 - **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
   `xVal = AxDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `yVal = NumDataSource(...)` — i.e. each
   cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
@@ -510,11 +517,12 @@ Timestamp,Value:1,Value:2,...
   General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
   `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
 - **Both series are markers-only (no connecting line) — and the fit must not be a native trendline.** The fit
-  is the 150-pt dense sampling drawn as small red markers (`Marker('circle', size=2)`), the standards as larger
-  blue markers (`size=7`); **neither series has a line** (both `LineProperties.noFill = True`), and the chart
-  uses `scatterStyle = 'marker'`. A connecting line makes **Google Sheets import the whole chart as a *line*
-  chart** — a category X axis that prints every point's concentration along the bottom — and rendered the dense
-  fit as a thick band; markers-only keeps it a true scatter (value axis, clean ticks) and a thin curve. Do
+  is the 150-pt dense sampling drawn as the smallest red dots (`Marker('dot', size=2)` — `dot` is finer than a
+  size-floored `circle`), the standards as larger blue **diamonds** (`Marker('diamond', size=8)`) — a
+  deliberately distinct shape/size/colour so the two series are unmistakable; **neither series has a line** (both
+  `LineProperties.noFill = True`), and the chart uses `scatterStyle = 'marker'`. A connecting line makes **Google
+  Sheets import the whole chart as a *line* chart** (a category X axis that labels every point) and rendered the
+  dense fit as a thick band; markers-only keeps it a true scatter and a thin curve. Do
   **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline

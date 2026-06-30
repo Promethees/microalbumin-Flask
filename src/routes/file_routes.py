@@ -1272,6 +1272,15 @@ def export_report_excel(validated_data):
         # the bottom (some readers, incl. Google Sheets, mis-plot otherwise).
         chart.x_axis.axPos = 'b'
         chart.y_axis.axPos = 'l'
+        # Blank the X tick labels. Google Sheets treats the shared X column as a
+        # CATEGORY axis and prints every value in it — including all 150 fitted-curve
+        # concentrations — which can't be made selective. A hide-everything number
+        # format (';;;' = empty for positive/negative/zero) blanks the labels in both
+        # Excel and Sheets; the axis title still names the quantity and the exact
+        # standard concentrations live in the Raw Data table above. (openpyxl's
+        # tickLblPos='none' is a silent no-op — it maps 'none' to unset.)
+        chart.x_axis.number_format = ';;;'
+        chart.x_axis.numFmt.sourceLinked = False
         chart.style = 13
         chart.width = 18
         chart.height = 11
@@ -1310,7 +1319,9 @@ def export_report_excel(validated_data):
 
         if points:
             sp = _cached_series(ys_col, [ys for (x, ys, yf) in merged], 'Standards')
-            marker = Marker(symbol='circle', size=7)
+            # Big blue DIAMONDS for the measured standards — a deliberately distinct
+            # shape from the fit's small round dots so the two are unmistakable.
+            marker = Marker(symbol='diamond', size=8)
             marker.graphicalProperties = GraphicalProperties(solidFill='3498DB')
             sp.marker = marker
             line = LineProperties(); line.noFill = True  # markers only, no join line
@@ -1331,7 +1342,10 @@ def export_report_excel(validated_data):
             # concentration-vs-metric and inverts it, so a native trendline would
             # recompute the *wrong* functional family (log<->exp swap) and has no
             # Michaelis-Menten type.
-            fmarker = Marker(symbol='circle', size=2)
+            # 'dot' is the smallest marker symbol — a fine point, smaller than a
+            # 'circle' (whose size floors at 2 in OOXML). 150 fine dots read as a
+            # thin smooth fit trace in Google Sheets (which draws the fit as points).
+            fmarker = Marker(symbol='dot', size=2)
             fmarker.graphicalProperties = GraphicalProperties(solidFill='E74C3C')
             sf.marker = fmarker
             line = LineProperties(); line.noFill = True   # markers only — see above
