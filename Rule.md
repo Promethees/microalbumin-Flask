@@ -493,6 +493,17 @@ Timestamp,Value:1,Value:2,...
   attribute is snake_case — `displayBlanksAs` is a silent no-op) so the fit line bridges those gaps instead of
   fragmenting. **Anti-pattern**: do not give the series separate X columns, and do not write an unsorted shared
   X. Covered by `tests/test_report_excel.py`.
+- **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
+  `xVal = AxDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `yVal = NumDataSource(...)` — i.e. each
+  cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
+  cache: Excel recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text and
+  rendered as a **category axis that prints every fitted point's concentration** along the bottom (the cluttered
+  mis-render). The cache makes X an unambiguous **value axis** with clean ticks. Blanks (the other series' rows)
+  are omitted from the cache by 0-based `idx`. **Anti-pattern**: do not fall back to the `Series(yref, xref)`
+  factory for these charts — it drops the caches.
+- **Fit resolution.** `buildCalibrationRegressionLine` (and the inline regline loops in `report.js`) sample the
+  curve at **150 points** so it reads as a smooth line in Excel and a smooth dotted trace in Google Sheets
+  (which draws the fit as markers). All five generators share the `/ 149` + `j < 150` pattern — keep them in step.
 - **Helper values must be written as numbers, not text.** The standards `points` arrive from the client as
   *strings* (parsed out of the CSV); `_add_native_scatter_chart` coerces every `x`/`std_y`/`fit_y`
   to `float` (`_num()`, skipping non-numeric like `'NONE'`) before writing. A string cell makes Excel (a)

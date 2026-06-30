@@ -143,6 +143,10 @@ def test_fit_series_has_markers_for_google_sheets(client):
     assert len(yrefs) == 2 and yrefs[0] != yrefs[1]
     # 'span' keeps the fit line continuous across the interspersed standard rows.
     assert '<dispBlanksAs val="span"' in xml
+    # Each series ref carries an explicit numeric cache (xVal + yVal × 2 series) so
+    # importers read a value axis with clean ticks instead of labelling every point.
+    assert xml.count('<numCache>') == 4
+    assert xml.count('<valAx>') == 2 and '<catAx>' not in xml
     # Every series carries a real marker; none uses a marker-less symbol "none"
     # (the line-only series that Google Sheets won't draw on a scatter).
     assert '<symbol val="none"' not in xml, "a series still has marker symbol 'none'"

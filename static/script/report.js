@@ -242,10 +242,10 @@ function buildCalibrationRegressionLine(xConc, coefficients, algo) {
     const xMin = Math.min(...xConc), xMax = Math.max(...xConc);
     const range = (xMax - xMin) || Math.abs(xMax) || 1;
     const pXMin = xMin - 0.1 * range, pXMax = xMax + 0.1 * range;
-    const step = (pXMax - pXMin) / 49;
+    const step = (pXMax - pXMin) / 149;
     const [a = 0, b = 0, c = 0] = coefficients;
     const line = [];
-    for (let j = 0; j < 50; j++) {
+    for (let j = 0; j < 150; j++) {
         const x = pXMin + j * step;
         let y = 0;
         if (algo === 'linear') y = a !== 0 ? (x - b) / a : 0;
@@ -586,9 +586,9 @@ async function generateReport() {
             const range = xMax - xMin;
             const plotXMin = xMin - 0.1 * range;
             const plotXMax = xMax + 0.1 * range;
-            const step = (plotXMax - plotXMin) / 49;
+            const step = (plotXMax - plotXMin) / 149;
             const regressionLine = [];
-            for (let j = 0; j < 50; j++) {
+            for (let j = 0; j < 150; j++) {
                 const curX = plotXMin + j * step;
                 let curY = 0;
 
@@ -932,9 +932,9 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                 const range = xMax - xMin;
                 const pXMin = xMin - 0.1 * range;
                 const pXMax = xMax + 0.1 * range;
-                const step  = (pXMax - pXMin) / 49;
+                const step  = (pXMax - pXMin) / 149;
                 const regLine = [];
-                for (let j = 0; j < 50; j++) {
+                for (let j = 0; j < 150; j++) {
                     const curX = pXMin + j * step;
                     let curY = 0;
                     if (algo === 'linear')      curY = ca !== 0 ? (curX - cb2) / ca : 0;
@@ -1802,9 +1802,9 @@ async function finalizeReport() {
                         const range = plotXMax - plotXMin;
                         const pXMin = plotXMin - 0.1 * range;
                         const pXMax = plotXMax + 0.1 * range;
-                        const step = (pXMax - pXMin) / 49;
+                        const step = (pXMax - pXMin) / 149;
                         const regressionLine = [];
-                        for (let j = 0; j < 50; j++) {
+                        for (let j = 0; j < 150; j++) {
                             const curX = pXMin + j * step;
                             let curY = 0;
                             if (algo === "linear") {
@@ -2576,9 +2576,9 @@ async function finalizeReportExcel() {
 
                         const pXMin = Math.min(...xVals) - 0.1 * (Math.max(...xVals) - Math.min(...xVals));
                         const pXMax = Math.max(...xVals) + 0.1 * (Math.max(...xVals) - Math.min(...xVals));
-                        const step  = (pXMax - pXMin) / 49;
+                        const step  = (pXMax - pXMin) / 149;
                         const regLine = [];
-                        for (let j = 0; j < 50; j++) {
+                        for (let j = 0; j < 150; j++) {
                             const curX = pXMin + j * step;
                             let curY = 0;
                             if (algo === 'linear')            curY = ca !== 0 ? (curX - cb2) / ca : 0;
