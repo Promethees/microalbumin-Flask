@@ -482,30 +482,24 @@ Timestamp,Value:1,Value:2,...
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
-- **Both series share ONE *sorted* X column.** The helper block is three columns — shared `x` (col AA),
-  `std_y` (AB), `fit_y` (AC). The standards and fit rows are **merged and sorted by X**, each Y column left
-  *blank* on the other dataset's rows; both the Standards and Fit `Series` reference the **same** X `Reference`.
-  Two Google-Sheets requirements force this: (1) its scatter model permits only a single X column per chart, so
-  independent per-series X (col `pt_x`/`fit_x`, valid in Excel's true XY model) makes Sheets **silently drop the
-  fit series**; (2) the shared X must be **monotonic**, or Sheets falls back to a **category axis** — points
-  placed by row index, not value (standards crammed left, fit splayed right: the "horrible" mis-render).
-  **Anti-pattern**: do not give the series separate X columns, and do not write an unsorted shared X. Covered by
-  `tests/test_report_excel.py`.
-- **The X tick labels are blanked.** Because Sheets reads that shared X as a *category* axis, it labels **every**
-  value in the column — all 150 fitted concentrations — and the labelling cannot be made selective (keep
-  standards, drop fit). So the X axis is given a hide-everything number format, `chart.x_axis.number_format =
-  ';;;'` with `numFmt.sourceLinked = False`, which blanks the tick labels in both Excel and Sheets. The axis
-  *title* still names the quantity and the exact standard concentrations live in the Raw Data table. Note
-  `tickLblPos = 'none'` is a **silent no-op** in openpyxl (it maps `'none'` → unset), so the number format is the
-  working lever. **Trade-off**: this also hides the standards' own X labels — unavoidable on a shared category axis.
+- **It is a category-axis `LineChart`, not a `ScatterChart`.** A scatter's *value* X axis cannot be relabelled —
+  Google Sheets always labels it from the X data (and imports a shared-X scatter as a category axis labelling all
+  150 fitted concentrations anyway). To put **custom X labels — the measured standard concentrations only** — the
+  chart is a `LineChart` (markers-only) on a **category** axis whose labels we supply ourselves. The helper block
+  is three columns — `conc` (AA), `std_y` (AB), `fit_y` (AC) — with the standards+fit rows **merged and sorted by
+  concentration**. The `conc` column holds the concentration **only on standard rows** (blank on the 150 fit
+  rows), so the axis is labelled just at the standards; `std_y`/`fit_y` hold each series' Y (blank on the other's
+  rows). Both series share that one `conc` **category** reference. Points are positioned by **row index**, but
+  because rows are sorted and the fit is sampled uniformly, index position ≈ value position (curve shape is
+  preserved). **Anti-pattern**: do not revert to a `ScatterChart` to "fix" the axis — Sheets will relabel it with
+  every value; and do not put the fit concentrations in the `conc` column. Covered by `tests/test_report_excel.py`.
 - **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
-  `xVal = AxDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `yVal = NumDataSource(...)` — i.e. each
-  cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
-  cache: Excel recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text and
-  rendered as a **category axis that prints every fitted point's concentration** along the bottom (the cluttered
-  mis-render). The cache makes X an unambiguous **value axis** with clean ticks. Blanks (the other series' rows)
-  are omitted from the cache by 0-based `idx`. **Anti-pattern**: do not fall back to the `Series(yref, xref)`
-  factory for these charts — it drops the caches.
+  `val = NumDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `cat = AxDataSource(numRef=NumRef(…))` — i.e.
+  each cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
+  cache: Excel recomputes them on open, but **Google Sheets does not** — a cache-less ref is read as text. The
+  cache keeps the values and the axis labels numeric. Blanks (the other series' rows, the fit rows in `conc`) are
+  omitted from the cache by 0-based `idx`. **Anti-pattern**: do not fall back to the `Series(values, …)` factory —
+  it drops the caches.
 - **Fit resolution.** `buildCalibrationRegressionLine` (and the inline regline loops in `report.js`) sample the
   curve at **150 points** so it reads as a smooth line in Excel and a smooth dotted trace in Google Sheets
   (which draws the fit as markers). All five generators share the `/ 149` + `j < 150` pattern — keep them in step.
@@ -520,9 +514,8 @@ Timestamp,Value:1,Value:2,...
   is the 150-pt dense sampling drawn as the smallest red dots (`Marker('dot', size=2)` — `dot` is finer than a
   size-floored `circle`), the standards as larger blue **diamonds** (`Marker('diamond', size=8)`) — a
   deliberately distinct shape/size/colour so the two series are unmistakable; **neither series has a line** (both
-  `LineProperties.noFill = True`), and the chart uses `scatterStyle = 'marker'`. A connecting line makes **Google
-  Sheets import the whole chart as a *line* chart** (a category X axis that labels every point) and rendered the
-  dense fit as a thick band; markers-only keeps it a true scatter and a thin curve. Do
+  `LineProperties.noFill = True`). A connecting line on the `LineChart` would join the 150 fit dots into a thick
+  band and span across the standard rows; markers-only keeps the fit a thin point trace. Do
   **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline

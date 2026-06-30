@@ -1185,15 +1185,16 @@ def export_report_excel(validated_data):
         return anchor + CHART_ROW_RESERVE
 
     def _add_native_scatter_chart(ws, s, anchor_row):
-        """Render a calibration fit as a *native* (editable) Excel ScatterChart.
+        """Render a calibration fit as a *native* (editable) category LineChart.
 
-        Two series — the standards points (markers only) and the fitted curve
-        (smooth line, no markers). Unlike an embedded PNG, the chart title and
-        axis titles remain live Excel objects the user can rename after export.
+        Two markers-only series — the standards (blue diamonds) and the fitted
+        curve (small red dots) — on a category X axis whose labels are the
+        measured standard concentrations only. Unlike an embedded PNG, the chart
+        title and axis titles remain live objects the user can rename after export.
 
-        The X/Y values are written to helper columns far to the right of the
-        report content (so they don't clutter it but stay *visible* — Excel does
-        not plot data in hidden cells). A per-sheet cursor (`_chart_helper_col`)
+        The values are written to helper columns far to the right of the report
+        content (so they don't clutter it but stay *visible* — neither Excel nor
+        Sheets plots data in hidden cells). A per-sheet cursor (`_chart_helper_col`)
         keeps successive charts from overwriting each other.
         """
         def _num(v):
@@ -1228,59 +1229,44 @@ def export_report_excel(validated_data):
         if not points and not fit:
             return anchor_row
 
-        # Merge both datasets onto a single, SORTED shared X column (col AA), with
-        # each Y column blank on the other dataset's rows. Two requirements force
-        # this shape:
-        #   1. Google Sheets' scatter model permits only ONE X column per chart, so
-        #      independent per-series X (valid in Excel's true XY model) makes Sheets
-        #      silently drop the fit series — the curve never appears.
-        #   2. That shared X must be MONOTONIC, or Sheets falls back to a *category*
-        #      axis (points placed by row index, not value — standards crammed left,
-        #      the fit splayed right). Sorting the merged rows keeps the axis numeric.
-        # Values are written as floats (General format) so Excel plots them and shows
-        # the decimals in the user's own locale — do not stringify or pin a format.
+        # Merge both datasets and SORT by concentration. The chart is a
+        # CATEGORY-axis LINE chart (markers only, no lines), NOT a value-axis
+        # scatter — that is what lets the X axis carry *custom* labels: only the
+        # measured standard concentrations, instead of every value in the helper
+        # table. Why not a scatter: Google Sheets imports a shared-X scatter as a
+        # category axis anyway and labels every X value (incl. all 150 fit points),
+        # and a scatter's value axis cannot be relabelled. A category axis lets us
+        # supply the label column ourselves. Points are positioned by row INDEX, so
+        # because the rows are sorted by concentration and the fit is sampled
+        # uniformly, index position ≈ value position (curve shape is preserved).
         merged = sorted(
             [(x, y, None) for (x, y) in points] + [(x, None, y) for (x, y) in fit],
             key=lambda r: r[0],
         )
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
-        x_col, ys_col, yf_col = hc, hc + 1, hc + 2
-        _cell(ws, 1, x_col, 'x'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
+        cat_col, ys_col, yf_col = hc, hc + 1, hc + 2
+        _cell(ws, 1, cat_col, 'conc'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
+        # The category column holds the concentration ONLY on the measured-standard
+        # rows (blank on the 150 fit rows) → the X axis is labelled just at the
+        # standards. Floats (General format) → Excel/Sheets render the decimals in
+        # the user's own locale; do not stringify or pin a format.
         for i, (x, ys, yf) in enumerate(merged, start=2):
-            ws.cell(i, x_col, value=x)
             if ys is not None:
-                ws.cell(i, ys_col, value=ys)   # fit_y left blank → skipped
+                ws.cell(i, cat_col, value=x)   # axis label only at a standard
+                ws.cell(i, ys_col, value=ys)
             if yf is not None:
-                ws.cell(i, yf_col, value=yf)   # std_y left blank → skipped
+                ws.cell(i, yf_col, value=yf)   # fit row: no axis label, no std_y
         last = len(merged) + 1
 
-        chart = ScatterChart()
-        # scatterStyle is *required* by the OOXML schema. Omitting it yields a
-        # technically-invalid chart that Excel silently "repairs" (dropping the
-        # marker series) and that Google Sheets refuses to render at all. Both
-        # series are markers-only (no lines), so 'marker' is the honest style and
-        # keeps Google Sheets importing this as a scatter (value axis) rather than
-        # a line chart (category axis that labels every concentration).
-        chart.scatterStyle = 'marker'
+        chart = LineChart()
         chart.title = s.get('title') or s.get('label') or 'Calibration Curve'
         chart.x_axis.title = s.get('xLabel') or 'Concentration'
         chart.y_axis.title = s.get('yLabel') or 'Value'
         # openpyxl defaults axes to delete=True, which hides the axis titles.
         chart.x_axis.delete = False
         chart.y_axis.delete = False
-        # ScatterChart leaves both value axes at axPos='l'; the X axis belongs at
-        # the bottom (some readers, incl. Google Sheets, mis-plot otherwise).
         chart.x_axis.axPos = 'b'
         chart.y_axis.axPos = 'l'
-        # Blank the X tick labels. Google Sheets treats the shared X column as a
-        # CATEGORY axis and prints every value in it — including all 150 fitted-curve
-        # concentrations — which can't be made selective. A hide-everything number
-        # format (';;;' = empty for positive/negative/zero) blanks the labels in both
-        # Excel and Sheets; the axis title still names the quantity and the exact
-        # standard concentrations live in the Raw Data table above. (openpyxl's
-        # tickLblPos='none' is a silent no-op — it maps 'none' to unset.)
-        chart.x_axis.number_format = ';;;'
-        chart.x_axis.numFmt.sourceLinked = False
         chart.style = 13
         chart.width = 18
         chart.height = 11
@@ -1288,13 +1274,11 @@ def export_report_excel(validated_data):
         # cells empty (both series are markers-only, so there is no line to bridge).
         chart.display_blanks = 'gap'
 
-        # Build the two series with explicit numeric CACHES. openpyxl writes bare
-        # cell references with no cached values; Excel recomputes them on open, but
-        # Google Sheets does not — without a numCache it treats the X refs as text
-        # *categories* and prints every fitted point's concentration along the axis
-        # (the cluttered, category-axis mis-render). Caching the numbers makes the X
-        # an unambiguous value axis with clean, evenly-spaced ticks. Both series
-        # reference the SAME (sorted) X column; blank Y rows are skipped.
+        # Series carry explicit numeric CACHES. openpyxl writes bare cell references
+        # with no cached values; Excel recomputes them on open, but Google Sheets
+        # does not — a cache-less ref is read as text. Caching keeps the values and
+        # axis labels numeric. Both series share ONE category column (the sparse
+        # concentration labels); blank Y / blank category cells are skipped.
         sheet_q = ws.title.replace("'", "''")
 
         def _ref(col_idx):
@@ -1303,22 +1287,23 @@ def export_report_excel(validated_data):
 
         def _cache(values):
             # 0-based idx within the range; blanks (None) are omitted so the
-            # importer reads them as empty cells (the other series' rows).
+            # importer reads them as empty cells (no marker / no axis label there).
             return NumData(pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)
                                if v is not None])
 
-        xs_all = [x for (x, ys, yf) in merged]
+        # Shared category axis = the concentration, present only on standard rows.
+        cat_values = [x if ys is not None else None for (x, ys, yf) in merged]
 
-        def _cached_series(y_col, y_values, title):
+        def _series(y_col, y_values, title):
             ser = XYSeries()
-            ser.xVal = AxDataSource(numRef=NumRef(f=_ref(x_col), numCache=_cache(xs_all)))
-            ser.yVal = NumDataSource(numRef=NumRef(f=_ref(y_col), numCache=_cache(y_values)))
+            ser.val = NumDataSource(numRef=NumRef(f=_ref(y_col), numCache=_cache(y_values)))
+            ser.cat = AxDataSource(numRef=NumRef(f=_ref(cat_col), numCache=_cache(cat_values)))
             ser.tx = SeriesLabel(v=title)
             ser.graphicalProperties = GraphicalProperties()
             return ser
 
         if points:
-            sp = _cached_series(ys_col, [ys for (x, ys, yf) in merged], 'Standards')
+            sp = _series(ys_col, [ys for (x, ys, yf) in merged], 'Standards')
             # Big blue DIAMONDS for the measured standards — a deliberately distinct
             # shape from the fit's small round dots so the two are unmistakable.
             marker = Marker(symbol='diamond', size=8)
@@ -1329,26 +1314,18 @@ def export_report_excel(validated_data):
             chart.series.append(sp)
         if fit:
             algo = s.get('algo')
-            sf = _cached_series(yf_col, [yf for (x, ys, yf) in merged],
-                                'Fit ({})'.format(algo) if algo else 'Fit')
-            # The fit is a dense (150-pt) sampling of the *exact* fitted curve, drawn
-            # as small markers with NO connecting line. Two reasons it must be
-            # markers-only: (1) a line series makes Google Sheets import the whole
-            # chart as a *line* chart — a category X axis that prints every point's
-            # concentration along the bottom; markers-only keeps it a true scatter
-            # (value axis, clean ticks); (2) the dense line rendered as a thick band.
-            # 150 fine points read as a smooth curve in both apps. NOT a native
-            # trendline: the chart plots metric-vs-concentration while the app fits
-            # concentration-vs-metric and inverts it, so a native trendline would
-            # recompute the *wrong* functional family (log<->exp swap) and has no
-            # Michaelis-Menten type.
-            # 'dot' is the smallest marker symbol — a fine point, smaller than a
-            # 'circle' (whose size floors at 2 in OOXML). 150 fine dots read as a
-            # thin smooth fit trace in Google Sheets (which draws the fit as points).
+            sf = _series(yf_col, [yf for (x, ys, yf) in merged],
+                         'Fit ({})'.format(algo) if algo else 'Fit')
+            # 150 small red dots, NO connecting line: the dense points read as a thin
+            # smooth fit curve ('dot' is the smallest marker — finer than a circle,
+            # whose size floors at 2). NOT a native trendline: the chart plots
+            # metric-vs-concentration while the app fits concentration-vs-metric and
+            # inverts it, so a native trendline would draw the wrong functional family
+            # (log<->exp swap) and has no Michaelis-Menten type.
             fmarker = Marker(symbol='dot', size=2)
             fmarker.graphicalProperties = GraphicalProperties(solidFill='E74C3C')
             sf.marker = fmarker
-            line = LineProperties(); line.noFill = True   # markers only — see above
+            line = LineProperties(); line.noFill = True
             sf.graphicalProperties.line = line
             chart.series.append(sf)
 

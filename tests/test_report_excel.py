@@ -1,9 +1,11 @@
-"""Tests for the native ScatterChart export in /export_report_excel.
+"""Tests for the native calibration chart in /export_report_excel.
 
-Guards the fix for calibration standards points arriving from the client as
-strings: they must be written to the helper columns as real numbers, or Excel
-refuses to plot them (the "number stored as text" marker) and ignores the user's
-locale decimal separator.
+The chart is a category-axis LineChart (markers only) whose X labels are the
+measured standard concentrations only. These tests guard:
+  * string standards points coerced to real numbers (plottable, locale-aware);
+  * the category column carrying ONLY the standard concentrations (the 150 fit
+    points stay unlabelled);
+  * two distinct markers, no connecting lines, no native trendline.
 """
 import io
 import os
@@ -18,9 +20,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from main import app  # noqa: E402
 
-# Shared-X helper layout: AA(27)=x (shared), AB(28)=std_y, AC(29)=fit_y.
-# Standards occupy the first rows, the fit curve the rows after.
-X_COL, STD_Y, FIT_Y = 27, 28, 29
+# Helper layout: AA(27)=conc (category label — standards only), AB(28)=std_y,
+# AC(29)=fit_y. Rows are the standards + fit points merged and sorted by conc.
+CAT, STD_Y, FIT_Y = 27, 28, 29
 
 
 @pytest.fixture
@@ -31,18 +33,18 @@ def client():
 
 
 def _helper_sheet(wb):
-    """The worksheet whose row-1 header at column AA is the shared 'x'."""
+    """The worksheet whose row-1 header at column AA is the category 'conc'."""
     for ws in wb.worksheets:
-        if ws.cell(1, X_COL).value == 'x':
+        if ws.cell(1, CAT).value == 'conc':
             return ws
     return None
 
 
 def _read_helper_rows(ws):
-    """Read the (x, std_y, fit_y) helper rows until the shared X runs out."""
+    """Read (conc, std_y, fit_y) rows until a fully-empty row ends the data."""
     rows, r = [], 2
-    while ws.cell(r, X_COL).value is not None:
-        rows.append((ws.cell(r, X_COL).value,
+    while any(ws.cell(r, c).value is not None for c in (CAT, STD_Y, FIT_Y)):
+        rows.append((ws.cell(r, CAT).value,
                      ws.cell(r, STD_Y).value,
                      ws.cell(r, FIT_Y).value))
         r += 1
@@ -77,26 +79,27 @@ def test_string_points_written_as_numbers(client):
 
     wb = load_workbook(io.BytesIO(rv.data))
     ws = _helper_sheet(wb)
-    assert ws is not None, "shared-x helper header not found"
+    assert ws is not None, "category helper header not found"
     rows = _read_helper_rows(ws)
 
-    xs = [x for (x, _, _) in rows]
-    # Shared X must be all-numeric (not text) and MONOTONIC — non-monotonic X makes
-    # Google Sheets fall back to a category axis (the "horrible" mis-render).
-    assert all(isinstance(x, (int, float)) for x in xs), f"non-numeric X: {xs}"
-    assert xs == sorted(xs), f"shared X column is not sorted: {xs}"
-    # Every row carries exactly one series' Y (blank-separated datasets).
-    for x, ys, yf in rows:
-        assert (ys is None) != (yf is None), f"row x={x} has both/neither Y: {ys!r},{yf!r}"
-    # Both standards survive as real numbers at their own X.
-    std = {x: ys for (x, ys, yf) in rows if ys is not None}
+    # Rows are sorted by concentration; a row is either a standard (conc + std_y)
+    # or a fit point (fit_y only) — never both.
+    for conc, ys, yf in rows:
+        if yf is not None:
+            assert ys is None and conc is None, "fit row must have no label/std_y"
+        else:
+            assert ys is not None and conc is not None, "standard row must be labelled"
+    # The category column carries ONLY the standard concentrations, as real
+    # numbers, so the X axis is labelled just at the standards.
+    std = {conc: ys for (conc, ys, yf) in rows if ys is not None}
+    assert set(std) == {5.0, 50.0}
     assert std[5.0] == pytest.approx(0.00738)
     assert std[50.0] == pytest.approx(0.01884)
     assert all(isinstance(v, (int, float)) for v in std.values())
-    # Both fit points survive as numbers too.
-    fit = {x: yf for (x, ys, yf) in rows if yf is not None}
-    assert set(fit) == {1.5, 2.5}
-    assert all(isinstance(v, (int, float)) for v in fit.values())
+    # Both fit points survive as numbers (positioned by row order, not labelled).
+    fit_vals = [yf for (conc, ys, yf) in rows if yf is not None]
+    assert len(fit_vals) == 2
+    assert all(isinstance(v, (int, float)) for v in fit_vals)
 
 
 def test_non_numeric_points_are_skipped(client):
@@ -109,8 +112,9 @@ def test_non_numeric_points_are_skipped(client):
 
     ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
     # Only the valid standard is written; the 'NONE' x is dropped (not text).
-    assert ws.cell(2, X_COL).value == 5.0
-    assert ws.cell(3, X_COL).value is None
+    assert ws.cell(2, CAT).value == 5.0
+    assert ws.cell(2, STD_Y).value == pytest.approx(0.1)
+    assert ws.cell(3, CAT).value is None
 
 
 def _chart_xml(xlsx_bytes):
@@ -121,10 +125,7 @@ def _chart_xml(xlsx_bytes):
         return z.read(names[0]).decode('utf-8')
 
 
-def test_fit_series_has_markers_for_google_sheets(client):
-    # Both series are markers-only (no lines): a line series makes Google Sheets
-    # import the chart as a *line* chart (category axis labelling every point),
-    # and the fit must show as scatter points there anyway.
+def test_category_line_chart_with_custom_concentration_labels(client):
     item = _calibrate_item(
         points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'}],
         fit=[{'x': 1.5, 'y': 0.002}, {'x': 2.5, 'y': 0.004}],
@@ -133,30 +134,24 @@ def test_fit_series_has_markers_for_google_sheets(client):
     assert rv.status_code == 200
     xml = _chart_xml(rv.data)
 
-    assert '<scatterChart>' in xml
-    assert '<scatterStyle val="marker"' in xml      # markers-only style
+    # A category-axis LINE chart (not a scatter) — that's what lets us relabel X.
+    assert '<lineChart>' in xml and '<scatterChart>' not in xml
+    assert xml.count('<catAx>') == 1 and xml.count('<valAx>') == 1
     assert xml.count('<ser>') == 2          # standards + fit
-    # Both series must reference the SAME X column — Google Sheets' scatter model
-    # allows only one X column per chart and drops series with a different X.
-    xrefs = re.findall(r'<xVal><numRef><f>([^<]+)</f>', xml)
-    assert len(xrefs) == 2 and xrefs[0] == xrefs[1], f"series do not share an X column: {xrefs}"
-    # ...while the Y columns differ (standards vs fit).
-    yrefs = re.findall(r'<yVal><numRef><f>([^<]+)</f>', xml)
-    assert len(yrefs) == 2 and yrefs[0] != yrefs[1]
-    # Each series ref carries an explicit numeric cache (xVal + yVal × 2 series) so
-    # importers read a value axis with clean ticks instead of labelling every point.
-    assert xml.count('<numCache>') == 4
-    assert xml.count('<valAx>') == 2 and '<catAx>' not in xml
-    # Two DISTINCT marker shapes, neither with a connecting line (both <a:noFill/>;
-    # a real line would trigger Sheets' line-chart import).
-    assert '<symbol val="none"' not in xml, "a series still has marker symbol 'none'"
+    # Both series share ONE category axis; values are cached numbers.
+    assert xml.count('<cat>') == 2 and xml.count('<val>') == 2
+    assert xml.count('<numCache>') == 4     # cat + val × 2 series
+    # The category labels are the STANDARD concentrations only — not the fit Xs.
+    cat_blocks = re.findall(r'<cat>.*?</cat>', xml, re.S)
+    assert cat_blocks, "no category data on the series"
+    cat_vals = re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat_blocks[0])
+    assert sorted(float(v) for v in cat_vals) == [5.0, 50.0]
+    # Two DISTINCT marker shapes, neither with a connecting line (both <a:noFill/>).
+    assert '<symbol val="none"' not in xml
     assert xml.count('<symbol val="diamond"') == 1  # standards
     assert xml.count('<symbol val="dot"') == 1      # fit — smallest marker
     assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
-    # X tick labels blanked via a hide-everything number format — Sheets would
-    # otherwise label every value in the shared category column.
-    assert 'formatCode=";;;"' in xml
-    # And we must NOT delegate to a native trendline (wrong curve for this chart).
+    # No native trendline (it would draw the wrong inverted curve here).
     assert 'trendline' not in xml.lower()
 
 
