@@ -482,23 +482,23 @@ Timestamp,Value:1,Value:2,...
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
-- **It is a category-axis `LineChart`, not a `ScatterChart`.** A scatter's *value* X axis cannot be relabelled —
-  Google Sheets always labels it from the X data (and imports a shared-X scatter as a category axis labelling all
-  150 fitted concentrations anyway). To put **custom X labels** the chart is a `LineChart` (markers-only) on a
-  **category** axis whose labels we supply ourselves. The helper block is three columns — `conc` (AA), `std_y`
-  (AB), `fit_y` (AC) — with the standards+fit rows **merged and sorted by concentration**. `std_y`/`fit_y` hold
-  each series' Y (blank on the other's rows); both series share the one `conc` **category** reference. Points are
-  positioned by **row index**, but because rows are sorted and the fit is sampled uniformly, index position ≈
-  value position (curve shape is preserved). **Anti-pattern**: do not revert to a `ScatterChart` to "fix" the
-  axis — Sheets will relabel it with every value. Covered by `tests/test_report_excel.py`.
-- **Axis labels are a "nice numbers" tick series, not the data Xs.** `conc` carries a label **only** on the row
-  whose X is closest to each round tick from `_nice_axis_ticks(lo, hi)` (Heckbert 1/2/5 × 10^k — e.g. `[5,500]`
-  → `0,100,…,500`), blank everywhere else. Two reasons over labelling the standards: (1) round, **evenly-spaced**
-  ticks read like a real axis; (2) **Google Sheets ignores `tickLblSkip`** and self-skips category labels at a
-  fixed interval — the standards sit at *uneven* positions so most fell in its gaps (only 50 & 200 surfaced),
-  whereas evenly-spaced ticks line up with its sampling. We still set `tickLblSkip = 1` / `tickMarkSkip = 1` and
-  horizontal text (`RichText` `bodyPr rot=0`) for the readers that *do* honour them. **Anti-pattern**: do not put
-  the raw standard/fit Xs in `conc`.
+- **It is a category-axis `LineChart` on a SMALL grid, not a `ScatterChart`.** A scatter's *value* X axis cannot
+  be relabelled (Google Sheets labels it from the X data), so the chart is a `LineChart` on a **category** axis we
+  label ourselves. Crucially the grid must be **small** — Sheets self-skips category labels on a dense axis (it
+  thinned a ~170-slot version down to a *single* tick and **ignores `tickLblSkip`**), so the fit's 150 points
+  cannot be categories. The grid (`_add_native_scatter_chart`) is the nice ticks (see below) ∪ the standards' own
+  X ∪ one midpoint per tick interval — **~12 categories** — and the smooth fit is **interpolated** onto it
+  (`_interp`, linear over the dense client fit). Helper columns: `conc` (AA, axis label), `std_y` (AB, standard
+  markers), `fit_y` (AC, the interpolated line value at *every* grid row). Both series share the one `conc`
+  category reference; points position by row index (rows sorted by concentration → index ≈ value). **Anti-pattern**:
+  do not feed all 150 fit points in as categories (Sheets drops the labels), and do not revert to a `ScatterChart`.
+  Covered by `tests/test_report_excel.py`.
+- **Axis labels are a "nice numbers" tick series.** The grid's labelled rows are the round ticks from
+  `_nice_axis_ticks(lo, hi)` (Heckbert 1/2/5 × 10^k — e.g. `[5,500]` → `0,100,…,500`) over the standards' range;
+  `conc` is blank on the non-tick rows. Round, evenly-spaced ticks read like a real axis. We still set
+  `tickLblSkip = 1` / `tickMarkSkip = 1` and horizontal text (`RichText` `bodyPr rot=0`) for readers that honour
+  them, but the **small grid** is what actually makes Sheets show every label. **Anti-pattern**: do not put the raw
+  standard/fit Xs in `conc`.
 - **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
   `val = NumDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `cat = AxDataSource(numRef=NumRef(…))` — i.e.
   each cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
@@ -516,12 +516,12 @@ Timestamp,Value:1,Value:2,...
   locale decimal separator. Write the bare `float` with **no explicit `number_format`** so the cell stays
   General and Excel renders the decimals per the user's own regional settings. **Anti-pattern**: do not write
   `p.get('x')` verbatim, and do not pin a decimal format on the helper cells. Covered by `tests/test_report_excel.py`.
-- **Both series are markers-only (no connecting line) — and the fit must not be a native trendline.** The fit
-  is the 150-pt dense sampling drawn as the smallest red dots (`Marker('dot', size=2)` — `dot` is finer than a
-  size-floored `circle`), the standards as larger blue **diamonds** (`Marker('diamond', size=8)`) — a
-  deliberately distinct shape/size/colour so the two series are unmistakable; **neither series has a line** (both
-  `LineProperties.noFill = True`). A connecting line on the `LineChart` would join the 150 fit dots into a thick
-  band and span across the standard rows; markers-only keeps the fit a thin point trace. Do
+- **Standards = diamond markers, fit = thin smooth line — and the fit must not be a native trendline.** The
+  standards are blue **diamonds** (`Marker('diamond', size=8)`, no-fill line); the fit is a thin smooth red
+  **line** (`LineProperties` `solidFill='E74C3C'`, `w=19050` ≈ 1.5pt, `smooth=True`, marker `none`) through the
+  interpolated grid — a clean continuous curve over the ~12 points, unmistakably distinct from the diamonds. (The
+  fit is a *line* now because the grid is small; on the earlier dense-scatter version a line triggered Sheets'
+  line-chart/category import, but here the chart is already a category LineChart.) Do
   **not** use an OOXML `Trendline` either: the chart plots **metric-vs-concentration** while the app fits
   **concentration-vs-metric** and *inverts* it (`buildCalibrationRegressionLine` — so a `logarithmic` fit draws
   an exponential curve, `exponential` a logarithmic one, `polynomial` a √-shape), meaning a native trendline

@@ -157,13 +157,16 @@ def test_category_line_chart_with_nice_tick_labels(client):
     cat_blocks = re.findall(r'<cat>.*?</cat>', xml, re.S)
     cat_vals = sorted(float(v) for v in re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat_blocks[0]))
     assert cat_vals == [0.0, 100.0, 200.0, 300.0, 400.0, 500.0]
-    # Force every slot's label (Sheets self-skips otherwise) and keep them flat.
+    # The category grid is SMALL (Google Sheets thins labels on a dense axis).
+    rng = re.search(r"\$AA\$2:\$AA\$(\d+)", xml)
+    assert rng and int(rng.group(1)) - 1 <= 20, "category grid too large for Sheets labels"
     assert '<tickLblSkip val="1"' in xml and 'rot="0"' in xml
-    # Two DISTINCT marker shapes, neither with a connecting line.
-    assert '<symbol val="none"' not in xml
-    assert xml.count('<symbol val="diamond"') == 1  # standards
-    assert xml.count('<symbol val="dot"') == 1      # fit — smallest marker
-    assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
+    # Standards are diamond markers (no-fill line); the fit is a thin smooth LINE
+    # (no marker), so the two series are unmistakable.
+    assert xml.count('<symbol val="diamond"') == 1     # standards markers
+    assert xml.count('<symbol val="none"') == 1        # fit is a markerless line
+    assert '<a:ln w="19050"' in xml and '<smooth val="1"' in xml  # thin smooth fit line
+    assert xml.count('<a:noFill') == 1, "standards line should be the only no-fill line"
     assert 'trendline' not in xml.lower()
 
 
