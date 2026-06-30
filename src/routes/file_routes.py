@@ -1367,8 +1367,11 @@ def export_report_excel(validated_data):
         chart.style = 13
         chart.width = 18
         chart.height = 11
-        # std_y is blank between its (sparse) points; 'gap' leaves those empty.
-        chart.display_blanks = 'gap'
+        # The fit line must run CONTINUOUSLY through the standard rows (which carry
+        # no fit_y), so blanks are SPANNED — the renderer bridges the gap, joining the
+        # fit points on either side of each standard into one unbroken curve. The
+        # standards series has no line (noFill), so spanning never joins its markers.
+        chart.display_blanks = 'span'
 
         # Series carry explicit numeric CACHES — openpyxl writes bare refs, and
         # Google Sheets reads a cache-less ref as empty and drops the series.
@@ -1409,15 +1412,19 @@ def export_report_excel(validated_data):
             algo = s.get('algo')
             sf = _series(yf_col, [yf for (cat, ys, yf) in merged],
                          'Fit ({})'.format(algo) if algo else 'Fit')
-            # Red X-MARKS for the fitted-curve points (markers only) — the 150 dense
-            # X's trace the curve, clearly distinct from the diamonds. NOT a native
-            # trendline: the chart plots metric-vs-concentration while the app fits
-            # concentration-vs-metric and inverts it (log<->exp swap; no MM type).
+            # Red fitted curve: the dense points are now JOINED by a smooth red line
+            # (markers kept as small X's so the sampled points stay visible on the
+            # curve). With display_blanks='span' the line is continuous across the
+            # standard rows. NOT a native trendline: the chart plots
+            # metric-vs-concentration while the app fits concentration-vs-metric and
+            # inverts it (log<->exp swap; no MM type).
             fmarker = Marker(symbol='x', size=4)
             fmarker.graphicalProperties = GraphicalProperties(solidFill='E74C3C')
             sf.marker = fmarker
-            line = LineProperties(); line.noFill = True
+            line = LineProperties(solidFill='E74C3C')
+            line.w = 19050  # ~1.5pt
             sf.graphicalProperties.line = line
+            sf.smooth = True
             chart.series.append(sf)
 
         ws.add_chart(chart, 'A{}'.format(anchor_row))

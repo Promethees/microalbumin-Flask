@@ -176,11 +176,14 @@ def test_line_chart_labels_standards_only_with_xmark_fit(client):
     cat = re.findall(r'<cat>.*?</cat>', xml, re.S)[0]
     cat_vals = sorted(float(v) for v in re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat))
     assert cat_vals == pytest.approx([5.0, 50.0, 500.0])
-    # Two distinct markers — standards diamonds, fit X-marks — neither with a line.
+    # Two distinct markers — standards diamonds, fit X-marks.
     assert xml.count('<symbol val="diamond"') == 1
     assert xml.count('<symbol val="x"') == 1
     assert '<symbol val="none"' not in xml
-    assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
+    # The standards stay markers-only (one noFill line); the fit is now JOINED by a
+    # smooth connecting line — so exactly one noFill, plus a <smooth val="1"/>.
+    assert xml.count('<a:noFill') == 1, "standards series should have no connecting line"
+    assert '<smooth val="1"' in xml, "fitted curve should be smoothed"
     assert 'trendline' not in xml.lower()
 
 
