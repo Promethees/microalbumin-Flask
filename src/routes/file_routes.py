@@ -1227,12 +1227,12 @@ def export_report_excel(validated_data):
         return anchor + CHART_ROW_RESERVE
 
     def _add_native_scatter_chart(ws, s, anchor_row):
-        """Render a calibration fit as a *native* (editable) category LineChart.
+        """Render a calibration fit as a *native* (editable) value-axis ScatterChart.
 
-        The standards (blue diamond markers) and the fitted curve (thin red line)
-        on a category X axis whose labels are a "nice numbers" tick series. Unlike
-        an embedded PNG, the chart title and axis titles remain live objects the
-        user can rename after export.
+        The standards (blue diamond markers) and the fitted curve (fine red dots),
+        each with its OWN X column, on a value X axis clamped to round "nice
+        numbers" ticks. The value axis gives proportional positioning and a hover
+        read-out; unlike an embedded PNG, the title/axis titles stay editable.
 
         The values are written to helper columns far to the right of the report
         content (so they don't clutter it but stay *visible* — neither Excel nor
@@ -1271,84 +1271,32 @@ def export_report_excel(validated_data):
         if not points and not fit:
             return anchor_row
 
-        # Build a SMALL category grid so Google Sheets actually renders the axis
-        # labels. Sheets self-skips category labels on a dense axis — it thinned our
-        # ~170-slot version down to a *single* tick — so the chart can't carry 150
-        # fit points as categories. Instead the grid is the "nice numbers" tick
-        # series (`_nice_axis_ticks` → 0,100,…,500) ∪ the standards' own X ∪ one
-        # midpoint per tick interval (~12 categories), and the smooth fit is
-        # INTERPOLATED onto it. The fit is then a thin smooth LINE (continuous even
-        # over few points), the standards diamond markers; every nice tick is
-        # labelled and there are few enough categories that Sheets shows them all.
-        base_xs = [p[0] for p in (points or fit)]
-        ticks = _nice_axis_ticks(min(base_xs), max(base_xs))
+        # A value-axis ScatterChart with INDEPENDENT X per series. A *value* axis is
+        # what gives proportional positioning (conc 5 vs 50 land at their true spot),
+        # round ticks, and a concentration read-out on hover — none of which a
+        # category axis can do. Two hard-won requirements: (1) each series gets its
+        # OWN X column — a *shared* X column makes Google Sheets treat X as
+        # categories; (2) every reference needs a `<numCache>` or Sheets reads it as
+        # empty and DROPS the series (that, not the marker style, is why the fit
+        # vanished before the caches existed).
+        std_pts = sorted(points, key=lambda p: p[0])
         fit_pts = sorted(fit, key=lambda p: p[0])
-        f_lo, f_hi = (fit_pts[0][0], fit_pts[-1][0]) if fit_pts else (min(base_xs), max(base_xs))
-
-        def _interp(xq):
-            """Linear-interpolate the (dense) client fit onto an arbitrary X."""
-            if not fit_pts:
-                return None
-            if xq <= fit_pts[0][0]:
-                return fit_pts[0][1]
-            if xq >= fit_pts[-1][0]:
-                return fit_pts[-1][1]
-            for k in range(1, len(fit_pts)):
-                x0, y0 = fit_pts[k - 1]
-                x1, y1 = fit_pts[k]
-                if x0 <= xq <= x1:
-                    t = (xq - x0) / (x1 - x0) if x1 != x0 else 0.0
-                    return y0 + t * (y1 - y0)
-            return fit_pts[-1][1]
-
-        raw = set(float(t) for t in ticks)
-        raw.update(float(x) for (x, y) in points)
-        raw.update((float(a) + float(b)) / 2.0 for a, b in zip(ticks, ticks[1:]))
-        grid = []
-        for g in sorted(raw):                 # within the fit span, de-duplicated
-            if f_lo - 1e-6 <= g <= f_hi + 1e-6 and (not grid or abs(g - grid[-1]) > 1e-6):
-                grid.append(g)
-
-        tick_set = {round(float(t), 6) for t in ticks}
-        std_y_by_x = {round(float(x), 6): y for (x, y) in points}
-
-        # Separate any two standards that landed on ADJACENT grid rows by inserting a
-        # midpoint between them. Google Sheets draws a connecting line between
-        # consecutive non-blank points of a line series — it ignores the no-fill we
-        # set on the standards' line — so adjacent standards would get joined by a
-        # stray segment; a blank (fit-only) row between them breaks it. (Standards
-        # already separated by a tick midpoint, e.g. 200/300, are fine.)
-        seps = [(a + b) / 2.0 for a, b in zip(grid, grid[1:])
-                if round(a, 6) in std_y_by_x and round(b, 6) in std_y_by_x]
-        if seps:
-            grid2 = []
-            for g in sorted(set(grid) | set(seps)):
-                if not grid2 or abs(g - grid2[-1]) > 1e-6:
-                    grid2.append(g)
-            grid = grid2
 
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
-        cat_col, ys_col, yf_col = hc, hc + 1, hc + 2
-        _cell(ws, 1, cat_col, 'conc'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
-        # conc = axis label (only on nice-tick rows); std_y = standard markers;
-        # fit_y = the interpolated fit at every grid row (a continuous line). Floats
-        # (General format) → Excel/Sheets render decimals per locale; never stringify.
-        cat_values, ys_values, yf_values = [], [], []
-        for i, g in enumerate(grid, start=2):
-            key = round(g, 6)
-            label = g if key in tick_set else None
-            sy = std_y_by_x.get(key)
-            fy = _interp(g)
-            if label is not None:
-                ws.cell(i, cat_col, value=label)
-            if sy is not None:
-                ws.cell(i, ys_col, value=sy)
-            if fy is not None:
-                ws.cell(i, yf_col, value=fy)
-            cat_values.append(label); ys_values.append(sy); yf_values.append(fy)
-        last = len(grid) + 1
+        sx_col, sy_col, fx_col, fy_col = hc, hc + 1, hc + 2, hc + 3
+        _cell(ws, 1, sx_col, 'std_x'); _cell(ws, 1, sy_col, 'std_y')
+        _cell(ws, 1, fx_col, 'fit_x'); _cell(ws, 1, fy_col, 'fit_y')
+        # Floats (General format) → Excel/Sheets render decimals per locale; never
+        # stringify (a text cell is unplottable and shows the locale-wrong separator).
+        for i, (x, y) in enumerate(std_pts, start=2):
+            ws.cell(i, sx_col, value=x); ws.cell(i, sy_col, value=y)
+        for i, (x, y) in enumerate(fit_pts, start=2):
+            ws.cell(i, fx_col, value=x); ws.cell(i, fy_col, value=y)
 
-        chart = LineChart()
+        chart = ScatterChart()
+        # scatterStyle is required by the OOXML schema; 'marker' (both series are
+        # markers-only) keeps Sheets importing this as a scatter, not a line chart.
+        chart.scatterStyle = 'marker'
         chart.title = s.get('title') or s.get('label') or 'Calibration Curve'
         chart.x_axis.title = s.get('xLabel') or 'Concentration'
         chart.y_axis.title = s.get('yLabel') or 'Value'
@@ -1357,73 +1305,64 @@ def export_report_excel(validated_data):
         chart.y_axis.delete = False
         chart.x_axis.axPos = 'b'
         chart.y_axis.axPos = 'l'
-        # The grid is small (~12 slots), so labels fit; still ask every slot's label
-        # to render (blank rows show nothing) and keep them horizontal, for readers
-        # that honour these (Google Sheets ignores tickLblSkip, hence the small grid).
-        chart.x_axis.tickLblSkip = 1
-        chart.x_axis.tickMarkSkip = 1
-        chart.x_axis.txPr = RichText(
-            bodyPr=RichTextProperties(rot=0, vert='horz'),
-            p=[Paragraph(pPr=ParagraphProperties(defRPr=CharacterProperties()))],
-        )
+        # Clamp the X value axis to a "nice numbers" range so the ticks are round
+        # (0, 100, …, 500) and the negative/over-range fit extrapolation is cropped.
+        base_xs = [p[0] for p in (points or fit)]
+        ticks = _nice_axis_ticks(min(base_xs), max(base_xs))
+        if len(ticks) > 1:
+            chart.x_axis.scaling.min = ticks[0]
+            chart.x_axis.scaling.max = ticks[-1]
+            chart.x_axis.majorUnit = ticks[1] - ticks[0]
         chart.style = 13
         chart.width = 18
         chart.height = 11
-        # The standards series is blank between its points; 'gap' leaves those empty
-        # (the fit line is continuous — a value at every grid row — so it is unaffected).
-        chart.display_blanks = 'gap'
 
-        # Series carry explicit numeric CACHES. openpyxl writes bare cell references
-        # with no cached values; Excel recomputes them on open, but Google Sheets
-        # does not — a cache-less ref is read as text. Caching keeps the values and
-        # axis labels numeric. Both series share ONE category column (the sparse
-        # concentration labels); blank Y / blank category cells are skipped.
         sheet_q = ws.title.replace("'", "''")
 
-        def _ref(col_idx):
+        def _ref(col_idx, n):
             c = get_column_letter(col_idx)
-            return "'{s}'!${c}${lo}:${c}${hi}".format(s=sheet_q, c=c, lo=2, hi=last)
+            return "'{s}'!${c}$2:${c}${hi}".format(s=sheet_q, c=c, hi=n + 1)
 
         def _cache(values):
-            # 0-based idx within the range; blanks (None) are omitted so the
-            # importer reads them as empty cells (no marker / no axis label there).
-            return NumData(pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)
-                               if v is not None])
+            return NumData(pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)])
 
-        def _series(y_col, y_values, title):
+        def _xy_series(xcol, ycol, xs, ys, title):
             ser = XYSeries()
-            ser.val = NumDataSource(numRef=NumRef(f=_ref(y_col), numCache=_cache(y_values)))
-            ser.cat = AxDataSource(numRef=NumRef(f=_ref(cat_col), numCache=_cache(cat_values)))
+            ser.xVal = AxDataSource(numRef=NumRef(f=_ref(xcol, len(xs)), numCache=_cache(xs)))
+            ser.yVal = NumDataSource(numRef=NumRef(f=_ref(ycol, len(ys)), numCache=_cache(ys)))
             ser.tx = SeriesLabel(v=title)
             ser.graphicalProperties = GraphicalProperties()
             return ser
 
         if points:
-            sp = _series(ys_col, ys_values, 'Standards')
-            # Big blue DIAMONDS for the measured standards — a deliberately distinct
-            # look from the fit's thin red line so the two are unmistakable.
+            sx = [p[0] for p in std_pts]; sy = [p[1] for p in std_pts]
+            sp = _xy_series(sx_col, sy_col, sx, sy, 'Standards')
+            # Big blue DIAMONDS for the measured standards — distinct from the fit's
+            # fine red dots so the two series are unmistakable; no join line.
             marker = Marker(symbol='diamond', size=8)
             marker.graphicalProperties = GraphicalProperties(solidFill='3498DB')
             sp.marker = marker
-            line = LineProperties(); line.noFill = True  # markers only, no join line
+            line = LineProperties(); line.noFill = True
             sp.graphicalProperties.line = line
             chart.series.append(sp)
         if fit:
             algo = s.get('algo')
-            sf = _series(yf_col, yf_values, 'Fit ({})'.format(algo) if algo else 'Fit')
-            # Thin smooth red LINE through the interpolated fit (no markers) — a clean
-            # continuous curve over the small grid. NOT a native trendline: the chart
-            # plots metric-vs-concentration while the app fits concentration-vs-metric
-            # and inverts it, so a native trendline would draw the wrong functional
-            # family (log<->exp swap) and has no Michaelis-Menten type.
-            sf.marker = Marker(symbol='none')
-            line = LineProperties(); line.solidFill = 'E74C3C'; line.w = 19050  # ~1.5pt
+            fx = [p[0] for p in fit_pts]; fy = [p[1] for p in fit_pts]
+            sf = _xy_series(fx_col, fy_col, fx, fy, 'Fit ({})'.format(algo) if algo else 'Fit')
+            # 150 fine red dots (no line): the dense points read as a smooth thin
+            # curve and stay value-positioned. A *line* series on a scatter gets
+            # dropped / line-chart-imported by Sheets, so markers only. NOT a native
+            # trendline: the chart plots metric-vs-concentration while the app fits
+            # concentration-vs-metric and inverts it (log<->exp swap; no MM type).
+            fmarker = Marker(symbol='dot', size=2)
+            fmarker.graphicalProperties = GraphicalProperties(solidFill='E74C3C')
+            sf.marker = fmarker
+            line = LineProperties(); line.noFill = True
             sf.graphicalProperties.line = line
-            sf.smooth = True
             chart.series.append(sf)
 
         ws.add_chart(chart, 'A{}'.format(anchor_row))
-        ws._chart_helper_col = hc + 4  # 3 cols + a 1-column gap between blocks
+        ws._chart_helper_col = hc + 5  # 4 cols + a 1-column gap between blocks
         return anchor_row + CHART_ROW_RESERVE
 
     def _embed_image(ws, b64_str, anchor_row):
