@@ -1,10 +1,10 @@
 """Tests for the native calibration chart in /export_report_excel.
 
-The chart is a category-axis LineChart (markers only) whose X labels are the
-measured standard concentrations only. These tests guard:
+The chart is a category-axis LineChart (markers only) whose X labels are a
+"nice numbers" tick series (0, 100, 200, …) over the concentration range. These
+tests guard:
   * string standards points coerced to real numbers (plottable, locale-aware);
-  * the category column carrying ONLY the standard concentrations (the 150 fit
-    points stay unlabelled);
+  * the axis labelled with round, evenly-spaced ticks (not the raw helper Xs);
   * two distinct markers, no connecting lines, no native trendline.
 """
 import io
@@ -19,9 +19,9 @@ from openpyxl import load_workbook
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from main import app  # noqa: E402
+from routes.file_routes import _nice_axis_ticks  # noqa: E402
 
-# Helper layout: AA(27)=conc (category label — standards only), AB(28)=std_y,
-# AC(29)=fit_y. Rows are the standards + fit points merged and sorted by conc.
+# Helper layout: AA(27)=conc (nice-tick label), AB(28)=std_y, AC(29)=fit_y.
 CAT, STD_Y, FIT_Y = 27, 28, 29
 
 
@@ -33,7 +33,6 @@ def client():
 
 
 def _helper_sheet(wb):
-    """The worksheet whose row-1 header at column AA is the category 'conc'."""
     for ws in wb.worksheets:
         if ws.cell(1, CAT).value == 'conc':
             return ws
@@ -49,6 +48,13 @@ def _read_helper_rows(ws):
                      ws.cell(r, FIT_Y).value))
         r += 1
     return rows
+
+
+def _fit_grid(lo, hi, n=24):
+    """A uniform fit sampling (smooth-curve stand-in) over [lo, hi]."""
+    step = (hi - lo) / (n - 1)
+    return [{'x': lo + i * step, 'y': 0.1 * ((lo + i * step) / (300 + lo + i * step))}
+            for i in range(n)]
 
 
 def _calibrate_item(points, fit):
@@ -68,38 +74,43 @@ def _calibrate_item(points, fit):
     }
 
 
+# ── Nice-numbers tick algorithm ──────────────────────────────────────────────
+
+def test_nice_axis_ticks_round_and_evenly_spaced():
+    assert _nice_axis_ticks(5, 500) == [0, 100, 200, 300, 400, 500]
+    assert _nice_axis_ticks(5, 50) == [0, 10, 20, 30, 40, 50]
+    assert _nice_axis_ticks(100, 560) == [100, 200, 300, 400, 500, 600]
+    ticks = _nice_axis_ticks(0.2, 2.1)
+    assert ticks[0] == 0.0 and ticks[-1] >= 2.1
+    steps = {round(b - a, 10) for a, b in zip(ticks, ticks[1:])}
+    assert len(steps) == 1, f"ticks not evenly spaced: {ticks}"
+
+
+# ── Cell writing ─────────────────────────────────────────────────────────────
+
 def test_string_points_written_as_numbers(client):
     # The standards arrive as strings (as they do from the CSV-parsed client).
     item = _calibrate_item(
-        points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'}],
-        fit=[{'x': 1.5, 'y': 0.002}, {'x': 2.5, 'y': 0.004}],
+        points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'},
+                {'x': '500', 'y': '0.085'}],
+        fit=_fit_grid(0, 500),
     )
     rv = client.post('/export_report_excel', json={'items': [item], 'subject': 'T'})
     assert rv.status_code == 200
 
-    wb = load_workbook(io.BytesIO(rv.data))
-    ws = _helper_sheet(wb)
+    ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
     assert ws is not None, "category helper header not found"
     rows = _read_helper_rows(ws)
 
-    # Rows are sorted by concentration; a row is either a standard (conc + std_y)
-    # or a fit point (fit_y only) — never both.
-    for conc, ys, yf in rows:
-        if yf is not None:
-            assert ys is None and conc is None, "fit row must have no label/std_y"
-        else:
-            assert ys is not None and conc is not None, "standard row must be labelled"
-    # The category column carries ONLY the standard concentrations, as real
-    # numbers, so the X axis is labelled just at the standards.
-    std = {conc: ys for (conc, ys, yf) in rows if ys is not None}
-    assert set(std) == {5.0, 50.0}
-    assert std[5.0] == pytest.approx(0.00738)
-    assert std[50.0] == pytest.approx(0.01884)
-    assert all(isinstance(v, (int, float)) for v in std.values())
-    # Both fit points survive as numbers (positioned by row order, not labelled).
-    fit_vals = [yf for (conc, ys, yf) in rows if yf is not None]
-    assert len(fit_vals) == 2
-    assert all(isinstance(v, (int, float)) for v in fit_vals)
+    # Standards survive as real numbers in std_y (the string→float coercion).
+    std = sorted(ys for (c, ys, yf) in rows if ys is not None)
+    assert std == pytest.approx([0.00738, 0.01884, 0.085])
+    assert all(isinstance(v, (int, float)) for v in std)
+    # Fit points survive as numbers too.
+    assert all(isinstance(yf, (int, float)) for (c, ys, yf) in rows if yf is not None)
+    # The category labels are round nice-numbers ticks, not the raw standard Xs.
+    cats = sorted(c for (c, ys, yf) in rows if c is not None)
+    assert cats == [0.0, 100.0, 200.0, 300.0, 400.0, 500.0]
 
 
 def test_non_numeric_points_are_skipped(client):
@@ -111,24 +122,26 @@ def test_non_numeric_points_are_skipped(client):
     assert rv.status_code == 200
 
     ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
-    # Only the valid standard is written; the 'NONE' x is dropped (not text).
-    assert ws.cell(2, CAT).value == 5.0
-    assert ws.cell(2, STD_Y).value == pytest.approx(0.1)
-    assert ws.cell(3, CAT).value is None
+    rows = _read_helper_rows(ws)
+    # Only the one valid standard's Y is written; the 'NONE' point is dropped.
+    assert [ys for (c, ys, yf) in rows if ys is not None] == [pytest.approx(0.1)]
+    assert len(rows) == 1
 
+
+# ── Chart structure ──────────────────────────────────────────────────────────
 
 def _chart_xml(xlsx_bytes):
-    """The first embedded chart's XML (openpyxl can't read charts back)."""
     with zipfile.ZipFile(io.BytesIO(xlsx_bytes)) as z:
         names = sorted(n for n in z.namelist() if n.startswith('xl/charts/chart'))
         assert names, "no chart embedded in the workbook"
         return z.read(names[0]).decode('utf-8')
 
 
-def test_category_line_chart_with_custom_concentration_labels(client):
+def test_category_line_chart_with_nice_tick_labels(client):
     item = _calibrate_item(
-        points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'}],
-        fit=[{'x': 1.5, 'y': 0.002}, {'x': 2.5, 'y': 0.004}],
+        points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'},
+                {'x': '500', 'y': '0.085'}],
+        fit=_fit_grid(0, 500),
     )
     rv = client.post('/export_report_excel', json={'items': [item]})
     assert rv.status_code == 200
@@ -138,32 +151,26 @@ def test_category_line_chart_with_custom_concentration_labels(client):
     assert '<lineChart>' in xml and '<scatterChart>' not in xml
     assert xml.count('<catAx>') == 1 and xml.count('<valAx>') == 1
     assert xml.count('<ser>') == 2          # standards + fit
-    # Both series share ONE category axis; values are cached numbers.
     assert xml.count('<cat>') == 2 and xml.count('<val>') == 2
     assert xml.count('<numCache>') == 4     # cat + val × 2 series
-    # The category labels are the STANDARD concentrations only — not the fit Xs.
+    # The category labels are the round nice-numbers ticks.
     cat_blocks = re.findall(r'<cat>.*?</cat>', xml, re.S)
-    assert cat_blocks, "no category data on the series"
-    cat_vals = re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat_blocks[0])
-    assert sorted(float(v) for v in cat_vals) == [5.0, 50.0]
-    # Every slot's label renders (so all standards show, not just the few Sheets
-    # would auto-pick from the ~157 mostly-blank category slots), kept horizontal.
-    assert '<tickLblSkip val="1"' in xml
-    assert 'rot="0"' in xml
-    # Two DISTINCT marker shapes, neither with a connecting line (both <a:noFill/>).
+    cat_vals = sorted(float(v) for v in re.findall(r'<pt idx="\d+"><v>([^<]+)</v>', cat_blocks[0]))
+    assert cat_vals == [0.0, 100.0, 200.0, 300.0, 400.0, 500.0]
+    # Force every slot's label (Sheets self-skips otherwise) and keep them flat.
+    assert '<tickLblSkip val="1"' in xml and 'rot="0"' in xml
+    # Two DISTINCT marker shapes, neither with a connecting line.
     assert '<symbol val="none"' not in xml
     assert xml.count('<symbol val="diamond"') == 1  # standards
     assert xml.count('<symbol val="dot"') == 1      # fit — smallest marker
     assert xml.count('<a:noFill') == 2, "a series carries a connecting line"
-    # No native trendline (it would draw the wrong inverted curve here).
     assert 'trendline' not in xml.lower()
 
 
 def test_no_native_trendline_for_michaelis_menten(client):
     item = _calibrate_item(
         points=[{'x': '5', 'y': '0.00738'}, {'x': '50', 'y': '0.01884'}],
-        fit=[{'x': 1.5, 'y': 0.002}, {'x': 2.5, 'y': 0.004}],
+        fit=_fit_grid(0, 200, 12),
     )  # _calibrate_item already uses algo 'Michaelis-Menten'
     rv = client.post('/export_report_excel', json={'items': [item]})
-    xml = _chart_xml(rv.data)
-    assert 'trendline' not in xml.lower()
+    assert 'trendline' not in _chart_xml(rv.data).lower()

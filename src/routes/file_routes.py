@@ -25,6 +25,45 @@ from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
 
+
+def _nice_num(x, round_it):
+    """Heckbert's 'nice number' — round x to a 1/2/5 × 10^k figure.
+
+    `round_it` rounds to the nearest nice number; otherwise rounds up (used to
+    size the overall range so it comfortably covers the data).
+    """
+    import math
+    if x <= 0:
+        return 1.0
+    exp = math.floor(math.log10(x))
+    frac = x / (10 ** exp)
+    if round_it:
+        nice = 1 if frac < 1.5 else 2 if frac < 3 else 5 if frac < 7 else 10
+    else:
+        nice = 1 if frac <= 1 else 2 if frac <= 2 else 5 if frac <= 5 else 10
+    return nice * (10 ** exp)
+
+
+def _nice_axis_ticks(lo, hi, target=6):
+    """A 'reasonably looking' tick series spanning [lo, hi] (e.g. 0,100,…,500).
+
+    Returns evenly-spaced round values (1/2/5 × 10^k step) — the classic axis
+    algorithm — covering the data range with about `target` ticks.
+    """
+    import math
+    if hi <= lo:
+        return [lo]
+    rng = _nice_num(hi - lo, False)
+    step = _nice_num(rng / max(1, target - 1), True)
+    start = math.floor(lo / step) * step
+    end = math.ceil(hi / step) * step
+    ticks, t, n = [], start, 0
+    while t <= end + 0.5 * step and n < 1000:
+        ticks.append(round(t, 10))
+        t += step
+        n += 1
+    return ticks
+
 _SCHEMA_VALIDATORS = {
     CSV_SCHEMA_KINETICS_CAL: {
         'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
@@ -1246,19 +1285,36 @@ def export_report_excel(validated_data):
             [(x, y, None) for (x, y) in points] + [(x, None, y) for (x, y) in fit],
             key=lambda r: r[0],
         )
+        # Axis labels: a "nice numbers" tick series (0, 100, 200, … via
+        # `_nice_axis_ticks`) over the standards' concentration range, each pinned to
+        # the row whose X is closest. Round, EVENLY-SPACED ticks (rather than the
+        # standards' uneven values) both read cleanly and line up far better with the
+        # fixed interval at which Google Sheets samples category labels — Sheets
+        # ignores `tickLblSkip` and self-skips, so unevenly-spaced labels mostly fall
+        # in its gaps (that is why only 50 & 200 surfaced before).
+        xs_all = [x for (x, ys, yf) in merged]
+        std_xs = [x for (x, ys, yf) in merged if ys is not None]
+        t_lo, t_hi = (min(std_xs), max(std_xs)) if std_xs else (min(xs_all), max(xs_all))
+        plot_lo, plot_hi = min(xs_all), max(xs_all)
+        tick_at_row = {}   # 0-based row in `merged` -> nice tick label
+        for t in _nice_axis_ticks(t_lo, t_hi):
+            if plot_lo - 1e-9 <= t <= plot_hi + 1e-9:
+                j = min(range(len(xs_all)), key=lambda k: abs(xs_all[k] - t))
+                tick_at_row[j] = t
+
         hc = getattr(ws, '_chart_helper_col', 27)  # first helper block at col AA
         cat_col, ys_col, yf_col = hc, hc + 1, hc + 2
         _cell(ws, 1, cat_col, 'conc'); _cell(ws, 1, ys_col, 'std_y'); _cell(ws, 1, yf_col, 'fit_y')
-        # The category column holds the concentration ONLY on the measured-standard
-        # rows (blank on the 150 fit rows) → the X axis is labelled just at the
-        # standards. Floats (General format) → Excel/Sheets render the decimals in
-        # the user's own locale; do not stringify or pin a format.
+        # std_y/fit_y position the two series; the cat column carries the axis label
+        # only on the nice-tick rows (blank elsewhere). Floats (General format) →
+        # Excel/Sheets render the decimals in the user's own locale; never stringify.
         for i, (x, ys, yf) in enumerate(merged, start=2):
             if ys is not None:
-                ws.cell(i, cat_col, value=x)   # axis label only at a standard
                 ws.cell(i, ys_col, value=ys)
             if yf is not None:
-                ws.cell(i, yf_col, value=yf)   # fit row: no axis label, no std_y
+                ws.cell(i, yf_col, value=yf)
+        for j, t in tick_at_row.items():
+            ws.cell(j + 2, cat_col, value=t)   # axis label at this nice-tick row
         last = len(merged) + 1
 
         chart = LineChart()
@@ -1305,8 +1361,8 @@ def export_report_excel(validated_data):
             return NumData(pt=[NumVal(idx=i, v=v) for i, v in enumerate(values)
                                if v is not None])
 
-        # Shared category axis = the concentration, present only on standard rows.
-        cat_values = [x if ys is not None else None for (x, ys, yf) in merged]
+        # Shared category axis = the nice-tick labels, present only on tick rows.
+        cat_values = [tick_at_row.get(i) for i in range(len(merged))]
 
         def _series(y_col, y_values, title):
             ser = XYSeries()

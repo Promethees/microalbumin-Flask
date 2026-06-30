@@ -484,15 +484,21 @@ Timestamp,Value:1,Value:2,...
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.
 - **It is a category-axis `LineChart`, not a `ScatterChart`.** A scatter's *value* X axis cannot be relabelled —
   Google Sheets always labels it from the X data (and imports a shared-X scatter as a category axis labelling all
-  150 fitted concentrations anyway). To put **custom X labels — the measured standard concentrations only** — the
-  chart is a `LineChart` (markers-only) on a **category** axis whose labels we supply ourselves. The helper block
-  is three columns — `conc` (AA), `std_y` (AB), `fit_y` (AC) — with the standards+fit rows **merged and sorted by
-  concentration**. The `conc` column holds the concentration **only on standard rows** (blank on the 150 fit
-  rows), so the axis is labelled just at the standards; `std_y`/`fit_y` hold each series' Y (blank on the other's
-  rows). Both series share that one `conc` **category** reference. Points are positioned by **row index**, but
-  because rows are sorted and the fit is sampled uniformly, index position ≈ value position (curve shape is
-  preserved). **Anti-pattern**: do not revert to a `ScatterChart` to "fix" the axis — Sheets will relabel it with
-  every value; and do not put the fit concentrations in the `conc` column. Covered by `tests/test_report_excel.py`.
+  150 fitted concentrations anyway). To put **custom X labels** the chart is a `LineChart` (markers-only) on a
+  **category** axis whose labels we supply ourselves. The helper block is three columns — `conc` (AA), `std_y`
+  (AB), `fit_y` (AC) — with the standards+fit rows **merged and sorted by concentration**. `std_y`/`fit_y` hold
+  each series' Y (blank on the other's rows); both series share the one `conc` **category** reference. Points are
+  positioned by **row index**, but because rows are sorted and the fit is sampled uniformly, index position ≈
+  value position (curve shape is preserved). **Anti-pattern**: do not revert to a `ScatterChart` to "fix" the
+  axis — Sheets will relabel it with every value. Covered by `tests/test_report_excel.py`.
+- **Axis labels are a "nice numbers" tick series, not the data Xs.** `conc` carries a label **only** on the row
+  whose X is closest to each round tick from `_nice_axis_ticks(lo, hi)` (Heckbert 1/2/5 × 10^k — e.g. `[5,500]`
+  → `0,100,…,500`), blank everywhere else. Two reasons over labelling the standards: (1) round, **evenly-spaced**
+  ticks read like a real axis; (2) **Google Sheets ignores `tickLblSkip`** and self-skips category labels at a
+  fixed interval — the standards sit at *uneven* positions so most fell in its gaps (only 50 & 200 surfaced),
+  whereas evenly-spaced ticks line up with its sampling. We still set `tickLblSkip = 1` / `tickMarkSkip = 1` and
+  horizontal text (`RichText` `bodyPr rot=0`) for the readers that *do* honour them. **Anti-pattern**: do not put
+  the raw standard/fit Xs in `conc`.
 - **Series carry explicit numeric caches.** The series are built from the raw `XYSeries` class with
   `val = NumDataSource(numRef=NumRef(f=…, numCache=NumData(...)))` and `cat = AxDataSource(numRef=NumRef(…))` — i.e.
   each cell reference embeds a `<numCache>` of its values. openpyxl's `Series` factory writes *bare* refs with no
