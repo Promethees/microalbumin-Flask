@@ -1319,7 +1319,13 @@ def export_report_excel(validated_data):
                 if positions[j] <= positions[j - 1] + 1:
                     positions[j] = positions[j - 1] + 2
             for j, c in enumerate(labelled):
-                merged.append((c, std_by_tick.get(c), None))  # labelled standard row
+                # The label row carries the fit value TOO, so fit_y has no blanks at
+                # the standards. That is the only way to keep the curve connected:
+                # Google Sheets ignores display_blanks='span' and breaks a line at any
+                # blank cell, so a blank fit_y at each standard would split the curve
+                # into one segment per interval. (Unlike the reverted anchoring, this
+                # adds NO extra rows and sits at the label's exact slot.)
+                merged.append((c, std_by_tick.get(c), _interp_fit(c)))
                 if j < len(labelled) - 1:
                     gap = positions[j + 1] - positions[j] - 1  # fit rows in interval
                     c_lo, c_hi = c, labelled[j + 1]

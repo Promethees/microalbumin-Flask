@@ -94,12 +94,15 @@ def test_string_points_written_as_numbers(client):
     # Standards' Y survive as numbers, paired with their concentration label.
     std = sorted(ys for (c, ys, yf) in rows if ys is not None)
     assert std == pytest.approx([0.00738, 0.01884, 0.085])
-    # Each row is either a standard (conc + std_y) or a fit point (fit_y) — not both.
+    # Every row carries a fit_y (no blanks → the curve stays connected). A standard
+    # row additionally carries its concentration label + measured std_y; a fit-only
+    # row carries neither.
     for c, ys, yf in rows:
-        if yf is not None:
-            assert c is None and ys is None, "fit row carries a label/std_y"
+        assert yf is not None, "every row should carry a fit value (continuous curve)"
+        if c is not None:
+            assert ys is not None, "standard row missing std_y"
         else:
-            assert c is not None and ys is not None, "standard row missing label/std_y"
+            assert ys is None, "fit-only row carries std_y"
 
 
 def test_fit_rows_per_interval_are_value_proportional(client):
@@ -132,6 +135,23 @@ def test_fit_rows_per_interval_are_value_proportional(client):
     assert len(runs) == 2
     assert runs[0] > 0 and runs[1] > 0
     assert runs[1] / runs[0] == pytest.approx(2.0, abs=0.4)
+
+
+def test_fit_curve_has_no_blank_rows(client):
+    # Sheets breaks a line at any blank cell (it ignores display_blanks='span'), so
+    # the fit_y column must be gap-free for the curve to stay connected — including
+    # at the standard rows.
+    item = _calibrate_item(
+        points=[{'x': '5', 'y': '0.007'}, {'x': '50', 'y': '0.019'},
+                {'x': '100', 'y': '0.033'}, {'x': '300', 'y': '0.061'},
+                {'x': '500', 'y': '0.085'}],
+        fit=_fit_grid(0, 500, 60),
+    )
+    rv = client.post('/export_report_excel', json={'items': [item]})
+    ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
+    rows = _rows(ws)
+    assert rows, "no helper rows written"
+    assert all(yf is not None for (c, ys, yf) in rows), "fit_y has a blank → broken curve"
 
 
 def test_non_numeric_points_are_skipped(client):
