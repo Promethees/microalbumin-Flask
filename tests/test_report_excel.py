@@ -134,6 +134,28 @@ def test_fit_rows_per_interval_are_value_proportional(client):
     assert runs[1] / runs[0] == pytest.approx(2.0, abs=0.4)
 
 
+def test_fitted_curve_is_anchored_at_endpoint_concentrations(client):
+    # The fit must carry a data point right at (one slot from) the first and last
+    # table concentrations, so the curve reaches both axis ends instead of starting
+    # partway in. A linear fit makes the expected y exact.
+    fit = [{'x': float(x), 'y': 2.0 * x} for x in range(0, 301, 5)]
+    item = _calibrate_item(
+        points=[{'x': '0', 'y': '0.0'}, {'x': '100', 'y': '0.02'},
+                {'x': '300', 'y': '0.06'}],
+        fit=fit,
+    )
+    rv = client.post('/export_report_excel', json={'items': [item]})
+    ws = _helper_sheet(load_workbook(io.BytesIO(rv.data)))
+    rows = _rows(ws)
+
+    # First row is the label 0; the row right after it is the fit anchored at conc 0.
+    assert rows[0][0] == pytest.approx(0.0)
+    assert rows[1][2] == pytest.approx(2.0 * 0)      # fit_y at concentration 0
+    # Last row is the label 300; the row right before it is the fit anchored at 300.
+    assert rows[-1][0] == pytest.approx(300.0)
+    assert rows[-2][2] == pytest.approx(2.0 * 300)   # fit_y at concentration 300
+
+
 def test_non_numeric_points_are_skipped(client):
     item = _calibrate_item(
         points=[{'x': '5', 'y': '0.1'}, {'x': 'NONE', 'y': '0.2'}],

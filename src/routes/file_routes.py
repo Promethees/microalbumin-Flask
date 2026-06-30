@@ -1322,7 +1322,14 @@ def export_report_excel(validated_data):
                     gap = positions[j + 1] - positions[j] - 1  # fit rows in interval
                     c_lo, c_hi = c, labelled[j + 1]
                     for k in range(1, gap + 1):
-                        xk = c_lo + (c_hi - c_lo) * k / (gap + 1)
+                        # Endpoint-INCLUSIVE sampling: the first/last interior point
+                        # of each interval lands ON its own concentrations (c_lo /
+                        # c_hi). So the fitted curve carries a data point right at
+                        # (≈ one slot from) every table concentration — and at both
+                        # axis ends — closing the bridged gap around each standard.
+                        # gap==1 can't hit both ends, so it takes the midpoint.
+                        frac = (k - 1) / (gap - 1) if gap >= 2 else k / (gap + 1)
+                        xk = c_lo + (c_hi - c_lo) * frac
                         merged.append((None, None, _interp_fit(xk)))  # fit-only row
         else:
             # Too few labelled concentrations (or no fit) to define equal intervals:
