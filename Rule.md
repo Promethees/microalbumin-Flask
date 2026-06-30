@@ -467,9 +467,15 @@ Timestamp,Value:1,Value:2,...
   **and** the multi-file report-console `finalizeReportExcel`.
 - **Axis-label boxes**: both export dialogs expose editable, auto-filled X/Y label boxes (the
   `generateReport` SweetAlert `#swal-xlabel`/`#swal-ylabel`, and the console `#console-xlabel`/`#console-ylabel`).
-  X defaults to `Concentration`; **Y left blank means "auto" — each chart uses its own metric/measurement
-  label** (`niceMetric` / `measLabel`), so do not force a single global Y onto charts that plot different
-  metrics. A non-blank box overrides every chart in that export.
+  **X defaults to the concentration-unit-aware `Concentration (<unit>)`** (`_concenAxisLabel()` →
+  `getMetaConcenUnit()`, the post-§2.10 `# ConcenUnit` schema — ng/µL, nM, %), matching the live chart
+  (`generate-chart.js`) and the report's derived-concentration lines. The single-file `generateReport`
+  dialog **pre-fills** the exact unit from `AppState.metaData`; the multi-file console box is left **blank =
+  "auto" per file** (each chart uses its own file's `config.metadata` unit), because different files in one
+  report can carry different units. **Y left blank means "auto" — each chart uses its own metric/measurement
+  label** (`niceMetric` / `measLabel`). A non-blank box overrides every chart in that export. **Anti-pattern**:
+  do not hardcode the X label to bare `Concentration` (it drops the unit — the obsolete pre-ConcenUnit
+  assumption); do not force a single file's unit onto the multi-file console export.
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.

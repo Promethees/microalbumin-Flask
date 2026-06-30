@@ -277,6 +277,16 @@ function buildScatterSeries({ xConc, yMetric, regLine, title, label, algo, xLabe
     };
 }
 
+// Default X-axis label for a calibration chart: "Concentration (<unit>)", honoring
+// the file's `# ConcenUnit` (the post-602bb94 schema — ng/µL, nM, %), mirroring the
+// live chart (generate-chart.js) and the report's derived-concentration lines. A
+// label only; it never converts the plotted values. `metadata` is the file's CSV
+// metadata (AppState.metaData for the current file, config.metadata in the console).
+function _concenAxisLabel(metadata) {
+    const unit = (typeof getMetaConcenUnit === 'function') ? getMetaConcenUnit(metadata) : 'ng/µL';
+    return `Concentration (${unit})`;
+}
+
 // Render a calibration scatter (standards) + fit line to a PNG data URL,
 // off-screen at print resolution. Shared by the PDF and Excel generators.
 function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo }) {
@@ -375,7 +385,7 @@ async function generateReport() {
                 ${isCalibrate ? `
                 <label style="display:block; margin:10px 0 5px;">Excel chart axis labels <span style="color:#888; font-weight:normal; font-size:0.8rem;">(editable later in Excel)</span></label>
                 <div style="display:flex; gap:10px; margin-bottom:6px;">
-                    <input id="swal-xlabel" class="swal2-input" placeholder="X-axis label" value="Concentration" style="margin:0; flex:1;">
+                    <input id="swal-xlabel" class="swal2-input" placeholder="X-axis label" value="${_concenAxisLabel(AppState.metaData)}" style="margin:0; flex:1;">
                     <input id="swal-ylabel" class="swal2-input" placeholder="Y-axis (auto per metric)" style="margin:0; flex:1;">
                 </div>
                 <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Calibration charts export as native Excel charts. Leave Y blank to auto-label each chart with its metric.</div>` : ''}
@@ -874,7 +884,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                     itemData.chart_series.push(buildScatterSeries({
                         xConc: pd.x, yMetric: pd.y, regLine,
                         title: fitLabel, label: fitLabel, algo,
-                        xLabel: axisLabels.x, yLabel: axisLabels.y || measLabel
+                        xLabel: axisLabels.x || _concenAxisLabel(AppState.metaData), yLabel: axisLabels.y || measLabel
                     }));
                 } else {
                     calibrationWarnings.push(`Point calibration @ ${tpLabel}: no ${algo} curve could be fitted — at least two concentration points are required (found ${pd.x.length}).`);
@@ -939,7 +949,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                 itemData.chart_series.push(buildScatterSeries({
                     xConc: dataPoint.x, yMetric: dataPoint.y, regLine,
                     title: fitLabel, label: fitLabel, algo,
-                    xLabel: axisLabels.x, yLabel: axisLabels.y || niceMetric
+                    xLabel: axisLabels.x || _concenAxisLabel(AppState.metaData), yLabel: axisLabels.y || niceMetric
                 }));
                 } // end algo loop
             }
@@ -2517,7 +2527,7 @@ async function finalizeReportExcel() {
                         itemData.chart_series.push(buildScatterSeries({
                             xConc: xVals, yMetric: yVals, regLine,
                             title: fitLabel, label: fitLabel, algo,
-                            xLabel: axisLabels.x, yLabel: axisLabels.y || measLabel
+                            xLabel: axisLabels.x || _concenAxisLabel(config.metadata), yLabel: axisLabels.y || measLabel
                         }));
                     }
                 }
@@ -2582,7 +2592,7 @@ async function finalizeReportExcel() {
                         itemData.chart_series.push(buildScatterSeries({
                             xConc: xVals, yMetric: yVals, regLine,
                             title: fitLabel, label: fitLabel, algo,
-                            xLabel: axisLabels.x, yLabel: axisLabels.y || niceMetric
+                            xLabel: axisLabels.x || _concenAxisLabel(config.metadata), yLabel: axisLabels.y || niceMetric
                         }));
                     }
                 }
