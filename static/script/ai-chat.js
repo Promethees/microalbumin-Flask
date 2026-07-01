@@ -146,20 +146,26 @@
     // and auto-advances when the dialog closes. App Settings uses TWO dialog steps
     // in one modal (change language → Save), exercising the multi-step-dialog run.
 
-    // Edit a data file — the per-row ✏️ Edit button opens the editor dialog.
-    const _EDIT_TRIGGER_STEP = {
-        target: '#file-table button[onclick^="editFile"]',
-        title: 'Open the File Editor',
-        description: "Click ✏️ Edit on any file row to open the editor dialog. (Every file in the list has its own Edit button.)",
+    // Edit a file — highlight the file panel (expanding the data-file and
+    // calibration-JSON lists) and let the user click ✏️ Edit on ANY file. The
+    // guide is click-through here (awaitSwalOpen) so it never forces one row or
+    // closes when the user picks a different file; it advances when the editor
+    // dialog opens.
+    const _EDIT_PANEL_STEP = {
+        target: '#file-selection',
+        expand: ['file-sel-collapse', 'json-sel-collapse'],
+        awaitSwalOpen: true,
+        title: 'Choose a File to Edit',
+        description: "Click the ✏️ Edit button next to any file to open the editor — a data file in this list, or a calibration curve under 'Select Coefficients' above.",
         descriptions: {
-            vi: "Nhấp ✏️ Edit trên bất kỳ hàng tệp nào để mở hộp thoại chỉnh sửa. (Mỗi tệp trong danh sách có nút Edit riêng.)",
-            zh: "点击任意文件行的 ✏️ Edit 打开编辑对话框。（列表中每个文件都有自己的 Edit 按钮。）",
-            fr: "Cliquez sur ✏️ Edit sur n'importe quelle ligne de fichier pour ouvrir la boîte de dialogue d'édition. (Chaque fichier de la liste a son propre bouton Edit.)",
-            ja: "任意のファイル行の ✏️ Edit をクリックして編集ダイアログを開きます。（リストの各ファイルに専用の Edit ボタンがあります。）",
-            ru: "Нажмите ✏️ Edit в любой строке файла, чтобы открыть диалог редактирования. (У каждого файла в списке своя кнопка Edit.)",
+            vi: "Nhấp nút ✏️ Edit bên cạnh bất kỳ tệp nào để mở trình chỉnh sửa — một tệp dữ liệu trong danh sách này, hoặc một đường chuẩn trong 'Select Coefficients' ở trên.",
+            zh: "点击任意文件旁的 ✏️ Edit 按钮打开编辑器——本列表中的数据文件，或上方「Select Coefficients」中的校准曲线。",
+            fr: "Cliquez sur le bouton ✏️ Edit à côté de n'importe quel fichier pour ouvrir l'éditeur — un fichier de données de cette liste, ou une courbe d'étalonnage sous 'Select Coefficients' ci-dessus.",
+            ja: "任意のファイルの横にある ✏️ Edit ボタンをクリックしてエディターを開きます — このリストのデータファイル、または上の「Select Coefficients」内の校正曲線。",
+            ru: "Нажмите кнопку ✏️ Edit рядом с любым файлом, чтобы открыть редактор — файл данных в этом списке или калибровочную кривую в «Select Coefficients» выше.",
         },
-        position: 'left',
-        skipInteraction: false,
+        position: 'right',
+        skipInteraction: true,
     };
     const _EDIT_DIALOG_STEP = {
         target: '#swal-input-filename',
@@ -1279,17 +1285,17 @@
         _launchCustomSteps(steps);
     }
 
-    // Edit-file guide: click a row's ✏️ Edit button → the editor dialog.
+    // Edit-file guide: pick any data OR calibration file → the editor dialog.
     function _runEditFileGuide() {
         const lang = AI.activeLang || 'en';
-        // Needs at least one file (any file has its own Edit button); edit works
-        // in any mode, so gate only on a file being present.
-        if (!document.querySelector('#file-table button[onclick^="editFile"]')) {
+        // Needs at least one editable file in either list (data or calibration);
+        // edit works in any mode, so gate only on a file being present.
+        if (!document.querySelector('#file-table button[onclick^="editFile"], #json-table button[onclick^="editFile"]')) {
             _addMsg('assistant', _EDIT_NO_FILES[lang] || _EDIT_NO_FILES.en);
             return;
         }
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
-        _launchCustomSteps([_EDIT_TRIGGER_STEP, _EDIT_DIALOG_STEP]);
+        _launchCustomSteps([_EDIT_PANEL_STEP, _EDIT_DIALOG_STEP]);
     }
 
     // Merge-files guide: click Merge Files → the merge dialog.

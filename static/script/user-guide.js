@@ -416,6 +416,9 @@ class UserGuide {
         this.spotlight.classList.remove('active');
         this.spotlight.classList.remove('user-guide-spotlight-swal');
         this.tooltip.classList.remove('active');
+        // Clear any click-through overrides left by a dialog / await-open step.
+        this.spotlight.style.pointerEvents = '';
+        this.overlay.style.pointerEvents = '';
         document.body.style.overflow = '';
     }
 
@@ -504,6 +507,42 @@ class UserGuide {
     }
 
     /**
+     * Expand named collapsible sections (by their `-collapse` element id) before a
+     * step so the target — or the files the user must choose from — is visible.
+     * Complements _ensureAncestorExpanded, which only handles ANCESTORS of the
+     * target; here the sections to open (e.g. the file list and the calibration
+     * JSON list) are DESCENDANTS of the highlighted panel, not ancestors.
+     */
+    _expandCollapses(ids) {
+        (ids || []).forEach(id => {
+            const node = document.getElementById(id);
+            if (node) node.classList.remove('collapsed');
+            const chevron = document.getElementById(id.replace(/-collapse$/, '-chevron'));
+            if (chevron) chevron.classList.remove('collapsed-chevron');
+        });
+    }
+
+    /**
+     * Advance when a SweetAlert2 dialog OPENS. Used by a "click the ✏️ Edit button
+     * of any file" step: the guide can't force one specific per-row button (that
+     * would rob the user of choosing which file, and an off-spotlight click would
+     * close the guide), so instead it stays click-through and moves on the moment
+     * the user opens any editor dialog.
+     */
+    _watchSwalOpen() {
+        this.cleanupSwalWatch();
+        this.swalWatchInterval = setInterval(() => {
+            if (!this.isActive) { this.cleanupSwalWatch(); return; }
+            if (document.querySelector('.swal2-popup')) {
+                this.cleanupSwalWatch();
+                // Let the dialog mount its fields before the next step resolves an
+                // in-dialog target.
+                setTimeout(() => { if (this.isActive) this.proceedToNextStep(); }, 200);
+            }
+        }, 120);
+    }
+
+    /**
      * Start polling for position changes (fallback for layout shifts)
      */
     startPolling(element, step) {
@@ -568,15 +607,19 @@ class UserGuide {
         // Helper to setup step once element is found
         const setupStepWithElement = (target) => {
             this._ensureAncestorExpanded(target);
+            if (step.expand) this._expandCollapses(step.expand);
             this.currentTargetElement = target;
             this.currentStepData = step;
 
             this.positionSpotlight(target, step);
             this.attachInteractionHandler(target, step);
 
-            // A dialog step advances when the dialog closes, not on a click (the
-            // click that confirms it also removes the highlighted element).
-            if (this._isSwalStep(step, target)) {
+            if (step.awaitSwalOpen) {
+                // "Click Edit on any file" — advance when the user opens a dialog.
+                this._watchSwalOpen();
+            } else if (this._isSwalStep(step, target)) {
+                // A dialog step advances when the dialog closes, not on a click (the
+                // click that confirms it also removes the highlighted element).
                 this._watchSwalClose(target);
             }
 
@@ -797,11 +840,28 @@ class UserGuide {
             this.overlay.style.zIndex = '9998';
             this.tooltip.style.zIndex = '2147483647';
             this.spotlight.classList.add('user-guide-spotlight-swal');
+            // The ring sits ABOVE the dialog, so it must be click-through or it
+            // would swallow clicks on the very element it highlights (e.g. the
+            // Save/Merge button). Dialog steps advance on close, not on a click.
+            this.spotlight.style.pointerEvents = 'none';
+            this.overlay.style.pointerEvents = '';
+        } else if (step.awaitSwalOpen) {
+            this.spotlight.style.zIndex = '9999';
+            this.overlay.style.zIndex = '9998';
+            this.tooltip.style.zIndex = '10000';
+            this.spotlight.classList.remove('user-guide-spotlight-swal');
+            // "Click Edit on ANY file" step: make the whole guide click-through so
+            // the user can operate the real controls underneath (expand sections,
+            // pick any file). The step advances when a dialog opens.
+            this.spotlight.style.pointerEvents = 'none';
+            this.overlay.style.pointerEvents = 'none';
         } else {
             this.spotlight.style.zIndex = '9999';
             this.overlay.style.zIndex = '9998';
             this.tooltip.style.zIndex = '10000';
             this.spotlight.classList.remove('user-guide-spotlight-swal');
+            this.spotlight.style.pointerEvents = '';
+            this.overlay.style.pointerEvents = '';
         }
 
         this.positionTooltip(rect, step.position || 'bottom');
@@ -965,6 +1025,10 @@ class UserGuide {
             position: s.position || 'bottom',
             skipInteraction: s.skipInteraction !== false,
             scrollIntoView: true,
+            // Dialog-flow extras: sections to expand before the step, and the
+            // "advance when a dialog opens" behaviour (see showStep).
+            ...(s.expand ? { expand: s.expand } : {}),
+            ...(s.awaitSwalOpen ? { awaitSwalOpen: true } : {}),
         }));
 
         this.currentStep = 0;
