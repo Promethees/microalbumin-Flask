@@ -387,6 +387,11 @@ _SYSTEM_PROMPTS = {
         "calibration, hardware setup, and app navigation. I can't assist with that topic. "
         "Is there something about Easy OKAPI I can help you with?\"\n"
         "Do NOT attempt to answer off-topic questions (coding help, general science, cooking, news, math, etc.).\n\n"
+        "ANSWER-DIRECTLY RULE:\n"
+        "If you can answer from your own knowledge — what Easy OKAPI is or does, what a term, mode, or "
+        "coefficient means, how something works — reply in plain text and do NOT call any tool. "
+        "Call a tool ONLY to fetch live data (files, calibration, hardware) or to launch a navigation "
+        "guide the user asked for.\n\n"
         "MANDATORY GUIDE RULE:\n"
         "When a user asks HOW to navigate or find a UI element, you MUST call trigger_custom_steps "
         "— do NOT answer with plain text only.\n"
@@ -443,6 +448,11 @@ _SYSTEM_PROMPTS = {
         "hiệu chuẩn, cài đặt phần cứng và điều hướng ứng dụng. "
         "Tôi không thể hỗ trợ chủ đề này. Bạn có câu hỏi nào về Easy OKAPI không?\"\n"
         "KHÔNG trả lời các câu hỏi ngoài phạm vi (lập trình, khoa học chung, nấu ăn, tin tức, toán học, v.v.).\n\n"
+        "QUY TẮC TRẢ LỜI TRỰC TIẾP:\n"
+        "Nếu bạn có thể trả lời từ kiến thức của mình — Easy OKAPI là gì hoặc làm gì, ý nghĩa của một thuật ngữ, "
+        "chế độ hay hệ số, cách hoạt động — hãy trả lời bằng văn bản và KHÔNG gọi bất kỳ công cụ nào. "
+        "Chỉ gọi công cụ để lấy dữ liệu thực tế (tệp, hiệu chuẩn, phần cứng) hoặc để khởi động hướng dẫn "
+        "điều hướng khi người dùng yêu cầu.\n\n"
         "QUY TẮC HƯỚNG DẪN BẮT BUỘC:\n"
         "Khi người dùng hỏi CÁCH điều hướng hoặc tìm thành phần giao diện, BẮT BUỘC gọi trigger_custom_steps "
         "— không trả lời chỉ bằng văn bản.\n"
@@ -489,6 +499,10 @@ _SYSTEM_PROMPTS = {
         "仅回复：\"我只能协助解答 Easy OKAPI 相关问题——比色计数据分析、校准、硬件设置和应用导航。"
         "我无法帮助您解答该话题。请问您有关于 Easy OKAPI 的问题吗？\"\n"
         "不要回答题外问题（编程帮助、通用科学、烹饪、新闻、数学等）。\n\n"
+        "直接回答规则：\n"
+        "如果可以凭借自身知识回答——Easy OKAPI 是什么或能做什么、某个术语、模式或系数的含义、工作原理——"
+        "请直接用文字回答，不要调用任何工具。"
+        "仅在需要获取实时数据（文件、校准、硬件）或用户要求启动导航引导时才调用工具。\n\n"
         "强制引导规则：\n"
         "当用户询问如何导航或找到UI元素时，必须调用 trigger_custom_steps——不得仅用文字回答。\n"
         "示例：\n"
@@ -528,6 +542,11 @@ _SYSTEM_PROMPTS = {
         "calibration, configuration matérielle et navigation dans l'application. "
         "Je ne peux pas vous aider sur ce sujet. Avez-vous une question sur Easy OKAPI ?\"\n"
         "Ne répondez PAS aux questions hors sujet (aide en programmation, sciences générales, cuisine, actualités, mathématiques, etc.).\n\n"
+        "RÈGLE DE RÉPONSE DIRECTE :\n"
+        "Si vous pouvez répondre à partir de vos connaissances — ce qu'est ou fait Easy OKAPI, la signification "
+        "d'un terme, d'un mode ou d'un coefficient, le fonctionnement — répondez en texte et n'appelez AUCUN outil. "
+        "N'appelez un outil que pour récupérer des données en direct (fichiers, calibration, matériel) ou pour "
+        "lancer un guide de navigation demandé par l'utilisateur.\n\n"
         "RÈGLE DE GUIDE OBLIGATOIRE :\n"
         "Quand l'utilisateur demande COMMENT naviguer ou trouver un élément d'interface, "
         "vous DEVEZ appeler trigger_custom_steps — ne répondez pas uniquement par du texte.\n"
@@ -576,6 +595,11 @@ _SYSTEM_PROMPTS = {
         "比色計データ分析、キャリブレーション、ハードウェア設定、アプリナビゲーション。"
         "そのトピックについてはお手伝いできません。Easy OKAPI について何かご質問はありますか？\"\n"
         "スコープ外の質問（コーディング支援、一般科学、料理、ニュース、数学など）には回答しないこと。\n\n"
+        "直接回答ルール：\n"
+        "自分の知識で答えられる場合 — Easy OKAPI とは何か・何をするか、用語・モード・係数の意味、仕組み — は"
+        "テキストで回答し、ツールを呼び出さないでください。"
+        "ツールを呼び出すのは、ライブデータ（ファイル、キャリブレーション、ハードウェア）の取得、または"
+        "ユーザーが求めたナビゲーションガイドの起動のときだけです。\n\n"
         "必須ガイドルール：\n"
         "ユーザーがUI要素への移動方法を尋ねた場合、必ず trigger_custom_steps を呼び出してください "
         "— テキストのみで回答しないこと。\n"
@@ -619,6 +643,11 @@ _SYSTEM_PROMPTS = {
         "калибровка, настройка оборудования и навигация по приложению. "
         "Я не могу помочь по этой теме. Есть ли у вас вопросы об Easy OKAPI?\"\n"
         "НЕ отвечайте на вопросы не по теме (помощь в программировании, общая наука, кулинария, новости, математика и т.д.).\n\n"
+        "ПРАВИЛО ПРЯМОГО ОТВЕТА:\n"
+        "Если вы можете ответить из своих знаний — что такое Easy OKAPI или что он делает, значение термина, "
+        "режима или коэффициента, как что-то работает — отвечайте текстом и НЕ вызывайте инструменты. "
+        "Вызывайте инструмент ТОЛЬКО для получения актуальных данных (файлы, калибровка, оборудование) или "
+        "для запуска навигационного гида по запросу пользователя.\n\n"
         "ОБЯЗАТЕЛЬНОЕ ПРАВИЛО ГИДА:\n"
         "Когда пользователь спрашивает КАК перейти к элементу интерфейса, "
         "вы ОБЯЗАНЫ вызвать trigger_custom_steps — не отвечайте только текстом.\n"
@@ -706,8 +735,7 @@ TOOLS = [
                     "filename": {"type": "string", "description": "JSON filename (basename only)."},
                     "mode": {
                         "type": "string",
-                        "description": "Subfolder: 'kinetics' or 'point'.",
-                        "enum": ["kinetics", "point"],
+                        "description": "Subfolder, must be 'kinetics' or 'point'.",
                     },
                 },
                 "required": ["filename", "mode"],
@@ -732,11 +760,11 @@ TOOLS = [
                 "properties": {
                     "topic": {
                         "type": "string",
-                        "enum": [
-                            "measurement_modes", "kinetics_analysis", "standard_curve",
-                            "calibration", "csv_format", "hardware_setup", "regression",
-                            "reports", "file_operations",
-                        ],
+                        "description": (
+                            "One of: measurement_modes, kinetics_analysis, standard_curve, "
+                            "calibration, csv_format, hardware_setup, regression, reports, "
+                            "file_operations — or 'overview' for a general summary of the app."
+                        ),
                     }
                 },
                 "required": ["topic"],
@@ -757,15 +785,9 @@ TOOLS = [
                 "properties": {
                     "workflow": {
                         "type": "string",
-                        "enum": [
-                            "general",
-                            "kinetics",
-                            "point",
-                            "calibrate_kinetics",
-                            "calibrate_point",
-                            "report",
-                        ],
                         "description": (
+                            "Must be one of general, kinetics, point, calibrate_kinetics, "
+                            "calibrate_point, report. "
                             "general: full app tour. "
                             "kinetics: time-series measurement workflow. "
                             "point: endpoint measurement workflow. "
@@ -816,7 +838,7 @@ TOOLS = [
                                 "title":           {"type": "string"},
                                 "description":     {"type": "string"},
                                 "position":        {"type": "string",
-                                                   "enum": ["right", "left", "top", "bottom"]},
+                                                   "description": "One of right, left, top, bottom."},
                                 "skipInteraction": {
                                     "type": "boolean",
                                     "description": (
@@ -838,6 +860,14 @@ TOOLS = [
 ]
 
 _HELP_DOCS = {
+    "overview": (
+        "Easy OKAPI is a local desktop app that reads a PyBadge colorimeter over USB "
+        "and analyses bio-sensor absorbance data in your browser.\n"
+        "• Measure in kinetics (absorbance over time) or point (single time-point) mode.\n"
+        "• Build standard curves and calibrate to convert absorbance to concentration.\n"
+        "• Import/merge CSV data, fit regressions (R²), and export reports (HTML/Excel).\n"
+        "It runs entirely on your machine — single user, no cloud, no sign-in."
+    ),
     "measurement_modes": (
         "Easy OKAPI has 3 measurement modes:\n"
         "• kinetics — measures absorbance over time; computes max rate, slope, saturation.\n"
@@ -980,8 +1010,16 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
             })
 
         elif name == "get_help_topic":
-            topic = args.get("topic", "")
-            doc = _HELP_DOCS.get(topic, "Topic not found.")
+            topic = (args.get("topic") or "").strip().lower().replace(" ", "_").replace("-", "_")
+            doc = _HELP_DOCS.get(topic)
+            if doc is None:
+                # The model routinely picks a topic outside the known set on a
+                # general ask ("what is this app" → 'about'/'overview'). Fall
+                # back to the nearest key, else a general overview — never a
+                # dead "not found" that wastes the turn.
+                doc = next((v for k, v in _HELP_DOCS.items() if k in topic or topic in k), None)
+                if doc is None:
+                    topic, doc = "overview", _HELP_DOCS["overview"]
             return json.dumps({"topic": topic, "content": doc})
 
         elif name == "trigger_guide":
@@ -997,11 +1035,12 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
             for s in raw_steps:
                 if not (isinstance(s, dict) and s.get("target", "").startswith("#")):
                     continue
+                pos = s.get("position", "bottom")
                 step = {
                     "target":      s.get("target", ""),
                     "title":       s.get("title", "Step"),
                     "description": s.get("description", ""),
-                    "position":    s.get("position", "bottom"),
+                    "position":    pos if pos in ("right", "left", "top", "bottom") else "bottom",
                 }
                 if "skipInteraction" in s:
                     step["skipInteraction"] = bool(s["skipInteraction"])
@@ -1018,6 +1057,12 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
 
 
 # ── Groq chat ─────────────────────────────────────────────────────────────────
+
+# Completion budget. 500 was too tight: a tool call whose JSON arguments run
+# long (e.g. trigger_custom_steps with several steps) could be truncated
+# mid-object, yielding malformed JSON that Groq rejects as tool_use_failed.
+_MAX_COMPLETION_TOKENS = 1024
+
 
 # Substrings that mark a Groq 400 where the model emitted an invalid tool call
 # (bad JSON, or arguments that fail the tool's JSON-schema / enum). The small
@@ -1060,7 +1105,7 @@ def _groq_chat_stream(api_key: str, model: str, messages: list, tools: list):
             "model": model,
             "messages": messages,
             "temperature": 0.1,
-            "max_tokens": 500,
+            "max_tokens": _MAX_COMPLETION_TOKENS,
             "stream": True,
         }
         if tools:

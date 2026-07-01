@@ -69,3 +69,51 @@ def test_absolute_path_filename_is_blocked(json_root):
 def test_unknown_mode_rejected(json_root):
     out = _read_cal("curve.json", "kinetics/../../..")
     assert "error" in out
+
+
+# ── Tool schemas carry no hard enum (Groq rejects out-of-enum args) ───────────
+
+def _tool(name):
+    return next(t["function"] for t in ai_assistant.TOOLS if t["function"]["name"] == name)
+
+
+def test_tool_schemas_have_no_enum_constraints():
+    # An `enum` in a tool schema makes Groq 400 (tool_use_failed) when the model
+    # picks any other value; we validate permissively in _run_tool instead.
+    import json as _json
+    assert '"enum"' not in _json.dumps(ai_assistant.TOOLS)
+
+
+# ── get_help_topic degrades gracefully instead of erroring ───────────────────
+
+def _help(topic):
+    return json.loads(ai_assistant._run_tool("get_help_topic", {"topic": topic}))
+
+
+def test_help_known_topic():
+    assert "modes" in _help("measurement_modes")["content"].lower()
+
+
+def test_help_unknown_topic_falls_back_to_overview():
+    out = _help("about")   # not a known key — the exact screenshot-2 failure
+    assert out["topic"] == "overview"
+    assert "Easy OKAPI" in out["content"]
+
+
+def test_help_topic_normalized_and_fuzzy_matched():
+    # "Standard Curve" → standard_curve (case/space normalized).
+    assert _help("Standard Curve")["topic"] == "standard_curve"
+
+
+# ── trigger_custom_steps normalizes an out-of-range position ─────────────────
+
+def test_custom_steps_bad_position_defaults_to_bottom():
+    out = json.loads(ai_assistant._run_tool("trigger_custom_steps", {
+        "steps": [{"target": "#settingsBtn", "title": "x", "description": "y",
+                   "position": "center"}]}))
+    assert out["custom_steps"][0]["position"] == "bottom"
+
+
+def test_trigger_guide_bad_workflow_defaults_to_general():
+    out = json.loads(ai_assistant._run_tool("trigger_guide", {"workflow": "nonsense"}))
+    assert out["guide_workflow"] == "general"
