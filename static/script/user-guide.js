@@ -442,8 +442,17 @@ class UserGuide {
      * advances when the dialog CLOSES rather than on a raw click (confirming a
      * dialog removes the very element the guide is pointing at).
      */
-    _isSwalStep(step) {
-        return !!(step && typeof step.target === 'string' && step.target.includes('swal2'));
+    _isSwalStep(step, element) {
+        // Runtime truth: the resolved element lives inside an open SweetAlert2
+        // dialog. This catches app-defined in-dialog IDs (#swal-input-filename,
+        // #swal-ui-language) that don't literally contain "swal2".
+        if (element && typeof element.closest === 'function' && element.closest('.swal2-container')) {
+            return true;
+        }
+        // Selector heuristic (used before the element is resolved, e.g. when
+        // skipping a dialog run): SweetAlert2's own `.swal2-*` classes and this
+        // app's `#swal-*` in-dialog IDs.
+        return !!(step && typeof step.target === 'string' && /swal2|#swal-/.test(step.target));
     }
 
     /**
@@ -461,9 +470,30 @@ class UserGuide {
                 this.cleanupSwalWatch();
                 // Brief delay so any DOM revealed by a confirm can mount before we
                 // resolve the next step's target.
-                setTimeout(() => { if (this.isActive) this.proceedToNextStep(); }, 250);
+                setTimeout(() => { if (this.isActive) this._advancePastDialogRun(); }, 250);
             }
         }, 150);
+    }
+
+    /**
+     * Called when the dialog a dialog-step points at closes. A single dialog can
+     * carry several consecutive dialog steps (e.g. App Settings: change language,
+     * then Save); the user walks those with Next while the dialog is open. Once it
+     * closes, every remaining step targeting that (now-gone) dialog is moot, so
+     * skip the whole contiguous dialog run and resume at the next non-dialog step,
+     * else stop. This is what lets the user close/cancel from ANY step in the run
+     * without the guide getting stuck polling for vanished dialog elements.
+     */
+    _advancePastDialogRun() {
+        let next = this.currentStep + 1;
+        while (next < this.steps.length && this._isSwalStep(this.steps[next])) next++;
+        this.removeInteractionHandler();
+        if (next < this.steps.length) {
+            this.currentStep = next;
+            this.showStep(next);
+        } else {
+            this.stop();
+        }
     }
 
     cleanupSwalWatch() {
@@ -546,7 +576,7 @@ class UserGuide {
 
             // A dialog step advances when the dialog closes, not on a click (the
             // click that confirms it also removes the highlighted element).
-            if (this._isSwalStep(step)) {
+            if (this._isSwalStep(step, target)) {
                 this._watchSwalClose(target);
             }
 
@@ -639,7 +669,7 @@ class UserGuide {
         // Dialog steps drive advancement off the dialog closing (_watchSwalClose),
         // not off a click on the highlighted element — attaching the normal
         // handler here would double-advance (once on click, once on close).
-        if (this._isSwalStep(step)) return;
+        if (this._isSwalStep(step, element)) return;
 
         const { isCheckbox, isSelect, isInput, isTextInput, isContainer, isLabel } = this.determineElementType(element);
 
@@ -762,7 +792,7 @@ class UserGuide {
         // Swal already dims the page, and the full curtain would just cover the
         // dialog. The overlay stays LOW so Swal's own backdrop does the dimming
         // (elevating it would darken the dialog itself).
-        if (this._isSwalStep(step)) {
+        if (this._isSwalStep(step, element)) {
             this.spotlight.style.zIndex = '2147483646';
             this.overlay.style.zIndex = '9998';
             this.tooltip.style.zIndex = '2147483647';

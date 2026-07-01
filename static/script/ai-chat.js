@@ -14,7 +14,9 @@
         { cmd: '/measurement', desc: 'Guide to Kinetics mode and the Reading Colorimeter Data console', action: 'guide', guide_id: 'measurement_guide' },
         { cmd: '/calibrate', desc: 'Create a calibration standard curve (full workflow)', action: 'guide', guide_id: 'create_calibration_curve_workflow' },
         { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data', action: 'concentration' },
-        { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file', action: 'guide', guide_id: 'merge_files' },
+        { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file (dialog flow)', action: 'merge' },
+        { cmd: '/edit', desc: 'Edit a data file — rename or change its contents (dialog flow)', action: 'edit_file' },
+        { cmd: '/settings', desc: 'Open App Settings — language, default mode, units, data folder (dialog flow)', action: 'settings' },
         { cmd: '/range', desc: 'Set the analysis time window (start, end, unit)', action: 'guide', guide_id: 'set_analysis_range' },
         { cmd: '/save-range', desc: 'Save the current display-range rows to a new CSV (dialog flow)', action: 'save_range' },
         { cmd: '/normalize', desc: 'Toggle baseline subtraction to remove background absorbance', action: 'guide', guide_id: 'normalize_data' },
@@ -136,6 +138,124 @@
         fr: "L'enregistrement d'une plage d'affichage fonctionne en mode kinetics ou point avec un fichier de données chargé. Passez d'abord dans l'un de ces modes et sélectionnez un fichier.",
         ja: '表示範囲の保存は、データファイルを読み込んだ kinetics または point モードで動作します。まずいずれかのモードに切り替えてファイルを選択してください。',
         ru: 'Сохранение диапазона отображения работает в режиме kinetics или point с загруженным файлом данных. Сначала переключитесь в один из этих режимов и выберите файл.',
+    };
+
+    // ── Swal-dialog demo flows: Edit file, Merge files, App Settings ──────────
+    // Each walks a trigger button that opens a SweetAlert2 dialog, then one or
+    // more dialog steps (.swal2-* / #swal-* targets) the engine lifts above Swal
+    // and auto-advances when the dialog closes. App Settings uses TWO dialog steps
+    // in one modal (change language → Save), exercising the multi-step-dialog run.
+
+    // Edit a data file — the per-row ✏️ Edit button opens the editor dialog.
+    const _EDIT_TRIGGER_STEP = {
+        target: '#file-table button[onclick^="editFile"]',
+        title: 'Open the File Editor',
+        description: "Click ✏️ Edit on any file row to open the editor dialog. (Every file in the list has its own Edit button.)",
+        descriptions: {
+            vi: "Nhấp ✏️ Edit trên bất kỳ hàng tệp nào để mở hộp thoại chỉnh sửa. (Mỗi tệp trong danh sách có nút Edit riêng.)",
+            zh: "点击任意文件行的 ✏️ Edit 打开编辑对话框。（列表中每个文件都有自己的 Edit 按钮。）",
+            fr: "Cliquez sur ✏️ Edit sur n'importe quelle ligne de fichier pour ouvrir la boîte de dialogue d'édition. (Chaque fichier de la liste a son propre bouton Edit.)",
+            ja: "任意のファイル行の ✏️ Edit をクリックして編集ダイアログを開きます。（リストの各ファイルに専用の Edit ボタンがあります。）",
+            ru: "Нажмите ✏️ Edit в любой строке файла, чтобы открыть диалог редактирования. (У каждого файла в списке своя кнопка Edit.)",
+        },
+        position: 'left',
+        skipInteraction: false,
+    };
+    const _EDIT_DIALOG_STEP = {
+        target: '#swal-input-filename',
+        title: 'Edit the File',
+        description: 'Rename the file here if you want, edit its contents in the fields below, then click Save to write your changes — or Cancel to discard them. The guide continues when the dialog closes.',
+        descriptions: {
+            vi: 'Đổi tên tệp ở đây nếu muốn, chỉnh sửa nội dung ở các trường bên dưới, rồi nhấp Save để lưu — hoặc Cancel để hủy. Hướng dẫn tiếp tục khi hộp thoại đóng.',
+            zh: '如需重命名请在此修改文件名，在下方字段中编辑内容，然后点击 Save 保存更改，或点击 Cancel 放弃。对话框关闭后指南继续。',
+            fr: 'Renommez le fichier ici si vous le souhaitez, modifiez son contenu dans les champs ci-dessous, puis cliquez sur Save pour enregistrer — ou Cancel pour annuler. Le guide continue à la fermeture de la boîte de dialogue.',
+            ja: '必要ならここでファイル名を変更し、下のフィールドで内容を編集して、Save で変更を保存します（Cancel で破棄）。ダイアログが閉じるとガイドは続行します。',
+            ru: 'При желании переименуйте файл здесь, отредактируйте его содержимое в полях ниже, затем нажмите Save для сохранения — или Cancel для отмены. Руководство продолжится после закрытия диалога.',
+        },
+        position: 'bottom',
+        skipInteraction: true,
+    };
+    const _EDIT_NO_FILES = {
+        en: 'There are no files to edit in the current folder. Select a data folder with CSV files first.',
+        vi: 'Không có tệp nào để chỉnh sửa trong thư mục hiện tại. Hãy chọn một thư mục dữ liệu có tệp CSV trước.',
+        zh: '当前文件夹中没有可编辑的文件。请先选择一个包含 CSV 文件的数据文件夹。',
+        fr: "Aucun fichier à modifier dans le dossier actuel. Sélectionnez d'abord un dossier de données contenant des fichiers CSV.",
+        ja: '現在のフォルダーには編集できるファイルがありません。まず CSV ファイルのあるデータフォルダーを選択してください。',
+        ru: 'В текущей папке нет файлов для редактирования. Сначала выберите папку данных с CSV-файлами.',
+    };
+
+    // Merge CSV files — the Merge button opens the merge dialog.
+    const _MERGE_TRIGGER_STEP = {
+        target: '#merge-file-btn',
+        title: 'Open Merge Files',
+        description: 'Click Merge Files to open the merge dialog.',
+        descriptions: {
+            vi: 'Nhấp Merge Files để mở hộp thoại gộp tệp.',
+            zh: '点击 Merge Files 打开合并对话框。',
+            fr: 'Cliquez sur Merge Files pour ouvrir la boîte de dialogue de fusion.',
+            ja: 'Merge Files をクリックして結合ダイアログを開きます。',
+            ru: 'Нажмите Merge Files, чтобы открыть диалог объединения.',
+        },
+        position: 'right',
+        skipInteraction: false,
+    };
+    const _MERGE_DIALOG_STEP = {
+        target: '.swal2-confirm',
+        title: 'Choose & Order Files',
+        description: 'Add the CSV files to combine and order them with the ▲/▼ controls (all must share the same measurement, mode and units), then click Merge — or Cancel. The guide continues when the dialog closes.',
+        descriptions: {
+            vi: 'Thêm các tệp CSV cần gộp và sắp xếp bằng nút ▲/▼ (tất cả phải có cùng phép đo, chế độ và đơn vị), rồi nhấp Merge — hoặc Cancel. Hướng dẫn tiếp tục khi hộp thoại đóng.',
+            zh: '添加要合并的 CSV 文件并用 ▲/▼ 排序（所有文件的测量、模式和单位必须一致），然后点击 Merge，或点击 Cancel。对话框关闭后指南继续。',
+            fr: 'Ajoutez les fichiers CSV à combiner et ordonnez-les avec les commandes ▲/▼ (tous doivent partager la même mesure, le même mode et les mêmes unités), puis cliquez sur Merge — ou Cancel. Le guide continue à la fermeture de la boîte de dialogue.',
+            ja: '結合する CSV ファイルを追加し、▲/▼ で順序を並べ替えます（すべて同じ測定・モード・単位である必要があります）。その後 Merge をクリック（または Cancel）。ダイアログが閉じるとガイドは続行します。',
+            ru: 'Добавьте CSV-файлы для объединения и упорядочьте их кнопками ▲/▼ (у всех должны совпадать измерение, режим и единицы), затем нажмите Merge — или Cancel. Руководство продолжится после закрытия диалога.',
+        },
+        position: 'top',
+        skipInteraction: true,
+    };
+
+    // App Settings — the gear opens the settings dialog (two dialog steps).
+    const _SETTINGS_TRIGGER_STEP = {
+        target: '#settingsBtn',
+        title: 'Open App Settings',
+        description: 'Click the ⚙️ gear to open App Settings.',
+        descriptions: {
+            vi: 'Nhấp biểu tượng bánh răng ⚙️ để mở App Settings.',
+            zh: '点击 ⚙️ 齿轮打开 App Settings。',
+            fr: "Cliquez sur l'engrenage ⚙️ pour ouvrir App Settings.",
+            ja: '⚙️ 歯車をクリックして App Settings を開きます。',
+            ru: 'Нажмите шестерёнку ⚙️, чтобы открыть App Settings.',
+        },
+        position: 'bottom',
+        skipInteraction: false,
+    };
+    const _SETTINGS_LANG_STEP = {
+        target: '#swal-ui-language',
+        title: 'Interface Language',
+        description: 'This is the interface Language setting — one of many preferences here (default mode, window size, concentration unit, table sort, data folder). Adjust anything you like, then click Next.',
+        descriptions: {
+            vi: 'Đây là cài đặt Ngôn ngữ giao diện — một trong nhiều tùy chọn ở đây (chế độ mặc định, kích thước cửa sổ, đơn vị nồng độ, sắp xếp bảng, thư mục dữ liệu). Điều chỉnh tùy ý, rồi nhấp Next.',
+            zh: '这是界面 Language 设置——此处众多首选项之一（默认模式、窗口大小、浓度单位、表格排序、数据文件夹）。随意调整后点击 Next。',
+            fr: "Voici le réglage de la Langue de l'interface — l'une des nombreuses préférences ici (mode par défaut, taille de fenêtre, unité de concentration, tri des tableaux, dossier de données). Ajustez ce que vous voulez, puis cliquez sur Next.",
+            ja: 'これはインターフェースの Language 設定です — ここにある多くの設定の一つ（既定モード、ウィンドウサイズ、濃度単位、テーブルの並び順、データフォルダー）。好きに調整して Next をクリックしてください。',
+            ru: 'Это настройка Language интерфейса — одна из многих здесь (режим по умолчанию, размер окна, единица концентрации, сортировка таблиц, папка данных). Измените что нужно и нажмите Next.',
+        },
+        position: 'bottom',
+        skipInteraction: true,
+    };
+    const _SETTINGS_SAVE_STEP = {
+        target: '.swal2-confirm',
+        title: 'Save Settings',
+        description: 'Click Save to apply your preferences (or Cancel to discard, or Revert to defaults). The guide continues when the dialog closes.',
+        descriptions: {
+            vi: 'Nhấp Save để áp dụng tùy chọn (hoặc Cancel để hủy, hoặc Revert để về mặc định). Hướng dẫn tiếp tục khi hộp thoại đóng.',
+            zh: '点击 Save 应用您的偏好设置（或 Cancel 放弃，或 Revert 恢复默认）。对话框关闭后指南继续。',
+            fr: 'Cliquez sur Save pour appliquer vos préférences (ou Cancel pour annuler, ou Revert pour rétablir les valeurs par défaut). Le guide continue à la fermeture de la boîte de dialogue.',
+            ja: 'Save をクリックして設定を適用します（Cancel で破棄、Revert で既定値に戻す）。ダイアログが閉じるとガイドは続行します。',
+            ru: 'Нажмите Save, чтобы применить настройки (или Cancel для отмены, или Revert для сброса к значениям по умолчанию). Руководство продолжится после закрытия диалога.',
+        },
+        position: 'top',
+        skipInteraction: true,
     };
 
     const _EMPTY_REPLY = {
@@ -1048,6 +1168,24 @@
             return;
         }
 
+        if (cmd.action === 'edit_file') {
+            _addMsg('user', cmd.cmd);
+            _runEditFileGuide();
+            return;
+        }
+
+        if (cmd.action === 'merge') {
+            _addMsg('user', cmd.cmd);
+            _runMergeGuide();
+            return;
+        }
+
+        if (cmd.action === 'settings') {
+            _addMsg('user', cmd.cmd);
+            _runSettingsGuide();
+            return;
+        }
+
         if (cmd.action === 'redo') {
             _runRedoAction();
             return;
@@ -1139,6 +1277,33 @@
         if (!ctx.data_loaded) steps = [_FILE_SELECT_STEP, ...steps];
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
         _launchCustomSteps(steps);
+    }
+
+    // Edit-file guide: click a row's ✏️ Edit button → the editor dialog.
+    function _runEditFileGuide() {
+        const lang = AI.activeLang || 'en';
+        // Needs at least one file (any file has its own Edit button); edit works
+        // in any mode, so gate only on a file being present.
+        if (!document.querySelector('#file-table button[onclick^="editFile"]')) {
+            _addMsg('assistant', _EDIT_NO_FILES[lang] || _EDIT_NO_FILES.en);
+            return;
+        }
+        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+        _launchCustomSteps([_EDIT_TRIGGER_STEP, _EDIT_DIALOG_STEP]);
+    }
+
+    // Merge-files guide: click Merge Files → the merge dialog.
+    function _runMergeGuide() {
+        const lang = AI.activeLang || 'en';
+        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+        _launchCustomSteps([_MERGE_TRIGGER_STEP, _MERGE_DIALOG_STEP]);
+    }
+
+    // App Settings guide: gear → settings dialog (two dialog steps: language → Save).
+    function _runSettingsGuide() {
+        const lang = AI.activeLang || 'en';
+        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+        _launchCustomSteps([_SETTINGS_TRIGGER_STEP, _SETTINGS_LANG_STEP, _SETTINGS_SAVE_STEP]);
     }
 
     // Show an inline quick/full choice — user clicks a button, guide launches immediately
