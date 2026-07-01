@@ -18,6 +18,7 @@ class UserGuide {
         this.resizeObserver = null;
         this.pollingInterval = null;
         this.waitInterval = null;
+        this.swalWatchInterval = null;
 
         // Step Definitions Configuration
         this.stepDefinitions = {
@@ -405,6 +406,7 @@ class UserGuide {
     stop() {
         this.isActive = false;
         this.cleanupObservers();
+        this.cleanupSwalWatch();
         if (this.waitInterval) {
             clearInterval(this.waitInterval);
             this.waitInterval = null;
@@ -412,6 +414,7 @@ class UserGuide {
         this.removeInteractionHandler();
         this.overlay.classList.remove('active');
         this.spotlight.classList.remove('active');
+        this.spotlight.classList.remove('user-guide-spotlight-swal');
         this.tooltip.classList.remove('active');
         document.body.style.overflow = '';
     }
@@ -427,6 +430,46 @@ class UserGuide {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
+        }
+    }
+
+    /**
+     * True when a step points at a SweetAlert2 dialog element (target references
+     * a `.swal2-*` selector). Such steps need special handling: the dialog sits
+     * at z-index 2147483000 — ~2.1 billion above the guide's normal 10000 layer —
+     * so the spotlight/tooltip must be lifted above it and the heavy dark curtain
+     * dropped (Swal already dims the page with its own backdrop), and the step
+     * advances when the dialog CLOSES rather than on a raw click (confirming a
+     * dialog removes the very element the guide is pointing at).
+     */
+    _isSwalStep(step) {
+        return !!(step && typeof step.target === 'string' && step.target.includes('swal2'));
+    }
+
+    /**
+     * Advance the guide when the dialog the current step points at resolves —
+     * confirm OR cancel, since either way SweetAlert2 tears the popup out of the
+     * DOM. We watch the specific target element's presence (a fresh dialog, e.g.
+     * a follow-up "success" toast, is a different element, so this stays true to
+     * the dialog the step was about). Polling matches the engine's existing style.
+     */
+    _watchSwalClose(element) {
+        this.cleanupSwalWatch();
+        this.swalWatchInterval = setInterval(() => {
+            if (!this.isActive) { this.cleanupSwalWatch(); return; }
+            if (!document.body.contains(element)) {
+                this.cleanupSwalWatch();
+                // Brief delay so any DOM revealed by a confirm can mount before we
+                // resolve the next step's target.
+                setTimeout(() => { if (this.isActive) this.proceedToNextStep(); }, 250);
+            }
+        }, 150);
+    }
+
+    cleanupSwalWatch() {
+        if (this.swalWatchInterval) {
+            clearInterval(this.swalWatchInterval);
+            this.swalWatchInterval = null;
         }
     }
 
@@ -485,6 +528,7 @@ class UserGuide {
 
         this.removeInteractionHandler();
         this.cleanupObservers();
+        this.cleanupSwalWatch();
         if (this.waitInterval) {
             clearInterval(this.waitInterval);
             this.waitInterval = null;
@@ -499,6 +543,12 @@ class UserGuide {
 
             this.positionSpotlight(target, step);
             this.attachInteractionHandler(target, step);
+
+            // A dialog step advances when the dialog closes, not on a click (the
+            // click that confirms it also removes the highlighted element).
+            if (this._isSwalStep(step)) {
+                this._watchSwalClose(target);
+            }
 
             // Setup ResizeObserver
             if (window.ResizeObserver) {
@@ -586,6 +636,10 @@ class UserGuide {
      */
     attachInteractionHandler(element, step) {
         if (step.skipInteraction) return;
+        // Dialog steps drive advancement off the dialog closing (_watchSwalClose),
+        // not off a click on the highlighted element — attaching the normal
+        // handler here would double-advance (once on click, once on close).
+        if (this._isSwalStep(step)) return;
 
         const { isCheckbox, isSelect, isInput, isTextInput, isContainer, isLabel } = this.determineElementType(element);
 
@@ -702,10 +756,23 @@ class UserGuide {
         this.spotlight.style.height = `${rect.height + padding * 2}px`;
         this.spotlight.classList.add('active');
 
-        // Ensure high z-index
-        this.spotlight.style.zIndex = '9999';
-        this.overlay.style.zIndex = '9998';
-        this.tooltip.style.zIndex = '10000';
+        // Ensure high z-index. A dialog step must clear SweetAlert2's container
+        // (2147483000), so the spotlight ring and tooltip are lifted above it and
+        // the giant dark curtain is swapped for a light ring (`-swal` class) —
+        // Swal already dims the page, and the full curtain would just cover the
+        // dialog. The overlay stays LOW so Swal's own backdrop does the dimming
+        // (elevating it would darken the dialog itself).
+        if (this._isSwalStep(step)) {
+            this.spotlight.style.zIndex = '2147483646';
+            this.overlay.style.zIndex = '9998';
+            this.tooltip.style.zIndex = '2147483647';
+            this.spotlight.classList.add('user-guide-spotlight-swal');
+        } else {
+            this.spotlight.style.zIndex = '9999';
+            this.overlay.style.zIndex = '9998';
+            this.tooltip.style.zIndex = '10000';
+            this.spotlight.classList.remove('user-guide-spotlight-swal');
+        }
 
         this.positionTooltip(rect, step.position || 'bottom');
     }

@@ -126,7 +126,7 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 | `calculate.js` | Math: regression (linear, polynomial, logarithmic, exponential, Michaelis-Menten), R²; calls `/calculate_coef_and_rsquared` for server-side computation |
 | `edit-file.js` | SweetAlert2-based file editor modal (CSV and JSON), column operations |
 | `report.js` | Report generation (`generateReport`), subject CRUD UI (create/rename/copy/delete subjects, export to subject, view items) |
-| `user-guide.js` | Interactive step-by-step user guide with spotlight overlay |
+| `user-guide.js` | Interactive step-by-step user guide with spotlight overlay; supports *dialog steps* (`.swal2-*` targets) that lift above SweetAlert2 and auto-advance on dialog close (see Rule.md) |
 | `ai-chat.js` | Floating AI chat widget: panel toggle, multilingual language selector, settings panel, model download progress, conversation history, edit-and-resend on user messages, new-conversation button, 👍/👎 answer feedback |
 | `bug-report.js` | "Report a Bug" button (left column, below Options): SweetAlert flow — (1) attach logs? (2) pick up to 5 `log/events/` files (`/list_event_log_files`), (3) name the zip. `POST /download_event_logs` bundles the chosen files and downloads the zip to the machine, then a `mailto:` draft to `state.MAINTAINER_EMAIL` opens with an instruction to attach that downloaded zip manually (mailto: cannot pre-attach files). "No, just email" opens a plain `mailto:` with no attachment. |
 

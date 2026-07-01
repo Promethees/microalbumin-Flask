@@ -16,6 +16,7 @@
         { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data', action: 'concentration' },
         { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file', action: 'guide', guide_id: 'merge_files' },
         { cmd: '/range', desc: 'Set the analysis time window (start, end, unit)', action: 'guide', guide_id: 'set_analysis_range' },
+        { cmd: '/save-range', desc: 'Save the current display-range rows to a new CSV (dialog flow)', action: 'save_range' },
         { cmd: '/normalize', desc: 'Toggle baseline subtraction to remove background absorbance', action: 'guide', guide_id: 'normalize_data' },
         { cmd: '/split', desc: 'Display each measurement source as a separate chart', action: 'guide', guide_id: 'split_sources' },
         { cmd: '/window', desc: 'Configure sliding window size for max-rate regression', action: 'guide', guide_id: 'window_size' },
@@ -71,6 +72,50 @@
         fr: 'Guide lancé — suivez les étapes mises en surbrillance.',
         ja: 'ガイドを起動しました — ハイライトされた手順に従ってください。',
         ru: 'Руководство запущено — следуйте выделенным шагам.',
+    };
+
+    // ── Save-range demo flow (button → SweetAlert2 dialog) ────────────────────
+    // Demonstrates a guide that walks INTO a Swal dialog: step 1 opens it, step 2
+    // targets the dialog's own input (a `.swal2-*` selector), which the guide
+    // engine lifts above Swal's z-index and auto-advances when the dialog closes.
+
+    const _SAVE_RANGE_BTN_STEP = {
+        target: '#save-range-btn',
+        title: 'Save Display Range',
+        description: "Set your From/To display range above, then click 'Save Display Range' here. A dialog opens to name the CSV file.",
+        descriptions: {
+            vi: "Đặt khoảng hiển thị Từ/Đến ở trên, rồi nhấp 'Save Display Range' tại đây. Một hộp thoại sẽ mở ra để đặt tên tệp CSV.",
+            zh: "先在上方设置 From/To 显示范围，然后点击此处的「Save Display Range」。将弹出对话框为 CSV 文件命名。",
+            fr: "Définissez votre plage d'affichage De/À ci-dessus, puis cliquez sur 'Save Display Range' ici. Une boîte de dialogue s'ouvre pour nommer le fichier CSV.",
+            ja: "上で From/To の表示範囲を設定し、ここで「Save Display Range」をクリックします。CSV ファイルに名前を付けるダイアログが開きます。",
+            ru: "Задайте диапазон отображения От/До выше, затем нажмите «Save Display Range» здесь. Откроется диалог для имени CSV-файла.",
+        },
+        position: 'bottom',
+        skipInteraction: false,
+    };
+
+    const _SAVE_RANGE_DIALOG_STEP = {
+        target: '.swal2-input',
+        title: 'Name the CSV File',
+        description: 'Type a filename for the range subset, then click Save (or Cancel). The guide continues automatically once the dialog closes.',
+        descriptions: {
+            vi: 'Nhập tên tệp cho phần dữ liệu trong khoảng, rồi nhấp Save (hoặc Cancel). Hướng dẫn sẽ tự tiếp tục khi hộp thoại đóng.',
+            zh: '为该范围子集输入文件名，然后点击 Save（或 Cancel）。对话框关闭后指南会自动继续。',
+            fr: 'Saisissez un nom de fichier pour le sous-ensemble, puis cliquez sur Save (ou Cancel). Le guide continue automatiquement à la fermeture de la boîte de dialogue.',
+            ja: '範囲の部分データにファイル名を入力し、Save（または Cancel）をクリックします。ダイアログが閉じるとガイドは自動的に続行します。',
+            ru: 'Введите имя файла для подмножества диапазона, затем нажмите Save (или Cancel). Руководство продолжится автоматически после закрытия диалога.',
+        },
+        position: 'top',
+        skipInteraction: true,
+    };
+
+    const _SAVE_RANGE_WRONG_MODE = {
+        en: 'Saving a display range works in kinetics or point mode with a data file loaded. Switch to one of those modes and select a file first.',
+        vi: 'Lưu khoảng hiển thị hoạt động ở chế độ kinetics hoặc point khi đã tải tệp dữ liệu. Hãy chuyển sang một trong các chế độ đó và chọn tệp trước.',
+        zh: '保存显示范围需在 kinetics 或 point 模式下并已加载数据文件。请先切换到其中一种模式并选择文件。',
+        fr: "L'enregistrement d'une plage d'affichage fonctionne en mode kinetics ou point avec un fichier de données chargé. Passez d'abord dans l'un de ces modes et sélectionnez un fichier.",
+        ja: '表示範囲の保存は、データファイルを読み込んだ kinetics または point モードで動作します。まずいずれかのモードに切り替えてファイルを選択してください。',
+        ru: 'Сохранение диапазона отображения работает в режиме kinetics или point с загруженным файлом данных. Сначала переключитесь в один из этих режимов и выберите файл.',
     };
 
     const _EMPTY_REPLY = {
@@ -971,6 +1016,12 @@
             return;
         }
 
+        if (cmd.action === 'save_range') {
+            _addMsg('user', cmd.cmd);
+            _runSaveRangeGuide();
+            return;
+        }
+
         if (cmd.action === 'redo') {
             _runRedoAction();
             return;
@@ -1040,6 +1091,23 @@
             const input = document.getElementById('okapi-ai-input');
             if (input) { input.value = last.query; OkapiAI.send(); }
         }
+    }
+
+    // Demo of a guide that walks into a SweetAlert2 dialog. Step 1 opens the
+    // "Save Range to CSV" dialog; step 2 targets the dialog's own text input,
+    // which the guide engine lifts above Swal and auto-advances on close.
+    function _runSaveRangeGuide() {
+        const ctx = _getUiContext();
+        const lang = AI.activeLang || 'en';
+        // The Save Display Range button only exists in the kinetics/point data views.
+        if (ctx.mode !== 'kinetics' && ctx.mode !== 'point') {
+            _addMsg('assistant', _SAVE_RANGE_WRONG_MODE[lang] || _SAVE_RANGE_WRONG_MODE.en);
+            return;
+        }
+        let steps = [_SAVE_RANGE_BTN_STEP, _SAVE_RANGE_DIALOG_STEP];
+        if (!ctx.data_loaded) steps = [_FILE_SELECT_STEP, ...steps];
+        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
+        _launchCustomSteps(steps);
     }
 
     // Show an inline quick/full choice — user clicks a button, guide launches immediately

@@ -2384,6 +2384,17 @@ body.dark #user-guide-btn {
     }
 }
 
+/* Dialog (SweetAlert2) step: the spotlight is lifted above Swal's backdrop, so
+   the full-page dark curtain would cover the dialog itself. Swap it for a bright
+   ring and drop the pulse animation (which re-applies the curtain via keyframes).
+   Swal's own backdrop does the page dimming. */
+.user-guide-spotlight.user-guide-spotlight-swal,
+.user-guide-spotlight.user-guide-spotlight-swal.active {
+    animation: none;
+    box-shadow: 0 0 0 3px #3498db,
+        0 0 16px rgba(52, 152, 219, 0.75);
+}
+
 /* Tooltip */
 .user-guide-tooltip {
     position: absolute;
