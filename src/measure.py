@@ -30,7 +30,6 @@ def sort_csv_file(file_path, meas_mode):
             print("Sorting in kinetics mode")
             # Sort by concentration (index 0), maxrate (index 1), slope (index 2), sat (index 3), time_to_sat (index 4)
             sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[1]), _safe_float(x[2]), _safe_float(x[3]), _safe_float(x[4])))
-            # sorted_rows = sorted(rows, key=lambda x: (x[1]))
         elif meas_mode == "point":
             # Sort by concentration (index 0), time_point (index 2), value (index 1)
             sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[2]), _safe_float(x[1])))

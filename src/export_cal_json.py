@@ -32,8 +32,6 @@ def processJSONCoef(
     Returns:
         dict with `fit_coef` as a **dictionary object** (not JSON string)
     """
-    print("Cal params: ", cal_params)
-    print("Coefficients: ", coefficients)
     if not isinstance(cal_params, list):
         raise ValueError("cal_params must be a list")
     if not isinstance(coefficients, list):
