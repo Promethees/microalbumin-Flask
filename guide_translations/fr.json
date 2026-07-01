@@ -179,15 +179,26 @@
   {
     "id": "merge_files",
     "steps": [
-      "Sélectionnez d'abord les fichiers CSV à fusionner dans la liste.",
-      "Cliquez ici pour combiner deux fichiers CSV en un seul fichier multi-sources."
+      "Pour sélectionner plusieurs fichiers d'un coup depuis un navigateur de dossiers, activez d'abord cette option. Cliquez sur l'engrenage ⚙️ pour ouvrir App Settings.",
+      "Cochez cette case ('Pick merge files from a folder browser') pour afficher plusieurs fichiers à fusionner depuis un navigateur de dossiers.",
+      "Cliquez sur Save pour appliquer. (Si vous ignorez ceci, la fusion fonctionne quand même — vous ajouterez les fichiers ligne par ligne.)",
+      "Cliquez maintenant sur 'Merge Files' pour commencer à combiner les fichiers CSV.",
+      "Développez un dossier et cochez les fichiers CSV à fusionner — vous pouvez en prendre dans plusieurs dossiers. Tous doivent partager la même mesure, le même mode et les mêmes unités.",
+      "Utilisez Select all / Clear pour tout basculer dans la vue ; le compteur indique combien de fichiers sont sélectionnés (au moins deux).",
+      "Une fois au moins deux fichiers cochés, cliquez sur Next pour passer à l'ordonnancement.",
+      "Chaque ligne est un fichier source. Utilisez les boutons ▲/▼ pour définir l'ordre des sources dans le fichier fusionné ; ✕ supprime une ligne.",
+      "Besoin de plus ? '+ Add File' ajoute une ligne ; choisissez son dossier et son fichier dans les menus déroulants.",
+      "Saisissez un nom pour le fichier fusionné et choisissez le dossier de destination juste en dessous.",
+      "Cliquez sur Merge pour créer le CSV multi-sources fusionné. Le guide se termine à la fermeture de la boîte de dialogue."
     ],
     "queries": [
-      "fusionner les fichiers",
-      "combiner les csv",
-      "regrouper les fichiers",
+      "fusionner des fichiers",
       "fusionner csv",
-      "combiner fichiers"
+      "combiner des fichiers",
+      "fusionner plusieurs fichiers",
+      "comment fusionner csv",
+      "combiner csv",
+      "joindre des fichiers"
     ]
   },
   {

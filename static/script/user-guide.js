@@ -493,6 +493,39 @@ class UserGuide {
      * without the guide getting stuck polling for vanished dialog elements.
      */
     _advancePastDialogRun() {
+        // A step flagged `chainsDialog` opens ANOTHER dialog when confirmed (e.g.
+        // merge's "Select Files" → Next → "Merge CSV Files"): wait for the follow-up
+        // dialog and step INTO it rather than skipping the run.
+        const cur = this.steps[this.currentStep];
+        if (cur && cur.chainsDialog) {
+            this._awaitChainedDialog();
+            return;
+        }
+        this._skipDialogRun();
+    }
+
+    /**
+     * Poll briefly for a follow-up dialog to mount (SweetAlert2 resolves `.then()`
+     * only after the close animation, so the next dialog appears a beat later),
+     * then advance one step into it. If none appears the user dismissed the flow,
+     * so fall back to skipping the run.
+     */
+    _awaitChainedDialog(attempt = 0) {
+        if (!this.isActive) return;
+        if (document.querySelector('.swal2-popup')) {
+            this.proceedToNextStep();
+            return;
+        }
+        if (attempt < 12) {
+            setTimeout(() => this._awaitChainedDialog(attempt + 1), 150);
+            return;
+        }
+        this._skipDialogRun();
+    }
+
+    /** Skip the whole contiguous dialog run and resume at the next non-dialog
+     *  step (or stop) — used when a dialog is dismissed. */
+    _skipDialogRun() {
         let next = this.currentStep + 1;
         while (next < this.steps.length && this._isSwalStep(this.steps[next])) next++;
         this.removeInteractionHandler();
@@ -1052,6 +1085,7 @@ class UserGuide {
             ...(s.expand ? { expand: s.expand } : {}),
             ...(s.awaitSwalOpen ? { awaitSwalOpen: true } : {}),
             ...(s.dialogStep ? { dialogStep: true } : {}),
+            ...(s.chainsDialog ? { chainsDialog: true } : {}),
         }));
 
         this.currentStep = 0;

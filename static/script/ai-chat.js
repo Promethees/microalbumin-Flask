@@ -14,7 +14,7 @@
         { cmd: '/measurement', desc: 'Guide to Kinetics mode and the Reading Colorimeter Data console', action: 'guide', guide_id: 'measurement_guide' },
         { cmd: '/calibrate', desc: 'Create a calibration standard curve (full workflow)', action: 'guide', guide_id: 'create_calibration_curve_workflow' },
         { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data', action: 'concentration' },
-        { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file (dialog flow)', action: 'merge' },
+        { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file (dialog flow)', action: 'guide', guide_id: 'merge_files' },
         { cmd: '/edit', desc: 'Edit a data or calibration file — rename or change its contents (dialog flow)', action: 'guide', guide_id: 'edit_file' },
         { cmd: '/settings', desc: 'Open App Settings — language, default mode, units, data folder (dialog flow)', action: 'guide', guide_id: 'app_settings' },
         { cmd: '/range', desc: 'Set the analysis time window (start, end, unit)', action: 'guide', guide_id: 'set_analysis_range' },
@@ -148,36 +148,6 @@
     // more dialog steps (.swal2-* / #swal-* targets) the engine lifts above Swal
     // and auto-advances when the dialog closes. App Settings uses TWO dialog steps
     // in one modal (change language → Save), exercising the multi-step-dialog run.
-
-    // Merge CSV files — the Merge button opens the merge dialog.
-    const _MERGE_TRIGGER_STEP = {
-        target: '#merge-file-btn',
-        title: 'Open Merge Files',
-        description: 'Click Merge Files to open the merge dialog.',
-        descriptions: {
-            vi: 'Nhấp Merge Files để mở hộp thoại gộp tệp.',
-            zh: '点击 Merge Files 打开合并对话框。',
-            fr: 'Cliquez sur Merge Files pour ouvrir la boîte de dialogue de fusion.',
-            ja: 'Merge Files をクリックして結合ダイアログを開きます。',
-            ru: 'Нажмите Merge Files, чтобы открыть диалог объединения.',
-        },
-        position: 'right',
-        skipInteraction: false,
-    };
-    const _MERGE_DIALOG_STEP = {
-        target: '.swal2-confirm',
-        title: 'Choose & Order Files',
-        description: 'Add the CSV files to combine and order them with the ▲/▼ controls (all must share the same measurement, mode and units), then click Merge — or Cancel. The guide continues when the dialog closes.',
-        descriptions: {
-            vi: 'Thêm các tệp CSV cần gộp và sắp xếp bằng nút ▲/▼ (tất cả phải có cùng phép đo, chế độ và đơn vị), rồi nhấp Merge — hoặc Cancel. Hướng dẫn tiếp tục khi hộp thoại đóng.',
-            zh: '添加要合并的 CSV 文件并用 ▲/▼ 排序（所有文件的测量、模式和单位必须一致），然后点击 Merge，或点击 Cancel。对话框关闭后指南继续。',
-            fr: 'Ajoutez les fichiers CSV à combiner et ordonnez-les avec les commandes ▲/▼ (tous doivent partager la même mesure, le même mode et les mêmes unités), puis cliquez sur Merge — ou Cancel. Le guide continue à la fermeture de la boîte de dialogue.',
-            ja: '結合する CSV ファイルを追加し、▲/▼ で順序を並べ替えます（すべて同じ測定・モード・単位である必要があります）。その後 Merge をクリック（または Cancel）。ダイアログが閉じるとガイドは続行します。',
-            ru: 'Добавьте CSV-файлы для объединения и упорядочьте их кнопками ▲/▼ (у всех должны совпадать измерение, режим и единицы), затем нажмите Merge — или Cancel. Руководство продолжится после закрытия диалога.',
-        },
-        position: 'top',
-        skipInteraction: true,
-    };
 
     const _EMPTY_REPLY = {
         en: "I couldn't generate a response. Please try rephrasing your question.",
@@ -1089,11 +1059,6 @@
             return;
         }
 
-        if (cmd.action === 'merge') {
-            _addMsg('user', cmd.cmd);
-            _runMergeGuide();
-            return;
-        }
 
 
         if (cmd.action === 'redo') {
@@ -1190,13 +1155,6 @@
         if (!ctx.data_loaded) steps = [_FILE_SELECT_STEP, ...steps];
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
         _launchCustomSteps(steps);
-    }
-
-    // Merge-files guide: click Merge Files → the merge dialog.
-    function _runMergeGuide() {
-        const lang = AI.activeLang || 'en';
-        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
-        _launchCustomSteps([_MERGE_TRIGGER_STEP, _MERGE_DIALOG_STEP]);
     }
 
     // Show an inline quick/full choice — user clicks a button, guide launches immediately

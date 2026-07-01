@@ -432,23 +432,102 @@
         "combine files",
         "merge csv",
         "merge files",
-        "join files"
+        "join files",
+        "merge two files",
+        "combine csv files",
+        "combine multiple files",
+        "how to merge",
+        "how to combine csv",
+        "merge multiple csv",
+        "join csv files"
       ],
-      "conditions": {},
       "steps": [
         {
-          "target": "#file-selection",
-          "title": "Select Files to Merge",
-          "description": "First select the CSV files you want to merge from the file list.",
-          "position": "left",
+          "target": "#settingsBtn",
+          "awaitSwalOpen": true,
+          "title": "Enable the Multi-File Picker",
+          "description": "To pick several files at once from a folder browser, first turn that option on. Click the ⚙️ gear to open App Settings.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-merge-picker",
+          "title": "Turn On the Folder Browser",
+          "description": "Tick this checkbox ('Pick merge files from a folder browser') to show multiple files to merge from a folder browser.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "title": "Save the Setting",
+          "description": "Click Save to apply. (If you skip this, merging still works — you'll just add files one row at a time instead.)",
+          "position": "top",
           "skipInteraction": true
         },
         {
           "target": "#merge-file-btn",
-          "title": "Merge CSV Files",
-          "description": "Click here to combine two CSV files into a single multi-source file.",
+          "awaitSwalOpen": true,
+          "title": "Open Merge Files",
+          "description": "Now click 'Merge Files' to start combining CSV files.",
           "position": "right",
-          "skipInteraction": false
+          "skipInteraction": true
+        },
+        {
+          "target": "#merge-pick-accordion",
+          "dialogStep": true,
+          "title": "Pick the Files",
+          "description": "Expand any folder and tick the CSV files you want to merge — you can gather files from several folders. All files must share the same measurement, mode and units.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#merge-pick-toggle-all",
+          "dialogStep": true,
+          "title": "Select All / Count",
+          "description": "Use Select all / Clear to toggle everything in view; the counter shows how many files you've picked (you need at least two).",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "dialogStep": true,
+          "chainsDialog": true,
+          "title": "Next: Order the Files",
+          "description": "Once at least two files are ticked, click Next to move on to ordering them.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": ".merge-file-row",
+          "dialogStep": true,
+          "title": "Order the Sources",
+          "description": "Each row is one source file. Use the ▲/▼ buttons to set the order the sources appear in the merged file; ✕ removes a row.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#merge-add-btn",
+          "dialogStep": true,
+          "title": "Add Another File",
+          "description": "Need more? '+ Add File' adds another row; pick its folder and file from the dropdowns.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-output",
+          "dialogStep": true,
+          "title": "Name the Output",
+          "description": "Enter a name for the merged file and choose the destination folder just below it.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "dialogStep": true,
+          "title": "Merge",
+          "description": "Click Merge to create the combined multi-source CSV. The guide finishes when the dialog closes.",
+          "position": "top",
+          "skipInteraction": true
         }
       ]
     },

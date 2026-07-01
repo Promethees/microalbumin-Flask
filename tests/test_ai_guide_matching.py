@@ -584,6 +584,62 @@ def test_app_settings_localized(lang, query):
         assert s["description"] and s["description"] != en_s["description"]
 
 
+# ---------------------------------------------------------------------------
+# merge_files — full flow: enable the folder-browser picker in App Settings,
+# then the two chained merge dialogs (Select Files → Next → Merge CSV Files).
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("query", [
+    "merge files",
+    "how to merge csv",
+    "combine multiple files",
+    "how to combine csv files",
+])
+def test_merge_fires_from_free_text(query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, "en")
+    assert gid == "merge_files"
+    assert steps
+
+
+def test_merge_walks_settings_then_both_dialogs():
+    _, steps = ai_assistant.resolve_guide("merge files", KIN_DATA, "en")
+    targets = [s["target"] for s in steps]
+    # 1) enable the picker in App Settings
+    assert targets[0] == "#settingsBtn" and steps[0].get("awaitSwalOpen")
+    assert "#swal-merge-picker" in targets
+    # 2) open merge (await the dialog), 3) folder-browser dialog, 4) sort dialog
+    assert "#merge-file-btn" in targets
+    assert "#merge-pick-accordion" in targets     # dialog 1 (folder browser)
+    assert ".merge-file-row" in targets           # dialog 2 (order sources)
+    assert "#swal-output" in targets              # dialog 2 output name
+    assert targets[-1] == ".swal2-confirm"        # final Merge
+
+
+def test_merge_picker_step_message_and_chain_flag():
+    _, steps = ai_assistant.resolve_guide("merge files", KIN_DATA, "en")
+    picker = next(s for s in steps if s["target"] == "#swal-merge-picker")
+    assert "checkbox" in picker["description"].lower()
+    # The dialog-1 "Next" step must be flagged chainsDialog so the engine steps
+    # INTO dialog 2 instead of skipping the run when dialog 1 closes.
+    chain = [s for s in steps if s.get("chainsDialog")]
+    assert len(chain) == 1
+    assert chain[0]["target"] == ".swal2-confirm"
+
+
+@pytest.mark.parametrize("lang,query", [
+    ("fr", "fusionner des fichiers"),
+    ("ru", "объединить файлы"),
+    ("zh", "如何合并文件"),
+    ("ja", "ファイルを結合する方法"),
+])
+def test_merge_localized(lang, query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, lang)
+    assert gid == "merge_files"
+    _, en_steps = ai_assistant.resolve_guide("merge files", KIN_DATA, "en")
+    assert len(steps) == len(en_steps)
+    assert steps[1]["description"] != en_steps[1]["description"]
+
+
 def test_requires_mode_list_helper():
     assert ai_assistant._requires_mode_satisfied(["kinetics", "point"], "point") is True
     assert ai_assistant._requires_mode_satisfied(["kinetics", "point"], "calibrate") is False

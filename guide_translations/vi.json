@@ -172,14 +172,26 @@
   {
     "id": "merge_files",
     "steps": [
-      "Trước tiên, chọn các tệp CSV muốn hợp nhất từ danh sách tệp.",
-      "Nhấp vào đây để kết hợp hai tệp CSV thành một tệp đa nguồn."
+      "Để chọn nhiều tệp cùng lúc từ trình duyệt thư mục, trước tiên hãy bật tùy chọn đó. Nhấp biểu tượng bánh răng ⚙️ để mở App Settings.",
+      "Tích vào ô này ('Pick merge files from a folder browser') để hiển thị nhiều tệp cần gộp từ trình duyệt thư mục.",
+      "Nhấp Save để áp dụng. (Nếu bỏ qua, việc gộp vẫn hoạt động — bạn chỉ thêm từng tệp theo từng hàng.)",
+      "Bây giờ nhấp 'Merge Files' để bắt đầu gộp các tệp CSV.",
+      "Mở rộng thư mục bất kỳ và tích các tệp CSV bạn muốn gộp — có thể lấy tệp từ nhiều thư mục. Tất cả tệp phải cùng phép đo, chế độ và đơn vị.",
+      "Dùng Select all / Clear để bật tắt tất cả trong khung nhìn; bộ đếm hiển thị số tệp đã chọn (cần ít nhất hai).",
+      "Khi đã tích ít nhất hai tệp, nhấp Next để chuyển sang sắp xếp thứ tự.",
+      "Mỗi hàng là một tệp nguồn. Dùng nút ▲/▼ để đặt thứ tự nguồn xuất hiện trong tệp gộp; ✕ để xóa một hàng.",
+      "Cần thêm? '+ Add File' thêm một hàng nữa; chọn thư mục và tệp từ danh sách thả xuống.",
+      "Nhập tên cho tệp gộp và chọn thư mục đích ngay bên dưới.",
+      "Nhấp Merge để tạo tệp CSV đa nguồn đã gộp. Hướng dẫn kết thúc khi hộp thoại đóng."
     ],
     "queries": [
       "gộp tệp",
+      "gộp csv",
+      "kết hợp tệp",
+      "gộp nhiều tệp",
+      "cách gộp csv",
       "kết hợp csv",
-      "hợp nhất tệp",
-      "merge file"
+      "gộp hai tệp"
     ]
   },
   {
