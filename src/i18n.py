@@ -17,7 +17,7 @@ import json
 import os
 
 import state
-from ai_settings import SUPPORTED_LANGUAGES
+from user_settings import SUPPORTED_LANGUAGES
 
 DEFAULT_UI_LANG = "en"
 

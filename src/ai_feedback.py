@@ -14,7 +14,7 @@ and a 👎 suppresses it. LLM answers (Groq is a third-party model we cannot
 retrain) are logged only — no weight change.
 
 Both files live in the writable data root (`state.script_dir`, == project root
-in a source run), alongside `ai_settings.json` / `user_settings.json`, and are
+in a source run), alongside `user_settings.json`, and are
 preserved across in-app updates (see `update_service._PRESERVE`).
 """
 from __future__ import annotations

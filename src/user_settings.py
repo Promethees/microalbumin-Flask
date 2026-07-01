@@ -1,7 +1,17 @@
 import json
 import os
 import state
-from ai_settings import SUPPORTED_LANGUAGES
+
+# Canonical registry of the six languages the UI and AI chat support. This is
+# the single source of truth, imported by i18n.py and routes/ai_routes.py.
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "vi": "Tiếng Việt",
+    "zh": "中文 (简体)",
+    "fr": "Français",
+    "ja": "日本語",
+    "ru": "Русский",
+}
 
 _VALID_THEMES = {"light", "dark", "auto"}
 _VALID_UI_LANGUAGES = set(SUPPORTED_LANGUAGES)

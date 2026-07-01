@@ -2,7 +2,7 @@
 
 The writable data root (``state.script_dir``) holds every user artifact: the
 ``data/``, ``json/``, ``report/`` and ``log/`` trees plus ``user_settings.json``,
-``activation.json``, ``ai_settings.json``, ``.env`` and first-run markers. By
+``activation.json``, ``.env`` and first-run markers. By
 default it lives at ``<Documents>/EasyOKAPI`` (win/mac) or ``~/EasyOKAPI``
 (linux); this module lets the user relocate it from App Settings.
 
