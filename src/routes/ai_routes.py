@@ -1,12 +1,14 @@
+import collections
 import io
 import json
 import os
 import re
+import threading
 import time
 import zipfile
 import requests
 from flask import Blueprint, jsonify, request, Response, stream_with_context, send_file
-import ai_settings
+import user_settings
 import ai_assistant
 import ai_feedback
 import activation as activation_mod
@@ -14,6 +16,58 @@ import state
 from validators import validate_json
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
+
+
+# ── Server-side rate limit + payload caps (backstop for /ai/chat) ─────────────
+# The browser already throttles at 15/60s (ai-chat.js), but that is trivially
+# bypassed by calling the endpoint directly, and every accepted call spends a
+# paid Groq/proxy request. These are the authoritative server-side guards: a
+# sliding-window limiter and hard size caps applied before any upstream call.
+# The app is single-user, so one process-wide window (guarded by a lock for the
+# threaded dev server) is sufficient.
+
+_RATE_MAX = 20            # requests …
+_RATE_WINDOW = 60.0       # … per this many seconds
+_MAX_MESSAGES = 24        # newest-N messages forwarded; older turns dropped
+_MAX_MSG_CHARS = 8000     # per-message content ceiling
+_MAX_TOTAL_CHARS = 24000  # summed content ceiling
+
+_rate_lock = threading.Lock()
+_rate_hits = collections.deque()
+
+_RATE_LIMITED_MSG = {
+    'en': 'Too many requests. Please wait {s}s and try again.',
+    'vi': 'Quá nhiều yêu cầu. Vui lòng chờ {s}s rồi thử lại.',
+    'zh': '请求过于频繁。请等待 {s} 秒后重试。',
+    'fr': 'Trop de requêtes. Veuillez patienter {s}s avant de réessayer.',
+    'ja': 'リクエストが多すぎます。{s} 秒待ってから再試行してください。',
+    'ru': 'Слишком много запросов. Подождите {s} сек. и повторите попытку.',
+}
+
+_TOO_LARGE_MSG = {
+    'en': 'Message is too long. Please shorten it and try again.',
+    'vi': 'Tin nhắn quá dài. Vui lòng rút ngắn và thử lại.',
+    'zh': '消息过长。请缩短后重试。',
+    'fr': 'Message trop long. Veuillez le raccourcir et réessayer.',
+    'ja': 'メッセージが長すぎます。短くして再試行してください。',
+    'ru': 'Сообщение слишком длинное. Сократите его и повторите попытку.',
+}
+
+
+def _rate_limit_retry_after():
+    """Return seconds to wait if the window is full, else 0 (and record a hit)."""
+    now = time.monotonic()
+    with _rate_lock:
+        while _rate_hits and now - _rate_hits[0] > _RATE_WINDOW:
+            _rate_hits.popleft()
+        if len(_rate_hits) >= _RATE_MAX:
+            return int(_RATE_WINDOW - (now - _rate_hits[0])) + 1
+        _rate_hits.append(now)
+        return 0
+
+
+def _localized(table, language):
+    return table.get(language if language in table else 'en', table['en'])
 
 
 def _parse_env_value(raw):
@@ -90,7 +144,7 @@ def ai_status():
         'api_ready': mode is not None,
         'activated': mode == 'proxy',
         'dev_mode': mode == 'dev',
-        'supported_languages': ai_settings.SUPPORTED_LANGUAGES,
+        'supported_languages': user_settings.SUPPORTED_LANGUAGES,
     })
 
 
@@ -147,6 +201,7 @@ def activate():
 @ai_bp.route('/chat', methods=['POST'])
 def ai_chat():
     data = request.get_json(silent=True) or {}
+    language = data.get('language') or 'en'
     raw_messages = data.get('messages', [])
     messages = [
         m for m in raw_messages
@@ -157,11 +212,29 @@ def ai_chat():
     if not messages:
         return jsonify({'status': 'failure', 'message': 'No messages provided'}), 400
 
+    # Payload caps (before any upstream call): drop all but the newest N turns,
+    # then reject anything still oversized so a crafted request can't run up a
+    # huge paid proxy call or stall the model.
+    messages = messages[-_MAX_MESSAGES:]
+    total_chars = sum(len(m.get('content', '')) for m in messages)
+    if total_chars > _MAX_TOTAL_CHARS or any(
+        len(m.get('content', '')) > _MAX_MSG_CHARS for m in messages
+    ):
+        return jsonify({'status': 'failure',
+                        'message': _localized(_TOO_LARGE_MSG, language)}), 413
+
     mode, credential = _get_api_mode()
     if not mode:
         return jsonify({'status': 'failure', 'message': 'AI assistant is not activated'}), 503
 
-    language = data.get('language') or 'en'
+    # Server-side rate-limit backstop (the browser limiter is bypassable).
+    wait = _rate_limit_retry_after()
+    if wait > 0:
+        resp = jsonify({'status': 'failure',
+                        'message': _localized(_RATE_LIMITED_MSG, language).format(s=wait)})
+        resp.headers['Retry-After'] = str(wait)
+        return resp, 429
+
     ui_context = data.get('ui_context') or {}
 
     _PROXY_TRANSIENT_ERRORS = frozenset({'proxy_unreachable', 'proxy_timeout'})
@@ -202,7 +275,7 @@ def ai_chat():
 @ai_bp.route('/guides', methods=['GET'])
 def get_guides():
     lang = request.args.get('lang', 'en')
-    if lang not in ai_settings.SUPPORTED_LANGUAGES:
+    if lang not in user_settings.SUPPORTED_LANGUAGES:
         lang = 'en'
     return jsonify({
         'status': 'success',
@@ -307,8 +380,12 @@ def ai_match():
             '',
         ).strip()
 
+    # Cap the query: the local matcher runs difflib over the guide vocabulary,
+    # so an unbounded string is wasted work (a real nav phrase is short anyway).
+    query = query[:_MAX_MSG_CHARS]
+
     language = data.get('language') or 'en'
-    if language not in ai_settings.SUPPORTED_LANGUAGES:
+    if language not in user_settings.SUPPORTED_LANGUAGES:
         language = 'en'
     ui_context = data.get('ui_context') or {}
 
