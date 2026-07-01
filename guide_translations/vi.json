@@ -779,5 +779,23 @@
       "khoảng tuyến tính",
       "lưu đoạn tuyến tính"
     ]
+  },
+  {
+    "id": "edit_file",
+    "steps": [
+      "Nhấp nút ✏️ Edit bên cạnh bất kỳ tệp nào để mở trình chỉnh sửa — một tệp dữ liệu trong danh sách này, hoặc một đường chuẩn trong 'Select Coefficients' ở trên.",
+      "Đây là trường tên tệp. Đổi tên để lưu chỉnh sửa dưới tên mới, hoặc giữ nguyên để ghi đè tệp gốc.",
+      "Trình chỉnh sửa hiển thị tệp của bạn dưới dạng bảng (CSV) hoặc biểu mẫu (calibration JSON). Chỉnh sửa các giá trị ở khu vực phía trên; nhấp nút này để chuyển sang chế độ Text thô — hoặc quay lại — tùy theo cách nào dễ hơn.",
+      "Nhấp 'Save Changes' để ghi các chỉnh sửa (hoặc Cancel để hủy). Hướng dẫn kết thúc khi hộp thoại đóng."
+    ],
+    "queries": [
+      "chỉnh sửa tệp",
+      "sửa tệp csv",
+      "chỉnh sửa csv",
+      "sửa đường chuẩn",
+      "chỉnh sửa hiệu chuẩn",
+      "đổi tên tệp",
+      "sửa file"
+    ]
   }
 ]

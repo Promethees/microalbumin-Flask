@@ -402,6 +402,58 @@ def test_save_linearity_range_steps_are_translated(lang):
         assert s["description"] and s["description"] != en_s["description"]
 
 
+# ---------------------------------------------------------------------------
+# edit_file — free-text edit guide (data files + calibration JSON), with a
+# dialog-flow step sequence (panel/awaitSwalOpen → in-dialog steps).
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("query", [
+    "how to edit csv file",
+    "how do I edit a data file",
+    "how to modify a calibration curve",
+    "edit calibration json",
+    "how do I rename a file",
+])
+def test_edit_file_fires_from_free_text(query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, "en")
+    assert gid == "edit_file"
+    assert steps
+
+
+def test_edit_file_step_sequence():
+    _, steps = ai_assistant.resolve_guide("how to edit csv file", KIN_DATA, "en")
+    # Opener panel (await-open + expands both file lists) → three in-dialog steps.
+    assert steps[0]["target"] == "#file-selection"
+    assert steps[0].get("awaitSwalOpen") is True
+    assert "json-sel-collapse" in (steps[0].get("expand") or [])
+    targets = [s["target"] for s in steps]
+    assert targets[1:] == ["#swal-input-filename", "#toggle-mode", ".swal2-confirm"]
+    # #toggle-mode's selector doesn't advertise "swal", so it must be flagged.
+    assert steps[2].get("dialogStep") is True
+
+
+@pytest.mark.parametrize("lang,query", [
+    ("vi", "chỉnh sửa tệp"),
+    ("zh", "如何编辑文件"),
+    ("fr", "modifier un fichier"),
+    ("ja", "ファイルの編集方法"),
+    ("ru", "редактировать файл"),
+])
+def test_edit_file_translated_and_fires(lang, query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, lang)
+    assert gid == "edit_file"
+    _, en_steps = ai_assistant.resolve_guide("edit a file", KIN_DATA, "en")
+    # Each step description is localized (differs from English).
+    for en_s, s in zip(en_steps, steps):
+        assert s["description"] and s["description"] != en_s["description"]
+
+
+def test_japanese_houhou_registers_as_nav_intent():
+    # "方法" ("the method / how to") is the most common Japanese how-to phrasing;
+    # it must count as navigation so a bare feature phrase + 方法 launches a guide.
+    assert ai_assistant._has_nav_intent("csvを編集する方法") is True
+
+
 def test_soft_mode_gate_does_not_crossfire_other_guides():
     # Removing save_linearity_range's hard mode gate must not let mode-specific
     # guides bleed across modes: point-mode concentration still routes to the

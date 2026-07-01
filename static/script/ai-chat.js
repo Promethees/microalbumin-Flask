@@ -15,7 +15,7 @@
         { cmd: '/calibrate', desc: 'Create a calibration standard curve (full workflow)', action: 'guide', guide_id: 'create_calibration_curve_workflow' },
         { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data', action: 'concentration' },
         { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file (dialog flow)', action: 'merge' },
-        { cmd: '/edit', desc: 'Edit a data file — rename or change its contents (dialog flow)', action: 'edit_file' },
+        { cmd: '/edit', desc: 'Edit a data or calibration file — rename or change its contents (dialog flow)', action: 'guide', guide_id: 'edit_file' },
         { cmd: '/settings', desc: 'Open App Settings — language, default mode, units, data folder (dialog flow)', action: 'settings' },
         { cmd: '/range', desc: 'Set the analysis time window (start, end, unit)', action: 'guide', guide_id: 'set_analysis_range' },
         { cmd: '/save-range', desc: 'Save the current display-range rows to a new CSV (dialog flow)', action: 'save_range' },
@@ -145,50 +145,6 @@
     // more dialog steps (.swal2-* / #swal-* targets) the engine lifts above Swal
     // and auto-advances when the dialog closes. App Settings uses TWO dialog steps
     // in one modal (change language → Save), exercising the multi-step-dialog run.
-
-    // Edit a file — highlight the file panel (expanding the data-file and
-    // calibration-JSON lists) and let the user click ✏️ Edit on ANY file. The
-    // guide is click-through here (awaitSwalOpen) so it never forces one row or
-    // closes when the user picks a different file; it advances when the editor
-    // dialog opens.
-    const _EDIT_PANEL_STEP = {
-        target: '#file-selection',
-        expand: ['file-sel-collapse', 'json-sel-collapse'],
-        awaitSwalOpen: true,
-        title: 'Choose a File to Edit',
-        description: "Click the ✏️ Edit button next to any file to open the editor — a data file in this list, or a calibration curve under 'Select Coefficients' above.",
-        descriptions: {
-            vi: "Nhấp nút ✏️ Edit bên cạnh bất kỳ tệp nào để mở trình chỉnh sửa — một tệp dữ liệu trong danh sách này, hoặc một đường chuẩn trong 'Select Coefficients' ở trên.",
-            zh: "点击任意文件旁的 ✏️ Edit 按钮打开编辑器——本列表中的数据文件，或上方「Select Coefficients」中的校准曲线。",
-            fr: "Cliquez sur le bouton ✏️ Edit à côté de n'importe quel fichier pour ouvrir l'éditeur — un fichier de données de cette liste, ou une courbe d'étalonnage sous 'Select Coefficients' ci-dessus.",
-            ja: "任意のファイルの横にある ✏️ Edit ボタンをクリックしてエディターを開きます — このリストのデータファイル、または上の「Select Coefficients」内の校正曲線。",
-            ru: "Нажмите кнопку ✏️ Edit рядом с любым файлом, чтобы открыть редактор — файл данных в этом списке или калибровочную кривую в «Select Coefficients» выше.",
-        },
-        position: 'right',
-        skipInteraction: true,
-    };
-    const _EDIT_DIALOG_STEP = {
-        target: '#swal-input-filename',
-        title: 'Edit the File',
-        description: 'Rename the file here if you want, edit its contents in the fields below, then click Save to write your changes — or Cancel to discard them. The guide continues when the dialog closes.',
-        descriptions: {
-            vi: 'Đổi tên tệp ở đây nếu muốn, chỉnh sửa nội dung ở các trường bên dưới, rồi nhấp Save để lưu — hoặc Cancel để hủy. Hướng dẫn tiếp tục khi hộp thoại đóng.',
-            zh: '如需重命名请在此修改文件名，在下方字段中编辑内容，然后点击 Save 保存更改，或点击 Cancel 放弃。对话框关闭后指南继续。',
-            fr: 'Renommez le fichier ici si vous le souhaitez, modifiez son contenu dans les champs ci-dessous, puis cliquez sur Save pour enregistrer — ou Cancel pour annuler. Le guide continue à la fermeture de la boîte de dialogue.',
-            ja: '必要ならここでファイル名を変更し、下のフィールドで内容を編集して、Save で変更を保存します（Cancel で破棄）。ダイアログが閉じるとガイドは続行します。',
-            ru: 'При желании переименуйте файл здесь, отредактируйте его содержимое в полях ниже, затем нажмите Save для сохранения — или Cancel для отмены. Руководство продолжится после закрытия диалога.',
-        },
-        position: 'bottom',
-        skipInteraction: true,
-    };
-    const _EDIT_NO_FILES = {
-        en: 'There are no files to edit in the current folder. Select a data folder with CSV files first.',
-        vi: 'Không có tệp nào để chỉnh sửa trong thư mục hiện tại. Hãy chọn một thư mục dữ liệu có tệp CSV trước.',
-        zh: '当前文件夹中没有可编辑的文件。请先选择一个包含 CSV 文件的数据文件夹。',
-        fr: "Aucun fichier à modifier dans le dossier actuel. Sélectionnez d'abord un dossier de données contenant des fichiers CSV.",
-        ja: '現在のフォルダーには編集できるファイルがありません。まず CSV ファイルのあるデータフォルダーを選択してください。',
-        ru: 'В текущей папке нет файлов для редактирования. Сначала выберите папку данных с CSV-файлами.',
-    };
 
     // Merge CSV files — the Merge button opens the merge dialog.
     const _MERGE_TRIGGER_STEP = {
@@ -1174,12 +1130,6 @@
             return;
         }
 
-        if (cmd.action === 'edit_file') {
-            _addMsg('user', cmd.cmd);
-            _runEditFileGuide();
-            return;
-        }
-
         if (cmd.action === 'merge') {
             _addMsg('user', cmd.cmd);
             _runMergeGuide();
@@ -1283,19 +1233,6 @@
         if (!ctx.data_loaded) steps = [_FILE_SELECT_STEP, ...steps];
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
         _launchCustomSteps(steps);
-    }
-
-    // Edit-file guide: pick any data OR calibration file → the editor dialog.
-    function _runEditFileGuide() {
-        const lang = AI.activeLang || 'en';
-        // Needs at least one editable file in either list (data or calibration);
-        // edit works in any mode, so gate only on a file being present.
-        if (!document.querySelector('#file-table button[onclick^="editFile"], #json-table button[onclick^="editFile"]')) {
-            _addMsg('assistant', _EDIT_NO_FILES[lang] || _EDIT_NO_FILES.en);
-            return;
-        }
-        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
-        _launchCustomSteps([_EDIT_PANEL_STEP, _EDIT_DIALOG_STEP]);
     }
 
     // Merge-files guide: click Merge Files → the merge dialog.

@@ -784,5 +784,23 @@
       "plage linéaire",
       "section linéaire"
     ]
+  },
+  {
+    "id": "edit_file",
+    "steps": [
+      "Cliquez sur le bouton ✏️ Edit à côté de n'importe quel fichier pour ouvrir l'éditeur — un fichier de données de cette liste, ou une courbe d'étalonnage sous 'Select Coefficients' ci-dessus.",
+      "Voici le champ du nom de fichier. Modifiez-le pour enregistrer vos modifications sous un nouveau nom, ou laissez-le pour écraser le fichier d'origine.",
+      "L'éditeur affiche votre fichier sous forme de tableau (CSV) ou de formulaire (calibration JSON). Modifiez les valeurs dans la zone ci-dessus ; cliquez sur ce bouton pour passer en mode Text brut — ou revenir — selon ce qui est le plus simple.",
+      "Cliquez sur 'Save Changes' pour écrire vos modifications (ou Cancel pour les annuler). Le guide se termine à la fermeture de la boîte de dialogue."
+    ],
+    "queries": [
+      "modifier un fichier",
+      "éditer csv",
+      "modifier csv",
+      "modifier la courbe d'étalonnage",
+      "éditer un fichier",
+      "renommer un fichier",
+      "modifier l'étalonnage"
+    ]
   }
 ]

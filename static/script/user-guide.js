@@ -446,6 +446,11 @@ class UserGuide {
      * dialog removes the very element the guide is pointing at).
      */
     _isSwalStep(step, element) {
+        // Explicit author marker — the reliable signal when the target is a
+        // dialog element whose selector doesn't advertise it (e.g. #toggle-mode
+        // in the file editor). Also works before the element is resolved, so
+        // _advancePastDialogRun can skip the whole run correctly.
+        if (step && step.dialogStep) return true;
         // Runtime truth: the resolved element lives inside an open SweetAlert2
         // dialog. This catches app-defined in-dialog IDs (#swal-input-filename,
         // #swal-ui-language) that don't literally contain "swal2".
@@ -1040,10 +1045,13 @@ class UserGuide {
             position: s.position || 'bottom',
             skipInteraction: s.skipInteraction !== false,
             scrollIntoView: true,
-            // Dialog-flow extras: sections to expand before the step, and the
-            // "advance when a dialog opens" behaviour (see showStep).
+            // Dialog-flow extras: sections to expand before the step, the
+            // "advance when a dialog opens" behaviour, and the explicit dialog
+            // marker for in-dialog targets whose selector doesn't advertise it
+            // (see showStep / _isSwalStep).
             ...(s.expand ? { expand: s.expand } : {}),
             ...(s.awaitSwalOpen ? { awaitSwalOpen: true } : {}),
+            ...(s.dialogStep ? { dialogStep: true } : {}),
         }));
 
         this.currentStep = 0;

@@ -2037,6 +2037,52 @@
           "skipInteraction": false
         }
       ]
+    },
+    {
+      "id": "edit_file",
+      "queries": [
+        "edit file", "edit csv", "edit csv file", "edit a data file", "edit data file",
+        "modify file", "modify csv", "change file contents", "rename a file",
+        "edit calibration", "edit calibration curve", "modify calibration curve",
+        "edit calibration json", "edit standard curve", "modify standard curve",
+        "edit coefficients", "change calibration curve", "edit json file", "modify json",
+        "edit the file", "file editor", "correct a value in a file"
+      ],
+      "steps": [
+        {
+          "target": "#file-selection",
+          "expand": ["file-sel-collapse", "json-sel-collapse"],
+          "awaitSwalOpen": true,
+          "title": "Choose a File to Edit",
+          "description": "Click the ✏️ Edit button next to any file to open the editor — a data file in this list, or a calibration curve under 'Select Coefficients' above.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-input-filename",
+          "dialogStep": true,
+          "title": "Rename (optional)",
+          "description": "This is the filename field. Change it to save your edits under a new name, or leave it to overwrite the original file.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#toggle-mode",
+          "dialogStep": true,
+          "title": "Edit the Contents",
+          "description": "The editor shows your file as a table (CSV) or a form (calibration JSON). Edit the values in the area above; click this button to switch to raw Text mode — or back — whichever is easier.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "dialogStep": true,
+          "title": "Save Your Changes",
+          "description": "Click 'Save Changes' to write your edits (or Cancel to discard them). The guide finishes when the dialog closes.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
     }
   ]
 }

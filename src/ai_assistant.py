@@ -1591,8 +1591,10 @@ _NAV_MARKERS = frozenset({
     "怎么", "如何", "在哪", "带我", "找到",
     # French
     "comment faire", "comment", "où est", "montre-moi", "guidez-moi",
-    # Japanese
-    "どうやって", "どこ", "やり方", "使い方",
+    # Japanese ("方法" / "する方法" — "the method / how to …" — is the most common
+    # Japanese how-to phrasing and was previously missing, so nav queries like
+    # "csvを編集する方法" never registered as navigation).
+    "どうやって", "どこ", "やり方", "使い方", "方法",
     # Russian
     "как мне", "как", "где", "покажи", "найти",
 })
