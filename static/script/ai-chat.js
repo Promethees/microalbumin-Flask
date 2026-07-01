@@ -82,6 +82,26 @@
         ru: 'Не удалось сформировать ответ. Попробуйте перефразировать вопрос.',
     };
 
+    // Friendly stand-in for a raw Groq "tool_use_failed" / schema-mismatch error
+    // (the model produced an invalid function call). The backend auto-retries
+    // without tools on the dev path; this covers the proxy path, where the raw
+    // upstream message would otherwise reach the user.
+    const _TOOL_FALLBACK = {
+        en: '⚠ I had trouble answering that. Please try rephrasing your question.',
+        vi: '⚠ Tôi gặp trục trặc khi trả lời. Vui lòng thử diễn đạt lại câu hỏi.',
+        zh: '⚠ 回答时遇到问题。请尝试换一种方式提问。',
+        fr: "⚠ J'ai eu du mal à répondre. Veuillez reformuler votre question.",
+        ja: '⚠ うまく回答できませんでした。質問を言い換えてみてください。',
+        ru: '⚠ Не удалось ответить. Попробуйте перефразировать вопрос.',
+    };
+
+    // True for a raw upstream error string that means "the model emitted an
+    // invalid tool call" — matched loosely so any Groq phrasing is caught.
+    function _isToolFailure(raw) {
+        return /tool_use_failed|tool call validation failed|did not match schema|failed to call a function/i
+            .test(String(raw || ''));
+    }
+
     const _NOTHING_TO_REDO = {
         en: 'Nothing to redo yet — send a message or run a command first.',
         vi: 'Chưa có gì để làm lại — hãy gửi tin nhắn hoặc chạy lệnh trước.',
@@ -1261,6 +1281,14 @@
                                     _launchCustomSteps(ga.custom_steps);
                                 }
                             } else if (event.type === 'error') {
+                                // An invalid-tool-call error (code, or a raw Groq
+                                // message from the proxy) becomes a friendly line
+                                // instead of leaking 'failed_generation' details.
+                                if (event.error === 'tool_call_failed' || _isToolFailure(event.error)) {
+                                    const l = AI.activeLang || 'en';
+                                    _finalizeStreamingMsg(msgDiv, null, _TOOL_FALLBACK[l] || _TOOL_FALLBACK.en);
+                                    return;
+                                }
                                 const errMsg = {
                                     groq_not_installed: '⚠ AI service is not configured on this server.',
                                     service_unavailable: '⚠ AI service is temporarily unavailable. Please try again later.',

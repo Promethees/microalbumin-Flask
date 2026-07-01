@@ -1019,6 +1019,19 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
 
 # ── Groq chat ─────────────────────────────────────────────────────────────────
 
+# Substrings that mark a Groq 400 where the model emitted an invalid tool call
+# (bad JSON, or arguments that fail the tool's JSON-schema / enum). The small
+# Llama models do this on short, ambiguous prompts ("what is this software
+# about" → get_help_topic with an out-of-enum topic). It is recoverable by
+# re-asking the same turn with tools disabled, so we tag it with a stable code.
+_TOOL_FAILURE_MARKERS = (
+    "tool_use_failed",
+    "tool call validation failed",
+    "did not match schema",
+    "failed to call a function",
+)
+
+
 def _map_groq_error(err: str) -> str:
     """Collapse a raw Groq/SDK exception string to a stable error code."""
     low = err.lower()
@@ -1026,6 +1039,8 @@ def _map_groq_error(err: str) -> str:
         return "api_key_invalid"
     if "429" in err or "rate_limit" in low:
         return "rate_limit"
+    if any(m in low for m in _TOOL_FAILURE_MARKERS):
+        return "tool_call_failed"
     return err
 
 
@@ -1639,13 +1654,19 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
 
     full_messages = [{"role": "system", "content": system_prompt}] + messages
     guide_action = None
+    # Small models sometimes emit an invalid tool call that Groq rejects with a
+    # 400 (tool_use_failed / schema mismatch). That is recoverable: disable tools
+    # and re-ask the same turn so the user still gets a plain-text answer instead
+    # of the raw upstream error. We only fall back once.
+    tools_enabled = True
 
     for _ in range(6):
         # Stream content deltas live; the loop still inspects the assembled
         # result for tool calls exactly as the non-streaming path did.
         result = None
         streamed_any = False
-        for kind, payload in _groq_chat_stream(api_key, model, full_messages, TOOLS):
+        active_tools = TOOLS if tools_enabled else None
+        for kind, payload in _groq_chat_stream(api_key, model, full_messages, active_tools):
             if kind == "chunk":
                 if payload:
                     streamed_any = True
@@ -1655,6 +1676,9 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
         if result is None:
             result = {"role": "assistant", "content": "", "error": "max_iterations"}
         if "error" in result:
+            if result["error"] == "tool_call_failed" and tools_enabled:
+                tools_enabled = False
+                continue
             yield {"type": "error", "error": result["error"]}
             return
 
