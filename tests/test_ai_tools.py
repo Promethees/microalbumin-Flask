@@ -1,0 +1,71 @@
+"""Tests for the AI assistant's tool executor (src/ai_assistant._run_tool).
+
+Focus: the LLM-supplied filename/mode of `read_calibration_file` must stay
+confined to the `json/` root — a crafted `..` must not read sibling files in
+the data root (e.g. activation.json, .env).
+"""
+import json
+import os
+import sys
+
+import pytest
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+import ai_assistant  # noqa: E402
+import state  # noqa: E402
+
+
+@pytest.fixture
+def json_root(tmp_path, monkeypatch):
+    """Redirect json_root_path to an isolated tree with kinetics/point subdirs.
+
+    _run_tool and validate_in_json_root both read state.json_root_path at call
+    time, so monkeypatching it here is sufficient.
+    """
+    root = tmp_path / "json"
+    (root / "kinetics").mkdir(parents=True)
+    (root / "point").mkdir(parents=True)
+    monkeypatch.setattr(state, 'json_root_path', str(root))
+    # A legitimate calibration file inside json/kinetics/.
+    (root / "kinetics" / "curve.json").write_text(
+        json.dumps({"algo": "linear", "coef": [1, 0]}), encoding="utf-8")
+    # A secret sibling in the data root, one level above json/.
+    (tmp_path / "activation.json").write_text(
+        json.dumps({"license_token": "SECRET"}), encoding="utf-8")
+    return tmp_path
+
+
+def _read_cal(filename, mode):
+    return json.loads(ai_assistant._run_tool(
+        "read_calibration_file", {"filename": filename, "mode": mode}))
+
+
+def test_reads_legitimate_calibration_file(json_root):
+    out = _read_cal("curve.json", "kinetics")
+    assert out.get("algo") == "linear"
+
+
+def test_filename_traversal_is_blocked(json_root):
+    out = _read_cal("../activation.json", "kinetics")
+    assert "error" in out
+    assert "SECRET" not in json.dumps(out)
+
+
+def test_mode_traversal_is_blocked(json_root):
+    # mode="..", filename="activation.json" would resolve to json/../activation.json.
+    out = _read_cal("activation.json", "..")
+    assert "error" in out
+    assert "SECRET" not in json.dumps(out)
+
+
+def test_absolute_path_filename_is_blocked(json_root):
+    secret = str(json_root / "activation.json")
+    out = _read_cal(secret, "kinetics")
+    assert "error" in out
+    assert "SECRET" not in json.dumps(out)
+
+
+def test_unknown_mode_rejected(json_root):
+    out = _read_cal("curve.json", "kinetics/../../..")
+    assert "error" in out

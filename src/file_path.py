@@ -31,6 +31,21 @@ def validate_in_data_root(path: str):
     return None
 
 
+def validate_in_json_root(path: str):
+    """Return abs path if it's within the calibration ``json/`` root, else None.
+
+    The AI assistant's ``read_calibration_file`` tool takes an LLM-supplied
+    filename/mode; confining the resolved path here stops a crafted ``..`` from
+    escaping ``json/`` and reading sibling files in the data root such as
+    ``activation.json`` (the license token) or ``.env``.
+    """
+    root = os.path.abspath(state.json_root_path)
+    abs_path = os.path.abspath(path)
+    if abs_path == root or abs_path.startswith(root + os.sep):
+        return abs_path
+    return None
+
+
 def get_data_subfolders():
     """Returns immediate non-hidden subdirectories of DATA_ROOT, sorted by name."""
     root = Path(DATA_ROOT)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import difflib
 import json
 import os
-from file_path import DATA_ROOT, validate_in_data_root
+from file_path import DATA_ROOT, validate_in_data_root, validate_in_json_root
 from file import get_file_list
 import state
 import ai_feedback
@@ -936,7 +936,7 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
 
         elif name == "read_csv_file":
             filename = args.get("filename", "")
-            max_rows = min(int(args.get("max_rows", 30)), 100)
+            max_rows = max(1, min(int(args.get("max_rows", 30)), 100))
             subfolder = (ui_context or {}).get("subfolder", "")
             candidate = os.path.join(DATA_ROOT, subfolder, filename) if subfolder else os.path.join(DATA_ROOT, filename)
             filepath = validate_in_data_root(candidate)
@@ -955,11 +955,19 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
             return json.dumps({"filename": filename, "content": "\n".join(lines)}, ensure_ascii=False)
 
         elif name == "read_calibration_file":
-            filename = args.get("filename", "")
+            raw_name = args.get("filename", "")
             mode = args.get("mode", "kinetics")
-            filepath = os.path.join(state.json_root_path, mode, filename)
-            if not os.path.exists(filepath):
-                return json.dumps({"error": f"'{filename}' not found in json/{mode}/."})
+            # The filename/mode are LLM-supplied: pin mode to the two real
+            # subfolders, strip the filename to a basename, and confirm the
+            # resolved path stays inside json/ so a crafted '..' can't reach
+            # sibling secrets in the data root (activation.json, .env).
+            if mode not in ("kinetics", "point"):
+                return json.dumps({"error": "mode must be 'kinetics' or 'point'."})
+            filename = os.path.basename(raw_name)
+            candidate = os.path.join(state.json_root_path, mode, filename)
+            filepath = validate_in_json_root(candidate)
+            if not filename or not filepath or not os.path.exists(filepath):
+                return json.dumps({"error": f"'{raw_name}' not found in json/{mode}/."})
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             return json.dumps(data, ensure_ascii=False)
@@ -1011,7 +1019,25 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
 
 # ── Groq chat ─────────────────────────────────────────────────────────────────
 
-def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
+def _map_groq_error(err: str) -> str:
+    """Collapse a raw Groq/SDK exception string to a stable error code."""
+    low = err.lower()
+    if "401" in err or "api_key" in low or "authentication" in low:
+        return "api_key_invalid"
+    if "429" in err or "rate_limit" in low:
+        return "rate_limit"
+    return err
+
+
+def _groq_chat_stream(api_key: str, model: str, messages: list, tools: list):
+    """Streaming counterpart of `_groq_chat`.
+
+    Yields ("chunk", text) for each content delta as it arrives, then a final
+    ("result", message_dict) carrying the accumulated content plus any tool
+    calls (reassembled from their streamed argument fragments) — same shape as
+    `_groq_chat` so the tool-calling loop is unchanged. Errors surface as a
+    ("result", {..., "error": code}) so the caller handles them uniformly.
+    """
     try:
         from groq import Groq
         client = Groq(api_key=api_key)
@@ -1020,35 +1046,48 @@ def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
             "messages": messages,
             "temperature": 0.1,
             "max_tokens": 500,
+            "stream": True,
         }
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
-        response = client.chat.completions.create(**kwargs)
-        msg = response.choices[0].message
-        result = {"role": "assistant", "content": msg.content or ""}
-        if msg.tool_calls:
+
+        content_parts = []
+        # index → {"id", "name", "args"}; tool-call arguments stream in fragments.
+        tool_acc: dict = {}
+        for chunk in client.chat.completions.create(**kwargs):
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            if getattr(delta, "content", None):
+                content_parts.append(delta.content)
+                yield ("chunk", delta.content)
+            for tc in (getattr(delta, "tool_calls", None) or []):
+                slot = tool_acc.setdefault(tc.index, {"id": "", "name": "", "args": ""})
+                if tc.id:
+                    slot["id"] = tc.id
+                fn = getattr(tc, "function", None)
+                if fn:
+                    if fn.name:
+                        slot["name"] = fn.name
+                    if fn.arguments:
+                        slot["args"] += fn.arguments
+
+        result = {"role": "assistant", "content": "".join(content_parts)}
+        if tool_acc:
             result["tool_calls"] = [
                 {
-                    "id": tc.id,
+                    "id": slot["id"],
                     "type": "function",
-                    "function": {
-                        "name": tc.function.name,
-                        "arguments": tc.function.arguments,
-                    },
+                    "function": {"name": slot["name"], "arguments": slot["args"]},
                 }
-                for tc in msg.tool_calls
+                for _, slot in sorted(tool_acc.items())
             ]
-        return result
+        yield ("result", result)
     except ImportError:
-        return {"role": "assistant", "content": "", "error": "groq_not_installed"}
+        yield ("result", {"role": "assistant", "content": "", "error": "groq_not_installed"})
     except Exception as e:
-        err = str(e)
-        if "401" in err or "api_key" in err.lower() or "authentication" in err.lower():
-            return {"role": "assistant", "content": "", "error": "api_key_invalid"}
-        if "429" in err or "rate_limit" in err.lower():
-            return {"role": "assistant", "content": "", "error": "rate_limit"}
-        return {"role": "assistant", "content": "", "error": err}
+        yield ("result", {"role": "assistant", "content": "", "error": _map_groq_error(str(e))})
 
 
 _GUIDE_TOOLS = {"trigger_guide", "trigger_custom_steps"}
@@ -1290,26 +1329,53 @@ _FULL_REPORT_STEPS_IN_REPORT = [
     },
 ]
 
-_REPORT_SPECIFIC_KEYWORDS = {
-    "quick", "fast", "snapshot", "nhanh", "rapide", "schnell", "быстро",
+# Multilingual vocabulary for the report clarification flow. "report" itself is
+# recognised in all six UI languages so the quick-vs-full question is asked (and
+# its answer understood) regardless of the chat language — not English only.
+_REPORT_WORDS = frozenset({
+    "report", "báo cáo", "报告", "rapport", "レポート", "отчёт", "отчет",
+})
+
+_QUICK_KWS = frozenset({
+    "quick", "fast", "snapshot", "instant",
+    "nhanh", "rapide", "schnell", "быстро",
+    "快速", "即时", "迅速", "クイック", "速報",
+})
+
+_FULL_KWS = frozenset({
     "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
     "đầy đủ", "toàn", "complet", "полный",
+    "完整", "完全", "全面", "フル",
+})
+
+# Phrases that already pin the report kind, so the clarification is skipped.
+_REPORT_SPECIFIC_KEYWORDS = _QUICK_KWS | _FULL_KWS | frozenset({
     "export to report", "save to report", "export data to report",
-}
+})
+
+# The clarify prompt is emitted verbatim (one localized string per language), so
+# the previous assistant turn is recognised by exact match in any language —
+# more robust than substring-matching an English phrase that the localized
+# prompts never contain (the old check silently broke for vi/zh/fr/ja/ru).
+_CLARIFY_PROMPT_SET = frozenset(v.strip() for v in _REPORT_CLARIFY_PROMPTS.values())
+
+
+def _is_report_clarify_prompt(content: str) -> bool:
+    """True if `content` is the quick/full clarification prompt (any language)."""
+    return (content or "").strip() in _CLARIFY_PROMPT_SET
 
 
 def _needs_report_clarification(query: str, messages: list) -> bool:
     """True when the query is about reports but doesn't specify quick vs full."""
     q = query.lower()
-    if "report" not in q:
+    if not any(w in q for w in _REPORT_WORDS):
         return False
     if any(kw in q for kw in _REPORT_SPECIFIC_KEYWORDS):
         return False
-    # Don't re-ask if the last assistant turn already asked the clarification
+    # Don't re-ask if the last assistant turn already asked the clarification.
     for msg in reversed(messages[:-1]):
         if msg.get("role") == "assistant":
-            c = msg.get("content", "").lower()
-            if "quick report" in c and "full report" in c:
+            if _is_report_clarify_prompt(msg.get("content", "")):
                 return False
             break
     return True
@@ -1325,20 +1391,12 @@ def _get_pending_report_type(messages: list) -> str | None:
         if msg.get("role") == "assistant":
             prev_assistant = msg
             break
-    if not prev_assistant:
-        return None
-    c = prev_assistant.get("content", "").lower()
-    if "quick report" not in c or "full report" not in c:
+    if not prev_assistant or not _is_report_clarify_prompt(prev_assistant.get("content", "")):
         return None
     user_answer = messages[-1].get("content", "").lower()
-    quick_kws = {"quick", "fast", "snapshot", "nhanh", "rapide", "schnell", "быстро", "instant"}
-    full_kws = {
-        "full", "final", "compile", "comprehensive", "excel", "pdf", "complete",
-        "đầy đủ", "toàn", "complet", "полный",
-    }
-    if any(kw in user_answer for kw in quick_kws):
+    if any(kw in user_answer for kw in _QUICK_KWS):
         return "quick"
-    if any(kw in user_answer for kw in full_kws):
+    if any(kw in user_answer for kw in _FULL_KWS):
         return "full"
     return None
 
@@ -1583,22 +1641,28 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
     guide_action = None
 
     for _ in range(6):
-        result = _groq_chat(api_key, model, full_messages, TOOLS)
+        # Stream content deltas live; the loop still inspects the assembled
+        # result for tool calls exactly as the non-streaming path did.
+        result = None
+        streamed_any = False
+        for kind, payload in _groq_chat_stream(api_key, model, full_messages, TOOLS):
+            if kind == "chunk":
+                if payload:
+                    streamed_any = True
+                    yield {"type": "chunk", "content": payload}
+            else:
+                result = payload
+        if result is None:
+            result = {"role": "assistant", "content": "", "error": "max_iterations"}
         if "error" in result:
-            error_map = {
-                "groq_not_installed": "groq_not_installed",
-                "api_key_invalid": "api_key_invalid",
-                "rate_limit": "rate_limit",
-            }
-            yield {"type": "error", "error": error_map.get(result["error"], result["error"])}
+            yield {"type": "error", "error": result["error"]}
             return
 
         tool_calls = result.get("tool_calls") or []
 
         if not tool_calls:
-            content = result.get("content", "")
-            if content:
-                yield {"type": "chunk", "content": content}
+            # Content (if any) has already been streamed above; only the guide
+            # action from an earlier tool turn still needs to be emitted.
             if guide_action:
                 yield {"type": "guide", "guide_action": guide_action}
             return
@@ -1627,7 +1691,11 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
             })
 
         if only_guide_tools and guide_action:
-            yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+            # Confirm the launch only when the model streamed no prose of its own
+            # this turn, so we neither duplicate its message nor leave the guide
+            # unlabelled.
+            if not streamed_any:
+                yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
             yield {"type": "guide", "guide_action": guide_action}
             return
 
