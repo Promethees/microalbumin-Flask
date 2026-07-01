@@ -896,7 +896,13 @@
     }
 
     function _getUiContext() {
-        const appState = window.AppState || {};
+        // AppState is a bare top-level `const` (index.js) — a classic-script const
+        // is a global *lexical* binding, NOT a property of window, so `window.AppState`
+        // is undefined. Reading it that way made mode/subfolder/script_running always
+        // wrong (mode='unknown'), which broke mode-aware guide routing (e.g. the
+        // /save-range mode gate) and the read_csv subfolder. Reference the global
+        // directly, like user-guide.js does.
+        const appState = (typeof AppState !== 'undefined' && AppState) ? AppState : (window.AppState || {});
         const mainContent = document.getElementById('main-content');
         const dataDisplay = document.getElementById('data-display-section');
         const calMode = document.getElementById('cal-mode-select');
