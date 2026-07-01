@@ -608,6 +608,13 @@ class UserGuide {
         const setupStepWithElement = (target) => {
             this._ensureAncestorExpanded(target);
             if (step.expand) this._expandCollapses(step.expand);
+            // An await-open step needs the WHOLE page operable (expand sections,
+            // click any file's Edit). The safest way is to remove the full-screen
+            // overlay entirely for this step — no dark backdrop, nothing to catch
+            // clicks — and rely on the bright ring (set in positionSpotlight) to
+            // highlight the panel. Re-added for every other step.
+            if (step.awaitSwalOpen) this.overlay.classList.remove('active');
+            else this.overlay.classList.add('active');
             this.currentTargetElement = target;
             this.currentStepData = step;
 
@@ -615,7 +622,13 @@ class UserGuide {
             this.attachInteractionHandler(target, step);
 
             if (step.awaitSwalOpen) {
-                // "Click Edit on any file" — advance when the user opens a dialog.
+                // "Click Edit on any file" — the user must operate the real page,
+                // so force the whole guide click-through HERE (not only in
+                // positionSpotlight, which early-returns for a zero-size target and
+                // would otherwise leave the overlay at its blocking CSS default).
+                this.spotlight.style.pointerEvents = 'none';
+                this.overlay.style.pointerEvents = 'none';
+                // advance when the user opens a dialog.
                 this._watchSwalOpen();
             } else if (this._isSwalStep(step, target)) {
                 // A dialog step advances when the dialog closes, not on a click (the
@@ -849,10 +862,12 @@ class UserGuide {
             this.spotlight.style.zIndex = '9999';
             this.overlay.style.zIndex = '9998';
             this.tooltip.style.zIndex = '10000';
-            this.spotlight.classList.remove('user-guide-spotlight-swal');
             // "Click Edit on ANY file" step: make the whole guide click-through so
             // the user can operate the real controls underneath (expand sections,
-            // pick any file). The step advances when a dialog opens.
+            // pick any file). Use the bright ring, NOT the full-page dark curtain —
+            // the curtain both looks like a block and is the visual the user reads
+            // as "I can't click here". The step advances when a dialog opens.
+            this.spotlight.classList.add('user-guide-spotlight-swal');
             this.spotlight.style.pointerEvents = 'none';
             this.overlay.style.pointerEvents = 'none';
         } else {
