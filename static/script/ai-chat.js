@@ -69,17 +69,20 @@
     // Switch-mode prepend (mirrors Python's _MODE_SWITCH_STEP). Used when a guide
     // carries a soft `requires_mode` and the app is in a different mode — the mode
     // name (technical term) is interpolated as-is.
+    // `mode` may be a single mode or an array of acceptable modes (joined ' / ',
+    // a language-neutral separator since mode names stay in English).
     function _modeSwitchStep(mode) {
+        const m = Array.isArray(mode) ? mode.join(' / ') : mode;
         return {
             target: '#meas-mode-section',
             title: 'Switch Measurement Mode',
-            description: `This feature is only available in ${mode} mode. Click here to switch to ${mode} mode first, then reopen this guide.`,
+            description: `This feature is only available in ${m} mode. Click here to switch to ${m} mode first, then reopen this guide.`,
             descriptions: {
-                vi: `Tính năng này chỉ có trong chế độ ${mode}. Nhấp vào đây để chuyển sang chế độ ${mode} trước, rồi mở lại hướng dẫn này.`,
-                zh: `此功能仅在 ${mode} 模式下可用。请先点击此处切换到 ${mode} 模式，然后重新打开本指南。`,
-                fr: `Cette fonction n'est disponible qu'en mode ${mode}. Cliquez ici pour passer d'abord en mode ${mode}, puis rouvrez ce guide.`,
-                ja: `この機能は ${mode} モードでのみ利用できます。まずここをクリックして ${mode} モードに切り替え、このガイドを開き直してください。`,
-                ru: `Эта функция доступна только в режиме ${mode}. Нажмите здесь, чтобы сначала переключиться в режим ${mode}, затем снова откройте руководство.`,
+                vi: `Tính năng này chỉ có trong chế độ ${m}. Nhấp vào đây để chuyển sang chế độ ${m} trước, rồi mở lại hướng dẫn này.`,
+                zh: `此功能仅在 ${m} 模式下可用。请先点击此处切换到 ${m} 模式，然后重新打开本指南。`,
+                fr: `Cette fonction n'est disponible qu'en mode ${m}. Cliquez ici pour passer d'abord en mode ${m}, puis rouvrez ce guide.`,
+                ja: `この機能は ${m} モードでのみ利用できます。まずここをクリックして ${m} モードに切り替え、このガイドを開き直してください。`,
+                ru: `Эта функция доступна только в режиме ${m}. Нажмите здесь, чтобы сначала переключиться в режим ${m}, затем снова откройте руководство.`,
             },
             position: 'right',
             skipInteraction: false,
@@ -1163,9 +1166,12 @@
             steps = [_FILE_SELECT_STEP, ...steps];
         }
         // Soft mode gate: prepend a switch-mode step (ahead of file-select) when
-        // the guide's feature needs a mode the app isn't currently in.
-        if (example.requires_mode && ctx.mode !== example.requires_mode) {
-            steps = [_modeSwitchStep(example.requires_mode), ...steps];
+        // the guide's feature needs a mode the app isn't currently in. requires_mode
+        // may be a single mode or a list of acceptable modes.
+        if (example.requires_mode) {
+            const rm = example.requires_mode;
+            const ok = Array.isArray(rm) ? rm.includes(ctx.mode) : ctx.mode === rm;
+            if (!ok) steps = [_modeSwitchStep(rm), ...steps];
         }
         const lang = AI.activeLang || 'en';
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);

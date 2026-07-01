@@ -290,10 +290,24 @@ _MODE_SWITCH_STEP = {
 }
 
 
-def _mode_switch_step(mode: str, language: str) -> dict:
-    """A localized 'switch to <mode> mode' step (mode name kept as-is)."""
+def _mode_switch_step(mode, language: str) -> dict:
+    """A localized 'switch to <mode> mode' step (mode name kept as-is).
+
+    ``mode`` may be a single mode string or a list of acceptable modes; a list is
+    joined with ' / ' (a language-neutral separator, since mode names stay in
+    English) — e.g. 'kinetics / point'.
+    """
+    label = " / ".join(mode) if isinstance(mode, (list, tuple)) else mode
     step = _translate_step(_MODE_SWITCH_STEP, language)
-    return {**step, "description": step["description"].format(mode=mode)}
+    return {**step, "description": step["description"].format(mode=label)}
+
+
+def _requires_mode_satisfied(req_mode, mode: str) -> bool:
+    """True when the current ``mode`` meets a guide's soft ``requires_mode``
+    (a single mode string or a list of acceptable modes)."""
+    if isinstance(req_mode, (list, tuple)):
+        return mode in req_mode
+    return mode == req_mode
 
 
 def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
@@ -301,9 +315,11 @@ def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", 
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
         steps = [_translate_step(_FILE_SELECT_STEP, language)] + steps
     # Soft mode gate: correct the user into the right mode FIRST (prepended last so
-    # it lands ahead of the file-select step).
+    # it lands ahead of the file-select step). requires_mode may be a single mode
+    # or a list of acceptable modes (e.g. editing a calibration JSON needs the
+    # Select-Coefficients panel, shown only in kinetics/point).
     req_mode = example.get("requires_mode")
-    if req_mode and (ui_context or {}).get("mode") != req_mode:
+    if req_mode and not _requires_mode_satisfied(req_mode, (ui_context or {}).get("mode")):
         steps = [_mode_switch_step(req_mode, language)] + steps
     if steps_only:
         return steps

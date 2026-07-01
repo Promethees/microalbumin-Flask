@@ -797,10 +797,26 @@
       "modifier un fichier",
       "éditer csv",
       "modifier csv",
-      "modifier la courbe d'étalonnage",
       "éditer un fichier",
       "renommer un fichier",
-      "modifier l'étalonnage"
+      "corriger une valeur"
+    ]
+  },
+  {
+    "id": "edit_calibration_curve",
+    "steps": [
+      "Les courbes d'étalonnage sont les fichiers JSON enregistrés sous 'Select Coefficients'. Cliquez sur le bouton ✏️ Edit à côté de la courbe à modifier pour ouvrir l'éditeur.",
+      "Voici le champ du nom de fichier. Modifiez-le pour enregistrer la courbe sous un nouveau nom, ou laissez-le pour écraser l'original.",
+      "La courbe s'ouvre sous forme de formulaire affichant son algorithme et ses coefficients ajustés. Modifiez les valeurs ci-dessus ; cliquez sur ce bouton pour passer en mode Text brut si vous préférez éditer le JSON directement.",
+      "Cliquez sur 'Save Changes' pour enregistrer la courbe étalon mise à jour (ou Cancel pour annuler). Le guide se termine à la fermeture de la boîte de dialogue."
+    ],
+    "queries": [
+      "modifier la courbe d'étalonnage",
+      "éditer la courbe d'étalonnage",
+      "modifier l'étalonnage",
+      "éditer l'étalonnage",
+      "modifier les coefficients",
+      "éditer la courbe étalon"
     ]
   }
 ]

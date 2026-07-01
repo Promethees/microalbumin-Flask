@@ -792,10 +792,27 @@
       "chỉnh sửa tệp",
       "sửa tệp csv",
       "chỉnh sửa csv",
-      "sửa đường chuẩn",
-      "chỉnh sửa hiệu chuẩn",
       "đổi tên tệp",
-      "sửa file"
+      "sửa file",
+      "sửa dữ liệu",
+      "chỉnh sửa tệp csv"
+    ]
+  },
+  {
+    "id": "edit_calibration_curve",
+    "steps": [
+      "Đường chuẩn là các tệp JSON đã lưu trong 'Select Coefficients'. Nhấp nút ✏️ Edit bên cạnh đường chuẩn bạn muốn thay đổi để mở trình chỉnh sửa.",
+      "Đây là trường tên tệp. Đổi tên để lưu đường chuẩn dưới tên mới, hoặc giữ nguyên để ghi đè bản gốc.",
+      "Đường chuẩn mở ra dưới dạng biểu mẫu hiển thị thuật toán và các hệ số đã khớp. Chỉnh sửa giá trị ở trên; nhấp nút này để chuyển sang chế độ Text thô nếu bạn muốn sửa JSON trực tiếp.",
+      "Nhấp 'Save Changes' để lưu đường chuẩn đã cập nhật (hoặc Cancel để hủy). Hướng dẫn kết thúc khi hộp thoại đóng."
+    ],
+    "queries": [
+      "chỉnh sửa đường chuẩn",
+      "sửa đường chuẩn",
+      "sửa hiệu chuẩn",
+      "chỉnh sửa hiệu chuẩn",
+      "sửa hệ số",
+      "chỉnh sửa đường chuẩn json"
     ]
   }
 ]

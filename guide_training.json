@@ -2042,11 +2042,9 @@
       "id": "edit_file",
       "queries": [
         "edit file", "edit csv", "edit csv file", "edit a data file", "edit data file",
-        "modify file", "modify csv", "change file contents", "rename a file",
-        "edit calibration", "edit calibration curve", "modify calibration curve",
-        "edit calibration json", "edit standard curve", "modify standard curve",
-        "edit coefficients", "change calibration curve", "edit json file", "modify json",
-        "edit the file", "file editor", "correct a value in a file"
+        "modify file", "modify csv", "modify data file", "change file contents",
+        "rename a file", "rename csv", "edit the file", "edit a file", "file editor",
+        "correct a value in a file", "fix a value in the csv", "change csv values"
       ],
       "steps": [
         {
@@ -2079,6 +2077,53 @@
           "dialogStep": true,
           "title": "Save Your Changes",
           "description": "Click 'Save Changes' to write your edits (or Cancel to discard them). The guide finishes when the dialog closes.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "edit_calibration_curve",
+      "queries": [
+        "edit calibration curve", "modify calibration curve", "change calibration curve",
+        "edit calibration", "modify calibration", "change calibration", "edit calibration json",
+        "modify calibration json", "edit standard curve", "modify standard curve",
+        "change standard curve", "edit the coefficients", "modify coefficients",
+        "change coefficients", "edit calibration coefficients", "change the calibration coefficients",
+        "edit calibration file", "modify the standard curve json"
+      ],
+      "requires_mode": ["kinetics", "point"],
+      "steps": [
+        {
+          "target": "#cal-json-sel-section",
+          "expand": ["json-sel-collapse"],
+          "awaitSwalOpen": true,
+          "title": "Open a Calibration Curve",
+          "description": "Calibration curves are the saved JSON files under 'Select Coefficients'. Click the ✏️ Edit button next to the curve you want to change to open the editor.",
+          "position": "left",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-input-filename",
+          "dialogStep": true,
+          "title": "Rename (optional)",
+          "description": "This is the filename field. Change it to save the curve under a new name, or leave it to overwrite the original.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#toggle-mode",
+          "dialogStep": true,
+          "title": "Edit the Coefficients",
+          "description": "The curve opens in a form showing its algorithm and fitted coefficients. Edit the values above; click this button to switch to raw Text mode if you'd rather edit the JSON directly.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "dialogStep": true,
+          "title": "Save the Curve",
+          "description": "Click 'Save Changes' to write the updated standard curve (or Cancel to discard). The guide finishes when the dialog closes.",
           "position": "top",
           "skipInteraction": true
         }

@@ -410,11 +410,13 @@ def test_save_linearity_range_steps_are_translated(lang):
 @pytest.mark.parametrize("query", [
     "how to edit csv file",
     "how do I edit a data file",
-    "how to modify a calibration curve",
-    "edit calibration json",
+    "how to modify csv",
     "how do I rename a file",
+    "change csv values",
 ])
 def test_edit_file_fires_from_free_text(query):
+    # Data-CSV edits route to edit_file; calibration-curve edits have their own
+    # guide (see test_calibration_edit_routes_to_dedicated_guide).
     gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, "en")
     assert gid == "edit_file"
     assert steps
@@ -452,6 +454,91 @@ def test_japanese_houhou_registers_as_nav_intent():
     # "方法" ("the method / how to") is the most common Japanese how-to phrasing;
     # it must count as navigation so a bare feature phrase + 方法 launches a guide.
     assert ai_assistant._has_nav_intent("csvを編集する方法") is True
+
+
+# ---------------------------------------------------------------------------
+# edit_calibration_curve — editing a saved calibration JSON (the Select-
+# Coefficients panel), distinct from editing a data CSV (edit_file). The panel
+# is shown only in kinetics/point, so the guide carries a soft requires_mode
+# LIST and points at #cal-json-sel-section.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("query", [
+    "how to modify a calibration curve",
+    "how to edit a calibration curve",
+    "edit calibration json",
+    "change the calibration curve",
+    "edit standard curve",
+])
+def test_calibration_edit_routes_to_dedicated_guide(query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, "en")
+    assert gid == "edit_calibration_curve"
+    assert steps
+
+
+def test_calibration_edit_points_at_json_panel():
+    _, steps = ai_assistant.resolve_guide("edit calibration curve", KIN_DATA, "en")
+    assert steps[0]["target"] == "#cal-json-sel-section"
+    assert steps[0].get("awaitSwalOpen") is True
+    assert "json-sel-collapse" in (steps[0].get("expand") or [])
+    assert [s["target"] for s in steps[1:]] == ["#swal-input-filename", "#toggle-mode", ".swal2-confirm"]
+
+
+def test_calibration_edit_data_csv_stays_edit_file():
+    # A plain CSV edit must NOT be captured by the calibration guide.
+    gid, _ = ai_assistant.resolve_guide("how to edit a csv file", KIN_DATA, "en")
+    assert gid == "edit_file"
+
+
+def test_calibration_edit_prepends_switch_mode_outside_kinetics_point():
+    # The Select-Coefficients panel is hidden in calibrate/report; a soft
+    # requires_mode LIST prepends a switch step naming both acceptable modes.
+    _, steps = ai_assistant.resolve_guide(
+        "edit calibration json",
+        {"mode": "report", "data_loaded": True, "app_started": True}, "en")
+    assert steps[0]["target"] == "#meas-mode-section"
+    assert "kinetics / point" in steps[0]["description"]
+
+
+def test_calibration_edit_no_switch_step_in_point_mode():
+    _, steps = ai_assistant.resolve_guide(
+        "edit calibration json",
+        {"mode": "point", "data_loaded": True, "app_started": True}, "en")
+    assert steps[0]["target"] == "#cal-json-sel-section"
+
+
+@pytest.mark.parametrize("lang,query", [
+    ("vi", "chỉnh sửa đường chuẩn"),
+    ("zh", "修改校准曲线"),
+    ("fr", "modifier la courbe d'étalonnage"),
+    ("ja", "校正曲線を編集"),
+    ("ru", "изменить калибровочную кривую"),
+])
+def test_calibration_edit_localized(lang, query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, lang)
+    assert gid == "edit_calibration_curve"
+    _, en_steps = ai_assistant.resolve_guide("edit calibration curve", KIN_DATA, "en")
+    for en_s, s in zip(en_steps, steps):
+        assert s["description"] and s["description"] != en_s["description"]
+
+
+@pytest.mark.parametrize("query", [
+    "how to make a calibration curve",
+    "how to create a standard curve",
+    "what is a calibration curve",
+])
+def test_calibration_build_and_conceptual_not_captured_by_edit(query):
+    # Building a curve (calibrate mode) or asking what one is must not route to
+    # the edit guide.
+    gid, _ = ai_assistant.resolve_guide(
+        query, {"mode": "calibrate", "data_loaded": True, "app_started": True}, "en")
+    assert gid != "edit_calibration_curve"
+
+
+def test_requires_mode_list_helper():
+    assert ai_assistant._requires_mode_satisfied(["kinetics", "point"], "point") is True
+    assert ai_assistant._requires_mode_satisfied(["kinetics", "point"], "calibrate") is False
+    assert ai_assistant._requires_mode_satisfied("kinetics", "kinetics") is True
 
 
 def test_soft_mode_gate_does_not_crossfire_other_guides():
