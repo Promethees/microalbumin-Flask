@@ -68,7 +68,7 @@ graph TD
 | Module | Purpose |
 |---|---|
 | `state.py` | **Global state singleton**: `process`, `monitor_thread`, `args`, `script_dir`, `default_data_root` (where the `.dataroot` pointer lives — see `data_root.py`), `log_file`, `json_root_path`, `report_root_path`, `os_name`, `delimiter`, `PRODUCTION_MODE`, `IS_FROZEN`. Also `mark_reset_display_pending()` / `consume_reset_display_pending()` — a one-shot sentinel (`_RESET_DISPLAY_MARKER`, in `default_data_root` so it survives a relocation restart) set before a restart and consumed on the next index render so the app comes up in the default display (kinetics mode, fresh UI state) — see Rule.md §2.20 |
-| `i18n.py` | UI localization: `load_catalog(lang)` (English baseline `ui_translations/en.json` overlaid by `<lang>.json`, missing keys fall back to English; cached, best-effort), `normalize_lang(lang)`, `SUPPORTED_UI_LANGUAGES` (shared with `ai_settings`). Catalogs resolved from `state.bundle_dir`. Drives the `ui_language` user setting + the `index()` `UI_STRINGS` injection — see Rule.md §2.22 |
+| `i18n.py` | UI localization: `load_catalog(lang)` (English baseline `ui_translations/en.json` overlaid by `<lang>.json`, missing keys fall back to English; cached, best-effort), `normalize_lang(lang)`, `SUPPORTED_UI_LANGUAGES` (from `user_settings.SUPPORTED_LANGUAGES`). Catalogs resolved from `state.bundle_dir`. Drives the `ui_language` user setting + the `index()` `UI_STRINGS` injection — see Rule.md §2.22 |
 | `validators.py` | `@validate_json(schema)` decorator — validates and coerces JSON request payloads; injects `validated_data` kwarg into route handlers |
 | `math_ops.py` | Server-side regression: `calculate_coef_and_rsquared`, `calculate_kinetics_quantities`, `map_duplicates`, `get_rsquared_threshold` — uses `scipy.optimize.curve_fit` and `numpy` |
 | `file_path.py` | Data-folder constants and helpers: `DATA_ROOT`, `validate_in_data_root(path)`, `get_data_subfolders()`, `is_multi_value_timeseries_csv_header()`, `RESERVED_ARCHIVE_FOLDER` (`"root"`) + `is_reserved_data_folder_name(name)` (the `data/root/` archive staging folder is reserved — see Rule.md §2.16). CSV schema utilities: `parse_csv_metadata(lines)` (canonical `# Key: Value` parser), `detect_csv_schema(header_line)` (returns `CSV_SCHEMA_TIMESERIES / KINETICS_CAL / POINT_CAL`). Concentration-unit: `CONCEN_UNITS` (`ng/µL`, `nM`), `DEFAULT_CONCEN_UNIT` (`ng/µL`), `get_concen_unit(meta)` (default when `# ConcenUnit` absent — see Rule.md §2.10). No mutable state. |
@@ -78,10 +78,9 @@ graph TD
 | `browser_mgt.py` | `open_browser`, `close_port`, `cleanup`, `ensure_host_mapping` — browser/process lifecycle |
 | `script_monitor.py` | `check_log_for_errors` — scans `log/script_logs.txt` for PyBadge errors |
 | `send_command.py` | `connect_to_device` (find PyBadge via serial), `send_command_and_wait_ack` (serial protocol) |
-| `ai_assistant.py` | Groq chat (`_groq_chat`, `chat_stream`), MCP tool engine, multilingual system prompts, `proxy_chat_stream()` for desktop proxy mode |
-| `ai_settings.py` | Load/save `ai_settings.json`; language defaults; `SUPPORTED_LANGUAGES` catalog; strips obsolete keys on read |
+| `ai_assistant.py` | Groq chat (`_groq_chat_stream` token streaming, `chat_stream`), MCP tool engine, multilingual system prompts, `proxy_chat_stream()` for desktop proxy mode |
 | `ai_feedback.py` | Answer 👍/👎: append-only `ai_feedback.jsonl` log + learned per-guide matcher weights (`ai_guide_weights.json`); `record_feedback()`, `learned_bonus()`/`learned_terms()` consumed by `_match_guide_example`; `is_enabled()` (opt-out), `stats()`, `clear()` (reset), `file_paths()` (export). LLM answers logged only |
-| `user_settings.py` | Load/save `user_settings.json`; user UI preferences: `theme`, `ui_language` (interface language, one of `en`/`vi`/`zh`/`fr`/`ja`/`ru`, default `en`; App Settings → General — drives `i18n.load_catalog` for the page, see Rule.md §2.22), `time_tag_format` (date/time tag format for file modified-date tags: `iso`/`iso_sec`/`us`/`eu`/`date_only`, default `iso`; App Settings → General), `default_mode`, `default_window_size`, `default_subfolder`, `file_sort_order` (default File Selection sort: `name_asc`/`name_desc`/`date_asc`/`date_desc`, default `date_desc`), `default_concentration_unit` (unit selected for new calibration exports: `ng/µL`/`nM`, default `ng/µL`; the legacy back-fill always uses `ng/µL` regardless — see Rule.md §2.10), `event_log_retention_days`, `merge_directory_picker` (opt-in folder-browser step for the merge dialog; the accordion lists the data root itself plus subfolders, with a global Select all / Deselect all toggle and a per-folder "Select all in this folder" checkbox), `disable_popups` (suppress confirmation/alert popups; lives in App Settings → General, mirrored onto the hidden `#no-swal-checkbox`), … |
+| `user_settings.py` | Load/save `user_settings.json`; owns `SUPPORTED_LANGUAGES` (the six UI/AI-chat languages, source of truth for `i18n.py` + `routes/ai_routes.py`); user UI preferences: `theme`, `ui_language` (interface language, one of `en`/`vi`/`zh`/`fr`/`ja`/`ru`, default `en`; App Settings → General — drives `i18n.load_catalog` for the page, see Rule.md §2.22), `time_tag_format` (date/time tag format for file modified-date tags: `iso`/`iso_sec`/`us`/`eu`/`date_only`, default `iso`; App Settings → General), `default_mode`, `default_window_size`, `default_subfolder`, `file_sort_order` (default File Selection sort: `name_asc`/`name_desc`/`date_asc`/`date_desc`, default `date_desc`), `default_concentration_unit` (unit selected for new calibration exports: `ng/µL`/`nM`, default `ng/µL`; the legacy back-fill always uses `ng/µL` regardless — see Rule.md §2.10), `event_log_retention_days`, `merge_directory_picker` (opt-in folder-browser step for the merge dialog; the accordion lists the data root itself plus subfolders, with a global Select all / Deselect all toggle and a per-folder "Select all in this folder" checkbox), `disable_popups` (suppress confirmation/alert popups; lives in App Settings → General, mirrored onto the hidden `#no-swal-checkbox`), … |
 | `data_root.py` | User-selectable data root (frozen builds, Rule.md §2.19): `get_info()` → `{current, default, is_custom}`, `set_data_root(parent)` → `(path, moved)` (copies the whole root into `<parent>/EasyOKAPI`, writes the pointer, then **moves** = removes the original **unless** it is the default, which is kept as a fallback), `reset_to_default()` → `(path, moved)`, plus dry-run previews `preview_data_root(parent)` / `preview_reset()` → `(target, moved)` that validate **without** touching the filesystem (the move is deferred until the user accepts the restart). The `.easyokapi_dataroot` pointer lives **beside** the default folder (`state._dataroot_pointer_path()`, i.e. in `<Documents>`/`<home>`) so it survives the default folder being deleted; resolution is in `state._read_dataroot_override()` (import-time, so a change needs an app restart). `POST /data_root` previews; `POST /data_root/restart` commits the move then relaunches in place via `update_service.restart_after_delay()` and serves `restarting.html`, which polls `/ping` and reloads the tab once the new instance is up. A data root inside `bundle_dir` (the EasyOKAPI program folder) is rejected. The folder is chosen via the `/browse_dirs` navigator. The Windows installer (`setup-frozen.nsi`) Data Folder page lets the user pick the location at install time, and the uninstaller reads the same pointer. |
 | `event_logger.py` | Append/read user interaction events; logs go to `log/events/YYYY-MM-DD/HH-MM-SS.jsonl` (one file per app launch per day); `cleanup_old_logs()` removes date folders older than `event_log_retention_days` |
 | `hwid.py` | Stable per-machine fingerprint `get_hwid()` (SHA-256 of an OS machine id); basis of the hardware lock. Recipe mirrored by the Windows installer PowerShell |
@@ -173,7 +172,7 @@ Supported algorithms: `linear`, `polynomial`, `logarithmic`, `exponential`, `Mic
 ## 5. AI Assistant
 
 ### 5.1 Overview
-A floating chat widget (bottom-right corner) powered by **Groq** (cloud LLM API). No local model download is required. The `GROQ_API_KEY` lives only on the online server (Heroku config var); desktop instances authenticate via a locally stored activation token rather than holding the key directly. Settings are persisted in `ai_settings.json` at the project root.
+A floating chat widget (bottom-right corner) powered by **Groq** (cloud LLM API). No local model download is required. The `GROQ_API_KEY` lives only on the online server (Heroku config var); desktop instances authenticate via a locally stored activation token rather than holding the key directly. AI-assistant preferences (`ui_language`, `ai_feedback_enabled`) are persisted in `user_settings.json` via `user_settings.py`; there is no separate `ai_settings.json`.
 
 ### 5.2 Supported Languages
 English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (ja), Russian (ru).
@@ -202,15 +201,8 @@ English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (j
 | `/ai/settings` | POST | Update settings (language, enabled) |
 | `/ai/guides` | GET | Return guide examples for a given language |
 
-### 5.6 Settings file (`ai_settings.json`)
-```json
-{
-  "enabled": true,
-  "preferred_languages": ["en", "vi"],
-  "first_run_shown": false
-}
-```
-`preferred_languages` is an array of 1–6 language codes. The in-app language button cycles through the selected languages. Files that still contain the obsolete `preferred_language` string key are silently migrated on read by `ai_settings.py`.
+### 5.6 Settings / language
+There is **no** `ai_settings.json`. The AI chat language is client-side: `AI.activeLang` in `ai-chat.js`, chosen from the header language menu and stored in `localStorage` (`okapi_ai_lang`); every chat/match request sends that single active language. It is independent of the interface language (`ui_language` in `user_settings.json`). The list of selectable languages is `user_settings.SUPPORTED_LANGUAGES`. AI-related persisted preferences (`ai_feedback_enabled`) live in `user_settings.json`.
 
 ### 5.7 Activation file (`activation.json`)
 ```json
@@ -331,8 +323,7 @@ microalbumin-Flask/
 ├── log/                        # Script logs directory
 ├── report/                     # Saved HTML reports (by subject subdirectory)
 ├── ui_translations/            # UI translation catalogs: en.json (baseline) + vi/zh/fr/ja/ru
-├── ai_settings.json            # AI assistant settings (auto-created)
-├── user_settings.json          # User UI preferences (auto-created, gitignored)
+├── user_settings.json          # User UI + AI preferences (auto-created, gitignored)
 └── sample_data/
 ```
 
