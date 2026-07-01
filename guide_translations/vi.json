@@ -765,5 +765,19 @@
       "report subject là gì",
       "xóa chủ đề báo cáo"
     ]
+  },
+  {
+    "id": "save_linearity_range",
+    "steps": [
+      "Nhấp nút bật/tắt +/− để mở bảng phân tích kinetics cho một nguồn. Nút Save Linearity Range xuất hiện ở đây khi pha tuyến tính được tự động phát hiện trong dữ liệu của bạn.",
+      "Nhấp '📐 Save Linearity Range' để xuất chỉ những hàng nằm trong pha tuyến tính được phát hiện của nguồn này ra một tệp CSV mới. Tên tệp được điền sẵn dựa trên tệp hiện tại và chỉ số nguồn. Tập con này là đầu vào lý tưởng để xây dựng đường chuẩn hiệu chuẩn."
+    ],
+    "queries": [
+      "lưu khoảng tuyến tính",
+      "xuất khoảng tuyến tính",
+      "lưu pha tuyến tính",
+      "khoảng tuyến tính",
+      "lưu đoạn tuyến tính"
+    ]
   }
 ]

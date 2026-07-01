@@ -770,5 +770,19 @@
       "qu'est-ce qu'un sujet de rapport",
       "supprimer sujet rapport"
     ]
+  },
+  {
+    "id": "save_linearity_range",
+    "steps": [
+      "Cliquez sur le bouton +/− pour développer le panneau d'analyse kinetics d'une source. Le bouton Save Linearity Range apparaît ici lorsqu'une phase linéaire est automatiquement détectée dans vos données.",
+      "Cliquez sur '📐 Save Linearity Range' pour exporter uniquement les lignes situées dans la phase linéaire détectée de cette source vers un nouveau fichier CSV. Le nom de fichier est pré-rempli à partir du fichier actuel et de l'indice de la source. Ce sous-ensemble constitue une entrée idéale pour construire une courbe d'étalonnage."
+    ],
+    "queries": [
+      "enregistrer la plage linéaire",
+      "exporter la plage linéaire",
+      "phase linéaire",
+      "plage linéaire",
+      "section linéaire"
+    ]
   }
 ]

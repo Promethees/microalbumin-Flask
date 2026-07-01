@@ -386,6 +386,22 @@ def test_save_linearity_range_button_uses_data_hint_selector():
     assert not any("[title=" in t for t in targets)
 
 
+@pytest.mark.parametrize("lang", ["vi", "zh", "fr", "ja", "ru"])
+def test_save_linearity_range_steps_are_translated(lang):
+    # The guide's two steps must be localized in every non-English overlay (they
+    # were English-only before) — resolve returns per-language step text.
+    _, en_steps = ai_assistant.resolve_guide(
+        "how to save linearity range",
+        {"mode": "kinetics", "data_loaded": True, "app_started": True}, "en")
+    _, steps = ai_assistant.resolve_guide(
+        "how to save linearity range",
+        {"mode": "kinetics", "data_loaded": True, "app_started": True}, lang)
+    assert steps and len(steps) == len(en_steps)
+    # Each step description is actually translated (differs from the English one).
+    for en_s, s in zip(en_steps, steps):
+        assert s["description"] and s["description"] != en_s["description"]
+
+
 def test_soft_mode_gate_does_not_crossfire_other_guides():
     # Removing save_linearity_range's hard mode gate must not let mode-specific
     # guides bleed across modes: point-mode concentration still routes to the
