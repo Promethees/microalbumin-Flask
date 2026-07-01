@@ -815,7 +815,6 @@ async function generateReport() {
     }
 
     setTimeout(() => {
-        console.log("Triggering window.print() for Quick Report");
         window.print();
         printContainer.classList.add('hidden');
         printContainer.classList.remove('report-mode');
@@ -2036,7 +2035,6 @@ async function finalizeReport() {
         `;
 
         const printContainer = document.getElementById('print-report-container');
-        console.log("Injecting Advanced Report content...", !!finalHtmlContent);
         printContainer.innerHTML = reportTemplate;
 
         printContainer.classList.remove('hidden');
@@ -2052,7 +2050,6 @@ async function finalizeReport() {
         }
 
         setTimeout(() => {
-            console.log("Triggering window.print() for Advanced Report");
             window.print();
             printContainer.classList.add('hidden');
             printContainer.classList.remove('report-mode');

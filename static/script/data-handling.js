@@ -271,7 +271,6 @@ function copyFile(tableSelector = "#file-table") {
         success: function (response) {
             if (response.status === 'success') {
                 if (getBtnChecked("no-swal-checkbox")) {
-                    console.log("File copied successfully:", response.message);
                     if (tableSelector === "#file-table") {
                         updateDirectory(AppState.currentDirectory);
                     } else if (tableSelector === "#json-table") {
@@ -383,7 +382,6 @@ async function moveFile() {
                 deselectFile('#file-table');
                 updateDirectory(AppState.currentDirectory);
                 if (getBtnChecked('no-swal-checkbox')) {
-                    console.log('File moved successfully:', response.message);
                 } else {
                     Swal.fire({ title: 'Moved!', text: response.message, icon: 'success', timer: 2000, showConfirmButton: false });
                 }
@@ -509,7 +507,6 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
         const proceedDelete = () => {
             logEvent('file', 'delete', { name: fileName, table: tableSelector });
             $(button).closest("tr").remove();
-            console.log("Deleting file:", fileName, "from table:", tableSelector);
 
             // Update the AppState
             if (tableSelector === "#file-table") {
@@ -527,8 +524,6 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                     deselectFile(tableSelector);
                 }
 
-                console.log("Deleting JSON file:", fileName, "from table:", tableSelector);
-
                 $.post('/delete_file', {
                     filename: fileName,
                     mode: AppState.currentMeasurementMode,
@@ -541,8 +536,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
         const handleResponse = (response) => {
             if (response.status === 'success') {
                 if (skipConfirmation) {
-                    console.log("File deleted successfully:", response.message);
-                    return; // Exit if no popup is needed   
+                    return; // Exit if no popup is needed
                 }
                 Swal.fire({
                     title: 'Deleted!',
@@ -897,7 +891,6 @@ function updatePlotBasedOnMode(jsonFile) {
             );
         } else if (cal_type === "point") {
             const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
-            console.log("Give me uniqueTimePoints ", uniqueTimePoints);
             AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
             const timePoint = document.getElementById("regressed-time-point").value;
             const processingData = AppState.responseData.filter(row =>
@@ -1682,7 +1675,6 @@ function showMergeSortModal(preselected) {
             success: function (response) {
                 if (response.status === 'success') {
                     if (getBtnChecked("no-swal-checkbox")) {
-                        console.log("Merge successful:", response.message);
                         updateDirectory(output_path);
                         return;
                     }
@@ -1808,9 +1800,6 @@ function exportData() {
         }
     }
     const saveFile = document.getElementById("save-file").value.trim() || "results";
-
-    // Bind button to export path
-    // bindButtonToString("#go-to-exp-btn", processedExpPath);
 
     // Export data based on measurement mode
     const analysisData = generateAnalysisData();
@@ -1987,7 +1976,6 @@ function exportFolderLabel(dirPath) {
 
 // Helper to send the payload (single or batch)
 function sendExportPayload(payload, isBatch) {
-    console.log(`Sending ${isBatch ? 'batch' : 'single'} export data:`, payload);
     $.ajax({
         url: '/export_data',
         type: 'POST',
@@ -2014,7 +2002,6 @@ function sendExportPayload(payload, isBatch) {
 }
 
 function sendExportData(saveDir, saveFile, analysisData, concentration, newFile = true) {
-    console.log("analysisData is ", analysisData);
     if (analysisData) {
         const data = {
             save_dir: saveDir,

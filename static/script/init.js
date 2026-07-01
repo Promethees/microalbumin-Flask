@@ -171,7 +171,6 @@ document.getElementById('filter-source').addEventListener('change', function () 
 
 document.getElementById('num-sources').addEventListener('change', function () {
     AppState.numSources = parseInt(this.value);
-    console.log("Number of sources set to:", AppState.numSources);
     updateDirectory(AppState.currentDirectory, true);
     updateMultiSourceExportOptions();
     deselectFile();
@@ -264,8 +263,6 @@ function updatePointEstimate() {
     // selected #time-unit to seconds before estimating.
     const currExpTimeSeconds = currExpTimePoint * getTimeUnitMultiplier(timeUnit);
 
-    console.log("response Data is", AppState.responseData);
-
     // Estimate every source's value (the export step later picks the selected
     // subset via getSelectedExportSources()), so globalEstimatedValue is always
     // a per-source array indexed 0..numSources-1.
@@ -275,8 +272,6 @@ function updatePointEstimate() {
             getEstimatedValue(AppState.responseData, currExpTimeSeconds, i)
         );
     }
-
-    console.log("Estimated value is ", AppState.globalEstimatedValue);
 
     if (isNullOrArrayOfNull(AppState.globalEstimatedValue)) {
         estValError.innerHTML = '<span style="color:red">Error: Reference point is outside the range of the data or not set!</span>';
@@ -1073,9 +1068,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     }
 
     // Notify the user the settings were saved (unless popups are disabled).
-    if (getBtnChecked("no-swal-checkbox")) {
-        console.log("Settings saved successfully.");
-    } else {
+    if (!getBtnChecked("no-swal-checkbox")) {
         Swal.fire(t('settings.saved_title', 'Settings saved'), t('settings.saved_text', 'Your configurations have been updated.'), 'success');
     }
 })

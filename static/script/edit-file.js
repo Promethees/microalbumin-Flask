@@ -286,7 +286,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
                         // Set default values
                         let defaultValue = '';
-                        console.log(`References values are:`, referenceValues);
                         if (!isEditable && referenceValues[header]) {
                             defaultValue = referenceValues[header];
                         } else {
@@ -492,7 +491,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             return html;
         }
         const filePath = tableSelector === '#file-table' ? AppState.currentDirectory : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
-        console.log("File Path is ", filePath);
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function (content) {
             let originalContent = content.content; // ← raw string
@@ -967,7 +965,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             }
 
                             // ✅ Metadata validation if defined
-                            console.log("Metadata lines are: ", metaLines);
                             if (matchedPattern.meta && matchedPattern.meta.length > 0) {
                                 for (let rule of matchedPattern.meta) {
                                     const found = metaLines.some(line => rule.test(line));
@@ -1029,7 +1026,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 // display reflects the new content/metadata. Await it so the
                                 // pairing re-validation below sees the freshly-loaded data.
                                 if ((tableSelector === "#file-table" && AppState.currentFile === fileName) || (tableSelector === "#json-table" && AppState.currentJSON === fileName)) {
-                                    console.log("Changing data display");
                                     deselectFile(tableSelector);
                                     await selectFile(newFileName, button, tableSelector);
                                     toggleMode();
@@ -1045,7 +1041,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 // pair; unpair the calibration curve if so (warns the user).
                                 const unpaired = revalidateActivePairing();
                                 if (getBtnChecked("no-swal-checkbox")) {
-                                    console.log(textMsg);
                                     return; // Exit if no popup is needed
                                 }
                                 if (!unpaired) {

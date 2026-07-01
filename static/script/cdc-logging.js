@@ -100,7 +100,6 @@ function checkScriptStatus() {
                         if (response.status !== 'not_running') {
                             logDisplay.insertAdjacentText('beforeend', `Error: ${response.message}\n`);
                         }
-                        else console.log("Script is not running");
                         resetUIAfterError();
                     } else {
                         logDisplay.insertAdjacentText('beforeend', 'Script completed successfully\n');

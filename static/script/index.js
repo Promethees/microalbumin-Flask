@@ -169,13 +169,6 @@ input.addEventListener("keydown", function (e) {
     e.preventDefault();
 });
 
-function bindButtonToString(buttonId = "#go-to-exp-btn", pathStr = AppState.processedExpPath, changeToCalibrate = true) {
-    $(buttonId).off('click').on('click', function () {
-        console.log(`${buttonId} clicked, using path:`, pathStr);
-        updateDirectory(pathStr, true, changeToCalibrate);
-    });
-}
-
 function clearCache() {
     $.ajax({
         url: '/clear_cache',
@@ -320,9 +313,6 @@ $(document).ready(function () {
 
     document.getElementById('data-display-section')
         .classList.toggle('hidden', !AppState.currentFile);
-
-    // bindButtonToString("#go-to-exp-btn", AppState.processedExpPath);
-    // bindButtonToString("#go-to-btn", AppState.processedCdcPath, false);
 
     // Initialize dynamic widths for range inputs
     ['range-value-start', 'range-value-end'].forEach(id => {

@@ -214,9 +214,7 @@ async function deleteDataFolder(name, path) {
             await updateDirectory(DATA_ROOT, true);
         }
 
-        if (getBtnChecked("no-swal-checkbox")) {
-            console.log("Folder deleted successfully:", data.message);
-        } else {
+        if (!getBtnChecked("no-swal-checkbox")) {
             Swal.fire('Folder deleted', data.message || `Deleted "${name}".`, 'success');
         }
     } catch (e) {
@@ -268,9 +266,7 @@ async function renameDataFolder(name, path) {
             if (typeof saveUserSetting === 'function') saveUserSetting('default_subfolder', newName);
         }
 
-        if (getBtnChecked("no-swal-checkbox")) {
-            console.log("Folder renamed successfully:", data.message);
-        } else {
+        if (!getBtnChecked("no-swal-checkbox")) {
             Swal.fire('Folder renamed', data.message || `Renamed "${name}" to "${newName}".`, 'success');
         }
     } catch (e) {
