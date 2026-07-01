@@ -837,9 +837,17 @@
         const calMode = document.getElementById('cal-mode-select');
         const dir = appState.currentDirectory || '';
         const dataRoot = typeof DATA_ROOT !== 'undefined' ? DATA_ROOT : '';
-        const subfolder = (dir && dataRoot && dir !== dataRoot)
-            ? dir.split(/[/\\]/).pop()
-            : '';
+        // The subfolder is sent to read_csv_file, which joins it under DATA_ROOT.
+        // Pass the FULL path relative to the data root (not just the last
+        // segment) so a nested folder like "a/b" still resolves; the backend
+        // re-validates containment. Fall back to the basename if dir isn't under
+        // the known data root.
+        let subfolder = '';
+        if (dir && dataRoot && dir !== dataRoot) {
+            subfolder = dir.startsWith(dataRoot)
+                ? dir.slice(dataRoot.length).replace(/^[/\\]+/, '')
+                : dir.split(/[/\\]/).pop();
+        }
         return {
             mode: appState.currentMeasurementMode || 'unknown',
             app_started: !!(mainContent && !mainContent.classList.contains('hidden')),

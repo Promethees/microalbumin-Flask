@@ -237,6 +237,23 @@ def ai_chat():
 
     ui_context = data.get('ui_context') or {}
 
+    # Deterministic, no-LLM turns (greeting, out-of-scope refusal, report
+    # quick/full clarification) are resolved here for BOTH the dev and proxy
+    # paths, so an activated user gets exactly the behaviour of a source run
+    # instead of depending on the online proxy to re-implement it — and no
+    # upstream call is spent on a turn the model never needed.
+    pre_events = ai_assistant.deterministic_events(messages, language, ui_context)
+    if pre_events is not None:
+        def generate():
+            for event in pre_events:
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream',
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+        )
+
     _PROXY_TRANSIENT_ERRORS = frozenset({'proxy_unreachable', 'proxy_timeout'})
 
     if mode == 'proxy':

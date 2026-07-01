@@ -1061,7 +1061,22 @@ def _run_tool(name: str, args: dict, ui_context: dict = None) -> str:
 # Completion budget. 500 was too tight: a tool call whose JSON arguments run
 # long (e.g. trigger_custom_steps with several steps) could be truncated
 # mid-object, yielding malformed JSON that Groq rejects as tool_use_failed.
-_MAX_COMPLETION_TOKENS = 1024
+# 1024 was still tight for a full standard-curve/coefficient explanation across
+# every mode, so a long answer would stop mid-sentence with no cue; 2048 leaves
+# headroom, and _TRUNCATION_NOTICE flags the rare remaining overrun.
+_MAX_COMPLETION_TOKENS = 2048
+
+# Appended to a plain-text answer that Groq stopped for length (finish_reason ==
+# "length"), so a rare over-budget reply reads as deliberately continuable
+# instead of an unexplained mid-sentence cut-off.
+_TRUNCATION_NOTICE = {
+    "en": "\n\n…(response cut off — ask me to continue for the rest.)",
+    "vi": "\n\n…(phản hồi bị cắt — hãy yêu cầu tôi tiếp tục để xem phần còn lại.)",
+    "zh": "\n\n…（回复被截断 — 让我继续以查看其余内容。）",
+    "fr": "\n\n…(réponse tronquée — demandez-moi de continuer pour la suite.)",
+    "ja": "\n\n…(応答が途中で切れました — 続きを知りたい場合は「続けて」と入力してください。)",
+    "ru": "\n\n…(ответ обрезан — попросите меня продолжить, чтобы увидеть остальное.)",
+}
 
 
 # Substrings that mark a Groq 400 where the model emitted an invalid tool call
@@ -1115,10 +1130,16 @@ def _groq_chat_stream(api_key: str, model: str, messages: list, tools: list):
         content_parts = []
         # index → {"id", "name", "args"}; tool-call arguments stream in fragments.
         tool_acc: dict = {}
+        finish_reason = None
         for chunk in client.chat.completions.create(**kwargs):
             if not chunk.choices:
                 continue
-            delta = chunk.choices[0].delta
+            choice = chunk.choices[0]
+            # The terminal chunk carries why generation stopped ("stop", "length",
+            # "tool_calls"); "length" means the completion hit the token budget.
+            if getattr(choice, "finish_reason", None):
+                finish_reason = choice.finish_reason
+            delta = choice.delta
             if getattr(delta, "content", None):
                 content_parts.append(delta.content)
                 yield ("chunk", delta.content)
@@ -1133,7 +1154,8 @@ def _groq_chat_stream(api_key: str, model: str, messages: list, tools: list):
                     if fn.arguments:
                         slot["args"] += fn.arguments
 
-        result = {"role": "assistant", "content": "".join(content_parts)}
+        result = {"role": "assistant", "content": "".join(content_parts),
+                  "finish_reason": finish_reason}
         if tool_acc:
             result["tool_calls"] = [
                 {
@@ -1645,6 +1667,52 @@ def resolve_guide(query: str, ui_context: dict = None, language: str = "en"):
     return matched["id"], steps
 
 
+def deterministic_events(messages: list, language: str, ui_context: dict = None):
+    """No-LLM responses shared by the dev and proxy chat paths.
+
+    Returns a list of SSE event dicts when the turn is fully answered locally —
+    a greeting, an out-of-scope refusal, or the report quick/full clarification
+    flow (both the question and its resolution) — else None (caller proceeds to
+    the model).
+
+    Hoisting these out of chat_stream is what keeps activated (proxy) users and
+    source-run (dev) users in lockstep: /ai/chat runs this once for BOTH paths,
+    so the behaviour no longer depends on the online proxy re-implementing it,
+    and a turn the model never needed spends no upstream call.
+    """
+    ui_context = ui_context or {}
+    last_user_query = next(
+        (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
+    )
+    mode = ui_context.get("mode", "")
+    data_loaded = ui_context.get("data_loaded", False)
+
+    if _is_greeting(last_user_query):
+        return [{"type": "chunk", "content": _GREETING_RESPONSE.get(language, _GREETING_RESPONSE["en"])}]
+
+    if _is_out_of_scope(last_user_query):
+        return [{"type": "chunk", "content": _OUT_OF_SCOPE.get(language, _OUT_OF_SCOPE["en"])}]
+
+    pending_report = _get_pending_report_type(messages)
+    if pending_report == "quick":
+        raw = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
+        return [
+            {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
+            {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}},
+        ]
+    if pending_report == "full":
+        raw = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
+        return [
+            {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
+            {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}},
+        ]
+
+    if _needs_report_clarification(last_user_query, messages):
+        return [{"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}]
+
+    return None
+
+
 def chat_stream(messages: list, language: str, api_key: str, model: str, ui_context: dict = None):
     """Generator yielding SSE event dicts."""
     last_user_query = next(
@@ -1653,28 +1721,13 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
     mode = (ui_context or {}).get("mode", "")
     data_loaded = (ui_context or {}).get("data_loaded", False)
 
-    if _is_greeting(last_user_query):
-        yield {"type": "chunk", "content": _GREETING_RESPONSE.get(language, _GREETING_RESPONSE["en"])}
-        return
-
-    if _is_out_of_scope(last_user_query):
-        yield {"type": "chunk", "content": _OUT_OF_SCOPE.get(language, _OUT_OF_SCOPE["en"])}
-        return
-
-    pending_report = _get_pending_report_type(messages)
-    if pending_report == "quick":
-        raw = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
-        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
-        return
-    if pending_report == "full":
-        raw = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
-        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}}
-        return
-
-    if _needs_report_clarification(last_user_query, messages):
-        yield {"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}
+    # Deterministic, no-LLM turns (greeting / out-of-scope / report clarify).
+    # /ai/chat also runs this before dispatching, so on the normal proxy+dev
+    # paths it is already consumed; the check stays here so chat_stream is
+    # correct when called directly (dev fallback, tests).
+    pre = deterministic_events(messages, language, ui_context)
+    if pre is not None:
+        yield from pre
         return
 
     system_prompt = _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
@@ -1704,6 +1757,7 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
     # and re-ask the same turn so the user still gets a plain-text answer instead
     # of the raw upstream error. We only fall back once.
     tools_enabled = True
+    empty_retry_used = False
 
     for _ in range(6):
         # Stream content deltas live; the loop still inspects the assembled
@@ -1720,6 +1774,10 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
                 result = payload
         if result is None:
             result = {"role": "assistant", "content": "", "error": "max_iterations"}
+        # finish_reason is our own out-of-band signal, NOT a valid field on a chat
+        # message — pop it off before `result` is ever appended to full_messages
+        # and sent back, or Groq 400s ("property 'finish_reason' is unsupported").
+        finish_reason = result.pop("finish_reason", None)
         if "error" in result:
             if result["error"] == "tool_call_failed" and tools_enabled:
                 tools_enabled = False
@@ -1730,6 +1788,20 @@ def chat_stream(messages: list, language: str, api_key: str, model: str, ui_cont
         tool_calls = result.get("tool_calls") or []
 
         if not tool_calls:
+            answered = streamed_any or bool((result.get("content") or "").strip())
+            # No prose and no tool call: a recoverable blip, not a real answer.
+            # Retry once with tools off (a tool-less ask reliably yields plain
+            # text) rather than dead-ending on an empty bubble. range(6) and this
+            # flag both bound it to a single extra attempt.
+            if not answered and not empty_retry_used:
+                empty_retry_used = True
+                tools_enabled = False
+                continue
+            # Groq stopped for length → the answer is mid-sentence; flag it so the
+            # cut-off reads as continuable rather than a silent truncation.
+            if answered and finish_reason == "length":
+                yield {"type": "chunk",
+                       "content": _TRUNCATION_NOTICE.get(language, _TRUNCATION_NOTICE["en"])}
             # Content (if any) has already been streamed above; only the guide
             # action from an earlier tool turn still needs to be emitted.
             if guide_action:
