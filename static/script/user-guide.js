@@ -701,9 +701,15 @@ class UserGuide {
             console.warn(`Target element not found initially: ${step.target}. Waiting...`);
             this._updateTooltipSearching(step, stepIndex);
 
-            // Poll for element appearance (up to 3 seconds)
+            // Poll for element appearance (up to 3 seconds). An `optional` step
+            // (e.g. a dialog field that only exists in some modes — the report
+            // dialog shows metrics/time-points/axis fields only in Calibrate)
+            // gets a short grace instead: the dialog is already open, so the
+            // field either mounted with it or never will. Skip fast rather than
+            // stranding the user on a 3-second "searching…" for a field that
+            // doesn't apply to their current mode.
             let checkCount = 0;
-            const maxChecks = 30; // 3 seconds total
+            const maxChecks = step.optional ? 4 : 30; // ~0.4s optional, else 3s
             const checkInterval = setInterval(() => {
                 const el = document.querySelector(step.target);
                 if (el) {
@@ -1086,6 +1092,10 @@ class UserGuide {
             ...(s.awaitSwalOpen ? { awaitSwalOpen: true } : {}),
             ...(s.dialogStep ? { dialogStep: true } : {}),
             ...(s.chainsDialog ? { chainsDialog: true } : {}),
+            // `optional` = a dialog field that only exists in some modes (report
+            // dialog's Calibrate-only metrics/time-points/axis rows); showStep
+            // gives it a short skip-grace instead of the full 3s poll.
+            ...(s.optional ? { optional: true } : {}),
         }));
 
         this.currentStep = 0;

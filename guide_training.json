@@ -1231,49 +1231,6 @@
       ]
     },
     {
-      "id": "report_quick",
-      "queries": [],
-      "conditions": {},
-      "requires_data_loaded": true,
-      "steps": [
-        {
-          "target": "#report-section",
-          "title": "Generate Quick Report",
-          "description": "Click 'Generate quick Report' here to instantly snapshot the current chart and analysis as a standalone HTML report.",
-          "position": "top",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
-      "id": "report_quick_from_report",
-      "queries": [],
-      "conditions": {},
-      "steps": [
-        {
-          "target": "#measurement-mode",
-          "title": "Switch to a Data Mode",
-          "description": "Quick Report requires active measurement data. Switch to Kinetics, Point, or Calibrate mode first.",
-          "position": "right",
-          "skipInteraction": false
-        },
-        {
-          "target": "#file-selection",
-          "title": "Select a Data File",
-          "description": "Select a CSV data file to load your analysis before generating the report.",
-          "position": "left",
-          "skipInteraction": false
-        },
-        {
-          "target": "#report-section",
-          "title": "Generate Quick Report",
-          "description": "Now click 'Generate quick Report' to snapshot the current chart and analysis as a standalone HTML report.",
-          "position": "top",
-          "skipInteraction": false
-        }
-      ]
-    },
-    {
       "id": "report_full_from_data",
       "queries": [],
       "conditions": {},
@@ -1347,6 +1304,94 @@
           "target": "button[onclick=\"finalizeReport()\"]",
           "title": "Generate PDF Report",
           "description": "Or compile all items into a printable HTML report.",
+          "position": "top",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "generate_report_dialog",
+      "queries": [
+        "report dialog",
+        "report details dialog",
+        "report options",
+        "report title",
+        "report settings dialog",
+        "fill in report dialog",
+        "report popup",
+        "generate report options",
+        "pdf or excel report",
+        "report export format",
+        "choose fit for report",
+        "report metrics",
+        "report time points",
+        "report axis labels",
+        "what to enter in the report window"
+      ],
+      "conditions": {},
+      "requires_data_loaded": true,
+      "requires_mode": [
+        "kinetics",
+        "point",
+        "calibrate"
+      ],
+      "steps": [
+        {
+          "target": "#generate-report-btn",
+          "awaitSwalOpen": true,
+          "title": "Open the Report dialog",
+          "description": "Click 'Generate quick Report' to open the Report Details dialog, where you set the title, choose what to plot, and pick the export format before the report is built.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-input1",
+          "dialogStep": true,
+          "title": "Report Title",
+          "description": "Type the heading that appears at the top of the report (default 'Colorimetric Analysis Report'). This is the only field shown for a plain Kinetics/Point snapshot — Calibrate mode adds the extra options below.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-metrics",
+          "dialogStep": true,
+          "optional": true,
+          "title": "Metrics & Fit Algorithms",
+          "description": "Calibration (Kinetics) only: tick which metrics to chart and one or more fit algorithms per metric. Unchecking a metric disables its fits; a fit that can't be resolved is skipped with a warning.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-timepoints",
+          "dialogStep": true,
+          "optional": true,
+          "title": "Time Points & Fit Algorithms",
+          "description": "Calibration (Point) only: pick a time point and tick one or more fits for it. Use '+ Add time point' to add more entries — one calibration curve is produced per time point × fit.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-xlabel",
+          "dialogStep": true,
+          "optional": true,
+          "title": "Excel Chart Axis Labels",
+          "description": "Calibration only: override the X and Y axis labels for the native Excel charts. Leave Y blank to auto-label each chart with its metric. These are editable later in Excel too.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "input[name=\"swal-fmt\"]",
+          "dialogStep": true,
+          "title": "Export Format",
+          "description": "Choose PDF (a printable HTML report — open it and use Print → Save as PDF) or Excel (an .xlsx workbook with embedded charts).",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "dialogStep": true,
+          "title": "Build the Report",
+          "description": "Click OK to generate the report in the chosen format. The guide finishes when the dialog closes.",
           "position": "top",
           "skipInteraction": true
         }

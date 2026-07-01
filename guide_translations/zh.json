@@ -424,29 +424,6 @@
     ]
   },
   {
-    "id": "report_quick",
-    "steps": [
-      "点击此处的\"Generate quick Report\"即时将当前图表和分析快照为独立的 HTML 报告。"
-    ],
-    "queries": [
-      "快速报告",
-      "生成快速报告",
-      "报告快照"
-    ]
-  },
-  {
-    "id": "report_quick_from_report",
-    "steps": [
-      "快速报告需要活跃的测量数据。请先切换到 Kinetics、Point 或 Calibrate 模式。",
-      "选择 CSV 数据文件以在生成报告之前加载分析。",
-      "现在点击\"Generate quick Report\"将当前图表和分析快照为独立的 HTML 报告。"
-    ],
-    "queries": [
-      "从报告模式快速报告",
-      "在报告中快速生成"
-    ]
-  },
-  {
     "id": "report_full_from_data",
     "steps": [
       "点击\"Export Data to Report\"将此分析快照保存到命名报告主题中，供后续汇编。",
@@ -840,6 +817,28 @@
       "浓度单位",
       "齿轮图标",
       "设置"
+    ]
+  },
+  {
+    "id": "generate_report_dialog",
+    "steps": [
+      "点击 'Generate quick Report' 打开 Report Details 对话框，在生成报告前设置标题、选择要绘制的内容并选择导出格式。",
+      "输入显示在报告顶部的标题（默认 'Colorimetric Analysis Report'）。对于普通的 Kinetics/Point 快照，这是唯一显示的字段——Calibrate 模式会在下方增加额外选项。",
+      "仅 Calibration (Kinetics)：勾选要绘制的 metric，并为每个 metric 勾选一个或多个拟合算法。取消勾选某个 metric 会禁用其拟合；无法求解的拟合将被跳过并给出警告。",
+      "仅 Calibration (Point)：选择一个时间点并为其勾选一个或多个拟合。使用 '+ Add time point' 添加更多条目——每个时间点 × 拟合生成一条标准曲线。",
+      "仅 Calibration：覆盖原生 Excel 图表的 X 和 Y 轴标签。将 Y 留空可按各图表的 metric 自动标注。这些标签之后也可在 Excel 中编辑。",
+      "选择 PDF（可打印的 HTML 报告——打开后使用 Print → Save as PDF）或 Excel（带嵌入图表的 .xlsx 工作簿）。",
+      "点击 OK 以所选格式生成报告。对话框关闭时向导结束。"
+    ],
+    "queries": [
+      "报告对话框",
+      "报告选项",
+      "报告标题",
+      "报告导出格式",
+      "为报告选择拟合",
+      "报告坐标轴标签",
+      "报告窗口",
+      "pdf 还是 excel"
     ]
   }
 ]

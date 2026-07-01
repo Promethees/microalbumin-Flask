@@ -432,29 +432,6 @@
     ]
   },
   {
-    "id": "report_quick",
-    "steps": [
-      "Nhấp 'Generate quick Report' ở đây để chụp nhanh biểu đồ và phân tích hiện tại thành báo cáo HTML độc lập."
-    ],
-    "queries": [
-      "báo cáo nhanh",
-      "tạo báo cáo nhanh",
-      "chụp nhanh báo cáo"
-    ]
-  },
-  {
-    "id": "report_quick_from_report",
-    "steps": [
-      "Báo cáo nhanh yêu cầu dữ liệu đo đang hoạt động. Chuyển sang chế độ Kinetics, Point hoặc Calibrate trước.",
-      "Chọn tệp dữ liệu CSV để tải phân tích trước khi tạo báo cáo.",
-      "Bây giờ nhấp 'Generate quick Report' để chụp biểu đồ và phân tích hiện tại thành báo cáo HTML độc lập."
-    ],
-    "queries": [
-      "báo cáo nhanh từ báo cáo",
-      "tạo báo cáo nhanh trong chế độ report"
-    ]
-  },
-  {
     "id": "report_full_from_data",
     "steps": [
       "Nhấp 'Export Data to Report' để lưu ảnh chụp phân tích này vào chủ đề báo cáo để tổng hợp sau.",
@@ -852,6 +829,28 @@
       "đổi chế độ mặc định",
       "đơn vị nồng độ",
       "biểu tượng bánh răng"
+    ]
+  },
+  {
+    "id": "generate_report_dialog",
+    "steps": [
+      "Nhấp 'Generate quick Report' để mở hộp thoại Report Details, nơi bạn đặt tiêu đề, chọn nội dung cần vẽ và chọn định dạng xuất trước khi tạo báo cáo.",
+      "Nhập tiêu đề hiển thị ở đầu báo cáo (mặc định 'Colorimetric Analysis Report'). Đây là trường duy nhất hiển thị cho ảnh chụp Kinetics/Point thông thường — chế độ Calibrate bổ sung các tùy chọn bên dưới.",
+      "Chỉ Calibration (Kinetics): tích các metric cần vẽ và một hoặc nhiều thuật toán khớp cho mỗi metric. Bỏ chọn một metric sẽ tắt các phép khớp của nó; phép khớp không giải được sẽ bị bỏ qua kèm cảnh báo.",
+      "Chỉ Calibration (Point): chọn một mốc thời gian và tích một hoặc nhiều phép khớp cho nó. Dùng '+ Add time point' để thêm mục — mỗi mốc thời gian × phép khớp tạo ra một đường chuẩn.",
+      "Chỉ Calibration: ghi đè nhãn trục X và Y cho các biểu đồ Excel gốc. Để trống Y để tự động gán nhãn mỗi biểu đồ theo metric của nó. Các nhãn này cũng có thể chỉnh trong Excel sau.",
+      "Chọn PDF (báo cáo HTML có thể in — mở rồi dùng Print → Save as PDF) hoặc Excel (tệp .xlsx có biểu đồ nhúng).",
+      "Nhấp OK để tạo báo cáo theo định dạng đã chọn. Hướng dẫn kết thúc khi hộp thoại đóng."
+    ],
+    "queries": [
+      "hộp thoại báo cáo",
+      "tùy chọn báo cáo",
+      "tiêu đề báo cáo",
+      "định dạng xuất báo cáo",
+      "chọn phép khớp cho báo cáo",
+      "nhãn trục báo cáo",
+      "cửa sổ báo cáo",
+      "pdf hay excel"
     ]
   }
 ]

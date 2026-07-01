@@ -1179,7 +1179,14 @@
                 const mode = _getUiContext().mode;
                 let guide_id;
                 if (btn.dataset.type === 'quick') {
-                    guide_id = (mode === 'report') ? 'report_quick_from_report' : 'report_quick';
+                    // Quick report fires the "Report Details" Swal dialog — and
+                    // while that modal is open the chat widget is unreachable, so
+                    // the guide must be launched here (before the dialog opens)
+                    // and walk INTO it. generate_report_dialog opens the dialog
+                    // and steps through its fields; its requires_mode / requires_
+                    // data_loaded prefixes handle report-mode (switch to a data
+                    // mode) and the file-select first.
+                    guide_id = 'generate_report_dialog';
                 } else {
                     guide_id = (mode === 'report') ? 'report_full_in_report' : 'report_full_from_data';
                 }

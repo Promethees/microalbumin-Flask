@@ -310,6 +310,13 @@ def _requires_mode_satisfied(req_mode, mode: str) -> bool:
     return mode == req_mode
 
 
+def _guide_example_by_id(guide_id: str, language: str = "en"):
+    """Load a single guide example (localized) by id, or None if absent."""
+    return next(
+        (e for e in _load_guide_examples(language) if e.get("id") == guide_id), None
+    )
+
+
 def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
     steps = list(example["steps"])
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
@@ -1254,61 +1261,9 @@ _REPORT_CLARIFY_PROMPTS = {
     ),
 }
 
-# Quick report: snapshot current chart — only shown when data is loaded
-_QUICK_REPORT_STEPS = [
-    {
-        "target": "#report-section",
-        "title": "Generate Quick Report",
-        "description": (
-            "Click 'Generate quick Report' here to instantly snapshot the current chart "
-            "and analysis as a standalone HTML report."
-        ),
-        "descriptions": {
-            "vi": "Nhấp 'Generate quick Report' tại đây để chụp nhanh biểu đồ và phân tích hiện tại thành báo cáo HTML độc lập.",
-            "zh": "点击此处的「Generate quick Report」即时将当前图表和分析快照为独立的 HTML 报告。",
-            "fr": "Cliquez sur 'Generate quick Report' ici pour capturer instantanément le graphique et l'analyse en cours sous forme de rapport HTML autonome.",
-            "ja": "ここで「Generate quick Report」をクリックして、現在のチャートと分析を独立した HTML レポートとして即時スナップショットします。",
-            "ru": "Нажмите «Generate quick Report», чтобы мгновенно сохранить текущий график и анализ как автономный HTML-отчёт.",
-        },
-        "position": "top",
-        "skipInteraction": False,
-    },
-]
-
-# Quick report when no data is loaded yet — prepend file selection
-_QUICK_REPORT_STEPS_NO_DATA = [
-    {
-        "target": "#file-selection",
-        "title": "Load Data First",
-        "description": "Select a CSV data file to load your analysis before generating a report.",
-        "descriptions": {
-            "vi": "Chọn tệp dữ liệu CSV để tải phân tích trước khi tạo báo cáo.",
-            "zh": "选择一个 CSV 数据文件以在生成报告之前加载您的分析。",
-            "fr": "Sélectionnez un fichier de données CSV pour charger votre analyse avant de générer un rapport.",
-            "ja": "レポートを生成する前に分析を読み込むため CSV データファイルを選択してください。",
-            "ru": "Выберите CSV-файл данных для загрузки анализа перед созданием отчёта.",
-        },
-        "position": "left",
-        "skipInteraction": False,
-    },
-    {
-        "target": "#report-section",
-        "title": "Generate Quick Report",
-        "description": (
-            "Once data is loaded, click 'Generate quick Report' here to snapshot the "
-            "current chart and analysis."
-        ),
-        "descriptions": {
-            "vi": "Khi dữ liệu đã tải, nhấp 'Generate quick Report' tại đây để chụp nhanh biểu đồ và phân tích hiện tại.",
-            "zh": "数据加载后，点击此处的「Generate quick Report」以快照当前图表和分析。",
-            "fr": "Une fois les données chargées, cliquez sur 'Generate quick Report' ici pour capturer le graphique et l'analyse.",
-            "ja": "データが読み込まれたら、ここで「Generate quick Report」をクリックして現在のチャートと分析をスナップショットします。",
-            "ru": "После загрузки данных нажмите «Generate quick Report» для снимка текущего графика и анализа.",
-        },
-        "position": "top",
-        "skipInteraction": True,
-    },
-]
+# Quick report walks the generate_report_dialog guide (see the `pending_report ==
+# "quick"` branch in deterministic_events) — a single source of truth shared with
+# the /report slash command — so there is no separate inline step list here.
 
 # Full report starting from a data mode (kinetics / point / calibrate)
 _FULL_REPORT_STEPS_FROM_DATA = [
@@ -1747,11 +1702,20 @@ def deterministic_events(messages: list, language: str, ui_context: dict = None)
 
     pending_report = _get_pending_report_type(messages)
     if pending_report == "quick":
-        raw = _QUICK_REPORT_STEPS_NO_DATA if not data_loaded else _QUICK_REPORT_STEPS
-        return [
-            {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
-            {"type": "guide", "guide_action": {"custom_steps": _translate_steps(raw, language)}},
-        ]
+        # Quick report fires the "Report Details" Swal dialog — and while that
+        # modal is open the chat widget is unreachable, so the walkthrough must
+        # step INTO the dialog. Reuse the generate_report_dialog guide (single
+        # source of truth — the same walkthrough the /report slash command
+        # launches), with its requires_mode / requires_data_loaded prefixes
+        # applied for the current context (switch to a data mode / select a file
+        # first when needed).
+        example = _guide_example_by_id("generate_report_dialog", language)
+        if example:
+            steps = _format_fewshot_hint(example, ui_context, language, steps_only=True)
+            return [
+                {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])},
+                {"type": "guide", "guide_action": {"custom_steps": steps}},
+            ]
     if pending_report == "full":
         raw = _FULL_REPORT_STEPS_IN_REPORT if mode == "report" else _FULL_REPORT_STEPS_FROM_DATA
         return [

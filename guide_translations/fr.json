@@ -442,29 +442,6 @@
     ]
   },
   {
-    "id": "report_quick",
-    "steps": [
-      "Cliquez ici sur 'Generate quick Report' pour capturer immédiatement le graphique et l'analyse actuels en rapport HTML."
-    ],
-    "queries": [
-      "rapport rapide",
-      "générer rapport rapide",
-      "instantané de rapport"
-    ]
-  },
-  {
-    "id": "report_quick_from_report",
-    "steps": [
-      "Le rapport rapide nécessite des données de mesure actives. Basculez d'abord en mode Kinetics, Point ou Calibrate.",
-      "Sélectionnez un fichier CSV pour charger votre analyse avant de générer le rapport.",
-      "Cliquez maintenant sur 'Generate quick Report' pour capturer le graphique et l'analyse actuels en rapport HTML."
-    ],
-    "queries": [
-      "rapport rapide depuis le rapport",
-      "générer rapport rapide en mode rapport"
-    ]
-  },
-  {
     "id": "report_full_from_data",
     "steps": [
       "Cliquez sur 'Export Data to Report' pour sauvegarder ce snapshot dans un sujet de rapport nommé.",
@@ -856,6 +833,28 @@
       "unité de concentration",
       "icône d'engrenage",
       "préférences"
+    ]
+  },
+  {
+    "id": "generate_report_dialog",
+    "steps": [
+      "Cliquez sur 'Generate quick Report' pour ouvrir la boîte de dialogue Report Details, où vous définissez le titre, choisissez ce qu'il faut tracer et sélectionnez le format d'export avant de générer le rapport.",
+      "Saisissez le titre affiché en haut du rapport (par défaut 'Colorimetric Analysis Report'). C'est le seul champ affiché pour un instantané Kinetics/Point simple — le mode Calibrate ajoute les options ci-dessous.",
+      "Calibration (Kinetics) uniquement : cochez les metrics à tracer et un ou plusieurs algorithmes d'ajustement par metric. Décocher un metric désactive ses ajustements ; un ajustement non résolu est ignoré avec un avertissement.",
+      "Calibration (Point) uniquement : choisissez un point temporel et cochez un ou plusieurs ajustements. Utilisez '+ Add time point' pour ajouter des entrées — une courbe d'étalonnage est produite par point temporel × ajustement.",
+      "Calibration uniquement : remplacez les libellés des axes X et Y des graphiques Excel natifs. Laissez Y vide pour étiqueter automatiquement chaque graphique avec son metric. Ces libellés restent modifiables dans Excel.",
+      "Choisissez PDF (un rapport HTML imprimable — ouvrez-le puis Print → Save as PDF) ou Excel (un classeur .xlsx avec graphiques intégrés).",
+      "Cliquez sur OK pour générer le rapport au format choisi. Le guide se termine à la fermeture de la boîte de dialogue."
+    ],
+    "queries": [
+      "boîte de dialogue de rapport",
+      "options de rapport",
+      "titre du rapport",
+      "format d'export du rapport",
+      "choisir l'ajustement pour le rapport",
+      "libellés des axes du rapport",
+      "fenêtre de rapport",
+      "pdf ou excel"
     ]
   }
 ]
