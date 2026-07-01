@@ -450,9 +450,13 @@
   {
     "id": "report_full_in_report",
     "steps": [
-      "Quản lý ảnh chụp phân tích đã lưu ở đây. Cấu hình bố cục và đặt tiêu đề báo cáo.",
-      "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ mục nào trước khi tạo báo cáo.",
-      "Tải xuống tất cả mục dưới dạng sổ làm việc Excel có biểu đồ nhúng.",
+      "Đây là Report Modification Console. Chúng ta sẽ đặt tiêu đề và các tùy chọn bố cục, xem lại các mục, rồi tạo báo cáo dưới dạng Excel hoặc PDF.",
+      "Đặt tiêu đề báo cáo tại đây — là tiêu đề của báo cáo PDF/HTML và tên workbook Excel (mặc định 'Colorimetric Analysis Report').",
+      "Tùy chọn PDF/HTML: tích 'Include Watermark' để thêm hình mờ CBBiotec, và 'Include CBB Logo' (ngay bên cạnh) để hiển thị logo ở phần đầu. Bỏ tích cả hai để có báo cáo sạch, không thương hiệu.",
+      "Tùy chọn Excel: tích để đặt dữ liệu của mỗi tệp CSV trên một tab/sheet riêng; bỏ tích để gộp tất cả vào một sheet.",
+      "Tùy chọn Excel: ghi đè nhãn trục X và Y cho các biểu đồ Excel gốc (có thể chỉnh sửa). Để trống X để tự động gán nhãn theo đơn vị nồng độ của mỗi tệp, và để trống Y theo metric của nó.",
+      "Tất cả ảnh chụp đã lưu được liệt kê ở đây. Xóa bất kỳ ảnh nào trước khi tạo.",
+      "Tải xuống tất cả mục dưới dạng bảng tính Excel được định dạng với biểu đồ nhúng.",
       "Hoặc tổng hợp tất cả mục thành báo cáo HTML có thể in."
     ],
     "queries": [

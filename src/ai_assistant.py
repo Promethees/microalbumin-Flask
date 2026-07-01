@@ -1360,16 +1360,87 @@ _FULL_REPORT_STEPS_IN_REPORT = [
         "target": "#report-console-section",
         "title": "Report Console",
         "description": (
-            "Manage your saved analysis snapshots here. Configure layout and set a report title."
+            "This is the Report Modification Console. We'll set the title and layout "
+            "options, review the items, then generate the report as Excel or PDF."
         ),
         "descriptions": {
-            "vi": "Quản lý các ảnh chụp phân tích đã lưu tại đây. Cấu hình bố cục và đặt tiêu đề báo cáo.",
-            "zh": "在此管理已保存的分析快照。配置布局并设置报告标题。",
-            "fr": "Gérez vos snapshots d'analyse sauvegardés ici. Configurez la mise en page et définissez un titre de rapport.",
-            "ja": "ここで保存された分析スナップショットを管理します。レイアウトを設定してレポートのタイトルを設定してください。",
-            "ru": "Управляйте сохранёнными снимками анализа здесь. Настройте макет и задайте название отчёта.",
+            "vi": "Đây là Report Modification Console. Chúng ta sẽ đặt tiêu đề và các tùy chọn bố cục, xem lại các mục, rồi tạo báo cáo dưới dạng Excel hoặc PDF.",
+            "zh": "这是 Report Modification Console。我们将设置标题和布局选项、检查项目，然后以 Excel 或 PDF 生成报告。",
+            "fr": "Voici la Report Modification Console. Nous allons définir le titre et les options de mise en page, vérifier les éléments, puis générer le rapport en Excel ou PDF.",
+            "ja": "これは Report Modification Console です。タイトルとレイアウトオプションを設定し、項目を確認してから、Excel または PDF でレポートを生成します。",
+            "ru": "Это Report Modification Console. Мы зададим заголовок и параметры оформления, проверим элементы, затем создадим отчёт в Excel или PDF.",
         },
         "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "#console-title",
+        "title": "Report Title",
+        "description": (
+            "Set the report title here — the heading of the PDF/HTML report and the "
+            "Excel workbook title (default 'Colorimetric Analysis Report')."
+        ),
+        "descriptions": {
+            "vi": "Đặt tiêu đề báo cáo tại đây — là tiêu đề của báo cáo PDF/HTML và tên workbook Excel (mặc định 'Colorimetric Analysis Report').",
+            "zh": "在此设置报告标题——它是 PDF/HTML 报告的标题和 Excel 工作簿的名称（默认 'Colorimetric Analysis Report'）。",
+            "fr": "Définissez le titre du rapport ici — c'est l'en-tête du rapport PDF/HTML et le nom du classeur Excel (par défaut 'Colorimetric Analysis Report').",
+            "ja": "ここでレポートのタイトルを設定します — PDF/HTML レポートの見出しと Excel ワークブックの名前になります（既定は 'Colorimetric Analysis Report'）。",
+            "ru": "Задайте здесь название отчёта — это заголовок PDF/HTML-отчёта и имя книги Excel (по умолчанию 'Colorimetric Analysis Report').",
+        },
+        "position": "bottom",
+        "skipInteraction": True,
+    },
+    {
+        "target": "#console-watermark",
+        "title": "Watermark & Logo (PDF)",
+        "description": (
+            "PDF/HTML options: tick 'Include Watermark' for a CBBiotec watermark, and "
+            "'Include CBB Logo' (just beside it) to show the logo in the header. Untick "
+            "both for a clean, unbranded report."
+        ),
+        "descriptions": {
+            "vi": "Tùy chọn PDF/HTML: tích 'Include Watermark' để thêm hình mờ CBBiotec, và 'Include CBB Logo' (ngay bên cạnh) để hiển thị logo ở phần đầu. Bỏ tích cả hai để có báo cáo sạch, không thương hiệu.",
+            "zh": "PDF/HTML 选项：勾选 'Include Watermark' 添加 CBBiotec 水印，勾选 'Include CBB Logo'（就在旁边）在页眉显示徽标。两者都取消勾选可获得干净、无品牌的报告。",
+            "fr": "Options PDF/HTML : cochez 'Include Watermark' pour un filigrane CBBiotec, et 'Include CBB Logo' (juste à côté) pour afficher le logo dans l'en-tête. Décochez les deux pour un rapport propre, sans marque.",
+            "ja": "PDF/HTML オプション：CBBiotec の透かしを入れるには 'Include Watermark'、ヘッダーにロゴを表示するには（すぐ隣の）'Include CBB Logo' をチェックします。両方をオフにするとブランドなしのクリーンなレポートになります。",
+            "ru": "Параметры PDF/HTML: отметьте 'Include Watermark' для водяного знака CBBiotec и 'Include CBB Logo' (рядом), чтобы показать логотип в шапке. Снимите обе отметки для чистого отчёта без брендинга.",
+        },
+        "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "#console-split-sheets",
+        "title": "Split Sheets (Excel)",
+        "description": (
+            "Excel option: tick to place each CSV file's data on its own tab/sheet; "
+            "untick to combine everything into one sheet."
+        ),
+        "descriptions": {
+            "vi": "Tùy chọn Excel: tích để đặt dữ liệu của mỗi tệp CSV trên một tab/sheet riêng; bỏ tích để gộp tất cả vào một sheet.",
+            "zh": "Excel 选项：勾选可将每个 CSV 文件的数据放在各自的标签页/工作表上；取消勾选可将所有数据合并到一个工作表中。",
+            "fr": "Option Excel : cochez pour placer les données de chaque fichier CSV sur son propre onglet/feuille ; décochez pour tout combiner dans une seule feuille.",
+            "ja": "Excel オプション：各 CSV ファイルのデータを個別のタブ/シートに配置するにはチェック、すべてを 1 つのシートにまとめるにはオフにします。",
+            "ru": "Параметр Excel: отметьте, чтобы поместить данные каждого CSV-файла на отдельную вкладку/лист; снимите отметку, чтобы объединить всё на одном листе.",
+        },
+        "position": "right",
+        "skipInteraction": True,
+    },
+    {
+        "target": "#console-xlabel",
+        "title": "Chart Axis Labels (Excel)",
+        "description": (
+            "Excel option: override the X and Y axis labels for the native (editable) "
+            "Excel charts. Leave X blank to auto-label with each file's concentration "
+            "unit, and Y blank for its metric."
+        ),
+        "descriptions": {
+            "vi": "Tùy chọn Excel: ghi đè nhãn trục X và Y cho các biểu đồ Excel gốc (có thể chỉnh sửa). Để trống X để tự động gán nhãn theo đơn vị nồng độ của mỗi tệp, và để trống Y theo metric của nó.",
+            "zh": "Excel 选项：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。",
+            "fr": "Option Excel : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
+            "ja": "Excel オプション：ネイティブ（編集可能）Excel グラフの X 軸・Y 軸ラベルを上書きします。X を空欄にすると各ファイルの濃度単位で、Y を空欄にするとその metric で自動ラベル付けされます。",
+            "ru": "Параметр Excel: переопределите подписи осей X и Y для нативных (редактируемых) диаграмм Excel. Оставьте X пустым для автоподписи по единице концентрации файла, а Y пустым — по его metric.",
+        },
+        "position": "bottom",
         "skipInteraction": True,
     },
     {

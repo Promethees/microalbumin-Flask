@@ -459,9 +459,13 @@
   {
     "id": "report_full_in_report",
     "steps": [
-      "Gérez ici vos snapshots d'analyse. Configurez la mise en page et définissez un titre de rapport.",
-      "Tous les snapshots sont listés ici. Supprimez-en si nécessaire avant de générer.",
-      "Téléchargez tous les éléments en classeur Excel formaté avec graphiques intégrés.",
+      "Voici la Report Modification Console. Nous allons définir le titre et les options de mise en page, vérifier les éléments, puis générer le rapport en Excel ou PDF.",
+      "Définissez le titre du rapport ici — c'est l'en-tête du rapport PDF/HTML et le nom du classeur Excel (par défaut 'Colorimetric Analysis Report').",
+      "Options PDF/HTML : cochez 'Include Watermark' pour un filigrane CBBiotec, et 'Include CBB Logo' (juste à côté) pour afficher le logo dans l'en-tête. Décochez les deux pour un rapport propre, sans marque.",
+      "Option Excel : cochez pour placer les données de chaque fichier CSV sur son propre onglet/feuille ; décochez pour tout combiner dans une seule feuille.",
+      "Option Excel : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
+      "Tous les snapshots sauvegardés sont listés ici. Supprimez-en avant de générer.",
+      "Téléchargez tous les éléments sous forme de classeur Excel formaté avec graphiques intégrés.",
       "Ou compilez tous les éléments en rapport HTML imprimable."
     ],
     "queries": [

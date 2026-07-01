@@ -441,10 +441,14 @@
   {
     "id": "report_full_in_report",
     "steps": [
-      "在此管理已保存的分析快照。配置布局并设置报告标题。",
-      "所有已保存的快照都列在此处。生成之前删除不需要的。",
+      "这是 Report Modification Console。我们将设置标题和布局选项、检查项目，然后以 Excel 或 PDF 生成报告。",
+      "在此设置报告标题——它是 PDF/HTML 报告的标题和 Excel 工作簿的名称（默认 'Colorimetric Analysis Report'）。",
+      "PDF/HTML 选项：勾选 'Include Watermark' 添加 CBBiotec 水印，勾选 'Include CBB Logo'（就在旁边）在页眉显示徽标。两者都取消勾选可获得干净、无品牌的报告。",
+      "Excel 选项：勾选可将每个 CSV 文件的数据放在各自的标签页/工作表上；取消勾选可将所有数据合并到一个工作表中。",
+      "Excel 选项：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。",
+      "所有已保存的快照都列在这里。在生成之前删除不需要的快照。",
       "将所有项目下载为带有嵌入图表的格式化 Excel 工作簿。",
-      "或将所有项目编译为可打印的 HTML 报告。"
+      "或者将所有项目编译为可打印的 HTML 报告。"
     ],
     "queries": [
       "在报告模式中生成完整报告",

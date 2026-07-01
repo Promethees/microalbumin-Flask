@@ -1282,8 +1282,36 @@
         {
           "target": "#report-console-section",
           "title": "Report Console",
-          "description": "Manage your saved analysis snapshots here. Configure layout and set a report title.",
+          "description": "This is the Report Modification Console. We'll set the title and layout options, review the items, then generate the report as Excel or PDF.",
           "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-title",
+          "title": "Report Title",
+          "description": "Set the report title here — the heading of the PDF/HTML report and the Excel workbook title (default 'Colorimetric Analysis Report').",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-watermark",
+          "title": "Watermark & Logo (PDF)",
+          "description": "PDF/HTML options: tick 'Include Watermark' for a CBBiotec watermark, and 'Include CBB Logo' (just beside it) to show the logo in the header. Untick both for a clean, unbranded report.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-split-sheets",
+          "title": "Split Sheets (Excel)",
+          "description": "Excel option: tick to place each CSV file's data on its own tab/sheet; untick to combine everything into one sheet.",
+          "position": "right",
+          "skipInteraction": true
+        },
+        {
+          "target": "#console-xlabel",
+          "title": "Chart Axis Labels (Excel)",
+          "description": "Excel option: override the X and Y axis labels for the native (editable) Excel charts. Leave X blank to auto-label with each file's concentration unit, and Y blank for its metric.",
+          "position": "bottom",
           "skipInteraction": true
         },
         {
