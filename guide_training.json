@@ -1957,16 +1957,80 @@
         "max json files shown",
         "activity log retention",
         "gear icon",
-        "settings button"
+        "settings button",
+        "how to open settings",
+        "change the language",
+        "change app language",
+        "settings",
+        "preferences",
+        "app preferences",
+        "concentration unit setting",
+        "table sort order"
       ],
-      "conditions": {},
       "steps": [
         {
           "target": "#settingsBtn",
-          "title": "App Settings",
-          "description": "Click the ⚙️ gear icon to open the App Settings panel. From here you can customise: theme, default measurement mode, window size, default subfolder, file/JSON table row limits, activity log retention, colorimeter reading defaults (timeout, interval, notify, log height), and data display defaults (chart height, normalise, split sources, panel expand states).",
+          "awaitSwalOpen": true,
+          "title": "Open App Settings",
+          "description": "Click the ⚙️ gear to open the App Settings dialog. It groups every preference into sections — we'll walk through the main ones.",
           "position": "bottom",
-          "skipInteraction": false
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-ui-language",
+          "title": "General",
+          "description": "General settings. This is the interface Language (6 languages); just below it is the timestamp format used when naming recorded files.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-theme",
+          "title": "Appearance",
+          "description": "Appearance — switch the app between Light, Dark, or Auto (follow your system) theme.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-mode",
+          "title": "Measurement Defaults",
+          "description": "Measurement defaults: the mode the app opens in (kinetics / point / calibrate) and, next to it, the default concentration unit (ng/µL, nM, or %).",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-file-sort",
+          "title": "File Selection",
+          "description": "File Selection — how file lists are sorted (date or name), plus how many CSV / JSON rows to show before the list scrolls.",
+          "position": "bottom",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-log-timeout",
+          "title": "Colorimeter Reading",
+          "description": "Colorimeter Reading defaults applied to a new recording: timeout (duration), interval between reads, the notify-on-finish toggle, and the log panel height.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-chart-height",
+          "title": "Data Display",
+          "description": "Data Display defaults: chart height, whether data is normalised and split by source, and which analysis panels start expanded.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": "#swal-ai-feedback-enabled",
+          "title": "AI Assistant",
+          "description": "AI Assistant — toggle whether your 👍/👎 answer ratings are collected to improve local guide matching. You can also export or reset that learning here.",
+          "position": "top",
+          "skipInteraction": true
+        },
+        {
+          "target": ".swal2-confirm",
+          "title": "Save Settings",
+          "description": "Click Save to apply your changes. Cancel discards them, and 'Revert to defaults' resets every setting. The guide finishes when the dialog closes.",
+          "position": "top",
+          "skipInteraction": true
         }
       ]
     },
@@ -2041,15 +2105,31 @@
     {
       "id": "edit_file",
       "queries": [
-        "edit file", "edit csv", "edit csv file", "edit a data file", "edit data file",
-        "modify file", "modify csv", "modify data file", "change file contents",
-        "rename a file", "rename csv", "edit the file", "edit a file", "file editor",
-        "correct a value in a file", "fix a value in the csv", "change csv values"
+        "edit file",
+        "edit csv",
+        "edit csv file",
+        "edit a data file",
+        "edit data file",
+        "modify file",
+        "modify csv",
+        "modify data file",
+        "change file contents",
+        "rename a file",
+        "rename csv",
+        "edit the file",
+        "edit a file",
+        "file editor",
+        "correct a value in a file",
+        "fix a value in the csv",
+        "change csv values"
       ],
       "steps": [
         {
           "target": "#file-selection",
-          "expand": ["file-sel-collapse", "json-sel-collapse"],
+          "expand": [
+            "file-sel-collapse",
+            "json-sel-collapse"
+          ],
           "awaitSwalOpen": true,
           "title": "Choose a File to Edit",
           "description": "Click the ✏️ Edit button next to any file to open the editor — a data file in this list, or a calibration curve under 'Select Coefficients' above.",
@@ -2085,18 +2165,35 @@
     {
       "id": "edit_calibration_curve",
       "queries": [
-        "edit calibration curve", "modify calibration curve", "change calibration curve",
-        "edit calibration", "modify calibration", "change calibration", "edit calibration json",
-        "modify calibration json", "edit standard curve", "modify standard curve",
-        "change standard curve", "edit the coefficients", "modify coefficients",
-        "change coefficients", "edit calibration coefficients", "change the calibration coefficients",
-        "edit calibration file", "modify the standard curve json"
+        "edit calibration curve",
+        "modify calibration curve",
+        "change calibration curve",
+        "edit calibration",
+        "modify calibration",
+        "change calibration",
+        "edit calibration json",
+        "modify calibration json",
+        "edit standard curve",
+        "modify standard curve",
+        "change standard curve",
+        "edit the coefficients",
+        "modify coefficients",
+        "change coefficients",
+        "edit calibration coefficients",
+        "change the calibration coefficients",
+        "edit calibration file",
+        "modify the standard curve json"
       ],
-      "requires_mode": ["kinetics", "point"],
+      "requires_mode": [
+        "kinetics",
+        "point"
+      ],
       "steps": [
         {
           "target": "#cal-json-sel-section",
-          "expand": ["json-sel-collapse"],
+          "expand": [
+            "json-sel-collapse"
+          ],
           "awaitSwalOpen": true,
           "title": "Open a Calibration Curve",
           "description": "Calibration curves are the saved JSON files under 'Select Coefficients'. Click the ✏️ Edit button next to the curve you want to change to open the editor.",

@@ -818,5 +818,33 @@
       "modifier les coefficients",
       "éditer la courbe étalon"
     ]
+  },
+  {
+    "id": "app_settings",
+    "steps": [
+      "Cliquez sur l'engrenage ⚙️ pour ouvrir la boîte de dialogue App Settings. Elle regroupe chaque préférence en sections — nous allons parcourir les principales.",
+      "Paramètres généraux. Voici la Langue de l'interface (6 langues) ; juste en dessous se trouve le format d'horodatage utilisé pour nommer les fichiers enregistrés.",
+      "Apparence — basculez l'application entre les thèmes Light, Dark ou Auto (selon le système).",
+      "Valeurs par défaut de mesure : le mode d'ouverture de l'application (kinetics / point / calibrate) et, à côté, l'unité de concentration par défaut (ng/µL, nM ou %).",
+      "File Selection — le tri des listes de fichiers (date ou nom), ainsi que le nombre de lignes CSV / JSON affichées avant le défilement.",
+      "Valeurs par défaut de Lecture du colorimètre appliquées à un nouvel enregistrement : timeout (durée), intervalle entre les lectures, la notification de fin, et la hauteur du panneau de journal.",
+      "Valeurs par défaut d'Affichage des données : hauteur du graphique, normalisation et séparation par source des données, et quels panneaux d'analyse s'ouvrent déjà déployés.",
+      "AI Assistant — activez ou non la collecte de vos évaluations 👍/👎 pour améliorer la correspondance locale des guides. Vous pouvez aussi exporter ou réinitialiser cet apprentissage ici.",
+      "Cliquez sur Save pour appliquer vos modifications. Cancel les annule, et 'Revert to defaults' réinitialise tous les réglages. Le guide se termine à la fermeture de la boîte de dialogue."
+    ],
+    "queries": [
+      "paramètres de l'application",
+      "ouvrir les paramètres",
+      "comment ouvrir les paramètres",
+      "modifier les paramètres",
+      "changer la langue",
+      "changer la langue de l'application",
+      "personnaliser l'application",
+      "configurer l'application",
+      "changer le mode par défaut",
+      "unité de concentration",
+      "icône d'engrenage",
+      "préférences"
+    ]
   }
 ]

@@ -16,7 +16,7 @@
         { cmd: '/concentration', desc: 'Calculate sample concentration from calibration data', action: 'concentration' },
         { cmd: '/merge', desc: 'Combine multiple CSV files into a single multi-source file (dialog flow)', action: 'merge' },
         { cmd: '/edit', desc: 'Edit a data or calibration file — rename or change its contents (dialog flow)', action: 'guide', guide_id: 'edit_file' },
-        { cmd: '/settings', desc: 'Open App Settings — language, default mode, units, data folder (dialog flow)', action: 'settings' },
+        { cmd: '/settings', desc: 'Open App Settings — language, default mode, units, data folder (dialog flow)', action: 'guide', guide_id: 'app_settings' },
         { cmd: '/range', desc: 'Set the analysis time window (start, end, unit)', action: 'guide', guide_id: 'set_analysis_range' },
         { cmd: '/save-range', desc: 'Save the current display-range rows to a new CSV (dialog flow)', action: 'save_range' },
         { cmd: '/normalize', desc: 'Toggle baseline subtraction to remove background absorbance', action: 'guide', guide_id: 'normalize_data' },
@@ -174,50 +174,6 @@
             fr: 'Ajoutez les fichiers CSV à combiner et ordonnez-les avec les commandes ▲/▼ (tous doivent partager la même mesure, le même mode et les mêmes unités), puis cliquez sur Merge — ou Cancel. Le guide continue à la fermeture de la boîte de dialogue.',
             ja: '結合する CSV ファイルを追加し、▲/▼ で順序を並べ替えます（すべて同じ測定・モード・単位である必要があります）。その後 Merge をクリック（または Cancel）。ダイアログが閉じるとガイドは続行します。',
             ru: 'Добавьте CSV-файлы для объединения и упорядочьте их кнопками ▲/▼ (у всех должны совпадать измерение, режим и единицы), затем нажмите Merge — или Cancel. Руководство продолжится после закрытия диалога.',
-        },
-        position: 'top',
-        skipInteraction: true,
-    };
-
-    // App Settings — the gear opens the settings dialog (two dialog steps).
-    const _SETTINGS_TRIGGER_STEP = {
-        target: '#settingsBtn',
-        title: 'Open App Settings',
-        description: 'Click the ⚙️ gear to open App Settings.',
-        descriptions: {
-            vi: 'Nhấp biểu tượng bánh răng ⚙️ để mở App Settings.',
-            zh: '点击 ⚙️ 齿轮打开 App Settings。',
-            fr: "Cliquez sur l'engrenage ⚙️ pour ouvrir App Settings.",
-            ja: '⚙️ 歯車をクリックして App Settings を開きます。',
-            ru: 'Нажмите шестерёнку ⚙️, чтобы открыть App Settings.',
-        },
-        position: 'bottom',
-        skipInteraction: false,
-    };
-    const _SETTINGS_LANG_STEP = {
-        target: '#swal-ui-language',
-        title: 'Interface Language',
-        description: 'This is the interface Language setting — one of many preferences here (default mode, window size, concentration unit, table sort, data folder). Adjust anything you like, then click Next.',
-        descriptions: {
-            vi: 'Đây là cài đặt Ngôn ngữ giao diện — một trong nhiều tùy chọn ở đây (chế độ mặc định, kích thước cửa sổ, đơn vị nồng độ, sắp xếp bảng, thư mục dữ liệu). Điều chỉnh tùy ý, rồi nhấp Next.',
-            zh: '这是界面 Language 设置——此处众多首选项之一（默认模式、窗口大小、浓度单位、表格排序、数据文件夹）。随意调整后点击 Next。',
-            fr: "Voici le réglage de la Langue de l'interface — l'une des nombreuses préférences ici (mode par défaut, taille de fenêtre, unité de concentration, tri des tableaux, dossier de données). Ajustez ce que vous voulez, puis cliquez sur Next.",
-            ja: 'これはインターフェースの Language 設定です — ここにある多くの設定の一つ（既定モード、ウィンドウサイズ、濃度単位、テーブルの並び順、データフォルダー）。好きに調整して Next をクリックしてください。',
-            ru: 'Это настройка Language интерфейса — одна из многих здесь (режим по умолчанию, размер окна, единица концентрации, сортировка таблиц, папка данных). Измените что нужно и нажмите Next.',
-        },
-        position: 'bottom',
-        skipInteraction: true,
-    };
-    const _SETTINGS_SAVE_STEP = {
-        target: '.swal2-confirm',
-        title: 'Save Settings',
-        description: 'Click Save to apply your preferences (or Cancel to discard, or Revert to defaults). The guide continues when the dialog closes.',
-        descriptions: {
-            vi: 'Nhấp Save để áp dụng tùy chọn (hoặc Cancel để hủy, hoặc Revert để về mặc định). Hướng dẫn tiếp tục khi hộp thoại đóng.',
-            zh: '点击 Save 应用您的偏好设置（或 Cancel 放弃，或 Revert 恢复默认）。对话框关闭后指南继续。',
-            fr: 'Cliquez sur Save pour appliquer vos préférences (ou Cancel pour annuler, ou Revert pour rétablir les valeurs par défaut). Le guide continue à la fermeture de la boîte de dialogue.',
-            ja: 'Save をクリックして設定を適用します（Cancel で破棄、Revert で既定値に戻す）。ダイアログが閉じるとガイドは続行します。',
-            ru: 'Нажмите Save, чтобы применить настройки (или Cancel для отмены, или Revert для сброса к значениям по умолчанию). Руководство продолжится после закрытия диалога.',
         },
         position: 'top',
         skipInteraction: true,
@@ -1139,11 +1095,6 @@
             return;
         }
 
-        if (cmd.action === 'settings') {
-            _addMsg('user', cmd.cmd);
-            _runSettingsGuide();
-            return;
-        }
 
         if (cmd.action === 'redo') {
             _runRedoAction();
@@ -1246,13 +1197,6 @@
         const lang = AI.activeLang || 'en';
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
         _launchCustomSteps([_MERGE_TRIGGER_STEP, _MERGE_DIALOG_STEP]);
-    }
-
-    // App Settings guide: gear → settings dialog (two dialog steps: language → Save).
-    function _runSettingsGuide() {
-        const lang = AI.activeLang || 'en';
-        _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
-        _launchCustomSteps([_SETTINGS_TRIGGER_STEP, _SETTINGS_LANG_STEP, _SETTINGS_SAVE_STEP]);
     }
 
     // Show an inline quick/full choice — user clicks a button, guide launches immediately

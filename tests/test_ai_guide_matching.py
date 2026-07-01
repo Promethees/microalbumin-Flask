@@ -535,6 +535,55 @@ def test_calibration_build_and_conceptual_not_captured_by_edit(query):
     assert gid != "edit_calibration_curve"
 
 
+# ---------------------------------------------------------------------------
+# app_settings — full dialog walkthrough (opener → every settings group → Save),
+# not just the gear button.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("query", [
+    "how to open settings",
+    "app settings",
+    "change the language",
+    "change default mode",
+    "how to customize the app",
+])
+def test_app_settings_fires_from_free_text(query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, "en")
+    assert gid == "app_settings"
+    assert steps
+
+
+def test_app_settings_walks_the_whole_dialog():
+    _, steps = ai_assistant.resolve_guide("app settings", KIN_DATA, "en")
+    # Opener (gear, await-open) then a dialog step per settings group, ending on Save.
+    assert steps[0]["target"] == "#settingsBtn"
+    assert steps[0].get("awaitSwalOpen") is True
+    targets = [s["target"] for s in steps]
+    for expected in ["#swal-ui-language", "#swal-theme", "#swal-mode",
+                     "#swal-file-sort", "#swal-ai-feedback-enabled", ".swal2-confirm"]:
+        assert expected in targets
+    assert targets[-1] == ".swal2-confirm"
+    # Every in-dialog target is auto-detected as a dialog step by the JS engine's
+    # /swal2|#swal-/ heuristic, so no explicit dialogStep flag is needed here.
+    for t in targets[1:]:
+        assert "#swal-" in t or "swal2" in t
+
+
+@pytest.mark.parametrize("lang,query", [
+    ("zh", "应用设置"),
+    ("fr", "paramètres de l'application"),
+    ("ja", "アプリ設定"),
+    ("ru", "настройки приложения"),
+])
+def test_app_settings_localized(lang, query):
+    gid, steps = ai_assistant.resolve_guide(query, KIN_DATA, lang)
+    assert gid == "app_settings"
+    _, en_steps = ai_assistant.resolve_guide("app settings", KIN_DATA, "en")
+    assert len(steps) == len(en_steps)
+    for en_s, s in zip(en_steps, steps):
+        assert s["description"] and s["description"] != en_s["description"]
+
+
 def test_requires_mode_list_helper():
     assert ai_assistant._requires_mode_satisfied(["kinetics", "point"], "point") is True
     assert ai_assistant._requires_mode_satisfied(["kinetics", "point"], "calibrate") is False

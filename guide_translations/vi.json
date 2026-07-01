@@ -814,5 +814,32 @@
       "sửa hệ số",
       "chỉnh sửa đường chuẩn json"
     ]
+  },
+  {
+    "id": "app_settings",
+    "steps": [
+      "Nhấp biểu tượng bánh răng ⚙️ để mở hộp thoại App Settings. Nó nhóm mọi tùy chọn thành các mục — chúng ta sẽ đi qua những mục chính.",
+      "Cài đặt chung. Đây là Ngôn ngữ giao diện (6 ngôn ngữ); ngay bên dưới là định dạng dấu thời gian dùng khi đặt tên tệp ghi.",
+      "Giao diện — chuyển ứng dụng giữa chế độ Light, Dark, hoặc Auto (theo hệ thống).",
+      "Mặc định đo lường: chế độ ứng dụng mở lên (kinetics / point / calibrate) và, bên cạnh, đơn vị nồng độ mặc định (ng/µL, nM, hoặc %).",
+      "File Selection — cách sắp xếp danh sách tệp (theo ngày hoặc tên), cùng số hàng CSV / JSON hiển thị trước khi danh sách cuộn.",
+      "Mặc định Đọc máy so màu áp dụng cho bản ghi mới: timeout (thời lượng), khoảng cách giữa các lần đọc, nút thông báo khi xong, và chiều cao khung log.",
+      "Mặc định Hiển thị dữ liệu: chiều cao biểu đồ, dữ liệu có được chuẩn hóa và tách theo nguồn hay không, và các bảng phân tích nào mở sẵn.",
+      "AI Assistant — bật/tắt việc thu thập đánh giá 👍/👎 của bạn để cải thiện việc khớp hướng dẫn cục bộ. Bạn cũng có thể xuất hoặc đặt lại phần học đó tại đây.",
+      "Nhấp Save để áp dụng thay đổi. Cancel để hủy, và 'Revert to defaults' đặt lại mọi cài đặt. Hướng dẫn kết thúc khi hộp thoại đóng."
+    ],
+    "queries": [
+      "cài đặt ứng dụng",
+      "mở cài đặt",
+      "cách mở cài đặt",
+      "thay đổi cài đặt",
+      "đổi ngôn ngữ",
+      "đổi ngôn ngữ ứng dụng",
+      "tùy chỉnh ứng dụng",
+      "cấu hình ứng dụng",
+      "đổi chế độ mặc định",
+      "đơn vị nồng độ",
+      "biểu tượng bánh răng"
+    ]
   }
 ]
