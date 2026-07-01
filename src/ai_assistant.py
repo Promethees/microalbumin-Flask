@@ -266,11 +266,45 @@ _GET_STARTED_STEP = {
     "skipInteraction": False,
 }
 
+# Prepended (via a guide's soft ``requires_mode``) when the feature the guide
+# targets only exists in a particular measurement mode and the app is currently
+# in a different one — the mode name (a technical term) is interpolated as-is.
+# Unlike a guide's hard ``conditions.mode`` (which EXCLUDES the guide from
+# matching outside that mode), ``requires_mode`` keeps the guide matchable
+# everywhere and instead corrects the user with this switch-mode step, so a
+# strong query ("save linearity range") never falls through to the LLM and lands
+# on an unrelated screen.
+_MODE_SWITCH_STEP = {
+    "target": "#meas-mode-section",
+    "title": "Switch Measurement Mode",
+    "description": "This feature is only available in {mode} mode. Click here to switch to {mode} mode first, then reopen this guide.",
+    "descriptions": {
+        "vi": "Tính năng này chỉ có trong chế độ {mode}. Nhấp vào đây để chuyển sang chế độ {mode} trước, rồi mở lại hướng dẫn này.",
+        "zh": "此功能仅在 {mode} 模式下可用。请先点击此处切换到 {mode} 模式，然后重新打开本指南。",
+        "fr": "Cette fonction n'est disponible qu'en mode {mode}. Cliquez ici pour passer d'abord en mode {mode}, puis rouvrez ce guide.",
+        "ja": "この機能は {mode} モードでのみ利用できます。まずここをクリックして {mode} モードに切り替え、このガイドを開き直してください。",
+        "ru": "Эта функция доступна только в режиме {mode}. Нажмите здесь, чтобы сначала переключиться в режим {mode}, затем снова откройте руководство.",
+    },
+    "position": "right",
+    "skipInteraction": False,
+}
+
+
+def _mode_switch_step(mode: str, language: str) -> dict:
+    """A localized 'switch to <mode> mode' step (mode name kept as-is)."""
+    step = _translate_step(_MODE_SWITCH_STEP, language)
+    return {**step, "description": step["description"].format(mode=mode)}
+
 
 def _format_fewshot_hint(example: dict, ui_context: dict, language: str = "en", steps_only: bool = False):
     steps = list(example["steps"])
     if example.get("requires_data_loaded") and not ui_context.get("data_loaded"):
         steps = [_translate_step(_FILE_SELECT_STEP, language)] + steps
+    # Soft mode gate: correct the user into the right mode FIRST (prepended last so
+    # it lands ahead of the file-select step).
+    req_mode = example.get("requires_mode")
+    if req_mode and (ui_context or {}).get("mode") != req_mode:
+        steps = [_mode_switch_step(req_mode, language)] + steps
     if steps_only:
         return steps
     steps_json = json.dumps(steps, ensure_ascii=False)

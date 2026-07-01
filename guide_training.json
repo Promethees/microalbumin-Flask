@@ -2019,9 +2019,7 @@
         "save linear section",
         "export linear section"
       ],
-      "conditions": {
-        "mode": "kinetics"
-      },
+      "requires_mode": "kinetics",
       "requires_data_loaded": true,
       "steps": [
         {
@@ -2032,7 +2030,7 @@
           "skipInteraction": false
         },
         {
-          "target": "button[title=\"Save the linearity range rows for this source to a new CSV file\"]",
+          "target": "button[data-hint=\"Save the linearity range rows for this source to a new CSV file\"]",
           "title": "Save Linearity Range",
           "description": "Click '📐 Save Linearity Range' to export just the rows that fall within the detected linear phase of this source to a new CSV file. The filename is pre-filled based on the current file and source index. This subset is ideal input for building a calibration standard curve.",
           "position": "right",

@@ -337,3 +337,61 @@ def test_ai_match_route_defers_conceptual(client):
     assert data["fires"] is False
     assert data["guide_id"] is None
     assert data["steps"] == []
+
+
+# ---------------------------------------------------------------------------
+# save_linearity_range — soft mode gate + correct button selector.
+# Regression for "how to save linearity range" launching a guide that pointed
+# at #log-cdc-data: the hard conditions.mode==kinetics gate excluded the guide
+# outside kinetics, so the query fell through to the LLM and landed on the CDC
+# logging console. It is now a soft `requires_mode` that keeps the guide
+# matchable everywhere and prepends a switch-to-kinetics step instead.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("ctx", [
+    {"mode": "kinetics", "data_loaded": True, "app_started": True},
+    {"mode": "point", "data_loaded": True, "app_started": True},
+    {"mode": "calibrate", "data_loaded": True, "app_started": True},
+    {"mode": "unknown", "data_loaded": False, "app_started": True},
+])
+def test_save_linearity_range_fires_in_every_mode(ctx):
+    gid, steps = ai_assistant.resolve_guide("how to save linearity range", ctx, "en")
+    assert gid == "save_linearity_range"
+    assert steps
+
+
+def test_save_linearity_range_prepends_switch_mode_when_not_kinetics():
+    gid, steps = ai_assistant.resolve_guide(
+        "how to save linearity range",
+        {"mode": "point", "data_loaded": True, "app_started": True}, "en")
+    assert steps[0]["target"] == "#meas-mode-section"
+    assert "kinetics" in steps[0]["description"]
+
+
+def test_save_linearity_range_no_switch_mode_in_kinetics():
+    gid, steps = ai_assistant.resolve_guide(
+        "how to save linearity range",
+        {"mode": "kinetics", "data_loaded": True, "app_started": True}, "en")
+    assert steps[0]["target"] != "#meas-mode-section"
+
+
+def test_save_linearity_range_button_uses_data_hint_selector():
+    # The real button carries data-hint (native title= is stripped by tooltip.js),
+    # so a button[title=...] target would spotlight nothing.
+    _, steps = ai_assistant.resolve_guide(
+        "how to save linearity range",
+        {"mode": "kinetics", "data_loaded": True, "app_started": True}, "en")
+    targets = [s["target"] for s in steps]
+    assert any('data-hint="Save the linearity range' in t for t in targets)
+    assert not any("[title=" in t for t in targets)
+
+
+def test_soft_mode_gate_does_not_crossfire_other_guides():
+    # Removing save_linearity_range's hard mode gate must not let mode-specific
+    # guides bleed across modes: point-mode concentration still routes to the
+    # point variant, not the kinetics one.
+    assert route("how do I calculate concentration", CAL_DATA)  # sanity: resolves
+    gid, _ = ai_assistant.resolve_guide(
+        "how do I calculate concentration",
+        {"mode": "point", "data_loaded": True, "app_started": True}, "en")
+    assert gid == "concentration_calc_point"

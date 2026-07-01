@@ -64,6 +64,26 @@
         skipInteraction: false,
     };
 
+    // Switch-mode prepend (mirrors Python's _MODE_SWITCH_STEP). Used when a guide
+    // carries a soft `requires_mode` and the app is in a different mode — the mode
+    // name (technical term) is interpolated as-is.
+    function _modeSwitchStep(mode) {
+        return {
+            target: '#meas-mode-section',
+            title: 'Switch Measurement Mode',
+            description: `This feature is only available in ${mode} mode. Click here to switch to ${mode} mode first, then reopen this guide.`,
+            descriptions: {
+                vi: `Tính năng này chỉ có trong chế độ ${mode}. Nhấp vào đây để chuyển sang chế độ ${mode} trước, rồi mở lại hướng dẫn này.`,
+                zh: `此功能仅在 ${mode} 模式下可用。请先点击此处切换到 ${mode} 模式，然后重新打开本指南。`,
+                fr: `Cette fonction n'est disponible qu'en mode ${mode}. Cliquez ici pour passer d'abord en mode ${mode}, puis rouvrez ce guide.`,
+                ja: `この機能は ${mode} モードでのみ利用できます。まずここをクリックして ${mode} モードに切り替え、このガイドを開き直してください。`,
+                ru: `Эта функция доступна только в режиме ${mode}. Нажмите здесь, чтобы сначала переключиться в режим ${mode}, затем снова откройте руководство.`,
+            },
+            position: 'right',
+            skipInteraction: false,
+        };
+    }
+
     // Confirmation messages (mirrors Python's _GUIDE_LAUNCHED)
     const _GUIDE_LAUNCHED = {
         en: 'Guide launched — follow the highlighted steps.',
@@ -1041,6 +1061,11 @@
         let steps = [...example.steps];
         if (example.requires_data_loaded && !ctx.data_loaded) {
             steps = [_FILE_SELECT_STEP, ...steps];
+        }
+        // Soft mode gate: prepend a switch-mode step (ahead of file-select) when
+        // the guide's feature needs a mode the app isn't currently in.
+        if (example.requires_mode && ctx.mode !== example.requires_mode) {
+            steps = [_modeSwitchStep(example.requires_mode), ...steps];
         }
         const lang = AI.activeLang || 'en';
         _addMsg('assistant', _GUIDE_LAUNCHED[lang] || _GUIDE_LAUNCHED.en);
