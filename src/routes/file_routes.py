@@ -4,6 +4,9 @@ import os
 import json
 import csv
 import re
+import time
+import threading
+import secrets
 from datetime import datetime
 from pathlib import Path
 from filelock import FileLock, Timeout
@@ -24,6 +27,41 @@ from export_data import metadata_mismatches, write_metadata, write_headers, extr
 from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
+
+# ── Cross-tab edit-session locks ──────────────────────────────────────────────
+# A file open in the editor of one browser tab must not be editable from another
+# tab at the same time. Because every tab talks to this one Flask process, an
+# in-memory registry (guarded by a lock for the threaded dev server) is enough:
+# it maps a file's absolute path to the holder's opaque token and a last-seen
+# timestamp. The holding tab heartbeats to keep the lock fresh; a tab that closes
+# or crashes without releasing lets the lock go stale after _EDIT_LOCK_TTL so the
+# file is never wedged permanently. This is distinct from the per-write FileLock
+# in edit_file(), which only guards the atomicity of a single save.
+_EDIT_LOCK_TTL = 120.0   # seconds a lock survives without a heartbeat
+_edit_locks = {}          # abs_path -> {'token': str, 'ts': float (monotonic)}
+_edit_locks_guard = threading.Lock()
+
+
+def _edit_lock_key(path, filename):
+    """Absolute-path registry key for a file, or None when filename is missing."""
+    if not filename:
+        return None
+    return os.path.normcase(os.path.abspath(os.path.join(path or DATA_ROOT, filename)))
+
+
+def _edit_lock_holder(key, now):
+    """Live holder token for ``key``, pruning the entry when it is stale/expired.
+
+    Must be called while holding ``_edit_locks_guard`` — it mutates the registry.
+    """
+    entry = _edit_locks.get(key)
+    if not entry:
+        return None
+    if now - entry['ts'] > _EDIT_LOCK_TTL:
+        _edit_locks.pop(key, None)
+        return None
+    return entry['token']
+
 
 _SCHEMA_VALIDATORS = {
     CSV_SCHEMA_KINETICS_CAL: {
@@ -144,6 +182,66 @@ def api_current_output():
     except Exception as e:
         return jsonify({"exists": False, "message": str(e)}), 500
 
+@file_bp.route('/acquire_edit_lock', methods=['POST'])
+@validate_json({'filename': str, 'path': (str, '', False), 'token': (str, '', False)})
+def acquire_edit_lock(validated_data):
+    """Claim the edit-session lock for a file so other tabs can't edit it.
+
+    Returns the opaque holder token on success; 423 when another tab already
+    holds a live lock. Re-acquiring with the same token (a reopened editor)
+    refreshes the lock instead of failing.
+    """
+    key = _edit_lock_key(validated_data.get('path'), validated_data['filename'])
+    if not key:
+        return jsonify({'status': 'error', 'message': 'Filename is required'}), HTTPStatus.BAD_REQUEST
+    requester = (validated_data.get('token') or '').strip()
+    now = time.monotonic()
+    with _edit_locks_guard:
+        holder = _edit_lock_holder(key, now)
+        if holder and requester and holder == requester:
+            _edit_locks[key] = {'token': holder, 'ts': now}
+            return jsonify({'status': 'success', 'token': holder})
+        if holder:
+            return jsonify({'status': 'locked',
+                            'message': 'This file is currently being edited in another tab.'}), HTTPStatus.LOCKED
+        token = secrets.token_hex(16)
+        _edit_locks[key] = {'token': token, 'ts': now}
+    return jsonify({'status': 'success', 'token': token})
+
+
+@file_bp.route('/refresh_edit_lock', methods=['POST'])
+@validate_json({'filename': str, 'path': (str, '', False), 'token': str})
+def refresh_edit_lock(validated_data):
+    """Heartbeat: keep this tab's edit lock alive (or reclaim it if it lapsed)."""
+    key = _edit_lock_key(validated_data.get('path'), validated_data['filename'])
+    token = (validated_data.get('token') or '').strip()
+    if not key or not token:
+        return jsonify({'status': 'error', 'message': 'Filename and token are required'}), HTTPStatus.BAD_REQUEST
+    now = time.monotonic()
+    with _edit_locks_guard:
+        holder = _edit_lock_holder(key, now)
+        if holder and holder != token:
+            return jsonify({'status': 'locked',
+                            'message': 'Lock held by another tab.'}), HTTPStatus.LOCKED
+        # Held by us, or expired and now free — (re)stamp it for this open editor.
+        _edit_locks[key] = {'token': token, 'ts': now}
+    return jsonify({'status': 'success', 'token': token})
+
+
+@file_bp.route('/release_edit_lock', methods=['POST'])
+@validate_json({'filename': str, 'path': (str, '', False), 'token': (str, '', False)})
+def release_edit_lock(validated_data):
+    """Release this tab's edit lock. No-op if the lock is gone or held by another tab."""
+    key = _edit_lock_key(validated_data.get('path'), validated_data['filename'])
+    token = (validated_data.get('token') or '').strip()
+    if key:
+        with _edit_locks_guard:
+            entry = _edit_locks.get(key)
+            if entry and (not token or entry['token'] == token):
+                _edit_locks.pop(key, None)
+    return jsonify({'status': 'success'})
+
+
 @file_bp.route('/edit_file', methods=['POST'])
 def edit_file():
     try:
@@ -174,6 +272,17 @@ def edit_file():
 
         if file_name != new_file_name and os.path.exists(new_file_path):
             return jsonify({'status': 'error', 'message': f'File {new_file_name} already exists'}), HTTPStatus.CONFLICT
+
+        # Cross-tab edit-session lock: reject a save when another tab currently
+        # holds the editing lock for this file (see /acquire_edit_lock). The
+        # editor sends its edit_token; a save from the lock holder is allowed, a
+        # save from any other origin (or a stale/absent token) is refused.
+        edit_token = (request.form.get('edit_token') or '').strip()
+        lock_key = _edit_lock_key(path, file_name)
+        with _edit_locks_guard:
+            holder = _edit_lock_holder(lock_key, time.monotonic())
+        if holder and holder != edit_token:
+            return jsonify({'status': 'error', 'message': 'This file is being edited in another tab.'}), HTTPStatus.LOCKED
 
         if new_file_name.endswith('.json'):
             try:
@@ -208,12 +317,13 @@ def edit_file():
                     return jsonify({'status': 'error', 'message': f'Invalid data in row {i}'}), HTTPStatus.BAD_REQUEST
 
         try:
+            # Per-write lock guarding the atomicity of THIS save. The context
+            # manager releases it on every exit path; the .lock file is left on
+            # disk (standard filelock behaviour) rather than unlinked while held,
+            # which would let a concurrent writer create a fresh lock and race.
             lock_path = new_file_path + '.lock'
-            lock = FileLock(lock_path, timeout=0)
-
             try:
-                lock.acquire()
-                try:
+                with FileLock(lock_path, timeout=0):
                     if new_file_name.endswith('.json'):
                         parsed_json = json.loads(content)
                         cleaned_json = replace_empty(parsed_json)
@@ -224,17 +334,9 @@ def edit_file():
                             f.write(content)
                         if calibrate_mode:
                             sort_csv_file(new_file_path, calibrate_mode)
-                finally:
-                    if os.path.exists(lock_path):
-                        try:
-                            os.unlink(lock_path)
-                        except:
-                            pass
             except Timeout:
-                    return jsonify({'status': 'error', 'message': 'Another save is in progress or previous save crashed'}), 423
-            finally:
-                lock.release()
-                
+                return jsonify({'status': 'error', 'message': 'Another save is in progress or previous save crashed'}), 423
+
             if file_name != new_file_name:
                 os.remove(file_path)
             return jsonify({'status': 'success', 'message': f'File {file_name} updated successfully' + (f' and renamed to {new_file_name}' if file_name != new_file_name else '')}), HTTPStatus.OK

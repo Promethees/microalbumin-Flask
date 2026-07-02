@@ -491,6 +491,34 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             return html;
         }
         const filePath = tableSelector === '#file-table' ? AppState.currentDirectory : AppState.jsonPath + DELIMITER + AppState.currentMeasurementMode;
+
+        // Edit-session lock: while this file is open in the editor, other tabs
+        // must not be able to edit it. Acquire a server-side lock keyed to the
+        // file before loading its content, heartbeat to keep it fresh, and
+        // release it when the modal closes or the tab goes away.
+        let editLockToken = null;
+        let editLockHeartbeat = null;
+        let editLockReleased = false;
+
+        const releaseEditLock = () => {
+            if (editLockReleased) return;
+            editLockReleased = true;
+            if (editLockHeartbeat) { clearInterval(editLockHeartbeat); editLockHeartbeat = null; }
+            window.removeEventListener('beforeunload', releaseEditLock);
+            if (!editLockToken) return;
+            const payload = JSON.stringify({ filename: fileName, path: filePath, token: editLockToken });
+            try {
+                // sendBeacon survives the unload path (a normal ajax would be
+                // cancelled); fall back to a fire-and-forget POST otherwise.
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/release_edit_lock', new Blob([payload], { type: 'application/json' }));
+                } else {
+                    $.ajax({ url: '/release_edit_lock', method: 'POST', contentType: 'application/json', data: payload });
+                }
+            } catch (e) { /* best-effort */ }
+        };
+
+        const loadFileForEdit = () => {
         // Fetch CSV content
         $.get(`/get_file_content?file=${encodeURIComponent(fileName)}&path=${encodeURIComponent(filePath)}`, function (content) {
             let originalContent = content.content; // ← raw string
@@ -1003,6 +1031,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         return { newFileName, content };
                     }
                 }).then((result) => {
+                    // Modal closed (saved or cancelled) — free the file for other tabs.
+                    releaseEditLock();
                     deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
 
                     if (result.isConfirmed) {
@@ -1013,6 +1043,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             new_filename: newFileName,
                             path: filePath,
                             content: content,
+                            edit_token: editLockToken,
                             calibrate_mode: AppState.currentMeasurementMode === 'calibrate' ? calDiv.getAttribute('data-value') : 'timestamp'
                         }, async function (response) {
                             if (response.status === 'success') {
@@ -1091,6 +1122,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
             showModal(originalContent, fileName);
         }).fail(function (jqXHR) {
+            releaseEditLock();
             let errorMessage = 'Failed to load file content';
             if (jqXHR.responseJSON?.message) {
                 errorMessage = jqXHR.responseJSON.message;
@@ -1110,6 +1142,33 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             }).then(() => {
                 deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
             });
+        });
+        };  // end loadFileForEdit
+
+        // Acquire the edit lock first; only load the file if we got it.
+        $.ajax({
+            url: '/acquire_edit_lock',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ filename: fileName, path: filePath })
+        }).done(function (lockResp) {
+            editLockToken = (lockResp && lockResp.token) || null;
+            window.addEventListener('beforeunload', releaseEditLock);
+            editLockHeartbeat = setInterval(function () {
+                if (!editLockToken) return;
+                $.ajax({
+                    url: '/refresh_edit_lock', method: 'POST', contentType: 'application/json',
+                    data: JSON.stringify({ filename: fileName, path: filePath, token: editLockToken })
+                });
+            }, 30000);
+            loadFileForEdit();
+        }).fail(function (jqXHR) {
+            deleteBtn.prop('disabled', false).removeClass('disabled').attr('aria-disabled', 'false');
+            let msg = 'This file is currently being edited in another tab.';
+            if (jqXHR.status !== 423 && jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                msg = jqXHR.responseJSON.message;
+            }
+            Swal.fire({ title: 'File in use', text: msg, icon: 'warning', confirmButtonText: 'OK' });
         });
     });
 }
