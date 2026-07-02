@@ -776,7 +776,7 @@ function _buildSettingsHTML(s, folders, aiStats) {
                  <option value="calibrate" ${s.default_mode==='calibrate'?'selected':''}>Calibrate</option>`))}
             ${row('Default window size', 'Minimum 2', num('swal-window-size', 2, s.default_window_size || 4))}
             ${row('Default concentration unit', 'Unit selected for new calibration exports', sel('swal-concen-unit',
-                (typeof CONCEN_UNITS !== 'undefined' ? CONCEN_UNITS : ['ng/µL', 'nM', '%'])
+                (typeof CONCEN_UNITS !== 'undefined' ? CONCEN_UNITS : ['ng/µL', 'nM', '%', 'CFU'])
                     .map(u => `<option value="${u}" ${(s.default_concentration_unit||'ng/µL')===u?'selected':''}>${u}</option>`).join('')))}
             ${row('Default subfolder', '', sel('swal-subfolder',
                 `<option value="" ${!s.default_subfolder?'selected':''}>(none)</option>${subfolderOptions}`))}

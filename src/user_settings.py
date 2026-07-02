@@ -19,7 +19,7 @@ _VALID_MODES = {"kinetics", "point", "calibrate"}
 _VALID_UNITS = {"seconds", "minutes", "hours"}
 _VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 _VALID_TIME_TAG_FORMATS = {"iso", "iso_sec", "us", "eu", "date_only"}
-_VALID_CONCEN_UNITS = {"ng/µL", "nM", "%"}
+_VALID_CONCEN_UNITS = {"ng/µL", "nM", "%", "CFU"}
 
 DEFAULTS = {
     "theme": "auto",

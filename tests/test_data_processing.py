@@ -512,8 +512,8 @@ from src import file_path
 
 
 def test_concen_units_catalog():
-    # Exactly the three allowed units, default ng/µL.
-    assert file_path.CONCEN_UNITS == ["ng/µL", "nM", "%"]
+    # Exactly the four allowed units, default ng/µL.
+    assert file_path.CONCEN_UNITS == ["ng/µL", "nM", "%", "CFU"]
     assert file_path.DEFAULT_CONCEN_UNIT == "ng/µL"
 
 
