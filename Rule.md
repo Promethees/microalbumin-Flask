@@ -168,7 +168,7 @@ Timestamp,Value:1,Value:2,...
 - Each entry: `{"ts": "YYYY-MM-DDTHH:MM:SS", "type": "...", "action": "...", "details": {...}}`.
 - `append(type, action, details=None)` — writes one JSONL line to the current session file.
 - `read_all()` — reads all events across all date folders and sessions, oldest first.
-- `cleanup_old_logs()` — removes date folders older than `event_log_retention_days`; called automatically on every session start (index route).
+- `cleanup_old_logs()` — retention N keeps exactly the N most recent calendar days (today counts as day 1; N=1 → only today's folder); called on every session start (index route) and after every successful `POST /settings`, so lowering the retention prunes immediately.
 - Routes: `GET /event_log` returns all events; `POST /event_log` (`{type, action, details?}`) appends one entry.
 - Frontend: `logEvent(type, action, details)` in `static/script/event-tracker.js` (loaded first) — fire-and-forget `fetch`, never blocks the UI.
 - Tracked events: `session:start` (page load), `mode:switch`, `file:select/delete/copy`, `data:display`, `hardware:start/stop`, `report:generate`, `settings:save`.

@@ -201,6 +201,9 @@ def post_settings():
     if not data:
         return jsonify({'status': 'error', 'message': 'No JSON data'}), 400
     if _user_settings.save(data):
+        # Apply a shrunk event-log retention immediately instead of waiting
+        # for the next index render.
+        event_logger.cleanup_old_logs()
         return jsonify({'status': 'success'})
     return jsonify({'status': 'error', 'message': 'Could not save settings'}), 500
 

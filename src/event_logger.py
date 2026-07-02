@@ -66,13 +66,17 @@ def read_all() -> list:
 
 
 def cleanup_old_logs() -> None:
-    """Remove date folders older than event_log_retention_days. 0 = keep forever."""
+    """Remove date folders beyond event_log_retention_days. 0 = keep forever.
+
+    Retention N keeps exactly the N most recent calendar days, counting
+    today as day 1 (N=1 → only today's folder survives).
+    """
     settings = user_settings.load()
     retention_days = int(settings.get("event_log_retention_days", 30))
     if retention_days <= 0:
         return
 
-    cutoff = date.today() - timedelta(days=retention_days)
+    cutoff = date.today() - timedelta(days=retention_days - 1)
     root = _events_root()
     if not os.path.isdir(root):
         return
