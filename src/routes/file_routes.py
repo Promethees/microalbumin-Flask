@@ -834,7 +834,6 @@ def save_report(validated_data):
     html_content = validated_data['html_content']
     
     try:
-        report_path = os.path.join(state.report_root_path, filename)
         # Avoid overriding by getting next available name if file exists
         full_path = get_next_filename(".html", state.report_root_path, Path(filename).stem)
         
