@@ -881,7 +881,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                     const cells = row.querySelectorAll('td');
                                     if (cells.length === 2) {
                                         const key = cells[0].textContent.trim();
-                                        const value = cells[1].textContent.trim();
+                                        // Constrained metadata (e.g. ConcenUnit) is edited via a
+                                        // <select>; read its value. Reading textContent would
+                                        // concatenate every option label (e.g. "ng/µLnM%CFU").
+                                        const sel = cells[1].querySelector('select');
+                                        const value = sel ? sel.value.trim() : cells[1].textContent.trim();
                                         return `# ${key}: ${value}`;
                                     }
                                     return null;
