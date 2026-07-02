@@ -1142,7 +1142,10 @@ def test_export_data_blocks_concen_unit_mismatch(client, tmp_path):
     # Appending a ng/µL export into the nM file must be rejected.
     body = _export_kinetics(client, tmp_path, 'ng/µL').get_json()
     assert body['status'] == 'error'
-    assert 'unit mismatch' in body['message'].lower()
+    # The message names the clashing field and both sides' values.
+    msg = body['message'].lower()
+    assert 'concentration unit' in msg
+    assert 'nm' in msg and 'ng/µl' in msg
 
 
 def test_export_data_appends_when_concen_unit_matches(client, tmp_path):

@@ -20,7 +20,7 @@ from file_operations import remove_csv_columns
 from measure import sort_csv_file
 from get_next_filename import get_next_filename
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
-from export_data import is_metadata_consistent, write_metadata, write_headers, extract_single_entry
+from export_data import metadata_mismatches, write_metadata, write_headers, extract_single_entry
 from validators import validate_json
 
 file_bp = Blueprint('file', __name__)
@@ -730,15 +730,28 @@ def export_data(validated_data):
 
         if file_exists:
             meta_dict = get_dynamic_data(full_path)['metadata']
-            if not is_metadata_consistent(meta_dict, measurement, meas_unit, time_unit, meas_mode, concen_unit):
-                # Surface a concentration-unit clash explicitly — the most
-                # likely (and otherwise opaque) cause of an inconsistency.
-                existing_unit = meta_dict.get('ConcenUnit', DEFAULT_CONCEN_UNIT)
-                if existing_unit != concen_unit:
-                    return jsonify({"status": "error", "message": (
-                        f"Concentration unit mismatch: this file records {existing_unit}, "
-                        f"but the export is in {concen_unit}. Pick a different file or unit.")})
-                return jsonify({"status": "error", "message": "Metadata inconsistency"})
+            mismatches = metadata_mismatches(meta_dict, measurement, meas_unit, time_unit, meas_mode, concen_unit)
+            if mismatches:
+                # Name every clashing field with both sides' values, so it is
+                # clear *why* the analysis can't be appended to this calibration
+                # table (rather than the opaque "Metadata inconsistency").
+                labels = {
+                    'Measurement': 'measurement',
+                    'MeasUnit': 'measurement unit',
+                    'TimeUnit': 'time unit',
+                    'MeasMode': 'mode',
+                    'ConcenUnit': 'concentration unit',
+                }
+                details = "; ".join(
+                    f"{labels.get(field, field)} (file: {existing or 'none'}, export: {incoming or 'none'})"
+                    for field, existing, incoming in mismatches
+                )
+                plural = "s" if len(mismatches) > 1 else ""
+                return jsonify({"status": "error", "message": (
+                    f"Cannot append this analysis to \"{file_name}\": its "
+                    f"metadata does not match the export. Mismatched field{plural}: "
+                    f"{details}. Pick a different calibration table, or adjust the "
+                    f"export to match.")})
 
         with open(full_path, "a", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
