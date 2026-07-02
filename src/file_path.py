@@ -31,6 +31,32 @@ def validate_in_data_root(path: str):
     return None
 
 
+def validate_in_allowed_roots(path: str):
+    """Return abs path if it resolves inside a managed root, else None.
+
+    The managed roots are the data root, the report root, and the calibration
+    ``json/`` root — the only trees the app reads/edits/deletes on the user's
+    behalf. Confining here (rather than the weak ``'..' in normpath`` check)
+    stops a client-supplied ABSOLUTE path from escaping to arbitrary files:
+    ``os.path.abspath`` resolves any ``..`` first, so both traversal and a bare
+    absolute path (e.g. ``/etc/passwd``) that names something outside every root
+    return None. Export destinations the user explicitly picks are NOT gated
+    here — that is a deliberate "save out of the app" action.
+    """
+    if not path:
+        return None
+    abs_path = os.path.abspath(os.path.expanduser(path))
+    roots = [DATA_ROOT]
+    for attr in ('report_root_path', 'json_root_path'):
+        root = getattr(state, attr, None)
+        if root:
+            roots.append(os.path.abspath(root))
+    for root in roots:
+        if abs_path == root or abs_path.startswith(root + os.sep):
+            return abs_path
+    return None
+
+
 def validate_in_json_root(path: str):
     """Return abs path if it's within the calibration ``json/`` root, else None.
 

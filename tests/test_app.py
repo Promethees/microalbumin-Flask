@@ -14,6 +14,23 @@ def client():
     with app.test_client() as client:
         yield client
 
+
+@pytest.fixture(autouse=True)
+def _confine_data_root_to_tmp(tmp_path):
+    """Treat each test's tmp_path as the managed data root.
+
+    The file routes (edit/delete/copy/read) confine client-supplied paths to the
+    app's managed roots via file_path.validate_in_allowed_roots(). These tests
+    exercise those routes with files under pytest's tmp_path, so point DATA_ROOT
+    at tmp_path for the duration of the test — the same pattern the /move_file and
+    /export_to_report tests already apply explicitly. Tests that patch DATA_ROOT
+    themselves nest inside this and win; traversal/out-of-root cases still escape
+    tmp_path and are rejected.
+    """
+    with patch('file_path.DATA_ROOT', str(tmp_path)), \
+         patch('routes.file_routes.DATA_ROOT', str(tmp_path)):
+        yield
+
 # Core Routes Tests
 def test_index_page(client):
     """Test that the index page loads."""
@@ -754,8 +771,10 @@ def test_get_headers_non_csv_extension(client, tmp_path):
 
 
 def test_get_headers_file_not_found(client):
+    # An absolute path outside the managed roots is rejected as an invalid path
+    # (400) before any existence check — out-of-root files are never probed.
     rv = client.get('/get_headers?file=/nonexistent/path.csv')
-    assert rv.status_code == 404
+    assert rv.status_code == 400
 
 
 def test_get_headers_path_traversal_rejected(client):

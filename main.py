@@ -381,7 +381,14 @@ if __name__ == '__main__':
     try:
         # use_reloader=False prevents Werkzeug from spawning a child reloader process.
         # That child process is the main source of "leaked semaphore" warnings on shutdown.
-        app.run(debug=True, host=host, port=port, use_reloader=False)
+        #
+        # debug is enabled ONLY for source/dev runs. A frozen/installed build must
+        # never run with the Werkzeug interactive debugger: an unhandled exception
+        # would render a full traceback (leaking source + locals) and expose the
+        # PIN-gated code-execution console on 127.0.0.1 — a real RCE/info-disclosure
+        # surface reachable from any web page the user visits (there is no CSRF
+        # token on these localhost routes).
+        app.run(debug=not state.IS_FROZEN, host=host, port=port, use_reloader=False)
     except Exception as e:
         print(f"Failed to start Flask server: {e}")
         sys.exit(1)

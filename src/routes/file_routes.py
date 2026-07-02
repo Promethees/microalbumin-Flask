@@ -13,7 +13,7 @@ from filelock import FileLock, Timeout
 import shutil
 
 import state
-from file_path import (DATA_ROOT, validate_in_data_root,
+from file_path import (DATA_ROOT, validate_in_data_root, validate_in_allowed_roots,
                        is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER,
                        parse_csv_metadata, detect_csv_schema,
                        CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
@@ -126,8 +126,10 @@ def get_csv_headers():
 
     if not read_file:
         return jsonify({'headers': [], 'error': 'No file path provided'}), 400
-    if '..' in os.path.normpath(read_file):
+    validated = validate_in_allowed_roots(read_file)
+    if not validated:
         return jsonify({'headers': [], 'error': 'Invalid file path'}), 400
+    read_file = validated
     if not read_file.lower().endswith('.csv'):
         return jsonify({'headers': [], 'error': 'Only CSV files are supported'}), 400
     if not os.path.exists(read_file):
@@ -264,8 +266,11 @@ def edit_file():
         new_file_path = os.path.join(path, new_file_name)
         print(f"Editing file: {file_path} to {new_file_path} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S %z')}")
 
-        if '..' in os.path.normpath(file_path) or '..' in os.path.normpath(new_file_path):
+        v_file = validate_in_allowed_roots(file_path)
+        v_new = validate_in_allowed_roots(new_file_path)
+        if not v_file or not v_new:
             return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+        file_path, new_file_path = v_file, v_new
 
         if not os.path.exists(file_path):
             return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
@@ -370,8 +375,10 @@ def delete_file():
         else:
             file_path = os.path.join(path, file_name)
 
-        if '..' in os.path.normpath(file_path):
+        validated = validate_in_allowed_roots(file_path)
+        if not validated:
             return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+        file_path = validated
 
         if not os.path.exists(file_path):
             return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
@@ -485,8 +492,10 @@ def copy_file():
 
         src_path = os.path.join(src_dir, file_name)
 
-        if '..' in os.path.normpath(src_path):
+        validated = validate_in_allowed_roots(src_path)
+        if not validated:
             return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+        src_path = validated
 
         if not os.path.exists(src_path):
             return jsonify({'status': 'error', 'message': 'Source file not found'}), HTTPStatus.NOT_FOUND
@@ -618,10 +627,12 @@ def remove_columns(validated_data):
             return jsonify({'status': 'failure', 'message': 'Filename and path are required'}), 400
             
         file_path = os.path.join(path, filename)
-        
-        if '..' in os.path.normpath(file_path):
+
+        validated = validate_in_allowed_roots(file_path)
+        if not validated:
              return jsonify({'status': 'failure', 'message': 'Invalid file path'}), 400
-             
+        file_path = validated
+
         success, message = remove_csv_columns(file_path, columns)
         if success:
             return jsonify({'status': 'success', 'message': message})
@@ -665,8 +676,10 @@ def get_data():
     selected_file = request.args.get('file')
     if not selected_file:
         return jsonify({'data': [], 'error': 'No file path provided', 'unit': 'NONE'}), 400
-    if '..' in os.path.normpath(selected_file):
+    validated = validate_in_allowed_roots(selected_file)
+    if not validated:
         return jsonify({'data': [], 'error': 'Invalid file path', 'unit': 'NONE'}), 400
+    selected_file = validated
     if not selected_file.lower().endswith('.csv'):
         return jsonify({'data': [], 'error': 'Only CSV files are supported', 'unit': 'NONE'}), 400
     data = get_dynamic_data(selected_file)
@@ -681,8 +694,10 @@ def get_file_content():
             return jsonify({'status': 'error', 'message': 'Filename is required'}), HTTPStatus.BAD_REQUEST
 
         file_path = os.path.join(path, file_name)
-        if '..' in os.path.normpath(file_path):
+        validated = validate_in_allowed_roots(file_path)
+        if not validated:
             return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+        file_path = validated
 
         result = get_dynamic_data(file_path)
         if 'error' in result and result['error']:
@@ -726,8 +741,12 @@ def save_range_csv(validated_data):
     save_name = os.path.basename(validated_data['save_name'].strip())
     save_dir = validated_data['save_dir']
 
-    if '..' in os.path.normpath(source_file) or '..' in os.path.normpath(save_dir):
+    # The source is a managed file (confine to the app's roots); save_dir is a
+    # user-chosen export destination, so only guard it against traversal.
+    validated_source = validate_in_allowed_roots(source_file)
+    if not validated_source or '..' in os.path.normpath(save_dir):
         return jsonify({'status': 'error', 'message': 'Invalid path'})
+    source_file = validated_source
     if not source_file.lower().endswith('.csv'):
         return jsonify({'status': 'error', 'message': 'Source must be a CSV file'})
     if not os.path.isfile(source_file):
@@ -1894,7 +1913,6 @@ def _write_normalized_csv(file_path, save_name, save_dir, source_index=None):
 
 
 @file_bp.route('/save_normalized_csv', methods=['POST'])
-@validate_json
 def save_normalized_csv():
     """Save a normalized copy of a CSV file (subtract per-column minimum / blank removal) to a new CSV file.
 
@@ -1903,7 +1921,9 @@ def save_normalized_csv():
     for that source is normalized.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'status': 'error', 'message': 'Request must be JSON'}), 400
         file_path = data.get('file')
         save_name = data.get('save_name')
         save_dir = data.get('save_dir')
