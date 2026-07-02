@@ -72,8 +72,8 @@ def index():
     try:
         with open(state.log_file, 'w', encoding='utf-8') as f:
             f.write("")
-    except:
-        pass
+    except (OSError, IOError):
+        pass    # best-effort log truncation — a locked/missing log must not block index
 
     event_logger.cleanup_old_logs()
     event_logger.append('session', 'start')
