@@ -58,6 +58,7 @@ src/
   ├── state.py          ← global state singleton (process, paths, delimiter, PRODUCTION_MODE)
   ├── i18n.py           ← UI translation catalogs (ui_translations/<lang>.json, 6 languages)
   ├── validators.py     ← @validate_json decorator for route input validation
+  ├── security.py       ← request-origin guard (CSRF + DNS-rebinding) on state-changing methods; init_request_guard(app)
   ├── math_ops.py       ← scipy/numpy regression (linear, poly, log, exp, Michaelis-Menten)
   ├── ai_assistant.py   ← Groq chat client, MCP tool engine, multilingual system prompts
   ├── user_settings.py  ← user preferences + SUPPORTED_LANGUAGES registry (the 6 UI/AI-chat languages)

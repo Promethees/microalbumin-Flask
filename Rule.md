@@ -539,6 +539,27 @@ Timestamp,Value:1,Value:2,...
   would recompute the *wrong* functional family with its *own* coefficients, and **Michaelis-Menten has no
   native trendline type at all**. Markers show the app's true fitted curve everywhere with no per-algo casing.
 
+### 2.24 Request-Origin Guard (CSRF + DNS-Rebinding)
+- The app is single-user, has **no login/session and no CSRF token**, binds `127.0.0.1`, and is driven from
+  the browser at an aliased host (`easyokapi.com` via the hosts file). Without a guard, any web page the user
+  visits could issue a cross-origin `POST` to `http://127.0.0.1:<port>/` (or the alias) and trigger a
+  state-changing route (`/delete_file`, `/edit_file`, `/shutdown`, …) — a simple form/`fetch` POST needs no
+  CORS preflight — and a DNS-rebinding attacker domain could pose as same-origin.
+- `src/security.py` `init_request_guard(app)` installs **one** `before_request` guard, registered **first**
+  in `main.py` (before the activation/license gates), that for **unsafe methods** (POST/PUT/PATCH/DELETE):
+  1. requires the **Host** the browser addressed to be a known hostname — loopback (`127.0.0.1`/`localhost`/
+     `::1`) or the configured `--alias` (default `easyokapi.com`) — which blocks DNS rebinding (a rebound
+     request carries `Host: attacker.com`); and
+  2. requires the **Origin** (when present; else the **Referer**) to resolve to one of those hostnames — which
+     blocks cross-origin CSRF (a cross-origin browser POST always sends `Origin`, so an *absent* Origin is not
+     a cross-origin request and is allowed).
+- Matching is **by hostname only** (scheme and port ignored): the app is the sole listener on its loopback
+  port, so port-pinning adds no security, and hostname matching keeps the Flask test client (`Host: localhost`)
+  and any custom `--alias` working with no special cases. **Anti-pattern**: do not add a state-changing **GET**
+  (safe methods are unguarded by design); do not pin the guard to a specific port; do not exempt a POST route
+  from the guard (all state changes originate from the app's own same-origin pages). Covered by
+  `tests/test_security.py`.
+
 ---
 
 ## 3. Autonomous Documentation Updates

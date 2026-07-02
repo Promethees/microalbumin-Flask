@@ -125,6 +125,12 @@ app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(update_bp)
 
+# ── Request-origin guard (CSRF + DNS-rebinding) ──────────────────────────────
+# Registered first so a cross-origin / rebound state-changing request is refused
+# before any activation/license logic runs. See src/security.py.
+from security import init_request_guard
+init_request_guard(app)
+
 # ── Activation gate (frozen builds) ──────────────────────────────────────────
 # A frozen build is licence-gated: until a valid activation token is stored, every
 # page redirects to /activate and every API/AI call returns 403. This makes the
