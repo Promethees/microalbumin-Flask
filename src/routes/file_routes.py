@@ -729,7 +729,7 @@ def export_data(validated_data):
         file_exists = os.path.isfile(full_path)
 
         if file_exists:
-            meta_dict = get_dynamic_data(full_path)['metadata']
+            meta_dict = get_dynamic_data(full_path).get('metadata', {})
             mismatches = metadata_mismatches(meta_dict, measurement, meas_unit, time_unit, meas_mode, concen_unit)
             if mismatches:
                 # Name every clashing field with both sides' values, so it is
