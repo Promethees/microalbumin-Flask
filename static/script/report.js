@@ -1531,24 +1531,7 @@ async function initItemPreview(item, itemID, preloaded = null, calType = null) {
 
             const ctx = document.getElementById(`preview-chart-${itemID}`).getContext('2d');
             const datasets = [];
-            const colors = [
-                'rgb(75, 192, 192)',
-                'rgb(255, 99, 132)',
-                'rgba(190, 136, 9, 1)',
-                'rgb(54, 162, 235)',
-                'rgb(153, 102, 255)',
-                'rgba(139, 144, 75, 1)',
-                'rgba(228, 87, 246, 1)',
-                'rgba(44, 136, 115, 1)',
-                'rgba(255, 159, 64, 1)',
-                'rgba(199, 199, 199, 1)',
-                'rgba(83, 102, 255, 1)',
-                'rgba(255, 102, 178, 1)',
-                'rgba(60, 179, 113, 1)',
-                'rgba(255, 140, 0, 1)',
-                'rgba(100, 149, 237, 1)',
-                'rgba(216, 191, 216, 1)'
-            ];
+            const colors = AppState.plotColors;   // shared 16-color palette (index.js)
 
             for (let i = 1; i <= numSources; i++) {
                 datasets.push({
@@ -1891,24 +1874,7 @@ async function finalizeReport() {
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = 1600; tempCanvas.height = 800;
                     const tempCtx = tempCanvas.getContext('2d');
-                    const colors = [
-                        'rgb(75, 192, 192)',
-                        'rgb(255, 99, 132)',
-                        'rgba(190, 136, 9, 1)',
-                        'rgb(54, 162, 235)',
-                        'rgb(153, 102, 255)',
-                        'rgba(139, 144, 75, 1)',
-                        'rgba(228, 87, 246, 1)',
-                        'rgba(44, 136, 115, 1)',
-                        'rgba(255, 159, 64, 1)',
-                        'rgba(199, 199, 199, 1)',
-                        'rgba(83, 102, 255, 1)',
-                        'rgba(255, 102, 178, 1)',
-                        'rgba(60, 179, 113, 1)',
-                        'rgba(255, 140, 0, 1)',
-                        'rgba(100, 149, 237, 1)',
-                        'rgba(216, 191, 216, 1)'
-                    ];
+                    const colors = AppState.plotColors;   // shared 16-color palette (index.js)
 
                     const tempChart = new Chart(tempCtx, {
                         type: 'line',

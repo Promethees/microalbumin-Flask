@@ -43,6 +43,7 @@ const AppState = {
     globalEstimatedValue: null,
     multiSource: false,
     numSources: 1,
+    // Shared 16-color chart palette — report.js preview/export charts read this too.
     plotColors: [
         'rgb(75, 192, 192)',
         'rgb(255, 99, 132)',
