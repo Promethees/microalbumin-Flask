@@ -14,15 +14,15 @@
 (function () {
     'use strict';
 
-    var SHOW_DELAY = 350;   // ms before a hover hint appears
-    var HIDE_DELAY = 60;    // ms grace so moving onto the bubble edge doesn't flicker
-    var GAP = 8;            // px between the target and the bubble
-    var EDGE = 6;           // px minimum distance from the viewport edge
+    const SHOW_DELAY = 350;   // ms before a hover hint appears
+    const HIDE_DELAY = 60;    // ms grace so moving onto the bubble edge doesn't flicker
+    const GAP = 8;            // px between the target and the bubble
+    const EDGE = 6;           // px minimum distance from the viewport edge
 
-    var tip = null;
-    var current = null;
-    var showTimer = null;
-    var hideTimer = null;
+    let tip = null;
+    let current = null;
+    let showTimer = null;
+    let hideTimer = null;
 
     function ensureTip() {
         if (tip) return tip;
@@ -34,22 +34,22 @@
     }
 
     function place(el) {
-        var t = ensureTip();
-        var r = el.getBoundingClientRect();
-        var tr = t.getBoundingClientRect(); // measured at current (wrapped) size
+        const t = ensureTip();
+        const r = el.getBoundingClientRect();
+        const tr = t.getBoundingClientRect(); // measured at current (wrapped) size
 
-        var placement = 'top';
-        var top = r.top - tr.height - GAP;
+        let placement = 'top';
+        let top = r.top - tr.height - GAP;
         if (top < EDGE) {
             top = r.bottom + GAP;       // not enough room above → flip below
             placement = 'bottom';
         }
 
-        var left = r.left + (r.width - tr.width) / 2;
+        let left = r.left + (r.width - tr.width) / 2;
         left = Math.max(EDGE, Math.min(left, window.innerWidth - tr.width - EDGE));
 
         // Keep the arrow pointing at the target's centre even after clamping.
-        var arrowX = r.left + r.width / 2 - left;
+        let arrowX = r.left + r.width / 2 - left;
         arrowX = Math.max(12, Math.min(arrowX, tr.width - 12));
 
         t.style.top = Math.round(top) + 'px';
@@ -59,9 +59,9 @@
     }
 
     function show(el) {
-        var text = el.getAttribute('data-hint');
+        const text = el.getAttribute('data-hint');
         if (!text) return;
-        var t = ensureTip();
+        const t = ensureTip();
         t.textContent = text;
         current = el;
         place(el);
@@ -77,7 +77,7 @@
     }
 
     function onOver(e) {
-        var el = e.target.closest ? e.target.closest('[data-hint]') : null;
+        const el = e.target.closest ? e.target.closest('[data-hint]') : null;
         if (!el || el === current) return;
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
@@ -85,7 +85,7 @@
     }
 
     function onOut(e) {
-        var el = e.target.closest ? e.target.closest('[data-hint]') : null;
+        const el = e.target.closest ? e.target.closest('[data-hint]') : null;
         if (!el) return;
         // Ignore moves that stay within the same hinted element.
         if (e.relatedTarget && el.contains(e.relatedTarget)) return;
@@ -94,7 +94,7 @@
     }
 
     function onFocus(e) {
-        var el = e.target.closest ? e.target.closest('[data-hint]') : null;
+        const el = e.target.closest ? e.target.closest('[data-hint]') : null;
         if (!el) return;
         clearTimeout(showTimer);
         show(el); // keyboard focus → show immediately, no hover delay
