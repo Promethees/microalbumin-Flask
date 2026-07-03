@@ -78,6 +78,9 @@ if not getattr(sys, 'frozen', False):
         sys.path.append("src")
 
 # ── Project file-path / utility modules ─────────────────────────────────────
+# NB: many of these imports are not referenced in this file, but they are
+# load-bearing — PyInstaller discovers frozen-build dependencies from them, and
+# each import group paces a _report() progress stage. Do not remove as "unused".
 _report(30, "Loading file-path utilities …")
 from file_path import is_multi_value_timeseries_csv_header
 from range import get_range_input
