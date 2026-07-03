@@ -1090,6 +1090,19 @@ function cancelSwalItemDelete(btn) {
     card.querySelector('button[data-hint="Remove from subject"]').disabled = false;
 }
 
+// POST /delete_report_item and throw on a non-success reply. Shared by the
+// report table delete (below) and the report console delete (report.js).
+async function requestDeleteReportItem(subject, filename) {
+    const response = await fetch('/delete_report_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, filename })
+    });
+    const data = await response.json();
+    if (data.status !== 'success') throw new Error(data.message);
+    return data;
+}
+
 async function confirmSwalItemDelete(btn) {
     const card = btn.closest('[data-item-filename]');
     if (!card) return;
@@ -1098,13 +1111,7 @@ async function confirmSwalItemDelete(btn) {
     const cardId = card.id;
 
     try {
-        const response = await fetch('/delete_report_item', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, filename })
-        });
-        const data = await response.json();
-        if (data.status !== 'success') throw new Error(data.message);
+        await requestDeleteReportItem(subject, filename);
 
         card.remove();
 

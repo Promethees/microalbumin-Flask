@@ -2310,13 +2310,7 @@ async function deleteReportItem(btn) {
 
     try {
         window.showSpinner();
-        const response = await fetch('/delete_report_item', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ subject, filename })
-        });
-        const data = await response.json();
-        if (data.status !== 'success') throw new Error(data.message);
+        await requestDeleteReportItem(subject, filename);
 
         // Destroy preview charts to free memory before removing DOM node
         const config = window.ReportItemConfig[filename];
