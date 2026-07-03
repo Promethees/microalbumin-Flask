@@ -25,6 +25,10 @@ def validate_json(schema):
                 return jsonify({'status': 'failure', 'message': 'Request must be JSON'}), 400
                 
             data = request.get_json()
+            if not isinstance(data, dict):
+                # A JSON scalar/array body has no fields to validate against the
+                # schema — reject it instead of crashing on data.get() below.
+                return jsonify({'status': 'failure', 'message': 'Request body must be a JSON object'}), 400
             validated_data = {}
             
             for key, rules in schema.items():
