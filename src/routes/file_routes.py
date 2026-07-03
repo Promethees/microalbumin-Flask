@@ -353,32 +353,45 @@ def edit_file():
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
+def _resolve_form_file_target():
+    """Parse and validate the {filename, tabletype, mode, path} form target
+    shared by /delete_file and /copy_file: a json-table entry lives under
+    json_root/<mode>, anything else under the supplied data path.
+
+    Returns ((file_name, tabletype, src_dir, abs_path), None) on success or
+    (None, (response, status)) with each guard's long-standing message.
+    """
+    file_name = request.form.get('filename')
+    tabletype = request.form.get('tabletype')
+    mode = request.form.get('mode')
+    path = request.form.get('path') if request.form.get('path') else DATA_ROOT
+
+    if not file_name or not tabletype:
+        return None, (jsonify({'status': 'error', 'message': 'Filename and tabletype are required'}), HTTPStatus.BAD_REQUEST)
+
+    if tabletype == '#json-table':
+        if not mode:
+            return None, (jsonify({'status': 'error', 'message': 'Mode is required for JSON table type'}), HTTPStatus.BAD_REQUEST)
+        src_dir = os.path.join(state.json_root_path, mode)
+    else:
+        src_dir = path
+
+    abs_path = validate_in_allowed_roots(os.path.join(src_dir, file_name))
+    if not abs_path:
+        return None, (jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST)
+    return (file_name, tabletype, src_dir, abs_path), None
+
+
 @file_bp.route('/delete_file', methods=['POST'])
 def delete_file():
     try:
         if state.process and state.process.poll() is None:
             return jsonify({'status': 'error', 'message': 'Cannot delete files while the data collection process is running'}), HTTPStatus.LOCKED
 
-        file_name = request.form.get('filename')
-        tabletype = request.form.get('tabletype')
-        mode = request.form.get('mode')
-        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
-
-        if not file_name or not tabletype:
-            return jsonify({'status': 'error', 'message': 'Filename and tabletype are required'}), HTTPStatus.BAD_REQUEST
-
-        if tabletype == '#json-table':
-            if not mode:
-                return jsonify({'status': 'error', 'message': 'Mode is required for JSON table type'}), HTTPStatus.BAD_REQUEST
-            json_path = os.path.join(state.json_root_path, mode)
-            file_path = os.path.join(json_path, file_name)
-        else:
-            file_path = os.path.join(path, file_name)
-
-        validated = validate_in_allowed_roots(file_path)
-        if not validated:
-            return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
-        file_path = validated
+        target, err = _resolve_form_file_target()
+        if err:
+            return err
+        file_name, _tabletype, _src_dir, file_path = target
 
         if not os.path.exists(file_path):
             return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
@@ -475,27 +488,10 @@ def copy_file():
         if state.process and state.process.poll() is None:
             return jsonify({'status': 'error', 'message': 'Cannot copy files while the data collection process is running'}), HTTPStatus.LOCKED
 
-        file_name = request.form.get('filename')
-        mode = request.form.get('mode')
-        tabletype = request.form.get('tabletype')
-        path = request.form.get('path') if request.form.get('path') else DATA_ROOT
-
-        if not file_name or not tabletype:
-            return jsonify({'status': 'error', 'message': 'Filename and tabletype are required'}), HTTPStatus.BAD_REQUEST
-
-        if tabletype == '#json-table':
-            if not mode:
-                return jsonify({'status': 'error', 'message': 'Mode is required for JSON table type'}), HTTPStatus.BAD_REQUEST
-            src_dir = os.path.join(state.json_root_path, mode)
-        else:
-            src_dir = path
-
-        src_path = os.path.join(src_dir, file_name)
-
-        validated = validate_in_allowed_roots(src_path)
-        if not validated:
-            return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
-        src_path = validated
+        target, err = _resolve_form_file_target()
+        if err:
+            return err
+        file_name, tabletype, src_dir, src_path = target
 
         if not os.path.exists(src_path):
             return jsonify({'status': 'error', 'message': 'Source file not found'}), HTTPStatus.NOT_FOUND
