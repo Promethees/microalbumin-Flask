@@ -26,7 +26,6 @@ format, update that PowerShell too or installs will fail their first launch.
 """
 
 import hashlib
-import os
 import platform
 import subprocess
 
