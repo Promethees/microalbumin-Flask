@@ -10,6 +10,7 @@ import user_settings as _user_settings
 import data_root as _data_root
 import event_logger
 import i18n as _i18n
+from validators import validate_json
 from file_path import DATA_ROOT, get_data_subfolders, CONCEN_UNITS
 from range import get_range_input
 from mode import get_mode_input
@@ -108,18 +109,18 @@ def index():
 
 
 @core_bp.route('/api/first-run/seed', methods=['POST'])
-def first_run_seed():
+@validate_json({'load': (bool, False, False)})
+def first_run_seed(validated_data):
     """Act on the first-run demo-content prompt.
 
     Body: {"load": true|false}. When true, seed the bundled default calibration
     curves and sample measurements into the user's writable data. Either way the
     choice is recorded so the prompt never reappears.
     """
-    data = request.get_json(silent=True) or {}
-    if data.get('load'):
+    if validated_data['load']:
         state.seed_demo_content()
     state.mark_demo_prompt_done()
-    return jsonify({'status': 'success', 'loaded': bool(data.get('load'))})
+    return jsonify({'status': 'success', 'loaded': bool(validated_data['load'])})
 
 def delayed_termination():
     time.sleep(5) 
@@ -128,10 +129,12 @@ def delayed_termination():
     os.kill(os.getpid(), signal.SIGTERM)
 
 @core_bp.route('/shutdown', methods=['POST'])
-def shutdown():
+@validate_json({'mode': (str, 'light', False)})
+def shutdown(validated_data):
+    # Validation runs before the termination thread is scheduled, so a
+    # malformed body gets a 400 without killing the server.
     threading.Thread(target=delayed_termination).start()
-    data = request.get_json()
-    mode = data.get('mode', 'light') if data else 'light'
+    mode = validated_data['mode'] or 'light'
     return render_template('goodbye.html', production_mode=state.PRODUCTION_MODE, mode=mode)
 
 @core_bp.route('/browse', methods=['POST'])
@@ -196,7 +199,8 @@ def get_settings():
 
 
 @core_bp.route('/settings', methods=['POST'])
-def post_settings():
+@validate_json({})  # settings keys are free-form — body-shape guard only; save() validates each key
+def post_settings(validated_data):
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'status': 'error', 'message': 'No JSON data'}), 400
@@ -214,7 +218,8 @@ def get_data_root():
 
 
 @core_bp.route('/data_root', methods=['POST'])
-def post_data_root():
+@validate_json({'path': (str, None, False), 'reset': (bool, False, False)})
+def post_data_root(validated_data):
     """Validate a proposed data-folder change **without** moving anything (dry run).
 
     The actual copy/move is deferred to ``POST /data_root/restart`` so the user can
@@ -229,12 +234,11 @@ def post_data_root():
     if state.process and state.process.poll() is None:
         return jsonify({'status': 'error',
                         'message': 'Cannot change the data folder while the data collection process is running'}), 423
-    data = request.get_json(silent=True) or {}
     try:
-        if data.get('reset'):
+        if validated_data['reset']:
             new_path, moved = _data_root.preview_reset()
-        elif 'path' in data:
-            new_path, moved = _data_root.preview_data_root(data['path'])
+        elif validated_data['path'] is not None:
+            new_path, moved = _data_root.preview_data_root(validated_data['path'])
         else:
             return jsonify({'status': 'error', 'message': 'No path provided'}), 400
     except ValueError as e:
@@ -244,7 +248,9 @@ def post_data_root():
 
 
 @core_bp.route('/data_root/restart', methods=['POST'])
-def restart_for_data_root():
+@validate_json({'path': (str, None, False), 'reset': (bool, False, False),
+                'mode': (str, 'light', False)})
+def restart_for_data_root(validated_data):
     """Commit the data-folder change, then relaunch the app in place to adopt it.
 
     This is where the move actually happens (the ``POST /data_root`` step is only a
@@ -266,13 +272,12 @@ def restart_for_data_root():
     if state.process and state.process.poll() is None:
         return jsonify({'status': 'error',
                         'message': 'Cannot change the data folder while the data collection process is running'}), 423
-    data = request.get_json(silent=True) or {}
-    mode = data.get('mode', 'light')
+    mode = validated_data['mode'] or 'light'
     try:
-        if data.get('reset'):
+        if validated_data['reset']:
             new_path, moved = _data_root.reset_to_default()
-        elif 'path' in data:
-            new_path, moved = _data_root.set_data_root(data['path'])
+        elif validated_data['path'] is not None:
+            new_path, moved = _data_root.set_data_root(validated_data['path'])
         else:
             return jsonify({'status': 'error', 'message': 'No path provided'}), 400
     except ValueError as e:
@@ -345,13 +350,14 @@ def get_event_log():
 
 
 @core_bp.route('/event_log', methods=['POST'])
-def post_event_log():
-    data = request.get_json(silent=True) or {}
-    event_type = str(data.get('type', '')).strip()
-    action = str(data.get('action', '')).strip()
+@validate_json({'type': (str, None, False), 'action': (str, None, False),
+                'details': (dict, None, False)})
+def post_event_log(validated_data):
+    event_type = (validated_data['type'] or '').strip()
+    action = (validated_data['action'] or '').strip()
     if not event_type or not action:
         return jsonify({'status': 'error', 'message': 'type and action are required'}), 400
-    event_logger.append(event_type, action, data.get('details'))
+    event_logger.append(event_type, action, validated_data['details'])
     return jsonify({'status': 'success'})
 
 
@@ -412,6 +418,8 @@ def download_event_logs():
 
     If nothing matches, the zip still contains a short note so the user always
     has a file to attach."""
+    # No @validate_json: it would 400 the GET arm (no JSON body). The POST body
+    # is fully validated inline below (list type, size cap, traversal guard).
     events_root = _events_root()
 
     selected_paths = None

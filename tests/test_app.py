@@ -1242,3 +1242,92 @@ def test_export_cal_coefs_writes_identity(client, tmp_path, monkeypatch):
     assert out['meas_unit'] == 'abs'
     assert out['concen_unit'] == 'nM'
     assert out['for_meas'] == 'ABS'
+
+
+# ---------------------------------------------------------------------------
+# Body-shape guards (@validate_json) on core JSON POST routes.
+# /shutdown uses a fake Thread so the happy path never SIGTERMs the test run.
+# ---------------------------------------------------------------------------
+
+class _RecordingThread:
+    """Stand-in for threading.Thread that records targets instead of running them."""
+    started = []
+
+    def __init__(self, target=None, **kwargs):
+        self._target = target
+
+    def start(self):
+        _RecordingThread.started.append(self._target)
+
+
+@pytest.fixture
+def no_real_threads(monkeypatch):
+    from routes import core_routes
+    _RecordingThread.started = []
+    monkeypatch.setattr(core_routes.threading, 'Thread', _RecordingThread)
+    yield _RecordingThread
+
+
+def test_shutdown_non_json_body_is_400_and_does_not_terminate(client, no_real_threads):
+    rv = client.post('/shutdown', data='mode=dark',
+                     content_type='application/x-www-form-urlencoded')
+    assert rv.status_code == 400
+    assert no_real_threads.started == []
+
+
+def test_shutdown_happy_path_schedules_termination(client, no_real_threads):
+    from routes import core_routes
+    rv = client.post('/shutdown', json={'mode': 'dark'})
+    assert rv.status_code == 200
+    assert no_real_threads.started == [core_routes.delayed_termination]
+
+
+def test_shutdown_wrong_type_mode_is_400(client, no_real_threads):
+    rv = client.post('/shutdown', json={'mode': ['dark']})
+    assert rv.status_code == 400
+    assert no_real_threads.started == []
+
+
+def test_first_run_seed_array_body_is_400(client):
+    rv = client.post('/api/first-run/seed', json=[True])
+    assert rv.status_code == 400
+
+
+def test_settings_post_array_body_is_400(client):
+    rv = client.post('/settings', json=["not", "a", "dict"])
+    assert rv.status_code == 400
+
+
+def test_settings_post_empty_object_still_reports_no_data(client):
+    rv = client.post('/settings', json={})
+    assert rv.status_code == 400
+    assert rv.get_json()['message'] == 'No JSON data'
+
+
+def test_data_root_post_wrong_type_path_is_400(client, monkeypatch):
+    monkeypatch.setattr(state, 'IS_FROZEN', True)
+    rv = client.post('/data_root', json={'path': 123})
+    assert rv.status_code == 400
+
+
+def test_event_log_post_missing_action_is_400(client):
+    rv = client.post('/event_log', json={'type': 'file'})
+    assert rv.status_code == 400
+    assert rv.get_json()['message'] == 'type and action are required'
+
+
+def test_event_log_post_wrong_type_details_is_400(client):
+    rv = client.post('/event_log', json={'type': 'file', 'action': 'select',
+                                         'details': 'not-a-dict'})
+    assert rv.status_code == 400
+
+
+def test_event_log_post_happy_path_appends(client, monkeypatch):
+    from routes import core_routes
+    seen = []
+    monkeypatch.setattr(core_routes.event_logger, 'append',
+                        lambda t, a, d: seen.append((t, a, d)))
+    rv = client.post('/event_log', json={'type': 'file', 'action': 'select',
+                                         'details': {'name': 'a.csv'}})
+    assert rv.status_code == 200
+    assert seen == [('file', 'select', {'name': 'a.csv'})]
