@@ -416,10 +416,6 @@ function checkMeasHeader(headers) {
     }
 }
 
-function arraysEqual(a, b) {
-    return JSON.stringify(a) === JSON.stringify(b);
-}
-
 // Header row for the calibration-JSON table (name + modified-date columns are
 // click-to-sort). Matches the server-rendered markup in index.html.
 function _jsonTableHeaderHtml() {

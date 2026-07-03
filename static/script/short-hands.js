@@ -1,4 +1,11 @@
 // Utility short-hands
+
+// Shared: element-wise strict comparison of flat arrays (used by navigation.js,
+// data-handling.js). Single global definition — do not redefine elsewhere.
+function arraysEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length) return false;
+    return arr1.every((value, index) => value === arr2[index]);
+}
 const $id = id => document.getElementById(id);
 const $text = (id, text) => {
     const element = $id(id);

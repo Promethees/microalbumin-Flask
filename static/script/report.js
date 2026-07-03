@@ -1403,10 +1403,6 @@ async function loadReportItems(subject) {
     }
 }
 
-function toggleItemCardOpacity(id, checked) {
-    document.getElementById(id).style.opacity = checked ? '1' : '0.5';
-}
-
 function _darkScale(overrides = {}) {
     const isLight = document.body.classList.contains('light');
     return {

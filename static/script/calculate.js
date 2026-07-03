@@ -92,11 +92,6 @@ function getUniqueColumnEntries(data, columnName = "TimePoint") {
     return Array.from(uniqueColumnEntries).sort((a, b) => Number(b) - Number(a));
 }
 
-function arraysEqual(arr1, arr2) {
-    if (arr1.length !== arr2.length) return false;
-    return arr1.every((value, index) => value === arr2[index]);
-}
-
 function computeFit(value, fit_type, coef) {
     const regressedQuantity = document.getElementById("regressed-quantity").value;
     if (coef[0] === 'NONE' || coef[0] === 'NaN') {
