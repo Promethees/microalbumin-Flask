@@ -1331,3 +1331,51 @@ def test_event_log_post_happy_path_appends(client, monkeypatch):
                                          'details': {'name': 'a.csv'}})
     assert rv.status_code == 200
     assert seen == [('file', 'select', {'name': 'a.csv'})]
+
+
+# ---------------------------------------------------------------------------
+# /save_normalized_csv body-shape guard (@validate_json) + writer error paths.
+# ---------------------------------------------------------------------------
+
+def _write_csv(tmp_path, name='src.csv'):
+    p = tmp_path / name
+    p.write_text('# mode: kinetics\nTimestamp,Value\n0,1.5\n1,2.5\n', encoding='utf-8')
+    return p
+
+
+def test_save_normalized_csv_array_body_is_400(client):
+    rv = client.post('/save_normalized_csv', json=['a.csv'])
+    assert rv.status_code == 400
+
+
+def test_save_normalized_csv_wrong_type_file_is_400(client):
+    rv = client.post('/save_normalized_csv', json={'file': 42, 'save_name': 'out'})
+    assert rv.status_code == 400
+
+
+def test_save_normalized_csv_missing_file_is_404(client):
+    rv = client.post('/save_normalized_csv', json={'save_name': 'out'})
+    assert rv.status_code == 404
+    assert rv.get_json()['message'] == 'Source file not found.'
+
+
+def test_save_normalized_csv_missing_save_name_is_400(client, tmp_path):
+    src = _write_csv(tmp_path)
+    rv = client.post('/save_normalized_csv', json={'file': str(src)})
+    assert rv.status_code == 400
+    assert rv.get_json()['message'] == 'Save name is required.'
+
+
+def test_save_normalized_csv_happy_path_writes_file(client, tmp_path):
+    src = _write_csv(tmp_path)
+    rv = client.post('/save_normalized_csv',
+                     json={'file': str(src), 'save_name': 'norm',
+                           'save_dir': str(tmp_path)})
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    out = tmp_path / 'norm.csv'
+    assert out.is_file()
+    # Per-column minimum subtracted: 1.5 → 0.0, 2.5 → 1.0
+    content = out.read_text(encoding='utf-8')
+    assert '0.0' in content or ',0' in content

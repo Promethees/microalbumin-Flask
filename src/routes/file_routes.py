@@ -1913,21 +1913,22 @@ def _write_normalized_csv(file_path, save_name, save_dir, source_index=None):
 
 
 @file_bp.route('/save_normalized_csv', methods=['POST'])
-def save_normalized_csv():
+@validate_json({
+    'file': (str, None, False),
+    'save_name': (str, None, False),
+    'save_dir': (str, None, False),
+    'source_index': (int, None, False),
+})
+def save_normalized_csv(validated_data):
     """Save a normalized copy of a CSV file (subtract per-column minimum / blank removal) to a new CSV file.
 
     Body: {file, save_name, save_dir, source_index?}. When source_index is
     omitted/null, every Value column is normalized; otherwise only the column
-    for that source is normalized.
+    for that source is normalized. Fields stay schema-optional so
+    _write_normalized_csv keeps its specific 404/400 messages.
     """
     try:
-        data = request.get_json(silent=True)
-        if not isinstance(data, dict):
-            return jsonify({'status': 'error', 'message': 'Request must be JSON'}), 400
-        file_path = data.get('file')
-        save_name = data.get('save_name')
-        save_dir = data.get('save_dir')
-        source_index = data.get('source_index')
-        return _write_normalized_csv(file_path, save_name, save_dir, source_index)
+        return _write_normalized_csv(validated_data['file'], validated_data['save_name'],
+                                     validated_data['save_dir'], validated_data['source_index'])
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

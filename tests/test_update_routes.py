@@ -56,3 +56,39 @@ def test_log_swap_failure_is_best_effort_and_never_raises():
     with patch.object(ur.update_service, '_swap_log_path',
                       side_effect=OSError('no path')):
         ur._log_swap_failure(RuntimeError('boom'))  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# /update/finalize body-shape guard (@validate_json): a malformed body must be
+# rejected before the reset-display sentinel is marked or shutdown scheduled.
+# ---------------------------------------------------------------------------
+
+def _finalize_client():
+    from main import app
+    app.config['TESTING'] = True
+    return app.test_client()
+
+
+def test_finalize_non_json_body_is_400_without_side_effects():
+    import state
+    client = _finalize_client()
+    with patch.object(state, 'mark_reset_display_pending') as mark, \
+         patch.object(ur.threading, 'Thread') as thread:
+        rv = client.post('/update/finalize', data='mode=dark',
+                         content_type='application/x-www-form-urlencoded')
+    assert rv.status_code == 400
+    mark.assert_not_called()
+    thread.assert_not_called()
+
+
+def test_finalize_happy_path_marks_and_schedules():
+    import state
+    client = _finalize_client()
+    fake_thread = MagicMock()
+    with patch.object(state, 'mark_reset_display_pending') as mark, \
+         patch.object(ur.threading, 'Thread', return_value=fake_thread) as thread:
+        rv = client.post('/update/finalize', json={'mode': 'dark'})
+    assert rv.status_code == 200
+    mark.assert_called_once()
+    thread.assert_called_once()
+    fake_thread.start.assert_called_once()
