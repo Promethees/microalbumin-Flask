@@ -1031,7 +1031,7 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
                 }
                 case "exponential": {
                     const [a, b, c] = analysis.coefficients;
-                    y = (a !== 0 && x > c && b != 0) ? Math.log((x - c) / a) / b : 0;
+                    y = (a !== 0 && x > c && b !== 0) ? Math.log((x - c) / a) / b : 0;
                     break;
                 }
                 case "Michaelis-Menten": {
