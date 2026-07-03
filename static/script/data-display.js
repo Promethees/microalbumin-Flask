@@ -820,14 +820,6 @@ function extractColumnAndConvert(data, colName, convert = false) {
     });
 }
 
-function getDataGroups(data, XColumn, YColumn) {
-    return {
-        allXColumn: extractColumnAndConvert(data, XColumn),
-        allYColumn: extractColumnAndNormalize(data, YColumn),
-        allData: data
-    };
-}
-
 function determineMeasurementLabel(metadata, XColumn, YColumn) {
     if (AppState.currentMeasurementMode === "calibrate") {
         return 'MeasMode' in metadata ? `${YColumn} against ${XColumn}` : 'Correlation';
@@ -937,22 +929,6 @@ function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId =
         </div>
     </span>`;
     return html;
-}
-
-function updateSingleModeAnalysisInfo(analysisInfo) {
-    document.getElementById("plot-analysis").innerHTML = analysisInfo ? formatAnalysisHtml(analysisInfo) : '';
-}
-
-function extractSingleResultSummary(metadata, mixAnalysis) {
-    return {
-        split: false,
-        maxrate: mixAnalysis.maxRate,
-        slope: mixAnalysis.slope,
-        sat: mixAnalysis.saturationValue,
-        time_to_sat: mixAnalysis.timeToSaturation,
-        meas: metadata["Measurement"],
-        meas_unit: metadata["Unit"]
-    };
 }
 
 function calibrateKineticsAnalysis(data, XColumn, YColumn) {

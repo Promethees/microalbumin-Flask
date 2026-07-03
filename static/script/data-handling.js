@@ -2001,51 +2001,6 @@ function sendExportPayload(payload, isBatch) {
     });
 }
 
-function sendExportData(saveDir, saveFile, analysisData, concentration, newFile = true) {
-    if (analysisData) {
-        const data = {
-            save_dir: saveDir,
-            save_file: saveFile,
-            maxrate: (analysisData.maxrate === "--" || !analysisData.maxrate) ? "NONE" : analysisData.maxrate,
-            slope: (analysisData.slope === "--" || !analysisData.slope) ? "NONE" : analysisData.slope,
-            sat: (analysisData.saturationValue === "--" || !analysisData.saturationValue) ? "NONE" : analysisData.saturationValue,
-            timeSat: (analysisData.timeToSaturation === "--" || !analysisData.timeToSaturation) ? "NONE" : analysisData.timeToSaturation,
-            con: concentration,
-            measUnit: analysisData.measUnit,
-            newFile: newFile,
-            measMode: AppState.currentMeasurementMode,
-            meas: analysisData.measurement,
-            estValue: analysisData.estValue ? analysisData.estValue : "NONE",
-            timePoint: analysisData.timePoint
-        };
-        $.ajax({
-            url: '/export_data',
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function (response) {
-                if (response.status === 'success') {
-                    Swal.fire({
-                        title: 'Exported!',
-                        text: `Data exported to ${exportFolderLabel(saveDir)} folder.`,
-                        icon: 'success',
-                        timer: 2500,
-                        showConfirmButton: false
-                    });
-                } else {
-                    Swal.fire({ title: 'Error!', text: response.message, icon: 'error', confirmButtonText: 'OK' });
-                }
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-                console.error("AJAX error:", textStatus, errorThrown);
-                Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
-            }
-        });
-    } else {
-        Swal.fire({ title: 'Error!', text: 'No analysis data available to export.', icon: 'error', confirmButtonText: 'OK' });
-    }
-}
-
 // ── Export subfolder handlers ────────────────────────────────────────────────
 
 function onExpSubfolderChange(select) {

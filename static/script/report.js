@@ -1579,17 +1579,6 @@ async function initItemPreview(item, itemID, preloaded = null, calType = null) {
     }
 }
 
-function updateMetricVisibility(filename, metric, visible) {
-    const config = window.ReportItemConfig[filename];
-    if (!config) return;
-
-    if (visible) {
-        if (!config.visibleMetrics.includes(metric)) config.visibleMetrics.push(metric);
-    } else {
-        config.visibleMetrics = config.visibleMetrics.filter(m => m !== metric);
-    }
-}
-
 // Re-render a point-calibration preview scatter for the selected time point.
 function updatePointPreview(filename) {
     const config = window.ReportItemConfig[filename];
@@ -1607,12 +1596,6 @@ function updatePointPreview(filename) {
         .filter(p => !isNaN(p.x) && !isNaN(p.y));
     config.pointChart.data.datasets[0].data = pts;
     config.pointChart.update();
-}
-
-function updateMetricAlgo(filename, metric, algo) {
-    const config = window.ReportItemConfig[filename];
-    if (!config) return;
-    config.metricAlgos[metric] = algo;
 }
 
 function refreshPreviewNormalization(filename) {

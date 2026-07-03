@@ -366,73 +366,6 @@ function validateFileName(inputId) {
     return true;
 }
 
-function validatePathName(inputId) {
-    const input = document.getElementById(inputId);
-    const errorElement = document.getElementById(`${inputId}-error`);
-    const path = input.value.trim();
-
-    // Reset state
-    errorElement.innerHTML = '';
-    input.classList.remove('invalid', 'valid');
-
-    if (path === '') {
-        errorElement.innerHTML = 'Path cannot be empty<br/>';
-        input.classList.add('invalid');
-        return false;
-    }
-
-    // Check for invalid characters (platform-specific)
-    let invalidChars;
-    if (path.includes('\\')) {
-        // Windows path
-        invalidChars = /[*?"<>|\0]/g;
-        if (/:/.test(path) && !/^[a-zA-Z]:\\/.test(path)) {
-            errorElement.innerHTML = 'Windows paths must start with drive letter (e.g., C:\\)<br/>';
-            input.classList.add('invalid');
-            return false;
-        }
-    } else {
-        // Unix-like path
-        invalidChars = /[\0]/g;
-        if (!path.startsWith('/')) {
-            errorElement.innerHTML = 'Unix paths must start with /<br/>';
-            input.classList.add('invalid');
-            return false;
-        }
-    }
-
-    if (invalidChars.test(path)) {
-        errorElement.innerHTML = `Path contains invalid characters<br/>`;
-        input.classList.add('invalid');
-        return false;
-    }
-
-    // Check for reserved names in path components
-    const reservedNames = /(^|\/|\\)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$|\\|\/)/i;
-    if (reservedNames.test(path)) {
-        errorElement.innerHTML = 'Path contains reserved system names<br/>';
-        input.classList.add('invalid');
-        return false;
-    }
-
-    // Check for relative path components
-    if (/\.\.($|[\\/])/.test(path)) {
-        errorElement.innerHTML = 'Relative paths (..) are not allowed<br/>';
-        input.classList.add('invalid');
-        return false;
-    }
-
-    // Check for trailing slash
-    if (/[\\/]$/.test(path)) {
-        errorElement.innerHTML = 'Path should not end with a slash<br/>';
-        input.classList.add('invalid');
-        return false;
-    }
-
-    input.classList.add('valid');
-    return true;
-}
-
 function validateTimeoutInterval() {
     const infTimeout = document.getElementById('inf-timeout');
     const timeoutInput = document.getElementById('timeout');
@@ -594,14 +527,6 @@ function syncConcenUnitDropdown() {
     const fromMeta = meta && meta['ConcenUnit'] && String(meta['ConcenUnit']).trim();
     const fallback = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.default_concentration_unit) || 'ng/µL';
     sel.value = fromMeta || fallback;
-}
-
-// User changed the concentration unit: re-render the display so labels pick up
-// the new unit, and use it as the unit for the next calibration export. This is
-// a label change only — it does not rewrite the loaded file (legacy files are
-// migrated when their data folder is selected).
-function onConcenUnitChange() {
-    if (typeof toggleMode === 'function') toggleMode();
 }
 
 if (typeof USER_SETTINGS !== 'undefined') {
