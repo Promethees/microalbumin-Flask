@@ -107,6 +107,7 @@ _report(83, "Loading route blueprints …")
 from routes.hardware_routes import hardware_bp
 _report(88, "Loading route blueprints …")
 from routes.file_routes import file_bp
+from routes.report_routes import report_bp
 _report(93, "Loading route blueprints …")
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
@@ -124,6 +125,7 @@ app.jinja_env.globals['STATIC_VERSION'] = str(int(_time.time()))
 app.register_blueprint(core_bp)
 app.register_blueprint(hardware_bp)
 app.register_blueprint(file_bp)
+app.register_blueprint(report_bp)
 app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(update_bp)
