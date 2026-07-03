@@ -150,37 +150,6 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         return div.innerHTML;
     }
 
-    function collectTableContent() {
-        const metaTable = document.getElementById('swal-metadata-table');
-        let metaLines = [];
-        if (metaTable) {
-            const metaRows = Array.from(metaTable.querySelectorAll('tbody tr'));
-            metaLines = metaRows.map(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length === 2) {
-                    const key = cells[0].textContent.trim();
-                    // Constrained metadata (e.g. ConcenUnit) is edited via a <select>;
-                    // read its value, otherwise fall back to the cell text.
-                    const sel = cells[1].querySelector('select');
-                    const value = sel ? sel.value.trim() : cells[1].textContent.trim();
-                    return `# ${key}: ${value}`;
-                }
-                return null;
-            }).filter(Boolean);
-        }
-
-        const table = document.getElementById('swal-edit-table');
-        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        const dataLines = rows.map(row => {
-            const cells = Array.from(row.querySelectorAll('td'));
-            return cells.map(cell => cell.textContent.trim()).join(',');
-        });
-
-        return metaLines.join('\n') + (metaLines.length ? '\n' : '') + headers.join(',') + '\n' + dataLines.join('\n');
-    }
-
-
     checkScriptStatus().then((isRunning) => {
         if (isRunning || AppState.scriptRunning) {
             Swal.fire({
