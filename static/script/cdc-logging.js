@@ -118,7 +118,7 @@ function checkScriptStatus() {
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.log("Status check error:", textStatus, errorThrown);
+                console.error("Status check error:", textStatus, errorThrown);
                 logDisplay.insertAdjacentText('beforeend', 'Error checking script status\n');
                 AppState.scriptRunning = false;
                 resolve(false); // Assume not running on error

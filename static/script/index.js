@@ -186,7 +186,7 @@ function clearCache() {
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
-            console.log("Clear cache AJAX error:", textStatus, errorThrown);
+            console.error("Clear cache AJAX error:", textStatus, errorThrown);
             $append("log-display", "Error: Failed to clear cache\n");
         }
     });
@@ -196,13 +196,13 @@ function checkServerStatus() {
     $.get('/ping')
         .done(function () {
             if (!serverAvailable) {
-                console.log('Server is back up, resuming polling...');
+                console.info('Server is back up, resuming polling...');
                 serverAvailable = true;
             }
         })
         .fail(function () {
             if (serverAvailable) {
-                console.log('Server is down, pausing polling, clearing cache and resetting state...');
+                console.warn('Server is down, pausing polling, clearing cache and resetting state...');
                 clearCache();
                 serverAvailable = false;
                 AppState.reset();
@@ -605,7 +605,7 @@ function updateDirectory(path, deselect, changeToCalibrate = false) {
                 resolve();
             }
         }).fail(function (jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error:", textStatus, errorThrown);
+            console.error("AJAX error:", textStatus, errorThrown);
             $showText("error-message", "Error updating directory");
             resolve();
         });

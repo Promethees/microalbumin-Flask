@@ -791,31 +791,31 @@ function handleFetchError(error) {
     console.error("Failed to fetch data:", error.message);
 
     if (error.xhr) {
-        console.log("📡 XHR Object:", error.xhr);
-        console.log("📊 Status:", error.status);
-        console.log("❌ Error Thrown:", error.errorThrown);
+        console.error("📡 XHR Object:", error.xhr);
+        console.error("📊 Status:", error.status);
+        console.error("❌ Error Thrown:", error.errorThrown);
 
         // Log response text if available
         if (error.xhr.responseText) {
-            console.log("📄 Response Text:", error.xhr.responseText);
+            console.error("📄 Response Text:", error.xhr.responseText);
         }
 
         // Log response headers if available
         if (error.xhr.getAllResponseHeaders) {
-            console.log("📋 Response Headers:", error.xhr.getAllResponseHeaders());
+            console.error("📋 Response Headers:", error.xhr.getAllResponseHeaders());
         }
 
         // Log status code and text
-        console.log("🔢 Status Code:", error.xhr.status);
-        console.log("📝 Status Text:", error.xhr.statusText);
+        console.error("🔢 Status Code:", error.xhr.status);
+        console.error("📝 Status Text:", error.xhr.statusText);
     }
 
     if (error.filename) {
-        console.log("📁 Requested Filename:", error.filename);
+        console.error("📁 Requested Filename:", error.filename);
     }
 
     if (error.directory) {
-        console.log("📂 Directory:", error.directory);
+        console.error("📂 Directory:", error.directory);
     }
 
     console.groupEnd();
@@ -1995,7 +1995,7 @@ function sendExportPayload(payload, isBatch) {
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error:", textStatus, errorThrown);
+            console.error("AJAX error:", textStatus, errorThrown);
             Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
         }
     });
@@ -2037,7 +2037,7 @@ function sendExportData(saveDir, saveFile, analysisData, concentration, newFile 
                 }
             },
             error: function (jqXHR, textStatus, errorThrown) {
-                console.log("AJAX error:", textStatus, errorThrown);
+                console.error("AJAX error:", textStatus, errorThrown);
                 Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
             }
         });
@@ -2155,7 +2155,7 @@ function exportJSONCoef() {
             }
         },
         error: function (jqXHR, textStatus, errorThrown) {
-            console.log("AJAX error:", textStatus, errorThrown);
+            console.error("AJAX error:", textStatus, errorThrown);
             Swal.fire({ title: 'Error!', text: 'Error exporting data.', icon: 'error', confirmButtonText: 'OK' });
         }
     });
