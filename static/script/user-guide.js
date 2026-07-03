@@ -968,15 +968,25 @@ class UserGuide {
     }
 
     /**
+     * The tooltip's six content/nav elements, looked up together. Shared by
+     * updateTooltip() and _updateTooltipSearching().
+     */
+    _tooltipParts() {
+        return {
+            counter: this.tooltip.querySelector('.tooltip-step-counter'),
+            title: this.tooltip.querySelector('.tooltip-title'),
+            description: this.tooltip.querySelector('.tooltip-description'),
+            prevBtn: this.tooltip.querySelector('.tooltip-prev-btn'),
+            nextBtn: this.tooltip.querySelector('.tooltip-next-btn'),
+            finishBtn: this.tooltip.querySelector('.tooltip-finish-btn'),
+        };
+    }
+
+    /**
      * Update tooltip content
      */
     updateTooltip(step, stepIndex) {
-        const counter = this.tooltip.querySelector('.tooltip-step-counter');
-        const title = this.tooltip.querySelector('.tooltip-title');
-        const description = this.tooltip.querySelector('.tooltip-description');
-        const prevBtn = this.tooltip.querySelector('.tooltip-prev-btn');
-        const nextBtn = this.tooltip.querySelector('.tooltip-next-btn');
-        const finishBtn = this.tooltip.querySelector('.tooltip-finish-btn');
+        const { counter, title, description, prevBtn, nextBtn, finishBtn } = this._tooltipParts();
 
         counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
         title.textContent = step.title;
@@ -1007,12 +1017,7 @@ class UserGuide {
      * is never stuck on a blank screen.
      */
     _updateTooltipSearching(step, stepIndex) {
-        const counter = this.tooltip.querySelector('.tooltip-step-counter');
-        const title = this.tooltip.querySelector('.tooltip-title');
-        const description = this.tooltip.querySelector('.tooltip-description');
-        const prevBtn = this.tooltip.querySelector('.tooltip-prev-btn');
-        const nextBtn = this.tooltip.querySelector('.tooltip-next-btn');
-        const finishBtn = this.tooltip.querySelector('.tooltip-finish-btn');
+        const { counter, title, description, prevBtn, nextBtn, finishBtn } = this._tooltipParts();
 
         counter.textContent = `${stepIndex + 1} of ${this.steps.length}`;
         title.textContent = step.title;
