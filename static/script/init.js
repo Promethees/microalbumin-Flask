@@ -733,7 +733,7 @@ function _buildSettingsHTML(s, folders, aiStats) {
                 <span class="sm-label">${label}</span>
                 <label class="sm-show-all-label">
                     <input type="checkbox" id="${checkId}" ${isAll ? 'checked' : ''}
-                        onchange="var i=document.getElementById('${inputId}');i.disabled=this.checked;if(!this.checked&&!i.value)i.value=50;">
+                        onchange="const i=document.getElementById('${inputId}');i.disabled=this.checked;if(!this.checked&&!i.value)i.value=50;">
                     ${checkLabel}
                 </label>
             </div>
