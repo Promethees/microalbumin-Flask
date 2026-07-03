@@ -278,3 +278,27 @@ def test_update_apply_refuses_without_token(client, monkeypatch):
     rv = client.post('/update/apply', json={})
     assert rv.status_code == 403
     assert rv.get_json() == {'status': 'error', 'message': 'Not activated'}
+
+
+# ── 400: body-shape guard (@validate_json) ────────────────────────────────────
+
+def test_non_json_body_is_400(client, monkeypatch):
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: pytest.fail('must not call the server for a non-JSON body'))
+    rv = client.post('/ai/activate', data='token=abc',
+                     content_type='application/x-www-form-urlencoded')
+    assert rv.status_code == 400
+
+
+def test_json_array_body_is_400(client, monkeypatch):
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: pytest.fail('must not call the server for a non-object body'))
+    rv = client.post('/ai/activate', json=['token'])
+    assert rv.status_code == 400
+
+
+def test_wrong_type_token_is_400(client, monkeypatch):
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: pytest.fail('must not call the server for a non-string token'))
+    rv = client.post('/ai/activate', json={'token': 123})
+    assert rv.status_code == 400

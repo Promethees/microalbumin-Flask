@@ -655,3 +655,26 @@ def test_soft_mode_gate_does_not_crossfire_other_guides():
         "how do I calculate concentration",
         {"mode": "point", "data_loaded": True, "app_started": True}, "en")
     assert gid == "concentration_calc_point"
+
+
+# ---------------------------------------------------------------------------
+# /ai/match body-shape guard (@validate_json): non-JSON and mistyped fields
+# are rejected up front; an empty JSON object is still a valid "no query" miss.
+# ---------------------------------------------------------------------------
+def test_ai_match_route_rejects_non_json_body(client):
+    resp = client.post('/ai/match', data='query=help',
+                       content_type='application/x-www-form-urlencoded')
+    assert resp.status_code == 400
+
+
+def test_ai_match_route_rejects_wrong_type_query(client):
+    resp = client.post('/ai/match', json={'query': 123})
+    assert resp.status_code == 400
+
+
+def test_ai_match_route_empty_object_body_defers(client):
+    resp = client.post('/ai/match', json={})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['status'] == 'success'
+    assert data['fires'] is False

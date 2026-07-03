@@ -149,7 +149,8 @@ def ai_status():
 
 
 @ai_bp.route('/activate', methods=['POST'])
-def activate():
+@validate_json({'token': (str, '', False)})
+def activate(validated_data):
     """Exchange the pasted Easy OKAPI download token for a permanent license token.
 
     The website only issues short-lived (30-min) download tokens. Saving that raw
@@ -158,8 +159,9 @@ def activate():
     therefore exchange it once via the server's /api/activate endpoint, which
     returns a permanent activation token (no exp), and persist that instead.
     """
-    data = request.get_json(silent=True) or {}
-    token = (data.get('token') or '').strip()
+    # token stays schema-optional so a missing/blank token yields this route's
+    # long-standing 'Token is required' message rather than the generic one.
+    token = (validated_data.get('token') or '').strip()
     if not token:
         return jsonify({'status': 'failure', 'message': 'Token is required'}), 400
 
@@ -199,10 +201,14 @@ def activate():
 
 
 @ai_bp.route('/chat', methods=['POST'])
-def ai_chat():
-    data = request.get_json(silent=True) or {}
-    language = data.get('language') or 'en'
-    raw_messages = data.get('messages', [])
+@validate_json({
+    'messages': (list, None, False),
+    'language': (str, None, False),
+    'ui_context': (dict, None, False),
+})
+def ai_chat(validated_data):
+    language = validated_data['language'] or 'en'
+    raw_messages = validated_data['messages'] or []
     messages = [
         m for m in raw_messages
         if isinstance(m, dict)
@@ -235,7 +241,7 @@ def ai_chat():
         resp.headers['Retry-After'] = str(wait)
         return resp, 429
 
-    ui_context = data.get('ui_context') or {}
+    ui_context = validated_data['ui_context'] or {}
 
     # Deterministic, no-LLM turns (greeting, out-of-scope refusal, report
     # quick/full clarification) are resolved here for BOTH the dev and proxy
@@ -378,7 +384,13 @@ def ai_feedback_export():
 
 
 @ai_bp.route('/match', methods=['POST'])
-def ai_match():
+@validate_json({
+    'query': (str, None, False),
+    'messages': (list, None, False),
+    'language': (str, None, False),
+    'ui_context': (dict, None, False),
+})
+def ai_match(validated_data):
     """Local, no-LLM guide resolution for the desktop client.
 
     The desktop UI differs from the cloud UI, so navigation guides must be
@@ -387,10 +399,9 @@ def ai_match():
     local guide; a miss falls through to the normal (LLM) chat. No activation
     required — guide navigation is purely local.
     """
-    data = request.get_json(silent=True) or {}
-    query = (data.get('query') or '').strip()
+    query = (validated_data['query'] or '').strip()
     if not query:
-        msgs = data.get('messages') or []
+        msgs = validated_data['messages'] or []
         query = next(
             (m.get('content', '') for m in reversed(msgs)
              if isinstance(m, dict) and m.get('role') == 'user'),
@@ -401,10 +412,10 @@ def ai_match():
     # so an unbounded string is wasted work (a real nav phrase is short anyway).
     query = query[:_MAX_MSG_CHARS]
 
-    language = data.get('language') or 'en'
+    language = validated_data['language'] or 'en'
     if language not in user_settings.SUPPORTED_LANGUAGES:
         language = 'en'
-    ui_context = data.get('ui_context') or {}
+    ui_context = validated_data['ui_context'] or {}
 
     guide_id, steps = ai_assistant.resolve_guide(query, ui_context, language)
     return jsonify({

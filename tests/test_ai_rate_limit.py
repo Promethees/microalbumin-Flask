@@ -73,3 +73,21 @@ def test_payload_cap_checked_before_rate_limit(client):
     resp = _post(client, [{'role': 'user', 'content': huge}])
     assert resp.status_code == 413
     assert len(ai_routes._rate_hits) == 0
+
+
+# ── Body-shape guard (@validate_json) — runs before the limiter ───────────────
+
+def test_non_json_body_rejected(client):
+    resp = client.post('/ai/chat', data='hello',
+                       content_type='text/plain')
+    assert resp.status_code == 400
+
+
+def test_wrong_type_messages_rejected(client):
+    resp = client.post('/ai/chat', json={'messages': 'not-a-list'})
+    assert resp.status_code == 400
+
+
+def test_json_array_body_rejected(client):
+    resp = client.post('/ai/chat', json=[{'role': 'user', 'content': 'hi'}])
+    assert resp.status_code == 400

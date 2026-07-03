@@ -216,3 +216,19 @@ def test_extra_keys_in_body_are_silently_dropped(client):
                            "injected_key": "malicious"})
     assert rv.status_code == 200
     assert rv.get_json()["status"] == "success"
+
+
+# ---------------------------------------------------------------------------
+# Non-object JSON body gate (validators.py: isinstance(data, dict) guard)
+# ---------------------------------------------------------------------------
+
+def test_json_array_body_returns_400(client):
+    rv = client.post('/calculate_coef_and_rsquared', json=[1, 2, 3])
+    assert rv.status_code == 400
+    assert 'JSON object' in rv.get_json()['message']
+
+
+def test_json_scalar_body_returns_400(client):
+    rv = client.post('/calculate_coef_and_rsquared', json="just a string")
+    assert rv.status_code == 400
+    assert 'JSON object' in rv.get_json()['message']
