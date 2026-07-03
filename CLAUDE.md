@@ -47,12 +47,13 @@ Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and 
 
 ```
 main.py (thin entry point)
-  └── registers 5 Flask Blueprints from src/routes/
+  └── registers 6 Flask Blueprints from src/routes/
         ├── core_routes.py    — ping, index, shutdown, browse, JSON cal, report subjects
         ├── file_routes.py    — CSV/JSON CRUD, export, merge, report CRUD
         ├── hardware_routes.py — data-logger subprocess control (run/check/terminate/logs); CDC serial by default, HID keyboard fallback via device Left button
         ├── math_routes.py    — server-side regression API
-        └── ai_routes.py      — AI assistant: chat, settings, activation
+        ├── ai_routes.py      — AI assistant: chat, settings, activation
+        └── update_routes.py  — auto-update: check, apply (SSE), finalize (shutdown for relaunch)
 
 src/
   ├── state.py          ← global state singleton (process, paths, delimiter, PRODUCTION_MODE)
