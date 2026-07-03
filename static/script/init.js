@@ -1568,6 +1568,10 @@ function _applyUpdate() {
                             } catch (_) {}
                         });
                         readChunk();
+                    }).catch(err => {
+                        // A mid-stream network drop otherwise rejects silently
+                        // and leaves the progress modal frozen.
+                        Swal.fire('Update failed', String(err), 'error');
                     });
                 }
                 readChunk();

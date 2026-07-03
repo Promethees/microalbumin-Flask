@@ -1252,7 +1252,8 @@
                     }
                     _updateLangBtn();
                     _updateStatusBar();
-                });
+                })
+                .catch(() => { });   // best-effort refresh; server may be briefly down
         },
 
         stopGeneration() {
