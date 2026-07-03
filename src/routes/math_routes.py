@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from validators import validate_json
 from math_ops import calculate_coef_and_rsquared, calculate_kinetics_quantities
 

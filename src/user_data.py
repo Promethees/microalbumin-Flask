@@ -1,11 +1,10 @@
 import uuid
 import json
-import os
 from pathlib import Path
 from threading import Lock
 from collections import OrderedDict
 from flask import session
-from typing import Dict, Optional, Any
+from typing import Optional, Any
 from contextlib import contextmanager
 
 try:
@@ -251,7 +250,7 @@ def update_file_metadata(filename: str, content: str, user_id: str = None):
                 if header:
                     count = sum(1 for col in header.split(',') if col.strip().startswith('Value:'))
                     user_data['metadata_cache'][filename] = {'num_sources': count if count > 0 else 1}
-            except:
+            except Exception:
                 pass
 
 def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", clear_existing: bool = False) -> dict:
@@ -289,7 +288,7 @@ def init_user_data(csv_dir: str | Path = "csv", json_dir: str | Path = "json", c
                     if header:
                         count = sum(1 for col in header.split(',') if col.strip().startswith('Value:'))
                         user_data['metadata_cache'][fname] = {'num_sources': count if count > 0 else 1}
-                except: pass
+                except Exception: pass
 
         for mode, file in [("kinetics", "exp_kinetics.json"), ("point", "exp_point.json")]:
             raw = _load_file(json_dir / file)

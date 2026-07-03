@@ -1,6 +1,5 @@
 import os
 import secrets
-import bcrypt
 import requests as http_requests
 from urllib.parse import urlencode
 from flask import Blueprint, redirect, request, session
