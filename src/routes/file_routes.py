@@ -1617,6 +1617,34 @@ def export_report_excel(validated_data):
             r += 1
         return r + 1
 
+    def _write_csv_table(ws, r, csv_columns, csv_rows):
+        """'Raw Data' section: label, styled header row, one bordered cell per
+        value (numeric strings coerced to float). Returns
+        (next_row, header_row, first_data_row) for native-chart anchoring."""
+        _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
+        if len(csv_columns) > 1:
+            ws.merge_cells(start_row=r, start_column=1,
+                           end_row=r, end_column=min(len(csv_columns), 8))
+        r += 1
+        hdr_row = r
+        for ci, col in enumerate(csv_columns, 1):
+            _cell(ws, r, ci, col, bold=True, color='FFFFFF',
+                  fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
+            ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
+        r += 1
+        data_start = r
+        for row_data in csv_rows:
+            for ci, col in enumerate(csv_columns, 1):
+                val = row_data.get(col)
+                if val is not None:
+                    try:
+                        val = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                ws.cell(r, ci, value=val).border = CELL_BORDER
+            r += 1
+        return r, hdr_row, data_start
+
     def _write_item_block(ws, item, start_row):
         r = start_row
         filename      = item.get('filename', 'Item')
@@ -1638,26 +1666,7 @@ def export_report_excel(validated_data):
         if csv_columns and csv_rows:
             if mode == 'calibrate':
                 # Write standards data table
-                _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
-                if len(csv_columns) > 1:
-                    ws.merge_cells(start_row=r, start_column=1,
-                                   end_row=r, end_column=min(len(csv_columns), 8))
-                r += 1
-                for ci, col in enumerate(csv_columns, 1):
-                    _cell(ws, r, ci, col, bold=True, color='FFFFFF',
-                          fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
-                    ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
-                r += 1
-                for row_data in csv_rows:
-                    for ci, col in enumerate(csv_columns, 1):
-                        val = row_data.get(col)
-                        if val is not None:
-                            try:
-                                val = float(val)
-                            except (ValueError, TypeError):
-                                pass
-                        ws.cell(r, ci, value=val).border = CELL_BORDER
-                    r += 1
+                r, _hdr_row, _data_start = _write_csv_table(ws, r, csv_columns, csv_rows)
                 r += 1  # blank row before charts
 
                 # Prefer the native (editable) calibration chart — standards +
@@ -1694,28 +1703,7 @@ def export_report_excel(validated_data):
                             r += 1
                         r = _embed_image(ws, b64, r)
             else:
-                _cell(ws, r, 1, 'Raw Data', bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
-                if len(csv_columns) > 1:
-                    ws.merge_cells(start_row=r, start_column=1,
-                                   end_row=r, end_column=min(len(csv_columns), 8))
-                r += 1
-                hdr_row = r
-                for ci, col in enumerate(csv_columns, 1):
-                    _cell(ws, r, ci, col, bold=True, color='FFFFFF',
-                          fill=TABLE_HDR_FILL, align_h='center', border=CELL_BORDER)
-                    ws.column_dimensions[get_column_letter(ci)].width = max(12, len(str(col)) + 2)
-                r += 1
-                data_start = r
-                for row_data in csv_rows:
-                    for ci, col in enumerate(csv_columns, 1):
-                        val = row_data.get(col)
-                        if val is not None:
-                            try:
-                                val = float(val)
-                            except (ValueError, TypeError):
-                                pass
-                        ws.cell(r, ci, value=val).border = CELL_BORDER
-                    r += 1
+                r, hdr_row, data_start = _write_csv_table(ws, r, csv_columns, csv_rows)
                 r = _add_native_chart(ws, csv_columns, hdr_row, data_start, r - 1)
 
         if analysis_rows:
