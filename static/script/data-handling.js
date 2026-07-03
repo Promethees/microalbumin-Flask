@@ -941,26 +941,7 @@ function toggleMode() {
             drawMeasurementChart();
         } else fetchData(AppState.currentFile, AppState.currentJSONcontent);
     }
-    const select = document.getElementById("exp-json-regress-algo");
-    const selected = select.value;
-    const desc = descriptions[selected];
-    document.getElementById("func-desc").innerHTML = `
-        <h2>${desc.title}</h2>
-        <p>${desc.math}</p>
-        <p>${desc.text}</p>
-      `;
-    MathJax.typeset();
-    if (calDiv.getAttribute('data-value') === "kinetics") {
-        const sel_quant = document.querySelector("#regressed-quantity");
-        document.querySelector("#selected-quantity").textContent = sel_quant.options[sel_quant.selectedIndex].dataset.original;
-    } else {
-        const sel_time = document.querySelector("#regressed-time-point");
-        if (sel_time.value) {
-            document.querySelector("#selected-quantity").textContent = "Endpoint Value at " + sel_time.value + " minute";
-        } else {
-            document.querySelector("#selected-quantity").textContent = "Endpoint Value";
-        }
-    }
+    updateRegressionDescription();
     if (typeof updateReportChartsTheme === 'function') updateReportChartsTheme();
 }
 
