@@ -358,38 +358,138 @@ $(document).ready(function () {
     });
 });
 
-function kineticsModeBehaviour() {
-    const addHidden = [
-        'select-quantity-section',
-        'point-json-exp-section',
-        'cal-json-exp-section',
-        'set-exp-point-section',
-        'select-time-point',
-        'select-regress-algo',
-        'export-coef',
-        'func-desc',
-        'report-console-section'
-    ];
+// Per-mode element visibility. Applied by applyModeVisibility(); the arrays
+// are the exact hide/show sets the four mode functions used inline before.
+const MODE_VISIBILITY = {
+    kinetics: {
+        hide: [
+            'select-quantity-section',
+            'point-json-exp-section',
+            'cal-json-exp-section',
+            'set-exp-point-section',
+            'select-time-point',
+            'select-regress-algo',
+            'export-coef',
+            'func-desc',
+            'report-console-section',
+        ],
+        show: [
+            'window-size-section',
+            'cal-json-sel-section',
+            'kinetics-lines',
+            'json-display',
+            'export-analysis',
+            'range-display',
+            'log-cdc-data',
+            'options-section',
+            'source-options',
+            'normalize-mode-section',
+            'select-source-to-export',
+            'split-source-section',
+            'top-left-dir-section',
+            'main-directory-section',
+        ],
+    },
+    report: {
+        hide: [
+            'point-json-exp-section',
+            'cal-json-exp-section',
+            'select-quantity-section',
+            'derived-concentration-section',
+            'set-exp-point-section',
+            'select-regress-algo',
+            'select-time-point',
+            'export-coef',
+            'window-size-section',
+            'cal-json-sel-section',
+            'kinetics-lines',
+            'json-display',
+            'export-analysis',
+            'range-display',
+            'log-cdc-data',
+            'options-section',
+            'source-options',
+            'normalize-mode-section',
+            'select-source-to-export',
+            'split-source-section',
+            'data-display-section',
+            'num-sources-section',
+            'top-left-dir-section',
+            'main-directory-section',
+        ],
+        show: [
+            'report-console-section',
+            'file-selection',
+        ],
+    },
+    point: {
+        hide: [
+            'window-size-section',
+            'select-quantity-section',
+            'point-json-exp-section',
+            'kinetics-lines',
+            'cal-json-exp-section',
+            'select-time-point',
+            'select-regress-algo',
+            'export-coef',
+            'func-desc',
+            'report-console-section',
+        ],
+        show: [
+            'cal-json-sel-section',
+            'json-display',
+            'export-analysis',
+            'set-exp-point-section',
+            'range-display',
+            'log-cdc-data',
+            'options-section',
+            'source-options',
+            'normalize-mode-section',
+            'select-source-to-export',
+            'split-source-section',
+            'top-left-dir-section',
+            'main-directory-section',
+        ],
+    },
+    calibrate: {
+        hide: [
+            'point-json-exp-section',
+            'cal-json-sel-section',
+            'kinetics-lines',
+            'json-display',
+            'export-analysis',
+            'range-display',
+            'full-display-section',
+            'split-source-section',
+            'log-cdc-data',
+            'window-size-section',
+            'options-section',
+            'source-options',
+            'normalize-mode-section',
+            'select-source-to-export',
+            'source-options',
+            'num-sources-section',
+            'report-console-section',
+        ],
+        show: [
+            'cal-json-exp-section',
+            'select-regress-algo',
+            'export-coef',
+            'func-desc',
+            'top-left-dir-section',
+            'main-directory-section',
+        ],
+    },
+};
 
-    const removeHidden = [
-        'window-size-section',
-        'cal-json-sel-section',
-        'kinetics-lines',
-        'json-display',
-        'export-analysis',
-        'range-display',
-        'log-cdc-data',
-        'options-section',
-        'source-options',
-        'normalize-mode-section',
-        'select-source-to-export',
-        'split-source-section',
-        'top-left-dir-section',
-        'main-directory-section',
-    ];
+function applyModeVisibility(mode) {
+    const cfg = MODE_VISIBILITY[mode];
+    $hidden(cfg.hide, true);
+    $hidden(cfg.show, false);
+}
 
-    $hidden(addHidden, true);
-    $hidden(removeHidden, false);
+// Shared header reset for the file-based modes (kinetics / point / calibrate).
+function setFileSelectionHeader() {
     const label = document.getElementById("file-selection-label");
     if (label) label.textContent = "File Selection";
     const tableHeader = document.getElementById("file-table-header-name");
@@ -398,42 +498,14 @@ function kineticsModeBehaviour() {
     if (searchInput) searchInput.placeholder = "Search: name [meas] [unit] [concen]";
 }
 
+function kineticsModeBehaviour() {
+    applyModeVisibility('kinetics');
+    setFileSelectionHeader();
+}
+
 
 function reportModeBehaviour() {
-    const addHidden = [
-        'point-json-exp-section',
-        'cal-json-exp-section',
-        'select-quantity-section',
-        'derived-concentration-section',
-        'set-exp-point-section',
-        'select-regress-algo',
-        'select-time-point',
-        'export-coef',
-        'window-size-section',
-        'cal-json-sel-section',
-        'kinetics-lines',
-        'json-display',
-        'export-analysis',
-        'range-display',
-        'log-cdc-data',
-        'options-section',
-        'source-options',
-        'normalize-mode-section',
-        'select-source-to-export',
-        'split-source-section',
-        'data-display-section',
-        'num-sources-section',
-        'top-left-dir-section',
-        'main-directory-section'
-    ];
-
-    const removeHidden = [
-        'report-console-section',
-        'file-selection'
-    ];
-
-    $hidden(addHidden, true);
-    $hidden(removeHidden, false);
+    applyModeVisibility('report');
 
     // Reposition/Focus folder browser
     document.getElementById("file-selection").classList.remove('hidden');
@@ -446,86 +518,16 @@ function reportModeBehaviour() {
 }
 
 function pointModeBehaviour() {
-    const addHidden = [
-        'window-size-section',
-        'select-quantity-section',
-        'point-json-exp-section',
-        'kinetics-lines',
-        'cal-json-exp-section',
-        'select-time-point',
-        'select-regress-algo',
-        'export-coef',
-        'func-desc',
-        'report-console-section'
-    ];
-
-    const removeHidden = [
-        'cal-json-sel-section',
-        'json-display',
-        'export-analysis',
-        'set-exp-point-section',
-        'range-display',
-        'log-cdc-data',
-        'options-section',
-        'source-options',
-        'normalize-mode-section',
-        'select-source-to-export',
-        'split-source-section',
-        'top-left-dir-section',
-        'main-directory-section'
-    ];
-
-    $hidden(addHidden, true);
-    $hidden(removeHidden, false);
-    const label = document.getElementById("file-selection-label");
-    if (label) label.textContent = "File Selection";
-    const tableHeader = document.getElementById("file-table-header-name");
-    if (tableHeader) tableHeader.innerText = "File Name";
-    const searchInput = document.getElementById("file-search");
-    if (searchInput) searchInput.placeholder = "Search: name [meas] [unit] [concen]";
+    applyModeVisibility('point');
+    setFileSelectionHeader();
 }
 
 
 
 
 function calModeBehaviour() {
-    const addHidden = [
-        'point-json-exp-section',
-        'cal-json-sel-section',
-        'kinetics-lines',
-        'json-display',
-        'export-analysis',
-        'range-display',
-        'full-display-section',
-        'split-source-section',
-        'log-cdc-data',
-        'window-size-section',
-        'options-section',
-        'source-options',
-        'normalize-mode-section',
-        'select-source-to-export',
-        'source-options',
-        'num-sources-section',
-        'report-console-section'
-    ];
-
-    const removeHidden = [
-        'cal-json-exp-section',
-        'select-regress-algo',
-        'export-coef',
-        'func-desc',
-        'top-left-dir-section',
-        'main-directory-section'
-    ];
-
-    $hidden(addHidden, true);
-    $hidden(removeHidden, false);
-    const label = document.getElementById("file-selection-label");
-    if (label) label.textContent = "File Selection";
-    const tableHeader = document.getElementById("file-table-header-name");
-    if (tableHeader) tableHeader.innerText = "File Name";
-    const searchInput = document.getElementById("file-search");
-    if (searchInput) searchInput.placeholder = "Search: name [meas] [unit] [concen]";
+    applyModeVisibility('calibrate');
+    setFileSelectionHeader();
 
     // Configure range input
     const rangeValue = document.getElementById('range-value');
