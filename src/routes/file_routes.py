@@ -482,6 +482,153 @@ def rename_data_folder(validated_data):
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
+@file_bp.route('/create_data_folder', methods=['POST'])
+@validate_json({'name': str})
+def create_data_folder(validated_data):
+    """Create an empty data subfolder under DATA_ROOT without running a reading.
+
+    Standalone counterpart to the folder auto-creation in /run_script: it lets a
+    user organise data folders even when no colorimeter is connected. The name
+    rules mirror /rename_data_folder — a bare, visible folder name (no
+    separators, traversal, hidden ``.``/``_`` prefix, or the reserved archive
+    name ``root``).
+    """
+    try:
+        if state.process and state.process.poll() is None:
+            return jsonify({'status': 'error', 'message': 'Cannot create folders while the data collection process is running'}), HTTPStatus.LOCKED
+
+        name = (validated_data['name'] or '').strip()
+        if not name:
+            return jsonify({'status': 'error', 'message': 'Folder name is required'}), HTTPStatus.BAD_REQUEST
+        if any(x in name for x in ('..', '/', '\\', '\x00')) or name.startswith('.') or name.startswith('_'):
+            return jsonify({'status': 'error', 'message': 'Invalid folder name'}), HTTPStatus.BAD_REQUEST
+        if is_reserved_data_folder_name(name):
+            return jsonify({'status': 'error', 'message': f"'{RESERVED_ARCHIVE_FOLDER}' is a reserved folder name and cannot be used"}), HTTPStatus.BAD_REQUEST
+
+        new_path = os.path.join(DATA_ROOT, name)
+        # Defensive: confirm the joined path still resolves inside DATA_ROOT.
+        if not validate_in_data_root(new_path):
+            return jsonify({'status': 'error', 'message': 'Invalid folder path'}), HTTPStatus.BAD_REQUEST
+        if os.path.exists(new_path):
+            return jsonify({'status': 'error', 'message': 'A folder with that name already exists'}), HTTPStatus.CONFLICT
+
+        os.makedirs(new_path)
+        return jsonify({'status': 'success', 'message': f"Created folder '{name}'", 'path': new_path, 'name': name}), HTTPStatus.OK
+    except PermissionError as e:
+        return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
+    except OSError as e:
+        return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+@file_bp.route('/create_csv_file', methods=['POST'])
+@validate_json({
+    'mode': str,
+    'cal_mode': (str, 'kinetics', False),
+    'filename': str,
+    'path': (str, '', False),
+    'num_sources': (int, 1, False),
+    'num_lines': (int, 0, False),
+    'concenUnit': (str, DEFAULT_CONCEN_UNIT, False),
+})
+def create_csv_file(validated_data):
+    """Create a new template CSV for a measurement mode — no reading run.
+
+    ``kinetics``/``point`` → a raw timeseries file (``Timestamp,Value:1[..N]``).
+    ``calibrate``          → a calibration table for ``cal_mode`` (kinetics/point).
+
+    The file carries the mode's correct metadata block + header row and
+    ``num_lines`` blank placeholder data rows (0 = header only), so it opens
+    straight in the file editor for manual data entry. Placeholder rows are
+    written editor-valid (timeseries: an incrementing Timestamp with empty value
+    cells; calibration: all ``NONE``) so a later save doesn't fail validation. It
+    never clobbers an existing file: a name clash is auto-incremented
+    (``name_1.csv`` …).
+    """
+    try:
+        if state.process and state.process.poll() is None:
+            return jsonify({'status': 'error', 'message': 'Cannot create files while the data collection process is running'}), HTTPStatus.LOCKED
+
+        mode = (validated_data['mode'] or '').strip().lower()
+        if mode not in ('kinetics', 'point', 'calibrate'):
+            return jsonify({'status': 'error', 'message': 'Invalid mode'}), HTTPStatus.BAD_REQUEST
+
+        target_dir = validate_in_data_root(validated_data.get('path') or DATA_ROOT)
+        if not target_dir:
+            return jsonify({'status': 'error', 'message': 'Invalid folder path'}), HTTPStatus.BAD_REQUEST
+        if not os.path.isdir(target_dir):
+            return jsonify({'status': 'error', 'message': 'Folder not found'}), HTTPStatus.NOT_FOUND
+
+        raw_name = (validated_data['filename'] or '').strip()
+        if not raw_name:
+            return jsonify({'status': 'error', 'message': 'File name is required'}), HTTPStatus.BAD_REQUEST
+        if any(c in raw_name for c in ('/', '\\', '..', '\x00')):
+            return jsonify({'status': 'error', 'message': 'Invalid file name'}), HTTPStatus.BAD_REQUEST
+        # Accept an optional user-typed .csv suffix; the stem drives auto-naming.
+        stem = raw_name[:-4] if raw_name.lower().endswith('.csv') else raw_name
+        if not stem:
+            return jsonify({'status': 'error', 'message': 'File name is required'}), HTTPStatus.BAD_REQUEST
+
+        concen_unit = validated_data['concenUnit'] or DEFAULT_CONCEN_UNIT
+
+        try:
+            num_lines = int(validated_data['num_lines'])
+        except (TypeError, ValueError):
+            num_lines = 0
+        num_lines = max(0, min(num_lines, 100000))
+
+        cal_mode = None
+        if mode == 'calibrate':
+            cal_mode = (validated_data['cal_mode'] or 'kinetics').strip().lower()
+            if cal_mode not in ('kinetics', 'point'):
+                return jsonify({'status': 'error', 'message': 'Invalid calibration mode'}), HTTPStatus.BAD_REQUEST
+            time_unit = 'minute' if cal_mode == 'point' else 'minutes'
+        else:
+            try:
+                n_sources = int(validated_data['num_sources'])
+            except (TypeError, ValueError):
+                n_sources = 1
+            n_sources = max(1, min(n_sources, 50))
+            header = 'Timestamp,' + ','.join('Value:%d' % i for i in range(1, n_sources + 1))
+
+        full_path = os.path.join(target_dir, stem + '.csv')
+        if os.path.exists(full_path):
+            full_path = get_next_filename('.csv', target_dir, stem)
+
+        with open(full_path, 'w', newline='', encoding='utf-8') as f:
+            if mode == 'calibrate':
+                write_metadata(f, 'NONE', 'NONE', time_unit, cal_mode, concen_unit)
+                writer = csv.writer(f)
+                write_headers(writer, cal_mode)
+                # Blank placeholder rows: all NONE (5 cols kinetics / 3 cols point).
+                ncols = 5 if cal_mode == 'kinetics' else 3
+                for _ in range(num_lines):
+                    writer.writerow(['NONE'] * ncols)
+            else:
+                f.write("# Measurement: NONE\n")
+                f.write("# Unit: NONE\n")
+                f.write("# Concentration: NONE\n")
+                f.write("# ConcenUnit: %s\n" % concen_unit)
+                f.write(header + "\n")
+                # Blank placeholder rows: incrementing Timestamp, empty value cells.
+                for i in range(num_lines):
+                    f.write("%d%s\n" % (i, "," * n_sources))
+
+        return jsonify({
+            'status': 'success',
+            'message': f"Created {os.path.basename(full_path)}",
+            'path': full_path,
+            'filename': os.path.basename(full_path)
+        }), HTTPStatus.OK
+    except PermissionError as e:
+        return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
+    except OSError as e:
+        return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
+
+
 @file_bp.route('/copy_file', methods=['POST'])
 def copy_file():
     try:

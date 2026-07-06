@@ -163,6 +163,52 @@ function _renderFolderList(containerId, folders) {
     }).join('');
 }
 
+// Create a new, empty data subfolder without running a reading. Prompts for a
+// name (same rules as rename), calls /create_data_folder, then refreshes the
+// folder lists so the new folder is immediately selectable.
+async function createDataFolder() {
+    const result = await Swal.fire({
+        title: t('newfolder.title', 'New folder'),
+        input: 'text',
+        inputLabel: t('newfolder.label', 'Folder name'),
+        inputPlaceholder: t('ph.new_subfolder', 'New subfolder name'),
+        showCancelButton: true,
+        confirmButtonText: t('common.create', 'Create'),
+        cancelButtonText: t('common.cancel', 'Cancel'),
+        inputValidator: (value) => {
+            const v = (value || '').trim();
+            if (!v) return 'Folder name is required';
+            if (/[\\/]|\.\./.test(v)) return 'Name cannot contain slashes or "..".';
+            if (v.startsWith('.') || v.startsWith('_')) return 'Name cannot start with "." or "_".';
+            if (isReservedDataFolderName(v)) return `"${RESERVED_DATA_FOLDER}" is a reserved folder name.`;
+            return null;
+        }
+    });
+    if (!result.isConfirmed) return;
+    const name = result.value.trim();
+
+    try {
+        if (typeof window.showSpinner === 'function') window.showSpinner();
+        const response = await fetch('/create_data_folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Create failed');
+
+        await loadDataFolders();
+        if (typeof logEvent === 'function') logEvent('file', 'create_folder', { name });
+        if (!getBtnChecked("no-swal-checkbox")) {
+            Swal.fire(t('newfolder.created', 'Folder created'), data.message || `Created "${name}".`, 'success');
+        }
+    } catch (e) {
+        Swal.fire(t('common.error', 'Error'), e.message, 'error');
+    } finally {
+        if (typeof window.hideSpinner === 'function') window.hideSpinner();
+    }
+}
+
 // Delete a data subfolder (and its contents) after confirmation. Refreshes the
 // folder lists and, if the deleted folder was the active directory, falls back
 // to the data root.

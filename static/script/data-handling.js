@@ -2027,6 +2027,76 @@ async function loadExistingJsonFiles() {
     }
 }
 
+// ── New CSV file (manual creation, no reading run) ───────────────────────────
+// Create an empty template CSV for the current mode in the selected data folder.
+// kinetics/point → a Timestamp,Value:1..N timeseries; calibrate → a calibration
+// table for the current calibrate sub-mode. The file has the correct metadata +
+// header and no data rows, so it opens straight in the editor for manual entry.
+async function createCsvFile() {
+    const mode = AppState.currentMeasurementMode;
+    if (mode === 'report') return;  // report mode has no CSV data files
+    const targetDir = AppState.currentDirectory || DATA_ROOT;
+    const isCalibrate = mode === 'calibrate';
+    const calMode = (typeof calDiv !== 'undefined' && calDiv)
+        ? (calDiv.getAttribute('data-value') || 'kinetics') : 'kinetics';
+
+    const rowStyle = 'display:block; margin-top:8px; text-align:left; font-size:0.9em;';
+    const sourcesHtml = isCalibrate ? ''
+        : `<label style="${rowStyle}">${t('newcsv.sources_label', 'Number of sources')}: <input id="newcsv-sources" type="number" min="1" max="50" value="${AppState.numSources || 1}" style="width:6em; padding:3px 5px;"></label>`;
+    const linesHtml = `<label style="${rowStyle}">${t('newcsv.lines_label', 'Number of lines')}: <input id="newcsv-lines" type="number" min="0" max="100000" value="0" style="width:6em; padding:3px 5px;"></label>`;
+    const noteHtml = isCalibrate
+        ? `<p style="margin:10px 2px 0; font-size:0.85em; color:#6b7280; text-align:left;">${t('newcsv.calibrate_note', 'Creates an empty calibration table for the current calibrate sub-mode')} (${_escHtml(calMode)}).</p>`
+        : '';
+
+    const result = await Swal.fire({
+        title: t('newcsv.title', 'New CSV file'),
+        html: `<input id="newcsv-name" class="swal2-input" placeholder="${t('newcsv.name_label', 'File name')}" autocomplete="off" style="width:100%; box-sizing:border-box; margin-left:0; margin-right:0;">${sourcesHtml}${linesHtml}${noteHtml}`,
+        showCancelButton: true,
+        confirmButtonText: t('common.create', 'Create'),
+        cancelButtonText: t('common.cancel', 'Cancel'),
+        focusConfirm: false,
+        didOpen: () => { const el = document.getElementById('newcsv-name'); if (el) el.focus(); },
+        preConfirm: () => {
+            const name = (document.getElementById('newcsv-name').value || '').trim();
+            if (!name) { Swal.showValidationMessage(t('newcsv.name_required', 'File name is required')); return false; }
+            if (/[\\/]|\.\./.test(name)) { Swal.showValidationMessage('Name cannot contain slashes or "..".'); return false; }
+            const srcEl = document.getElementById('newcsv-sources');
+            const n = srcEl ? Math.max(1, Math.min(50, parseInt(srcEl.value, 10) || 1)) : 1;
+            const linesEl = document.getElementById('newcsv-lines');
+            const lines = linesEl ? Math.max(0, Math.min(100000, parseInt(linesEl.value, 10) || 0)) : 0;
+            return { name, n, lines };
+        }
+    });
+    if (!result.isConfirmed || !result.value) return;
+    const { name, n, lines } = result.value;
+
+    try {
+        if (typeof window.showSpinner === 'function') window.showSpinner();
+        const response = await fetch('/create_csv_file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode, cal_mode: calMode, filename: name, path: targetDir, num_sources: n, num_lines: lines })
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Create failed');
+
+        if (typeof logEvent === 'function') logEvent('file', 'create_csv', { mode, filename: data.filename });
+        if (typeof updateDirectory === 'function') await updateDirectory(targetDir, true);
+        if (typeof blinkingItem === 'function') blinkingItem('file-selection', 4000);
+        if (!getBtnChecked("no-swal-checkbox")) {
+            Swal.fire({
+                title: t('newcsv.created', 'File created'),
+                text: data.message || `Created ${data.filename}.`,
+                icon: 'success', timer: 2500, showConfirmButton: false
+            });
+        }
+    } catch (e) {
+        Swal.fire(t('common.error', 'Error'), e.message, 'error');
+    } finally {
+        if (typeof window.hideSpinner === 'function') window.hideSpinner();
+    }
+}
+
 // ── JSON coefficient export ──────────────────────────────────────────────────
 
 function exportJSONCoef() {

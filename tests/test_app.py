@@ -1379,3 +1379,169 @@ def test_save_normalized_csv_happy_path_writes_file(client, tmp_path):
     # Per-column minimum subtracted: 1.5 → 0.0, 2.5 → 1.0
     content = out.read_text(encoding='utf-8')
     assert '0.0' in content or ',0' in content
+
+
+# ── /create_data_folder ──────────────────────────────────────────────────────
+
+def test_create_data_folder_success(client, tmp_path):
+    rv = client.post('/create_data_folder', json={'name': 'experiment_a'})
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    assert (tmp_path / 'experiment_a').is_dir()
+
+
+def test_create_data_folder_rejects_existing(client, tmp_path):
+    (tmp_path / 'dup').mkdir()
+    rv = client.post('/create_data_folder', json={'name': 'dup'})
+    assert rv.status_code == 409
+    assert 'already exists' in rv.get_json()['message']
+
+
+def test_create_data_folder_rejects_traversal(client, tmp_path):
+    rv = client.post('/create_data_folder', json={'name': '../evil'})
+    assert rv.status_code == 400
+    assert not (tmp_path.parent / 'evil').exists()
+
+
+def test_create_data_folder_rejects_reserved(client, tmp_path):
+    rv = client.post('/create_data_folder', json={'name': 'root'})
+    assert rv.status_code == 400
+    assert 'reserved' in rv.get_json()['message'].lower()
+
+
+def test_create_data_folder_rejects_hidden_prefix(client, tmp_path):
+    rv = client.post('/create_data_folder', json={'name': '_hidden'})
+    assert rv.status_code == 400
+    assert not (tmp_path / '_hidden').exists()
+
+
+def test_create_data_folder_blocked_while_running(client):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    rv = client.post('/create_data_folder', json={'name': 'x'})
+    assert rv.status_code == 423
+
+
+# ── /create_csv_file ─────────────────────────────────────────────────────────
+
+def test_create_csv_file_kinetics_timeseries(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'kinetics', 'filename': 'blank', 'path': str(tmp_path),
+                           'num_sources': 2})
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    out = tmp_path / 'blank.csv'
+    assert out.is_file()
+    content = out.read_text(encoding='utf-8')
+    assert '# Measurement: NONE' in content
+    assert '# ConcenUnit:' in content
+    assert 'Timestamp,Value:1,Value:2' in content
+
+
+def test_create_csv_file_point_single_source(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'point', 'filename': 'p1', 'path': str(tmp_path)})
+    assert rv.status_code == 200
+    content = (tmp_path / 'p1.csv').read_text(encoding='utf-8')
+    assert 'Timestamp,Value:1' in content
+    assert 'Value:2' not in content
+
+
+def test_create_csv_file_calibrate_kinetics_header(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'calibrate', 'cal_mode': 'kinetics',
+                           'filename': 'cal', 'path': str(tmp_path)})
+    assert rv.status_code == 200
+    content = (tmp_path / 'cal.csv').read_text(encoding='utf-8')
+    assert '# MeasMode: kinetics' in content
+    assert 'Concentration,maxRate,Slope,Sat,Time To Sat' in content
+
+
+def test_create_csv_file_calibrate_point_header(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'calibrate', 'cal_mode': 'point',
+                           'filename': 'calp', 'path': str(tmp_path)})
+    assert rv.status_code == 200
+    content = (tmp_path / 'calp.csv').read_text(encoding='utf-8')
+    assert '# MeasMode: point' in content
+    assert '# TimeUnit: minute' in content
+    assert 'Concentration,Value,TimePoint' in content
+
+
+def test_create_csv_file_autorenames_on_conflict(client, tmp_path):
+    (tmp_path / 'dup.csv').write_text('existing')
+    with patch('routes.file_routes.get_next_filename',
+               return_value=str(tmp_path / 'dup_1.csv')):
+        rv = client.post('/create_csv_file',
+                         json={'mode': 'kinetics', 'filename': 'dup', 'path': str(tmp_path)})
+    assert rv.status_code == 200
+    assert (tmp_path / 'dup.csv').read_text() == 'existing'   # original untouched
+    assert (tmp_path / 'dup_1.csv').is_file()
+    assert rv.get_json()['filename'] == 'dup_1.csv'
+
+
+def test_create_csv_file_strips_csv_suffix(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'kinetics', 'filename': 'named.csv', 'path': str(tmp_path)})
+    assert rv.status_code == 200
+    assert (tmp_path / 'named.csv').is_file()
+    assert not (tmp_path / 'named.csv.csv').exists()
+
+
+def test_create_csv_file_rejects_invalid_mode(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'bogus', 'filename': 'x', 'path': str(tmp_path)})
+    assert rv.status_code == 400
+    assert 'Invalid mode' in rv.get_json()['message']
+
+
+def test_create_csv_file_rejects_traversal_filename(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'kinetics', 'filename': '../evil', 'path': str(tmp_path)})
+    assert rv.status_code == 400
+
+
+def test_create_csv_file_rejects_path_outside_root(client, tmp_path, tmp_path_factory):
+    outside = tmp_path_factory.mktemp('outside')
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'kinetics', 'filename': 'x', 'path': str(outside)})
+    assert rv.status_code == 400
+    assert not (outside / 'x.csv').exists()
+
+
+def test_create_csv_file_num_lines_timeseries(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'kinetics', 'filename': 'rows', 'path': str(tmp_path),
+                           'num_sources': 2, 'num_lines': 3})
+    assert rv.status_code == 200
+    lines = (tmp_path / 'rows.csv').read_text(encoding='utf-8').splitlines()
+    data = [l for l in lines if l and not l.startswith('#') and not l.startswith('Timestamp')]
+    assert data == ['0,,', '1,,', '2,,']   # incrementing Timestamp, 2 empty value cells
+
+
+def test_create_csv_file_num_lines_calibrate_all_none(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'calibrate', 'cal_mode': 'kinetics',
+                           'filename': 'calrows', 'path': str(tmp_path), 'num_lines': 2})
+    assert rv.status_code == 200
+    text = (tmp_path / 'calrows.csv').read_text(encoding='utf-8')
+    assert text.count('NONE,NONE,NONE,NONE,NONE') == 2
+
+
+def test_create_csv_file_default_num_lines_zero(client, tmp_path):
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'point', 'filename': 'hdr', 'path': str(tmp_path)})
+    assert rv.status_code == 200
+    lines = (tmp_path / 'hdr.csv').read_text(encoding='utf-8').splitlines()
+    # header only: no data rows past the Timestamp header
+    assert not [l for l in lines if l and not l.startswith('#') and not l.startswith('Timestamp')]
+
+
+def test_create_csv_file_blocked_while_running(client, tmp_path):
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'kinetics', 'filename': 'x', 'path': str(tmp_path)})
+    assert rv.status_code == 423

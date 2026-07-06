@@ -251,6 +251,7 @@
                                     oninput="filterDataFolderList('data-folder-list-top', this.value)"
                                     style="flex:1; padding:3px 5px;">
                                 <button onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
+                                <button onclick="createDataFolder()" data-i18n-hint="hint.new_folder" data-hint="Create a new empty data folder" style="padding:3px 7px;">＋</button>
                             </div>
                             <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                         </div>
@@ -350,6 +351,7 @@
                             oninput="filterDataFolderList('data-folder-list', this.value)"
                             style="flex:1; padding:4px 6px;">
                         <button onclick="loadDataFolders()" data-i18n="btn.refresh" data-i18n-hint="hint.refresh_folders" data-hint="Refresh folder list">↻ Refresh</button>
+                        <button onclick="createDataFolder()" data-i18n="btn.new_folder" data-i18n-hint="hint.new_folder" data-hint="Create a new empty data folder">＋ New folder</button>
                     </div>
                     <div id="data-folder-list" class="dir-blocks scrollbar-style">
                         <div style="color:#999; padding:6px;" data-i18n="nav.loading_folders">Loading folders…</div>
@@ -487,6 +489,11 @@
                         data-i18n-hint="hint.search_identity"
                         data-hint="Space-separated positional filters (all AND-ed): name, then measurement, unit, ConcenUnit. Use - to skip a position; quote values with spaces, e.g. std &quot;Total Protein&quot; AU nM."
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
+                    <div style="margin-bottom:8px;">
+                        <button onclick="createCsvFile()" class="utility-btn" data-i18n="btn.new_csv"
+                            data-i18n-hint="hint.new_csv"
+                            data-hint="Create a new empty CSV data file for the current mode in the selected folder">＋ New CSV</button>
+                    </div>
                     <div class="scrollbar-style file-table-container">
                         <table id="file-table" class="table">
                             <tr>
