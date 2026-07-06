@@ -217,5 +217,14 @@
   "settings.ai_feedback.reset": "Сбросить обучение",
   "settings.ai_feedback.reset_confirm_title": "Сбросить обучение ИИ?",
   "settings.ai_feedback.reset_confirm_text": "Это удалит все оценки и изученные веса руководств на этом компьютере. Действие необратимо.",
-  "settings.ai_feedback.reset_done": "Отзывы ИИ и изученные веса очищены."
+  "settings.ai_feedback.reset_done": "Отзывы ИИ и изученные веса очищены.",
+  "common.close": "Закрыть",
+  "btn.excel_formula": "📐 Формула Excel",
+  "hint.excel_formula": "Создать готовые к вставке формулы Excel из коэффициентов подобранной калибровочной кривой",
+  "excelf.title": "Формула Excel",
+  "excelf.paste_hint": "Вставьте в ячейку таблицы. Замените A1 на ячейку с измеренной величиной — результат будет концентрацией.",
+  "excelf.copy": "Копировать",
+  "excelf.copied": "Скопировано!",
+  "excelf.formula": "Формула",
+  "excelf.no_fit": "нет пригодной аппроксимации"
 }

@@ -2174,6 +2174,87 @@ function exportJSONCoef() {
     });
 }
 
+// ── Excel formula export ─────────────────────────────────────────────────────
+// Turn the fitted standard-curve coefficients into ready-to-paste Excel formulas
+// (one per source) that map a measured quantity cell to the derived
+// concentration. Sibling of exportJSONCoef — same coefficient content, no file
+// written; results are shown in a copyable dialog.
+function exportExcelFormula() {
+    const selectElement = document.getElementById('regressed-quantity');
+    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)) {
+        Swal.fire({ title: 'Time point required', text: 'Please set time point to regress data from.', icon: 'warning', confirmButtonText: t('common.ok', 'OK') });
+        return;
+    }
+    if (!AppState.exp_json_content) {
+        Swal.fire({ title: 'Nothing to export', text: 'No analysis data available to build a formula.', icon: 'warning', confirmButtonText: t('common.ok', 'OK') });
+        return;
+    }
+
+    const payload = {
+        regress_algo: document.getElementById("exp-json-regress-algo").value,
+        coef_content: AppState.exp_json_content.analysis,
+        cal_params: Array.from(selectElement.options).map(o => o.dataset.original),
+        threshold_val: getValFloat("threshold-value"),
+        cell: 'A1'
+    };
+
+    $.ajax({
+        url: '/export_cal_excel_formula',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function (resp) {
+            if (resp.status === 'success') {
+                showExcelFormulaDialog(resp);
+            } else {
+                Swal.fire({ title: t('common.error', 'Error!'), text: resp.message, icon: 'error', confirmButtonText: t('common.ok', 'OK') });
+            }
+        },
+        error: function () {
+            Swal.fire({ title: t('common.error', 'Error!'), text: 'Error building Excel formula.', icon: 'error', confirmButtonText: t('common.ok', 'OK') });
+        }
+    });
+}
+
+function showExcelFormulaDialog(resp) {
+    const multi = resp.formulas.length > 1;
+    const rows = resp.formulas.map((f, i) => {
+        const label = f.label ? _escHtml(String(f.label)) : (multi ? ('Source ' + (i + 1)) : t('excelf.formula', 'Formula'));
+        if (!f.formula) {
+            return `<div style="margin:6px 0; text-align:left;"><b>${label}</b>: <span style="color:#b91c1c;">${t('excelf.no_fit', 'no usable fit')}</span></div>`;
+        }
+        const id = 'excelf-input-' + i;
+        return `<div style="margin:8px 0; text-align:left;"><b>${label}</b>
+            <div style="display:flex; gap:6px; margin-top:3px;">
+              <input id="${id}" readonly value="${_escHtml(f.formula)}" style="flex:1; font-family:monospace; padding:4px 6px; box-sizing:border-box;">
+              <button type="button" onclick="_copyExcelFormula('${id}', this)">${t('excelf.copy', 'Copy')}</button>
+            </div></div>`;
+    }).join('');
+    Swal.fire({
+        title: t('excelf.title', 'Excel formula'),
+        html: `<p style="text-align:left; font-size:0.88em; color:#6b7280; margin:0 0 8px;">${t('excelf.paste_hint', 'Paste into a spreadsheet cell. Replace A1 with the cell holding your measured quantity — the result is the concentration.')}</p>${rows}`,
+        width: 640,
+        confirmButtonText: t('common.close', 'Close')
+    });
+}
+
+function _copyExcelFormula(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.focus();
+    el.select();
+    const done = () => {
+        const orig = btn.textContent;
+        btn.textContent = t('excelf.copied', 'Copied!');
+        setTimeout(() => { btn.textContent = orig; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(el.value).then(done).catch(() => { try { document.execCommand('copy'); done(); } catch (e) { } });
+    } else {
+        try { document.execCommand('copy'); done(); } catch (e) { }
+    }
+}
+
 function requireSelectedFile() {
     if (AppState.currentFile) return true;
     Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });

@@ -23,6 +23,7 @@ from file_operations import remove_csv_columns
 from measure import sort_csv_file
 from get_next_filename import get_next_filename
 from export_cal_json import processJSONCoef, extractAnalysisCoefficients, CustomEncoder
+from excel_formula import formulas_from_content
 from export_data import metadata_mismatches, write_metadata, write_headers, extract_single_entry
 from validators import validate_json
 
@@ -1084,6 +1085,50 @@ def export_cal_coefs(validated_data):
         return jsonify({"status": "success", "message": f"Data exported to {full_path}"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
+
+# Excel cell reference like A1, Bved, $A$1 (letters + digits, optional $).
+_CELL_RE = re.compile(r'^\$?[A-Za-z]{1,3}\$?[0-9]{1,7}$')
+
+@file_bp.route('/export_cal_excel_formula', methods=['POST'])
+@validate_json({
+    'regress_algo': (str, 'linear', False),
+    'coef_content': ((list, dict), None, False),
+    'cal_params': (list, [], False),
+    'threshold_val': (float, 0.0, False),
+    'cell': (str, 'A1', False),
+})
+def export_cal_excel_formula(validated_data):
+    """Build ready-to-paste Excel formulas from the fitted standard-curve coefficients.
+
+    Reuses the exact coefficient pipeline of /export_cal_coefs
+    (extractAnalysisCoefficients → processJSONCoef) so the formula math matches
+    what the JSON export records and what the app applies internally. Returns one
+    formula per source (labelled), each mapping the ``cell`` (a measured quantity)
+    to the derived concentration. A source whose fit is missing / below threshold
+    yields a null formula so the caller can flag it.
+    """
+    regress_algo = validated_data['regress_algo']
+    coef_content = validated_data['coef_content']
+    cal_params = validated_data['cal_params']
+    thres_val = validated_data['threshold_val']
+    cell = (validated_data['cell'] or 'A1').strip()
+    if not _CELL_RE.match(cell):
+        return jsonify({'status': 'error', 'message': 'Invalid cell reference (e.g. A1).'}), HTTPStatus.BAD_REQUEST
+
+    try:
+        content = processJSONCoef(
+            cal_params,
+            extractAnalysisCoefficients(coef_content, thres_val, regress_algo),
+            regress_algo,
+        )
+        formulas = formulas_from_content(content, regress_algo, cell)
+        if not formulas:
+            return jsonify({'status': 'error', 'message': 'No coefficients available to build a formula.'}), HTTPStatus.BAD_REQUEST
+        return jsonify({'status': 'success', 'cell': cell, 'algo': regress_algo, 'formulas': formulas})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), HTTPStatus.BAD_REQUEST
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 def _write_normalized_csv(file_path, save_name, save_dir, source_index=None):
     """Write a normalized copy of a CSV file to a new CSV file.

@@ -217,5 +217,14 @@
   "settings.ai_feedback.reset": "学習をリセット",
   "settings.ai_feedback.reset_confirm_title": "AI の学習をリセットしますか？",
   "settings.ai_feedback.reset_confirm_text": "この端末のすべての評価と学習済みガイド重みを削除します。元に戻せません。",
-  "settings.ai_feedback.reset_done": "AI フィードバックと学習済み重みを消去しました。"
+  "settings.ai_feedback.reset_done": "AI フィードバックと学習済み重みを消去しました。",
+  "common.close": "閉じる",
+  "btn.excel_formula": "📐 Excel 数式",
+  "hint.excel_formula": "フィットした標準曲線の係数から貼り付け可能な Excel 数式を生成",
+  "excelf.title": "Excel 数式",
+  "excelf.paste_hint": "表計算のセルに貼り付けます。A1 を測定した量が入ったセルに置き換えてください — 結果が濃度です。",
+  "excelf.copy": "コピー",
+  "excelf.copied": "コピーしました！",
+  "excelf.formula": "数式",
+  "excelf.no_fit": "使用可能なフィットなし"
 }

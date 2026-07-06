@@ -217,5 +217,14 @@
   "settings.ai_feedback.reset": "Đặt lại học hỏi",
   "settings.ai_feedback.reset_confirm_title": "Đặt lại học hỏi AI?",
   "settings.ai_feedback.reset_confirm_text": "Thao tác này xóa mọi đánh giá và trọng số hướng dẫn đã học trên máy này. Không thể hoàn tác.",
-  "settings.ai_feedback.reset_done": "Đã xóa phản hồi AI và trọng số đã học."
+  "settings.ai_feedback.reset_done": "Đã xóa phản hồi AI và trọng số đã học.",
+  "common.close": "Đóng",
+  "btn.excel_formula": "📐 Công thức Excel",
+  "hint.excel_formula": "Tạo công thức Excel sẵn sàng dán từ các hệ số đường chuẩn đã khớp",
+  "excelf.title": "Công thức Excel",
+  "excelf.paste_hint": "Dán vào một ô bảng tính. Thay A1 bằng ô chứa đại lượng đo được của bạn — kết quả là nồng độ.",
+  "excelf.copy": "Sao chép",
+  "excelf.copied": "Đã sao chép!",
+  "excelf.formula": "Công thức",
+  "excelf.no_fit": "không có khớp dùng được"
 }

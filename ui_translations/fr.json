@@ -217,5 +217,14 @@
   "settings.ai_feedback.reset": "Réinitialiser l'apprentissage",
   "settings.ai_feedback.reset_confirm_title": "Réinitialiser l'apprentissage de l'IA ?",
   "settings.ai_feedback.reset_confirm_text": "Cela supprime tous les avis et les poids de guides appris sur cette machine. Cette action est irréversible.",
-  "settings.ai_feedback.reset_done": "Avis de l'IA et poids appris effacés."
+  "settings.ai_feedback.reset_done": "Avis de l'IA et poids appris effacés.",
+  "common.close": "Fermer",
+  "btn.excel_formula": "📐 Formule Excel",
+  "hint.excel_formula": "Générer des formules Excel prêtes à coller à partir des coefficients de la courbe étalon ajustée",
+  "excelf.title": "Formule Excel",
+  "excelf.paste_hint": "Collez dans une cellule de tableur. Remplacez A1 par la cellule contenant votre quantité mesurée — le résultat est la concentration.",
+  "excelf.copy": "Copier",
+  "excelf.copied": "Copié !",
+  "excelf.formula": "Formule",
+  "excelf.no_fit": "aucun ajustement exploitable"
 }

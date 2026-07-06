@@ -217,5 +217,14 @@
   "settings.ai_feedback.reset": "重置学习",
   "settings.ai_feedback.reset_confirm_title": "重置 AI 学习？",
   "settings.ai_feedback.reset_confirm_text": "这将删除本机上的所有评价和已学习的指南权重，且无法撤销。",
-  "settings.ai_feedback.reset_done": "已清除 AI 反馈和已学习的权重。"
+  "settings.ai_feedback.reset_done": "已清除 AI 反馈和已学习的权重。",
+  "common.close": "关闭",
+  "btn.excel_formula": "📐 Excel 公式",
+  "hint.excel_formula": "根据拟合的标准曲线系数生成可直接粘贴的 Excel 公式",
+  "excelf.title": "Excel 公式",
+  "excelf.paste_hint": "粘贴到电子表格单元格中。将 A1 替换为存放您所测量数值的单元格——结果即为浓度。",
+  "excelf.copy": "复制",
+  "excelf.copied": "已复制！",
+  "excelf.formula": "公式",
+  "excelf.no_fit": "无可用拟合"
 }

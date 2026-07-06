@@ -217,5 +217,14 @@
   "settings.ai_feedback.reset": "Reset learning",
   "settings.ai_feedback.reset_confirm_title": "Reset AI learning?",
   "settings.ai_feedback.reset_confirm_text": "This deletes all ratings and learned guide weights on this machine. This cannot be undone.",
-  "settings.ai_feedback.reset_done": "AI feedback and learned weights cleared."
+  "settings.ai_feedback.reset_done": "AI feedback and learned weights cleared.",
+  "common.close": "Close",
+  "btn.excel_formula": "📐 Excel formula",
+  "hint.excel_formula": "Build ready-to-paste Excel formulas from the fitted standard-curve coefficients",
+  "excelf.title": "Excel formula",
+  "excelf.paste_hint": "Paste into a spreadsheet cell. Replace A1 with the cell holding your measured quantity — the result is the concentration.",
+  "excelf.copy": "Copy",
+  "excelf.copied": "Copied!",
+  "excelf.formula": "Formula",
+  "excelf.no_fit": "no usable fit"
 }

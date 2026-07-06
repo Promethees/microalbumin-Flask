@@ -1545,3 +1545,74 @@ def test_create_csv_file_blocked_while_running(client, tmp_path):
     rv = client.post('/create_csv_file',
                      json={'mode': 'kinetics', 'filename': 'x', 'path': str(tmp_path)})
     assert rv.status_code == 423
+
+
+# ── /export_cal_excel_formula ────────────────────────────────────────────────
+
+def test_excel_formula_single_source_linear(client):
+    rv = client.post('/export_cal_excel_formula', json={
+        'regress_algo': 'linear',
+        'coef_content': {'coefficients': [2, -3], 'rSquared': 0.99},
+        'cal_params': ['maxRate'],
+    })
+    assert rv.status_code == 200
+    body = rv.get_json()
+    assert body['status'] == 'success'
+    assert body['cell'] == 'A1'
+    assert body['formulas'] == [{'label': None, 'formula': '=(2)*A1+(-3)'}]
+
+
+def test_excel_formula_multi_source_labelled(client):
+    rv = client.post('/export_cal_excel_formula', json={
+        'regress_algo': 'linear',
+        'coef_content': [
+            {'coefficients': [2, 1], 'rSquared': 0.99},
+            {'coefficients': [3, 0], 'rSquared': 0.98},
+        ],
+        'cal_params': ['Source 1', 'Source 2'],
+    })
+    assert rv.status_code == 200
+    formulas = rv.get_json()['formulas']
+    assert len(formulas) == 2
+    assert {'label': 'source_1', 'formula': '=(2)*A1+(1)'} in formulas
+    assert {'label': 'source_2', 'formula': '=(3)*A1+(0)'} in formulas
+
+
+def test_excel_formula_michaelis_menten(client):
+    rv = client.post('/export_cal_excel_formula', json={
+        'regress_algo': 'Michaelis-Menten',
+        'coef_content': {'coefficients': [10, 2.5], 'rSquared': 0.95},
+        'cal_params': ['maxRate'],
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['formulas'] == [{'label': None, 'formula': '=((2.5)*A1)/((10)-A1)'}]
+
+
+def test_excel_formula_custom_cell(client):
+    rv = client.post('/export_cal_excel_formula', json={
+        'regress_algo': 'linear',
+        'coef_content': {'coefficients': [2, 1], 'rSquared': 0.99},
+        'cal_params': ['maxRate'], 'cell': 'C5',
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['formulas'][0]['formula'] == '=(2)*C5+(1)'
+
+
+def test_excel_formula_below_threshold_yields_null(client):
+    rv = client.post('/export_cal_excel_formula', json={
+        'regress_algo': 'linear',
+        'coef_content': {'coefficients': [2, -3], 'rSquared': 0.5},
+        'cal_params': ['maxRate'], 'threshold_val': 0.9,
+    })
+    assert rv.status_code == 200
+    assert rv.get_json()['formulas'] == [{'label': None, 'formula': None}]
+
+
+def test_excel_formula_rejects_bad_cell(client):
+    rv = client.post('/export_cal_excel_formula', json={
+        'regress_algo': 'linear',
+        'coef_content': {'coefficients': [2, 1], 'rSquared': 0.99},
+        'cal_params': ['maxRate'], 'cell': '1A',
+    })
+    assert rv.status_code == 400
+    assert 'cell' in rv.get_json()['message'].lower()
