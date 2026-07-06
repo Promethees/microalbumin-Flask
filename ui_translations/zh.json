@@ -226,5 +226,15 @@
   "excelf.copy": "复制",
   "excelf.copied": "已复制！",
   "excelf.formula": "公式",
-  "excelf.no_fit": "无可用拟合"
+  "excelf.no_fit": "无可用拟合",
+  "btn.quick_concentration": "🧮 快速浓度",
+  "hint.quick_concentration": "根据曲线系数和一个测量值计算浓度——无需数据文件",
+  "quickconc.title": "快速浓度",
+  "quickconc.hint": "输入标准曲线系数和一个测量值——无需数据文件。",
+  "quickconc.model": "曲线模型",
+  "quickconc.measured": "测量值 (x)",
+  "quickconc.calculate": "计算",
+  "quickconc.result": "浓度",
+  "quickconc.fill_all": "请输入所有系数和一个测量值。",
+  "quickconc.error": "计算失败。"
 }

@@ -226,5 +226,15 @@
   "excelf.copy": "コピー",
   "excelf.copied": "コピーしました！",
   "excelf.formula": "数式",
-  "excelf.no_fit": "使用可能なフィットなし"
+  "excelf.no_fit": "使用可能なフィットなし",
+  "btn.quick_concentration": "🧮 クイック濃度",
+  "hint.quick_concentration": "曲線の係数と測定値から濃度を計算します — データファイル不要",
+  "quickconc.title": "クイック濃度",
+  "quickconc.hint": "標準曲線の係数と測定した量を入力してください — データファイルは不要です。",
+  "quickconc.model": "曲線モデル",
+  "quickconc.measured": "測定値 (x)",
+  "quickconc.calculate": "計算",
+  "quickconc.result": "濃度",
+  "quickconc.fill_all": "すべての係数と測定値を入力してください。",
+  "quickconc.error": "計算に失敗しました。"
 }

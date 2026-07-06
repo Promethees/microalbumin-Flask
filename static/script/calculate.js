@@ -276,3 +276,85 @@ function checkSize(XColumn, YColumn) {
         );
     }
 }
+// ── Quick concentration calculator ───────────────────────────────────────────
+// Standalone: type a curve's coefficients + a measured quantity value and get
+// the derived concentration, with no CSV data file selected. Mirrors the applied
+// -curve math server-side (/calculate_concentration → math_ops.evaluate_curve).
+const QUICK_CONC_FIELDS = {
+    linear: ['a', 'b'],
+    polynomial: ['a', 'b', 'c'],
+    logarithmic: ['a', 'b', 'c'],
+    exponential: ['a', 'b', 'c'],
+    'Michaelis-Menten': ['VMax', 'Km'],
+};
+
+function _quickConcCoefInputs(algo) {
+    return (QUICK_CONC_FIELDS[algo] || QUICK_CONC_FIELDS.linear).map(k =>
+        `<label style="display:flex;gap:6px;align-items:center;justify-content:space-between;margin:4px 0;">
+            <span style="font-family:monospace;font-weight:600;">${k}</span>
+            <input type="number" step="any" data-key="${k}" style="width:62%;padding:3px 6px;box-sizing:border-box;">
+        </label>`).join('');
+}
+
+function quickConcentrationCalc() {
+    const algos = Object.keys(QUICK_CONC_FIELDS);
+    Swal.fire({
+        title: t('quickconc.title', 'Quick concentration'),
+        html: `<div style="text-align:left;">
+            <p style="font-size:0.85em;color:#6b7280;margin:0 0 8px;">${t('quickconc.hint', 'Enter the standard-curve coefficients and a measured quantity — no data file needed.')}</p>
+            <label style="display:block;margin-bottom:4px;font-weight:600;">${t('quickconc.model', 'Curve model')}
+                <select id="qc-algo" style="width:100%;padding:4px;margin-top:2px;">${algos.map(a => `<option value="${a}">${a}</option>`).join('')}</select>
+            </label>
+            <div id="qc-coefs" style="margin:8px 0;">${_quickConcCoefInputs('linear')}</div>
+            <label style="display:block;font-weight:600;">${t('quickconc.measured', 'Measured value (x)')}
+                <input type="number" step="any" id="qc-x" style="width:100%;padding:3px 6px;box-sizing:border-box;margin-top:2px;">
+            </label>
+            <button type="button" id="qc-calc-btn" class="utility-btn" style="margin-top:10px;">${t('quickconc.calculate', 'Calculate')}</button>
+            <div id="qc-result" style="margin-top:10px;font-weight:700;"></div>
+        </div>`,
+        showConfirmButton: true,
+        confirmButtonText: t('common.close', 'Close'),
+        width: 460,
+        didOpen: () => {
+            const algoSel = document.getElementById('qc-algo');
+            const coefBox = document.getElementById('qc-coefs');
+            algoSel.addEventListener('change', () => { coefBox.innerHTML = _quickConcCoefInputs(algoSel.value); });
+            document.getElementById('qc-calc-btn').addEventListener('click', () => _runQuickConc(algoSel, coefBox));
+        }
+    });
+}
+
+async function _runQuickConc(algoSel, coefBox) {
+    const resEl = document.getElementById('qc-result');
+    const algo = algoSel.value;
+    const coefficients = {};
+    let missing = false;
+    coefBox.querySelectorAll('input[data-key]').forEach(inp => {
+        const v = (inp.value || '').trim();
+        if (v === '') missing = true;
+        coefficients[inp.dataset.key] = v === '' ? '' : parseFloat(v);
+    });
+    const xv = (document.getElementById('qc-x').value || '').trim();
+    if (missing || xv === '') {
+        resEl.style.color = '#b45309';
+        resEl.textContent = t('quickconc.fill_all', 'Enter all coefficients and a measured value.');
+        return;
+    }
+    try {
+        const resp = await fetch('/calculate_concentration', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ regress_algo: algo, coefficients, x: parseFloat(xv) })
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            resEl.style.color = '';
+            resEl.textContent = `${t('quickconc.result', 'Concentration')}: ${Number(data.concentration.toPrecision(6))}`;
+        } else {
+            resEl.style.color = '#b91c1c';
+            resEl.textContent = data.message || t('quickconc.error', 'Calculation failed.');
+        }
+    } catch (e) {
+        resEl.style.color = '#b91c1c';
+        resEl.textContent = t('quickconc.error', 'Calculation failed.');
+    }
+}

@@ -226,5 +226,15 @@
   "excelf.copy": "Copy",
   "excelf.copied": "Copied!",
   "excelf.formula": "Formula",
-  "excelf.no_fit": "no usable fit"
+  "excelf.no_fit": "no usable fit",
+  "btn.quick_concentration": "🧮 Quick concentration",
+  "hint.quick_concentration": "Calculate a concentration from curve coefficients and a measured value — no data file needed",
+  "quickconc.title": "Quick concentration",
+  "quickconc.hint": "Enter the standard-curve coefficients and a measured quantity — no data file needed.",
+  "quickconc.model": "Curve model",
+  "quickconc.measured": "Measured value (x)",
+  "quickconc.calculate": "Calculate",
+  "quickconc.result": "Concentration",
+  "quickconc.fill_all": "Enter all coefficients and a measured value.",
+  "quickconc.error": "Calculation failed."
 }

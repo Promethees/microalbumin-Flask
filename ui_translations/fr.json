@@ -226,5 +226,15 @@
   "excelf.copy": "Copier",
   "excelf.copied": "Copié !",
   "excelf.formula": "Formule",
-  "excelf.no_fit": "aucun ajustement exploitable"
+  "excelf.no_fit": "aucun ajustement exploitable",
+  "btn.quick_concentration": "🧮 Concentration rapide",
+  "hint.quick_concentration": "Calculer une concentration à partir des coefficients de la courbe et d’une valeur mesurée — aucun fichier de données requis",
+  "quickconc.title": "Concentration rapide",
+  "quickconc.hint": "Saisissez les coefficients de la courbe étalon et une quantité mesurée — aucun fichier de données requis.",
+  "quickconc.model": "Modèle de courbe",
+  "quickconc.measured": "Valeur mesurée (x)",
+  "quickconc.calculate": "Calculer",
+  "quickconc.result": "Concentration",
+  "quickconc.fill_all": "Saisissez tous les coefficients et une valeur mesurée.",
+  "quickconc.error": "Échec du calcul."
 }

@@ -13,6 +13,7 @@ from math_ops import (
     calculate_coef_and_rsquared,
     get_rsquared_threshold,
     calculate_kinetics_quantities,
+    evaluate_curve,
 )
 
 
@@ -205,3 +206,59 @@ def test_calc_kinetics_filters_ovfl_values_does_not_raise():
         [0, 1, 2, 3, 4], [0.0, "OVFL", 4.0, 6.0, 6.0], 2
     )
     assert isinstance(result, dict)
+
+
+# ---------------------------------------------------------------------------
+# evaluate_curve — quick concentration calculator core
+# ---------------------------------------------------------------------------
+import math as _math
+
+
+def test_evaluate_curve_linear_dict():
+    assert evaluate_curve('linear', {'a': 2, 'b': -3}, 5) == 7.0
+
+
+def test_evaluate_curve_linear_list():
+    assert evaluate_curve('linear', [2, -3], 5) == 7.0
+
+
+def test_evaluate_curve_polynomial():
+    # 1*x^2 + 0*x + 1 at x=3 → 10
+    assert evaluate_curve('polynomial', {'a': 1, 'b': 0, 'c': 1}, 3) == 10.0
+
+
+def test_evaluate_curve_logarithmic():
+    # ln(e) = 1
+    assert abs(evaluate_curve('logarithmic', {'a': 1, 'b': 0, 'c': 0}, _math.e) - 1) < 1e-9
+
+
+def test_evaluate_curve_exponential():
+    # e^0 = 1
+    assert abs(evaluate_curve('exponential', {'a': 1, 'b': 1, 'c': 0}, 0) - 1) < 1e-9
+
+
+def test_evaluate_curve_michaelis_menten():
+    # (Km*x)/(VMax-x) = (2*5)/(10-5) = 2
+    assert evaluate_curve('Michaelis-Menten', {'VMax': 10, 'Km': 2}, 5) == 2.0
+
+
+def test_evaluate_curve_mm_zero_denominator_raises():
+    with pytest.raises(ValueError):
+        evaluate_curve('Michaelis-Menten', {'VMax': 5, 'Km': 1}, 5)
+
+
+def test_evaluate_curve_log_domain_raises():
+    with pytest.raises(ValueError):
+        evaluate_curve('logarithmic', {'a': 1, 'b': 0, 'c': 0}, -1)
+
+
+def test_evaluate_curve_missing_coef_raises():
+    with pytest.raises(ValueError):
+        evaluate_curve('linear', {'a': 'NONE', 'b': 1}, 5)
+    with pytest.raises(ValueError):
+        evaluate_curve('polynomial', {'a': 1, 'b': 2}, 5)  # missing c
+
+
+def test_evaluate_curve_unknown_algo_raises():
+    with pytest.raises(ValueError):
+        evaluate_curve('sigmoid', {'a': 1, 'b': 2}, 5)

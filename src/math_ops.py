@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from scipy.optimize import curve_fit
 
@@ -145,6 +146,71 @@ def calculate_coef_and_rsquared(x, y, regress_algo="linear"):
         "rSquared": float(r_squared),
         "coefficients": [float(c) for c in coefficients] if coefficients else None
     }
+
+def evaluate_curve(regress_algo, coefficients, x):
+    """Evaluate a fitted standard-curve model at ``x`` → the derived concentration.
+
+    Same models as the fit functions above and ``excel_formula.py``:
+      linear        a*x + b
+      polynomial    a*x^2 + b*x + c
+      logarithmic   a*ln(x + b) + c
+      exponential   a*e^(b*x) + c
+      Michaelis-Menten  (Km*x) / (VMax - x)
+
+    ``coefficients`` may be a dict (``a``/``b``/``c`` or ``VMax``/``Km``) or an
+    ordered list. Raises ``ValueError`` on a missing/non-numeric coefficient, an
+    unknown algorithm, or a domain error (log of a non-positive argument,
+    Michaelis-Menten zero denominator).
+    """
+    x = float(x)
+
+    def _num(v, name):
+        if v is None or v == "NONE" or v == "":
+            raise ValueError("Missing coefficient: %s" % name)
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            raise ValueError("Coefficient %s must be a number" % name)
+
+    if regress_algo == "Michaelis-Menten":
+        if isinstance(coefficients, dict):
+            vmax = _num(coefficients.get("VMax"), "VMax")
+            km = _num(coefficients.get("Km"), "Km")
+        else:
+            if len(coefficients) < 2:
+                raise ValueError("Michaelis-Menten requires VMax and Km")
+            vmax = _num(coefficients[0], "VMax")
+            km = _num(coefficients[1], "Km")
+        denom = vmax - x
+        if denom == 0:
+            raise ValueError("VMax - x is zero (division by zero)")
+        return (km * x) / denom
+
+    if isinstance(coefficients, dict):
+        a = _num(coefficients.get("a"), "a")
+        b = _num(coefficients.get("b"), "b")
+        c_raw = coefficients.get("c")
+    else:
+        if len(coefficients) < 2:
+            raise ValueError("At least coefficients a and b are required")
+        a = _num(coefficients[0], "a")
+        b = _num(coefficients[1], "b")
+        c_raw = coefficients[2] if len(coefficients) > 2 else None
+
+    if regress_algo == "linear":
+        return a * x + b
+    if regress_algo == "polynomial":
+        return a * x * x + b * x + _num(c_raw, "c")
+    if regress_algo == "logarithmic":
+        c = _num(c_raw, "c")
+        if x + b <= 0:
+            raise ValueError("x + b must be > 0 for the logarithm")
+        return a * math.log(x + b) + c
+    if regress_algo == "exponential":
+        return a * math.exp(b * x) + _num(c_raw, "c")
+
+    raise ValueError("Unknown regression algorithm: %s" % regress_algo)
+
 
 def get_rsquared_threshold(window_size, data_length):
     if window_size < 3 or window_size > data_length or data_length <= 0:

@@ -1616,3 +1616,51 @@ def test_excel_formula_rejects_bad_cell(client):
     })
     assert rv.status_code == 400
     assert 'cell' in rv.get_json()['message'].lower()
+
+
+# ── /calculate_concentration (quick concentration calculator) ────────────────
+
+def test_calculate_concentration_linear(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'linear', 'coefficients': {'a': 2, 'b': -3}, 'x': 5})
+    assert rv.status_code == 200
+    assert rv.get_json()['concentration'] == 7.0
+
+
+def test_calculate_concentration_michaelis_menten(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'Michaelis-Menten', 'coefficients': {'VMax': 10, 'Km': 2}, 'x': 5})
+    assert rv.status_code == 200
+    assert rv.get_json()['concentration'] == 2.0
+
+
+def test_calculate_concentration_accepts_list_coeffs(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'linear', 'coefficients': [2, -3], 'x': 5})
+    assert rv.status_code == 200
+    assert rv.get_json()['concentration'] == 7.0
+
+
+def test_calculate_concentration_mm_zero_denominator_400(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'Michaelis-Menten', 'coefficients': {'VMax': 5, 'Km': 1}, 'x': 5})
+    assert rv.status_code == 400
+    assert 'zero' in rv.get_json()['message'].lower()
+
+
+def test_calculate_concentration_missing_coef_400(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'linear', 'coefficients': {'a': 'NONE', 'b': 1}, 'x': 5})
+    assert rv.status_code == 400
+
+
+def test_calculate_concentration_log_domain_400(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'logarithmic', 'coefficients': {'a': 1, 'b': 0, 'c': 0}, 'x': -1})
+    assert rv.status_code == 400
+
+
+def test_calculate_concentration_non_numeric_x_400(client):
+    rv = client.post('/calculate_concentration', json={
+        'regress_algo': 'linear', 'coefficients': {'a': 2, 'b': 1}, 'x': 'abc'})
+    assert rv.status_code == 400

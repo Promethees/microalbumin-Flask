@@ -226,5 +226,15 @@
   "excelf.copy": "Sao chép",
   "excelf.copied": "Đã sao chép!",
   "excelf.formula": "Công thức",
-  "excelf.no_fit": "không có khớp dùng được"
+  "excelf.no_fit": "không có khớp dùng được",
+  "btn.quick_concentration": "🧮 Nồng độ nhanh",
+  "hint.quick_concentration": "Tính nồng độ từ các hệ số đường chuẩn và một giá trị đo được — không cần tệp dữ liệu",
+  "quickconc.title": "Nồng độ nhanh",
+  "quickconc.hint": "Nhập các hệ số đường chuẩn và một đại lượng đo được — không cần tệp dữ liệu.",
+  "quickconc.model": "Mô hình đường chuẩn",
+  "quickconc.measured": "Giá trị đo được (x)",
+  "quickconc.calculate": "Tính",
+  "quickconc.result": "Nồng độ",
+  "quickconc.fill_all": "Hãy nhập tất cả hệ số và một giá trị đo được.",
+  "quickconc.error": "Tính toán thất bại."
 }
