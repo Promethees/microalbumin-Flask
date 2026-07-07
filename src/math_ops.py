@@ -82,8 +82,9 @@ def calculate_coef_and_rsquared(x, y, regress_algo="linear"):
     
     try:
         if regress_algo == "linear":
-            coeffs, _ = curve_fit(linear_func, x, y)
-            a, b = coeffs
+            # np.polyfit (not curve_fit): a 2-point/collinear window is an exact
+            # fit, whose singular covariance makes curve_fit emit OptimizeWarning.
+            a, b = np.polyfit(x, y, 1)
             slope = a
             predicted = linear_func(x, a, b)
             r_squared = compute_r_squared(y, predicted)
