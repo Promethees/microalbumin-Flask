@@ -723,7 +723,6 @@ function createTable(coef, rSquared, headers) {
 
 function getCalibrationAnalysisString(analysis, fitType, mode) {
     if (!analysis) return '';
-    const analysisId = mode === "kinetics" ? "cal-kinetics-analysis" : "cal-point-analysis";
     const showText = `See ${mode} analysis`;
     const hideText = `Hide ${mode} analysis`;
 
@@ -740,30 +739,34 @@ function getCalibrationAnalysisString(analysis, fitType, mode) {
             break;
     }
 
-    const initDisplay = getAnalysisOpenState(analysisId) ? "block" : "none";
-
-    const generateBlock = (coef, rSquared, label = '') => `
+    // Each block needs its own analysisId so the content div id, toggle-button id
+    // and localStorage key stay unique — toggleAllAnalyses() finds content divs
+    // by the analysis-content- id prefix.
+    const generateBlock = (coef, rSquared, analysisId, label = '') => {
+        const initDisplay = getAnalysisOpenState(analysisId) ? "block" : "none";
+        return `
         <span>
             ${label ? `${label}: ` : ''}
             ${createToggleButton(analysisId, showText, hideText)}
-            <div style="max-height: auto; display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
+            <div id="analysis-content-${analysisId}" style="max-height: auto; display: ${initDisplay}; overflow: hidden; transition: max-height 0.3s ease; margin-top: 10px; overflow-x: auto;" class="scrollbar-style">
                 ${createTable(coef, rSquared, headers)}
             </div>
         </span>
         <br/>
     `;
+    };
 
     if (mode === "kinetics") {
         if (!AppState.quantity_input.quantities) return '';
         return AppState.quantity_input.quantities.map((label, i) => {
             const coef = analysis[i]?.coefficients || null;
             const rSquared = analysis[i]?.rSquared || null;
-            return generateBlock(coef, rSquared, label);
+            return generateBlock(coef, rSquared, `cal-kinetics-analysis-${i}`, label);
         }).join('');
     } else {
         const coef = analysis.coefficients || null;
         const rSquared = analysis.rSquared || null;
-        return generateBlock(coef, rSquared);
+        return generateBlock(coef, rSquared, "cal-point-analysis");
     }
 }
 

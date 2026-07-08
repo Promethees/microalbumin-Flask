@@ -148,7 +148,7 @@ def detect_csv_schema(header_line: str):
 # predate this line; when it is absent the value is assumed to be ``ng/µL``
 # (``DEFAULT_CONCEN_UNIT``). This is a label only — switching units never
 # converts the recorded numbers.
-CONCEN_UNITS = ['ng/µL', 'nM', '%', 'CFU']
+CONCEN_UNITS = ['ng/µL', 'nM', '%', 'CFU', 'OD600']
 DEFAULT_CONCEN_UNIT = 'ng/µL'
 
 

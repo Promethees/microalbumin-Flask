@@ -108,7 +108,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
             // handling below), mirroring the CSV-metadata ConcenUnit dropdown.
             concen_unit: {
                 options: (typeof CONCEN_UNITS !== 'undefined' && CONCEN_UNITS && CONCEN_UNITS.length)
-                    ? CONCEN_UNITS : ['ng/µL', 'nM', '%', 'CFU']
+                    ? CONCEN_UNITS : ['ng/µL', 'nM', '%', 'CFU', 'OD600']
             }
         };
 
@@ -363,7 +363,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     // ConcenUnit is constrained to the valid units — edit it via a
                     // dropdown rather than free text so an invalid unit can't be typed.
                     if (key === 'ConcenUnit') {
-                        const units = (typeof CONCEN_UNITS !== 'undefined') ? CONCEN_UNITS : ['ng/µL', 'nM', '%', 'CFU'];
+                        const units = (typeof CONCEN_UNITS !== 'undefined') ? CONCEN_UNITS : ['ng/µL', 'nM', '%', 'CFU', 'OD600'];
                         const opts = units.map(u =>
                             `<option value="${escapeHtml(u)}" ${u === value ? 'selected' : ''}>${escapeHtml(u)}</option>`).join('');
                         return `
