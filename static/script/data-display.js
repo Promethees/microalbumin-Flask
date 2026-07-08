@@ -1058,7 +1058,10 @@ function findYDimension(allYValues, labels) {
         // Original logic for non-equal Y values
         if (labels.toLowerCase().includes("absorbance") && getBtnChecked("split-source")) {
             yMin = Math.min(Math.min(...validYValues), 0);
-            yMax = 0.6;
+            // Keep 0.6 as a uniform baseline ceiling across split-source charts,
+            // but grow it when a source exceeds 0.6 so no points are clipped.
+            const dataMax = validYValues.length > 0 ? Math.max(...validYValues) : 0.6;
+            yMax = Math.max(0.6, dataMax * 1.05);
         } else {
             yMin = Math.min(Math.min(...validYValues), 0);
             yMax = validYValues.length > 0 ? Math.max(...validYValues) * 1.1 : 1;
