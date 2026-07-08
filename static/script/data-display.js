@@ -598,12 +598,18 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
             ? AppState.calibrationDataPoints?.find(d => d.metric === selectedOriginal)
             : null;
         const yVals = dp?.y || [];
+        // Use the metric-matched X (filtered in lockstep with dp.y in
+        // preprocessDataCalParams) so a NONE at some concentration drops that
+        // row from BOTH axes. Falling back to the global XColumnVals (which is
+        // never NONE-filtered) would leave X longer than Y, and Chart.js pairs
+        // by index — shifting every point down one concentration.
+        const xVals = dp?.x ? dp.x.map(Number) : XColumnVals;
         const analysisForSelected = (selectedIdx >= 0 && Array.isArray(mixAnalysis)) ? mixAnalysis[selectedIdx] : null;
 
         AppState.chartInstances = {}; // clear old instances
         AppState.myChart = generateChart(
             'plot-canvas',
-            XColumnVals,
+            xVals,
             [yVals],
             [selectedOriginal || 'Selected Metric'],
             measUnit,
