@@ -66,7 +66,7 @@ def _edit_lock_holder(key, now):
 
 _SCHEMA_VALIDATORS = {
     CSV_SCHEMA_KINETICS_CAL: {
-        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|-?\d+|-?\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Kinetics calibration).'
     },
