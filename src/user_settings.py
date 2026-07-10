@@ -20,6 +20,7 @@ _VALID_UNITS = {"seconds", "minutes", "hours"}
 _VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 _VALID_TIME_TAG_FORMATS = {"iso", "iso_sec", "us", "eu", "date_only"}
 _VALID_CONCEN_UNITS = {"ng/µL", "nM", "%", "CFU", "OD600"}
+_VALID_Y_AXIS_MODES = {"auto", "custom"}
 
 DEFAULTS = {
     "theme": "auto",
@@ -50,6 +51,9 @@ DEFAULTS = {
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
     "ai_feedback_enabled": True,
+    "y_axis_scale_mode": "auto",
+    "y_axis_custom_min": 0.0,
+    "y_axis_custom_max": 0.6,
 }
 
 
@@ -160,6 +164,14 @@ def save(updates: dict) -> bool:
                         current[num_key] = n
                 except (ValueError, TypeError):
                     pass
+    if "y_axis_scale_mode" in updates and updates["y_axis_scale_mode"] in _VALID_Y_AXIS_MODES:
+        current["y_axis_scale_mode"] = updates["y_axis_scale_mode"]
+    for axis_key in ("y_axis_custom_min", "y_axis_custom_max"):
+        if axis_key in updates:
+            try:
+                current[axis_key] = float(updates[axis_key])
+            except (ValueError, TypeError):
+                pass
     try:
         with open(_path(), "w", encoding="utf-8") as f:
             json.dump(current, f, indent=2)

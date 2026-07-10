@@ -132,6 +132,38 @@ class TestSave:
         monkeypatch.setattr(state, "script_dir", str(tmp_path))
         assert user_settings.load()["default_concentration_unit"] == "ng/µL"
 
+    def test_y_axis_defaults(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        s = user_settings.load()
+        assert s["y_axis_scale_mode"] == "auto"
+        assert s["y_axis_custom_min"] == 0.0
+        assert s["y_axis_custom_max"] == 0.6
+
+    def test_saves_valid_y_axis_mode(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.save({"y_axis_scale_mode": "custom"}) is True
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["y_axis_scale_mode"] == "custom"
+
+    def test_rejects_invalid_y_axis_mode(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"y_axis_scale_mode": "logarithmic"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["y_axis_scale_mode"] == user_settings.DEFAULTS["y_axis_scale_mode"]
+
+    def test_saves_custom_y_axis_bounds(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"y_axis_custom_min": -0.2, "y_axis_custom_max": 1.5})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["y_axis_custom_min"] == -0.2
+        assert saved["y_axis_custom_max"] == 1.5
+
+    def test_rejects_non_numeric_y_axis_bounds(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"y_axis_custom_max": "high"})
+        saved = json.loads((tmp_path / "user_settings.json").read_text())
+        assert saved["y_axis_custom_max"] == user_settings.DEFAULTS["y_axis_custom_max"]
+
     def test_saves_valid_subfolder(self, tmp_path, monkeypatch):
         monkeypatch.setattr(state, "script_dir", str(tmp_path))
         assert user_settings.save({"default_subfolder": "experiment_1"}) is True

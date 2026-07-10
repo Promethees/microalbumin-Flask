@@ -627,6 +627,9 @@ const SETTINGS_DEFAULTS = {
     disable_popups: false,
     default_concentration_unit: 'ng/µL',
     ai_feedback_enabled: true,
+    y_axis_scale_mode: 'auto',
+    y_axis_custom_min: 0.0,
+    y_axis_custom_max: 0.6,
 };
 
 function _buildSettingsHTML(s, folders, aiStats) {
@@ -748,6 +751,15 @@ function _buildSettingsHTML(s, folders, aiStats) {
                 ${rowCheck('Split by sources by default', 'swal-split-sources', s.default_split_sources)}
                 ${rowCheck('Expand time range panel by default', 'swal-range-expanded', s.range_expanded_default)}
                 ${rowCheck('Expand export panel by default', 'swal-export-expanded', s.export_expanded_default)}
+                ${row('Vertical axis scale', 'Auto fits to data; Custom pins a fixed range',
+                    `<select id="swal-yaxis-mode" class="swal2-input" onchange="const c=this.value==='custom';document.getElementById('swal-yaxis-min').disabled=!c;document.getElementById('swal-yaxis-max').disabled=!c;">
+                        <option value="auto"   ${(s.y_axis_scale_mode||'auto')==='auto'?'selected':''}>Auto</option>
+                        <option value="custom" ${s.y_axis_scale_mode==='custom'?'selected':''}>Custom</option>
+                     </select>`)}
+                ${row('Vertical axis min', 'Used only when scale is Custom',
+                    `<input id="swal-yaxis-min" type="number" step="any" class="swal2-input" value="${s.y_axis_custom_min ?? 0}" ${(s.y_axis_scale_mode||'auto')!=='custom'?'disabled':''}>`)}
+                ${row('Vertical axis max', 'Used only when scale is Custom',
+                    `<input id="swal-yaxis-max" type="number" step="any" class="swal2-input" value="${s.y_axis_custom_max ?? 0.6}" ${(s.y_axis_scale_mode||'auto')!=='custom'?'disabled':''}>`)}
             </div>
         </div>
         ${(typeof IS_FROZEN !== 'undefined' && IS_FROZEN) ? `
@@ -843,6 +855,9 @@ function _readSettingsForm() {
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
         ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
+        y_axis_scale_mode: document.getElementById('swal-yaxis-mode').value,
+        y_axis_custom_min: parseFloat(document.getElementById('swal-yaxis-min').value) || 0,
+        y_axis_custom_max: parseFloat(document.getElementById('swal-yaxis-max').value) || 0.6,
     };
 }
 
@@ -884,6 +899,14 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;
+    const yMode = s.y_axis_scale_mode || 'auto';
+    document.getElementById('swal-yaxis-mode').value = yMode;
+    const yMinEl = document.getElementById('swal-yaxis-min');
+    const yMaxEl = document.getElementById('swal-yaxis-max');
+    yMinEl.value = s.y_axis_custom_min ?? 0;
+    yMaxEl.value = s.y_axis_custom_max ?? 0.6;
+    yMinEl.disabled = yMode !== 'custom';
+    yMaxEl.disabled = yMode !== 'custom';
 }
 
 document.getElementById('settingsBtn').addEventListener('click', async function () {
@@ -990,6 +1013,13 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     // Re-render file tables with updated row limits / sort order (if a folder is loaded)
     if (typeof updateDirectory === 'function' && AppState.currentDirectory) {
         updateDirectory(AppState.currentDirectory, false);
+    }
+
+    // Redraw the plot so a changed vertical-axis scale (Auto ↔ Custom) applies
+    // immediately to the currently displayed chart. findYDimension reads the
+    // live USER_SETTINGS at draw time, so a re-plot is all that's needed.
+    if (AppState.currentFile && typeof toggleMode === 'function') {
+        toggleMode();
     }
 
     // Notify the user the settings were saved (unless popups are disabled).

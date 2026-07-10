@@ -1034,6 +1034,23 @@ function getRegressionData(xMax, xMin, analysisArray, numDiv = 100) {
 }
 
 function findYDimension(allYValues, labels) {
+    // Custom vertical-axis scale (App Settings → Data Display). When the user
+    // pins the axis to a fixed [min, max] range, honour it verbatim regardless
+    // of the data — overriding all auto-fit logic below. Guarded so a bad/legacy
+    // config (missing numbers, min ≥ max) silently falls back to Auto.
+    const settings = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS) ? USER_SETTINGS : {};
+    if (settings.y_axis_scale_mode === 'custom') {
+        const cMin = Number(settings.y_axis_custom_min);
+        const cMax = Number(settings.y_axis_custom_max);
+        if (isFinite(cMin) && isFinite(cMax) && cMax > cMin) {
+            return {
+                yMin: cMin,
+                yMax: cMax,
+                yStepSize: Number((cMax - cMin) / 10).toFixed(3) || 0.1
+            };
+        }
+    }
+
     const validYValues = allYValues.filter(y => y !== null && y !== "NONE" && !isNaN(y));
     const isSinglePoint = validYValues.length === 1;
     // Check if all Y values across all datasets are equal
