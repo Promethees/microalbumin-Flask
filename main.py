@@ -66,7 +66,6 @@ import argparse
 import threading
 import signal
 import atexit
-from filelock import FileLock, Timeout
 _report(25, "Loading standard libraries …")
 
 # ── Source path setup ────────────────────────────────────────────────────────

@@ -159,7 +159,7 @@ def get_csv_headers():
         return jsonify({'headers': [], 'error': 'Permission denied: Cannot read the file'}), 403
     except OSError as e:
         return jsonify({'headers': [], 'error': f'File system error: {str(e)}'}), 500
-    except Exception as e:
+    except Exception:
         return jsonify({'headers': [], 'error': 'An unexpected error occurred while reading the file'}), 500
 
 @file_bp.route("/api/current_output", methods=["GET"])
@@ -351,7 +351,7 @@ def edit_file():
         except OSError as e:
             text = 'in use' if e.errno == 16 else 'Failed'
             return jsonify({'status': 'error', 'message': f'Err {text}: {str(e)}'}), HTTPStatus.LOCKED if e.errno == 16 else HTTPStatus.INTERNAL_SERVER_ERROR
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 def _resolve_form_file_target():
@@ -405,7 +405,7 @@ def delete_file():
         except OSError as e:
             return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.LOCKED if e.errno == 16 else HTTPStatus.INTERNAL_SERVER_ERROR
 
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/delete_data_folder', methods=['POST'])
@@ -433,7 +433,7 @@ def delete_data_folder(validated_data):
         return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
     except OSError as e:
         return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/rename_data_folder', methods=['POST'])
@@ -480,7 +480,7 @@ def rename_data_folder(validated_data):
         return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
     except OSError as e:
         return jsonify({'status': 'error', 'message': f'Err: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/create_data_folder', methods=['POST'])
@@ -654,7 +654,7 @@ def copy_file():
         except OSError as e:
             return jsonify({'status': 'error', 'message': f'Failed: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/move_file', methods=['POST'])
@@ -711,7 +711,7 @@ def move_file():
         except OSError as e:
             return jsonify({'status': 'error', 'message': f'Failed: {str(e)}'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/merge_csv', methods=['POST'])
@@ -752,7 +752,7 @@ def merge_csv():
         else:
             return jsonify({'status': 'error', 'message': result}), HTTPStatus.INTERNAL_SERVER_ERROR
 
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/remove_columns', methods=['POST'])
@@ -813,7 +813,7 @@ def get_num_sources():
         except Exception:
             continue
 
-    return jsonify({'status': 'success', 'num_sources': sorted(list(possible_counts))})
+    return jsonify({'status': 'success', 'num_sources': sorted(possible_counts)})
 
 @file_bp.route('/get_data', methods=['GET'])
 def get_data():
@@ -867,7 +867,7 @@ def get_file_content():
             return jsonify({'status': 'success', 'content': content})
         except PermissionError as e:
             return jsonify({'status': 'error', 'message': f'Permission denied: {str(e)}'}), HTTPStatus.FORBIDDEN
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred'}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/save_range_csv', methods=['POST'])

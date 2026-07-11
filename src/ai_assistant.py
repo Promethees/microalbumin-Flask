@@ -1763,7 +1763,6 @@ def deterministic_events(messages: list, language: str, ui_context: dict = None)
         (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
     )
     mode = ui_context.get("mode", "")
-    data_loaded = ui_context.get("data_loaded", False)
 
     if _is_greeting(last_user_query):
         return [{"type": "chunk", "content": _GREETING_RESPONSE.get(language, _GREETING_RESPONSE["en"])}]
