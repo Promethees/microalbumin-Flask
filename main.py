@@ -1,8 +1,7 @@
-from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, redirect, session
+from flask import Flask, render_template, request, jsonify, make_response, redirect, session
 import os
 import sys
 from datetime import datetime
-from flask_socketio import SocketIO
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Add src to path
@@ -232,7 +231,6 @@ def api_current_output():
     return jsonify({"exists": False, "message": "Not supported in multiuser mode"}), 404
 
 if __name__ == '__main__':
-    import eventlet
     port = int(os.environ.get('PORT', 5003))
     host = '0.0.0.0'
     try:

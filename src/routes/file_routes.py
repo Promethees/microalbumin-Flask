@@ -107,7 +107,7 @@ def edit_file():
         save_user_data(user_data)
 
         return jsonify({'status': 'success', 'message': message}), HTTPStatus.OK
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred while saving the file'}), 500
 
 @file_bp.route('/delete_file', methods=['POST'])
@@ -145,7 +145,7 @@ def delete_file():
                 return jsonify({'status': 'success', 'message': f'File {file_name} deleted successfully'}), HTTPStatus.OK
             else:
                 return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred while deleting the file'}), 500
 
 @file_bp.route('/copy_file', methods=['POST'])
@@ -188,7 +188,7 @@ def copy_file():
             from user_data import save_user_data
             save_user_data(user_data)
             return jsonify({'status': 'success', 'message': f'File copied to {dst_name}', 'new_filename': dst_name}), HTTPStatus.OK
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred while copying the file'}), 500
 
 @file_bp.route('/upload_file', methods=['POST'])
@@ -243,7 +243,7 @@ def upload_file():
                 socketio.emit('update_csv')
 
         return jsonify({'status': 'success', 'message': f'File "{filename}" uploaded successfully{message_suffix}.', 'filename': filename}), HTTPStatus.OK
-    except Exception as e:
+    except Exception:
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred while uploading the file.'}), 500
 
 @file_bp.route('/merge_csv', methods=['POST'])

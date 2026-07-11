@@ -1,7 +1,6 @@
 # encrypt_credentials.py (run this locally once)
 from cryptography.fernet import Fernet
 import json
-import os
 
 # Load original credentials
 with open('credentials.json', 'r') as f:

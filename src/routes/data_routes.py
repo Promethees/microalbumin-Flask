@@ -69,17 +69,17 @@ def get_csv_headers():
     except Exception as e:
         return jsonify({'headers': [], 'error': f'Error reading CSV: {str(e)}'}), 200
 
-from user_data import get_user_data, get_file_metadata
+from user_data import get_file_metadata
 
 @data_bp.route('/get_num_sources', methods=['GET'])
 def get_num_sources():
     csv_data = get_user_data()['csv']
     num_sources = set()
-    for filename in csv_data.keys():
+    for filename in csv_data:
         meta = get_file_metadata(filename)
         if meta and 'num_sources' in meta:
             num_sources.add(meta['num_sources'])
-    return jsonify({'num_sources': sorted(list(num_sources))})
+    return jsonify({'num_sources': sorted(num_sources)})
 
 @data_bp.route('/get_data', methods=['GET'])
 def get_data():
