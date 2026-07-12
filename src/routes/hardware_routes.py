@@ -123,11 +123,13 @@ def run_script(validated_data):
             state.process = subprocess.Popen(
                 cmd, stdout=f, stderr=subprocess.STDOUT, text=True, start_new_session=True)
         try:
-            # A missing device makes the logger exit almost immediately; give it
-            # a brief window to surface that as device_not_found. A connected
-            # device keeps the logger alive (it settles + handshakes), so this
-            # times out and we report success.
-            state.process.wait(timeout=2)
+            # A missing device makes the logger exit almost immediately
+            # (connect_to_device scans the ports and raises BEFORE any settle
+            # delay), so a short window is enough to surface device_not_found. A
+            # connected device keeps the logger alive (it settles + handshakes),
+            # so this times out and we report success — and the shorter wait lets
+            # the client start its timer/polling ~1.5s sooner.
+            state.process.wait(timeout=0.5)
             error = check_log_for_errors(state.log_file)
             state.process = None
             if error == "device_not_found":
