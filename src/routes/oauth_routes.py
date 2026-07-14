@@ -127,6 +127,13 @@ def oauth_google_callback():
         return redirect('/account/login?oauth_error=Could+not+fetch+Google+profile')
 
     info = info_resp.json()
+    # Only trust the email if Google says it verified ownership. Google can
+    # return verified_email=false (unverified custom-domain / legacy accounts);
+    # linking on an unverified address would let a stranger's Google account take
+    # over an existing password account that happens to share the email string.
+    if info.get('email') and not info.get('verified_email'):
+        return redirect('/account/login?oauth_error=Your+Google+email+is+not+verified.+'
+                        'Please+verify+it+with+Google+or+use+email/password+sign-in.')
     try:
         user = _find_or_create_user(
             'google',
