@@ -94,7 +94,13 @@ _SCHEMA_VALIDATORS = {
         'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
     },
     CSV_SCHEMA_TIMESERIES: {
-        'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
+        # Each repetition of the outer group must start with a literal comma, so
+        # every iteration consumes at least one character. Without that anchor
+        # (the previous `(?:,\s*)?...` made the comma optional) the group could
+        # match empty in many ways over a long digit run, causing catastrophic
+        # backtracking — a ~2KB row hung the worker for seconds (ReDoS). The
+        # mandatory comma makes matching linear while accepting the same lines.
+        'data': r'^[ \t]*\d+(?:\.\d{1,2})?[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?[ \t]*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
     },
