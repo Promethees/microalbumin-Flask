@@ -194,11 +194,39 @@ def test_calc_kinetics_oversized_window_does_not_raise():
     assert isinstance(result, dict)
 
 
-def test_calc_kinetics_no_linear_region_uses_median_saturation():
-    # Flat data → maxRate stays 0, linear_start_idx == -1, saturation fallback used
+def test_calc_kinetics_no_linear_region_reports_undetected_saturation():
+    # Flat data → maxRate stays 0, no linear region → cannot locate a plateau.
     result = calculate_kinetics_quantities([0, 1, 2, 3], [5.0, 5.0, 5.0, 5.0], 3)
     assert result["linearXMin"] is None
+    assert result["saturationValue"] == "--"
+    assert result["timeToSaturation"] == "--"
+
+
+def test_calc_kinetics_flat_tail_reports_saturation():
+    # Ramp then genuine plateau → tail slope ~0 → saturation detected.
+    x = [0, 1, 2, 3, 4, 5, 6, 7]
+    y = [0.0, 2.0, 4.0, 6.0, 6.0, 6.0, 6.0, 6.0]
+    result = calculate_kinetics_quantities(x, y, 3)
     assert result["saturationValue"] != "--"
+    assert abs(float(result["saturationValue"]) - 6.0) < 1e-6
+
+
+def test_calc_kinetics_interrupted_trace_no_saturation():
+    # Trace cut while still rising: linear region found, but tail keeps climbing
+    # near max_rate → not flat → saturation must stay undetected.
+    x = [0, 1, 2, 3, 4, 5, 6]
+    y = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]
+    result = calculate_kinetics_quantities(x, y, 3)
+    assert result["saturationValue"] == "--"
+    assert result["timeToSaturation"] == "--"
+
+
+def test_calc_kinetics_short_tail_no_saturation():
+    # Only one point past the linear region → tail too short to confirm plateau.
+    x = [0, 1, 2, 3, 4]
+    y = [0.0, 2.0, 4.0, 6.0, 6.0]
+    result = calculate_kinetics_quantities(x, y, 3)
+    assert result["saturationValue"] == "--"
 
 
 def test_calc_kinetics_filters_ovfl_values_does_not_raise():
