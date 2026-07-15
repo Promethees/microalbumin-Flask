@@ -56,8 +56,9 @@ function formatAnalysisInfo(analysis, label) {
     let adjustedMaxRate = parseFloat(analysis.maxRate) / conversionFactor;
     let adjustedMaxRateStart = analysis.startMaxRate ? (parseFloat(analysis.startMaxRate) * conversionFactor).toFixed(2) : "--";
     let adjustedMaxRateEnd = analysis.endMaxRate ? (parseFloat(analysis.endMaxRate) * conversionFactor).toFixed(2) : "--";
-    let adjustedTimeToSaturationDisplay = (analysis.timeToSaturation !== null) ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
-    let adjustedSaturationValue = (analysis.timeToSaturation !== null) ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
+    let satUndetected = (analysis.saturationValue === "--" || analysis.saturationValue === null || analysis.saturationValue === undefined);
+    let adjustedTimeToSaturationDisplay = !satUndetected ? (parseFloat(analysis.timeToSaturation) * conversionFactor).toFixed(2) : "--";
+    let adjustedSaturationValue = !satUndetected ? parseFloat(analysis.saturationValue).toFixed(3) : "--";
     adjustedMaxRate = (3600 * adjustedMaxRate).toFixed(5) !== "0.00000" ? adjustedMaxRate.toFixed(5) : "--";
 
     return {

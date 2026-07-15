@@ -165,6 +165,21 @@ def get_rsquared_threshold(window_size, data_length):
 
     return max(min_r_squared, min(max_r_squared, r_squared))
 
+# Saturation-plateau gate: the trailing segment counts as a real plateau only
+# when it holds enough points AND its own slope has collapsed to a small
+# fraction of the reaction's peak rate. Guards against an interrupted trace
+# (signal still rising when logging stopped) being reported as saturated.
+SAT_FLAT_FRACTION = 0.10  # tail slope must be <= 10% of max_rate to count as flat
+
+
+def _tail_is_flat(x_tail, y_tail, max_rate, window_size):
+    min_tail = max(3, window_size // 2)
+    if len(y_tail) < min_tail or max_rate <= 0:
+        return False
+    fit = calculate_coef_and_rsquared(x_tail, y_tail, "linear")
+    return abs(fit["slope"]) <= SAT_FLAT_FRACTION * max_rate
+
+
 def calculate_kinetics_quantities(x_col, y_col, window_size):
     valid_pairs = [(x, y) for (x, y) in zip(x_col, y_col) if x not in (None, "NONE") and y not in (None, "NONE", "OVFL")]
     
@@ -255,20 +270,24 @@ def calculate_kinetics_quantities(x_col, y_col, window_size):
         linear_y_min = linear_slope * linear_x_min + linear_intercept
         linear_y_max = linear_slope * linear_x_max + linear_intercept
         
-        if end >= len(y_col_valid):
-            saturation_value = "--"
-        else:
-            the_rest = y_col_valid[end:]
-            sorted_rest = sorted(the_rest)
+        tail_x = x_col_valid[end:]
+        tail_y = y_col_valid[end:]
+        if _tail_is_flat(tail_x, tail_y, max_rate, window_size):
+            sorted_rest = sorted(tail_y)
             saturation_value = sorted_rest[len(sorted_rest) // 2]
-            
-        time_to_saturation = f"{(x_col_valid[end - 1] - x_col_valid[start]):.2f}"
-        time_start_saturation = f"{x_col_valid[end - 1]:.2f}"
+            time_to_saturation = f"{(x_col_valid[end - 1] - x_col_valid[start]):.2f}"
+            time_start_saturation = f"{x_col_valid[end - 1]:.2f}"
+        else:
+            # No confirmed plateau (trace interrupted or tail too short/still rising).
+            saturation_value = "--"
+            time_to_saturation = "--"
+            time_start_saturation = "--"
     else:
-        sorted_y = sorted(y_col_valid)
-        saturation_value = sorted_y[len(sorted_y) // 2] if sorted_y else "--"
-        time_to_saturation = x_col_valid[0] if x_col_valid else "--"
-        time_start_saturation = x_col_valid[0] if x_col_valid else "--"
+        # No linear phase detected — cannot locate a plateau. Report undetected
+        # rather than a meaningless median of the whole trace.
+        saturation_value = "--"
+        time_to_saturation = "--"
+        time_start_saturation = "--"
         
     return {
         "slope": linear_slope,
