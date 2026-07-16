@@ -1964,7 +1964,16 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
         'client_grounding': {
             'system_prompt': _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS['en']),
             'help_docs': _HELP_DOCS,
-            'tools': TOOLS,
+            # Send data/help tools but NOT the guide tools (trigger_guide /
+            # trigger_custom_steps). Navigation guides are resolved locally and
+            # authoritatively by /ai/match against THIS app's own UI before a
+            # request ever reaches the proxy; letting the remote LLM emit guide
+            # steps instead produced spotlights aimed at the online build's
+            # element IDs (which don't exist here). With the guide tools removed,
+            # a nav query that misses the local matcher falls back to a correct
+            # desktop-grounded text answer rather than a broken guide.
+            'tools': [t for t in TOOLS
+                      if t.get('function', {}).get('name') not in _GUIDE_TOOLS],
         },
     }
 
