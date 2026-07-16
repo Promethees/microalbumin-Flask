@@ -10,7 +10,7 @@
 ### Installation:
 * On Mac:
 	- Using installer (DMG):
-		- Download the [![Latest release](https://img.shields.io/badge/latest-1.2.17-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI.dmg` on Mac.
+		- Download the [![Latest release](https://img.shields.io/badge/latest-1.2.18-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI.dmg` on Mac.
 		- Open the `EasyOKAPI.dmg` to mount it.
 		- **Terminal-based Installation** (to bypass security warnings):
 			1. Open the **Terminal** app.
@@ -38,7 +38,7 @@
 * On Windows:
 	- **No USB driver needed.** The app communicates with the PyBadge over its USB serial (CDC) port, which Windows 10/11 enumerates automatically — no `libusbK`/Zadig setup required.
 	- Using Installer: 
-		+ Download the [![Latest release](https://img.shields.io/badge/latest-1.2.17-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI_Setup.exe` on Windows
+		+ Download the [![Latest release](https://img.shields.io/badge/latest-1.2.18-blue)](https://github.com/Promethees/microalbumin-Flask/releases/latest) `EasyOKAPI_Setup.exe` on Windows
 		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
 		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
 		+ After the installation, you can use `Easy OKAPI` icon on the Desktop to start the app
