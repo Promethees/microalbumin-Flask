@@ -1627,18 +1627,24 @@ _NAV_MARKERS = frozenset({
     "how to", "how do i", "how can i", "where is", "where do i", "where can i",
     "show me", "take me to", "navigate to", "go to", "find the", "open the",
     "step by step", "walk me through", "guide me", "walk me",
+    "teach me", "instruct me",
     # Vietnamese
     "cách", "làm thế nào", "ở đâu", "hướng dẫn tôi", "chỉ tôi", "chỉ cho tôi",
+    "dạy tôi", "hướng dẫn cho tôi",
     # Chinese
     "怎么", "如何", "在哪", "带我", "找到",
+    "教我", "教教我",
     # French
     "comment faire", "comment", "où est", "montre-moi", "guidez-moi",
+    "apprends-moi", "montrez-moi",
     # Japanese ("方法" / "する方法" — "the method / how to …" — is the most common
     # Japanese how-to phrasing and was previously missing, so nav queries like
     # "csvを編集する方法" never registered as navigation).
     "どうやって", "どこ", "やり方", "使い方", "方法",
+    "教えて", "教えてください",
     # Russian
     "как мне", "как", "где", "покажи", "найти",
+    "научи меня", "покажи мне",
 })
 
 
