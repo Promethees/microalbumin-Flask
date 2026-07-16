@@ -7,9 +7,19 @@ from unittest.mock import MagicMock, patch
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-# Stub heavy external dependencies before any project module is imported
-for _mod in ('config', 'firebase_admin', 'firebase_service', 'flask_socketio',
-             'eventlet', 'account', 'flask_sqlalchemy', 'sqlalchemy'):
+# Stub heavy external dependencies before any project module is imported.
+#
+# These stubs MUST be undone as soon as file_routes is imported. pytest imports
+# every test module during collection, so anything left in sys.modules here is
+# inherited by every test module collected after this one (test_license_check,
+# test_register, …). Those modules then bound `account.db` to a MagicMock
+# instead of the real SQLAlchemy instance and failed with "The current Flask app
+# is not registered with this 'SQLAlchemy' instance" — a failure that pointed at
+# the victim rather than here, and vanished whenever the file was run alone.
+_STUBBED = ('config', 'firebase_admin', 'firebase_service', 'flask_socketio',
+            'eventlet', 'account', 'flask_sqlalchemy', 'sqlalchemy')
+_saved_modules = {_m: sys.modules.get(_m) for _m in _STUBBED}
+for _mod in _STUBBED:
     sys.modules[_mod] = MagicMock()
 sys.modules['config'].Config.REDIS_URL = None
 sys.modules['config'].Config.SECRET_KEY = 'test-secret'
@@ -19,6 +29,15 @@ _flask.session = {}
 
 from flask import Flask
 from routes.file_routes import file_bp
+
+# file_routes now holds the mock-backed references it needs, so put sys.modules
+# back: restore what was really there, and drop the stub entirely for anything
+# that had not been imported yet so a later import loads the real package.
+for _mod, _orig in _saved_modules.items():
+    if _orig is None:
+        sys.modules.pop(_mod, None)
+    else:
+        sys.modules[_mod] = _orig
 
 # ---------------------------------------------------------------------------
 # Shared sample CSV content strings
