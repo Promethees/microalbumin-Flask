@@ -714,7 +714,7 @@ _GUIDE_TOOLS = {"trigger_guide", "trigger_custom_steps"}
 
 # ── Tool execution ────────────────────────────────────────────────────────────
 
-def _run_tool(name: str, args: dict, user_data: dict = None) -> str:
+def _run_tool(name: str, args: dict, user_data: dict = None, help_docs: dict = None) -> str:
     user_data = user_data or {}
     try:
         if name == "get_app_context":
@@ -754,8 +754,19 @@ def _run_tool(name: str, args: dict, user_data: dict = None) -> str:
 
         elif name == "get_help_topic":
             topic = args.get("topic", "")
-            doc = _HELP_DOCS.get(topic, "Topic not found.")
+            # A client-grounded (desktop) request supplies its own help docs so
+            # the answer describes the local app, not this website.
+            docs = help_docs if isinstance(help_docs, dict) and help_docs else _HELP_DOCS
+            doc = docs.get(topic, "Topic not found.")
             return json.dumps({"topic": topic, "content": doc})
+
+        elif name == "get_hardware_status":
+            # Desktop-only tool (the local app talks to a USB colorimeter). The
+            # server has no hardware, so report that rather than erroring.
+            return json.dumps({
+                "running": False,
+                "note": "Hardware status is only available in the local desktop app, not via the server.",
+            })
 
         elif name == "trigger_guide":
             valid = {"general", "kinetics", "point", "calibrate_kinetics", "calibrate_point", "report"}
@@ -1135,8 +1146,30 @@ def _groq_chat(api_key: str, model: str, messages: list, tools: list) -> dict:
 
 
 def chat_stream(messages: list, language: str, api_key: str, model: str,
-                ui_context: dict = None, user_data: dict = None):
-    """Generator yielding SSE event dicts."""
+                ui_context: dict = None, user_data: dict = None,
+                system_prompt_override: str = None, help_docs_override: dict = None,
+                tools_override: list = None):
+    """Generator yielding SSE event dicts.
+
+    The desktop (downloaded) app proxies through /ai/proxy/chat and supplies its
+    OWN grounding — system prompt, help-topic docs, and tool schema — via the
+    *_override params, so the model answers as the local desktop assistant
+    instead of describing this cloud website's features (Drive sync, uploads,
+    accounts). When an override is present ("client-grounded"), the server-side
+    guide matcher is skipped too: the desktop resolves navigation guides locally
+    against its own UI (/ai/match), so matching here against this app's guide
+    examples would spotlight element IDs that don't exist in the desktop UI.
+    The website's own /ai/chat passes no overrides and keeps its full behaviour.
+    """
+    client_grounded = bool(system_prompt_override)
+    # Validate the client-supplied tool schema before trusting it upstream; a
+    # malformed value must not break the Groq call, so fall back to this app's.
+    if isinstance(tools_override, list) and tools_override and all(
+        isinstance(t, dict) for t in tools_override
+    ):
+        active_tools = tools_override
+    else:
+        active_tools = TOOLS
     last_user_query = next(
         (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
     )
@@ -1167,7 +1200,7 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
         yield {"type": "chunk", "content": _REPORT_CLARIFY_PROMPTS.get(language, _REPORT_CLARIFY_PROMPTS["en"])}
         return
 
-    system_prompt = _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
+    system_prompt = system_prompt_override or _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS["en"])
     if ui_context:
         parts = []
         if mode and mode != "unknown":
@@ -1180,19 +1213,23 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
         if parts:
             system_prompt += f"\n\n[App state: {', '.join(parts)}]"
 
-    matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
-    if matched and match_score >= 0.7:
-        steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
-        yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
-        yield {"type": "guide", "guide_action": {"custom_steps": steps}}
-        return
+    # Skip server-side guide matching for a client-grounded (desktop) request —
+    # it resolves guides locally against its own UI, so matching here would
+    # spotlight this website's element IDs.
+    if not client_grounded:
+        matched, match_score = _match_guide_example(last_user_query, ui_context or {}, language)
+        if matched and match_score >= 0.7:
+            steps = _format_fewshot_hint(matched, ui_context or {}, language, steps_only=True)
+            yield {"type": "chunk", "content": _GUIDE_LAUNCHED.get(language, _GUIDE_LAUNCHED["en"])}
+            yield {"type": "guide", "guide_action": {"custom_steps": steps}}
+            return
 
     full_messages = [{"role": "system", "content": system_prompt}] + messages
     guide_action = None
     ud = user_data or {}
 
     for _ in range(6):
-        result = _groq_chat(api_key, model, full_messages, TOOLS)
+        result = _groq_chat(api_key, model, full_messages, active_tools)
         if "error" in result:
             error_map = {
                 "groq_not_installed": "groq_not_installed",
@@ -1221,7 +1258,7 @@ def chat_stream(messages: list, language: str, api_key: str, model: str,
                 tool_args = json.loads(fn.get("arguments", "{}"))
             except Exception:
                 tool_args = {}
-            tool_result = _run_tool(tool_name, tool_args, ud)
+            tool_result = _run_tool(tool_name, tool_args, ud, help_docs_override)
             if tool_name in _GUIDE_TOOLS:
                 try:
                     guide_action = json.loads(tool_result)

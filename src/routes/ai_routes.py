@@ -125,9 +125,22 @@ def proxy_chat():
     ui_context = data.get('ui_context') or {}
     proxy_user_data = get_user_data(user_id=f'account_{user.id}')
 
+    # The desktop (downloaded) app grounds the model in its OWN product docs so
+    # answers describe the local app, not this cloud website. Pull the grounding
+    # it sent (system prompt / help docs / tool schema); chat_stream validates
+    # each and falls back to the server's own when absent or malformed.
+    grounding = data.get('client_grounding') or {}
+    sys_override = grounding.get('system_prompt')
+    system_prompt_override = sys_override if isinstance(sys_override, str) and sys_override.strip() else None
+    help_docs_override = grounding.get('help_docs') if isinstance(grounding.get('help_docs'), dict) else None
+    tools_override = grounding.get('tools') if isinstance(grounding.get('tools'), list) else None
+
     def generate():
         for event in ai_assistant.chat_stream(
-            messages, language, Config.GROQ_API_KEY, model, ui_context, proxy_user_data
+            messages, language, Config.GROQ_API_KEY, model, ui_context, proxy_user_data,
+            system_prompt_override=system_prompt_override,
+            help_docs_override=help_docs_override,
+            tools_override=tools_override,
         ):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
