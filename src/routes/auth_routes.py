@@ -43,15 +43,14 @@ def auth_google_callback():
         # Validate state FIRST before touching the session
         pending_state = get_pending_oauth_state()
         if state != pending_state:
-            debug_info = {
-                'url_state': state,
-                'pending_server_state': pending_state,
-                'session_content': {k: v for k, v in session.items() if k != '_id'}
-            }
+            # Never render session contents / state values to the browser — that
+            # leaked account_user_id, email and Drive state to anyone who could
+            # trigger a mismatch. Log server-side for diagnostics instead.
+            print('[oauth/drive] State mismatch on Drive callback '
+                  f'(url_state_present={bool(state)}, pending_present={bool(pending_state)})')
             return render_template('callback.html',
                                 status='error',
-                                message='Invalid state parameter',
-                                debug=debug_info), 400
+                                message='Invalid state parameter'), 400
 
         # State is valid — safe to recover the session. Only ever restore a
         # guest UUID; never write an 'account_N' id into session['user_id'],

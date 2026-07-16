@@ -15,7 +15,7 @@ from download_service import (
     get_latest_release_tag, get_bundle_asset, resolve_asset_location,
     _activation_public_key,
 )
-from rate_limit import limiter, ACTIVATE_LIMIT, LICENSE_CHECK_LIMIT
+from rate_limit import limiter, ACTIVATE_LIMIT, LICENSE_CHECK_LIMIT, REGISTER_LIMIT
 
 account_bp = Blueprint('account', __name__)
 
@@ -159,6 +159,7 @@ def reset_password_page(token):
 # ── API ────────────────────────────────────────────────────────────────────────
 
 @account_bp.route('/api/account/register', methods=['POST'])
+@limiter.limit(REGISTER_LIMIT)
 def register():
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
@@ -172,8 +173,24 @@ def register():
     if '@' not in email:
         return jsonify({'status': 'error', 'message': 'Invalid email address'}), 400
 
-    if User.query.filter_by(email=email).first():
-        return jsonify({'status': 'error', 'message': 'An account with this email already exists'}), 409
+    # Reply identically whether or not the email is already registered, so this
+    # endpoint cannot be used to enumerate which addresses have accounts. The
+    # neutral message below is returned in every non-validation case.
+    _NEUTRAL_MSG = 'Account created. Please check your email to verify your address before downloading.'
+
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        # Never confirm the account exists. For an unverified account, silently
+        # re-send the verification link so a legitimate re-signup still works;
+        # for a verified account, do nothing. Either way the response is the same.
+        if not existing.is_verified:
+            try:
+                token = existing.generate_verification_token()
+                db.session.commit()
+                send_verification_email(email, existing.name, token, _APP_BASE_URL)
+            except Exception as e:
+                print(f'[email] Verification resend on duplicate signup failed for {email}: {e}')
+        return jsonify({'status': 'success', 'message': _NEUTRAL_MSG}), 201
 
     user = User(email=email, name=name)
     user.set_password(password)
@@ -186,10 +203,7 @@ def register():
     except Exception as e:
         print(f'[email] Failed to send verification email to {email}: {e}')
 
-    return jsonify({
-        'status': 'success',
-        'message': 'Account created. Please check your email to verify your address before downloading.'
-    }), 201
+    return jsonify({'status': 'success', 'message': _NEUTRAL_MSG}), 201
 
 
 @account_bp.route('/api/account/verify/<token>')
@@ -799,6 +813,11 @@ def download():
     auth_header = request.headers.get('Authorization', '')
     bearer = auth_header[7:] if auth_header.startswith('Bearer ') else None
     short_token = request.args.get('token') or request.headers.get('X-Download-Token')
+    # The permanent activation (Bearer) credential belongs to a frozen desktop
+    # build, which auto-updates by swapping the compiled onedir *bundle* and has
+    # no .py on disk. It must therefore NEVER be able to pull the raw Python
+    # source tarball — only the installer's short-lived download token may.
+    via_activation = bool(bearer)
 
     if bearer:
         try:
@@ -863,6 +882,16 @@ def download():
         user.last_download = datetime.utcnow()
         db.session.commit()
         return redirect(location, code=302)
+
+    # Past this point the endpoint streams the private SOURCE tarball. Only the
+    # installer (short-lived download token) is entitled to it. Refuse the source
+    # to a frozen-build auto-updater (Bearer activation token) — it can only ever
+    # fetch the compiled bundle above — so the source is never leaked down the
+    # update path, even to a valid license on a machine that should run a binary.
+    if via_activation:
+        return jsonify({'status': 'error', 'code': 'source_forbidden',
+                        'message': 'This credential can only fetch the update bundle '
+                                   '(use ?kind=bundle&platform=mac|win|linux).'}), 403
 
     try:
         upstream = fetch_github_release(version_tag)

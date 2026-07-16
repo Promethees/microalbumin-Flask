@@ -22,6 +22,11 @@ AI_CHAT_LIMIT = "30 per minute"        # website logged-in chat (/ai/chat)
 AI_PROXY_LIMIT = "30 per minute"       # desktop proxy chat (/ai/proxy/chat)
 ACTIVATE_LIMIT = "10 per minute"       # token exchange (/api/activate)
 LICENSE_CHECK_LIMIT = "60 per minute"  # desktop revocation poll (/api/license/check)
+# Signup sends real mail, and a duplicate signup on an unverified account
+# re-sends the verification link — so an unlimited endpoint lets anyone flood an
+# arbitrary inbox and drain the mail quota. Low enough to make that useless,
+# high enough for a human retrying a typo'd address.
+REGISTER_LIMIT = "5 per hour"          # account signup (/api/account/register)
 
 
 def _storage_uri():

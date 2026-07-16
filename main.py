@@ -48,6 +48,13 @@ db.init_app(app)
 from rate_limit import limiter
 limiter.init_app(app)
 
+# Cross-origin/CSRF defense-in-depth: reject state-changing browser requests
+# whose Origin isn't ours. Registered first so it runs before any session or
+# idle-timeout logic. Token-authenticated desktop calls send no Origin and are
+# unaffected. See src/security.py.
+from security import init_request_guard
+init_request_guard(app)
+
 # Create account tables on first run, then apply any schema migrations
 with app.app_context():
     db.create_all()
