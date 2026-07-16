@@ -1964,16 +1964,18 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
         'client_grounding': {
             'system_prompt': _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS['en']),
             'help_docs': _HELP_DOCS,
-            # Send data/help tools but NOT the guide tools (trigger_guide /
-            # trigger_custom_steps). Navigation guides are resolved locally and
-            # authoritatively by /ai/match against THIS app's own UI before a
-            # request ever reaches the proxy; letting the remote LLM emit guide
-            # steps instead produced spotlights aimed at the online build's
-            # element IDs (which don't exist here). With the guide tools removed,
-            # a nav query that misses the local matcher falls back to a correct
-            # desktop-grounded text answer rather than a broken guide.
+            # Send data/help tools and trigger_guide, but NOT trigger_custom_steps.
+            # trigger_custom_steps echoes element IDs the *remote* LLM invents, and
+            # a model trained on the online build emits IDs that don't exist in this
+            # desktop UI — the original wrong-guide bug. trigger_guide is safe: it
+            # only returns a workflow name, and the STEPS are this app's own
+            # client-side presets (static/script/user-guide.js → startWorkflow), so
+            # its IDs are always correct. Keeping it lets broad "teach me / walk me
+            # through X" requests (which miss the local /ai/match matcher) still
+            # launch a proper tour instead of erroring. Focused nav is handled
+            # locally by /ai/match; on a miss the LLM answers in grounded text.
             'tools': [t for t in TOOLS
-                      if t.get('function', {}).get('name') not in _GUIDE_TOOLS],
+                      if t.get('function', {}).get('name') != 'trigger_custom_steps'],
         },
     }
 
