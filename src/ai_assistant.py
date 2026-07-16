@@ -1952,6 +1952,20 @@ def proxy_chat_stream(messages, language, license_token, proxy_url, model, ui_co
         'hwid': machine_id,
         'model': model,
         'ui_context': ui_context or {},
+        # Ground the proxy LLM in THIS (downloaded/offline desktop) build's own
+        # product knowledge, not the cloud website's. The proxy server otherwise
+        # answers from its online-branch system prompt / help docs / tool set,
+        # which describe features that don't exist in the desktop app (Google
+        # Drive sync, file upload, cloud accounts) and omit desktop-only ones
+        # (local hardware, data-folder). Sending our own grounding makes the
+        # proxy reply as the desktop assistant. The server appends live [App
+        # state] and validates before use; a server that predates this key just
+        # ignores it and falls back to its own prompt (older behaviour).
+        'client_grounding': {
+            'system_prompt': _SYSTEM_PROMPTS.get(language, _SYSTEM_PROMPTS['en']),
+            'help_docs': _HELP_DOCS,
+            'tools': TOOLS,
+        },
     }
 
     try:
