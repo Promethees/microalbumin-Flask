@@ -343,7 +343,9 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     : { display: false },
                 title: {
                     display: true,
-                    text: index !== null ? `Source ${index + 1} Data` : 'Display selected CSV Content',
+                    text: index !== null
+                        ? t('chart.title_source_data', 'Source {n} Data').replace('{n}', index + 1)
+                        : t('chart.title_csv_content', 'Display selected CSV Content'),
                     color: getAxisStyle('title')
                 },
                 annotation: {
@@ -404,7 +406,7 @@ function renderHtmlLegend(chart, canvasId, sourceIndex) {
             const pencil = document.createElement('button');
             pencil.className = 'legend-pencil';
             pencil.textContent = '✎';
-            pencil.setAttribute('data-hint', 'Edit label and color');
+            pencil.setAttribute('data-hint', t('hint.edit_label_color', 'Edit label and color'));
             pencil.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const rect = pencil.getBoundingClientRect();

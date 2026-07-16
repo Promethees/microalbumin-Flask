@@ -466,11 +466,27 @@ Timestamp,Value:1,Value:2,...
 - **Keep technical terms in English** in every catalog: mode names (`kinetics`/`point`/`calibrate`/`report`),
   units (`seconds`/`minutes`/`nM`/`ng/µL`), `Absorbance`, `maxRate`, `rSquared`, `Slope`, `Sat`, `Blank`,
   `ConcenUnit`, `CSV`/`JSON`/`Excel`, and brand names (`Easy OKAPI`/`EasyOKAPI`/`CBBiotec`/`CBB`/`PyBadge`).
+- **Escape translated text before inlining it into markup.** The English literals are all quote-free, so
+  string-concatenating them into HTML happens to work; the catalogs are not. French and Russian carry
+  apostrophes (`Voir l'analyse`), which silently break any **single-quoted JS string inside a
+  double-quoted HTML attribute** — the inline `onclick` pattern used by `data-display.js`
+  `createToggleButton()`. That file exports two escapers, and a `t()` result reaching either context must
+  go through the matching one: **`escapeAttrText()`** for a plain attribute (`data-hint="..."`), and
+  **`escapeInlineHandlerText()`** for text embedded in an inline handler's JS (it emits `\'` for the JS
+  layer and `&quot;`/`&lt;`/`&amp;` for the HTML layer, which the parser unescapes before compiling the JS).
+  Prefer `setAttribute`/`textContent` over string-built markup for new code, which sidesteps both layers.
+- **Placeholders** in catalog strings use the `{n}` / `{m}` token convention, interpolated at the call site
+  with `t('key', 'English {n}').replace('{n}', value)` — there is no interpolation inside `t()` itself. Every
+  language's copy of a placeholder string must keep the token (a dropped `{n}` renders a sentence with a
+  missing number, silently).
 - **Anti-patterns**: do **not** resolve the catalog dir from `state.script_dir` (it's the writable data
   root, not where the shipped catalogs live — use `state.bundle_dir`); do **not** add a UI string without
   giving it a key in **`en.json` and all five** `vi/zh/fr/ja/ru` files (keep them in lockstep — covered by
   `tests/test_i18n.py`, which fails on key drift); do **not** strip the in-place English text when adding a
-  `data-i18n*` attribute (it is the fallback); do **not** translate the technical terms above.
+  `data-i18n*` attribute (it is the fallback); do **not** translate the technical terms above; do **not**
+  translate **chart series labels** (`getLabel`, `getLabelsFromYColumn`, `determineMeasurementLabel` in
+  `data-display.js`) — they are built from file metadata, flow into report/Excel exports, and are matched
+  against verbatim (e.g. `labels.toLowerCase().includes("absorbance")` in `findYDimension`).
 
 ### 2.23 Excel Export — Native Calibration Charts
 

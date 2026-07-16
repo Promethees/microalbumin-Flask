@@ -1,5 +1,31 @@
 window.ChartDataStore = window.ChartDataStore || {};
 
+// Translated text goes into two hostile contexts in this file, so it has to be
+// escaped for each. Both are safe for the English literals but not for the
+// catalogs: French/Russian tooltips carry apostrophes, and `"` would close an
+// attribute outright.
+
+// For a plain double-quoted HTML attribute (e.g. data-hint="...").
+function escapeAttrText(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+}
+
+// For a single-quoted JS string literal nested inside a double-quoted HTML
+// attribute — the inline onclick handler in createToggleButton(). The `'` must
+// survive as a JS escape (\') while `"`/`<`/`&` go through as HTML entities,
+// which the parser unescapes back before the JS is compiled.
+function escapeInlineHandlerText(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+}
+
 function updatePlot(data, XColumn = "Timestamp", YColumn = "Value") {
     // Save current scroll positions
     const chartContainer = document.getElementById('chart-container');
@@ -244,18 +270,18 @@ function createChartSection({
         `
         <div id="${sectionId}">
             <label>
-                <input type="checkbox" id="${fullDisplayId}" 
-                    onchange="handleFullDisplayChange('${fullDisplayId}', '${quantityId}', '${canvasId}')"> 
-                Full display: See all data and special lines
+                <input type="checkbox" id="${fullDisplayId}"
+                    onchange="handleFullDisplayChange('${fullDisplayId}', '${quantityId}', '${canvasId}')">
+                ${t('display.full_display', 'Full display: See all data and special lines')}
             </label>
             <label id="quantity-checkboxes-${quantityId}" class="hidden">
-                <h3>Quantities to display on graphic</h3>
+                <h3>${t('display.quantities_on_graphic', 'Quantities to display on graphic')}</h3>
                 ${checkboxHtmlWithID(quantityId, canvasId, allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
             </label>
             <div id="${analysisId}"></div>
             ${`
                 <div id="concentration-reader-section-source-${index}">
-                    Concentration from source-${index + 1} sample is
+                    ${t('display.concen_from_source', 'Concentration from source-{n} sample is').replace('{n}', index + 1)}
                     ${metaConcentration !== null
                         ? `<span class="der-con-value" id="con-value-read-display-source-${index}">${metaConcentration}</span>
                            <input type="hidden" id="con-value-read-source-${index}" value="${metaConcentration}">`
@@ -267,7 +293,7 @@ function createChartSection({
                         min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ${concenUnit}
                 </div>
                 <div id="derived-concentration-section-source-${index}" class="hidden">
-                    Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
+                    ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', index + 1)} <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
                 </div>
                 <div id="est-value-msg-source-${index}" class="est-value-msg"></div>
                 `}
@@ -325,7 +351,7 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
             <div id="plot-chart-section" style="display: flex; flex-wrap: wrap; gap: 15px;">
                 <div id="plot-analysis" style="width: 100%;"></div>
                 <div class="cal-chart-container" style="flex: 1 1 100%; min-width: 300px; padding: 10px; border-radius: 8px;">
-                    ${isKineticsCal ? `<div class="cal-metric-label">Selected metric: ${selectedMetric}</div>` : ``}
+                    ${isKineticsCal ? `<div class="cal-metric-label">${t('display.selected_metric', 'Selected metric: {n}').replace('{n}', selectedMetric)}</div>` : ``}
                     <canvas id="plot-canvas"></canvas>
                 </div>
             </div>
@@ -354,13 +380,13 @@ function renderCharts(allXColumn, allYColumnOrArray, labelOrLabels, unit, index 
                 ? `<label>
                     <input type="checkbox" id="full-display-plot"
                         onchange="handleFullDisplayChange('full-display-plot', 'plot', 'plot-canvas')">
-                    Full display: See all data and special lines
+                    ${t('display.full_display', 'Full display: See all data and special lines')}
                    </label>`
                 : '';
             const html = `
                 ${fullDisplayHtml}
                 <label id="quantity-checkboxes-plot" class="hidden">
-                    <h3>Quantities to display on graphic</h3>
+                    <h3>${t('display.quantities_on_graphic', 'Quantities to display on graphic')}</h3>
                     ${checkboxHtmlWithID("plot", "plot-canvas", allXColumn, allYColumnOrArray, labelOrLabels, unit, index)}
                 </label>
                 <div id="plot-chart-section">
@@ -403,20 +429,20 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         const analysisEl = document.getElementById(analysisId);
         analysisEl.innerHTML = formatAnalysisHtml(analysisInfo,
             getSourceColor(i),
-            `Source ${i + 1}`,
+            t('display.source_label', 'Source {n}').replace('{n}', i + 1),
             `plot-analysis-source-${i}`
         );
         if (analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
             analysisEl.insertAdjacentHTML('beforeend',
                 `<button class="utility-btn" style="margin-top:4px;"
-                    data-hint="Save the linearity range rows for this source to a new CSV file"
-                    onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">📐 Save Linearity Range</button>`
+                    data-hint="${escapeAttrText(t('hint.save_linearity_range', 'Save the linearity range rows for this source to a new CSV file'))}"
+                    onclick="saveLinearityRangeCsvForSource(${i}, ${analysis.linearXMin}, ${analysis.linearXMax})">${t('display.save_linearity_btn', '📐 Save Linearity Range')}</button>`
             );
         }
         analysisEl.insertAdjacentHTML('beforeend',
             `<button class="utility-btn" style="margin-top:4px;"
-                data-hint="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
-                onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`
+                data-hint="${escapeAttrText(t('hint.normalize_source', 'Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file'))}"
+                onclick="saveNormalizedCsvForSource(${i})">${t('display.normalize_btn', '🧮 Normalize')}</button>`
         );
     }
 
@@ -449,21 +475,21 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, getSourceColor(i), `Source ${i + 1}`, `plot-analysis-source-${i}`);
+        html += formatAnalysisHtml(info, getSourceColor(i), t('display.source_label', 'Source {n}').replace('{n}', i + 1), `plot-analysis-source-${i}`);
         const rawA = analyses[i];
         if (rawA && rawA.linearXMin != null && rawA.linearXMax != null) {
             html += `<button class="utility-btn" style="margin-top:4px;"
-                data-hint="Save the linearity range rows for this source to a new CSV file"
-                onclick="saveLinearityRangeCsvForSource(${i}, ${rawA.linearXMin}, ${rawA.linearXMax})">📐 Save Linearity Range</button>`;
+                data-hint="${escapeAttrText(t('hint.save_linearity_range', 'Save the linearity range rows for this source to a new CSV file'))}"
+                onclick="saveLinearityRangeCsvForSource(${i}, ${rawA.linearXMin}, ${rawA.linearXMax})">${t('display.save_linearity_btn', '📐 Save Linearity Range')}</button>`;
         }
         html += `<button class="utility-btn" style="margin-top:4px;"
-            data-hint="Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file"
-            onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
+            data-hint="${escapeAttrText(t('hint.normalize_source', 'Save a blank-removed copy of this source (each column minus its own minimum) to a new CSV file'))}"
+            onclick="saveNormalizedCsvForSource(${i})">${t('display.normalize_btn', '🧮 Normalize')}</button>`;
         const metaConcentration = getMetaConcentration(AppState.metaData);
         const concenUnit = getMetaConcenUnit(AppState.metaData);
         html += `
             <div id="concentration-reader-section-source-${i}">
-                Concentration from source-${i + 1} sample is ${metaConcentration !== null
+                ${t('display.concen_from_source', 'Concentration from source-{n} sample is').replace('{n}', i + 1)} ${metaConcentration !== null
                     ? `<span class="der-con-value" id="con-value-read-display-source-${i}">${metaConcentration}</span>
                        <input type="hidden" id="con-value-read-source-${i}" value="${metaConcentration}">`
                     : `<input type="number" id="con-value-read-source-${i}"
@@ -472,7 +498,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
                     min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ${concenUnit}
             </div>
             <div id="derived-concentration-section-source-${i}" class="hidden">
-                Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
+                ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', i + 1)} <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
             </div>
             <div id="est-value-msg-source-${i}" class="est-value-msg"></div>
         `
@@ -730,8 +756,9 @@ function createTable(coef, rSquared, headers) {
 
 function getCalibrationAnalysisString(analysis, fitType, mode) {
     if (!analysis) return '';
-    const showText = `See ${mode} analysis`;
-    const hideText = `Hide ${mode} analysis`;
+    // `mode` is a mode name (kinetics/point) and stays English (Rule §2.22).
+    const showText = t('display.see_mode_analysis', 'See {n} analysis').replace('{n}', mode);
+    const hideText = t('display.hide_mode_analysis', 'Hide {n} analysis').replace('{n}', mode);
 
     let headers;
     switch (fitType) {
@@ -867,25 +894,31 @@ function toggleAllAnalyses() {
         const btn = document.getElementById(buttonId);
         if (btn) {
             btn.innerHTML = isOpen ? '-' : '+';
-            btn.setAttribute('data-hint', isOpen ? 'Hide the analysis' : 'See the analysis');
+            btn.setAttribute('data-hint', isOpen
+                ? t('display.hide_analysis', 'Hide the analysis')
+                : t('display.see_analysis', 'See the analysis'));
         }
     });
 }
 
-function createToggleButton(analysisId = "plot-analysis", showText = 'See the analysis', hideText = 'Hide the analysis') {
+function createToggleButton(analysisId = "plot-analysis", showText = null, hideText = null) {
+    showText = showText != null ? showText : t('display.see_analysis', 'See the analysis');
+    hideText = hideText != null ? hideText : t('display.hide_analysis', 'Hide the analysis');
     const buttonId = analysisId.replace("analysis", "button");
     const isOpen = getAnalysisOpenState(analysisId);
     const initialSymbol = isOpen ? '-' : '+';
     const initialTooltipText = isOpen ? hideText : showText;
+    const jsShowText = escapeInlineHandlerText(showText);
+    const jsHideText = escapeInlineHandlerText(hideText);
     return `
     <div style="position: relative; display: inline-block;">
         <button
             id="${buttonId}"
-            data-hint="${initialTooltipText}"
+            data-hint="${escapeAttrText(initialTooltipText)}"
             onclick="
             let contentDiv = this.parentElement.nextElementSibling;
             this.innerHTML = this.innerHTML === '+' ? '-' : '+';
-            this.setAttribute('data-hint', this.innerHTML === '-' ? '${hideText}' : '${showText}');
+            this.setAttribute('data-hint', this.innerHTML === '-' ? '${jsHideText}' : '${jsShowText}');
             localStorage.setItem('analysis-open-${analysisId}', this.innerHTML === '-' ? 'true' : 'false');
             if (this.innerHTML === '-') {
                 contentDiv.style.display = 'block';
@@ -905,13 +938,13 @@ function buildKineticsTableHtml(analysisInfo, unitDisp, timeUnit) {
         <table style="border-collapse: collapse;">
             <tr>
                 <td style="font-weight: bold;" class="analysis-cell">Slope</td>
-                <td style="font-weight: bold;" class="analysis-cell">Linear start</td>
-                <td style="font-weight: bold;" class="analysis-cell">Linear end</td>
+                <td style="font-weight: bold;" class="analysis-cell">${t('display.th.linear_start', 'Linear start')}</td>
+                <td style="font-weight: bold;" class="analysis-cell">${t('display.th.linear_end', 'Linear end')}</td>
                 <td style="font-weight: bold;" class="analysis-cell">maxRate</td>
                 <td style="font-weight: bold;" class="analysis-cell">maxRateStart</td>
                 <td style="font-weight: bold;" class="analysis-cell">maxRateEnd</td>
-                <td style="font-weight: bold;" class="analysis-cell">Saturation</td>
-                <td style="font-weight: bold;" class="analysis-cell">Reacting Time taken to Saturation</td>
+                <td style="font-weight: bold;" class="analysis-cell">${t('display.th.saturation', 'Saturation')}</td>
+                <td style="font-weight: bold;" class="analysis-cell">${t('display.th.time_to_saturation', 'Reacting Time taken to Saturation')}</td>
             </tr>
             <tr>
                 <td class="analysis-cell">${analysisInfo.slope}${unitDisp}/${timeUnit}</td>
