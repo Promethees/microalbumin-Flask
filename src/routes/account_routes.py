@@ -804,6 +804,72 @@ def admin_revoke():
     })
 
 
+@account_bp.route('/api/admin/machines/remove', methods=['POST'])
+def admin_remove_machines():
+    """Free a user's machine seat(s) by email — the support fix for a stuck seat cap.
+
+    A seat is held until it is released, and the release paths all need the machine
+    itself: the app's uninstaller (POST /api/license/release) or the user signing in
+    (POST /api/account/machines/deactivate). Neither is available when the machine is
+    gone — a dead disk, a reformat, or an uninstall by a build whose uninstaller
+    predates the seat release. The user is then locked out of their own license by a
+    machine that no longer exists, and only an admin can free it.
+
+    Body: {"email": "...", "hwid": "..."} for one seat, or {"email": "...",
+    "all": true} for every seat on the account. Idempotent: removing a seat that is
+    already gone reports success with removed=0.
+
+    Refuses to remove a REVOKED seat unless {"force": true} is also sent. Deleting
+    the row lets that machine re-activate into a fresh, unrevoked seat, which
+    silently undoes the kill-switch (§2.17) — so it must be a deliberate act, not a
+    side effect of freeing up a seat. No such guard is needed for a banned account:
+    /api/activate refuses a banned user outright, so its seats cannot come back.
+    """
+    err = _require_admin()
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    remove_all = bool(data.get('all', False))
+    force = bool(data.get('force', False))
+    hwid = _normalise_hwid(data.get('hwid'))
+    if not email:
+        return jsonify({'status': 'error', 'message': 'email is required'}), 400
+    if not remove_all and not hwid:
+        return jsonify({'status': 'error',
+                        'message': 'hwid is required (or pass all=true)'}), 400
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({'status': 'error', 'message': 'Account not found'}), 404
+
+    machines = LicenseMachine.query.filter_by(user_id=user.id).all()
+    targets = machines if remove_all else [m for m in machines if m.hwid == hwid]
+
+    blocked = [m for m in targets if m.revoked] if not force else []
+    if blocked:
+        return jsonify({
+            'status': 'error',
+            'code': 'seat_revoked',
+            'message': (f'{len(blocked)} of the selected seat(s) are revoked. Removing a '
+                        'revoked seat lets that machine activate again — reinstate it '
+                        'first, or resend with force=true if that is what you intend.'),
+            'machines': [_machine_view(m) for m in machines],
+        }), 409
+
+    for m in targets:
+        db.session.delete(m)
+    db.session.commit()
+
+    remaining = LicenseMachine.query.filter_by(user_id=user.id).all()
+    return jsonify({
+        'status': 'success',
+        'removed': len(targets),
+        'machine_count': len(remaining),
+        'max_machines': _MAX_MACHINES,
+        'machines': [_machine_view(m) for m in remaining],
+    })
+
+
 @account_bp.route('/api/admin/ban', methods=['POST'])
 def admin_ban():
     """Ban (or unban) a whole account by email — the admin kill-switch's big hammer.
