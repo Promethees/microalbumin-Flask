@@ -515,6 +515,75 @@ def license_check():
     return jsonify({'status': 'revoked', 'code': 'machine_mismatch'}), 200
 
 
+@account_bp.route('/api/license/release', methods=['POST'])
+@limiter.limit(LICENSE_CHECK_LIMIT)
+def license_release():
+    """Free the seat of the machine making the call, so uninstalling frees a seat.
+
+    The web-session route (/api/account/machines/deactivate) can only be driven by
+    a user who signs in and clicks; nothing frees the seat when the software is
+    simply uninstalled, so a user who reinstalls on a new machine hits the seat cap
+    with a stale seat held by a machine that no longer exists. The uninstallers
+    call this before deleting anything.
+
+    Auth is the machine's own permanent token — there is no session at uninstall
+    time. The token is RS256-signed and carries the 'hwid' claim of the machine it
+    is bound to, so possessing it proves the caller is that machine, and it can
+    only ever release ITS OWN seat (the claim names the seat; a body `hwid`, if
+    sent, must agree with it). That is strictly weaker than what the token already
+    grants, so this adds no new authority.
+
+    Refuses to free a revoked seat or a banned account's seat: deleting the row
+    would let the user re-activate the same machine into a fresh, unrevoked seat
+    and walk out of the admin kill-switch.
+
+    Idempotent — an already-freed seat, an unbound legacy token, or a deleted
+    account all report success, so an uninstaller never has to retry or block.
+    """
+    data = request.get_json(silent=True) or {}
+    token = (data.get('license_token') or '').strip()
+    if not token:
+        return jsonify({'status': 'error', 'message': 'license_token is required'}), 400
+    try:
+        payload = validate_activation_token(token)
+    except pyjwt.InvalidTokenError:
+        return jsonify({'status': 'error', 'code': 'invalid_token',
+                        'message': 'Token could not be validated'}), 401
+
+    token_hwid = payload.get('hwid')
+    if not token_hwid:
+        # Legacy, unbound token: it never consumed a seat, so there is nothing to
+        # free. Success — and note it cannot name a seat, which is exactly why we
+        # never fall back to a body-supplied hwid here (that would let any legacy
+        # token free any machine's seat).
+        return jsonify({'status': 'success', 'code': 'not_bound',
+                        'message': 'Token is not bound to a machine'}), 200
+    presented = _normalise_hwid(data.get('hwid'))
+    if presented and presented != token_hwid:
+        return jsonify({'status': 'error', 'code': 'machine_mismatch',
+                        'message': 'Token is not bound to this machine'}), 403
+
+    user = User.query.get(int(payload['sub']))
+    if not user:
+        return jsonify({'status': 'success', 'code': 'account_invalid',
+                        'message': 'No account to release from'}), 200
+    if user.banned:
+        return jsonify({'status': 'error', 'code': 'account_banned',
+                        'message': _BAN_MESSAGE}), 403
+
+    m = LicenseMachine.query.filter_by(user_id=user.id, hwid=token_hwid).first()
+    if not m:
+        return jsonify({'status': 'success', 'code': 'not_bound',
+                        'message': 'Machine is not activated'}), 200
+    if m.revoked:
+        return jsonify({'status': 'error', 'code': 'seat_revoked',
+                        'message': 'This license has been deactivated by support'}), 403
+    db.session.delete(m)
+    db.session.commit()
+    return jsonify({'status': 'success', 'code': 'released',
+                    'message': 'Machine deactivated'}), 200
+
+
 @account_bp.route('/api/activation-pubkey')
 def activation_pubkey():
     """Public key used to verify permanent activation tokens (RS256).
@@ -555,10 +624,19 @@ def deactivate_machine():
 
     Accepts {hwid} or {id}. After deactivation the token on that machine stops
     passing the server-side machine check; the user can activate a new machine.
+
+    A revoked seat or a banned account cannot be freed here: deleting the row and
+    re-activating would mint a fresh, unrevoked seat for the same machine and
+    escape the admin kill-switch. Mirrors /api/license/release.
     """
     account_id = session.get('account_user_id')
     if not account_id:
         return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    user = User.query.get(account_id)
+    if not user:
+        return jsonify({'status': 'error', 'message': 'Not logged in'}), 401
+    if user.banned:
+        return jsonify({'status': 'error', 'message': _BAN_MESSAGE}), 403
     data = request.get_json(silent=True) or {}
     q = LicenseMachine.query.filter_by(user_id=account_id)
     if data.get('id') is not None:
@@ -567,6 +645,9 @@ def deactivate_machine():
         m = q.filter_by(hwid=_normalise_hwid(data.get('hwid'))).first()
     if not m:
         return jsonify({'status': 'error', 'message': 'Machine not found'}), 404
+    if m.revoked:
+        return jsonify({'status': 'error',
+                        'message': 'This license has been deactivated by support'}), 403
     db.session.delete(m)
     db.session.commit()
     return jsonify({'status': 'success', 'message': 'Machine deactivated'})
