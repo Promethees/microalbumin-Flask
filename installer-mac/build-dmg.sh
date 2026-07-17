@@ -28,6 +28,13 @@ rm -rf "$TMP_DIR"
 echo "📂 Preparing DMG root…"
 mkdir -p "$TMP_DIR"
 
+# The drag target is the EasyOKAPI *folder*, not the bare .app: setup.sh installs
+# the source tree into code/ beside the app, so the whole install is one Finder
+# item at /Applications/EasyOKAPI (mirroring $PROGRAMFILES64\EasyOKAPI on Windows).
+# Dragging only the .app would leave it with nowhere to put the code.
+APP_STAGE="$TMP_DIR/$APP_NAME"
+mkdir -p "$APP_STAGE"
+
 # Copy only the files that belong in the DMG root:
 #   • uninstall.command — advanced users who need to remove the app
 #   • okapi.png         — dialog icon used by uninstall.command (hidden off-canvas)
@@ -97,9 +104,9 @@ if [ $? -eq 0 ]; then
     iconutil -c icns "$_ICONSET" -o "$_ICNS_PATH"
     rm -rf "$(dirname "$_ICONSET")" "$_BASE_PNG"
 
-    osacompile -o "$TMP_DIR/EasyOKAPI.app" "$SOURCE_DIR/run.scpt"
+    osacompile -o "$APP_STAGE/EasyOKAPI.app" "$SOURCE_DIR/run.scpt"
     if [ $? -eq 0 ]; then
-        cp "$_ICNS_PATH" "$TMP_DIR/EasyOKAPI.app/Contents/Resources/applet.icns"
+        cp "$_ICNS_PATH" "$APP_STAGE/EasyOKAPI.app/Contents/Resources/applet.icns"
         echo "✅ EasyOKAPI.app built with ht icon."
     else
         echo "❌ osacompile failed — aborting."
@@ -111,17 +118,17 @@ if [ $? -eq 0 ]; then
     if [ -n "${SIGNING_IDENTITY:-}" ]; then
         echo "🔏 Signing EasyOKAPI.app with: $SIGNING_IDENTITY"
         # Strip quarantine / extended attributes before signing
-        xattr -cr "$TMP_DIR/EasyOKAPI.app"
+        xattr -cr "$APP_STAGE/EasyOKAPI.app"
         # Sign the inner binary first, then the bundle
         codesign --force --sign "$SIGNING_IDENTITY" \
             --options runtime \
             --entitlements "$SOURCE_DIR/entitlements.plist" \
-            "$TMP_DIR/EasyOKAPI.app/Contents/MacOS/applet" 2>/dev/null || true
+            "$APP_STAGE/EasyOKAPI.app/Contents/MacOS/applet" 2>/dev/null || true
         codesign --deep --force --verify \
             --sign "$SIGNING_IDENTITY" \
             --options runtime \
             --entitlements "$SOURCE_DIR/entitlements.plist" \
-            "$TMP_DIR/EasyOKAPI.app"
+            "$APP_STAGE/EasyOKAPI.app"
         echo "✅ EasyOKAPI.app signed."
     else
         echo "ℹ️  SIGNING_IDENTITY not set — skipping code-signing (DMG will be unsigned)."
@@ -137,7 +144,7 @@ fi
 # splash.py  — GUI splash window
 # okapi.png  — icon for osascript dialogs used by setup.sh / uninstall.command
 echo "📦 Bundling Resources into EasyOKAPI.app…"
-APP_RES="$TMP_DIR/EasyOKAPI.app/Contents/Resources"
+APP_RES="$APP_STAGE/EasyOKAPI.app/Contents/Resources"
 if [ -d "$APP_RES" ]; then
     cp "$SOURCE_DIR/setup.sh"              "$APP_RES/"
     cp "$SOURCE_DIR/launch.sh"             "$APP_RES/"
@@ -172,7 +179,7 @@ sleep 3
 
 echo "🖼️  Applying drag-to-install layout via Finder…"
 # Window: 800 × 430 px (matches background image)
-# EasyOKAPI.app left-centre; Applications alias right-centre; uninstall bottom-right.
+# EasyOKAPI folder left-centre; Applications alias right-centre; uninstall bottom-right.
 osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "$APP_NAME"
@@ -186,9 +193,9 @@ tell application "Finder"
         set arrangement of icon view options of container window to not arranged
         set background picture of icon view options of container window to file ".background:background.png"
 
-        -- App (left side)
+        -- App folder (left side) — the drag target, holds EasyOKAPI.app
         try
-            set position of item "EasyOKAPI.app" to {200, 200}
+            set position of item "$APP_NAME" to {200, 200}
         end try
         -- Applications alias (right side)
         try

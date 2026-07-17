@@ -321,8 +321,10 @@ New files (the source `build-dmg.sh` / `setup.sh` / `launch.sh` are untouched):
 - `launch-frozen.sh` — runs migration then `exec EasyOKAPI/EasyOKAPI --alias 127.0.0.1`
   (loopback avoids the `/etc/hosts` edit that needed sudo). No pyenv/venv.
 - `migrate-frozen.sh` — one-time copy of `data/json/report/log` + settings from an old
-  `/Applications/microalbumin-Flask` source install into the app-data dir, then removes
-  the old install (marker-guarded, best-effort).
+  source install — `/Applications/EasyOKAPI/code`, or `/Applications/microalbumin-Flask`
+  from before the install-path rename — into the app-data dir, then removes the old
+  install (marker-guarded, best-effort). Note the source install's `/Applications/EasyOKAPI`
+  folder is a different path from this build's `/Applications/EasyOKAPI.app`.
 - `build-dmg-frozen.sh` — embeds `dist/EasyOKAPI/` into `EasyOKAPI.app/Contents/Resources/`
   and produces `EasyOKAPI_v<ver>_mac.dmg`. CI `build-macos` runs it + uploads the DMG when
   `ENCODE_SOURCE=true`.

@@ -10,7 +10,13 @@ on run
         set resDir to appPath & "Contents/Resources"
         set setupScript to resDir & "/setup.sh"
         set launchScript to resDir & "/launch.sh"
-        set venvMarker to "/Applications/microalbumin-Flask/venv/bin/activate"
+
+        -- This .app ships inside the EasyOKAPI folder that gets dragged to
+        -- /Applications, so the install root is simply its parent directory and
+        -- the code tree hangs off code/ (mirrors installer-win). appPath carries a
+        -- trailing slash; strip it before dirname.
+        set installDir to do shell script "dirname " & quoted form of (text 1 thru -2 of appPath)
+        set venvMarker to installDir & "/code/venv/bin/activate"
 
         -- ── First-run detection ──────────────────────────────────────────────
         set isInstalled to do shell script "[ -f " & quoted form of venvMarker & " ] && echo 1 || echo 0"

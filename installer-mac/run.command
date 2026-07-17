@@ -2,8 +2,10 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROGRESS_PIPE="/tmp/easyokapi_progress.pipe"
-REPO_NAME="microalbumin-Flask"
-INSTALL_DIR="/Applications/$REPO_NAME"
+APP_NAME="EasyOKAPI"
+# Source tree + venv live under code/, beside the .app inside /Applications/EasyOKAPI
+# (see setup.sh for the layout).
+INSTALL_DIR="/Applications/$APP_NAME/code"
 
 RESET="\033[0m"
 BOLD="\033[1m"

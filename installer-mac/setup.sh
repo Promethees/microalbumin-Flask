@@ -37,8 +37,18 @@ AUTH_BASE_URL="__AUTH_BASE_URL__"
 VERSION_TAG="__APP_VERSION__"
 
 HOMEBREW_PREFIX="/Users/$CURRENT_USER/homebrew"
-REPO_NAME="microalbumin-Flask"
-INSTALL_DIR="/Applications/$REPO_NAME"
+
+# Install layout mirrors the Windows installer (installer-win/setup.nsi):
+#   /Applications/EasyOKAPI/          ← APP_DIR, the single Finder item
+#       EasyOKAPI.app                 ← launcher, dragged from the DMG
+#       code/                         ← INSTALL_DIR: source tree + venv + user data
+# Keeping the code one level down means the reinstall wipe below can remove the
+# whole source tree without taking the .app with it.
+APP_NAME="EasyOKAPI"
+APP_DIR="/Applications/$APP_NAME"
+INSTALL_DIR="$APP_DIR/code"
+# Installs before v1.2.19 put the source straight in /Applications/microalbumin-Flask.
+LEGACY_DIR="/Applications/microalbumin-Flask"
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 clear
@@ -120,11 +130,24 @@ _archive_unstash_root() {  # $1 = path to a data/ directory
     rmdir "$1/root" 2>/dev/null || rm -rf "$1/root"
 }
 
-# Back up user data if reinstalling
+# Back up user data if reinstalling.
+# PREV_DIR is whichever previous install we found: the current layout's code/ dir,
+# or a pre-v1.2.19 install still sitting at LEGACY_DIR. Either way its data is
+# backed up and the directory is removed, so the legacy path never lingers in
+# /Applications beside the new one.
+_prev_install_dir() {
+    for _d in "$INSTALL_DIR" "$LEGACY_DIR"; do
+        if [ -d "$_d" ] && [ "$(ls -A "$_d" 2>/dev/null)" ]; then
+            echo "$_d"; return 0
+        fi
+    done
+}
+
 BACKUP_DIR=""
-if [ -d "$INSTALL_DIR" ] && [ "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
+PREV_DIR="$(_prev_install_dir)"
+if [ -n "$PREV_DIR" ]; then
     CURRENT_VERSION="Unknown"
-    [ -f "$INSTALL_DIR/VERSION.txt" ] && CURRENT_VERSION=$(cat "$INSTALL_DIR/VERSION.txt")
+    [ -f "$PREV_DIR/VERSION.txt" ] && CURRENT_VERSION=$(cat "$PREV_DIR/VERSION.txt")
     CHOICE=$(osascript \
         -e "Tell application \"System Events\" to display dialog \"An existing installation was found (version $CURRENT_VERSION).\n\nOverwrite and reinstall?\" buttons {\"Cancel\", \"Reinstall\"} default button \"Cancel\" with title \"EasyOKAPI Setup\" $(_icon)" \
         -e 'button returned of result' 2>/dev/null)
@@ -140,12 +163,13 @@ if [ -d "$INSTALL_DIR" ] && [ "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
     rm -rf "$BACKUP_DIR"
     mkdir -p "$BACKUP_DIR"
     for d in data json report; do
-        [ -d "$INSTALL_DIR/$d" ] && cp -r "$INSTALL_DIR/$d" "$BACKUP_DIR/$d"
+        [ -d "$PREV_DIR/$d" ] && cp -r "$PREV_DIR/$d" "$BACKUP_DIR/$d"
     done
     _archive_stash_root "$BACKUP_DIR/data"
     chown -R "$CURRENT_USER:staff" "$BACKUP_DIR"
     echo "  Removing existing installation …"
-    rm -rf "$INSTALL_DIR" || { print_fail "Could not remove existing install."; exit 1; }
+    # Never $APP_DIR — that holds the .app this installer was launched from.
+    rm -rf "$PREV_DIR" || { print_fail "Could not remove existing install."; exit 1; }
 fi
 
 ARCHIVE_TMP="/tmp/easyokapi_app_$$.tar.gz"
@@ -166,7 +190,7 @@ if [ $? -ne 0 ]; then
     rm -f "$ARCHIVE_TMP"; exit 1
 fi
 rm -f "$ARCHIVE_TMP"
-chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
+chown -R "$CURRENT_USER:staff" "$APP_DIR"
 
 echo "$VERSION_TAG" > "$INSTALL_DIR/VERSION.txt"
 # Write activation.json. The access token doubles as the license token, but it is
@@ -300,7 +324,7 @@ for font in "${MATHJAX_FONTS[@]}"; do
 done
 print_ok "Vendor libraries downloaded."
 
-chown -R "$CURRENT_USER:staff" "$INSTALL_DIR"
+chown -R "$CURRENT_USER:staff" "$APP_DIR"
 
 # ── Offer to import data from a previous installation ─────────────────────────
 # Only when this was a fresh install (no in-installer restore happened) but a
