@@ -1,9 +1,10 @@
 # Easy OKAPI — Admin Console (secret / local-only)
 
-A tiny local web app to **revoke** or **reinstate** a customer's Easy OKAPI
-license by email. It forwards to the production server's shared-secret admin API
-and attaches the `X-Admin-Key` header — the key stays in this local process and
-never reaches the browser.
+A tiny local web app to **revoke**/**reinstate** a customer's Easy OKAPI license,
+**ban**/**unban** their account, or **remove** a machine seat — all by email. It
+forwards to the production server's shared-secret admin API and attaches the
+`X-Admin-Key` header — the key stays in this local process and never reaches the
+browser.
 
 > ⚠️ This lives on the secret **`offline`** branch and is meant to run **only on
 > the admin's machine**. Do **not** deploy it, and do **not** push this branch to
@@ -38,6 +39,33 @@ shut a customer out entirely.
 4. **Reinstate** clears the revoked flag on every seat; **Unban** lifts the
    account ban and reinstates every seat (no email on either).
 
+## Remove machine — freeing a stuck seat
+
+A license only covers `MAX_MACHINES_PER_LICENSE` machines at once (default **1**),
+and a seat stays taken until it is explicitly released. Both normal release paths
+need the machine itself:
+
+* the **uninstaller** calls `POST /api/license/release` (added in v1.3.0 — older
+  uninstallers do not, and an in-app update cannot replace the uninstaller until
+  the *next* update after v1.3.1, see Rule.md §2.25); or
+* the customer signs in and clicks **Deactivate** on their account page.
+
+Neither is possible once the machine is gone — a dead disk, a reformat, a stolen
+laptop, or an uninstall by an older build. The customer is then locked out of
+their own license by a machine that no longer exists, and **only an admin can free
+it**. That is what **Remove** is for.
+
+Look the customer up, then use **Remove** on the machine row (or **Remove all
+machines**). It frees the seat only — it touches no user data, and the customer can
+activate a replacement immediately.
+
+> ⚠️ **Removing a revoked seat un-revokes that machine.** Deleting the row lets it
+> activate again into a fresh, unrevoked seat, which silently undoes the
+> kill-switch. The server refuses this with `409 seat_revoked`; the console then
+> asks you to confirm again before resending with `force`. If you meant to keep the
+> customer shut out, use **Ban** instead — a banned account cannot re-activate, so
+> removing a banned account's seats is safe.
+
 ## Setup
 
 ```bash
@@ -69,9 +97,10 @@ heroku config:set ADMIN_API_KEY=<the-key> -a easysensor-kit
 | `GET`  | `/api/admin/lookup?email=` | Read a user (incl. `banned`) + their machine seats |
 | `POST` | `/api/admin/revoke` | `{email, revoked}` → flip all seats, email on revoke |
 | `POST` | `/api/admin/ban` | `{email, banned}` → set account-level ban, email on ban |
+| `POST` | `/api/admin/machines/remove` | `{email, hwid │ all, force}` → free seat(s); `409 seat_revoked` unless `force` |
 
 The console auto-loads the user list on open; click any row to load that
-account's machines, then Revoke / Reinstate or Ban / Unban.
+account's machines, then Revoke / Reinstate, Ban / Unban, or Remove a seat.
 
 All require the `X-Admin-Key` header and return `503` if the server has no
 `ADMIN_API_KEY` configured.

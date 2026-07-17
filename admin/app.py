@@ -1,11 +1,15 @@
 """Easy OKAPI — local admin console (license kill-switch).
 
 A tiny LOCAL-ONLY Flask app the admin runs on their own machine to revoke or
-reinstate a customer's license. It never holds any app data: it just forwards
-two calls to the production server's shared-secret admin API —
+reinstate a customer's license, ban an account, or free a stuck machine seat. It
+never holds any app data: it just forwards calls to the production server's
+shared-secret admin API —
 
     GET  /api/admin/lookup?email=...     (read a user + their machine seats)
-    POST /api/admin/revoke  {email, revoked}
+    GET  /api/admin/users?q=...          (list / search accounts)
+    POST /api/admin/revoke          {email, revoked}
+    POST /api/admin/ban             {email, banned}
+    POST /api/admin/machines/remove {email, hwid | all, force}
 
 — attaching the X-Admin-Key header. The admin key lives ONLY in this process's
 environment (loaded from admin/.env); it is never sent to the browser, so it
@@ -143,6 +147,45 @@ def ban():
         r = requests.post(f'{SERVER_URL}/api/admin/ban',
                           json={'email': email, 'banned': banned},
                           headers=_headers(), timeout=20)
+    except requests.RequestException as e:
+        return jsonify({'status': 'error', 'message': f'Cannot reach server: {e}'}), 502
+    return _relay(r)
+
+
+@app.route('/api/machines/remove', methods=['POST'])
+def remove_machines():
+    """Free a customer's machine seat(s) so they can activate a replacement.
+
+    Forwards to the server's /api/admin/machines/remove. This is the support fix
+    for a seat held by a machine that no longer exists (dead disk, reformat, or an
+    uninstall by a build whose uninstaller predates the seat release) — the normal
+    release paths all need the machine itself, so only an admin can free it.
+
+    Body: {email, hwid} for one seat, or {email, all: true} for every seat.
+    {force: true} additionally allows removing a REVOKED seat, which the server
+    otherwise refuses (409 seat_revoked) because it would let that machine
+    activate again and undo the kill-switch.
+    """
+    if not ADMIN_API_KEY:
+        return jsonify({'status': 'error', 'message': 'ADMIN_API_KEY is not set in admin/.env'}), 503
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip()
+    if not email:
+        return jsonify({'status': 'error', 'message': 'email is required'}), 400
+    payload = {'email': email}
+    if data.get('all'):
+        payload['all'] = True
+    else:
+        hwid = (data.get('hwid') or '').strip()
+        if not hwid:
+            return jsonify({'status': 'error',
+                            'message': 'hwid is required (or pass all=true)'}), 400
+        payload['hwid'] = hwid
+    if data.get('force'):
+        payload['force'] = True
+    try:
+        r = requests.post(f'{SERVER_URL}/api/admin/machines/remove',
+                          json=payload, headers=_headers(), timeout=20)
     except requests.RequestException as e:
         return jsonify({'status': 'error', 'message': f'Cannot reach server: {e}'}), 502
     return _relay(r)

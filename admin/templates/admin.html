@@ -30,6 +30,9 @@
     .btn-reinstate { background:var(--green); }
     .btn-ban { background:#3a0a0c; }
     .btn-unban { background:var(--green); }
+    .btn-remove { background:#6b7280; padding:5px 12px; font-size:12px; }
+    .btn-removeall { background:#e5e7eb; color:#374151; padding:5px 12px; font-size:12px; white-space:nowrap; }
+    .machines-head { display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
     .banner { padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:16px; }
     .banner.warn { background:#fff3cd; color:#7a5b00; }
     .result { margin-top:18px; }
@@ -68,6 +71,8 @@
       <p class="sub" style="margin:10px 0 0">
         <strong>Revoke</strong> disables a machine seat (license transfer). <strong>Ban</strong>
         blocks the whole account — sign-in, download, and app usage everywhere.
+        <strong>Remove</strong> (per machine, below) frees a seat so the customer can
+        activate again — use it when their machine is gone and they are stuck at the cap.
       </p>
       <div id="msg"></div>
     </div>
@@ -89,8 +94,13 @@
 
     <div class="card result" id="resultCard" style="display:none">
       <div id="userInfo"></div>
+      <div class="machines-head">
+        <span class="muted">Remove a seat the customer can no longer free themselves —
+          a dead or reformatted machine, or one uninstalled by an older build.</span>
+        <button class="btn-removeall" id="btnRemoveAll">Remove all machines</button>
+      </div>
       <table id="machines"><thead>
-        <tr><th>HWID</th><th>Status</th><th>Last seen</th><th>Activated</th></tr>
+        <tr><th>HWID</th><th>Status</th><th>Last seen</th><th>Activated</th><th></th></tr>
       </thead><tbody></tbody></table>
     </div>
   </div>
@@ -118,12 +128,19 @@ function render(data) {
   $('userInfo').innerHTML =
     `<strong>${u.name}</strong> &lt;${u.email}&gt; ` + statusPill +
     `<div class="muted">verified: ${u.is_verified} · ${ (data.machines||[]).length } machine(s)</div>`;
+  const machines = data.machines || [];
   const tb = $('machines').querySelector('tbody');
-  tb.innerHTML = (data.machines || []).map(m =>
-    `<tr><td class="hwid">${m.hwid.slice(0,16)}…</td>` +
+  tb.innerHTML = machines.map(m =>
+    `<tr><td class="hwid" title="${escapeHtml(m.hwid)}">${escapeHtml(m.hwid.slice(0,16))}…</td>` +
     `<td><span class="pill ${m.revoked ? 'revoked' : 'ok'}">${m.revoked ? 'revoked' : 'active'}</span></td>` +
-    `<td>${fmt(m.last_seen)}</td><td>${fmt(m.activated_at)}</td></tr>`
-  ).join('') || '<tr><td colspan="4" class="muted">No machines activated.</td></tr>';
+    `<td>${fmt(m.last_seen)}</td><td>${fmt(m.activated_at)}</td>` +
+    `<td><button class="btn-remove" data-hwid="${escapeHtml(m.hwid)}">Remove</button></td></tr>`
+  ).join('') || '<tr><td colspan="5" class="muted">No machines activated.</td></tr>';
+  // Bind after render rather than inline onclick, so the hwid never has to survive
+  // a trip through an HTML attribute as executable JS.
+  tb.querySelectorAll('.btn-remove').forEach(b =>
+    b.addEventListener('click', () => removeMachines({ hwid: b.dataset.hwid })));
+  $('btnRemoveAll').disabled = machines.length === 0;
   $('btnRevoke').disabled = false;
   $('btnReinstate').disabled = false;
   $('btnBan').disabled = banned;
@@ -189,6 +206,46 @@ async function setBanned(banned) {
   } catch (e) { setMsg('Request failed: ' + e, 'err'); }
 }
 
+// ── Free a stuck machine seat ───────────────────────────────────────────────
+// The customer's own release paths (the uninstaller, or Deactivate on their
+// account page) both need the machine. When it is gone — dead disk, reformat, or
+// an uninstall by a build older than the seat release — the seat is held by a
+// machine that no longer exists and only we can free it.
+//
+// Removing a REVOKED seat is refused upstream (409 seat_revoked) because it lets
+// that machine activate again and undoes the kill-switch. Surface that as its own
+// deliberate confirmation instead of just retrying with force.
+async function removeMachines(target) {
+  const email = emailEl.value.trim();
+  if (!email) { setMsg('Enter an email first.', 'err'); return; }
+  const what = target.all ? 'ALL machines' : `machine ${target.hwid.slice(0, 16)}…`;
+  if (!confirm(`Remove ${what} from ${email}?\n\nThis frees the seat(s) so the ` +
+               `customer can activate again. It does not touch their data.`)) return;
+  await postRemove(email, target, false);
+}
+
+async function postRemove(email, target, force) {
+  setMsg('Working…', 'ok');
+  const body = Object.assign({ email }, target, force ? { force: true } : {});
+  try {
+    const r = await fetch('/api/machines/remove', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (r.status === 409 && d.code === 'seat_revoked') {
+      if (confirm(`${d.message}\n\nRemove anyway?`)) return postRemove(email, target, true);
+      setMsg('Cancelled — nothing was removed.', 'ok');
+      return;
+    }
+    if (!r.ok) { setMsg(d.message || 'Action failed', 'err'); return; }
+    setMsg(`Done — ${d.removed} seat(s) removed, ${d.machine_count} left ` +
+           `(cap ${d.max_machines}).`, 'ok');
+    lookup();                          // refresh full view
+    loadUsers(searchEl.value.trim());  // refresh the list's machine count
+  } catch (e) { setMsg('Request failed: ' + e, 'err'); }
+}
+
 // ── Registered users list + search ──────────────────────────────────────────
 const searchEl = $('search'), usersCountEl = $('usersCount');
 
@@ -237,6 +294,7 @@ $('btnRevoke').onclick = () => setRevoked(true);
 $('btnReinstate').onclick = () => setRevoked(false);
 $('btnBan').onclick = () => setBanned(true);
 $('btnUnban').onclick = () => setBanned(false);
+$('btnRemoveAll').onclick = () => removeMachines({ all: true });
 emailEl.addEventListener('keydown', e => { if (e.key === 'Enter') lookup(); });
 
 $('btnSearch').onclick = () => loadUsers(searchEl.value.trim());
