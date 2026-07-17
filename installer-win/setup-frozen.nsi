@@ -826,6 +826,50 @@ Click Cancel to stop removing EasyOKAPI." \
     StrCpy $R2 "removed"
   un_data_done:
 
+  ; ── Release this machine's license seat ─────────────────────────────────────
+  ; A license is activated on a limited number of machines, and a seat stays taken
+  ; until it is released. Uninstalling did not free it, so a user who removed
+  ; EasyOKAPI and moved to a new machine was refused — the cap was held by a
+  ; machine that no longer exists. Hand the seat back before deleting anything.
+  ;
+  ; The permanent token in activation.json is the credential, and it names its own
+  ; seat (its 'hwid' claim), so unlike the install-time activation above this needs
+  ; no MachineGuid/hwid recipe — nothing here to keep in lockstep with src/hwid.py.
+  ; $R3 is the real data root (relocated or default), resolved above.
+  ;
+  ; Strictly best-effort: no token, no network, or a refusal (a revoked or banned
+  ; license may not be released) never blocks the uninstall.
+  IfFileExists "$R3\activation.json" 0 un_release_done
+  FileOpen $9 "$PLUGINSDIR\release-seat.ps1" w
+  FileWrite $9 "param($$actFile,$$auth)$\r$\n"
+  FileWrite $9 "try {$\r$\n"
+  FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
+  FileWrite $9 "  $$tok = (Get-Content -Raw -LiteralPath $$actFile | ConvertFrom-Json).license_token$\r$\n"
+  FileWrite $9 "  if (-not $$tok) { exit 3 }$\r$\n"
+  FileWrite $9 "  $$body = '{$\"license_token$\":$\"' + $$tok + '$\"}'$\r$\n"
+  FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/license/release$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
+  FileWrite $9 "  if ($$resp.status -eq 'success') { exit 0 } else { exit 1 }$\r$\n"
+  FileWrite $9 "} catch {$\r$\n"
+  FileWrite $9 "  $$s = 0$\r$\n"
+  FileWrite $9 "  try { $$s = [int]$$_.Exception.Response.StatusCode } catch {}$\r$\n"
+  FileWrite $9 "  if ($$s -ge 400 -and $$s -lt 500) { exit 1 } else { exit 2 }$\r$\n"
+  FileWrite $9 "}$\r$\n"
+  FileClose $9
+  DetailPrint "Deactivating this machine's license..."
+  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\release-seat.ps1" "$R3\activation.json" "${ACTIVATION_URL}"'
+  Pop $0
+  ${If} $0 == 0
+    DetailPrint "License seat released."
+  ${ElseIf} $0 == 2
+    ; Could not reach the server. The seat stays taken and the user cannot
+    ; activate elsewhere, so tell them the one way to fix it themselves.
+    MessageBox MB_OK|MB_ICONEXCLAMATION \
+      "EasyOKAPI could not reach the license server, so this machine still counts against your license.$\r$\n$\r$\nTo free it, sign in at easyokapi.cbbiotec.vn and deactivate this machine from your account."
+  ${Else}
+    DetailPrint "License seat was not released (exit $0)."
+  ${EndIf}
+  un_release_done:
+
   ; ── Shortcuts + Add/Remove Programs entry ───────────────────────────────────
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\*.*"

@@ -410,7 +410,16 @@ computer does not work:
   seat cap (`MAX_MACHINES_PER_LICENSE`, default 1). `/api/download`,
   `/ai/proxy/chat`, and `/api/version` re-check the presented `X-Machine-Id` /
   `hwid` against the token and the bound seat. Transfer via
-  `POST /api/account/machines/deactivate`.
+  `POST /api/account/machines/deactivate` (web session).
+- **Seat release on uninstall** — a seat is held until explicitly released, so
+  every uninstaller calls `POST /api/license/release` before deleting anything;
+  otherwise a removed install holds the cap forever and the user's next machine
+  is refused. There is no session at uninstall time, so the machine's own
+  permanent token authenticates the call and its `hwid` claim names the single
+  seat it may free. Idempotent and best-effort — it never blocks an uninstall.
+  A **revoked** seat or **banned** account is refused (403): freeing the row
+  would let the machine re-activate into a fresh, unrevoked seat and escape the
+  kill-switch. `activation.release_machine()` is the same call in Python.
 - **Backward compatibility** — legacy HS256 tokens (no `hwid`) are still accepted
   (grandfathered) until every install has re-activated; flip
   `_ALLOW_LEGACY_HS256` in `src/activation.py` to enforce strictly.
@@ -423,7 +432,9 @@ computer does not work:
 |---|---|
 | `src/hwid.py` | Stable per-machine fingerprint (`get_hwid()`); recipe mirrored by the Windows installer's PowerShell |
 | `src/activation_pubkey.py` | Embedded RS256 **public** key (verify-only) for offline token verification |
-| `src/activation.py` | Reads/writes `activation.json`; `verify_token()` checks RS256 sig + `hwid` claim; `is_activated()`/`needs_activation()`; `get_hwid()`; `_ALLOW_LEGACY_HS256` toggle |
+| `src/activation.py` | Reads/writes `activation.json`; `verify_token()` checks RS256 sig + `hwid` claim; `is_activated()`/`needs_activation()`; `get_hwid()`; `release_machine()`/`forget()` — free this machine's seat; `_ALLOW_LEGACY_HS256` toggle |
+| `installer-win/setup-frozen.nsi` | `Section "Uninstall"` → `release-seat.ps1` frees the seat before deleting (install-time activation also mirrors the `hwid` recipe) |
+| `installer-mac/uninstall.command`, `installer-linux/uninstall.sh` | `_release_license_seat` — curl `POST /api/license/release` before removing anything |
 | `src/routes/ai_routes.py` | `_get_api_mode()` selects proxy vs dev-direct; `POST /ai/activate` sends `{token, hwid}` to the server and saves the returned token |
 | `src/ai_assistant.py` | `proxy_chat_stream()` — POST to `/ai/proxy/chat` with `license_token` + `hwid` |
 | `src/update_service.py` | `_auth_headers()` adds `X-Machine-Id` to `/api/version` and `/api/download` calls |
@@ -437,7 +448,7 @@ computer does not work:
 |---|---|
 | `src/download_service.py` | `issue_activation_token(payload, hwid)` — RS256-signs (or legacy HS256 fallback), adds `hwid`; `validate_activation_token()` — RS256-then-HS256, no expiry check; `_activation_private_key()`/`_activation_public_key()` |
 | `src/account.py` | `LicenseMachine` model — the `(user_id, hwid)` seat table |
-| `src/routes/account_routes.py` | `POST /api/activate` binds `hwid` (seat cap) and issues the locked token; `/api/download` machine-checks the Bearer token; `GET /api/account/machines` + `POST .../deactivate` (transfer); `GET /api/activation-pubkey` |
+| `src/routes/account_routes.py` | `POST /api/activate` binds `hwid` (seat cap) and issues the locked token; `/api/download` machine-checks the Bearer token; `GET /api/account/machines` + `POST .../deactivate` (transfer, web session); `POST /api/license/release` (uninstall frees its own seat, token-authenticated); `GET /api/activation-pubkey`. Neither release path may free a revoked seat or a banned account's seat |
 | `src/routes/ai_routes.py` | `POST /ai/proxy/chat` — validates the token, confirms the `hwid` matches a bound seat, calls Groq, streams SSE |
 
 ### 7.3 API Mode Selection (main branch)

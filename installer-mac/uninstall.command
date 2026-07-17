@@ -38,6 +38,76 @@ case "$0" in
         ;;
 esac
 
+# ── Release this machine's license seat ───────────────────────────────────────
+# A license is activated on a limited number of machines, and a seat stays taken
+# until it is released. Deleting the software does not free it, so a user who
+# uninstalls and moves to a new machine would be refused — the cap is held by a
+# machine that no longer exists. Hand the seat back before removing anything.
+#
+# Python is not usable here (it is part of what we are deleting), so this is a
+# plain HTTP call. The stored activation token is the credential and names its own
+# seat, so no hardware fingerprint has to be recomputed in shell.
+#
+# Strictly best-effort: no network, no token, or a server that says no (a revoked
+# or banned license may not be released) never blocks the uninstall.
+AI_SERVICE_URL="${AI_SERVICE_URL:-https://www.easyokapi.cbbiotec.vn}"
+
+_read_license_token() {  # $1 = directory that may hold activation.json
+    [ -f "$1/activation.json" ] || return 1
+    local tok
+    tok=$(grep -o '"license_token"[[:space:]]*:[[:space:]]*"[^"]*"' "$1/activation.json" \
+          | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+    [ -n "$tok" ] && printf '%s' "$tok"
+}
+
+_release_license_seat() {
+    # The data root is <Documents>/EasyOKAPI unless the user relocated it, in which
+    # case a pointer file beside the default location holds the real path (the
+    # pointer lives outside the data folder precisely so it survives this).
+    local docs="/Users/$CURRENT_USER/Documents"
+    local pointer="$docs/.easyokapi_dataroot"
+    local data_root="$docs/EasyOKAPI"
+    if [ -f "$pointer" ]; then
+        local moved
+        moved=$(tr -d ' \t\r\n' < "$pointer" 2>/dev/null)
+        [ -n "$moved" ] && data_root="$moved"
+    fi
+
+    # A frozen install keeps activation.json in the data root; a source install
+    # keeps it in the install directory (there, script_dir IS the project root).
+    local token=""
+    local _d
+    for _d in "$data_root" "$INSTALL_DIR" "$LEGACY_DIR"; do
+        token=$(_read_license_token "$_d") && [ -n "$token" ] && break
+        token=""
+    done
+    if [ -z "$token" ]; then
+        echo "No license token found — nothing to deactivate."
+        return 0
+    fi
+
+    echo "Deactivating this machine's license..."
+    local body
+    body=$(curl -fsS -m 15 -X POST \
+                -H 'Content-Type: application/json' \
+                -d "{\"license_token\":\"$token\"}" \
+                "$AI_SERVICE_URL/api/license/release" 2>/dev/null)
+    case "$body" in
+        *'"status":"success"'*|*'"status": "success"'*)
+            echo "✅ License seat released — you can activate EasyOKAPI on another machine."
+            ;;
+        "")
+            echo "⚠️  Could not reach the license server; this machine still holds its seat."
+            osascript -e "display dialog \"EasyOKAPI could not reach the license server, so this machine still counts against your license.\n\nSign in at $AI_SERVICE_URL and deactivate this machine from your account to free it.\" buttons {\"OK\"} default button \"OK\" with title \"EasyOKAPI Uninstall\"" 2>/dev/null
+            ;;
+        *)
+            echo "⚠️  License server declined the deactivation: $body"
+            ;;
+    esac
+}
+
+_release_license_seat
+
 # ── Data-archive layout helper ────────────────────────────────────────────────
 # Keep the archived data/ tree purely subfolder-based: loose files sitting
 # directly in the data root are stashed under data/root/ (the app forbids a real

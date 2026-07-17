@@ -289,3 +289,86 @@ def test_needs_activation_only_gates_frozen_builds(monkeypatch):
     # Frozen + activated → no gate.
     monkeypatch.setattr(activation, 'is_activated', lambda: True)
     assert activation.needs_activation() is False
+
+
+# ── release_machine() — hand this machine's seat back on uninstall ────────────
+#
+# A seat stays taken until it is explicitly released, so an install that is just
+# deleted holds it forever and the user hits the seat cap on their next machine.
+# The uninstallers call POST /api/license/release over plain HTTP; this is the
+# same call for in-app use and source installs. It must never raise (an uninstall
+# cannot be blocked by it) and must drop the local token once the seat is gone.
+
+def test_release_posts_the_token_and_forgets_it(monkeypatch, tmp_path):
+    act = tmp_path / 'activation.json'
+    act.write_text('{"license_token": "t"}')
+    status = tmp_path / 'license_status.json'
+    status.write_text('{"status": "active"}')
+    monkeypatch.setattr(activation, '_ACTIVATION_PATH', str(act))
+    monkeypatch.setattr(activation, '_STATUS_PATH', str(status))
+    monkeypatch.setattr(activation, 'get_license_token', _permanent)
+    sent = {}
+
+    def fake_post(url, json=None, timeout=None):
+        sent['url'] = url
+        sent['json'] = json
+        return _FakeResp(200, {'status': 'success', 'code': 'released'})
+
+    monkeypatch.setattr('requests.post', fake_post)
+    assert activation.release_machine() == 'released'
+    assert sent['url'] == activation.RELEASE_URL
+    assert sent['json']['license_token'] == _permanent()
+    assert sent['json']['hwid'] == _THIS_MACHINE
+    # Seat is gone, so the token would fail the server's machine check anyway.
+    assert not act.exists()
+    assert not status.exists()
+
+
+def test_release_without_a_token_makes_no_call(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    monkeypatch.setattr('requests.post', _no_network)
+    assert activation.release_machine() == 'no_token'
+
+
+def test_release_refused_keeps_the_local_token(monkeypatch, tmp_path):
+    # A revoked seat / banned account may not be released (403). Keep local state
+    # so the revocation gate still has the token it enforces against.
+    act = tmp_path / 'activation.json'
+    act.write_text('{"license_token": "t"}')
+    monkeypatch.setattr(activation, '_ACTIVATION_PATH', str(act))
+    monkeypatch.setattr(activation, 'get_license_token', _permanent)
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: _FakeResp(403, {'code': 'seat_revoked'}))
+    assert activation.release_machine() == 'refused'
+    assert act.exists()
+
+
+def test_release_survives_a_network_error(monkeypatch):
+    import requests
+
+    def boom(*_a, **_k):
+        raise requests.RequestException('server unreachable')
+
+    monkeypatch.setattr(activation, 'get_license_token', _permanent)
+    monkeypatch.setattr('requests.post', boom)
+    assert activation.release_machine() == 'offline'  # never raises
+
+
+def test_release_treats_a_server_error_as_offline(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', _permanent)
+    monkeypatch.setattr('requests.post', lambda *a, **k: _FakeResp(500, {}))
+    assert activation.release_machine() == 'offline'
+
+
+def test_release_rejects_a_non_success_body(monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', _permanent)
+    monkeypatch.setattr('requests.post',
+                        lambda *a, **k: _FakeResp(200, {'status': 'error'}))
+    assert activation.release_machine() == 'offline'
+
+
+def test_forget_is_quiet_when_nothing_is_stored(monkeypatch, tmp_path):
+    monkeypatch.setattr(activation, '_ACTIVATION_PATH', str(tmp_path / 'nope.json'))
+    monkeypatch.setattr(activation, '_STATUS_PATH', str(tmp_path / 'nope2.json'))
+    activation.forget()  # must not raise
+    assert activation.get_license_token() is None

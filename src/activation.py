@@ -255,6 +255,7 @@ def needs_activation():
 
 _STATUS_PATH = os.path.join(state.script_dir, 'license_status.json')
 LICENSE_CHECK_URL = AI_SERVICE_URL + '/api/license/check'
+RELEASE_URL = AI_SERVICE_URL + '/api/license/release'
 
 
 def _grace_seconds():
@@ -325,6 +326,54 @@ def check_revocation():
         record_status('active')
         return 'active'
     return 'offline'
+
+
+def forget():
+    """Delete the stored token and cached verdict (this install is no longer licensed)."""
+    global _token_cache
+    for path in (_ACTIVATION_PATH, _STATUS_PATH):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    _token_cache = None
+
+
+def release_machine():
+    """Free this machine's seat server-side so the license can be used elsewhere.
+
+    A seat is consumed until it is explicitly released, so an install that is
+    simply deleted holds its seat forever and the user hits the seat cap on their
+    next machine. The uninstallers call POST /api/license/release before removing
+    anything (they do it over plain HTTP, since Python is gone by then); this is
+    the same call for in-app use and source installs.
+
+    Returns 'released' (seat freed, or there was nothing to free), 'refused' (the
+    server declined — a revoked seat or banned account cannot be released, or the
+    token names another machine), 'no_token', or 'offline'. On 'released' the local
+    token and cached verdict are dropped: the seat is gone, so the token would no
+    longer pass the server's machine check anyway.
+    """
+    token = get_license_token()
+    if not token:
+        return 'no_token'
+    try:
+        import requests
+        resp = requests.post(RELEASE_URL,
+                             json={'license_token': token, 'hwid': get_hwid()}, timeout=15)
+    except Exception:
+        return 'offline'
+    if resp.status_code == 403:
+        return 'refused'
+    if resp.status_code != 200:
+        return 'offline'
+    try:
+        if (resp.json().get('status') or '').lower() != 'success':
+            return 'offline'
+    except Exception:
+        return 'offline'
+    forget()
+    return 'released'
 
 
 def license_state():
