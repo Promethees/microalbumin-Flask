@@ -65,7 +65,13 @@ mkdir -p "$INSTALL_DIR"
 cp -R "$SCRIPT_DIR/EasyOKAPI" "$INSTALL_DIR/EasyOKAPI"
 cp "$SCRIPT_DIR/run-frozen.sh" "$INSTALL_DIR/run-frozen.sh"
 [ -f "$SCRIPT_DIR/okapi.png" ] && cp "$SCRIPT_DIR/okapi.png" "$INSTALL_DIR/okapi.png"
+# Install the uninstaller alongside the app. Without it a frozen install has no
+# uninstall path at all: the user is left to `rm -rf /opt/EasyOKAPI` by hand, which
+# orphans the udev rule and the desktop entry, and never releases the license seat
+# (see Rule.md §2.17). It re-execs itself from /tmp, so it can delete this dir.
+[ -f "$SCRIPT_DIR/uninstall.sh" ] && cp "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/uninstall.sh"
 chmod +x "$INSTALL_DIR/run-frozen.sh" "$INSTALL_DIR/EasyOKAPI/EasyOKAPI"
+[ -f "$INSTALL_DIR/uninstall.sh" ] && chmod +x "$INSTALL_DIR/uninstall.sh"
 print_ok "Installed to $INSTALL_DIR"
 
 # ── udev rule: user-level access to the PyBadge CDC serial port ──────────────
@@ -100,5 +106,6 @@ echo ""
 echo -e "  ${BOLD}${GREEN}✔  EasyOKAPI installed.${RESET}"
 echo -e "     Launch it from your application menu, or run: ${BOLD}/opt/EasyOKAPI/run-frozen.sh${RESET}"
 echo -e "     Your data lives in: ${BOLD}$APPDATA${RESET}"
+echo -e "     To uninstall: ${BOLD}sudo /opt/EasyOKAPI/uninstall.sh${RESET}"
 echo ""
 exit 0

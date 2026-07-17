@@ -433,8 +433,9 @@ computer does not work:
 | `src/hwid.py` | Stable per-machine fingerprint (`get_hwid()`); recipe mirrored by the Windows installer's PowerShell |
 | `src/activation_pubkey.py` | Embedded RS256 **public** key (verify-only) for offline token verification |
 | `src/activation.py` | Reads/writes `activation.json`; `verify_token()` checks RS256 sig + `hwid` claim; `is_activated()`/`needs_activation()`; `get_hwid()`; `release_machine()`/`forget()` — free this machine's seat; `_ALLOW_LEGACY_HS256` toggle |
-| `installer-win/setup-frozen.nsi` | `Section "Uninstall"` → `release-seat.ps1` frees the seat before deleting (install-time activation also mirrors the `hwid` recipe) |
-| `installer-mac/uninstall.command`, `installer-linux/uninstall.sh` | `_release_license_seat` — curl `POST /api/license/release` before removing anything |
+| `installer-win/setup-frozen.nsi` | `Section "Uninstall"` → `release-seat.ps1` frees the seat before deleting (install-time activation also mirrors the `hwid` recipe). `/DUNINSTALLER_ONLY` compiles a payload-free silent stub that emits `Uninstall.exe` for the update bundle — same script, so the uninstall logic cannot drift (Rule.md §2.25) |
+| `installer-mac/uninstall.command`, `installer-linux/uninstall.sh` | `_release_license_seat` — curl `POST /api/license/release` before removing anything. `uninstall.sh` serves both the source and frozen Linux installs (removes both udev rules; leaves the `~/EasyOKAPI` data root alone) and is installed to `/opt/EasyOKAPI/` by `install-frozen.sh` |
+| `src/update_service.py` | `_WIN_SWAP_PS1` prefers the `Uninstall.exe` shipped in the new bundle over carrying the old one across, so uninstaller fixes reach updated installs (one update cycle late — the *old* updater drives the swap that installs the new build) |
 | `src/routes/ai_routes.py` | `_get_api_mode()` selects proxy vs dev-direct; `POST /ai/activate` sends `{token, hwid}` to the server and saves the returned token |
 | `src/ai_assistant.py` | `proxy_chat_stream()` — POST to `/ai/proxy/chat` with `license_token` + `hwid` |
 | `src/update_service.py` | `_auth_headers()` adds `X-Machine-Id` to `/api/version` and `/api/download` calls |

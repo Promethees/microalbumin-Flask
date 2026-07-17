@@ -196,6 +196,27 @@ def test_windows_swap_script_is_elevated_helper_doing_only_the_move():
     assert 'Start-Process' not in s           # relaunch is the coordinator's job, not here
 
 
+def test_windows_swap_prefers_the_uninstaller_shipped_in_the_new_bundle():
+    # Uninstall.exe lives INSIDE the swapped dir, so the move takes it with the old
+    # build. Carrying the old one across unconditionally (the previous behaviour)
+    # froze every updated install on its original uninstaller forever, so no
+    # uninstaller fix could ever reach an existing user. See Rule.md §2.25.
+    s = u._build_windows_swap_script(
+        r'C:\App\EasyOKAPI', r'C:\Data\_update_staging\EasyOKAPI',
+        'EasyOKAPI.exe', r'C:\Data\_update_swap_result.txt', r'C:\Data\log\update_swap.txt')
+    # The bundled copy wins...
+    assert "if (Test-Path (Join-Path $live 'Uninstall.exe')) {" in s
+    # ...and the carry-across survives only as the else branch, for bundles built
+    # before the uninstaller was included (never remove it: those bundles would
+    # otherwise be left with no uninstaller at all).
+    assert "$u = Join-Path $old 'Uninstall.exe'" in s
+    assert 'Copy-Item $u (Join-Path $live' in s
+    # Best-effort: a copy failure must not fail the swap (Rule.md §2.18 — only the
+    # two directory moves may be fatal under $ErrorActionPreference='Stop').
+    idx = s.index("$u = Join-Path $old 'Uninstall.exe'")
+    assert 'try {' in s[idx:idx + 220] and 'catch' in s[idx:idx + 400]
+
+
 def test_windows_coordinator_elevates_then_relaunches_nonelevated():
     s = u._build_windows_coordinator_script(
         r'C:\App\EasyOKAPI', 5099, 'EasyOKAPI.exe', ['--port', '5099'],

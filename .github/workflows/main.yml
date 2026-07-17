@@ -251,6 +251,38 @@ jobs:
           if (-not $vendor) { Write-Error 'Smoke test failed: bundled vendor asset not served (static/vendor missing)'; exit 1 }
           Write-Host 'Smoke test passed (/ping + vendor asset).'
 
+      # Uninstall.exe lives inside the swapped directory, so without a copy in the
+      # update bundle an in-app update can only carry the OLD uninstaller across and
+      # every updated install keeps the uninstaller it was first installed with,
+      # forever. NSIS only emits an uninstaller by RUNNING an installer, so compile
+      # setup-frozen.nsi in its UNINSTALLER_ONLY mode (a tiny silent stub, no
+      # payload) and run that. Same script as the real installer, so the uninstaller
+      # is identical — nothing to drift. Must run BEFORE the bundle is zipped below.
+      - name: Generate Uninstall.exe for the update bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        shell: pwsh
+        run: |
+          Set-Location installer-win
+          makensis "/DAPP_VERSION=$env:APP_VERSION" /DUNINSTALLER_ONLY setup-frozen.nsi
+          if (-not (Test-Path 'make-uninstaller.exe')) {
+            Write-Error 'UNINSTALLER_ONLY build produced no make-uninstaller.exe'; exit 1
+          }
+          # /D= must be the LAST argument and unquoted, so keep the path space-free.
+          $out = 'C:\uninst-out'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $p = Start-Process -FilePath (Resolve-Path 'make-uninstaller.exe') `
+                             -ArgumentList '/S', "/D=$out" -Wait -PassThru
+          $u = Join-Path $out 'Uninstall.exe'
+          # Assert rather than trust: if this silently produced nothing, the swap
+          # script's fallback would quietly carry the old uninstaller across again
+          # and the regression would ship unnoticed.
+          if (-not (Test-Path $u)) {
+            Write-Error "Stub exited $($p.ExitCode) but wrote no Uninstall.exe to $out"; exit 1
+          }
+          Copy-Item $u '..\dist\EasyOKAPI\Uninstall.exe' -Force
+          Remove-Item 'make-uninstaller.exe' -Force
+          Write-Host "Bundled Uninstall.exe ($((Get-Item '..\dist\EasyOKAPI\Uninstall.exe').Length) bytes)"
+
       - name: Package update bundle
         if: needs.setup.outputs.encode_source == 'true'
         shell: pwsh

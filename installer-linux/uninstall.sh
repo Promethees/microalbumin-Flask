@@ -1,4 +1,13 @@
 #!/bin/bash
+# uninstall.sh — removes EasyOKAPI, for BOTH the source install (install.sh) and
+# the no-source frozen install (install-frozen.sh). Both live at /opt/EasyOKAPI.
+#
+# The frozen installer copies this script into the install dir, so it is also the
+# uninstaller a frozen user runs:  sudo /opt/EasyOKAPI/uninstall.sh
+#
+# User data differs between the two: a source install kept data/ json/ report/
+# inside $INSTALL_DIR (archived below), while a frozen install keeps them in the
+# visible ~/EasyOKAPI data root, which is deliberately left untouched here.
 
 exec > >(tee -a /tmp/easyokapi-uninstall.log) 2>&1
 echo "Starting EasyOKAPI uninstall at $(date)"
@@ -11,8 +20,25 @@ fi
 CURRENT_USER="${SUDO_USER:-}"
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 INSTALL_DIR="/opt/EasyOKAPI"
-UDEV_RULE="/etc/udev/rules.d/99-easyokapi-hid.rules"
+# Two rules exist in the wild: the source install adds the HID one, the frozen
+# install the CDC one (see install.sh / install-frozen.sh). Remove whichever is
+# present so an uninstall never orphans a udev rule.
+UDEV_RULES=(
+    "/etc/udev/rules.d/99-easyokapi-hid.rules"
+    "/etc/udev/rules.d/99-easyokapi-cdc.rules"
+)
 DESKTOP_ENTRY="/usr/share/applications/EasyOKAPI.desktop"
+
+# The frozen installer puts this script INSIDE the directory it is about to
+# delete. bash reads a script lazily, so removing it mid-run can truncate
+# execution — copy to /tmp and re-exec from there first. The copy's $0 is outside
+# $INSTALL_DIR, so this fires at most once. (Mirrors installer-mac/uninstall.command.)
+case "$(cd "$(dirname "$0")" && pwd)" in
+    "$INSTALL_DIR"|"$INSTALL_DIR"/*)
+        _SELF_TMP="/tmp/easyokapi-uninstall-$$.sh"
+        cp "$0" "$_SELF_TMP" && chmod +x "$_SELF_TMP" && exec bash "$_SELF_TMP" "$@"
+        ;;
+esac
 
 # ── Helper: confirm ───────────────────────────────────────────────────────────
 prompt_confirm() {
@@ -143,12 +169,18 @@ else
     echo "Application directory $INSTALL_DIR not found — skipping."
 fi
 
-# ── Remove udev rule ──────────────────────────────────────────────────────────
-if [ -f "$UDEV_RULE" ]; then
-    rm -f "$UDEV_RULE"
-    udevadm control --reload-rules
-    udevadm trigger
-    echo "✅ udev rule removed."
+# ── Remove udev rules ─────────────────────────────────────────────────────────
+_udev_removed=0
+for _rule in "${UDEV_RULES[@]}"; do
+    if [ -f "$_rule" ]; then
+        rm -f "$_rule"
+        echo "✅ udev rule removed: $_rule"
+        _udev_removed=1
+    fi
+done
+if [ "$_udev_removed" -eq 1 ]; then
+    udevadm control --reload-rules 2>/dev/null || true
+    udevadm trigger 2>/dev/null || true
 fi
 
 # ── Remove desktop entry ──────────────────────────────────────────────────────

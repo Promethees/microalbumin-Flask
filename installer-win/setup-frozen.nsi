@@ -75,8 +75,30 @@ ReserveFile "page_bg.bmp"
 ; Install-log text / background on the InstFiles detail area
 InstallColors E2E8F0 312E81
 
-Name "${APP_NAME} ${APP_VERSION}"
-OutFile "EasyOKAPI_Setup_${APP_VERSION}.exe"
+; ── Uninstaller-only build (/DUNINSTALLER_ONLY) ───────────────────────────────
+; NSIS can only produce Uninstall.exe by RUNNING an installer — WriteUninstaller
+; is a runtime instruction, not a compile-time one. But the in-app updater has to
+; ship a copy of the uninstaller INSIDE the update bundle, otherwise every updated
+; install keeps the uninstaller it was first installed with, forever (the swap
+; carries the old one across because it lives in the swapped directory). See
+; Rule.md §2.25.
+;
+; Compiling with /DUNINSTALLER_ONLY yields a small silent stub whose only job is
+; to write Uninstall.exe and exit — it bundles no payload and installs nothing:
+;   makensis /DAPP_VERSION=x.y.z /DUNINSTALLER_ONLY setup-frozen.nsi
+;   make-uninstaller.exe /S /D=<outdir>        → <outdir>\Uninstall.exe
+; Because it is compiled from THIS script, the uninstaller it emits is the same
+; one a real install writes — there is no second copy of the uninstall logic to
+; drift out of step. Keep the uninstall Section and un.onInit outside the
+; !ifndef guards below so both builds always compile them.
+!ifdef UNINSTALLER_ONLY
+  Name "${APP_NAME} ${APP_VERSION} uninstaller builder"
+  OutFile "make-uninstaller.exe"
+  SilentInstall silent
+!else
+  Name "${APP_NAME} ${APP_VERSION}"
+  OutFile "EasyOKAPI_Setup_${APP_VERSION}.exe"
+!endif
 InstallDir "${INSTALL_DIR}"
 BrandingText "EasyOKAPI ${APP_VERSION}"
 ShowInstDetails show
@@ -107,27 +129,32 @@ Var DataBrowseBtn   ; Browse button handle on the Data Folder page
 ; ── Page order: Welcome → Token → Directory → DataFolder → Install → Finish ───
 ; Each MUI page gets a SHOW callback that recolours the inner controls. The
 ; uninstaller keeps the default theme (its callbacks would need un. twins).
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
-!insertmacro MUI_PAGE_WELCOME
+; The UNINSTALLER_ONLY stub runs silently and installs nothing, so it needs none
+; of the installer pages — only the uninstaller ones below, which it exists to
+; emit.
+!ifndef UNINSTALLER_ONLY
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
+  !insertmacro MUI_PAGE_WELCOME
 
-; Required activation token (see TokenPage). The token is the license gate for
-; the whole product: it is validated against the activation server on Leave, and
-; installation cannot proceed without a valid one.
-Page custom TokenPage TokenPageLeave
+  ; Required activation token (see TokenPage). The token is the license gate for
+  ; the whole product: it is validated against the activation server on Leave, and
+  ; installation cannot proceed without a valid one.
+  Page custom TokenPage TokenPageLeave
 
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
-!insertmacro MUI_PAGE_DIRECTORY
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
+  !insertmacro MUI_PAGE_DIRECTORY
 
-; Where to keep user data. Placed AFTER the Directory page so $INSTDIR is known
-; and the data folder can be validated against the program folder (see
-; DataFolderPageLeave). Themed to match the Token page.
-Page custom DataFolderPage DataFolderPageLeave
+  ; Where to keep user data. Placed AFTER the Directory page so $INSTDIR is known
+  ; and the data folder can be validated against the program folder (see
+  ; DataFolderPageLeave). Themed to match the Token page.
+  Page custom DataFolderPage DataFolderPageLeave
 
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
-!insertmacro MUI_PAGE_INSTFILES
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkInstPage
+  !insertmacro MUI_PAGE_INSTFILES
 
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
-!insertmacro MUI_PAGE_FINISH
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
+  !insertmacro MUI_PAGE_FINISH
+!endif
 
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -524,6 +551,18 @@ FunctionEnd
     Pop $0
 !macroend
 
+; ── The uninstaller-only stub ────────────────────────────────────────────────
+; Writes Uninstall.exe into $INSTDIR (set by /D= on the command line) and exits.
+; Bundles no payload, touches no registry, creates no shortcuts — the produced
+; uninstaller is identical either way, because WriteUninstaller emits the compiled
+; uninstall Section regardless of what the surrounding installer does.
+!ifdef UNINSTALLER_ONLY
+Section "-WriteUninstallerOnly"
+  SetOutPath "$INSTDIR"
+  WriteUninstaller "$INSTDIR\Uninstall.exe"
+SectionEnd
+!else
+
 Section "Install" SEC01
   ; Data root = the folder chosen on the Data Folder page (default Documents\EasyOKAPI).
   StrCpy $R0 "$DataParent\EasyOKAPI"   ; per-user data root (matches state.py + pointer)
@@ -689,6 +728,11 @@ Click Cancel to exit without making any changes." \
 
   DetailPrint "EasyOKAPI ${APP_VERSION} is installed and activated. Your data is saved in $R0."
 SectionEnd
+!endif  ; UNINSTALLER_ONLY — end of the installer-only payload
+
+; ── Everything below is compiled into BOTH builds ────────────────────────────
+; The uninstall Section and un.onInit must stay outside the guards above: they are
+; precisely what the UNINSTALLER_ONLY stub exists to emit.
 
 ; un.onInit — read the CURRENT installed version from VERSION.txt, which ships in
 ; the onedir and is carried by every in-app binary-swap update. This keeps the

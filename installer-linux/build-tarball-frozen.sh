@@ -34,6 +34,7 @@ mkdir -p "$STAGE"
 cp -R "$DIST_BUNDLE" "$STAGE/EasyOKAPI"          # the frozen onedir
 cp "$SCRIPT_DIR/install-frozen.sh" "$STAGE/"
 cp "$SCRIPT_DIR/run-frozen.sh"     "$STAGE/"
+cp "$SCRIPT_DIR/uninstall.sh"      "$STAGE/"   # installed to /opt/EasyOKAPI by install-frozen.sh
 [ -f "$PROJECT_ROOT/static/okapi.png" ] && cp "$PROJECT_ROOT/static/okapi.png" "$STAGE/"
 chmod +x "$STAGE/install-frozen.sh" "$STAGE/run-frozen.sh" "$STAGE/EasyOKAPI/EasyOKAPI"
 

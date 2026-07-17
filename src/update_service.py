@@ -606,10 +606,10 @@ def _ps_sq(value):
 # NON-elevated, so the directory swap must be elevated. Two scripts cooperate:
 #
 #   • the ELEVATED helper (_WIN_SWAP_PS1) does ONLY the privileged work — move the
-#     live dir aside, move the staged bundle in, carry Uninstall.exe across, reset
-#     ACLs so a user-owned staging dir does not leave the install user-writable —
-#     then writes OK / FAIL: <msg> to a result file. Launched with -Verb RunAs (one
-#     UAC prompt).
+#     live dir aside, move the staged bundle in, settle Uninstall.exe (prefer the
+#     bundled one, else carry the old across), reset ACLs so a user-owned staging
+#     dir does not leave the install user-writable — then writes OK / FAIL: <msg>
+#     to a result file. Launched with -Verb RunAs (one UAC prompt).
 #   • the NON-elevated COORDINATOR (_WIN_COORD_PS1) waits for the app's port to
 #     free, runs the elevated helper and waits for it, then on success clears the
 #     pending-swap marker and relaunches the app — crucially as a child of THIS
@@ -647,8 +647,17 @@ try {
   # Guard against ever nesting the new build inside a surviving $live.
   if (Test-Path $live) { throw ('live install dir unexpectedly still present: ' + $live) }
   Move-Item -Force -LiteralPath $new $live
-  $u = Join-Path $old 'Uninstall.exe'
-  if (Test-Path $u) { try { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force } catch { Log ('uninstall copy failed: ' + $_.Exception.Message) } }
+  # Uninstall.exe lives INSIDE the swapped directory, so the move above takes it
+  # with the old build. Prefer the uninstaller the NEW bundle ships, so uninstaller
+  # fixes actually reach updated installs; only carry the previous one across when
+  # the bundle has none (a bundle built before it was included). Without this the
+  # install keeps its original uninstaller forever — see Rule.md §2.25.
+  if (Test-Path (Join-Path $live 'Uninstall.exe')) {
+    Log 'uninstaller: using the copy shipped in the new bundle'
+  } else {
+    $u = Join-Path $old 'Uninstall.exe'
+    if (Test-Path $u) { try { Copy-Item $u (Join-Path $live 'Uninstall.exe') -Force; Log 'uninstaller: bundle shipped none, carried the previous one across' } catch { Log ('uninstall copy failed: ' + $_.Exception.Message) } }
+  }
   try { Remove-Item -Recurse -Force $old } catch { Log ('old dir left for later cleanup: ' + $_.Exception.Message) }
   try { icacls $live /reset /T /C /Q | Out-Null; Log 'acl reset ok' } catch { Log ('acl reset failed: ' + $_.Exception.Message) }
   Set-Content -Path $res -Value 'OK' -Encoding ascii
