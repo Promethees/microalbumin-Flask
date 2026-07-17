@@ -1,1 +1,0 @@
-/Users/tqmthong/Desktop/Documents/BioInfo/colorimeter/microalbumin-Flask/data/Ecoli_beta_lactamase/Raw_Unknown_3.csv

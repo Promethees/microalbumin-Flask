@@ -231,9 +231,11 @@ rm -f "$RW_DMG"
 echo "✅ $DMG_NAME created in $PROJECT_ROOT"
 
 # ── Update version badge in README.md ────────────────────────────────────────
+# Matches the badge with or without a 'v' prefix: the old pattern required the 'v'
+# and silently no-op'd against the un-prefixed badge already in README.md, leaving
+# the version stale no matter what CI built.
 echo "📝 Updating version in README.md…"
-sed -i '' "s|img.shields.io/github/v/release/Promethees/microalbumin-Flask?label=latest|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
-sed -i '' "s|img.shields.io/badge/latest-v[0-9.]*[a-z]*-blue|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
+sed -i '' -E "s|img.shields.io/badge/latest-[^)-]*-blue|img.shields.io/badge/latest-${VERSION}-blue|g" "$PROJECT_ROOT/README.md"
 echo "✅ README.md updated with $VERSION"
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
