@@ -622,6 +622,18 @@ def _build_posix_swap_script():
     Args: LIVE NEW PORT EXE [relaunch args…]. Port-free is probed with lsof/nc
     when present (fixed short sleep otherwise); the swap is atomic moves with a
     rollback if the second move fails.
+
+    The uninstaller lives one level ABOVE the swapped dir on both posix layouts
+    (Linux ``/opt/EasyOKAPI/uninstall.sh`` beside ``/opt/EasyOKAPI/EasyOKAPI/``;
+    mac ``…/Contents/Resources/uninstall.command`` beside
+    ``…/Resources/EasyOKAPI/``), so the swap does not carry it — meaning it was
+    never updated at all, and an install predating the uninstaller never gained
+    one. The new bundle now ships its uninstaller inside the onedir, and we copy
+    it up into the parent after a successful swap. Best-effort and non-fatal: a
+    bundle without one leaves the existing uninstaller untouched (mirroring the
+    Windows prefer-bundled/else-keep-old rule), and a parent dir we cannot write
+    (a root-owned /opt with the app running as the user) must not fail an
+    otherwise-applied update.
     """
     return (
         '#!/bin/sh\n'
@@ -641,6 +653,12 @@ def _build_posix_swap_script():
         'mv "$LIVE" "$OLD" || exit 1\n'
         'if ! mv "$NEW" "$LIVE"; then mv "$OLD" "$LIVE"; exit 1; fi\n'
         'rm -rf "$OLD"\n'
+        'PARENT=$(dirname "$LIVE")\n'
+        'for U in uninstall.sh uninstall.command; do\n'
+        '  if [ -f "$LIVE/$U" ] && [ -w "$PARENT" ]; then\n'
+        '    cp "$LIVE/$U" "$PARENT/$U" 2>/dev/null && chmod +x "$PARENT/$U" 2>/dev/null\n'
+        '  fi\n'
+        'done\n'
         '"$LIVE/$EXE" "$@" &\n'
     )
 

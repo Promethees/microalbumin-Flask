@@ -178,6 +178,22 @@ def test_posix_swap_script_has_move_and_relaunch():
     assert '"$LIVE/$EXE" "$@" &' in s
 
 
+def test_posix_swap_script_refreshes_the_uninstaller_in_the_parent_dir():
+    # The uninstaller lives one level above the swapped dir on both posix layouts,
+    # so the swap must copy the bundle's copy up — otherwise it is never updated.
+    s = u._build_posix_swap_script()
+    assert 'PARENT=$(dirname "$LIVE")' in s
+    assert 'uninstall.sh uninstall.command' in s
+    assert 'cp "$LIVE/$U" "$PARENT/$U"' in s
+    # Must be best-effort: only copy when the bundle ships one and the parent is
+    # writable, and never let a failure abort the (already applied) swap.
+    assert '[ -f "$LIVE/$U" ] && [ -w "$PARENT" ]' in s
+    assert 'exit' not in s.split('rm -rf "$OLD"')[1]
+    # Runs after the swap succeeded, before the relaunch.
+    assert s.index('PARENT=$(dirname') > s.index('mv "$NEW" "$LIVE"')
+    assert s.index('PARENT=$(dirname') < s.index('"$LIVE/$EXE" "$@" &')
+
+
 # ── stale-artifact cleanup ───────────────────────────────────────────────────
 
 def _seed_artifacts(root):

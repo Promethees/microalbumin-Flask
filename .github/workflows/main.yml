@@ -134,6 +134,16 @@ jobs:
           if [ "$vendor" != "1" ]; then echo "Smoke test failed: bundled vendor asset not served (static/vendor missing)"; exit 1; fi
           echo "Smoke test passed (/ping + vendor asset)."
 
+      # uninstall.command sits in Contents/Resources/ — one level ABOVE the dir the
+      # in-app update swaps (Resources/EasyOKAPI/) — so an update never refreshed
+      # it. Ship it inside the bundle; the posix swap script copies it up into the
+      # parent after swapping. (Drag-to-Trash removal is unaffected either way.)
+      - name: Bundle uninstall.command for the update bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        run: |
+          cp installer-mac/uninstall.command dist/EasyOKAPI/uninstall.command
+          chmod +x dist/EasyOKAPI/uninstall.command
+
       - name: Package update bundle
         if: needs.setup.outputs.encode_source == 'true'
         run: tar -C dist -czf EasyOKAPI-bundle-mac.tar.gz EasyOKAPI
@@ -375,6 +385,16 @@ jobs:
           if [ "$ok" != "1" ]; then echo "Smoke test failed: /ping never returned 200"; exit 1; fi
           if [ "$vendor" != "1" ]; then echo "Smoke test failed: bundled vendor asset not served (static/vendor missing)"; exit 1; fi
           echo "Smoke test passed (/ping + vendor asset)."
+
+      # uninstall.sh is installed at /opt/EasyOKAPI/uninstall.sh — one level ABOVE
+      # the dir the in-app update swaps — so an update never refreshed it and an
+      # install predating it never got one. Ship it inside the bundle; the posix
+      # swap script copies it up into the parent after swapping.
+      - name: Bundle uninstall.sh for the update bundle
+        if: needs.setup.outputs.encode_source == 'true'
+        run: |
+          cp installer-linux/uninstall.sh dist/EasyOKAPI/uninstall.sh
+          chmod +x dist/EasyOKAPI/uninstall.sh
 
       - name: Package update bundle
         if: needs.setup.outputs.encode_source == 'true'
