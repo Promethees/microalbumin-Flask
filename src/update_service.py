@@ -501,6 +501,68 @@ def _clear_pending_swap():
         pass
 
 
+# Every artifact the update flow writes into the data root. The swap helpers run
+# after this process exits, so nothing can delete them on the way out — they are
+# swept on the NEXT startup instead (see cleanup_stale_artifacts).
+_ARTIFACT_FILES = (
+    '_update_swap.ps1',
+    '_update_coordinator.ps1',
+    '_update_swap_result.txt',
+    '_update_bundle.zip',
+    '_update_bundle.tar.gz',
+    '_update_download.tar.gz',
+)
+_ARTIFACT_GLOBS = (
+    '_update_*_swap.sh',  # posix swap script (current naming)
+    'tmp*_swap.sh',       # posix swap script written by builds before the rename
+)
+
+
+def cleanup_stale_artifacts():
+    """Delete leftover update scratch files from the data root. Never raises.
+
+    The binary-swap flow writes its helper scripts, result file and staging dir
+    into ``state.script_dir`` and then exits so the helpers can run — so there is
+    no point at which the flow itself can clean up. Nothing did, so every update
+    left a growing pile behind: the two .ps1 helpers, the swap result, an empty
+    ``_update_staging/``, and (posix) one ``mkstemp`` swap script per update,
+    accumulating forever.
+
+    Called on startup, which is exactly once per completed swap (the relaunched
+    build sweeps its predecessor's mess) and also catches artifacts orphaned by a
+    download that crashed mid-flight.
+
+    Skipped entirely while a swap is still pending: a failed or UAC-declined
+    Windows swap deliberately keeps the staged bundle, marker and scripts so the
+    next finalize can retry, and sweeping them would strand the update.
+    """
+    import glob
+
+    root = state.script_dir
+    try:
+        if read_pending_swap():
+            return  # a retry is armed — its artifacts are still live
+        # A marker pointing at a staging dir that no longer exists is itself stale
+        # (read_pending_swap returns None for it, so the guard above let us through).
+        _clear_pending_swap()
+
+        paths = [os.path.join(root, name) for name in _ARTIFACT_FILES]
+        for pattern in _ARTIFACT_GLOBS:
+            paths.extend(glob.glob(os.path.join(root, pattern)))
+        for path in paths:
+            try:
+                if os.path.isfile(path):
+                    os.remove(path)
+            except OSError:
+                pass
+        # The staged bundle is moved OUT of here by a successful swap, leaving an
+        # empty shell; a failed download can leave a full one. Both are disposable
+        # once no swap is pending.
+        shutil.rmtree(_staging_dir(), ignore_errors=True)
+    except Exception:
+        pass
+
+
 def _relaunch_extra_args():
     """The CLI args to relaunch with (everything after the executable)."""
     return list(sys.argv[1:])
@@ -542,7 +604,10 @@ def _spawn_posix_swapper(live_root, staged_root, port, exe_name, extra_args):
     import tempfile
 
     script = _build_posix_swap_script()
-    fd, path = tempfile.mkstemp(suffix='_swap.sh', dir=state.script_dir)
+    # '_update_' prefix so cleanup_stale_artifacts can glob these unambiguously —
+    # mkstemp's default 'tmp' prefix is too generic to delete on sight.
+    fd, path = tempfile.mkstemp(prefix='_update_', suffix='_swap.sh',
+                                dir=state.script_dir)
     with os.fdopen(fd, 'w') as f:
         f.write(script)
     os.chmod(path, 0o755)

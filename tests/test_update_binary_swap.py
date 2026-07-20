@@ -178,6 +178,91 @@ def test_posix_swap_script_has_move_and_relaunch():
     assert '"$LIVE/$EXE" "$@" &' in s
 
 
+# ── stale-artifact cleanup ───────────────────────────────────────────────────
+
+def _seed_artifacts(root):
+    """Create one of every artifact the update flow leaves behind."""
+    names = [
+        '_update_swap.ps1', '_update_coordinator.ps1', '_update_swap_result.txt',
+        '_update_bundle.zip', '_update_bundle.tar.gz', '_update_download.tar.gz',
+        '_update_ab12cd_swap.sh', 'tmpz9y8x7_swap.sh',
+    ]
+    for n in names:
+        with open(os.path.join(root, n), 'w') as f:
+            f.write('x')
+    staging = os.path.join(root, '_update_staging')
+    os.makedirs(os.path.join(staging, 'EasyOKAPI'), exist_ok=True)
+    return names
+
+
+def test_cleanup_removes_every_stale_artifact(tmp_path):
+    root = str(tmp_path)
+    names = _seed_artifacts(root)
+    with patch.object(u.state, 'script_dir', root):
+        u.cleanup_stale_artifacts()
+    for n in names:
+        assert not os.path.exists(os.path.join(root, n)), n
+    assert not os.path.exists(os.path.join(root, '_update_staging'))
+
+
+def test_cleanup_keeps_user_data_and_unrelated_files(tmp_path):
+    root = str(tmp_path)
+    _seed_artifacts(root)
+    os.makedirs(os.path.join(root, 'data'), exist_ok=True)
+    for keep in ('user_settings.json', 'activation.json', 'notes_swap.txt'):
+        with open(os.path.join(root, keep), 'w') as f:
+            f.write('keep')
+    with patch.object(u.state, 'script_dir', root):
+        u.cleanup_stale_artifacts()
+    assert os.path.isdir(os.path.join(root, 'data'))
+    for keep in ('user_settings.json', 'activation.json', 'notes_swap.txt'):
+        assert os.path.isfile(os.path.join(root, keep)), keep
+
+
+def test_cleanup_is_a_noop_while_a_swap_is_pending_retry(tmp_path):
+    # A UAC-declined Windows swap keeps the staged bundle + marker + scripts so
+    # finalize can retry; sweeping them would strand the downloaded update.
+    root = str(tmp_path)
+    _seed_artifacts(root)
+    staged = os.path.join(root, '_update_staging', 'EasyOKAPI')
+    with open(os.path.join(root, '_pending_update.txt'), 'w') as f:
+        f.write(staged)
+    with patch.object(u.state, 'script_dir', root):
+        u.cleanup_stale_artifacts()
+    assert os.path.isdir(staged)
+    assert os.path.isfile(os.path.join(root, '_pending_update.txt'))
+    assert os.path.isfile(os.path.join(root, '_update_swap.ps1'))
+
+
+def test_cleanup_drops_a_marker_pointing_at_a_missing_staging_dir(tmp_path):
+    # The staged bundle is moved out by a successful swap, so a surviving marker
+    # is stale — it must not pin the artifacts in place forever.
+    root = str(tmp_path)
+    _seed_artifacts(root)
+    with open(os.path.join(root, '_pending_update.txt'), 'w') as f:
+        f.write(os.path.join(root, 'gone', 'EasyOKAPI'))
+    with patch.object(u.state, 'script_dir', root):
+        u.cleanup_stale_artifacts()
+    assert not os.path.exists(os.path.join(root, '_pending_update.txt'))
+    assert not os.path.exists(os.path.join(root, '_update_swap.ps1'))
+
+
+def test_cleanup_never_raises_on_a_missing_root(tmp_path):
+    with patch.object(u.state, 'script_dir', os.path.join(str(tmp_path), 'nope')):
+        u.cleanup_stale_artifacts()  # must not raise
+
+
+def test_posix_swapper_writes_a_sweepable_script_name(tmp_path):
+    # The script must match the cleanup glob, or it accumulates one file per update.
+    import glob
+    root = str(tmp_path)
+    with patch.object(u.state, 'script_dir', root), \
+         patch('subprocess.Popen') as popen:
+        u._spawn_posix_swapper('/live', '/new', 5099, 'EasyOKAPI', [])
+        popen.assert_called_once()
+    assert glob.glob(os.path.join(root, '_update_*_swap.sh'))
+
+
 def test_windows_swap_script_is_elevated_helper_doing_only_the_move():
     # The elevated helper does the privileged dir swap + ACL reset and writes a
     # result marker — but must NOT relaunch the app (that happens non-elevated).

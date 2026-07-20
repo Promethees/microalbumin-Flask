@@ -371,6 +371,18 @@ if __name__ == '__main__':
             pass
     threading.Thread(target=_refresh_uninstall_entry, daemon=True).start()
 
+    # Sweep the previous update's scratch files out of the data root. The swap
+    # helpers outlive the process that spawns them, so startup is the only place
+    # this can happen — see update_service.cleanup_stale_artifacts(), which
+    # no-ops while a swap is still pending retry.
+    def _cleanup_update_artifacts():
+        try:
+            import update_service
+            update_service.cleanup_stale_artifacts()
+        except Exception:
+            pass
+    threading.Thread(target=_cleanup_update_artifacts, daemon=True).start()
+
     atexit.register(cleanup, state.process, state.log_file, state.args)
 
     def _shutdown_handler(signum, frame):
