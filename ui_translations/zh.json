@@ -256,5 +256,6 @@
   "quickconc.calculate": "计算",
   "quickconc.result": "浓度",
   "quickconc.fill_all": "请输入所有系数和一个测量值。",
-  "quickconc.error": "计算失败。"
+  "quickconc.error": "计算失败。",
+  "metadata.none": "无"
 }

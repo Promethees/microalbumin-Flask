@@ -256,5 +256,6 @@
   "quickconc.calculate": "Calculate",
   "quickconc.result": "Concentration",
   "quickconc.fill_all": "Enter all coefficients and a measured value.",
-  "quickconc.error": "Calculation failed."
+  "quickconc.error": "Calculation failed.",
+  "metadata.none": "None"
 }

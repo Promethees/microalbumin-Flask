@@ -256,5 +256,6 @@
   "quickconc.calculate": "Tính",
   "quickconc.result": "Nồng độ",
   "quickconc.fill_all": "Hãy nhập tất cả hệ số và một giá trị đo được.",
-  "quickconc.error": "Tính toán thất bại."
+  "quickconc.error": "Tính toán thất bại.",
+  "metadata.none": "Không có"
 }

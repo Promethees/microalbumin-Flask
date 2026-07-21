@@ -256,5 +256,6 @@
   "quickconc.calculate": "Рассчитать",
   "quickconc.result": "Концентрация",
   "quickconc.fill_all": "Введите все коэффициенты и измеренное значение.",
-  "quickconc.error": "Ошибка вычисления."
+  "quickconc.error": "Ошибка вычисления.",
+  "metadata.none": "Нет"
 }

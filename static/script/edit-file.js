@@ -1,4 +1,25 @@
 function editFile(fileName, button, tableSelector = "#file-table") {
+    // Metadata fields whose value may legitimately be "None": the measurement
+    // unit (`Unit` timeseries / `MeasUnit` calibration) and the `Concentration`
+    // value. Each renders a "None" checkbox that, when ticked, stores the "NONE"
+    // sentinel and locks the text input. `ConcenUnit` is NOT here — a
+    // concentration always has a unit, so it stays a constrained dropdown.
+    const NONEABLE_META = ['Unit', 'MeasUnit', 'Concentration'];
+    // Mirrors src/file.py::_norm_identity_value — blank or "NONE" (any case) is
+    // the None sentinel; anything else is a real value.
+    const isNoneMetaValue = (v) => {
+        if (v === null || v === undefined) return true;
+        const s = String(v).trim();
+        return s === '' || s.toUpperCase() === 'NONE';
+    };
+    const nonePlaceholder = (key) => key === 'Concentration' ? 'e.g. 25' : 'e.g. AU';
+    const noneLabel = (typeof t === 'function') ? t('metadata.none', 'None') : 'None';
+    // Width (in chars) of a None-able text input — fits its content, min 6 so an
+    // empty/placeholder field stays legible. Paired with the inline `oninput`
+    // handler so the field grows/shrinks as the user types.
+    const unitInputSize = (v) => Math.max(6, String(v == null ? '' : v).length + 1);
+    const UNIT_INPUT_AUTOSIZE = 'this.size=Math.max(6,this.value.length+1)';
+
     /* --------------------------------------------------------------
    JSON → Graphic UI helpers
    -------------------------------------------------------------- */
@@ -138,6 +159,27 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         }
 
         // -----------------------------------------------------------------
+        // 3b. Measurement unit (`meas_unit`) — free text, but None-able via a
+        //     checkbox that locks the field and stores the "NONE" sentinel.
+        // -----------------------------------------------------------------
+        if (key === 'meas_unit') {
+            const raw = getValueFromAttr();
+            const current = raw !== null ? raw : (value != null ? String(value) : '');
+            const isNone = isNoneMetaValue(current);
+            return `
+            <span class="noneable-json-cell" style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                <label style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" class="meta-none-cb" ${isNone ? 'checked' : ''}>
+                    <span>${noneLabel}</span>
+                </label>
+                <input type="text" class="json-input meta-none-input" data-path="${fullPath}"
+                       size="${unitInputSize(isNone ? '' : current)}" oninput="${UNIT_INPUT_AUTOSIZE}"
+                       value="${isNone ? '' : escapeHtml(current)}" ${isNone ? 'disabled' : ''}
+                       placeholder="e.g. AU">
+            </span>`;
+        }
+
+        // -----------------------------------------------------------------
         // 4. Fallback – original text input
         // -----------------------------------------------------------------
         return `
@@ -178,6 +220,27 @@ function editFile(fileName, button, tableSelector = "#file-table") {
 
         const nonEditableColumns = ['Unit', 'Type', 'Concentration'];
         const nonEditableMetadata = ['TimeUnit', 'MeasMode'];
+
+        // Wire the "None" checkboxes in the metadata table (measurement unit /
+        // concentration value): ticking locks the input, unticking re-enables it.
+        function setupMetaNoneToggles() {
+            const metaTable = document.getElementById('swal-metadata-table');
+            if (!metaTable) return;
+            metaTable.querySelectorAll('.noneable-meta-cell .meta-none-cb').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const inp = cb.closest('.noneable-meta-cell').querySelector('.meta-none-input');
+                    if (!inp) return;
+                    if (cb.checked) {
+                        inp.value = '';
+                        inp.size = 6;
+                        inp.disabled = true;
+                    } else {
+                        inp.disabled = false;
+                        inp.focus();
+                    }
+                });
+            });
+        }
 
         function setupTableEvents() {
             const table = document.getElementById('swal-edit-table');
@@ -371,6 +434,28 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                             <td class="metadata-key">${key}</td>
                                             <td class="metadata-value">
                                                 <select class="metadata-value-select" data-meta-key="${key}">${opts}</select>
+                                            </td>
+                                        </tr>
+                                    `;
+                    }
+                    // None-able fields (measurement unit / concentration value):
+                    // a "None" checkbox locks the input and stores the "NONE"
+                    // sentinel; unticking it re-enables free-text entry.
+                    if (NONEABLE_META.includes(key)) {
+                        const isNone = isNoneMetaValue(value);
+                        return `
+                                        <tr>
+                                            <td class="metadata-key">${key}</td>
+                                            <td class="metadata-value noneable-meta-cell" data-meta-key="${key}">
+                                              <span style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                                                <label class="meta-none-toggle" style="display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                                                    <input type="checkbox" class="meta-none-cb" ${isNone ? 'checked' : ''}>
+                                                    <span>${noneLabel}</span>
+                                                </label>
+                                                <input type="text" class="meta-none-input" size="${unitInputSize(isNone ? '' : value)}" oninput="${UNIT_INPUT_AUTOSIZE}"
+                                                       value="${isNone ? '' : escapeHtml(value)}" ${isNone ? 'disabled' : ''}
+                                                       placeholder="${nonePlaceholder(key)}">
+                                              </span>
                                             </td>
                                         </tr>
                                     `;
@@ -602,6 +687,26 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         else if (input.type === 'number') val = input.value === '' ? null : parseFloat(input.value);
                         else val = input.value;
                         setValueByPath(path, val);
+                    });
+                });
+                // None checkbox for the measurement unit (`meas_unit`): ticking it
+                // locks the text field and stores the "NONE" sentinel; unticking
+                // re-enables free-text entry.
+                popup.querySelectorAll('.noneable-json-cell .meta-none-cb').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        const cell = cb.closest('.noneable-json-cell');
+                        const inp = cell.querySelector('.meta-none-input');
+                        const path = inp.dataset.path;
+                        if (cb.checked) {
+                            inp.value = '';
+                            inp.size = 6;
+                            inp.disabled = true;
+                            setValueByPath(path, 'NONE');
+                        } else {
+                            inp.disabled = false;
+                            setValueByPath(path, inp.value);
+                            inp.focus();
+                        }
                     });
                 });
             }
@@ -843,6 +948,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                         const toggleButton = document.getElementById('toggle-mode');
                         if (editMode === 'table') {
                             setupTableEvents();
+                            setupMetaNoneToggles();
                         } else if (editMode === 'graphic') {
                             syncFitCoefLabels(Swal.getPopup());
                             bindInputListeners();
@@ -854,7 +960,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 toggleButton.textContent = 'Switch to ' + (editMode === 'text' ? (tableSelector === "#file-table" ? 'Table' : 'Graphic') : 'Text') + ' Mode';
                                 Swal.getHtmlContainer().innerHTML = renderContent({ content: originalContent });
                                 if (editMode === 'table') {
-                                    setTimeout(setupTableEvents, 50);
+                                    setTimeout(() => { setupTableEvents(); setupMetaNoneToggles(); }, 50);
                                 } else if (editMode === 'graphic') {
                                     syncFitCoefLabels(Swal.getPopup());
                                     bindInputListeners();
@@ -878,6 +984,16 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                     const cells = row.querySelectorAll('td');
                                     if (cells.length === 2) {
                                         const key = cells[0].textContent.trim();
+                                        // None-able field (measurement unit / concentration
+                                        // value): read the checkbox + locked input, not
+                                        // textContent. A ticked box (or an empty input) writes
+                                        // the "NONE" sentinel so the file stays format-valid.
+                                        if (cells[1].classList.contains('noneable-meta-cell')) {
+                                            const cb = cells[1].querySelector('.meta-none-cb');
+                                            const inp = cells[1].querySelector('.meta-none-input');
+                                            const raw = (cb && cb.checked) ? '' : (inp ? inp.value.trim() : '');
+                                            return `# ${key}: ${raw === '' ? 'NONE' : raw}`;
+                                        }
                                         // Constrained metadata (e.g. ConcenUnit) is edited via a
                                         // <select>; read its value. Reading textContent would
                                         // concatenate every option label (e.g. "ng/µLnM%CFU").

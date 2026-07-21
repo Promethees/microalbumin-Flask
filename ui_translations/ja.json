@@ -256,5 +256,6 @@
   "quickconc.calculate": "計算",
   "quickconc.result": "濃度",
   "quickconc.fill_all": "すべての係数と測定値を入力してください。",
-  "quickconc.error": "計算に失敗しました。"
+  "quickconc.error": "計算に失敗しました。",
+  "metadata.none": "なし"
 }
