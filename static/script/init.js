@@ -582,6 +582,10 @@ if (typeof USER_SETTINGS !== 'undefined') {
     if (_iuEl && USER_SETTINGS.default_interval_unit) _iuEl.value = USER_SETTINGS.default_interval_unit;
     const _axisEl = document.getElementById('cdc-axis-turn');
     if (_axisEl) _axisEl.checked = USER_SETTINGS.cdc_axis === 'turn';
+    const _runMode = USER_SETTINGS.cdc_run_mode === 'manual' ? 'manual' : 'auto';
+    const _runModeEl = document.querySelector(`input[name="cdc-run-mode"][value="${_runMode}"]`);
+    if (_runModeEl) _runModeEl.checked = true;
+    if (typeof updateRunModeVisibility === 'function') updateRunModeVisibility();
 }
 
 function selectButton(selectedButton, allButtons, div) {
@@ -626,6 +630,7 @@ const SETTINGS_DEFAULTS = {
     default_interval: null,
     default_interval_unit: 'seconds',
     cdc_axis: 'time',
+    cdc_run_mode: 'auto',
     merge_directory_picker: false,
     disable_popups: false,
     default_concentration_unit: 'ng/µL',
@@ -745,6 +750,9 @@ function _buildSettingsHTML(s, folders, aiStats) {
                      <option value="minutes" ${s.default_interval_unit==='minutes'?'selected':''}>minutes</option>
                      <option value="hours"   ${s.default_interval_unit==='hours'?'selected':''}>hours</option>`))}
                 ${rowCheck('Record as Turns (1,2,3…) by default', 'swal-cdc-axis-turn', s.cdc_axis === 'turn')}
+                ${row('Default point-mode run mode', '', sel('swal-cdc-run-mode',
+                    `<option value="auto"   ${(s.cdc_run_mode||'auto')==='auto'?'selected':''}>Automatic</option>
+                     <option value="manual" ${s.cdc_run_mode==='manual'?'selected':''}>Manual</option>`))}
             </div>
         </div>
         <div class="sm-section sm-section--full">
@@ -857,6 +865,7 @@ function _readSettingsForm() {
         default_interval: document.getElementById('swal-log-interval').value === '' ? null : parseFloat(document.getElementById('swal-log-interval').value),
         default_interval_unit: document.getElementById('swal-log-interval-unit').value,
         cdc_axis: document.getElementById('swal-cdc-axis-turn').checked ? 'turn' : 'time',
+        cdc_run_mode: document.getElementById('swal-cdc-run-mode').value === 'manual' ? 'manual' : 'auto',
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
         ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
@@ -902,6 +911,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-log-interval').value = s.default_interval ?? '';
     document.getElementById('swal-log-interval-unit').value = s.default_interval_unit || 'seconds';
     document.getElementById('swal-cdc-axis-turn').checked = s.cdc_axis === 'turn';
+    document.getElementById('swal-cdc-run-mode').value = s.cdc_run_mode === 'manual' ? 'manual' : 'auto';
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;

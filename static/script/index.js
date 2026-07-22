@@ -489,6 +489,8 @@ function applyModeVisibility(mode) {
     const cfg = MODE_VISIBILITY[mode];
     $hidden(cfg.hide, true);
     $hidden(cfg.show, false);
+    // The Auto/Manual run-mode control is point-mode + Turn only (Rule §2.27).
+    if (typeof updateRunModeVisibility === 'function') updateRunModeVisibility();
 }
 
 // Shared header reset for the file-based modes (kinetics / point / calibrate).

@@ -427,6 +427,13 @@
                             data-i18n-hint="hint.cdc_axis_turn"
                             data-hint="Record the first column as a Turn index (1, 2, 3 …) for point mode instead of a Timestamp in seconds. Remembered as your default."><span data-i18n="cdc.axis_turn">Record as Turns (1, 2, 3 …) instead of Timestamp</span></input>
                     </div>
+                    <div id="cdc-run-mode-control" class="hidden">
+                        <label style="font-weight: bold;" data-i18n="cdc.run_mode">Run mode: </label>
+                        <label data-i18n-hint="hint.run_mode_auto"
+                            data-hint="Device streams a reading automatically every interval, like a normal run."><input type="radio" name="cdc-run-mode" value="auto" checked onchange="onCdcRunModeChange()"><span data-i18n="cdc.run_mode_auto">Automatic</span></label>
+                        <label data-i18n-hint="hint.run_mode_manual"
+                            data-hint="Device stays idle; each press of &quot;Measure now&quot; records one Turn on demand. Runs until you press Stop."><input type="radio" name="cdc-run-mode" value="manual" onchange="onCdcRunModeChange()"><span data-i18n="cdc.run_mode_manual">Manual</span></label>
+                    </div>
                     <input type="checkbox" id="notify-me" data-i18n-hint="hint.notify_done" data-hint="Show a desktop notification when the reading finishes" checked><span data-i18n="cdc.notify_done">Notify me when Done</span></input>
                     <br />
                     <button id="run-script-btn" onclick="runScript()" class="blinking"
@@ -435,6 +442,9 @@
                     <button id="terminate-script-btn" onclick="terminateScript()" disabled
                         data-i18n="cdc.stop_reading" data-i18n-hint="hint.stop_reading"
                         data-hint="Stop the current data-reading run">Stop reading</button>
+                    <button id="measure-point-btn" onclick="measurePoint()" class="hidden blinking" disabled
+                        data-i18n="cdc.measure_now" data-i18n-hint="hint.measure_now"
+                        data-hint="Take one reading now (records the next Turn). Manual run mode only.">Measure now</button>
                     <button id="clear-logs-btn" onclick="clearLogs()"
                         data-i18n="cdc.clear_logs" data-i18n-hint="hint.clear_logs"
                         data-hint="Clear the log output shown below">Clear Logs</button>
@@ -444,6 +454,12 @@
                     <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
             </div>
+            <!-- Floating mirror of "Measure now": appears during a manual run when
+                 the inline button is scrolled out of view, so the user can record
+                 the next Turn while watching the live data without scrolling back. -->
+            <button id="measure-point-fab" onclick="measurePoint()" class="measure-fab hidden" disabled
+                data-i18n-hint="hint.measure_now"
+                data-hint="Take one reading now (records the next Turn). Manual run mode only."><span class="measure-fab-dot" aria-hidden="true"></span><span data-i18n="cdc.measure_now">Measure now</span></button>
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
                     <span data-i18n="caljson.select_coefficients">Select Coefficients for standard curve</span> <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>

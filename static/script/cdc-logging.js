@@ -1,6 +1,17 @@
 let statusCheckInterval = null;
 const STATUS_CHECK_INTERVAL = 2000; // Check every 2 seconds
 let _terminationNoticeFired = false;
+// True for the duration of a manual point-mode capture (device idle, one row per
+// "Measure now" press). Set when runScript starts a manual session, cleared on
+// stop/completion. Used to suppress the interval countdown and to re-enable the
+// Measure-now button when each requested row lands.
+let manualSession = false;
+// Watches whether the inline #measure-point-btn is on-screen. When it scrolls out
+// of view during a manual run (e.g. user scrolled down to the live data), a fixed
+// floating mirror (#measure-point-fab) is shown so the next Turn can be recorded
+// without scrolling back up to the control panel.
+let _measureObserver = null;
+let _inlineMeasureVisible = true;
 
 // --- Session timer state ---
 let sessionStartTime = null;
@@ -60,13 +71,16 @@ function onNewDataPoint() {
         const timerEl = document.getElementById('session-timer');
         if (timerEl) timerEl.classList.remove('hidden');
         sessionTimerHandle = setInterval(tickSessionTimer, 1000);
-    } else if (!sessionIntervalSec) {
+    } else if (!sessionIntervalSec && !manualSession) {
         // Second data point with no configured interval: measure the device's
-        // actual interval from the gap between point 1 and point 2.
+        // actual interval from the gap between point 1 and point 2. Skipped in
+        // manual capture — presses are irregular, so there is no interval.
         sessionIntervalSec = (now - sessionStartTime) / 1000;
     }
     lastDataPointTime = now;
     tickSessionTimer();
+    // Manual capture: each requested row has landed, so re-arm "Measure now".
+    if (manualSession && AppState.scriptRunning) setMeasureArmed(true);
 }
 
 function stopSessionTimer() {
@@ -134,7 +148,24 @@ function clearStatusCheck() {
     }
 }
 
+// Return the manual-capture controls to their idle state: clear the session
+// flag, re-enable the Auto/Manual radios, and hide + disable the Measure-now
+// button. Shared by every run-end path (error, completion, manual terminate).
+function resetManualControls() {
+    manualSession = false;
+    document.querySelectorAll('input[name="cdc-run-mode"]').forEach(r => (r.disabled = false));
+    const btn = document.getElementById('measure-point-btn');
+    if (btn) { btn.disabled = true; btn.classList.remove('blinking'); }
+    // Tear down the scroll watcher and hide the floating mirror.
+    stopMeasureObserver();
+    const fab = document.getElementById('measure-point-fab');
+    if (fab) { fab.classList.add('hidden'); fab.classList.remove('blinking'); fab.disabled = true; }
+    // Restore run-mode visibility (re-hides Measure-now unless still Manual+point).
+    if (typeof updateRunModeVisibility === 'function') updateRunModeVisibility();
+}
+
 function resetUI({ goToEnabled }) {
+    resetManualControls();
     const infTimeout = document.getElementById('inf-timeout');
 
     // Re-enable subfolder selection controls
@@ -198,6 +229,109 @@ function onCdcAxisChange() {
     const value = useTurn ? 'turn' : 'time';
     if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS.cdc_axis = value;
     if (typeof saveUserSetting === 'function') saveUserSetting('cdc_axis', value);
+    // The Auto/Manual choice only exists for a Turn (point-mode) capture.
+    updateRunModeVisibility();
+}
+
+// The current Auto/Manual run mode, but only when the choice is actually offered
+// (point mode + Turn). Falls back to 'auto' when the run-mode control is hidden.
+function currentRunMode() {
+    const ctrl = document.getElementById('cdc-run-mode-control');
+    if (!ctrl || ctrl.classList.contains('hidden')) return 'auto';
+    return document.querySelector('input[name="cdc-run-mode"]:checked')?.value || 'auto';
+}
+
+// Show the Auto/Manual control only for a point-mode Turn capture; force Auto and
+// restore the interval/timeout controls whenever it is hidden. Also applied on
+// mode switch (via applyModeVisibility) and on load.
+function updateRunModeVisibility() {
+    const turnOn = !!document.getElementById('cdc-axis-turn')?.checked;
+    const isPoint = (typeof AppState !== 'undefined' && AppState.currentMeasurementMode === 'point');
+    const offer = turnOn && isPoint;
+    const ctrl = document.getElementById('cdc-run-mode-control');
+    if (ctrl) ctrl.classList.toggle('hidden', !offer);
+    if (!offer) {
+        const autoRadio = document.querySelector('input[name="cdc-run-mode"][value="auto"]');
+        if (autoRadio) autoRadio.checked = true;
+    }
+    applyRunModeUI();
+}
+
+// Manual capture uses no interval/timeout (Stop-only, on-demand), so hide those
+// controls and reveal the "Measure now" button when Manual is selected.
+function applyRunModeUI() {
+    const manual = currentRunMode() === 'manual';
+    document.getElementById('interval-control')?.classList.toggle('hidden', manual);
+    document.getElementById('timeout-control')?.classList.toggle('hidden', manual);
+    // The Measure-now button appears only during an actual manual run (revealed by
+    // runScript); keep it hidden whenever the app is idle so an inert button never
+    // shows before Start.
+    const btn = document.getElementById('measure-point-btn');
+    if (btn && !AppState?.scriptRunning) btn.classList.add('hidden');
+}
+
+function onCdcRunModeChange() {
+    const value = currentRunMode();
+    if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS.cdc_run_mode = value;
+    if (typeof saveUserSetting === 'function') saveUserSetting('cdc_run_mode', value);
+    applyRunModeUI();
+}
+
+// Enable/disable the Measure-now button (armed = ready to record). Drives both the
+// inline button and the floating mirror so their state never diverges.
+function setMeasureArmed(armed) {
+    const btn = document.getElementById('measure-point-btn');
+    if (btn) { btn.disabled = !armed; btn.classList.toggle('blinking', armed); }
+    syncMeasureFab();
+}
+
+// Mirror the inline button's state onto the floating FAB and decide its visibility:
+// shown only during a live manual run while the inline button is scrolled off-screen.
+function syncMeasureFab() {
+    const fab = document.getElementById('measure-point-fab');
+    if (!fab) return;
+    const inline = document.getElementById('measure-point-btn');
+    const active = manualSession && !!AppState?.scriptRunning;
+    fab.classList.toggle('hidden', !(active && !_inlineMeasureVisible));
+    if (inline) {
+        fab.disabled = inline.disabled;
+        fab.classList.toggle('blinking', inline.classList.contains('blinking'));
+    }
+}
+
+function startMeasureObserver() {
+    const inline = document.getElementById('measure-point-btn');
+    if (!inline) return;
+    if (!('IntersectionObserver' in window)) { _inlineMeasureVisible = false; syncMeasureFab(); return; }
+    if (_measureObserver) _measureObserver.disconnect();
+    _measureObserver = new IntersectionObserver((entries) => {
+        _inlineMeasureVisible = entries[0].isIntersecting;
+        syncMeasureFab();
+    }, { threshold: 0 });
+    _measureObserver.observe(inline);
+}
+
+function stopMeasureObserver() {
+    if (_measureObserver) { _measureObserver.disconnect(); _measureObserver = null; }
+    _inlineMeasureVisible = true;
+    syncMeasureFab();
+}
+
+// Manual capture: ask the device for one on-demand reading. Disabled until the
+// requested row lands (onNewDataPoint re-arms it) so rapid presses can't stack.
+async function measurePoint() {
+    setMeasureArmed(false);
+    try {
+        const res = await fetch('/measure_point', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const response = await res.json();
+        if (response.status !== 'success') {
+            setMeasureArmed(true);
+            $append('log-display', `Error: ${response.message}\n`);
+        }
+    } catch (err) {
+        console.error('measurePoint error:', err);
+        setMeasureArmed(true);
+    }
 }
 
 // Main script runner
@@ -240,9 +374,12 @@ async function runScript() {
     const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = true;
     $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit", "cdc-axis-turn"]);
+    document.querySelectorAll('input[name="cdc-run-mode"]').forEach(r => (r.disabled = true));
     $toggleClass("run-script-btn", "blinking", false);
     modeButtons.forEach(btn => btn.disabled = true);
 
+    const manual = currentRunMode() === 'manual';
+    manualSession = manual;
     const timeoutValue = timeoutEl.value.trim();
     const intervalValue = intervalEl.value.trim();
     const useTurn = !!document.getElementById('cdc-axis-turn')?.checked;
@@ -250,9 +387,11 @@ async function runScript() {
         subfolder: subfolder,
         base_name: baseName,
         inf_checked: infTimeout,
-        timeout_sec: timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier($id("timeout-unit").value) : null,
-        interval_sec: intervalValue ? parseFloat(intervalValue) * getTimeUnitMultiplier($id("interval-unit").value) : null,
-        axis: useTurn ? 'turn' : 'time'
+        // Manual capture is Stop-only and on-demand, so it sends no timeout/interval.
+        timeout_sec: manual ? null : (timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier($id("timeout-unit").value) : null),
+        interval_sec: manual ? null : (intervalValue ? parseFloat(intervalValue) * getTimeUnitMultiplier($id("interval-unit").value) : null),
+        axis: (useTurn || manual) ? 'turn' : 'time',
+        manual: manual
     };
 
     try {
@@ -272,6 +411,15 @@ async function runScript() {
             $text("log-display", "Script started...\n");
             if (saveMode === 'new' && typeof loadDataFolders === 'function') loadDataFolders();
             startSessionTimer(payload.interval_sec);
+            // Manual capture: reveal + arm the "Measure now" button for on-demand
+            // rows, and start watching it so the floating mirror appears when it
+            // scrolls out of view.
+            if (manual) {
+                const mBtn = document.getElementById('measure-point-btn');
+                if (mBtn) mBtn.classList.remove('hidden');
+                setMeasureArmed(true);
+                startMeasureObserver();
+            }
             statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
         } else if (response.status === "device_not_found") {
             handleDeviceNotFound(response);
@@ -331,6 +479,7 @@ async function terminateScript() {
 function handleScriptTermination(message) {
     AppState.scriptRunning = false;
     stopSessionTimer();
+    resetManualControls();
     $text("log-display", message);
     $disable(["run-script-btn"], false);
     $toggleClass("run-script-btn", "blinking", true);

@@ -46,7 +46,25 @@ def clear_current_output_marker():
         pass
 
 
-def _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis="time"):
+def _measure_trigger_path():
+    """Path of the manual-capture trigger file. /measure_point drops it and the
+    running logger (log_cdc_data.CDCDataCollector) polls + consumes it to send a
+    MEASURE command to the device. Kept in sync with log_cdc_data.trigger_path."""
+    return os.path.join(state.script_dir, 'log', 'measure_trigger.txt')
+
+
+def clear_measure_trigger():
+    """Remove any stale manual-measure trigger at the start of a run so the first
+    MEASURE reflects a real button press, not a leftover from a prior session."""
+    try:
+        path = _measure_trigger_path()
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
+def _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis="time", manual=False):
     """Build the CDC logger subprocess command. CDC needs no elevated privileges.
 
     Frozen: there is no python interpreter or log_cdc_data.py on disk, so we
@@ -69,6 +87,8 @@ def _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis="time")
     if interval_sec is not None:
         cmd += ['--interval-sec', str(float(interval_sec))]
     cmd += ['--axis', 'turn' if axis == 'turn' else 'time']
+    if manual:
+        cmd += ['--manual']
     return cmd
 
 
@@ -78,7 +98,8 @@ def _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis="time")
     'base_name': (str, 'colorimeter_data', False),
     'timeout_sec': (float, None, False),
     'interval_sec': (float, None, False),
-    'axis': (str, 'time', False)
+    'axis': (str, 'time', False),
+    'manual': (bool, False, False)
 })
 def run_script(validated_data):
     if state.process and state.process.poll() is None:
@@ -89,6 +110,11 @@ def run_script(validated_data):
     timeout_sec = validated_data['timeout_sec']
     interval_sec = validated_data['interval_sec']
     axis = 'turn' if str(validated_data.get('axis', 'time')).strip().lower() == 'turn' else 'time'
+    # Manual point-mode capture: device idles and emits one row per /measure_point.
+    # A manual reading is a turn, so manual forces the turn axis regardless of axis.
+    manual = bool(validated_data.get('manual', False))
+    if manual:
+        axis = 'turn'
 
     # Subfolder must be a simple name with no path traversal
     if subfolder and any(c in subfolder for c in ('/', '\\', '..')):
@@ -113,13 +139,15 @@ def run_script(validated_data):
 
     os.makedirs(abs_dir, exist_ok=True)
 
-    cmd = _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis)
+    cmd = _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis, manual)
 
     # Fresh log so device/session detection reflects only this run.
     clear_logs()
     # Stale-marker guard: clear the live-file marker so "View live data" can't
     # resolve to the previous session's CSV before this run writes its header.
     clear_current_output_marker()
+    # Drop any leftover manual-measure trigger so the first press is a real one.
+    clear_measure_trigger()
 
     try:
         with open(state.log_file, 'a', encoding='utf-8') as f:
@@ -143,6 +171,25 @@ def run_script(validated_data):
     except Exception as e:
         state.process = None
         return jsonify({'status': 'failure', 'message': f'Failed to start script: {str(e)}'})
+
+
+@hardware_bp.route('/measure_point', methods=['POST'])
+def measure_point():
+    """Manual point-mode capture: request one on-demand reading from the device.
+
+    Flask cannot write to the serial port (the logger subprocess owns it), so we
+    drop a trigger file the running logger polls and forwards as a MEASURE command
+    (log_cdc_data._check_measure_trigger). Only valid while a session is running."""
+    if state.process is None or state.process.poll() is not None:
+        return jsonify({'status': 'failure', 'message': 'No reading session is running'}), 409
+    try:
+        path = _measure_trigger_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('1')
+        return jsonify({'status': 'success', 'message': 'Measurement requested'})
+    except Exception as e:
+        return jsonify({'status': 'failure', 'message': f'Failed to request measurement: {str(e)}'}), 500
 
 
 @hardware_bp.route('/check_status', methods=['GET'])

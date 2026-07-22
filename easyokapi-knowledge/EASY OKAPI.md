@@ -3,7 +3,7 @@
 This file serves as the primary orientation for any AI agent or developer regarding the **Main** branch of the `microalbumin-Flask` project. **Before writing code, study the relationships and file structures documented here.**
 
 ## 1. Project Overview
-The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.3.4**.
+The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.3.5**.
 It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over a USB CDC serial connection (with an HID-keyboard fallback the device triggers via its Left button). 
 
 The application provides a Web GUI (via Flask templates and vanilla JavaScript) for users to:
@@ -55,7 +55,7 @@ graph TD
 | `report_bp` | `report_routes.py` | `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject`, `/merge_report_subjects`, `/save_report_item_order`, `/delete_report_item`, `/export_report_excel` | `report.js`, `data-handling.js` |
 
 **Cross-tab edit lock** (`file_routes.py` `_edit_locks` registry + `acquire`/`refresh`/`release_edit_lock`): a file opened in the editor of one browser tab is locked from being edited in any other tab. The registry is an in-memory `{abs_path → {token, ts}}` map guarded by a `threading.Lock` (all tabs share one Flask process). `edit-file.js` acquires the lock before loading a file's content (a 423 shows "being edited in another tab"), heartbeats every 30 s to keep it fresh, and releases it when the modal closes or on `beforeunload` (via `navigator.sendBeacon`). A tab that dies without releasing lets the lock go stale after `_EDIT_LOCK_TTL` (120 s). `edit_file` enforces the lock server-side too: a save carries the holder's `edit_token` and is refused (423) if another tab holds the lock. This is separate from the per-write `FileLock` in `edit_file`, which only guards the atomicity of a single save.
-| `hardware_bp` | `hardware_routes.py` | `/run_script`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
+| `hardware_bp` | `hardware_routes.py` | `/run_script`, `/measure_point`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities`, `/calculate_concentration` | `calculate.js`, `data-display.js` |
 | `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides`, `/ai/match`, `/ai/feedback` (POST), `/ai/feedback/stats` (GET), `/ai/feedback/reset` (POST), `/ai/feedback/export` (GET) | `ai-chat.js`, `init.js` |
 | `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream), `/update/finalize` (POST — shutdown for relaunch) | `init.js` |
@@ -102,6 +102,8 @@ graph TD
 
 ### 2.3 Data Collection (`log_cdc_data.py` — the only host logger)
 **CDC / USB serial:** `log_cdc_data.py` is spawned by `/run_script` and owns the single serial port for the whole session — it connects, sends `1`/`TIMEOUT:x`/`AXIS:time|turn`/`INTERVAL:x`, waits for ACKs (`AXIS` picks the first-column axis — `--axis`, default from the `cdc_axis` setting), then reads clean UTF-8 data lines on the same connection and writes the CSV (+ `log/current_output.txt`). No `sudo`/admin, no keycode decoding, no `hidapi`/`pyusb`/`libusbK`, cross-platform. On SIGINT/SIGTERM it sends `0` so the device leaves talking mode.
+
+**Manual (on-demand) point-mode capture:** with `--manual` (from `/run_script` `manual:true`, only offered in point mode with **Record as Turns** on; forces the turn axis) the start chunk inserts `MANUAL:1` (ACK `ACK_MANUAL`) between `AXIS:` and `INTERVAL:`, and the device idles instead of streaming — it emits one row per `MEASURE` command. Since the logger owns the port, `POST /measure_point` drops a `log/measure_trigger.txt` file that the logger's read loop consumes and forwards as `MEASURE`. No interval/timeout; the session ends on Stop. Firmware `serial_manager.py` is in lockstep (`session_manual`, `_emit_row`/`_emit_manual_row`). See Rule §2.27.
 
 **Zero-software fallback (HID keyboard):** triggered by the device's **Left button** only — the firmware "types" the CSV via keyboard emulation into whatever text field has focus (e.g. a text editor). There is no host-side HID capture script. The app's automated flow does not use HID.
 

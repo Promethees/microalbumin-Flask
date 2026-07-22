@@ -1553,8 +1553,88 @@ body.dark #plot-analysis {
 #chart-container.blinking,
 #measurement-mode.blinking,
 #cal-mode-select.blinking,
+#measure-point-btn.blinking,
 [id^="con-value-read"].blinking {
     --blink-color: #00ff00;
+}
+
+/* Floating "Measure now" — a fixed mirror of #measure-point-btn shown during a
+   manual point-mode run when the inline button scrolls out of view. Bottom-centre
+   so it never collides with the bottom-right AI chat widget. */
+button#measure-point-fab.measure-fab {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 8000;
+    padding: 14px 26px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.45);
+    animation: measure-fab-in 0.2s ease-out;
+}
+
+button#measure-point-fab.measure-fab:hover:enabled {
+    background: linear-gradient(135deg, #15803d, #16a34a);
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 10px 28px rgba(22, 163, 74, 0.55);
+}
+
+button#measure-point-fab.measure-fab:active:enabled {
+    transform: translateX(-50%) translateY(0);
+}
+
+button#measure-point-fab.measure-fab:disabled {
+    background: linear-gradient(135deg, #9ca3af, #b6bcc4);
+    color: #f3f4f6;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    opacity: 0.85;
+    cursor: not-allowed;
+}
+
+/* Armed (ready to record) → green blinking ring, matching the inline button. */
+#measure-point-fab.measure-fab.blinking {
+    --blink-color: #bbf7d0;
+    animation: blink 1s infinite, measure-fab-in 0.2s ease-out;
+}
+
+/* REC-style dot to signal "record a reading". */
+.measure-fab-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+    flex: 0 0 auto;
+}
+
+#measure-point-fab.measure-fab:disabled .measure-fab-dot {
+    background: #e5e7eb;
+    box-shadow: none;
+}
+
+@keyframes measure-fab-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@media (max-width: 600px) {
+    button#measure-point-fab.measure-fab {
+        left: 16px;
+        right: 16px;
+        /* Sit above the bottom-right AI chat widget instead of beside it. */
+        bottom: 88px;
+        transform: none;
+        width: auto;
+    }
+    button#measure-point-fab.measure-fab:hover:enabled,
+    button#measure-point-fab.measure-fab:active:enabled {
+        transform: none;
+    }
 }
 
 body.light .der-con-value.blinking {

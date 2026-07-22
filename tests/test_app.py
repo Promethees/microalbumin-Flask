@@ -131,6 +131,46 @@ def test_run_script_device_not_found(client, tmp_path):
         assert rv.get_json()['status'] == 'device_not_found'
 
 
+def test_run_script_manual_passes_flag_and_forces_turn(client, tmp_path):
+    """Manual capture: run_script must pass --manual to the logger and force the
+    turn axis (a manual reading is a turn), regardless of the axis field."""
+    (tmp_path / 'log').mkdir()
+    with patch.object(state, 'script_dir', str(tmp_path)), \
+         patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')), \
+         patch('subprocess.Popen') as mock_popen:
+        proc = MagicMock()
+        proc.wait.side_effect = subprocess.TimeoutExpired(cmd='log_cdc_data.py', timeout=2)
+        mock_popen.return_value = proc
+        rv = client.post('/run_script', json={'base_name': 'test', 'manual': True, 'axis': 'time'})
+        assert rv.status_code == 200
+        assert rv.get_json()['status'] == 'success'
+        cmd = mock_popen.call_args[0][0]
+        assert '--manual' in cmd
+        # axis forced to turn even though the client sent 'time'
+        assert cmd[cmd.index('--axis') + 1] == 'turn'
+
+
+def test_measure_point_requires_running_session(client):
+    """/measure_point is a no-op (409) when no reading session is running."""
+    state.process = None
+    rv = client.post('/measure_point')
+    assert rv.status_code == 409
+    assert rv.get_json()['status'] == 'failure'
+
+
+def test_measure_point_drops_trigger_file(client, tmp_path):
+    """With a live session, /measure_point drops the trigger file the logger polls."""
+    log_dir = tmp_path / 'log'
+    log_dir.mkdir()
+    state.process = MagicMock()
+    state.process.poll.return_value = None  # still running
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.post('/measure_point')
+        assert rv.status_code == 200
+        assert rv.get_json()['status'] == 'success'
+        assert (log_dir / 'measure_trigger.txt').exists()
+
+
 def test_run_script_rejects_reserved_subfolder(client):
     """The archive staging name 'root' is reserved and must be refused."""
     rv = client.post('/run_script', json={'subfolder': 'root'})
