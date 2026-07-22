@@ -4407,3 +4407,21 @@ body.dark #okapi-tooltip {
         transform: none;
     }
 }
+/* Turn-based point calibration tables (Rule §2.27): per-Turn concentration
+   entry (build side) and per-Turn derived concentration (derive side). */
+.turn-cal-table {
+    border-collapse: collapse;
+    width: auto;
+    font-size: 0.95em;
+}
+.turn-cal-table th,
+.turn-cal-table td {
+    border: 1px solid var(--border-color, #ccc);
+    padding: 4px 10px;
+    text-align: center;
+    white-space: nowrap;
+}
+.turn-cal-table th {
+    font-weight: 600;
+    background: var(--section-bg, rgba(127, 127, 127, 0.12));
+}

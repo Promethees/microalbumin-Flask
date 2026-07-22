@@ -28,7 +28,9 @@ function _normIdent(v) {
     return s;
 }
 
-// Normalize the loaded CSV's metadata into an identity object.
+// Normalize the loaded CSV's metadata into an identity object. `axis`
+// ('turn'/'time') is the loaded file's X axis (point mode); it gates pairing
+// against a calibration curve of the same kind (Rule §2.27).
 function csvIdentityFromMeta(meta) {
     if (!meta) return null;
     const calMode = (typeof AppState !== 'undefined') && AppState.currentMeasurementMode === 'calibrate';
@@ -37,22 +39,31 @@ function csvIdentityFromMeta(meta) {
         measurement: _normIdent(meta['Measurement']),
         unit: _normIdent(unit),
         concen_unit: (meta['ConcenUnit'] && String(meta['ConcenUnit']).trim()) || DEFAULT_CONCEN_UNIT_JS,
+        axis: (typeof AppState !== 'undefined' && AppState.xAxis) ? AppState.xAxis : null,
     };
 }
 
-// Normalize a calibration JSON's content into an identity object.
+// Normalize a calibration JSON's content into an identity object. `axis`:
+// 'turn' for a turn-based point curve (`x_axis:'turn'`), 'time' for a time-based
+// point curve (`time`/`time-unit`), null for kinetics/legacy (a wildcard).
 function jsonIdentityFromContent(json) {
     if (!json) return null;
+    let axis = null;
+    if (json['x_axis'] === 'turn') axis = 'turn';
+    else if (json['time-unit'] !== undefined || json['time'] !== undefined) axis = 'time';
     return {
         measurement: _normIdent(json['for_meas']),
         unit: _normIdent(json['meas_unit']),
         concen_unit: (json['concen_unit'] && String(json['concen_unit']).trim()) || DEFAULT_CONCEN_UNIT_JS,
+        axis: axis,
     };
 }
 
-// Compare a CSV identity with a JSON identity. Measurement/Unit are wildcards when
-// absent on either side (legacy JSONs); ConcenUnit is always enforced (absent → ng/µL).
-// Returns {ok, reason} with reason ∈ 'meas' | 'unit' | 'concen' | null.
+// Compare a CSV identity with a JSON identity. Measurement/Unit/axis are wildcards
+// when absent on either side (legacy JSONs); ConcenUnit is always enforced
+// (absent → ng/µL). `axis` blocks pairing a Turn data file with a time-series
+// calibration and vice versa (Rule §2.27).
+// Returns {ok, reason} with reason ∈ 'meas' | 'unit' | 'concen' | 'axis' | null.
 function identityMatch(csvId, jsonId) {
     if (!csvId || !jsonId) return { ok: true, reason: null };
     if (csvId.measurement && jsonId.measurement && csvId.measurement !== jsonId.measurement)
@@ -62,16 +73,33 @@ function identityMatch(csvId, jsonId) {
     const cuA = csvId.concen_unit || DEFAULT_CONCEN_UNIT_JS;
     const cuB = jsonId.concen_unit || DEFAULT_CONCEN_UNIT_JS;
     if (cuA !== cuB) return { ok: false, reason: 'concen' };
+    if (csvId.axis && jsonId.axis && csvId.axis !== jsonId.axis)
+        return { ok: false, reason: 'axis' };
     return { ok: true, reason: null };
 }
 
 // Short human reason for a disabled Select button / mismatch error.
 function identityMismatchLabel(reason) {
-    return reason === 'meas' ? 'Measurement' : reason === 'unit' ? 'Unit' : 'Concentration unit';
+    return reason === 'meas' ? 'Measurement'
+        : reason === 'unit' ? 'Unit'
+        : reason === 'axis' ? 'Turn vs time-series'
+        : 'Concentration unit';
 }
 
 // Human sentence describing the clash, naming both sides' values.
 function identityClashText(csvId, jsonId, reason) {
+    if (reason === 'axis') {
+        // The one clash that isn't about a metadata value — it is about the kind
+        // of measurement. Explain WHY the two cannot be paired (Rule §2.27).
+        return (csvId.axis === 'turn')
+            ? "This is a Turn data file — each reading is a discrete turn, with no time axis. "
+              + "The chosen calibration curve was built for time-series data: it derives a concentration "
+              + "from the signal at a fixed time point, which a Turn file simply does not have. "
+              + "Pick a Turn-based calibration curve (one built from Turn standards) instead."
+            : "This is a time-series data file recorded over time. The chosen calibration curve is "
+              + "Turn-based — each standard is a single turn with no time reference — so it cannot read a "
+              + "value at a time point from this file. Pick a time-based calibration curve instead.";
+    }
     const field = reason === 'meas' ? 'measurement' : reason === 'unit' ? 'unit' : 'concentration unit';
     const a = reason === 'meas' ? csvId.measurement : reason === 'unit' ? csvId.unit : csvId.concen_unit;
     const b = reason === 'meas' ? jsonId.measurement : reason === 'unit' ? jsonId.unit : jsonId.concen_unit;
@@ -95,7 +123,9 @@ function _selectDisableAttrs(rowId, counterpart) {
         ? identityMatch(counterpart, rowId)   // file selected is CSV, row is a JSON
         : identityMatch(rowId, counterpart);  // file selected is JSON, row is a CSV
     if (m.ok) return '';
-    const msg = identityMismatchLabel(m.reason) + ' differs from the selected file — cannot pair';
+    const msg = (m.reason === 'axis')
+        ? "Turn and time-series don't mix: a time calibration derives concentration from the signal at a fixed time point, which a Turn file has no axis for; a Turn calibration expects discrete turns, not a time-series. Pair a Turn file with a Turn calibration, and a time-series file with a time calibration."
+        : identityMismatchLabel(m.reason) + ' differs from the selected file — cannot pair';
     return ` disabled title="${_esc(msg)}" data-hint="${_esc(msg)}"`;
 }
 
@@ -410,6 +440,9 @@ async function filterFiles(files) {
 
             const cal_headers_kinetics = ["Concentration", "maxRate", "Slope", "Sat", "Time To Sat"];
             const cal_headers_point = ["Concentration", "Value", "TimePoint"];
+            // Turn-based point calibration: each Turn is a standard, no TimePoint
+            // column (Rule §2.27).
+            const cal_headers_point_turn = ["Concentration", "Value"];
 
             if (!data.headers) {
                 return false;
@@ -423,8 +456,13 @@ async function filterFiles(files) {
 
             if (AppState.currentMeasurementMode === "calibrate") {
                 const cal_type = calDiv.getAttribute('data-value');
-                const expected = cal_type === "kinetics" ? cal_headers_kinetics : cal_headers_point;
-                return arraysEqual(data.headers, expected);
+                if (cal_type === "kinetics") {
+                    return arraysEqual(data.headers, cal_headers_kinetics);
+                }
+                // Point calibration accepts both the time-based (…,TimePoint) and
+                // turn-based (Concentration,Value) tables.
+                return arraysEqual(data.headers, cal_headers_point)
+                    || arraysEqual(data.headers, cal_headers_point_turn);
             }
 
             if (AppState.currentMeasurementMode === "report") {

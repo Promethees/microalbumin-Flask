@@ -289,7 +289,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     // Get reference values from first existing row (if available)
                     const referenceValues = {};
                     const defaultValues = {
-                        'Timestamp': '0.00', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
+                        'Timestamp': '0.00', 'Turn': '1', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
                         'Type': 'NONE', 'Concentration': 'NONE',
                         'Value': '0.00', 'maxRate': '0.00', 'Slope': '0.00',
                         'Sat': '0.00', 'Time To Sat': '0.00', 'MeasUnit': 'NONE',
@@ -1107,6 +1107,30 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                         /^#\s*Unit\s*:\s*.+$/,
                                         /^#\s*Concentration\s*:\s*.+$/
                                     ]
+                                },
+                                {
+                                    // Point-mode Turn series (Rule §2.27): same as the
+                                    // Timestamp series but the first column is an
+                                    // integer turn index (no decimal). Mirrors the
+                                    // backend CSV_SCHEMA_TIMESERIES_TURN validator.
+                                    header: /^\s*Turn\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
+                                    data: /^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
+                                    error: 'Invalid format (Pattern 4). Header must be: Turn,Value:1,Value:2,...',
+                                    meta: [
+                                        /^#\s*Measurement\s*:\s*.+$/,
+                                        /^#\s*Unit\s*:\s*.+$/,
+                                        /^#\s*Concentration\s*:\s*.+$/
+                                    ]
+                                },
+                                {
+                                    // Turn-based point calibration (Rule §2.27): each
+                                    // Turn is a standard, so the table is
+                                    // Concentration,Value with no TimePoint column.
+                                    // Mirrors backend CSV_SCHEMA_POINT_CAL_TURN.
+                                    header: /^\s*Concentration\s*,\s*Value\s*$/,
+                                    data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                                    error: 'Invalid format (Pattern 5). Header must be: Concentration,Value',
+                                    meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                                 }
                             ];
 

@@ -611,9 +611,11 @@
                 <!-- Display selected file name -->
                 <div id="selected-file-display" data-i18n="display.no_file_selected">No file selected</div>
                 <div class="section" id="point-json-exp-section">
-                    <span data-i18n="display.reference_point_at">Reference point is at</span> <span type="number" id="cal-point"></span>
-                    <span id="cal-time-unit" style="font-weight: bold;">second</span>
-                    </br>
+                    <span id="ref-point-line">
+                        <span data-i18n="display.reference_point_at">Reference point is at</span> <span type="number" id="cal-point"></span>
+                        <span id="cal-time-unit" style="font-weight: bold;">second</span>
+                        </br>
+                    </span>
                     <span id="add-json-section"></span>
                 </div>
                 <div class="section" id="window-size-section"
@@ -712,6 +714,20 @@
                             <br />
                             <span id="est-val-error" class="error"></span>
                             <span id="est-val-exp"></span>
+                        </div>
+
+                        <!-- Turn-based point calibration: each recorded Turn is one
+                             standard, so the user assigns a concentration to each Turn
+                             and the (Concentration, Value) pairs are the standard curve.
+                             No time reference applies (Rule §2.27). Shown only for a
+                             point-mode Turn file; replaces #set-exp-point-section. -->
+                        <div class="section hidden" id="turn-cal-section">
+                            <p style="margin:0 0 6px;" data-i18n="export.turn_cal_intro">Assign a concentration to each recorded Turn — every Turn is one standard, and these points form the calibration curve.</p>
+                            <p style="margin:0 0 6px; font-size:0.9em; opacity:0.85;" data-i18n="export.turn_cal_multi_hint">For multiple sources, pick the sources in "Select Sources to export" below — each selected source is written as its own calibration curve.</p>
+                            <div style="overflow-x:auto;">
+                                <table id="turn-cal-table" class="turn-cal-table"></table>
+                            </div>
+                            <span id="turn-cal-error" class="error"></span>
                         </div>
 
                         <div style="margin-bottom:6px;">

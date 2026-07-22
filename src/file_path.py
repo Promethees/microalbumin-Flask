@@ -123,6 +123,7 @@ CSV_SCHEMA_TIMESERIES = 'timeseries'            # Timestamp,Value:1[,Value:2,...
 CSV_SCHEMA_TIMESERIES_TURN = 'timeseries_turn'  # Turn,Value:1[,Value:2,...] (point mode)
 CSV_SCHEMA_KINETICS_CAL = 'kinetics_cal'   # Concentration,maxRate,Slope,Sat,Time To Sat
 CSV_SCHEMA_POINT_CAL = 'point_cal'         # Concentration,Value,TimePoint
+CSV_SCHEMA_POINT_CAL_TURN = 'point_cal_turn'  # Concentration,Value (turn-based point cal — each Turn is a standard, no TimePoint)
 
 
 def parse_csv_metadata(lines) -> dict:
@@ -156,6 +157,8 @@ def detect_csv_schema(header_line: str):
         return CSV_SCHEMA_KINETICS_CAL
     if header_norm == 'Concentration,Value,TimePoint':
         return CSV_SCHEMA_POINT_CAL
+    if header_norm == 'Concentration,Value':
+        return CSV_SCHEMA_POINT_CAL_TURN
     return None
 
 

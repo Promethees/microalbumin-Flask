@@ -7,7 +7,8 @@ from collections.abc import MutableMapping, Sequence
 
 from file_path import (parse_csv_metadata, detect_csv_schema,
                        get_concen_unit, DEFAULT_CONCEN_UNIT,
-                       CSV_SCHEMA_TIMESERIES, timeseries_x_column)
+                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_TIMESERIES_TURN,
+                       timeseries_x_column)
 
 VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 
@@ -178,7 +179,7 @@ def build_csv_identity(directory, names):
     """
     identity = {}
     for name in names:
-        info = {"measurement": None, "unit": None, "concen_unit": DEFAULT_CONCEN_UNIT}
+        info = {"measurement": None, "unit": None, "concen_unit": DEFAULT_CONCEN_UNIT, "axis": None}
         try:
             path = os.path.join(directory, name)
             with open(path, "r", encoding="utf-8") as f:
@@ -192,6 +193,13 @@ def build_csv_identity(directory, names):
             unit = meta.get("Unit") if schema == CSV_SCHEMA_TIMESERIES else meta.get("MeasUnit")
             info["unit"] = _norm_identity_value(unit if unit is not None else (meta.get("Unit") or meta.get("MeasUnit")))
             info["concen_unit"] = get_concen_unit(meta)
+            # X axis of a raw measurement file (point-mode pairing, Rule §2.27): a
+            # Turn file pairs only with a turn calibration, a Timestamp file only
+            # with a time calibration. Non-series files (calibration CSVs) → None.
+            if schema == CSV_SCHEMA_TIMESERIES_TURN:
+                info["axis"] = "turn"
+            elif schema == CSV_SCHEMA_TIMESERIES:
+                info["axis"] = "time"
         except Exception as e:
             print(f"build_csv_identity: skipped {name}: {e}")
         identity[name] = info
@@ -211,7 +219,7 @@ def build_json_identity(directory, names):
     for name in names:
         if name.lower().endswith(".meta.json"):
             continue
-        info = {"measurement": None, "unit": None, "concen_unit": DEFAULT_CONCEN_UNIT}
+        info = {"measurement": None, "unit": None, "concen_unit": DEFAULT_CONCEN_UNIT, "axis": None}
         try:
             with open(os.path.join(directory, name), "r", encoding="utf-8") as f:
                 content = json.load(f)
@@ -220,6 +228,13 @@ def build_json_identity(directory, names):
                 info["unit"] = _norm_identity_value(content.get("meas_unit"))
                 cu = content.get("concen_unit")
                 info["concen_unit"] = cu if (cu and str(cu).strip()) else DEFAULT_CONCEN_UNIT
+                # A turn-based point curve records `x_axis: 'turn'`; a time-based
+                # point curve carries `time`/`time-unit`. Kinetics or legacy point
+                # JSONs without either stay None (a wildcard). Rule §2.27.
+                if content.get("x_axis") == "turn":
+                    info["axis"] = "turn"
+                elif "time-unit" in content or "time" in content:
+                    info["axis"] = "time"
         except Exception as e:
             print(f"build_json_identity: skipped {name}: {e}")
         identity[name] = info
@@ -411,12 +426,17 @@ def merge_csv_files(file_paths, output_path):
 
     if all('Timestamp' in h for h in all_headers):
         join_key = 'Timestamp'
+    elif all('Turn' in h for h in all_headers):
+        # Point-mode Turn series merge on the integer turn index exactly as a
+        # Timestamp series does (Rule §2.27). Mixing Turn + Timestamp files falls
+        # through to Concentration and fails — they are not the same axis.
+        join_key = 'Turn'
     elif all('Concentration' in h for h in all_headers):
         join_key = 'Concentration'
     else:
-        return False, "Could not find common key column (Timestamp or Concentration)"
+        return False, "Could not find common key column (Timestamp, Turn or Concentration)"
 
-    if join_key == 'Timestamp':
+    if join_key in ('Timestamp', 'Turn'):
         combined = {}
         value_offset = 0
 

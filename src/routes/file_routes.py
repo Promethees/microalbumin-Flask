@@ -18,6 +18,7 @@ from file_path import (DATA_ROOT, validate_in_data_root, validate_in_allowed_roo
                        parse_csv_metadata, detect_csv_schema,
                        CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_TIMESERIES_TURN,
                        CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
+                       CSV_SCHEMA_POINT_CAL_TURN,
                        DEFAULT_CONCEN_UNIT)
 from file import get_dynamic_data, replace_empty, merge_csv_files
 from file_operations import remove_csv_columns
@@ -75,6 +76,13 @@ _SCHEMA_VALIDATORS = {
         'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Point calibration).'
+    },
+    # Turn-based point calibration: Concentration,Value — each Turn is a standard,
+    # no TimePoint column (Rule §2.27).
+    CSV_SCHEMA_POINT_CAL_TURN: {
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+)$",
+        'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+        'error': 'Invalid format (Turn point calibration).'
     },
     CSV_SCHEMA_TIMESERIES: {
         'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
@@ -1050,6 +1058,9 @@ def convert_timestamp_to_turn(validated_data):
     'con': ((str, int, float), 'NONE', False),
     'estValue': ((str, int, float), 'NONE', False),
     'timePoint': ((str, int, float), 'NONE', False),
+    # 'turn' marks a point-mode Turn calibration (each Turn is a standard) — the
+    # written table drops the TimePoint column (Rule §2.27).
+    'xAxis': (str, 'time', False),
 })
 def export_data(validated_data):
     entries = validated_data['entries']
@@ -1062,6 +1073,7 @@ def export_data(validated_data):
     concen_unit = validated_data['concenUnit'] or DEFAULT_CONCEN_UNIT
     meas_mode = validated_data['measMode']
     newFile = validated_data['newFile']
+    x_axis = validated_data['xAxis']
     time_unit = "minute" if meas_mode == "point" else "minutes"
 
     try:
@@ -1095,17 +1107,35 @@ def export_data(validated_data):
                     f"{details}. Pick a different calibration table, or adjust the "
                     f"export to match.")})
 
+        # Appending to an existing point calibration file must not mix a
+        # turn-based table (Concentration,Value) with a time-based one
+        # (Concentration,Value,TimePoint) — the column counts differ.
+        if file_exists and meas_mode == "point":
+            existing_rows = get_dynamic_data(full_path).get('data') or []
+            existing_keys = set(existing_rows[0].keys()) if existing_rows else set()
+            # A time-based point cal row carries TimePoint; a turn-based one does
+            # not. With no data rows yet, treat it as matching (nothing to clash).
+            existing_is_turn = bool(existing_keys) and 'TimePoint' not in existing_keys
+            if existing_keys and existing_is_turn != (x_axis == 'turn'):
+                return jsonify({"status": "error", "message": (
+                    "Cannot append to \"{name}\": it is a {existing} point "
+                    "calibration table but this export is {incoming}. Use a "
+                    "different file name.").format(
+                        name=file_name,
+                        existing="turn-based" if existing_is_turn else "time-based",
+                        incoming="turn-based" if x_axis == 'turn' else "time-based")})
+
         with open(full_path, "a", newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             if not file_exists and newFile:
                 write_metadata(f, measurement, meas_unit, time_unit, meas_mode, concen_unit)
-                write_headers(writer, meas_mode)
+                write_headers(writer, meas_mode, x_axis)
 
             if is_batch:
-                entries = [extract_single_entry(entry, meas_mode) for entry in entries]
+                entries = [extract_single_entry(entry, meas_mode, x_axis) for entry in entries]
             else:
-                entries = [extract_single_entry(validated_data, meas_mode)]
-            
+                entries = [extract_single_entry(validated_data, meas_mode, x_axis)]
+
             for entry in entries:
                 writer.writerow(entry)
 
@@ -1123,6 +1153,9 @@ def export_data(validated_data):
     'concenUnit': (str, DEFAULT_CONCEN_UNIT, False),
     'coef_content': ((list, dict), None, False),
     'time': (float, None, False),
+    # 'turn' → a turn-based point calibration curve (each standard is a Turn);
+    # the JSON omits the time/time-unit reference (Rule §2.27).
+    'x_axis': (str, 'time', False),
     'file_name': (str, 'calibrate', False),
     'cal_mode': (str, 'kinetics', False),
     'cal_params': (list, [], False),
@@ -1136,6 +1169,7 @@ def export_cal_coefs(validated_data):
     concen_unit = validated_data['concenUnit'] or DEFAULT_CONCEN_UNIT
     coef_content = validated_data['coef_content']
     time = validated_data['time']
+    x_axis = validated_data['x_axis']
     time_unit = "minute"
     file_name = validated_data['file_name']
     cal_mode = validated_data['cal_mode']
@@ -1155,7 +1189,12 @@ def export_cal_coefs(validated_data):
         json_content.update({"fit_type": fit_type, "for_meas": for_meas,
                              "meas_unit": meas_unit, "concen_unit": concen_unit})
 
-        if (cal_mode == "point"):
+        # A turn-based point curve has no time reference — each Turn is already a
+        # discrete standard, so the concentration is derived from the raw value
+        # with no time lookup (Rule §2.27). Record x_axis so a reader can tell.
+        if cal_mode == "point" and x_axis == 'turn':
+            json_content.update({"x_axis": "turn"})
+        elif cal_mode == "point":
             json_content.update({"time": time, "time-unit": time_unit})
         with open(full_path, "w", encoding='utf-8') as f:
             json.dump(json_content, f, cls=CustomEncoder, indent=4)

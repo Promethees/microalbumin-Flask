@@ -280,6 +280,7 @@ function createChartSection({
             </label>
             <div id="${analysisId}"></div>
             ${`
+                ${AppState.xAxis === 'turn' ? '' : `
                 <div id="concentration-reader-section-source-${index}">
                     ${t('display.concen_from_source', 'Concentration from source-{n} sample is').replace('{n}', index + 1)}
                     ${metaConcentration !== null
@@ -291,7 +292,7 @@ function createChartSection({
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
                         min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ${concenUnit}
-                </div>
+                </div>`}
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', index + 1)} <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
                 </div>
@@ -427,12 +428,14 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, label);
         const analysisEl = document.getElementById(analysisId);
-        analysisEl.innerHTML = formatAnalysisHtml(analysisInfo,
-            getSourceColor(i),
-            t('display.source_label', 'Source {n}').replace('{n}', i + 1),
-            `plot-analysis-source-${i}`
-        );
-        if (analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
+        const sourceLabel = t('display.source_label', 'Source {n}').replace('{n}', i + 1);
+        // Point mode has no kinetics analysis panel; still show the Source label
+        // so the Normalize button (appended next) sits beside it.
+        analysisEl.innerHTML = (AppState.currentMeasurementMode === 'point')
+            ? `<span class="point-source-label" style="color: ${getSourceColor(i)}; font-weight: 600; margin-right: 8px;">${sourceLabel}:</span>`
+            : formatAnalysisHtml(analysisInfo, getSourceColor(i), sourceLabel, `plot-analysis-source-${i}`);
+        // Linearity range is a kinetics concept — not shown in point mode.
+        if (AppState.currentMeasurementMode !== 'point' && analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
             analysisEl.insertAdjacentHTML('beforeend',
                 `<button class="utility-btn" style="margin-top:4px;"
                     data-hint="${escapeAttrText(t('hint.save_linearity_range', 'Save the linearity range rows for this source to a new CSV file'))}"
@@ -475,9 +478,17 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, getSourceColor(i), t('display.source_label', 'Source {n}').replace('{n}', i + 1), `plot-analysis-source-${i}`);
+        const sourceLabel = t('display.source_label', 'Source {n}').replace('{n}', i + 1);
+        // Point mode has no kinetics analysis panel; still show the Source label
+        // so the Normalize button (appended next) sits beside it.
+        if (AppState.currentMeasurementMode === 'point') {
+            html += `<span class="point-source-label" style="color: ${getSourceColor(i)}; font-weight: 600; margin-right: 8px;">${sourceLabel}:</span>`;
+        } else {
+            html += formatAnalysisHtml(info, getSourceColor(i), sourceLabel, `plot-analysis-source-${i}`);
+        }
         const rawA = analyses[i];
-        if (rawA && rawA.linearXMin != null && rawA.linearXMax != null) {
+        // Linearity range is a kinetics concept — not shown in point mode.
+        if (AppState.currentMeasurementMode !== 'point' && rawA && rawA.linearXMin != null && rawA.linearXMax != null) {
             html += `<button class="utility-btn" style="margin-top:4px;"
                 data-hint="${escapeAttrText(t('hint.save_linearity_range', 'Save the linearity range rows for this source to a new CSV file'))}"
                 onclick="saveLinearityRangeCsvForSource(${i}, ${rawA.linearXMin}, ${rawA.linearXMax})">${t('display.save_linearity_btn', '📐 Save Linearity Range')}</button>`;
@@ -487,7 +498,11 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
             onclick="saveNormalizedCsvForSource(${i})">${t('display.normalize_btn', '🧮 Normalize')}</button>`;
         const metaConcentration = getMetaConcentration(AppState.metaData);
         const concenUnit = getMetaConcenUnit(AppState.metaData);
+        // Turn files assign a concentration per Turn (the per-Turn calibration
+        // table), so the per-source "Concentration from sample" reader is
+        // redundant and omitted (Rule §2.27).
         html += `
+            ${AppState.xAxis === 'turn' ? '' : `
             <div id="concentration-reader-section-source-${i}">
                 ${t('display.concen_from_source', 'Concentration from source-{n} sample is').replace('{n}', i + 1)} ${metaConcentration !== null
                     ? `<span class="der-con-value" id="con-value-read-display-source-${i}">${metaConcentration}</span>
@@ -496,7 +511,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
                     value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}"
                     oninput="adjustInputWidth(this)"
                     min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ${concenUnit}
-            </div>
+            </div>`}
             <div id="derived-concentration-section-source-${i}" class="hidden">
                 ${t('display.concen_derived_from_source', 'Concentration derived from the source-{n} is').replace('{n}', i + 1)} <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
             </div>
@@ -605,7 +620,19 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
     if (calDiv.getAttribute('data-value') === "kinetics") {
         mixAnalysis = calibrateKineticsAnalysis(rawData, XColumn, YColumn, "MIXED");
     } else if (calDiv.getAttribute('data-value') === "point") {
-        mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allData, YColumn), extractColumnAndConvert(allGroups.allData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
+        // Replicate standards at the same concentration (e.g. several Turns
+        // recorded at one concentration) are averaged so each concentration is
+        // weighted once when fitting the standard curve — matching the averaged
+        // points + error bars the chart already shows (Rule §2.27).
+        const valueRaw = extractColumnAndNormalize(allGroups.allData, YColumn);
+        const concRaw = extractColumnAndConvert(allGroups.allData, XColumn);
+        const { XColumn: concUniq, YColumn: valueAvg } = averageDuplicates(concRaw, valueRaw);
+        const fitConc = [], fitValue = [];
+        concUniq.forEach((c, i) => {
+            const v = valueAvg[i];
+            if (c !== null && !isNaN(c) && v !== null && !isNaN(v)) { fitConc.push(c); fitValue.push(v); }
+        });
+        mixAnalysis = calculateCoefAndRSquared(fitValue, fitConc, document.getElementById("exp-json-regress-algo").value);
     }
 
     // Generate chart
@@ -961,6 +988,9 @@ function buildKineticsTableHtml(analysisInfo, unitDisp, timeUnit) {
 
 function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId = "plot-analysis") {
     if (!analysisInfo) return '';
+    // Point mode reads a single value at a point — the kinetics slope / maxRate /
+    // saturation analysis does not apply, so no analysis table is shown.
+    if (AppState.currentMeasurementMode === 'point') return '';
     const unitDisp = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
     const timeUnit = getTimeUnitValue().slice(0, -1);
     const initDisplay = getAnalysisOpenState(analysisId) ? "block" : "none";

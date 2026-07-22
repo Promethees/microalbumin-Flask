@@ -5,6 +5,7 @@ function initDefaultState() {
         'select-quantity-section',
         'derived-concentration-section',
         'set-exp-point-section',
+        'turn-cal-section',
         'select-regress-algo',
         'select-time-point',
         'export-coef'
@@ -367,6 +368,7 @@ const MODE_VISIBILITY = {
             'point-json-exp-section',
             'cal-json-exp-section',
             'set-exp-point-section',
+            'turn-cal-section',
             'select-time-point',
             'select-regress-algo',
             'export-coef',
@@ -388,6 +390,7 @@ const MODE_VISIBILITY = {
             'normalize-mode-section',
             'select-source-to-export',
             'split-source-section',
+            'open-all-analysis-section',
             'top-left-dir-section',
             'main-directory-section',
         ],
@@ -399,6 +402,7 @@ const MODE_VISIBILITY = {
             'select-quantity-section',
             'derived-concentration-section',
             'set-exp-point-section',
+            'turn-cal-section',
             'select-regress-algo',
             'select-time-point',
             'export-coef',
@@ -436,6 +440,12 @@ const MODE_VISIBILITY = {
             'export-coef',
             'func-desc',
             'report-console-section',
+            // Default hidden in point mode; applyTurnCalUI() shows it (and hides
+            // set-exp-point-section) only for a Turn file (Rule §2.27).
+            'turn-cal-section',
+            // Point mode has no per-source kinetics analysis panels, so the
+            // Expand/Collapse-all-analyses toggle is meaningless here.
+            'open-all-analysis-section',
         ],
         show: [
             'cal-json-sel-section',
@@ -461,6 +471,7 @@ const MODE_VISIBILITY = {
             'kinetics-lines',
             'json-display',
             'export-analysis',
+            'turn-cal-section',
             'range-display',
             'full-display-section',
             'split-source-section',
@@ -479,6 +490,7 @@ const MODE_VISIBILITY = {
             'select-regress-algo',
             'export-coef',
             'func-desc',
+            'open-all-analysis-section',
             'top-left-dir-section',
             'main-directory-section',
         ],

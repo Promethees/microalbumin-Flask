@@ -215,21 +215,37 @@ function removePointTimePoint(btn, filename) {
     }
 }
 
+// Average replicate {x: concentration, y: value} points that share the same
+// concentration, so each standard is weighted once when fitting a calibration
+// curve. Matches the calibrate-mode display (averaged points + error bars) and
+// keeps report coefficients consistent with the exported JSON (Rule §2.27).
+function averagePointsByConcentration(pts) {
+    const groups = new Map();
+    pts.forEach(p => {
+        if (p.x === null || isNaN(p.x) || p.y === null || isNaN(p.y)) return;
+        if (!groups.has(p.x)) groups.set(p.x, []);
+        groups.get(p.x).push(p.y);
+    });
+    const out = [];
+    for (const [x, ys] of groups) {
+        out.push({ x, y: ys.reduce((a, b) => a + b, 0) / ys.length });
+    }
+    return out.sort((a, b) => a.x - b.x);
+}
+
 // Extract the point-mode calibration standards (Concentration, Value), filtered
-// to a time point. When `timePointOverride` is provided (incl. '' = all points)
-// it wins; otherwise the live data-display picker is used, the same way
-// updatePlotBasedOnMode() builds the on-screen chart.
+// to a time point and averaged per concentration. When `timePointOverride` is
+// provided (incl. '' = all points) it wins; otherwise the live data-display
+// picker is used, the same way updatePlotBasedOnMode() builds the chart.
 function getPointCalibrationData(timePointOverride) {
     const timePoint = (timePointOverride !== undefined && timePointOverride !== null)
         ? timePointOverride
         : document.getElementById('regressed-time-point')?.value;
     const rows = (AppState.responseData || []).filter(r =>
         !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
-    const pts = rows
+    const pts = averagePointsByConcentration(rows
         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-        .filter(p => !isNaN(p.x) && !isNaN(p.y))
-        .sort((a, b) => a.x - b.x);
+        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
     return { x: pts.map(p => p.x), y: pts.map(p => p.y) };
 }
 
@@ -866,10 +882,12 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
             // One Value-vs-Concentration fit per selected time point × algorithm.
             const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
 
-            itemData.csv_columns = ['Concentration', 'Value', 'TimePoint'];
-            itemData.csv_rows = renderData.map(row => ({
-                Concentration: row['Concentration'], Value: row['Value'], TimePoint: row['TimePoint']
-            }));
+            // A turn-based point curve (Rule §2.27) has no TimePoint column.
+            const turnCal = !(renderData[0] && 'TimePoint' in renderData[0]);
+            itemData.csv_columns = turnCal ? ['Concentration', 'Value'] : ['Concentration', 'Value', 'TimePoint'];
+            itemData.csv_rows = renderData.map(row => turnCal
+                ? { Concentration: row['Concentration'], Value: row['Value'] }
+                : { Concentration: row['Concentration'], Value: row['Value'], TimePoint: row['TimePoint'] });
 
             const fits = [];
             for (const { timePoint, algos } of (timePointAlgos || [])) {
@@ -1235,9 +1253,11 @@ async function loadReportItems(subject) {
                 const isCalibrate = item.metadata.mode === 'calibrate';
                 const isKinetics = item.metadata.mode === 'kinetics';
                 const cols = (response && response.data && response.data[0]) ? Object.keys(response.data[0]) : [];
-                // A calibrate file carrying Concentration/TimePoint/Value columns is
-                // a point-mode standard curve; anything else is a kinetics curve.
-                const isPointCal = isCalibrate && cols.includes('Value') && cols.includes('TimePoint');
+                // A calibrate file carrying a Value column is a point-mode standard
+                // curve — time-based (…,TimePoint) or turn-based (Concentration,Value,
+                // no TimePoint; Rule §2.27). A kinetics curve has per-metric columns
+                // (Slope/maxRate/…) and no Value column.
+                const isPointCal = isCalibrate && cols.includes('Value');
                 const calType = isPointCal ? 'point' : (isCalibrate ? 'kinetics' : null);
                 const card = document.createElement('div');
                 card.className = 'report-item-card';
@@ -1677,12 +1697,10 @@ async function finalizeReport() {
                     const tpLabel = timePoint ? `t=${timePoint}` : 'all pooled';
                     const includeAlgos = Array.from(entry.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
 
-                    const pts = (config.data || [])
+                    const pts = averagePointsByConcentration((config.data || [])
                         .filter(r => (!timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint)))
                         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                        .filter(p => !isNaN(p.x) && !isNaN(p.y))
-                        .sort((a, b) => a.x - b.x);
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
                     const xValues = pts.map(p => p.x);
                     const yValues = pts.map(p => p.y);
 
@@ -2436,22 +2454,22 @@ async function finalizeReportExcel() {
                 const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
                 const tpEntries = Array.from(card.querySelectorAll('.point-tp-entry'));
 
-                itemData.csv_columns = ['Concentration', 'Value', 'TimePoint'];
-                itemData.csv_rows = (config.data || []).map(r => ({
-                    Concentration: r['Concentration'], Value: r['Value'], TimePoint: r['TimePoint']
-                }));
+                // A turn-based point curve (Rule §2.27) has no TimePoint column.
+                const turnCal = !((config.data || [])[0] && 'TimePoint' in config.data[0]);
+                itemData.csv_columns = turnCal ? ['Concentration', 'Value'] : ['Concentration', 'Value', 'TimePoint'];
+                itemData.csv_rows = (config.data || []).map(r => turnCal
+                    ? { Concentration: r['Concentration'], Value: r['Value'] }
+                    : { Concentration: r['Concentration'], Value: r['Value'], TimePoint: r['TimePoint'] });
 
                 const fits = [];
                 for (const entry of tpEntries) {
                     const timePoint = entry.querySelector('.point-timepoint-select')?.value || '';
                     const tpLabel = timePoint ? `t=${timePoint}` : 'all pooled';
                     const includeAlgos = Array.from(entry.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
-                    const pts = (config.data || [])
+                    const pts = averagePointsByConcentration((config.data || [])
                         .filter(r => !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint))
                         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                        .filter(p => !isNaN(p.x) && !isNaN(p.y))
-                        .sort((a, b) => a.x - b.x);
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
                     const xVals = pts.map(p => p.x);
                     const yVals = pts.map(p => p.y);
 

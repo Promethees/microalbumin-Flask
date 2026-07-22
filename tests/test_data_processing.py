@@ -164,6 +164,22 @@ def test_merge_csv_files(tmp_path):
     assert "Value:2" in merged_content
     assert "0,0.1,0.2" in merged_content or "0,0.1,0.2" in merged_content.replace(" ", "")
 
+def test_merge_csv_files_turn_series(tmp_path):
+    # Point-mode Turn series merge on the integer turn index like a Timestamp
+    # series (Rule §2.27) — previously failed the common-key check.
+    f1 = tmp_path / "t1.csv"
+    f1.write_text("# Measurement: ABS\nTurn,Value:1\n1,0.1\n2,0.2\n")
+    f2 = tmp_path / "t2.csv"
+    f2.write_text("# Measurement: ABS\nTurn,Value:1\n1,0.5\n2,0.6\n")
+    out = tmp_path / "out.csv"
+
+    success, msg = file.merge_csv_files([str(f1), str(f2)], str(out))
+    assert success is True
+    merged = out.read_text()
+    assert "Turn,Value:1,Value:2" in merged
+    assert "1,0.1,0.5" in merged.replace(" ", "")
+
+
 def test_merge_csv_files_three(tmp_path):
     f1 = tmp_path / "f1.csv"
     f1.write_text("# Measurement: ABS\nTimestamp,Value:1\n0,0.1\n1,0.2\n")
@@ -364,6 +380,44 @@ def test_extract_single_entry_point():
 def test_extract_single_entry_missing_keys_return_none_placeholder():
     result = export_data.extract_single_entry({}, "kinetics")
     assert result[0] == 'NONE'
+
+
+# Turn-based point calibration (Rule §2.27): each Turn is a standard, so the
+# calibration table is Concentration,Value with no TimePoint column.
+def test_write_headers_point_turn_drops_timepoint():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    export_data.write_headers(writer, "point", "turn")
+    header = output.getvalue().strip()
+    assert header == "Concentration,Value"
+    assert "TimePoint" not in header
+
+
+def test_extract_single_entry_point_turn_has_no_timepoint():
+    data = {'con': 2.0, 'estValue': 0.7, 'timePoint': 5.0}
+    result = export_data.extract_single_entry(data, "point", "turn")
+    assert result == [2.0, 0.7]
+
+
+def test_detect_csv_schema_point_cal_turn():
+    from src import file_path as fp
+    assert fp.detect_csv_schema("Concentration,Value") == fp.CSV_SCHEMA_POINT_CAL_TURN
+    assert fp.detect_csv_schema("  Concentration , Value  ") == fp.CSV_SCHEMA_POINT_CAL_TURN
+
+
+def test_sort_csv_file_point_turn_two_columns(tmp_path):
+    # A 2-column turn cal table must sort by concentration without an IndexError
+    # on the absent TimePoint (index 2).
+    p = tmp_path / "std_point.csv"
+    p.write_text(
+        "# Measurement: Absorbance\n# MeasUnit: abs\n# TimeUnit: minute\n"
+        "# MeasMode: point\n# ConcenUnit: ng/µL\n"
+        "Concentration,Value\n20,0.305\n5,0.102\n10,0.201\n"
+    )
+    measure.sort_csv_file(str(p), "point")
+    data_rows = [l for l in p.read_text().splitlines()
+                 if not l.startswith('#') and not l.startswith('Concentration')]
+    assert [r.split(',')[0] for r in data_rows] == ['5', '10', '20']
 
 
 def test_sort_csv_content_sorts_ascending_by_concentration():
@@ -733,7 +787,8 @@ def test_build_csv_identity_kinetics_cal(tmp_path):
         "# ConcenUnit: nM\nConcentration,maxRate,Slope,Sat,Time To Sat\n5,0.1,0.2,0.3,10\n"
     )
     ident = file.build_csv_identity(str(tmp_path), ["cal_kinetics.csv"])["cal_kinetics.csv"]
-    assert ident == {"measurement": "ABS", "unit": "abs", "concen_unit": "nM"}
+    # A calibration CSV is not a raw series, so it has no turn/time axis.
+    assert ident == {"measurement": "ABS", "unit": "abs", "concen_unit": "nM", "axis": None}
 
 
 def test_build_csv_identity_timeseries_uses_unit_and_defaults_concen(tmp_path):
@@ -751,9 +806,10 @@ def test_build_json_identity_full_and_legacy(tmp_path):
     (tmp_path / "legacy.json").write_text(json.dumps({"fit_type": "linear", "for_meas": "ABS"}))
     (tmp_path / "skip.meta.json").write_text(json.dumps({"for_meas": "X"}))
     ident = file.build_json_identity(str(tmp_path), ["curve.json", "legacy.json", "skip.meta.json"])
-    assert ident["curve.json"] == {"measurement": "ABS", "unit": "abs", "concen_unit": "nM"}
+    # No time/x_axis key ⇒ axis None (a wildcard, so legacy curves stay usable).
+    assert ident["curve.json"] == {"measurement": "ABS", "unit": "abs", "concen_unit": "nM", "axis": None}
     # Legacy JSON: missing unit stays None (wildcard); concen defaults to ng/µL
-    assert ident["legacy.json"] == {"measurement": "ABS", "unit": None, "concen_unit": "ng/µL"}
+    assert ident["legacy.json"] == {"measurement": "ABS", "unit": None, "concen_unit": "ng/µL", "axis": None}
     assert "skip.meta.json" not in ident  # sidecar skipped
 
 
@@ -782,4 +838,28 @@ def test_build_json_identity_none_meas_unit_is_wildcard(tmp_path):
         {"fit_type": "linear", "for_meas": "ABS", "meas_unit": "NONE", "concen_unit": "ng/µL"}))
     ident = file.build_json_identity(str(tmp_path), ["filled.json"])["filled.json"]
     # A back-filled "NONE" meas_unit normalizes to None so it stays a matching wildcard
-    assert ident == {"measurement": "ABS", "unit": None, "concen_unit": "ng/µL"}
+    assert ident == {"measurement": "ABS", "unit": None, "concen_unit": "ng/µL", "axis": None}
+
+
+def test_build_csv_identity_axis_turn_vs_time(tmp_path):
+    # Point-mode pairing (Rule §2.27): a raw Turn file is axis 'turn', a raw
+    # Timestamp series is 'time'.
+    (tmp_path / "turn.csv").write_text(
+        "# Measurement: ABS\n# Unit: abs\n# Concentration: NONE\nTurn,Value:1\n1,0.1\n")
+    (tmp_path / "time.csv").write_text(
+        "# Measurement: ABS\n# Unit: abs\n# Concentration: NONE\nTimestamp,Value:1\n0,0.1\n")
+    ident = file.build_csv_identity(str(tmp_path), ["turn.csv", "time.csv"])
+    assert ident["turn.csv"]["axis"] == "turn"
+    assert ident["time.csv"]["axis"] == "time"
+
+
+def test_build_json_identity_axis_turn_vs_time(tmp_path):
+    # A turn-based point curve records x_axis:'turn'; a time-based one carries
+    # time/time-unit; a legacy curve with neither stays a wildcard (None).
+    (tmp_path / "turn.json").write_text(json.dumps(
+        {"for_meas": "ABS", "meas_unit": "abs", "concen_unit": "ng/µL", "x_axis": "turn"}))
+    (tmp_path / "time.json").write_text(json.dumps(
+        {"for_meas": "ABS", "meas_unit": "abs", "concen_unit": "ng/µL", "time": 5.0, "time-unit": "minute"}))
+    ident = file.build_json_identity(str(tmp_path), ["turn.json", "time.json"])
+    assert ident["turn.json"]["axis"] == "turn"
+    assert ident["time.json"]["axis"] == "time"

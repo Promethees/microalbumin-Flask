@@ -31,8 +31,15 @@ def sort_csv_file(file_path, meas_mode):
             # Sort by concentration (index 0), maxrate (index 1), slope (index 2), sat (index 3), time_to_sat (index 4)
             sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[1]), _safe_float(x[2]), _safe_float(x[3]), _safe_float(x[4])))
         elif meas_mode == "point":
-            # Sort by concentration (index 0), time_point (index 2), value (index 1)
-            sorted_rows = sorted(rows, key=lambda x: (_safe_float(x[0]), _safe_float(x[2]), _safe_float(x[1])))
+            # Time-based point cal: Concentration,Value,TimePoint — sort by
+            # concentration (0), time_point (2), value (1). Turn-based point cal
+            # (Concentration,Value — each Turn is a standard, no TimePoint,
+            # Rule §2.27) has no index 2: sort by concentration then value.
+            sorted_rows = sorted(rows, key=lambda x: (
+                _safe_float(x[0]),
+                _safe_float(x[2]) if len(x) > 2 else 0.0,
+                _safe_float(x[1]) if len(x) > 1 else 0.0,
+            ))
         else:
             sorted_rows = sorted(rows, key=lambda x: _safe_float(x[0]))
 

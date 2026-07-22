@@ -1237,7 +1237,7 @@ def test_browse_returns_files_identity(client, tmp_path, monkeypatch):
     )
     body = client.post('/browse', data={'path': str(tmp_path)}).get_json()
     assert body['files_identity']['raw.csv'] == {
-        'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+        'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM', 'axis': 'time'}
 
 
 def test_get_json_cal_returns_files_identity(client, tmp_path, monkeypatch):
@@ -1248,7 +1248,7 @@ def test_get_json_cal_returns_files_identity(client, tmp_path, monkeypatch):
         {'fit_type': 'linear', 'for_meas': 'ABS', 'meas_unit': 'abs', 'concen_unit': 'nM'}))
     body = client.get('/get_json_cal?mode=kinetics').get_json()
     assert body['files_identity']['curve.json'] == {
-        'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+        'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM', 'axis': None}
 
 
 def test_get_json_cal_backfills_legacy_units(client, tmp_path, monkeypatch):
