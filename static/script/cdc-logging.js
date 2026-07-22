@@ -411,13 +411,15 @@ async function runScript() {
             $text("log-display", "Script started...\n");
             if (saveMode === 'new' && typeof loadDataFolders === 'function') loadDataFolders();
             startSessionTimer(payload.interval_sec);
-            // Manual capture: reveal + arm the "Measure now" button for on-demand
-            // rows, and start watching it so the floating mirror appears when it
-            // scrolls out of view.
+            // Manual capture: reveal the "Measure now" button but keep it disabled
+            // until Turn 1 lands — the logger auto-records the first Turn on start,
+            // and onNewDataPoint arms the button once it arrives (so an early press
+            // can't queue a duplicate). Start watching it so the floating mirror
+            // appears when it scrolls out of view.
             if (manual) {
                 const mBtn = document.getElementById('measure-point-btn');
                 if (mBtn) mBtn.classList.remove('hidden');
-                setMeasureArmed(true);
+                setMeasureArmed(false);
                 startMeasureObserver();
             }
             statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);

@@ -184,10 +184,19 @@ class CDCDataCollector:
         except Exception as e:
             self.log(f"Error processing line '{line}': {e}")
 
+    def _send_measure(self, reason=""):
+        """Send one MEASURE command to the device (manual capture). Best-effort —
+        a failed send is logged and the caller/next press retries."""
+        try:
+            self.serial.write(b"MEASURE\n")
+            self.serial.flush()
+            self.log(f"MEASURE sent{f' ({reason})' if reason else ''}.")
+        except Exception as e:
+            self.log(f"Failed to send MEASURE: {e}")
+
     def _check_measure_trigger(self):
         """Manual capture: if Flask dropped the trigger file, consume it and send
-        one MEASURE command to the device. Best-effort — a failed send is logged
-        and the next press retries. No-op when not in manual mode."""
+        one MEASURE command to the device. No-op when not in manual mode."""
         if not self.manual:
             return
         try:
@@ -196,12 +205,7 @@ class CDCDataCollector:
             os.remove(self.trigger_path)
         except OSError:
             return
-        try:
-            self.serial.write(b"MEASURE\n")
-            self.serial.flush()
-            self.log("Manual measure requested (MEASURE sent).")
-        except Exception as e:
-            self.log(f"Failed to send MEASURE: {e}")
+        self._send_measure("manual request")
 
     def _finish_session(self, reason):
         """End the one-shot session, logging `reason` (SESSION TIMEOUT / STOPPED)
@@ -265,6 +269,13 @@ class CDCDataCollector:
                 return 1
 
             self.log("Reading CDC data stream. Send SIGINT/SIGTERM to stop.")
+            # Manual capture: record the first Turn immediately on start (the
+            # device idles otherwise, so Turn 1 would wait for the first press).
+            # The device buffers this until it finishes its connection settle,
+            # then emits Turn 1 — arriving after the header, so the stream order
+            # stays valid.
+            if self.manual:
+                self._send_measure("initial Turn on start")
             while self.running:
                 # Forward any pending manual-measure request before blocking on the
                 # next read (readline has a 1s timeout, so latency is ≤1s).
