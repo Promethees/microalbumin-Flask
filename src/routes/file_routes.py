@@ -543,6 +543,9 @@ def create_data_folder(validated_data):
 @validate_json({
     'mode': str,
     'cal_mode': (str, 'kinetics', False),
+    # For a point calibration table: 'turn' → Concentration,Value (each Turn is a
+    # standard, no TimePoint); 'time' → Concentration,Value,TimePoint (Rule §2.27).
+    'cal_axis': (str, 'time', False),
     'filename': str,
     'path': (str, '', False),
     'num_sources': (int, 1, False),
@@ -596,11 +599,15 @@ def create_csv_file(validated_data):
         num_lines = max(0, min(num_lines, 100000))
 
         cal_mode = None
+        cal_axis = 'time'
         if mode == 'calibrate':
             cal_mode = (validated_data['cal_mode'] or 'kinetics').strip().lower()
             if cal_mode not in ('kinetics', 'point'):
                 return jsonify({'status': 'error', 'message': 'Invalid calibration mode'}), HTTPStatus.BAD_REQUEST
             time_unit = 'minute' if cal_mode == 'point' else 'minutes'
+            # Turn-based point calibration is Concentration,Value (no TimePoint).
+            if cal_mode == 'point' and str(validated_data.get('cal_axis', 'time')).strip().lower() == 'turn':
+                cal_axis = 'turn'
         else:
             try:
                 n_sources = int(validated_data['num_sources'])
@@ -617,9 +624,10 @@ def create_csv_file(validated_data):
             if mode == 'calibrate':
                 write_metadata(f, 'NONE', 'NONE', time_unit, cal_mode, concen_unit)
                 writer = csv.writer(f)
-                write_headers(writer, cal_mode)
-                # Blank placeholder rows: all NONE (5 cols kinetics / 3 cols point).
-                ncols = 5 if cal_mode == 'kinetics' else 3
+                write_headers(writer, cal_mode, cal_axis)
+                # Blank placeholder rows: all NONE. Columns: kinetics 5, time-based
+                # point 3 (…,TimePoint), turn-based point 2 (Concentration,Value).
+                ncols = 5 if cal_mode == 'kinetics' else (2 if cal_axis == 'turn' else 3)
                 for _ in range(num_lines):
                     writer.writerow(['NONE'] * ncols)
             else:

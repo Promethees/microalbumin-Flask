@@ -2289,13 +2289,22 @@ async function createCsvFile() {
     const sourcesHtml = isCalibrate ? ''
         : `<label style="${rowStyle}">${t('newcsv.sources_label', 'Number of sources')}: <input id="newcsv-sources" type="number" min="1" max="50" value="${AppState.numSources || 1}" style="width:6em; padding:3px 5px;"></label>`;
     const linesHtml = `<label style="${rowStyle}">${t('newcsv.lines_label', 'Number of lines')}: <input id="newcsv-lines" type="number" min="0" max="100000" value="0" style="width:6em; padding:3px 5px;"></label>`;
+    // Point calibration can be time-series (…,TimePoint) or Turn-based
+    // (Concentration,Value — each Turn is one standard, Rule §2.27).
+    const axisHtml = (isCalibrate && calMode === 'point')
+        ? `<label style="${rowStyle}">${t('newcsv.point_axis_label', 'Point calibration table')}:
+             <select id="newcsv-cal-axis" style="padding:3px 5px;">
+               <option value="time">${t('newcsv.axis_time', 'Time-series (Concentration, Value, TimePoint)')}</option>
+               <option value="turn">${t('newcsv.axis_turn', 'Turn (Concentration, Value)')}</option>
+             </select></label>`
+        : '';
     const noteHtml = isCalibrate
         ? `<p style="margin:10px 2px 0; font-size:0.85em; color:#6b7280; text-align:left;">${t('newcsv.calibrate_note', 'Creates an empty calibration table for the current calibrate sub-mode')} (${_escHtml(calMode)}).</p>`
         : '';
 
     const result = await Swal.fire({
         title: t('newcsv.title', 'New CSV file'),
-        html: `<input id="newcsv-name" class="swal2-input" placeholder="${t('newcsv.name_label', 'File name')}" autocomplete="off" style="width:100%; box-sizing:border-box; margin-left:0; margin-right:0;">${sourcesHtml}${linesHtml}${noteHtml}`,
+        html: `<input id="newcsv-name" class="swal2-input" placeholder="${t('newcsv.name_label', 'File name')}" autocomplete="off" style="width:100%; box-sizing:border-box; margin-left:0; margin-right:0;">${sourcesHtml}${linesHtml}${axisHtml}${noteHtml}`,
         showCancelButton: true,
         confirmButtonText: t('common.create', 'Create'),
         cancelButtonText: t('common.cancel', 'Cancel'),
@@ -2309,18 +2318,20 @@ async function createCsvFile() {
             const n = srcEl ? Math.max(1, Math.min(50, parseInt(srcEl.value, 10) || 1)) : 1;
             const linesEl = document.getElementById('newcsv-lines');
             const lines = linesEl ? Math.max(0, Math.min(100000, parseInt(linesEl.value, 10) || 0)) : 0;
-            return { name, n, lines };
+            const axisEl = document.getElementById('newcsv-cal-axis');
+            const calAxis = axisEl ? axisEl.value : 'time';
+            return { name, n, lines, calAxis };
         }
     });
     if (!result.isConfirmed || !result.value) return;
-    const { name, n, lines } = result.value;
+    const { name, n, lines, calAxis } = result.value;
 
     try {
         if (typeof window.showSpinner === 'function') window.showSpinner();
         const response = await fetch('/create_csv_file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode, cal_mode: calMode, filename: name, path: targetDir, num_sources: n, num_lines: lines })
+            body: JSON.stringify({ mode, cal_mode: calMode, cal_axis: calAxis, filename: name, path: targetDir, num_sources: n, num_lines: lines })
         });
         const data = await response.json();
         if (data.status !== 'success') throw new Error(data.message || 'Create failed');

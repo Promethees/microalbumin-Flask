@@ -1510,6 +1510,21 @@ def test_create_csv_file_calibrate_point_header(client, tmp_path):
     assert 'Concentration,Value,TimePoint' in content
 
 
+def test_create_csv_file_calibrate_point_turn_header(client, tmp_path):
+    # Turn-based point calibration template: Concentration,Value (no TimePoint),
+    # 2-column NONE placeholder rows (Rule §2.27).
+    rv = client.post('/create_csv_file',
+                     json={'mode': 'calibrate', 'cal_mode': 'point', 'cal_axis': 'turn',
+                           'filename': 'calturn', 'path': str(tmp_path), 'num_lines': 2})
+    assert rv.status_code == 200
+    lines = (tmp_path / 'calturn.csv').read_text(encoding='utf-8').splitlines()
+    data = [l for l in lines if not l.startswith('#')]
+    assert data[0] == 'Concentration,Value'
+    assert 'TimePoint' not in data[0]
+    assert data[1] == 'NONE,NONE'
+    assert '# MeasMode: point' in "\n".join(lines)
+
+
 def test_create_csv_file_autorenames_on_conflict(client, tmp_path):
     (tmp_path / 'dup.csv').write_text('existing')
     with patch('routes.file_routes.get_next_filename',
