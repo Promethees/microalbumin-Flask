@@ -99,6 +99,7 @@
   "display.select_time_point": "Sélectionner le point temporel pour déduire la concentration",
   "display.select_regress_algo": "Sélectionner l'algorithme de régression à exporter :",
   "display.range_title": "Plage d'affichage",
+  "display.time_unit_label": "Unité de temps :",
   "display.range_from": "De",
   "display.range_to": "À",
   "display.save_range": "💾 Enregistrer la plage",

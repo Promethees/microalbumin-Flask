@@ -1989,6 +1989,10 @@ function applyTurnCalUI() {
     const turn = isTurnRawFile();
     $hidden(['set-exp-point-section'], turn);
     $hidden(['turn-cal-section'], !turn);
+    // A Turn file has no time axis, so the whole Display-range section (its only
+    // remaining control in point mode is the Time unit selector) does not apply;
+    // a time-series point file keeps it for the reference point / chart axis.
+    $hidden(['range-display'], turn);
     if (turn) {
         // A Turn file has no time, so these time-point controls do not apply.
         $hidden(['select-time-point'], true);

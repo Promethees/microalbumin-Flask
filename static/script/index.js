@@ -384,6 +384,9 @@ const MODE_VISIBILITY = {
             'json-display',
             'export-analysis',
             'range-display',
+            'range-display-header',
+            'range-collapse',
+            'time-unit-row',
             'log-cdc-data',
             'options-section',
             'source-options',
@@ -446,6 +449,10 @@ const MODE_VISIBILITY = {
             // Point mode has no per-source kinetics analysis panels, so the
             // Expand/Collapse-all-analyses toggle is meaningless here.
             'open-all-analysis-section',
+            // Display range (From/To + Save Range/Normalize) does not apply in
+            // point mode; the Time unit selector (time-unit-row) is kept.
+            'range-display-header',
+            'range-collapse',
         ],
         show: [
             'cal-json-sel-section',

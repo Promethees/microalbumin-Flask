@@ -99,6 +99,7 @@
   "display.select_time_point": "Выберите момент времени для расчёта концентрации",
   "display.select_regress_algo": "Выберите алгоритм регрессии для экспорта:",
   "display.range_title": "Диапазон отображения",
+  "display.time_unit_label": "Единица времени:",
   "display.range_from": "От",
   "display.range_to": "До",
   "display.save_range": "💾 Сохранить диапазон",

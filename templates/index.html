@@ -652,7 +652,10 @@
                 </div>
                 <div id="func-desc" class="hidden"></div>
                 <div class="section" id="range-display">
-                    <h3 class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')"><span data-i18n="display.range_title">{{
+                    <!-- Display range (From/To + Save Range/Normalize) is hidden in
+                         point mode; the Time unit selector below is kept because the
+                         point-mode chart axis / reference point still need it. -->
+                    <h3 id="range-display-header" class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')"><span data-i18n="display.range_title">{{
                         range_input.title }}</span> <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
                     <div id="range-collapse" class="section-collapse collapsed">
                         <span data-i18n="display.range_from">From</span>
@@ -663,16 +666,19 @@
                         <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
                             style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
-                        <select id="time-unit" onchange="toggleMode()">
-                            {% for unit in range_input.units %}
-                            <option value="{{ unit }}">{{ unit }}</option>
-                            {% endfor %}
-                        </select>
                         <span id="range-value-error" class="error"></span>
                         <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
                             data-i18n="display.save_range" data-i18n-hint="hint.save_range" data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
                         <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
                             data-i18n="display.normalize_btn" data-i18n-hint="hint.normalize_btn" data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
+                    </div>
+                    <div id="time-unit-row" style="margin-top:4px;">
+                        <span data-i18n="display.time_unit_label" style="font-weight:600;">Time unit:</span>
+                        <select id="time-unit" onchange="toggleMode()">
+                            {% for unit in range_input.units %}
+                            <option value="{{ unit }}">{{ unit }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
                 <div id="mode-toggle">

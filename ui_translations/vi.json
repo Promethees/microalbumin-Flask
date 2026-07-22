@@ -99,6 +99,7 @@
   "display.select_time_point": "Chọn thời điểm để tính nồng độ",
   "display.select_regress_algo": "Chọn thuật toán hồi quy để xuất:",
   "display.range_title": "Khoảng hiển thị",
+  "display.time_unit_label": "Đơn vị thời gian:",
   "display.range_from": "Từ",
   "display.range_to": "Đến",
   "display.save_range": "💾 Lưu khoảng",

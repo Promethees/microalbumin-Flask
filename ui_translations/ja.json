@@ -99,6 +99,7 @@
   "display.select_time_point": "濃度を導出する時点を選択",
   "display.select_regress_algo": "エクスポートする回帰アルゴリズムを選択：",
   "display.range_title": "表示範囲",
+  "display.time_unit_label": "時間単位：",
   "display.range_from": "開始",
   "display.range_to": "終了",
   "display.save_range": "💾 範囲を保存",

@@ -99,6 +99,7 @@
   "display.select_time_point": "选择用于推导浓度的时间点",
   "display.select_regress_algo": "选择要导出的回归算法：",
   "display.range_title": "显示范围",
+  "display.time_unit_label": "时间单位：",
   "display.range_from": "从",
   "display.range_to": "到",
   "display.save_range": "💾 保存范围",

@@ -689,6 +689,11 @@ function filteredByRangeValue(isFullDisplay, data, XColumn, YColumn) {
     if (AppState.currentMeasurementMode === "calibrate") {
         return data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
     }
+    // Point mode has no display-range control (hidden), so it never clips — the
+    // whole series is shown (Turn index or full time-series).
+    if (AppState.currentMeasurementMode === "point") {
+        return data.filter(row => row[XColumn] !== "NONE" && row[XColumn] != null);
+    }
     else {
         const range = getRangeStartEnd(isFullDisplay);
         const timeThresholdStart = range.start * getTimeUnitMultiplier(getTimeUnitValue());

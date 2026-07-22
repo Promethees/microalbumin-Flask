@@ -99,6 +99,7 @@
   "display.select_time_point": "Select time point to derive concentration from",
   "display.select_regress_algo": "Select Regress Algo to export:",
   "display.range_title": "Display range",
+  "display.time_unit_label": "Time unit:",
   "display.range_from": "From",
   "display.range_to": "To",
   "display.save_range": "💾 Save Range",
