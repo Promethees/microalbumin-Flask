@@ -24,6 +24,7 @@
   "default_interval": null,
   "default_interval_unit": "seconds",
   "cdc_axis": "turn",
+  "cdc_run_mode": "manual",
   "merge_directory_picker": false,
   "disable_popups": false,
   "default_concentration_unit": "ng/\u00b5L",
