@@ -318,7 +318,7 @@
       "Chọn 'Calibrate' từ bộ chọn Chế độ Đo.",
       "Trong bộ chọn loại hiệu chuẩn, chọn 'Point'.",
       "Chọn tệp CSV Point đã xuất chứa nồng độ và giá trị độ hấp thụ.",
-      "Chọn điểm thời gian để dùng cho đường chuẩn của bạn.",
+      "Chọn điểm thời gian để dùng cho đường chuẩn. (Bỏ qua với tệp hiệu chuẩn Turn — không có trục thời gian; mỗi Turn đã là một chuẩn.)",
       "Chọn thuật toán hồi quy để khớp đường chuẩn của bạn.",
       "Nhập tên và xuất các hệ số đường chuẩn dưới dạng tệp JSON."
     ],
@@ -327,6 +327,24 @@
       "đường chuẩn point",
       "tạo đường chuẩn từ point",
       "hiệu chuẩn point"
+    ]
+  },
+  {
+    "id": "build_turn_calibration",
+    "steps": [
+      "Chọn 'Point' từ bộ chọn Chế độ Đo.",
+      "Chọn một tệp dữ liệu Turn (được ghi với 'Record as Turns'). Mỗi Turn đã ghi là một chuẩn nồng độ — các điều khiển điểm thời gian không áp dụng.",
+      "Nhập nồng độ đã biết cho mỗi Turn đã ghi. Mỗi Turn trở thành một điểm trên đường chuẩn; ghi nhiều Turn ở cùng một nồng độ để có bản sao lặp (được lấy trung bình, kèm thanh sai số).",
+      "Với tệp nhiều nguồn, chọn nguồn nào để xuất — mỗi nguồn được chọn sẽ được ghi thành đường chuẩn riêng.",
+      "Nhập tên tệp và nhấn Export Data để lưu bảng hiệu chuẩn Concentration,Value. Sau đó chuyển sang chế độ Calibrate để khớp đường cong và xuất hệ số."
+    ],
+    "queries": [
+      "hiệu chuẩn turn",
+      "hiệu chuẩn point turn",
+      "hiệu chuẩn các turn",
+      "tạo hiệu chuẩn từ turn",
+      "đường chuẩn turn",
+      "nồng độ theo từng turn"
     ]
   },
   {

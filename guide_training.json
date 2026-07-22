@@ -806,7 +806,7 @@
         {
           "target": "#select-time-point",
           "title": "Select Time Point",
-          "description": "Choose the time point to use for your standard curve.",
+          "description": "Choose the time point to use for your standard curve. (Skipped for a Turn calibration file, which has no time axis — each Turn is already one standard.)",
           "position": "left",
           "skipInteraction": false
         },
@@ -821,6 +821,55 @@
           "target": "#export-coef",
           "title": "Export Coefficients",
           "description": "Enter a name and export the standard curve coefficients as a JSON file.",
+          "position": "left",
+          "skipInteraction": true
+        }
+      ]
+    },
+    {
+      "id": "build_turn_calibration",
+      "queries": [
+        "turn calibration",
+        "point turn calibration",
+        "calibrate turns",
+        "build calibration from turns",
+        "turn standard curve",
+        "concentration per turn"
+      ],
+      "conditions": {},
+      "steps": [
+        {
+          "target": "#measurement-mode",
+          "title": "Switch to Point Mode",
+          "description": "Select 'Point' from the Measurement Mode selector.",
+          "position": "right",
+          "skipInteraction": false
+        },
+        {
+          "target": "#file-selection",
+          "title": "Select a Turn Data File",
+          "description": "Select a Turn data file (recorded with 'Record as Turns'). Each recorded Turn is one concentration standard — the time-point controls do not apply.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#turn-cal-section",
+          "title": "Assign a Concentration per Turn",
+          "description": "Enter the known concentration for each recorded Turn. Every Turn becomes one point on the standard curve; record several Turns at one concentration to get replicates (they are averaged, with error bars).",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#select-source-to-export",
+          "title": "Choose Sources to Export",
+          "description": "For a multi-source file, pick which sources to export — each selected source is written as its own calibration curve.",
+          "position": "left",
+          "skipInteraction": false
+        },
+        {
+          "target": "#export-btn",
+          "title": "Export the Calibration Table",
+          "description": "Enter a file name and click Export Data to save the Concentration,Value calibration table. Then switch to Calibrate mode to fit the curve and export its coefficients.",
           "position": "left",
           "skipInteraction": true
         }

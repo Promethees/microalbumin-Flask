@@ -328,7 +328,7 @@
       "Sélectionnez 'Calibrate' dans le sélecteur de mode de mesure.",
       "Dans le sélecteur de type de calibration, choisissez 'Point'.",
       "Sélectionnez le CSV Point exporté contenant les concentrations et les valeurs d'absorbance.",
-      "Choisissez le point de temps à utiliser pour votre courbe étalon.",
+      "Choisissez le point temporel pour votre courbe d'étalonnage. (Ignoré pour un fichier d'étalonnage Turn — pas d'axe temporel ; chaque Turn est déjà un étalon.)",
       "Sélectionnez un algorithme de régression pour ajuster votre courbe étalon.",
       "Entrez un nom et exportez les coefficients de la courbe étalon en fichier JSON."
     ],
@@ -338,6 +338,24 @@
       "créer calibration depuis point",
       "calibration point",
       "courbe étalon mode point"
+    ]
+  },
+  {
+    "id": "build_turn_calibration",
+    "steps": [
+      "Sélectionnez 'Point' dans le sélecteur de mode de mesure.",
+      "Sélectionnez un fichier de données Turn (enregistré avec 'Record as Turns'). Chaque Turn enregistré est un étalon de concentration — les contrôles de point temporel ne s'appliquent pas.",
+      "Saisissez la concentration connue pour chaque Turn enregistré. Chaque Turn devient un point de la courbe d'étalonnage ; enregistrez plusieurs Turns à une même concentration pour obtenir des réplicats (moyennés, avec barres d'erreur).",
+      "Pour un fichier multi-sources, choisissez les sources à exporter — chaque source sélectionnée est écrite comme sa propre courbe d'étalonnage.",
+      "Saisissez un nom de fichier et cliquez sur Export Data pour enregistrer la table d'étalonnage Concentration,Value. Passez ensuite en mode Calibrate pour ajuster la courbe et exporter ses coefficients."
+    ],
+    "queries": [
+      "étalonnage turn",
+      "étalonnage point turn",
+      "étalonner les turns",
+      "créer un étalonnage à partir des turns",
+      "courbe d'étalonnage turn",
+      "concentration par turn"
     ]
   },
   {
