@@ -257,5 +257,14 @@
   "quickconc.result": "Concentration",
   "quickconc.fill_all": "Saisissez tous les coefficients et une valeur mesurée.",
   "quickconc.error": "Échec du calcul.",
-  "metadata.none": "Aucun"
+  "metadata.none": "Aucun",
+  "cdc.axis_turn": "Enregistrer en Turns (1, 2, 3 …) au lieu de Timestamp",
+  "hint.cdc_axis_turn": "Enregistrer la première colonne comme un indice Turn (1, 2, 3 …) pour le point mode au lieu d'un Timestamp en secondes. Mémorisé comme valeur par défaut.",
+  "chart.axis_turn": "Turn",
+  "editor.convert_turn": "Timestamps → Turns",
+  "editor.convert_turn.hint": "Remplacer la colonne Timestamp par un indice Turn (1, 2, 3 …) pour le point mode. Cela supprime les temps enregistrés et toute modification non enregistrée.",
+  "editor.convert_turn.confirm_title": "Convertir en Turns ?",
+  "editor.convert_turn.confirm_text": "La colonne Timestamp sera remplacée par un indice Turn (1, 2, 3 …). Les temps enregistrés et les modifications non enregistrées seront perdus.",
+  "editor.convert_turn.confirm_btn": "Convertir",
+  "editor.convert_turn.failed": "Échec de la conversion."
 }

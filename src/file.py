@@ -7,7 +7,7 @@ from collections.abc import MutableMapping, Sequence
 
 from file_path import (parse_csv_metadata, detect_csv_schema,
                        get_concen_unit, DEFAULT_CONCEN_UNIT,
-                       CSV_SCHEMA_TIMESERIES)
+                       CSV_SCHEMA_TIMESERIES, timeseries_x_column)
 
 VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 
@@ -309,6 +309,20 @@ def get_dynamic_data(file_path):
             meta_lines, headers, rows = _read_csv_raw(file_path)
             metadata = parse_csv_metadata(meta_lines)
 
+            # Point-mode Turn files carry a "Turn" X column (1,2,3…) instead of
+            # "Timestamp". Rather than teach the whole timeseries pipeline (plot,
+            # value-at-point, reports — all keyed on "Timestamp") a second X name,
+            # rename the key to "Timestamp" on read and flag x_axis="turn" so the
+            # client relabels the axis / reference input. On disk the file keeps
+            # its "Turn" header (a Turn file never has a Timestamp column).
+            x_axis = 'time'
+            if headers and timeseries_x_column(",".join(headers)) == 'Turn':
+                x_axis = 'turn'
+                rows = [
+                    {('Timestamp' if k == 'Turn' else k): v for k, v in row.items()}
+                    for row in rows
+                ]
+
             if headers:
                 data = [
                     {k: (v if v is not None and v != "" else "NONE") for k, v in row.items()}
@@ -325,7 +339,8 @@ def get_dynamic_data(file_path):
                 'unit': unit,
                 'error': None,
                 'metadata': metadata,
-                'num_sources': num_sources
+                'num_sources': num_sources,
+                'x_axis': x_axis
             }
 
         elif file_path.lower().endswith('.json'):

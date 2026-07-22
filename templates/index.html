@@ -422,6 +422,11 @@
                         </select>
                     </div>
                     <span id="timeout-interval-error" class="error"></span>
+                    <div id="cdc-axis-control">
+                        <input type="checkbox" id="cdc-axis-turn" onchange="onCdcAxisChange()"
+                            data-i18n-hint="hint.cdc_axis_turn"
+                            data-hint="Record the first column as a Turn index (1, 2, 3 …) for point mode instead of a Timestamp in seconds. Remembered as your default."><span data-i18n="cdc.axis_turn">Record as Turns (1, 2, 3 …) instead of Timestamp</span></input>
+                    </div>
                     <input type="checkbox" id="notify-me" data-i18n-hint="hint.notify_done" data-hint="Show a desktop notification when the reading finishes" checked><span data-i18n="cdc.notify_done">Notify me when Done</span></input>
                     <br />
                     <button id="run-script-btn" onclick="runScript()" class="blinking"

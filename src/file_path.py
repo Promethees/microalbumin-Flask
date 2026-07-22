@@ -84,13 +84,13 @@ def get_data_subfolders():
     )
 
 
-def is_multi_value_timeseries_csv_header(header_line: str) -> bool:
-    """
-    Checks if the header matches the pattern used for raw multi-sensor/time-series data:
-    Timestamp,Value:1,Value:2,Value:3,... (with possible extra spaces)
-    """
+def _is_multi_value_series_header(header_line: str, x_column: str) -> bool:
+    """Shared check for a raw multi-sensor series header whose first column is
+    ``x_column`` (``Timestamp`` or ``Turn``): ``<x_column>,Value:1,Value:2,...``
+    (extra spaces tolerated)."""
     cleaned = re.sub(r'\s+', '', header_line.strip())
-    if not cleaned.startswith('Timestamp,'):
+    prefix = x_column + ','
+    if not cleaned.startswith(prefix):
         return False
     parts = cleaned.split(',')
     if len(parts) < 2:
@@ -99,10 +99,28 @@ def is_multi_value_timeseries_csv_header(header_line: str) -> bool:
     return all(part.startswith('Value:') for part in value_parts)
 
 
+def is_multi_value_timeseries_csv_header(header_line: str) -> bool:
+    """
+    Checks if the header matches the pattern used for raw multi-sensor/time-series data:
+    Timestamp,Value:1,Value:2,Value:3,... (with possible extra spaces)
+    """
+    return _is_multi_value_series_header(header_line, 'Timestamp')
+
+
+def is_multi_value_turn_csv_header(header_line: str) -> bool:
+    """
+    Point-mode Turn variant of the raw multi-sensor series header:
+    Turn,Value:1,Value:2,... — the X column is a 1,2,3… turn (measurement)
+    index instead of a Timestamp. A Turn file never carries a Timestamp column.
+    """
+    return _is_multi_value_series_header(header_line, 'Turn')
+
+
 # ---------------------------------------------------------------------------
 # CSV schema constants
 # ---------------------------------------------------------------------------
-CSV_SCHEMA_TIMESERIES = 'timeseries'       # Timestamp,Value:1[,Value:2,...]
+CSV_SCHEMA_TIMESERIES = 'timeseries'            # Timestamp,Value:1[,Value:2,...]
+CSV_SCHEMA_TIMESERIES_TURN = 'timeseries_turn'  # Turn,Value:1[,Value:2,...] (point mode)
 CSV_SCHEMA_KINETICS_CAL = 'kinetics_cal'   # Concentration,maxRate,Slope,Sat,Time To Sat
 CSV_SCHEMA_POINT_CAL = 'point_cal'         # Concentration,Value,TimePoint
 
@@ -131,11 +149,24 @@ def detect_csv_schema(header_line: str):
     header = header_line.strip()
     if is_multi_value_timeseries_csv_header(header):
         return CSV_SCHEMA_TIMESERIES
+    if is_multi_value_turn_csv_header(header):
+        return CSV_SCHEMA_TIMESERIES_TURN
     header_norm = re.sub(r'\s*,\s*', ',', header)
     if header_norm == 'Concentration,maxRate,Slope,Sat,Time To Sat':
         return CSV_SCHEMA_KINETICS_CAL
     if header_norm == 'Concentration,Value,TimePoint':
         return CSV_SCHEMA_POINT_CAL
+    return None
+
+
+def timeseries_x_column(header_line: str):
+    """Return the X-column name of a raw series header — ``'Turn'`` for a Turn
+    (point-mode index) file, ``'Timestamp'`` for a time-series file, or ``None``
+    when the header is not a raw multi-value series header."""
+    if is_multi_value_turn_csv_header(header_line):
+        return 'Turn'
+    if is_multi_value_timeseries_csv_header(header_line):
+        return 'Timestamp'
     return None
 
 

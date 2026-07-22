@@ -372,6 +372,8 @@ const MODE_VISIBILITY = {
             'export-coef',
             'func-desc',
             'report-console-section',
+            // Turn axis is a point-mode-only concept (Rule §2.27).
+            'cdc-axis-control',
         ],
         show: [
             'window-size-section',
@@ -449,6 +451,7 @@ const MODE_VISIBILITY = {
             'split-source-section',
             'top-left-dir-section',
             'main-directory-section',
+            'cdc-axis-control',
         ],
     },
     calibrate: {

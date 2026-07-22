@@ -257,5 +257,14 @@
   "quickconc.result": "浓度",
   "quickconc.fill_all": "请输入所有系数和一个测量值。",
   "quickconc.error": "计算失败。",
-  "metadata.none": "无"
+  "metadata.none": "无",
+  "cdc.axis_turn": "记录为 Turn (1, 2, 3 …) 而非 Timestamp",
+  "hint.cdc_axis_turn": "将第一列记录为 point mode 的 Turn 索引 (1, 2, 3 …)，而非以秒为单位的 Timestamp。会记住为默认值。",
+  "chart.axis_turn": "Turn",
+  "editor.convert_turn": "Timestamp → Turn",
+  "editor.convert_turn.hint": "将 Timestamp 列替换为 point mode 的 Turn 索引 (1, 2, 3 …)。此操作会丢弃已记录的时间和任何未保存的编辑。",
+  "editor.convert_turn.confirm_title": "转换为 Turn？",
+  "editor.convert_turn.confirm_text": "Timestamp 列将被替换为 Turn 索引 (1, 2, 3 …)。已记录的时间和未保存的编辑将丢失。",
+  "editor.convert_turn.confirm_btn": "转换",
+  "editor.convert_turn.failed": "转换失败。"
 }

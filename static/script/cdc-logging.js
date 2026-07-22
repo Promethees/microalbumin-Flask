@@ -144,7 +144,7 @@ function resetUI({ goToEnabled }) {
     const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = false;
 
-    const baseEnabled = ['base-name', 'run-script-btn', 'inf-timeout', 'interval', 'interval-unit'];
+    const baseEnabled = ['base-name', 'run-script-btn', 'inf-timeout', 'interval', 'interval-unit', 'cdc-axis-turn'];
     baseEnabled.forEach(id => (document.getElementById(id).disabled = false));
 
     document.getElementById('terminate-script-btn').disabled = true;
@@ -191,6 +191,15 @@ function onCdcSubfolderChange(select) {
     AppState.processedCdcPath = select.value ? getNativePath(DATA_ROOT, select.value) : DATA_ROOT;
 }
 
+// Turn/Timestamp axis toggle — persists as the user's default (cdc_axis) so the
+// next session opens with the same choice.
+function onCdcAxisChange() {
+    const useTurn = !!document.getElementById('cdc-axis-turn')?.checked;
+    const value = useTurn ? 'turn' : 'time';
+    if (typeof USER_SETTINGS !== 'undefined') USER_SETTINGS.cdc_axis = value;
+    if (typeof saveUserSetting === 'function') saveUserSetting('cdc_axis', value);
+}
+
 // Main script runner
 async function runScript() {
     if (!validateFileName("base-name") || !validateTimeoutInterval()) return;
@@ -230,18 +239,20 @@ async function runScript() {
     if (existingSel) existingSel.disabled = true;
     const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = true;
-    $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit"]);
+    $disable(["base-name", "run-script-btn", "inf-timeout", "timeout", "timeout-unit", "interval", "interval-unit", "cdc-axis-turn"]);
     $toggleClass("run-script-btn", "blinking", false);
     modeButtons.forEach(btn => btn.disabled = true);
 
     const timeoutValue = timeoutEl.value.trim();
     const intervalValue = intervalEl.value.trim();
+    const useTurn = !!document.getElementById('cdc-axis-turn')?.checked;
     const payload = {
         subfolder: subfolder,
         base_name: baseName,
         inf_checked: infTimeout,
         timeout_sec: timeoutValue ? parseFloat(timeoutValue) * getTimeUnitMultiplier($id("timeout-unit").value) : null,
-        interval_sec: intervalValue ? parseFloat(intervalValue) * getTimeUnitMultiplier($id("interval-unit").value) : null
+        interval_sec: intervalValue ? parseFloat(intervalValue) * getTimeUnitMultiplier($id("interval-unit").value) : null,
+        axis: useTurn ? 'turn' : 'time'
     };
 
     try {
@@ -331,7 +342,7 @@ function handleScriptTermination(message) {
     if (existingSel) existingSel.disabled = false;
     const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = false;
-    ["base-name", "inf-timeout", "interval", "interval-unit"].forEach(id => $id(id).disabled = false);
+    ["base-name", "inf-timeout", "interval", "interval-unit", "cdc-axis-turn"].forEach(id => $id(id).disabled = false);
     const timeoutDisabled = $id("inf-timeout").checked;
     $id("timeout").disabled = timeoutDisabled;
     $id("timeout-unit").disabled = timeoutDisabled;
@@ -348,7 +359,7 @@ async function fetchLogs() {
             $text("log-display", logs);
 
             // Detect newly recorded data points by counting log entries
-            const dpCount = (logs.match(/Received: Timestamp:/g) || []).length;
+            const dpCount = (logs.match(/Received: (?:Timestamp|Turn):/g) || []).length;
             if (dpCount > _prevDataPointCount) {
                 _prevDataPointCount = dpCount;
                 onNewDataPoint();

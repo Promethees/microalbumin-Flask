@@ -257,5 +257,14 @@
   "quickconc.result": "濃度",
   "quickconc.fill_all": "すべての係数と測定値を入力してください。",
   "quickconc.error": "計算に失敗しました。",
-  "metadata.none": "なし"
+  "metadata.none": "なし",
+  "cdc.axis_turn": "Timestamp ではなく Turn (1, 2, 3 …) で記録",
+  "hint.cdc_axis_turn": "最初の列を秒単位の Timestamp ではなく point mode 用の Turn インデックス (1, 2, 3 …) として記録します。既定値として記憶されます。",
+  "chart.axis_turn": "Turn",
+  "editor.convert_turn": "Timestamp → Turn",
+  "editor.convert_turn.hint": "Timestamp 列を point mode 用の Turn インデックス (1, 2, 3 …) に置き換えます。記録された時刻と未保存の編集は破棄されます。",
+  "editor.convert_turn.confirm_title": "Turn に変換しますか？",
+  "editor.convert_turn.confirm_text": "Timestamp 列が Turn インデックス (1, 2, 3 …) に置き換えられます。記録された時刻と未保存の編集は失われます。",
+  "editor.convert_turn.confirm_btn": "変換",
+  "editor.convert_turn.failed": "変換に失敗しました。"
 }

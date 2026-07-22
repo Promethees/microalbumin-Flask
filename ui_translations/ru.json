@@ -257,5 +257,14 @@
   "quickconc.result": "Концентрация",
   "quickconc.fill_all": "Введите все коэффициенты и измеренное значение.",
   "quickconc.error": "Ошибка вычисления.",
-  "metadata.none": "Нет"
+  "metadata.none": "Нет",
+  "cdc.axis_turn": "Записывать как Turn (1, 2, 3 …) вместо Timestamp",
+  "hint.cdc_axis_turn": "Записывать первый столбец как индекс Turn (1, 2, 3 …) для point mode вместо Timestamp в секундах. Запоминается как значение по умолчанию.",
+  "chart.axis_turn": "Turn",
+  "editor.convert_turn": "Timestamp → Turn",
+  "editor.convert_turn.hint": "Заменить столбец Timestamp индексом Turn (1, 2, 3 …) для point mode. При этом записанное время и несохранённые изменения будут отброшены.",
+  "editor.convert_turn.confirm_title": "Преобразовать в Turn?",
+  "editor.convert_turn.confirm_text": "Столбец Timestamp будет заменён индексом Turn (1, 2, 3 …). Записанное время и несохранённые изменения будут потеряны.",
+  "editor.convert_turn.confirm_btn": "Преобразовать",
+  "editor.convert_turn.failed": "Не удалось выполнить преобразование."
 }

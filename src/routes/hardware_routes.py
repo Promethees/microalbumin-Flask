@@ -46,7 +46,7 @@ def clear_current_output_marker():
         pass
 
 
-def _logger_command(base_dir, base_name, timeout_sec, interval_sec):
+def _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis="time"):
     """Build the CDC logger subprocess command. CDC needs no elevated privileges.
 
     Frozen: there is no python interpreter or log_cdc_data.py on disk, so we
@@ -68,6 +68,7 @@ def _logger_command(base_dir, base_name, timeout_sec, interval_sec):
         cmd += ['--timeout-sec', str(float(timeout_sec))]
     if interval_sec is not None:
         cmd += ['--interval-sec', str(float(interval_sec))]
+    cmd += ['--axis', 'turn' if axis == 'turn' else 'time']
     return cmd
 
 
@@ -76,7 +77,8 @@ def _logger_command(base_dir, base_name, timeout_sec, interval_sec):
     'subfolder': (str, '', False),
     'base_name': (str, 'colorimeter_data', False),
     'timeout_sec': (float, None, False),
-    'interval_sec': (float, None, False)
+    'interval_sec': (float, None, False),
+    'axis': (str, 'time', False)
 })
 def run_script(validated_data):
     if state.process and state.process.poll() is None:
@@ -86,6 +88,7 @@ def run_script(validated_data):
     base_name = validated_data['base_name']
     timeout_sec = validated_data['timeout_sec']
     interval_sec = validated_data['interval_sec']
+    axis = 'turn' if str(validated_data.get('axis', 'time')).strip().lower() == 'turn' else 'time'
 
     # Subfolder must be a simple name with no path traversal
     if subfolder and any(c in subfolder for c in ('/', '\\', '..')):
@@ -110,7 +113,7 @@ def run_script(validated_data):
 
     os.makedirs(abs_dir, exist_ok=True)
 
-    cmd = _logger_command(base_dir, base_name, timeout_sec, interval_sec)
+    cmd = _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis)
 
     # Fresh log so device/session detection reflects only this run.
     clear_logs()

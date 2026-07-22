@@ -443,23 +443,21 @@ async function filterFiles(files) {
     return filteredFiles;
 }
 
-function buildMeasHeaders() {
-    const headers = ["Timestamp"];
-    for (let i = 1; i <= AppState.numSources; i++) {
-        headers.push(`Value:${i}`);
-    }
-    return headers;
-}
-
 function checkMeasHeader(headers) {
+    // The X column is Timestamp, or — point mode only — a Turn index (Rule §2.27).
+    // Kinetics never reads Turn files, so they stay filtered out there.
+    const allowTurn = AppState.currentMeasurementMode === 'point';
+    const xOk = headers[0] === 'Timestamp' || (allowTurn && headers[0] === 'Turn');
+    if (!xOk) return false;
+
+    const valueHeaders = headers.slice(1);
     if (getBtnChecked("filter-source")) {
-        const expectedHeaders = buildMeasHeaders();
-        return arraysEqual(headers, expectedHeaders);
-    } else {
-        const meas_headers = /^\s*Timestamp\s*Value:\d+(?:\s*Value:\d+)*\s*$/;
-        const headerString = headers.join('');
-        return meas_headers.test(headerString);
+        const expectedValues = [];
+        for (let i = 1; i <= AppState.numSources; i++) expectedValues.push(`Value:${i}`);
+        return arraysEqual(valueHeaders, expectedValues);
     }
+    // At least one Value:N column, nothing else.
+    return valueHeaders.length > 0 && valueHeaders.every(h => /^\s*Value:\d+\s*$/.test(h));
 }
 
 // Header row for the calibration-JSON table (name + modified-date columns are

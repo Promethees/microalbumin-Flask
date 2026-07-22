@@ -415,6 +415,7 @@ function deselectFile(tableSelector = "#file-table") {
 
     if (tableSelector === "#file-table") {
         AppState.responseData = null;
+        AppState.xAxis = 'time';
         destroyCharts();
 
         // Hide canvas
@@ -677,6 +678,10 @@ function processResponse(response, jsonFile) {
     AppState.responseData = response.data;
     AppState.metaData = response.metadata;
     AppState.numSources = response.num_sources || 1;
+    // Point-mode Turn files stream a 1,2,3… turn index instead of a Timestamp.
+    // The server normalizes the key to "Timestamp" and flags x_axis so the chart
+    // axis / reference input relabel to "Turn" (see get_dynamic_data).
+    AppState.xAxis = response.x_axis || 'time';
 
     // Reflect the loaded file's concentration unit in the #concen-unit dropdown
     // (post-migration / post-CDC every file carries # ConcenUnit; legacy files
@@ -843,6 +848,14 @@ function updateRefCalPoint(jsonFile) {
     const jsonTimePoint = jsonFile["time"];
     const jsonTimeUnit = jsonFile["time-unit"];
 
+    // Turn files carry a unitless 1,2,3… index, so the reference point IS the
+    // turn number — no time-unit conversion applies.
+    if (AppState.xAxis === 'turn') {
+        AppState.refCalPoint = jsonTimePoint;
+        document.getElementById("cal-point").textContent = AppState.refCalPoint;
+        return;
+    }
+
     // Convert time units
     const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(getTimeUnitValue());
     AppState.refCalPoint = jsonTimePoint * conversionFactor;
@@ -856,7 +869,11 @@ function processPointMode(jsonFile, derived_con_text) {
     if (derived_con_text && derived_con_text.id.includes("source-")) {
         sourceIndex = parseInt(derived_con_text.id.split("source-")[1]) + 1;
     }
-    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue()), sourceIndex).toFixed(4);
+    // Turn X axis: refCalPoint is the raw turn index (no time-unit scaling).
+    const lookupPoint = AppState.xAxis === 'turn'
+        ? AppState.refCalPoint
+        : AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue());
+    const estValueRead = getEstimatedValue(AppState.responseData, lookupPoint, sourceIndex).toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
         // Target the specific source message container

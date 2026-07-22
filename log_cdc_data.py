@@ -41,12 +41,15 @@ from send_command import connect_to_device, send_command_and_wait_ack
 
 class CDCDataCollector:
     def __init__(self, base_dir, base_name="colorimeter_data", extension=".csv",
-                 timeout_sec=None, interval_sec=None):
+                 timeout_sec=None, interval_sec=None, axis="time"):
         self.base_dir = base_dir
         self.base_name = base_name
         self.extension = extension
         self.timeout_sec = timeout_sec
         self.interval_sec = interval_sec
+        # X-axis for this session: "turn" logs a 1,2,3… turn index under a "Turn"
+        # header (point-mode files); otherwise the elapsed "Timestamp" in seconds.
+        self.axis = "turn" if str(axis).strip().lower() == "turn" else "time"
 
         self.serial = None
         self.output_file = None
@@ -55,13 +58,19 @@ class CDCDataCollector:
         self.metadata = {}
         self.num_values = None
         self.session_started = False
+        # First-column name from the received header ("Timestamp" or "Turn"),
+        # used only for log wording.
+        self.x_label = "Timestamp"
 
         # CDC delivers the device's exact bytes, so these patterns match the
         # clean text emitted by serial_manager._write() — no up-casing /
         # modifier-stripping like the old keyboard path had to undo.
         self.metadata_pattern = r"^#\s*(Measurement|Unit|Concentration|ConcenUnit):\s*(.+?)\s*$"
-        self.header_pattern = r"^Timestamp,Value:\d+(?:,Value:\d+)*$"
-        self.data_pattern = r"^\d+\.\d{1,2},(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
+        # The first column is Timestamp (elapsed seconds) or Turn (a 1,2,3… index);
+        # accept either header and either first-field form (int turn or decimal
+        # timestamp). A Turn file never carries a Timestamp column.
+        self.header_pattern = r"^(?:Timestamp|Turn),Value:\d+(?:,Value:\d+)*$"
+        self.data_pattern = r"^\d+(?:\.\d{1,2})?,(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
         self.end_pattern = r"^SESSION TIMEOUT$"
         # Device-side manual stop (Left button) of a host session — distinct from
         # a timeout so the UI can announce it differently (firmware serial_manager).
@@ -84,7 +93,8 @@ class CDCDataCollector:
 
     def is_main_header(self, line):
         if re.match(self.header_pattern, line):
-            self.num_values = len(line.split(",")) - 1  # exclude Timestamp
+            self.num_values = len(line.split(",")) - 1  # exclude the X column
+            self.x_label = line.split(",", 1)[0].strip()  # "Timestamp" or "Turn"
             return True
         return False
 
@@ -132,7 +142,8 @@ class CDCDataCollector:
 
     def process_data(self, line):
         fields = line.split(",")
-        self.log(f"Received: Timestamp: {fields[0]}s, Values: {', '.join(fields[1:])}")
+        unit = "" if self.x_label == "Turn" else "s"
+        self.log(f"Received: {self.x_label}: {fields[0]}{unit}, Values: {', '.join(fields[1:])}")
         with open(self.output_file, "a", encoding="utf-8") as f:
             f.write(line + "\n")
 
@@ -174,11 +185,13 @@ class CDCDataCollector:
     def _send_start_commands(self):
         timeout = float(self.timeout_sec) if self.timeout_sec is not None else -1
         interval = float(self.interval_sec) if self.interval_sec is not None else -1
-        commands = ["1\n", f"TIMEOUT:{timeout}\n", f"INTERVAL:{interval}\n"]
+        # AXIS goes between TIMEOUT and INTERVAL (INTERVAL is the stage that
+        # starts the device talking, so the axis must be set before it).
+        commands = ["1\n", f"TIMEOUT:{timeout}\n", f"AXIS:{self.axis}\n", f"INTERVAL:{interval}\n"]
         return send_command_and_wait_ack(
             self.serial, commands,
-            ["ACK_START", "ACK_TIMEOUT", "ACK_INTERVAL"],
-            ["ERR_START", "ERR_TIMEOUT", "ERR_INTERVAL"],
+            ["ACK_START", "ACK_TIMEOUT", "ACK_AXIS", "ACK_INTERVAL"],
+            ["ERR_START", "ERR_TIMEOUT", "ERR_AXIS", "ERR_INTERVAL"],
         )
 
     def start(self):
@@ -250,6 +263,9 @@ def parse_arguments(argv=None):
     parser.add_argument(
         "--interval-sec", type=float, default=None,
         help="Transmission interval in seconds")
+    parser.add_argument(
+        "--axis", type=str, default="time", choices=["time", "turn"],
+        help="First-column axis: 'time' (Timestamp seconds) or 'turn' (1,2,3… index)")
     args = parser.parse_args(argv)
     base_dir = os.getenv(args.base_dir, args.base_dir)
     args.base_dir = os.path.abspath(os.path.expanduser(base_dir))
@@ -261,6 +277,7 @@ def main(argv=None):
     collector = CDCDataCollector(
         args.base_dir, args.base_name,
         timeout_sec=args.timeout_sec, interval_sec=args.interval_sec,
+        axis=args.axis,
     )
     return collector.start()
 

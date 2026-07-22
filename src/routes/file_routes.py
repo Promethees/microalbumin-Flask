@@ -16,7 +16,8 @@ import state
 from file_path import (DATA_ROOT, validate_in_data_root, validate_in_allowed_roots,
                        is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER,
                        parse_csv_metadata, detect_csv_schema,
-                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
+                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_TIMESERIES_TURN,
+                       CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
                        DEFAULT_CONCEN_UNIT)
 from file import get_dynamic_data, replace_empty, merge_csv_files
 from file_operations import remove_csv_columns
@@ -79,6 +80,13 @@ _SCHEMA_VALIDATORS = {
         'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Pattern 4).'
+    },
+    # Point-mode Turn series: same as the timeseries schema but the first (X)
+    # column is an integer turn index (1,2,3…) instead of a decimal Timestamp.
+    CSV_SCHEMA_TIMESERIES_TURN: {
+        'data': r'^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
+        'meta': ["Measurement", "Unit", "Concentration"],
+        'error': 'Invalid format (Turn series).'
     },
 }
 
@@ -804,7 +812,7 @@ def get_num_sources():
                     line = line.strip()
                     if not line or line.startswith('#'):
                         continue
-                    if detect_csv_schema(line) == CSV_SCHEMA_TIMESERIES:
+                    if detect_csv_schema(line) in (CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_TIMESERIES_TURN):
                         columns = [c.strip() for c in line.split(',')]
                         value_count = sum(1 for c in columns[1:] if c.startswith('Value:'))
                         if value_count > 0:
@@ -951,6 +959,75 @@ def save_range_csv(validated_data):
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
+@file_bp.route('/convert_timestamp_to_turn', methods=['POST'])
+@validate_json({'filename': str, 'path': (str, '', False)})
+def convert_timestamp_to_turn(validated_data):
+    """Rewrite a point-mode Timestamp series CSV into a Turn series in place.
+
+    The ``Timestamp`` header becomes ``Turn`` and every data row's first cell is
+    replaced by its 1-based turn index (1,2,3…); metadata lines and all Value
+    columns are preserved verbatim. A Turn file carries no Timestamp column, so
+    this is a one-way relabel of the X axis (the recorded times are dropped).
+    Only a timeseries file is convertible; a Turn file or a calibration file is
+    rejected. Refused while a capture is running (the file may be live)."""
+    if state.process and state.process.poll() is None:
+        return jsonify({'status': 'error', 'message': 'Cannot convert files while the data collection process is running'}), HTTPStatus.LOCKED
+
+    filename = validated_data['filename']
+    path = validated_data['path'] or DATA_ROOT
+    if not filename.lower().endswith('.csv'):
+        return jsonify({'status': 'error', 'message': 'Only CSV files are supported'}), HTTPStatus.BAD_REQUEST
+
+    file_path = validate_in_allowed_roots(os.path.join(path, filename))
+    if not file_path:
+        return jsonify({'status': 'error', 'message': 'Invalid file path'}), HTTPStatus.BAD_REQUEST
+    if not os.path.isfile(file_path):
+        return jsonify({'status': 'error', 'message': f'File {filename} not found'}), HTTPStatus.NOT_FOUND
+
+    try:
+        meta_lines, data_lines = [], []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    meta_lines.append(line.rstrip('\n'))
+                elif stripped:
+                    data_lines.append(stripped)
+
+        if not data_lines:
+            return jsonify({'status': 'error', 'message': 'File has no data rows'}), HTTPStatus.BAD_REQUEST
+
+        schema = detect_csv_schema(data_lines[0])
+        if schema == CSV_SCHEMA_TIMESERIES_TURN:
+            return jsonify({'status': 'error', 'message': 'File already uses a Turn column'}), HTTPStatus.BAD_REQUEST
+        if schema != CSV_SCHEMA_TIMESERIES:
+            return jsonify({'status': 'error', 'message': 'Only a Timestamp series file can be converted to Turns'}), HTTPStatus.BAD_REQUEST
+
+        header_list = [h.strip() for h in next(csv.reader([data_lines[0]]))]
+        header_list[0] = 'Turn'  # Timestamp -> Turn
+
+        out_rows = []
+        for i, line in enumerate(data_lines[1:], start=1):
+            parsed = next(csv.reader([line]))
+            parsed[0] = str(i)  # sequential turn index 1,2,3…
+            out_rows.append(parsed)
+
+        lock_path = file_path + '.lock'
+        try:
+            with FileLock(lock_path, timeout=0):
+                with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                    for line in meta_lines:
+                        f.write(line + '\n')
+                    writer = csv.writer(f)
+                    writer.writerow(header_list)
+                    writer.writerows(out_rows)
+        except Timeout:
+            return jsonify({'status': 'error', 'message': 'Another save is in progress'}), 423
+
+        return jsonify({'status': 'success', 'message': f'Converted {len(out_rows)} rows to Turns', 'count': len(out_rows)})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 @file_bp.route('/export_data', methods=['POST'])
 @validate_json({

@@ -105,6 +105,44 @@ Timestamp,Value:1
     assert len(res['data']) == 2
     assert res['num_sources'] == 1
     assert res['metadata']['Measurement'] == "ABS"
+    # A Timestamp series reports the time axis.
+    assert res['x_axis'] == 'time'
+
+
+def test_get_dynamic_data_turn_csv(tmp_path):
+    """A point-mode Turn file is read with its Turn column normalized to the
+    Timestamp key (so the timeseries pipeline is unchanged) and flagged x_axis."""
+    csv_content = (
+        "# Measurement: ABS\n"
+        "# Unit: NONE\n"
+        "# Concentration: 5\n"
+        "Turn,Value:1,Value:2\n"
+        "1,0.100,0.200\n"
+        "2,0.110,0.210\n"
+        "3,OVFL,0.220\n"
+    )
+    csv_file = tmp_path / "turn.csv"
+    csv_file.write_text(csv_content)
+
+    res = file.get_dynamic_data(str(csv_file))
+    assert res['x_axis'] == 'turn'
+    assert res['num_sources'] == 2
+    # Turn column surfaces under the Timestamp key with integer indices 1,2,3…
+    assert 'Timestamp' in res['data'][0]
+    assert 'Turn' not in res['data'][0]
+    assert [row['Timestamp'] for row in res['data']] == ['1', '2', '3']
+    assert res['data'][2]['Value:1'] == 'OVFL'
+
+
+def test_detect_turn_schema():
+    from src import file_path as fp
+    assert fp.detect_csv_schema('Turn,Value:1,Value:2') == fp.CSV_SCHEMA_TIMESERIES_TURN
+    assert fp.detect_csv_schema('Timestamp,Value:1') == fp.CSV_SCHEMA_TIMESERIES
+    assert fp.detect_csv_schema('Turn,Foo') is None
+    assert fp.timeseries_x_column('Turn,Value:1') == 'Turn'
+    assert fp.timeseries_x_column('Timestamp,Value:1') == 'Timestamp'
+    assert fp.timeseries_x_column('Concentration,Value,TimePoint') is None
+
 
 def test_replace_empty():
     data = {"a": "", "b": [], "c": {"d": None}, "e": [1, None]}

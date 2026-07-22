@@ -47,6 +47,7 @@ DEFAULTS = {
     "default_timeout_unit": "seconds",
     "default_interval": None,
     "default_interval_unit": "seconds",
+    "cdc_axis": "time",
     "merge_directory_picker": False,
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
@@ -97,6 +98,8 @@ def save(updates: dict) -> bool:
         current["time_tag_format"] = updates["time_tag_format"]
     if "default_concentration_unit" in updates and updates["default_concentration_unit"] in _VALID_CONCEN_UNITS:
         current["default_concentration_unit"] = updates["default_concentration_unit"]
+    if "cdc_axis" in updates and updates["cdc_axis"] in ("time", "turn"):
+        current["cdc_axis"] = updates["cdc_axis"]
     if "default_subfolder" in updates:
         val = updates["default_subfolder"]
         current["default_subfolder"] = val if (isinstance(val, str) and val) or val is None else None

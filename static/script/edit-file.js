@@ -365,6 +365,56 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 });
             }
 
+            // Convert Timestamps -> Turns (point mode): rewrites the saved file's
+            // first column to a 1,2,3… turn index. Destructive (drops the recorded
+            // times and any unsaved editor edits), so it confirms first. The
+            // editor is reopened afterwards to show the reloaded (converted) file;
+            // on cancel/error it is reopened unchanged.
+            const convertBtn = document.getElementById('convert-turn-btn');
+            if (convertBtn) {
+                convertBtn.addEventListener('click', function () {
+                    Swal.fire({
+                        title: t('editor.convert_turn.confirm_title', 'Convert to Turns?'),
+                        text: t('editor.convert_turn.confirm_text', 'The Timestamp column will be replaced by a Turn index (1, 2, 3 …). Recorded times and any unsaved edits will be lost.'),
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: t('editor.convert_turn.confirm_btn', 'Convert'),
+                        cancelButtonText: t('common.cancel', 'Cancel')
+                    }).then(function (res) {
+                        if (!res.isConfirmed) {
+                            editFile(fileName, button, tableSelector);  // restore editor
+                            return;
+                        }
+                        $.ajax({
+                            url: '/convert_timestamp_to_turn',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ filename: fileName, path: filePath }),
+                            success: function (resp) {
+                                if (resp.status === 'success') {
+                                    // Reopen the editor so the converted (Turn) file is
+                                    // visible; if this file is the active display, reload
+                                    // it too so the chart reflects the new X axis.
+                                    if (tableSelector === '#file-table' && AppState.currentFile === fileName) {
+                                        deselectFile(tableSelector);
+                                        selectFile(fileName, button, tableSelector);
+                                    }
+                                    editFile(fileName, button, tableSelector);
+                                } else {
+                                    Swal.fire({ title: t('common.error', 'Error!'), text: resp.message, icon: 'error', confirmButtonText: t('common.ok', 'OK') })
+                                        .then(function () { editFile(fileName, button, tableSelector); });
+                                }
+                            },
+                            error: function (jqXHR) {
+                                const msg = (jqXHR.responseJSON && jqXHR.responseJSON.message) || t('editor.convert_turn.failed', 'Conversion failed.');
+                                Swal.fire({ title: t('common.error', 'Error!'), text: msg, icon: 'error', confirmButtonText: t('common.ok', 'OK') })
+                                    .then(function () { editFile(fileName, button, tableSelector); });
+                            }
+                        });
+                    });
+                });
+            }
+
             // Remove columns
         }
 
@@ -491,6 +541,14 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 Delete Selected Row (-)
                             </button>
                         </div>
+                        ${(tableSelector === '#file-table' && headers[0] === 'Timestamp') ? `
+                        <div>
+                            <button id="convert-turn-btn" type="button" class="swal2-styled"
+                                style="padding: 5px 10px; background-color: #2980b9;"
+                                title="${escapeHtml(t('editor.convert_turn.hint', 'Replace the Timestamp column with a Turn index (1, 2, 3 …) for point mode. This discards the recorded times and any unsaved edits.'))}">
+                                ${escapeHtml(t('editor.convert_turn', 'Timestamps → Turns'))}
+                            </button>
+                        </div>` : ''}
                     </div>
                     <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
                         <table id="swal-edit-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
