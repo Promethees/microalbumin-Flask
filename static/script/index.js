@@ -508,6 +508,22 @@ function applyModeVisibility(mode) {
     const cfg = MODE_VISIBILITY[mode];
     $hidden(cfg.hide, true);
     $hidden(cfg.show, false);
+    // Turn is a point-mode-only axis (Rule §2.27). Outside point mode, actively
+    // DISABLE the Turn checkbox rather than merely hiding its control — a hidden
+    // but still-checked box would make a kinetics/calibrate CDC capture record
+    // axis:'turn' (runScript reads cdc-axis-turn.checked regardless of mode).
+    // Re-entering point mode restores the box from the saved cdc_axis default;
+    // USER_SETTINGS is never touched so the user's default is preserved.
+    const axisBox = document.getElementById('cdc-axis-turn');
+    if (axisBox) {
+        if (mode === 'point') {
+            axisBox.disabled = false;
+            axisBox.checked = (typeof USER_SETTINGS !== 'undefined' && USER_SETTINGS.cdc_axis === 'turn');
+        } else {
+            axisBox.checked = false;
+            axisBox.disabled = true;
+        }
+    }
     // The Auto/Manual run-mode control is point-mode + Turn only (Rule §2.27).
     if (typeof updateRunModeVisibility === 'function') updateRunModeVisibility();
 }

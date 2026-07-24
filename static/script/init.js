@@ -580,8 +580,16 @@ if (typeof USER_SETTINGS !== 'undefined') {
     }
     const _iuEl = document.getElementById('interval-unit');
     if (_iuEl && USER_SETTINGS.default_interval_unit) _iuEl.value = USER_SETTINGS.default_interval_unit;
+    // Turn axis is point-mode-only (Rule §2.27). Arm the box from the saved
+    // default only when the app actually starts in point mode; otherwise leave it
+    // unchecked+disabled so a kinetics/calibrate CDC capture can't record Turns.
+    // applyModeVisibility() re-applies this on every mode switch.
     const _axisEl = document.getElementById('cdc-axis-turn');
-    if (_axisEl) _axisEl.checked = USER_SETTINGS.cdc_axis === 'turn';
+    if (_axisEl) {
+        const _inPoint = (typeof AppState !== 'undefined' && AppState.currentMeasurementMode === 'point');
+        _axisEl.checked = _inPoint && USER_SETTINGS.cdc_axis === 'turn';
+        _axisEl.disabled = !_inPoint;
+    }
     const _runMode = USER_SETTINGS.cdc_run_mode === 'manual' ? 'manual' : 'auto';
     const _runModeEl = document.querySelector(`input[name="cdc-run-mode"][value="${_runMode}"]`);
     if (_runModeEl) _runModeEl.checked = true;

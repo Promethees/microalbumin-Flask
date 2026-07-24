@@ -493,7 +493,10 @@ function handleScriptTermination(message) {
     if (existingSel) existingSel.disabled = false;
     const newInput = document.getElementById('cdc-new-folder-name');
     if (newInput) newInput.disabled = false;
-    ["base-name", "inf-timeout", "interval", "interval-unit", "cdc-axis-turn"].forEach(id => $id(id).disabled = false);
+    ["base-name", "inf-timeout", "interval", "interval-unit"].forEach(id => $id(id).disabled = false);
+    // Turn axis is point-mode-only (Rule §2.27); re-enable it only there so a
+    // finished kinetics/calibrate capture never re-arms the Turn checkbox.
+    if (AppState?.currentMeasurementMode === 'point') $id("cdc-axis-turn").disabled = false;
     const timeoutDisabled = $id("inf-timeout").checked;
     $id("timeout").disabled = timeoutDisabled;
     $id("timeout-unit").disabled = timeoutDisabled;
