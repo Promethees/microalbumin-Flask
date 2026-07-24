@@ -36,7 +36,7 @@ if _SRC_DIR not in sys.path:
 
 import state
 from get_next_filename import get_next_filename
-from send_command import connect_to_device, send_command_and_wait_ack
+from send_command import connect_to_device, send_command_and_wait_ack, LineReader
 
 
 class CDCDataCollector:
@@ -276,14 +276,18 @@ class CDCDataCollector:
             # stays valid.
             if self.manual:
                 self._send_measure("initial Turn on start")
+            # LineReader, not readline(): the port timeout is short so the manual
+            # trigger is picked up promptly, and at that cadence readline() would
+            # hand back partial lines. LineReader buffers and yields whole lines.
+            reader = LineReader(self.serial)
             while self.running:
-                # Forward any pending manual-measure request before blocking on the
-                # next read (readline has a 1s timeout, so latency is ≤1s).
+                # Forward any pending manual-measure request before blocking on
+                # the next read (each read blocks ≤ one port timeout, 0.15s).
                 self._check_measure_trigger()
-                line = self.serial.readline()
-                if not line:
-                    continue  # read timeout — keep waiting for the next line
-                self.process_line(line.decode("utf-8", errors="replace"))
+                for line in reader.read_lines():
+                    self.process_line(line)
+                    if not self.running:
+                        break
         except Exception as e:
             self.log(f"Error: {e}")
             return 1
