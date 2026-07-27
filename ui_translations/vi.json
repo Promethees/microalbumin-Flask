@@ -236,6 +236,7 @@
   "settings.language": "Ngôn ngữ",
   "settings.language.help": "Ngôn ngữ cho giao diện ứng dụng",
   "settings.disable_popups": "Tắt cửa sổ bật lên",
+  "settings.live_stream": "Truyền trực tiếp số đo (khuyến nghị)",
   "settings.time_format": "Định dạng ngày / giờ",
   "settings.time_format.help": "Dùng cho nhãn ngày sửa đổi của tệp",
   "settings.revert_defaults": "Khôi phục mặc định",

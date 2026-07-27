@@ -55,6 +55,12 @@ DEFAULTS = {
     # which produce visible output — hence the wait notice. Configurable because
     # a slow/hub-attached board legitimately takes longer on some machines.
     "reading_start_timeout_sec": 60,
+    # Push a live reading session to the browser over SSE (/stream_session)
+    # instead of polling for it. On by default; turning it off falls back to the
+    # 500 ms chart poll + 2 s log poll, which is the escape hatch for a setup
+    # where a buffering intermediary sits between the browser and the app and
+    # holds SSE frames back.
+    "live_stream_enabled": True,
     "merge_directory_picker": False,
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
@@ -161,7 +167,8 @@ def save(updates: dict) -> bool:
                      "range_expanded_default", "export_expanded_default",
                      "log_section_collapsed", "default_notify",
                      "default_inf_timeout", "merge_directory_picker",
-                     "disable_popups", "ai_feedback_enabled"):
+                     "disable_popups", "ai_feedback_enabled",
+                     "live_stream_enabled"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])
     if "log_display_height" in updates:

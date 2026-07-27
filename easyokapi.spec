@@ -48,6 +48,8 @@ hiddenimports = [
     'routes.core_routes',
     'routes.file_routes',
     'routes.hardware_routes',
+    # SSE tail of a live reading session (imported by routes.hardware_routes).
+    'live_stream',
     'routes.math_routes',
     'routes.ai_routes',
     'routes.update_routes',

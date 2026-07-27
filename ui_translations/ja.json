@@ -236,6 +236,7 @@
   "settings.language": "言語",
   "settings.language.help": "アプリのインターフェース言語",
   "settings.disable_popups": "ポップアップを無効化",
+  "settings.live_stream": "測定値をライブ配信（推奨）",
   "settings.time_format": "日付／時刻の形式",
   "settings.time_format.help": "ファイルの更新日タグに使用",
   "settings.revert_defaults": "既定値に戻す",

@@ -640,6 +640,7 @@ const SETTINGS_DEFAULTS = {
     cdc_axis: 'time',
     cdc_run_mode: 'auto',
     reading_start_timeout_sec: 60,
+    live_stream_enabled: true,
     merge_directory_picker: false,
     disable_popups: false,
     default_concentration_unit: 'ng/µL',
@@ -763,6 +764,7 @@ function _buildSettingsHTML(s, folders, aiStats) {
                     `<option value="auto"   ${(s.cdc_run_mode||'auto')==='auto'?'selected':''}>Automatic</option>
                      <option value="manual" ${s.cdc_run_mode==='manual'?'selected':''}>Manual</option>`))}
                 ${row('Wait for device on start', 's (10-600)', num('swal-reading-start-timeout', 10, s.reading_start_timeout_sec ?? 60))}
+                ${rowCheck(t('settings.live_stream', 'Stream live readings (recommended)'), 'swal-live-stream', s.live_stream_enabled !== false)}
             </div>
         </div>
         <div class="sm-section sm-section--full">
@@ -877,6 +879,7 @@ function _readSettingsForm() {
         cdc_axis: document.getElementById('swal-cdc-axis-turn').checked ? 'turn' : 'time',
         cdc_run_mode: document.getElementById('swal-cdc-run-mode').value === 'manual' ? 'manual' : 'auto',
         reading_start_timeout_sec: parseInt(document.getElementById('swal-reading-start-timeout').value, 10) || 60,
+        live_stream_enabled: document.getElementById('swal-live-stream').checked,
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
         ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
@@ -924,6 +927,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-cdc-axis-turn').checked = s.cdc_axis === 'turn';
     document.getElementById('swal-cdc-run-mode').value = s.cdc_run_mode === 'manual' ? 'manual' : 'auto';
     document.getElementById('swal-reading-start-timeout').value = s.reading_start_timeout_sec ?? 60;
+    document.getElementById('swal-live-stream').checked = s.live_stream_enabled !== false;
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;

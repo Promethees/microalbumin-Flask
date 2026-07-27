@@ -1,10 +1,11 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, Response, stream_with_context
 import os
 import sys
 import platform
 import subprocess
 import signal
 import state
+import live_stream
 from script_monitor import check_log_for_errors, check_log_for_session_start, check_log_for_end_reason
 from file_path import is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER
 from validators import validate_json
@@ -248,6 +249,28 @@ def pause_reading():
 def resume_reading():
     """Resume a paused reading session (see /pause_reading)."""
     return _request_pause_state(False)
+
+
+@hardware_bp.route('/stream_session', methods=['GET'])
+def stream_session():
+    """SSE tail of the running session: new CSV rows + new log text, pushed.
+
+    Replaces the client's 500 ms ``/get_data`` chart poll and 2 s ``/get_logs``
+    poll for the duration of a run (see src/live_stream.py). Deliberately does
+    NOT own the run-end transition: it emits an ``end`` event and closes, and the
+    client calls /check_status, which remains the single place that decides why a
+    session finished and clears the log.
+    """
+    return Response(
+        stream_with_context(live_stream.iter_session_events()),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            # Belt-and-braces against a buffering intermediary; the app is local,
+            # but a user-configured proxy would otherwise hold every frame.
+            'X-Accel-Buffering': 'no',
+        },
+    )
 
 
 @hardware_bp.route('/check_status', methods=['GET'])

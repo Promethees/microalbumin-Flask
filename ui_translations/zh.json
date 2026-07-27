@@ -236,6 +236,7 @@
   "settings.language": "语言",
   "settings.language.help": "应用界面语言",
   "settings.disable_popups": "禁用弹窗",
+  "settings.live_stream": "实时推送读数（推荐）",
   "settings.time_format": "日期 / 时间格式",
   "settings.time_format.help": "用于文件修改日期标签",
   "settings.revert_defaults": "恢复默认值",

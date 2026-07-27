@@ -173,6 +173,12 @@ function resetRunControls() {
     // The run is over (or never started), so stop watching for it to come up.
     // A failed start keeps its notice visible — endStartupWatch handles that.
     endStartupWatch();
+    // Close the push channel, then re-read the finished file once from disk. The
+    // stream is not the authority on what was recorded: if the status poll won
+    // the race to detect the end, or a reconnect gap swallowed a row, the chart
+    // would otherwise keep whatever the stream last delivered.
+    if (typeof stopLiveStream === 'function') stopLiveStream();
+    if (AppState.currentFile && typeof drawMeasurementChart === 'function') drawMeasurementChart();
     // Pause/Resume: clear the state before the flags below, so the controls are
     // repainted in their default "Pause reading" wording for the next run.
     readingPaused = false;
@@ -722,6 +728,10 @@ async function runScript() {
                 startControlObserver();
             }
             statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
+            // Push channel for this run's rows and log text. The status poll
+            // above stays: it owns why a session ended, which the stream does
+            // not attempt to decide.
+            startLiveStream();
         } else if (response.status === "device_not_found") {
             handleDeviceNotFound(response);
         } else {
@@ -802,7 +812,38 @@ function handleScriptTermination(message) {
     modeButtons.forEach(btn => btn.disabled = false);
 }
 
-// --- Fetch logs ---
+// Interpret the session log accumulated so far: advance the start-up notice and
+// raise any end-of-session notice. Shared by the SSE stream (which appends log
+// deltas as they are pushed) and the fallback poll below, so both read the log
+// exactly the same way.
+//
+// `countDataPoints` is the fallback path's row detector: it counts "Received:"
+// lines in the whole log because a poll has no other way to notice a new row.
+// The stream leaves it off — it is handed the rows themselves, so it calls
+// onNewDataPoint() once per row instead of inferring a count.
+function applyLogText(logs, { countDataPoints = false } = {}) {
+    // Advance the start-up notice from the logger's own progress lines. Runs
+    // before the data-point check so a run that goes live inside a single poll
+    // still clears the notice.
+    updateStartupProgress(logs);
+
+    if (countDataPoints) {
+        const dpCount = (logs.match(/Received: (?:Timestamp|Turn):/g) || []).length;
+        if (dpCount > _prevDataPointCount) {
+            _prevDataPointCount = dpCount;
+            onNewDataPoint();
+        }
+    }
+
+    if (/PyBadge not found/.test(logs)) showTerminationNotice(t('cdc.err_pybadge_not_found', "PyBadge not found. Please check the connection."), "error");
+    else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice(t('cdc.err_no_endpoint', "Failed to find input endpoint. Please verify USB connection."), "error");
+    else if (/SESSION STOPPED/.test(logs)) showTerminationNotice(t('cdc.session_stopped', "Session stopped manually on the device."), "info");
+    else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice(t('cdc.session_timeout', "Session ended due to timeout."), "info");
+}
+
+// --- Fetch logs (fallback path) ---
+// Only runs while the SSE session stream is NOT carrying the session — see
+// live-stream.js. With the stream up, log text arrives as deltas instead.
 async function fetchLogs() {
     try {
         const res = await fetch("/get_logs");
@@ -810,23 +851,7 @@ async function fetchLogs() {
         if (response.status === "success") {
             const logs = response.logs;
             $text("log-display", logs);
-
-            // Advance the start-up notice from the logger's own progress lines.
-            // Runs before the data-point check so a run that goes live inside a
-            // single poll still clears the notice.
-            updateStartupProgress(logs);
-
-            // Detect newly recorded data points by counting log entries
-            const dpCount = (logs.match(/Received: (?:Timestamp|Turn):/g) || []).length;
-            if (dpCount > _prevDataPointCount) {
-                _prevDataPointCount = dpCount;
-                onNewDataPoint();
-            }
-
-            if (/PyBadge not found/.test(logs)) showTerminationNotice(t('cdc.err_pybadge_not_found', "PyBadge not found. Please check the connection."), "error");
-            else if (/Failed to find input endpoint/.test(logs)) showTerminationNotice(t('cdc.err_no_endpoint', "Failed to find input endpoint. Please verify USB connection."), "error");
-            else if (/SESSION STOPPED/.test(logs)) showTerminationNotice(t('cdc.session_stopped', "Session stopped manually on the device."), "info");
-            else if (/SESSION TIMEOUT/.test(logs)) showTerminationNotice(t('cdc.session_timeout', "Session ended due to timeout."), "info");
+            applyLogText(logs, { countDataPoints: true });
         }
     } catch (err) {
         console.error("fetchLogs error:", err);

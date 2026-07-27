@@ -20,6 +20,14 @@ function initDefaultState() {
     });
 }
 
+// Is the SSE session stream currently delivering this run's rows and log text?
+// When it is, the fallback polls below stand down. Guarded rather than calling
+// isLiveStreamActive() directly so that a missing live-stream.js degrades to the
+// old polling behaviour instead of throwing inside a setInterval callback.
+function liveStreamCarrying() {
+    return typeof isLiveStreamActive === 'function' && isLiveStreamActive();
+}
+
 const AppState = {
     myChart: null,
     scriptRunning: false,
@@ -276,10 +284,13 @@ $(document).ready(function () {
     });
     if (typeof loadReportSubjectsForPicker === 'function') loadReportSubjectsForPicker();
 
-    // Poll logs every 2 seconds if script is running
+    // Poll logs every 2 seconds if script is running.
+    // Fallback only: while the SSE session stream is carrying the run, log text
+    // is pushed as deltas and re-fetching the whole log file would both duplicate
+    // the work and fight the stream over #log-display (see live-stream.js).
     logInterval = setInterval(function () {
         if (!serverAvailable) return;
-        if (AppState.scriptRunning) {
+        if (AppState.scriptRunning && !liveStreamCarrying()) {
             fetchLogs();
         }
     }, 2000);
@@ -291,7 +302,10 @@ $(document).ready(function () {
 
         if (AppState.currentFile) {
             if (AppState.currentFile !== AppState.prevFile) {
-                if (AppState.scriptRunning) {
+                // Same fallback split as the log poll above: with the stream up,
+                // rows arrive as rows and the chart is redrawn because a
+                // measurement landed, not because this timer fired.
+                if (AppState.scriptRunning && !liveStreamCarrying()) {
                     // Nullify previous file so that graphics can be redrawn
                     AppState.prevFile = null;
                     drawMeasurementChart();

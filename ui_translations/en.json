@@ -236,6 +236,7 @@
   "settings.language": "Language",
   "settings.language.help": "Language for the app interface",
   "settings.disable_popups": "Disable popups",
+  "settings.live_stream": "Stream live readings (recommended)",
   "settings.time_format": "Date / time format",
   "settings.time_format.help": "Used for file modified-date tags",
   "settings.revert_defaults": "Revert to defaults",

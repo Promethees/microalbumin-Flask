@@ -894,6 +894,10 @@ async function browseSavingLocation(changeToCalibrate = false, button = null, pa
                     // Pass the button if present, otherwise the cell, so selectFile
                     // can still find the row to highlight.
                     await selectFile(fileName, btn || cell, "#file-table");
+                    // The live file is now the selected one, so paint the rows the
+                    // session stream has already delivered instead of waiting for
+                    // the next measurement to trigger a render.
+                    if (typeof refreshLiveSelection === 'function') refreshLiveSelection();
                 } else {
                     console.warn(`File "${fileName}" not found in #file-table.`);
                     blinkingItem("file-selection", 5000);

@@ -55,7 +55,7 @@ graph TD
 | `report_bp` | `report_routes.py` | `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject`, `/merge_report_subjects`, `/save_report_item_order`, `/delete_report_item`, `/export_report_excel` | `report.js`, `data-handling.js` |
 
 **Cross-tab edit lock** (`file_routes.py` `_edit_locks` registry + `acquire`/`refresh`/`release_edit_lock`): a file opened in the editor of one browser tab is locked from being edited in any other tab. The registry is an in-memory `{abs_path → {token, ts}}` map guarded by a `threading.Lock` (all tabs share one Flask process). `edit-file.js` acquires the lock before loading a file's content (a 423 shows "being edited in another tab"), heartbeats every 30 s to keep it fresh, and releases it when the modal closes or on `beforeunload` (via `navigator.sendBeacon`). A tab that dies without releasing lets the lock go stale after `_EDIT_LOCK_TTL` (120 s). `edit_file` enforces the lock server-side too: a save carries the holder's `edit_token` and is refused (423) if another tab holds the lock. This is separate from the per-write `FileLock` in `edit_file`, which only guards the atomicity of a single save.
-| `hardware_bp` | `hardware_routes.py` | `/run_script`, `/measure_point`, `/pause_reading`, `/resume_reading`, `/check_status`, `/terminate_script`, `/get_logs` | `hid-logging.js` |
+| `hardware_bp` | `hardware_routes.py` | `/run_script`, `/measure_point`, `/pause_reading`, `/resume_reading`, `/stream_session` (GET — SSE stream), `/check_status`, `/terminate_script`, `/get_logs` | `cdc-logging.js`, `live-stream.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities`, `/calculate_concentration` | `calculate.js`, `data-display.js` |
 | `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides`, `/ai/match`, `/ai/feedback` (POST), `/ai/feedback/stats` (GET), `/ai/feedback/reset` (POST), `/ai/feedback/export` (GET) | `ai-chat.js`, `init.js` |
 | `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream), `/update/finalize` (POST — shutdown for relaunch) | `init.js` |
@@ -106,6 +106,8 @@ graph TD
 **Start-up notice:** `/run_script` returns as soon as the logger process survives 0.5 s — the device has not been reached yet. Port probing, the 3×5 s command handshake and the firmware settle all happen after that, silently, so `#reading-startup` shows a phase notice (*Looking for the colorimeter… → Device found. Starting the session… → Waiting for the first reading…*) with a live elapsed counter, driven off the logger's own log lines via `fetchLogs()`. If the run has not gone live within `reading_start_timeout_sec` (user setting, default 60 s, clamped 10–600) the client reports a timeout and stops the run. See **Rule.md §2.30**.
 
 **Port selection + read cadence:** the board can expose **two** identical-looking CDC ports (console + data), so `connect_to_device()` probes each with `PING` and keeps whichever answers `ACK_PING`/`ERR_UNKNOWN`. The port timeout is 0.15 s so the manual-measure trigger is picked up promptly, and all reading goes through `LineReader` so the short timeout never yields a partial line. See **Rule.md §2.28**.
+
+**Live session streaming (SSE):** while a run is in progress the browser holds `GET /stream_session` open and the server pushes what changed. `src/live_stream.py` tails the log (`state.log_file`) and the active CSV (path from `log/current_output.txt`) by byte offset, emitting `meta` (file identity + metadata/`num_sources`/`x_axis`, once per CSV when the header lands), `rows` (newly appended rows, normalised exactly as `file.get_dynamic_data` normalises them), `log` (appended log text) and `end`. `static/script/live-stream.js` accumulates rows and re-renders through the same `processResponse()` a full fetch uses, and calls `onNewDataPoint()` once per row — so manual point mode's **Measure now** re-arms when its row lands rather than up to 2 s later. This replaces the old 500 ms `/get_data` chart poll and 2 s `/get_logs` poll, which both still exist as the fallback: `index.js` runs them only while `liveStreamCarrying()` is false (no `EventSource`, stream not open, reconnect gap, or `live_stream_enabled: false`). `/check_status` keeps sole ownership of the run-end transition. See Rule §2.31.
 
 **Manual (on-demand) point-mode capture:** with `--manual` (from `/run_script` `manual:true`, only offered in point mode with **Record as Turns** on; forces the turn axis) the start chunk inserts `MANUAL:1` (ACK `ACK_MANUAL`) between `AXIS:` and `INTERVAL:`, and the device idles instead of streaming — it emits one row per `MEASURE` command. Since the logger owns the port, `POST /measure_point` drops a `log/measure_trigger.txt` file that the logger's read loop consumes and forwards as `MEASURE`. No interval/timeout; the session ends on Stop. Scrolled away from the control panel, the manual run gets the same floating transport bar as an automatic one (`#measure-point-fab`: `READY`/`MEASURING` readout + Measure now + Stop) — see Rule §2.29. Firmware `serial_manager.py` is in lockstep (`session_manual`, `_emit_row`/`_emit_manual_row`). See Rule §2.27.
 
@@ -293,6 +295,7 @@ microalbumin-Flask/
 │   ├── i18n.py                 # UI translation catalog loader (ui_translations/)
 │   ├── data_root.py            # User-selectable data root (.dataroot pointer)
 │   ├── validators.py           # @validate_json decorator
+│   ├── live_stream.py          # SSE tail of a live session (log + active CSV, by byte offset)
 │   ├── math_ops.py             # Server-side regression (scipy/numpy)
 │   ├── routes/
 │   │   ├── __init__.py
@@ -323,6 +326,7 @@ microalbumin-Flask/
 │       ├── edit-file.js
 │       ├── generate-chart.js
 │       ├── hid-logging.js
+│       ├── live-stream.js      # SSE live-session client (rows + log pushed; polls are the fallback)
 │       ├── index.js
 │       ├── init.js
 │       ├── navigation.js

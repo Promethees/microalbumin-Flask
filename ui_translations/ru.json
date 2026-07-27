@@ -236,6 +236,7 @@
   "settings.language": "Язык",
   "settings.language.help": "Язык интерфейса приложения",
   "settings.disable_popups": "Отключить всплывающие окна",
+  "settings.live_stream": "Передавать измерения в реальном времени (рекомендуется)",
   "settings.time_format": "Формат даты / времени",
   "settings.time_format.help": "Используется для меток даты изменения файлов",
   "settings.revert_defaults": "Сбросить к значениям по умолчанию",
