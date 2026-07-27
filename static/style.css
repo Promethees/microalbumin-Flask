@@ -2582,11 +2582,15 @@ body.dark .download-wip-label {
     #folder-pull-hint .folder-pull-hint__arrow { animation: none; }
 }
 
+/* The hint exists because the desktop left column is its own scroll container
+   (#top-left-scrollable), which clips the installer buttons out of view. On
+   mobile that column is overflow-y: visible and the page scrolls as one, so the
+   downloads are reachable by ordinary scrolling — the banner would only cover
+   the bottom of a small screen to say something the user can already do.
+   Hidden in CSS rather than skipped in JS so it tracks rotation and resize. */
 @media (max-width: 768px) {
     .download-scroll-hint {
-        left: 12px;
-        right: 12px;
-        max-width: none;
+        display: none;
     }
 }
 
