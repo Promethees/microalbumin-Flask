@@ -776,6 +776,88 @@ def test_cdc_session_timeout_still_logs_timeout(tmp_path, monkeypatch):
     assert "SESSION STOPPED" not in log
 
 
+class _FakeSerial:
+    """Minimal serial stand-in that records what the collector wrote."""
+    def __init__(self):
+        self.written = []
+
+    def write(self, data):
+        self.written.append(data)
+        return len(data)
+
+    def flush(self):
+        pass
+
+
+def test_cdc_control_trigger_sends_pause_and_gates_rows(tmp_path, monkeypatch):
+    """PAUSE: the trigger is consumed, the command forwarded, and any row that
+    still arrives (firmware predating PAUSE) is dropped rather than recorded."""
+    c = _started_collector(tmp_path, monkeypatch)
+    c.serial = _FakeSerial()
+
+    with open(c.control_path, "w", encoding="utf-8") as f:
+        f.write("PAUSE")
+    c._check_control_trigger()
+
+    assert not os.path.exists(c.control_path)   # consumed
+    assert c.paused is True
+    assert b"PAUSE\n" in c.serial.written
+
+    before = open(c.output_file, encoding="utf-8").read()
+    c.process_line("12.00,0.500")
+    assert open(c.output_file, encoding="utf-8").read() == before  # nothing written
+
+
+def test_cdc_control_trigger_resume_reopens_the_gate(tmp_path, monkeypatch):
+    """RESUME lifts the host-side gate and forwards the command."""
+    c = _started_collector(tmp_path, monkeypatch)
+    c.serial = _FakeSerial()
+    c.paused = True
+
+    with open(c.control_path, "w", encoding="utf-8") as f:
+        f.write("RESUME")
+    c._check_control_trigger()
+
+    assert c.paused is False
+    assert b"RESUME\n" in c.serial.written
+
+    c.process_line("12.00,0.500")
+    assert "12.00,0.500" in open(c.output_file, encoding="utf-8").read()
+
+
+def test_cdc_control_trigger_ignores_garbage(tmp_path, monkeypatch):
+    """An unrecognised token leaves the pause state untouched (and sends nothing)."""
+    c = _started_collector(tmp_path, monkeypatch)
+    c.serial = _FakeSerial()
+    with open(c.control_path, "w", encoding="utf-8") as f:
+        f.write("NONSENSE")
+    c._check_control_trigger()
+    assert c.paused is False
+    assert c.serial.written == []
+
+
+def test_cdc_err_unknown_after_pause_reports_old_firmware(tmp_path, monkeypatch):
+    """ERR_UNKNOWN right after a PAUSE means firmware predating the command; it
+    is logged as a host-side pause, not as an unexpected line."""
+    c = _started_collector(tmp_path, monkeypatch)
+    c._pending_control = "PAUSE"
+    c.process_line("ERR_UNKNOWN")
+    log = open(c.log_file_path, encoding="utf-8").read()
+    assert "does not support PAUSE" in log
+    assert "Unexpected line" not in log
+
+
+def test_cdc_ack_pause_and_resume_logged(tmp_path, monkeypatch):
+    """The device's own acknowledgements are recognised, not logged as noise."""
+    c = _started_collector(tmp_path, monkeypatch)
+    c.process_line("ACK_PAUSE")
+    c.process_line("ACK_RESUME")
+    log = open(c.log_file_path, encoding="utf-8").read()
+    assert "Reading paused on the device." in log
+    assert "Reading resumed on the device." in log
+    assert "Unexpected line" not in log
+
+
 # ---------------------------------------------------------------------------
 # CSV/JSON identity (Measurement / Unit / ConcenUnit) for CSV↔JSON matching
 # ---------------------------------------------------------------------------

@@ -171,6 +171,72 @@ def test_measure_point_drops_trigger_file(client, tmp_path):
         assert (log_dir / 'measure_trigger.txt').exists()
 
 
+def test_pause_resume_require_running_session(client):
+    """/pause_reading and /resume_reading are no-ops (409) with no live session."""
+    state.process = None
+    for route in ('/pause_reading', '/resume_reading'):
+        rv = client.post(route)
+        assert rv.status_code == 409, route
+        assert rv.get_json()['status'] == 'failure'
+
+
+def test_pause_and_resume_write_control_trigger(client, tmp_path):
+    """With a live session, pause/resume drop the control trigger the logger
+    polls, holding the DESIRED STATE token so the last request wins."""
+    log_dir = tmp_path / 'log'
+    log_dir.mkdir()
+    state.process = MagicMock()
+    state.process.poll.return_value = None  # still running
+    trigger = log_dir / 'control_trigger.txt'
+    with patch.object(state, 'script_dir', str(tmp_path)):
+        rv = client.post('/pause_reading')
+        assert rv.status_code == 200
+        assert rv.get_json()['paused'] is True
+        assert trigger.read_text() == 'PAUSE'
+        assert state.reading_paused is True
+
+        rv = client.post('/resume_reading')
+        assert rv.status_code == 200
+        assert rv.get_json()['paused'] is False
+        assert trigger.read_text() == 'RESUME'
+        assert state.reading_paused is False
+    state.process = None
+
+
+def test_check_status_reports_paused_flag(client, tmp_path):
+    """A running session reports its pause state so a reloaded page can resync."""
+    (tmp_path / 'log').mkdir()
+    state.process = MagicMock()
+    state.process.poll.return_value = None
+    with patch.object(state, 'script_dir', str(tmp_path)), \
+         patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')):
+        client.post('/pause_reading')
+        body = client.get('/check_status').get_json()
+        assert body['status'] == 'running'
+        assert body['paused'] is True
+    state.process = None
+    state.reading_paused = False
+
+
+def test_run_script_clears_stale_control_trigger(client, tmp_path):
+    """A new run always starts unpaused: a leftover trigger/flag is swept."""
+    log_dir = tmp_path / 'log'
+    log_dir.mkdir()
+    (log_dir / 'control_trigger.txt').write_text('PAUSE')
+    state.reading_paused = True
+    with patch.object(state, 'script_dir', str(tmp_path)), \
+         patch.object(state, 'log_file', str(tmp_path / 'log' / 'script_logs.txt')), \
+         patch('subprocess.Popen') as mock_popen:
+        proc = MagicMock()
+        proc.wait.side_effect = subprocess.TimeoutExpired(cmd='log_cdc_data.py', timeout=2)
+        mock_popen.return_value = proc
+        rv = client.post('/run_script', json={'base_name': 'test'})
+        assert rv.get_json()['status'] == 'success'
+        assert not (log_dir / 'control_trigger.txt').exists()
+        assert state.reading_paused is False
+    state.process = None
+
+
 def test_run_script_rejects_reserved_subfolder(client):
     """The archive staging name 'root' is reserved and must be refused."""
     rv = client.post('/run_script', json={'subfolder': 'root'})

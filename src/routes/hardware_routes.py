@@ -64,6 +64,49 @@ def clear_measure_trigger():
         pass
 
 
+def _control_trigger_path():
+    """Path of the pause/resume trigger file. Same IPC shape as the measure
+    trigger (Flask cannot touch the serial port — the logger owns it), but the
+    file holds the DESIRED STATE token ("PAUSE" / "RESUME") rather than being a
+    bare flag: an unconsumed write is simply overwritten, so last press wins,
+    which is exactly the right semantics for two opposite commands.
+    Kept in sync with log_cdc_data.control_path."""
+    return os.path.join(state.script_dir, 'log', 'control_trigger.txt')
+
+
+def clear_control_trigger():
+    """Drop any stale pause/resume request and clear the paused flag, so a new
+    run never starts mid-pause because of a leftover from the previous session."""
+    state.reading_paused = False
+    try:
+        path = _control_trigger_path()
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
+def _request_pause_state(paused):
+    """Shared body of /pause_reading and /resume_reading: drop the control
+    trigger the running logger polls and forwards to the device."""
+    if state.process is None or state.process.poll() is not None:
+        return jsonify({'status': 'failure', 'message': 'No reading session is running'}), 409
+    try:
+        path = _control_trigger_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('PAUSE' if paused else 'RESUME')
+        state.reading_paused = bool(paused)
+        return jsonify({
+            'status': 'success',
+            'paused': state.reading_paused,
+            'message': 'Reading paused' if paused else 'Reading resumed',
+        })
+    except Exception as e:
+        verb = 'pause' if paused else 'resume'
+        return jsonify({'status': 'failure', 'message': f'Failed to {verb} reading: {str(e)}'}), 500
+
+
 def _logger_command(base_dir, base_name, timeout_sec, interval_sec, axis="time", manual=False):
     """Build the CDC logger subprocess command. CDC needs no elevated privileges.
 
@@ -148,6 +191,8 @@ def run_script(validated_data):
     clear_current_output_marker()
     # Drop any leftover manual-measure trigger so the first press is a real one.
     clear_measure_trigger()
+    # Same for a leftover pause/resume request — a new run always starts running.
+    clear_control_trigger()
 
     try:
         with open(state.log_file, 'a', encoding='utf-8') as f:
@@ -192,6 +237,19 @@ def measure_point():
         return jsonify({'status': 'failure', 'message': f'Failed to request measurement: {str(e)}'}), 500
 
 
+@hardware_bp.route('/pause_reading', methods=['POST'])
+def pause_reading():
+    """Pause a live reading session: hold off the device's interval streaming
+    without ending the run. Only valid while a session is running."""
+    return _request_pause_state(True)
+
+
+@hardware_bp.route('/resume_reading', methods=['POST'])
+def resume_reading():
+    """Resume a paused reading session (see /pause_reading)."""
+    return _request_pause_state(False)
+
+
 @hardware_bp.route('/check_status', methods=['GET'])
 def check_status():
     if state.process is None:
@@ -200,13 +258,16 @@ def check_status():
     error = check_log_for_errors(state.log_file)
     if error:
         state.process = None
+        state.reading_paused = False
         clear_logs()
         if error == "device_not_found":
             return jsonify({'status': 'device_not_found', 'message': 'PyBadge device not connected during runtime.'})
         return jsonify({'status': 'failure', 'message': 'Device communication error detected during runtime.'})
 
     if state.process.poll() is None:
-        return jsonify({'status': 'running', 'message': 'Script is running'})
+        # `paused` lets a reloaded page resync its Pause/Resume controls with a
+        # run that is already on hold.
+        return jsonify({'status': 'running', 'message': 'Script is running', 'paused': state.reading_paused})
 
     # The logger exited: a clean end-of-session (device timeout / user stop)
     # always logs "New session started"; a handshake failure does not.
@@ -215,6 +276,7 @@ def check_status():
     # stop distinctly from a timeout.
     reason = check_log_for_end_reason(state.log_file)
     state.process = None
+    state.reading_paused = False
     # Session is over — reset the log file here, the authoritative server-side
     # completion point. The frontend only clears logs via terminateScript()
     # (the fetchLogs/terminate path); when this status poll detects completion
@@ -231,6 +293,7 @@ def check_status():
 
 @hardware_bp.route('/terminate_script', methods=['POST'])
 def terminate_script():
+    state.reading_paused = False
     if state.process is None or state.process.poll() is not None:
         return jsonify({'status': 'failure', 'message': 'No process running'})
 

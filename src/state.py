@@ -7,6 +7,11 @@ import platform
 process = None
 monitor_thread = None
 args = None
+# True while the live reading session is paused (host asked the device to hold
+# off streaming — see /pause_reading). Purely a UI-resync aid: the authoritative
+# pause lives in the device + logger, but a page reload mid-run has no other way
+# to learn the session is paused. Reset on every run start and session end.
+reading_paused = False
 
 
 # ── Frozen-vs-source path resolution ─────────────────────────────────────────

@@ -62,6 +62,11 @@ class CDCDataCollector:
         self.serial = None
         self.output_file = None
         self.running = True
+        # Pause state of a live session (host "Pause reading"). While paused the
+        # device is told to hold off streaming (PAUSE command); we ALSO drop any
+        # row that still arrives, which is what keeps the feature working against
+        # firmware predating PAUSE (it answers ERR_UNKNOWN and keeps streaming).
+        self.paused = False
 
         self.metadata = {}
         self.num_values = None
@@ -80,6 +85,11 @@ class CDCDataCollector:
         self.header_pattern = r"^(?:Timestamp|Turn),Value:\d+(?:,Value:\d+)*$"
         self.data_pattern = r"^\d+(?:\.\d{1,2})?,(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
         self.end_pattern = r"^SESSION TIMEOUT$"
+        # Replies to the pause/resume commands. ERR_UNKNOWN is the answer from
+        # firmware predating PAUSE — meaningful only right after we sent one,
+        # which _pending_control tracks.
+        self.control_reply_pattern = r"^(?:ACK_PAUSE|ACK_RESUME|ERR_UNKNOWN)$"
+        self._pending_control = None
         # Device-side manual stop (Left button) of a host session — distinct from
         # a timeout so the UI can announce it differently (firmware serial_manager).
         self.stop_pattern = r"^SESSION STOPPED$"
@@ -93,6 +103,10 @@ class CDCDataCollector:
         # owns it), so /measure_point drops this trigger file and the read loop
         # forwards a MEASURE command to the device. Matches hardware_routes.
         self.trigger_path = os.path.join(self.log_dir, "measure_trigger.txt")
+        # Same IPC for pause/resume, except the file holds the desired state
+        # token ("PAUSE"/"RESUME") so an unconsumed write is simply overwritten
+        # and the last press wins. Matches hardware_routes._control_trigger_path.
+        self.control_path = os.path.join(self.log_dir, "control_trigger.txt")
 
     def log(self, message):
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -120,6 +134,9 @@ class CDCDataCollector:
 
     def is_stopped(self, line):
         return bool(re.match(self.stop_pattern, line))
+
+    def is_control_reply(self, line):
+        return bool(re.match(self.control_reply_pattern, line))
 
     # ── handlers ────────────────────────────────────────────────────────
     def handle_metadata(self, line):
@@ -153,6 +170,12 @@ class CDCDataCollector:
         self.session_started = True
 
     def process_data(self, line):
+        # Paused: never write a row. Reaching here means the device is still
+        # streaming, i.e. firmware predating PAUSE — dropping the row is what
+        # makes the pause hold, at the cost of a gap in the Timestamp column.
+        if self.paused:
+            self.log(f"Dropped row while paused: {line}")
+            return
         fields = line.split(",")
         unit = "" if self.x_label == "Turn" else "s"
         self.log(f"Received: {self.x_label}: {fields[0]}{unit}, Values: {', '.join(fields[1:])}")
@@ -179,6 +202,8 @@ class CDCDataCollector:
                 # a timeout, but logged distinctly so the UI announces it as a
                 # device stop rather than a timeout.
                 self._finish_session("SESSION STOPPED")
+            elif self.is_control_reply(line):
+                self._handle_control_reply(line)
             else:
                 self.log(f"Unexpected line: {line}")
         except Exception as e:
@@ -206,6 +231,53 @@ class CDCDataCollector:
         except OSError:
             return
         self._send_measure("manual request")
+
+    def _handle_control_reply(self, line):
+        """Log the device's answer to a PAUSE/RESUME command.
+
+        ACK_PAUSE/ACK_RESUME mean the device itself stopped/restarted streaming,
+        so the recorded series stays continuous (the firmware freezes its session
+        clock for the pause). A bare ERR_UNKNOWN right after we sent one means
+        firmware predating PAUSE: the device keeps streaming and the host-side
+        row drop is the only thing holding the pause, so the Timestamp column
+        will show a gap. Either way the pause is honoured — only the timestamps
+        differ, so this is logged, not treated as an error."""
+        pending, self._pending_control = self._pending_control, None
+        if line == "ACK_PAUSE":
+            self.log("Reading paused on the device.")
+        elif line == "ACK_RESUME":
+            self.log("Reading resumed on the device.")
+        elif pending:
+            self.log(f"Device firmware does not support {pending}; "
+                     "holding the pause host-side (rows dropped, timestamps will gap).")
+        else:
+            self.log(f"Unexpected line: {line}")
+
+    def _check_control_trigger(self):
+        """Pause/resume: if Flask dropped the control trigger, consume it and
+        forward the matching command to the device. The file holds the desired
+        state, so a repeated request is idempotent."""
+        try:
+            if not os.path.exists(self.control_path):
+                return
+            with open(self.control_path, "r", encoding="utf-8") as f:
+                want = f.read().strip().upper()
+            os.remove(self.control_path)
+        except OSError:
+            return
+        if want not in ("PAUSE", "RESUME"):
+            return
+        paused = (want == "PAUSE")
+        # Flip the host-side gate FIRST: it must already be closed when the
+        # in-flight rows the device sent before it saw PAUSE arrive.
+        self.paused = paused
+        try:
+            self.serial.write(f"{want}\n".encode("utf-8"))
+            self.serial.flush()
+            self._pending_control = want
+            self.log(f"{want} sent (host request).")
+        except Exception as e:
+            self.log(f"Failed to send {want}: {e}")
 
     def _finish_session(self, reason):
         """End the one-shot session, logging `reason` (SESSION TIMEOUT / STOPPED)
@@ -245,13 +317,15 @@ class CDCDataCollector:
         signal.signal(signal.SIGTERM, _handle_signal)
         signal.signal(signal.SIGINT, _handle_signal)
 
-        # Drop any stale trigger from a prior run so the first MEASURE is a real,
-        # user-initiated press (mirrors hardware_routes.clear_measure_trigger).
-        try:
-            if os.path.exists(self.trigger_path):
-                os.remove(self.trigger_path)
-        except OSError:
-            pass
+        # Drop any stale triggers from a prior run so the first MEASURE is a
+        # real, user-initiated press and the run never starts mid-pause
+        # (mirrors hardware_routes.clear_measure_trigger/clear_control_trigger).
+        for stale in (self.trigger_path, self.control_path):
+            try:
+                if os.path.exists(stale):
+                    os.remove(stale)
+            except OSError:
+                pass
 
         self.log("Connecting to PyBadge over CDC serial...")
         try:
@@ -281,9 +355,11 @@ class CDCDataCollector:
             # hand back partial lines. LineReader buffers and yields whole lines.
             reader = LineReader(self.serial)
             while self.running:
-                # Forward any pending manual-measure request before blocking on
-                # the next read (each read blocks ≤ one port timeout, 0.15s).
+                # Forward any pending manual-measure / pause-resume request
+                # before blocking on the next read (each read blocks ≤ one port
+                # timeout, 0.15s).
                 self._check_measure_trigger()
+                self._check_control_trigger()
                 for line in reader.read_lines():
                     self.process_line(line)
                     if not self.running:

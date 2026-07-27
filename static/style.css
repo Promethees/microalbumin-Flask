@@ -1558,81 +1558,295 @@ body.dark #plot-analysis {
     --blink-color: #00ff00;
 }
 
-/* Floating "Measure now" — a fixed mirror of #measure-point-btn shown during a
-   manual point-mode run when the inline button scrolls out of view. Bottom-centre
-   so it never collides with the bottom-right AI chat widget. */
-button#measure-point-fab.measure-fab {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 8000;
-    padding: 14px 26px;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #ffffff;
-    background: linear-gradient(135deg, #16a34a, #22c55e);
-    border: 2px solid transparent;
-    border-radius: 999px;
-    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.45);
-    animation: measure-fab-in 0.2s ease-out;
-}
-
-button#measure-point-fab.measure-fab:hover:enabled {
-    background: linear-gradient(135deg, #15803d, #16a34a);
-    transform: translateX(-50%) translateY(-2px);
-    box-shadow: 0 10px 28px rgba(22, 163, 74, 0.55);
-}
-
-button#measure-point-fab.measure-fab:active:enabled {
-    transform: translateX(-50%) translateY(0);
-}
-
-button#measure-point-fab.measure-fab:disabled {
-    background: linear-gradient(135deg, #9ca3af, #b6bcc4);
-    color: #f3f4f6;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-    opacity: 0.85;
-    cursor: not-allowed;
-}
-
-/* Armed (ready to record) → green blinking ring, matching the inline button. */
-#measure-point-fab.measure-fab.blinking {
-    --blink-color: #bbf7d0;
-    animation: blink 1s infinite, measure-fab-in 0.2s ease-out;
-}
-
-/* REC-style dot to signal "record a reading". */
-.measure-fab-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
-    flex: 0 0 auto;
-}
-
-#measure-point-fab.measure-fab:disabled .measure-fab-dot {
-    background: #e5e7eb;
-    box-shadow: none;
-}
-
 @keyframes measure-fab-in {
     from { opacity: 0; }
     to   { opacity: 1; }
 }
 
+/* ── Live-reading transport ────────────────────────────────────────────────
+   The floating counterpart of the reading-panel buttons, shown once that line
+   scrolls out of view. It leads with the session state (dot + word) because at
+   that scroll position the control panel AND the timer widget are both gone,
+   so this bar is the only thing that can say the run is alive. Surface mirrors
+   #session-timer so the two read as one instrument family; it takes the same
+   bottom-centre slot as the Measure-now mirror (never both at once). */
+#reading-control-fab.reading-fab,
+#measure-point-fab.reading-fab {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 8000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px 8px 16px;
+    border-radius: 999px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: measure-fab-in 0.2s ease-out;
+}
+
+body.light #reading-control-fab.reading-fab,
+body.light #measure-point-fab.reading-fab {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+
+body.dark #reading-control-fab.reading-fab,
+body.dark #measure-point-fab.reading-fab {
+    background: rgba(40, 40, 50, 0.94);
+    border: 1px solid #4b5563;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* State readout: monospace + uppercase, matching #session-timer's instrument
+   type. The dot is the signature — it breathes while recording and sits solid
+   amber when held, so "running" vs "paused" is legible without reading a word. */
+.reading-fab-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: #059669;
+}
+
+body.dark .reading-fab-state {
+    color: #34d399;
+}
+
+#reading-control-fab.paused .reading-fab-state {
+    color: #b45309;
+}
+
+body.dark #reading-control-fab.paused .reading-fab-state {
+    color: #fbbf24;
+}
+
+.reading-fab-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: 0 0 auto;
+    animation: reading-dot-breathe 1.8s ease-in-out infinite;
+}
+
+/* Held sessions look held: the dot stops moving and takes a ring instead. */
+#reading-control-fab.paused .reading-fab-dot {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.28);
+}
+
+.reading-fab-divider {
+    width: 1px;
+    height: 22px;
+    background: currentColor;
+    opacity: 0.18;
+    flex: 0 0 auto;
+}
+
+/* Button skin comes from custom properties, NOT from competing `background`
+   declarations. Theme rules set the vars on the container; variant rules set
+   them on the button itself, which always wins over the inherited value. Doing
+   it with plain declarations lost: `body.light #reading-control-fab
+   .reading-fab-btn` is (1,2,1) and would have beaten the danger variant's
+   (1,2,0), painting Stop neutral instead of red. */
+#reading-control-fab,
+#measure-point-fab {
+    --btn-bg: #ffffff;
+    --btn-fg: #1f2937;
+    --btn-border: #e5e7eb;
+    --btn-shadow: var(--shadow-sm);
+    --btn-shadow-hover: var(--shadow-md);
+}
+
+body.dark #reading-control-fab,
+body.dark #measure-point-fab {
+    --btn-bg: #374151;
+    --btn-fg: #f3f4f6;
+    --btn-border: #4b5563;
+}
+
+#reading-control-fab .reading-fab-btn,
+#measure-point-fab .reading-fab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    border: 1px solid var(--btn-border);
+    border-radius: 999px;
+    box-shadow: var(--btn-shadow);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+#reading-control-fab .reading-fab-btn:hover:enabled,
+#measure-point-fab .reading-fab-btn:hover:enabled {
+    transform: translateY(-1px);
+    box-shadow: var(--btn-shadow-hover);
+}
+
+#reading-control-fab .reading-fab-btn:active:enabled,
+#measure-point-fab .reading-fab-btn:active:enabled {
+    transform: translateY(0);
+}
+
+#reading-control-fab .reading-fab-btn:focus-visible,
+#measure-point-fab .reading-fab-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+#reading-control-fab .reading-fab-btn:disabled,
+#measure-point-fab .reading-fab-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Pause is reversible and low-stakes, so it keeps the quiet neutral skin above.
+   The loud treatments are spent on the two actions that change the run:
+   Resume puts the instrument back to work, Stop ends the session. */
+#reading-control-fab.paused #reading-fab-pause {
+    --btn-bg: var(--success-gradient);
+    --btn-fg: #ffffff;
+    --btn-border: transparent;
+    --btn-shadow: 0 4px 14px rgba(16, 185, 129, 0.42);
+    --btn-shadow-hover: 0 8px 20px rgba(16, 185, 129, 0.55);
+}
+
+#reading-control-fab .reading-fab-danger,
+#measure-point-fab .reading-fab-danger {
+    --btn-bg: var(--danger-gradient);
+    --btn-fg: #ffffff;
+    --btn-border: transparent;
+    --btn-shadow: 0 4px 14px rgba(239, 68, 68, 0.38);
+    --btn-shadow-hover: 0 8px 20px rgba(239, 68, 68, 0.5);
+}
+
+/* Measure now — the manual-run counterpart of Resume: the action that makes the
+   instrument take a reading, so it carries the same "go" treatment. */
+#measure-point-fab .reading-fab-go {
+    --btn-bg: var(--success-gradient);
+    --btn-fg: #ffffff;
+    --btn-border: transparent;
+    --btn-shadow: 0 4px 14px rgba(16, 185, 129, 0.42);
+    --btn-shadow-hover: 0 8px 20px rgba(16, 185, 129, 0.55);
+}
+
+/* Busy = the requested row has not landed yet. The state word carries it, so
+   the button just greys out; the dot stops breathing to match the paused bar. */
+#measure-point-fab.is-busy .reading-fab-state {
+    color: #b45309;
+}
+
+body.dark #measure-point-fab.is-busy .reading-fab-state {
+    color: #fbbf24;
+}
+
+#measure-point-fab.is-busy .reading-fab-dot {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.28);
+}
+
+/* One button, two glyphs, swapped by .paused on the group — the markup (and
+   its i18n bindings) never has to be rebuilt. Shared with the inline toggle. */
+.reading-toggle-icon {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+}
+
+#reading-control-fab .icon-play,
+#reading-control-fab.paused .icon-pause,
+#pause-reading-btn .icon-play,
+#pause-reading-btn.is-paused .icon-pause {
+    display: none;
+}
+
+#reading-control-fab.paused .icon-play,
+#pause-reading-btn.is-paused .icon-play {
+    display: block;
+}
+
+@keyframes reading-dot-breathe {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.45; transform: scale(0.82); }
+}
+
+/* Inline toggle: lives among sibling buttons, so it keeps the app's default
+   button chrome and only takes an amber tint while held — a solid state reads
+   as "held", where the old border blink read as "broken". */
+#pause-reading-btn.is-paused {
+    background: #fffbeb !important;
+    color: #92400e !important;
+    border: 1px solid #fcd34d !important;
+}
+
+body.dark #pause-reading-btn.is-paused {
+    background: #4a3410 !important;
+    color: #fde68a !important;
+    border: 1px solid #b45309 !important;
+}
+
+#session-paused-badge {
+    justify-content: center;
+    color: #b45309;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+body.dark #session-paused-badge {
+    color: #fbbf24;
+}
+
 @media (max-width: 600px) {
-    button#measure-point-fab.measure-fab {
-        left: 16px;
-        right: 16px;
+    #reading-control-fab.reading-fab,
+    #measure-point-fab.reading-fab {
         /* Sit above the bottom-right AI chat widget instead of beside it. */
         bottom: 88px;
+        left: 12px;
+        right: 12px;
         transform: none;
-        width: auto;
+        justify-content: center;
+        padding: 8px 10px;
     }
-    button#measure-point-fab.measure-fab:hover:enabled,
-    button#measure-point-fab.measure-fab:active:enabled {
+
+    #reading-control-fab .reading-fab-btn,
+    #measure-point-fab .reading-fab-btn {
+        padding: 9px 12px;
+    }
+}
+
+/* Quality floor: nothing in this bar should move for a reader who asked for
+   stillness. The dot keeps its colour, which is what carries the state. */
+@media (prefers-reduced-motion: reduce) {
+    #reading-control-fab.reading-fab,
+    #measure-point-fab.reading-fab {
+        animation: none;
+    }
+
+    .reading-fab-dot {
+        animation: none;
+    }
+
+    #reading-control-fab .reading-fab-btn:hover:enabled,
+    #reading-control-fab .reading-fab-btn:active:enabled,
+    #measure-point-fab .reading-fab-btn:hover:enabled,
+    #measure-point-fab .reading-fab-btn:active:enabled {
         transform: none;
     }
 }

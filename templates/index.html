@@ -198,6 +198,9 @@
                 <span class="timer-label" data-i18n="timer.next">Next</span>
                 <span id="session-next">--:--</span>
             </div>
+            <!-- Shown while the run is paused: both clocks above are frozen, so
+                 without this the widget looks stuck rather than held. -->
+            <div id="session-paused-badge" class="timer-row hidden" data-i18n="timer.paused">Paused</div>
         </div>
         <div id="top-right-btn-group">
             <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide"
@@ -442,9 +445,34 @@
                     <button id="terminate-script-btn" onclick="terminateScript()" disabled
                         data-i18n="cdc.stop_reading" data-i18n-hint="hint.stop_reading"
                         data-hint="Stop the current data-reading run">Stop reading</button>
+                    <!-- Pause/Resume toggle: shown only during a live automatic run
+                         (a manual run is already on-demand, so it gets "Measure now"
+                         instead). togglePauseReading() swaps the icon, label, hint and
+                         i18n keys in place. The label lives in its own span because
+                         data-i18n writes textContent — on the button it would erase
+                         the icon on every applyTranslations() pass. -->
+                    <button id="pause-reading-btn" onclick="togglePauseReading()" class="hidden"
+                        data-i18n-hint="hint.pause_reading"
+                        data-hint="Hold the reading without ending the run — the device stops taking readings until you resume">
+                        <svg class="reading-toggle-icon icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>
+                        </svg>
+                        <svg class="reading-toggle-icon icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M8 5.5v13a1 1 0 0 0 1.54.84l10-6.5a1 1 0 0 0 0-1.68l-10-6.5A1 1 0 0 0 8 5.5z"/>
+                        </svg>
+                        <span id="pause-reading-label" data-i18n="cdc.pause_reading">Pause reading</span>
+                    </button>
+                    <!-- Label in its own span for the same reason as the pause
+                         toggle: data-i18n writes textContent and would erase the
+                         icon on every applyTranslations() pass. -->
                     <button id="measure-point-btn" onclick="measurePoint()" class="hidden blinking" disabled
-                        data-i18n="cdc.measure_now" data-i18n-hint="hint.measure_now"
-                        data-hint="Take one reading now (records the next Turn). Manual run mode only.">Measure now</button>
+                        data-i18n-hint="hint.measure_now"
+                        data-hint="Take one reading now (records the next Turn). Manual run mode only.">
+                        <svg class="reading-toggle-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <circle cx="12" cy="12" r="6"/>
+                        </svg>
+                        <span data-i18n="cdc.measure_now">Measure now</span>
+                    </button>
                     <button id="clear-logs-btn" onclick="clearLogs()"
                         data-i18n="cdc.clear_logs" data-i18n-hint="hint.clear_logs"
                         data-hint="Clear the log output shown below">Clear Logs</button>
@@ -454,12 +482,71 @@
                     <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
             </div>
-            <!-- Floating mirror of "Measure now": appears during a manual run when
-                 the inline button is scrolled out of view, so the user can record
-                 the next Turn while watching the live data without scrolling back. -->
-            <button id="measure-point-fab" onclick="measurePoint()" class="measure-fab hidden" disabled
-                data-i18n-hint="hint.measure_now"
-                data-hint="Take one reading now (records the next Turn). Manual run mode only."><span class="measure-fab-dot" aria-hidden="true"></span><span data-i18n="cdc.measure_now">Measure now</span></button>
+            <!-- Manual-run transport: the same bar as #reading-control-fab below,
+                 for a manual point-mode run. Appears when the inline button line
+                 scrolls out of view, so the next Turn can be recorded (and the run
+                 ended) while watching the live data. State readout says whether the
+                 device is armed for the next press or still returning the last row. -->
+            <div id="measure-point-fab" class="reading-fab hidden" role="group"
+                data-i18n-aria="aria.manual_controls" aria-label="Manual capture controls">
+                <span class="reading-fab-state" aria-live="polite">
+                    <span class="reading-fab-dot" aria-hidden="true"></span>
+                    <span id="measure-fab-state-label" data-i18n="cdc.state_ready">Ready</span>
+                </span>
+                <span class="reading-fab-divider" aria-hidden="true"></span>
+                <button id="measure-fab-btn" type="button" class="reading-fab-btn reading-fab-go"
+                    onclick="measurePoint()" disabled
+                    data-i18n-hint="hint.measure_now"
+                    data-hint="Take one reading now (records the next Turn). Manual run mode only.">
+                    <svg class="reading-toggle-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="12" r="6"/>
+                    </svg>
+                    <span data-i18n="cdc.measure_now">Measure now</span>
+                </button>
+                <button id="measure-fab-stop" type="button" class="reading-fab-btn reading-fab-danger"
+                    onclick="terminateScript()"
+                    data-i18n-hint="hint.stop_reading"
+                    data-hint="Stop the current data-reading run">
+                    <svg class="reading-toggle-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="6.5" y="6.5" width="11" height="11" rx="2"/>
+                    </svg>
+                    <span data-i18n="cdc.stop">Stop</span>
+                </button>
+            </div>
+            <!-- Floating session transport, the automatic-run counterpart of the
+                 "Measure now" mirror above: appears during a live automatic run once
+                 the control panel scrolls out of view. It leads with the session
+                 STATE because at that scroll position both the control panel and the
+                 timer widget are off-screen, so this bar is the only thing that can
+                 say the run is still alive. Never shown at the same time as the
+                 Measure-now mirror (manual runs have no interval to pause). -->
+            <div id="reading-control-fab" class="reading-fab hidden" role="group"
+                data-i18n-aria="aria.reading_controls" aria-label="Reading controls">
+                <span class="reading-fab-state" aria-live="polite">
+                    <span class="reading-fab-dot" aria-hidden="true"></span>
+                    <span id="reading-fab-state-label" data-i18n="cdc.state_recording">Recording</span>
+                </span>
+                <span class="reading-fab-divider" aria-hidden="true"></span>
+                <button id="reading-fab-pause" type="button" class="reading-fab-btn" onclick="togglePauseReading()"
+                    data-i18n-hint="hint.pause_reading"
+                    data-hint="Hold the reading without ending the run — the device stops taking readings until you resume">
+                    <svg class="reading-toggle-icon icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>
+                    </svg>
+                    <svg class="reading-toggle-icon icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M8 5.5v13a1 1 0 0 0 1.54.84l10-6.5a1 1 0 0 0 0-1.68l-10-6.5A1 1 0 0 0 8 5.5z"/>
+                    </svg>
+                    <span id="reading-fab-pause-label" data-i18n="cdc.pause">Pause</span>
+                </button>
+                <button id="reading-fab-stop" type="button" class="reading-fab-btn reading-fab-danger" onclick="terminateScript()"
+                    data-i18n-hint="hint.stop_reading"
+                    data-hint="Stop the current data-reading run">
+                    <svg class="reading-toggle-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="6.5" y="6.5" width="11" height="11" rx="2"/>
+                    </svg>
+                    <span data-i18n="cdc.stop">Stop</span>
+                </button>
+            </div>
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
                     <span data-i18n="caljson.select_coefficients">Select Coefficients for standard curve</span> <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>

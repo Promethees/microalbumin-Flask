@@ -12,6 +12,15 @@ let manualSession = false;
 // without scrolling back up to the control panel.
 let _measureObserver = null;
 let _inlineMeasureVisible = true;
+// Pause state of the live automatic run ("Pause reading"). The device holds off
+// streaming and the logger drops any row that still arrives, so no data is
+// recorded until Resume; the run itself stays alive.
+let readingPaused = false;
+let _pausedAt = null;
+// Same scroll-watch pattern as the Measure-now mirror, for the automatic-run
+// Pause/Resume + Stop floating controls (#reading-control-fab).
+let _controlObserver = null;
+let _inlineControlVisible = true;
 
 // --- Session timer state ---
 let sessionStartTime = null;
@@ -128,6 +137,11 @@ function checkScriptStatus() {
                     resolve(true); // Keep polling
                 } else {
                     AppState.scriptRunning = true;
+                    // Self-heal if the two ever disagree (e.g. a pause request
+                    // that landed on the server but whose reply never arrived).
+                    if (typeof response.paused === 'boolean' && response.paused !== readingPaused) {
+                        applyPausedState(response.paused);
+                    }
                     resolve(true); // Script is running
                 }
             },
@@ -148,24 +162,39 @@ function clearStatusCheck() {
     }
 }
 
-// Return the manual-capture controls to their idle state: clear the session
-// flag, re-enable the Auto/Manual radios, and hide + disable the Measure-now
-// button. Shared by every run-end path (error, completion, manual terminate).
-function resetManualControls() {
+// Return the per-run controls to their idle state: clear the session flags,
+// re-enable the Auto/Manual radios, hide + disable the Measure-now button, and
+// drop the Pause/Resume controls (a finished run is never "paused"). Shared by
+// every run-end path (error, completion, manual terminate).
+function resetRunControls() {
+    // Pause/Resume: clear the state before the flags below, so the controls are
+    // repainted in their default "Pause reading" wording for the next run.
+    readingPaused = false;
+    _pausedAt = null;
+    applyPauseControlsUI();
+    const pauseBtn = document.getElementById('pause-reading-btn');
+    if (pauseBtn) { pauseBtn.classList.add('hidden'); pauseBtn.disabled = false; }
     manualSession = false;
+    stopControlObserver();
+    const ctrlFab = document.getElementById('reading-control-fab');
+    if (ctrlFab) ctrlFab.classList.add('hidden');
+    const fabPause = document.getElementById('reading-fab-pause');
+    if (fabPause) fabPause.disabled = false;
     document.querySelectorAll('input[name="cdc-run-mode"]').forEach(r => (r.disabled = false));
     const btn = document.getElementById('measure-point-btn');
     if (btn) { btn.disabled = true; btn.classList.remove('blinking'); }
-    // Tear down the scroll watcher and hide the floating mirror.
+    // Tear down the scroll watcher and hide the floating manual transport.
     stopMeasureObserver();
     const fab = document.getElementById('measure-point-fab');
-    if (fab) { fab.classList.add('hidden'); fab.classList.remove('blinking'); fab.disabled = true; }
+    if (fab) { fab.classList.add('hidden'); fab.classList.remove('is-busy'); }
+    const fabBtn = document.getElementById('measure-fab-btn');
+    if (fabBtn) fabBtn.disabled = true;
     // Restore run-mode visibility (re-hides Measure-now unless still Manual+point).
     if (typeof updateRunModeVisibility === 'function') updateRunModeVisibility();
 }
 
 function resetUI({ goToEnabled }) {
-    resetManualControls();
+    resetRunControls();
     const infTimeout = document.getElementById('inf-timeout');
 
     // Re-enable subfolder selection controls
@@ -278,25 +307,32 @@ function onCdcRunModeChange() {
 }
 
 // Enable/disable the Measure-now button (armed = ready to record). Drives both the
-// inline button and the floating mirror so their state never diverges.
+// inline button and the floating transport so their state never diverges.
 function setMeasureArmed(armed) {
     const btn = document.getElementById('measure-point-btn');
     if (btn) { btn.disabled = !armed; btn.classList.toggle('blinking', armed); }
     syncMeasureFab();
 }
 
-// Mirror the inline button's state onto the floating FAB and decide its visibility:
-// shown only during a live manual run while the inline button is scrolled off-screen.
+// Mirror the inline button's state onto the floating transport and decide its
+// visibility: shown only during a live manual run while the inline button line is
+// scrolled off-screen. Same bar as #reading-control-fab — the state readout says
+// whether the device is armed for the next press (Ready) or still returning the
+// row the last press asked for (Measuring).
 function syncMeasureFab() {
     const fab = document.getElementById('measure-point-fab');
     if (!fab) return;
     const inline = document.getElementById('measure-point-btn');
     const active = manualSession && !!AppState?.scriptRunning;
     fab.classList.toggle('hidden', !(active && !_inlineMeasureVisible));
-    if (inline) {
-        fab.disabled = inline.disabled;
-        fab.classList.toggle('blinking', inline.classList.contains('blinking'));
-    }
+
+    const armed = inline ? !inline.disabled : false;
+    const fabBtn = document.getElementById('measure-fab-btn');
+    if (fabBtn) fabBtn.disabled = !armed;
+    fab.classList.toggle('is-busy', !armed);
+    _setToggleLabel('measure-fab-state-label',
+        armed ? 'cdc.state_ready' : 'cdc.state_measuring',
+        armed ? t('cdc.state_ready', 'Ready') : t('cdc.state_measuring', 'Measuring'));
 }
 
 function startMeasureObserver() {
@@ -332,6 +368,145 @@ async function measurePoint() {
         console.error('measurePoint error:', err);
         setMeasureArmed(true);
     }
+}
+
+// --- Pause / Resume a live automatic run ------------------------------------
+// Offered for automatic runs only (a manual run is already on-demand — it gets
+// "Measure now" instead). Two entry points share this state: the inline
+// #pause-reading-btn on the button line, and the floating #reading-control-fab
+// shown once that line scrolls out of view.
+
+// Write a label into its own span AND move its data-i18n key, so the wording
+// survives a later applyTranslations() pass (which rewrites textContent from the
+// key). Writing to the button itself would erase the icon beside the label.
+function _setToggleLabel(elId, key, text) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.setAttribute('data-i18n', key);
+    el.textContent = text;
+}
+
+// Paint both controls for the current pause state: the inline button's icon,
+// label, tint and hint; and the floating transport's state readout, icon and
+// action label. One function so the two entry points can never disagree.
+function applyPauseControlsUI() {
+    const hintKey = readingPaused ? 'hint.resume_reading' : 'hint.pause_reading';
+    const hint = readingPaused
+        ? t('hint.resume_reading', 'Continue the paused reading from where it left off')
+        : t('hint.pause_reading', 'Hold the reading without ending the run — the device stops taking readings until you resume');
+
+    const btn = document.getElementById('pause-reading-btn');
+    if (btn) {
+        btn.setAttribute('data-i18n-hint', hintKey);
+        btn.setAttribute('data-hint', hint);
+        // Amber tint while held — a solid state reads as "held", where a blinking
+        // border read as "broken".
+        btn.classList.toggle('is-paused', readingPaused);
+    }
+    _setToggleLabel('pause-reading-label',
+        readingPaused ? 'cdc.resume_reading' : 'cdc.pause_reading',
+        readingPaused ? t('cdc.resume_reading', 'Resume reading') : t('cdc.pause_reading', 'Pause reading'));
+
+    const fab = document.getElementById('reading-control-fab');
+    if (fab) fab.classList.toggle('paused', readingPaused);
+    const fabBtn = document.getElementById('reading-fab-pause');
+    if (fabBtn) {
+        fabBtn.setAttribute('data-i18n-hint', hintKey);
+        fabBtn.setAttribute('data-hint', hint);
+    }
+    // Short verbs in the transport (the state readout already gives context);
+    // the inline button keeps the fuller "Pause reading" among its siblings.
+    _setToggleLabel('reading-fab-pause-label',
+        readingPaused ? 'cdc.resume' : 'cdc.pause',
+        readingPaused ? t('cdc.resume', 'Resume') : t('cdc.pause', 'Pause'));
+    _setToggleLabel('reading-fab-state-label',
+        readingPaused ? 'timer.paused' : 'cdc.state_recording',
+        readingPaused ? t('timer.paused', 'Paused') : t('cdc.state_recording', 'Recording'));
+    // The timer widget freezes while paused — say so, or it reads as stuck.
+    const badge = document.getElementById('session-paused-badge');
+    if (badge) badge.classList.toggle('hidden', !readingPaused);
+}
+
+// Apply a pause state locally: freeze/thaw the session timer and repaint the
+// controls. The device-side pause is requested separately by togglePauseReading.
+// The elapsed and next-reading clocks are SHIFTED by the pause duration rather
+// than left running, matching the device (its session clock freezes too), so a
+// resumed series continues seamlessly instead of showing a hole.
+function applyPausedState(paused) {
+    if (paused === readingPaused) { applyPauseControlsUI(); return; }
+    readingPaused = paused;
+    if (paused) {
+        _pausedAt = Date.now();
+        if (sessionTimerHandle) { clearInterval(sessionTimerHandle); sessionTimerHandle = null; }
+    } else {
+        const held = _pausedAt ? Date.now() - _pausedAt : 0;
+        if (sessionStartTime) sessionStartTime += held;
+        if (lastDataPointTime) lastDataPointTime += held;
+        _pausedAt = null;
+        // Only resume ticking if the widget was already live (first point seen).
+        if (sessionStartTime && !sessionTimerHandle) {
+            sessionTimerHandle = setInterval(tickSessionTimer, 1000);
+            tickSessionTimer();
+        }
+    }
+    applyPauseControlsUI();
+    syncReadingFab();
+}
+
+async function togglePauseReading() {
+    if (!AppState?.scriptRunning) return;
+    const wantPause = !readingPaused;
+    const btn = document.getElementById('pause-reading-btn');
+    const fabBtn = document.getElementById('reading-fab-pause');
+    // Disable both entry points for the round-trip so a double press cannot
+    // send PAUSE and RESUME back to back.
+    if (btn) btn.disabled = true;
+    if (fabBtn) fabBtn.disabled = true;
+    try {
+        const res = await fetch(wantPause ? '/pause_reading' : '/resume_reading', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }
+        });
+        const response = await res.json();
+        if (response.status === 'success') {
+            logEvent('hardware', wantPause ? 'pause' : 'resume');
+            applyPausedState(wantPause);
+        } else {
+            $append('log-display', `Error: ${response.message}\n`);
+        }
+    } catch (err) {
+        console.error('togglePauseReading error:', err);
+        $append('log-display', 'Error: Failed to change the reading state\n');
+    } finally {
+        if (btn) btn.disabled = false;
+        if (fabBtn) fabBtn.disabled = false;
+    }
+}
+
+// Show/hide the floating Pause+Stop group: only during a live automatic run,
+// and only while the inline button line is scrolled out of view.
+function syncReadingFab() {
+    const fab = document.getElementById('reading-control-fab');
+    if (!fab) return;
+    const active = !!AppState?.scriptRunning && !manualSession;
+    fab.classList.toggle('hidden', !(active && !_inlineControlVisible));
+}
+
+function startControlObserver() {
+    const inline = document.getElementById('pause-reading-btn');
+    if (!inline) return;
+    if (!('IntersectionObserver' in window)) { _inlineControlVisible = false; syncReadingFab(); return; }
+    if (_controlObserver) _controlObserver.disconnect();
+    _controlObserver = new IntersectionObserver((entries) => {
+        _inlineControlVisible = entries[0].isIntersecting;
+        syncReadingFab();
+    }, { threshold: 0 });
+    _controlObserver.observe(inline);
+}
+
+function stopControlObserver() {
+    if (_controlObserver) { _controlObserver.disconnect(); _controlObserver = null; }
+    _inlineControlVisible = true;
+    syncReadingFab();
 }
 
 // Main script runner
@@ -421,6 +596,13 @@ async function runScript() {
                 if (mBtn) mBtn.classList.remove('hidden');
                 setMeasureArmed(false);
                 startMeasureObserver();
+            } else {
+                // Automatic run: offer Pause/Resume (inline + floating mirror).
+                // A manual run is already on-demand, so it has nothing to pause.
+                const pBtn = document.getElementById('pause-reading-btn');
+                if (pBtn) pBtn.classList.remove('hidden');
+                applyPausedState(false);
+                startControlObserver();
             }
             statusCheckInterval = setInterval(checkScriptStatus, STATUS_CHECK_INTERVAL);
         } else if (response.status === "device_not_found") {
@@ -481,7 +663,7 @@ async function terminateScript() {
 function handleScriptTermination(message) {
     AppState.scriptRunning = false;
     stopSessionTimer();
-    resetManualControls();
+    resetRunControls();
     $text("log-display", message);
     $disable(["run-script-btn"], false);
     $toggleClass("run-script-btn", "blinking", true);
