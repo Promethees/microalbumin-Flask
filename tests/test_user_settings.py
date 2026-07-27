@@ -431,3 +431,37 @@ class TestPostSettingsRoute:
         with patch("routes.core_routes._user_settings.save", return_value=False):
             rv = client.post("/settings", json={"theme": "dark"})
         assert rv.status_code == 500
+
+
+class TestReadingStartTimeout:
+    """The start-up wait guard (Rule §2.30). Bounds matter: too low and the
+    notice fires during a normal handshake and kills working runs; unbounded
+    and a typo disables the guard."""
+
+    def test_default_is_sixty_seconds(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["reading_start_timeout_sec"] == 60
+
+    def test_accepts_value_in_range(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"reading_start_timeout_sec": 120})
+        assert user_settings.load()["reading_start_timeout_sec"] == 120
+
+    @pytest.mark.parametrize("bad", [9, 0, -5, 601, 10000])
+    def test_rejects_out_of_range(self, tmp_path, monkeypatch, bad):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"reading_start_timeout_sec": bad})
+        assert user_settings.load()["reading_start_timeout_sec"] == 60
+
+    @pytest.mark.parametrize("bad", ["soon", None, [], {}])
+    def test_rejects_non_numeric(self, tmp_path, monkeypatch, bad):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"reading_start_timeout_sec": bad})
+        assert user_settings.load()["reading_start_timeout_sec"] == 60
+
+    def test_accepts_boundary_values(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"reading_start_timeout_sec": 10})
+        assert user_settings.load()["reading_start_timeout_sec"] == 10
+        user_settings.save({"reading_start_timeout_sec": 600})
+        assert user_settings.load()["reading_start_timeout_sec"] == 600

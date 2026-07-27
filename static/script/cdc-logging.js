@@ -74,6 +74,9 @@ function startSessionTimer(intervalSec) {
 // Called each time a new data point is detected in the log output.
 function onNewDataPoint() {
     const now = Date.now();
+    // First row proves the device is talking — the start-up notice has done its
+    // job and the session timer takes over from here.
+    endStartupWatch();
     if (!sessionStartTime) {
         // First data point: reveal widget and start ticking.
         sessionStartTime = now;
@@ -167,6 +170,9 @@ function clearStatusCheck() {
 // drop the Pause/Resume controls (a finished run is never "paused"). Shared by
 // every run-end path (error, completion, manual terminate).
 function resetRunControls() {
+    // The run is over (or never started), so stop watching for it to come up.
+    // A failed start keeps its notice visible — endStartupWatch handles that.
+    endStartupWatch();
     // Pause/Resume: clear the state before the flags below, so the controls are
     // repainted in their default "Pause reading" wording for the next run.
     readingPaused = false;
@@ -367,6 +373,113 @@ async function measurePoint() {
     } catch (err) {
         console.error('measurePoint error:', err);
         setMeasureArmed(true);
+    }
+}
+
+// --- Start-up progress notice ------------------------------------------------
+// Between pressing Start and the first row landing, the logger probes the serial
+// ports, runs the command handshake (up to 3 attempts, 5 s each) and waits out
+// the firmware's settle. None of that prints anything the user sees, so the panel
+// used to sit silent for many seconds and a working run looked hung. This walks a
+// notice through the phases and fails the run if the device never answers.
+
+let _startupWatching = false;
+let _startupStartedAt = null;
+let _startupPhase = null;
+let _startupTicker = null;
+
+// Phases, in order, keyed off the lines log_cdc_data.py writes. Keep the patterns
+// in sync with that file — they are the only progress signal available, since the
+// logger is a separate process and Flask returns as soon as it spawns.
+const STARTUP_PHASES = [
+    { id: 'connecting', test: null,
+      key: 'cdc.startup.connecting', text: 'Looking for the colorimeter…' },
+    { id: 'handshaking', test: /Connected to PyBadge at/,
+      key: 'cdc.startup.handshaking', text: 'Device found. Starting the session…' },
+    { id: 'waiting', test: /New session started/,
+      key: 'cdc.startup.waiting', text: 'Session started. Waiting for the first reading…' }
+];
+
+function startupTimeoutSec() {
+    const v = (typeof USER_SETTINGS !== 'undefined') ? Number(USER_SETTINGS.reading_start_timeout_sec) : NaN;
+    return (isFinite(v) && v >= 10) ? v : 60;
+}
+
+function _startupEl(id) { return document.getElementById(id); }
+
+// Begin watching a freshly started run. Called from runScript on success.
+function beginStartupWatch() {
+    _startupWatching = true;
+    _startupStartedAt = Date.now();
+    _startupPhase = null;
+    const box = _startupEl('reading-startup');
+    if (box) { box.classList.remove('hidden', 'is-late', 'is-failed'); }
+    const note = _startupEl('reading-startup-note');
+    if (note) note.classList.remove('hidden');
+    setStartupPhase(STARTUP_PHASES[0]);
+    if (_startupTicker) clearInterval(_startupTicker);
+    _startupTicker = setInterval(tickStartupWatch, 1000);
+    tickStartupWatch();
+}
+
+function setStartupPhase(phase) {
+    if (!phase || _startupPhase === phase.id) return;
+    _startupPhase = phase.id;
+    _setToggleLabel('reading-startup-text', phase.key, t(phase.key, phase.text));
+}
+
+// Walk the notice forward using the logger's log text. Only ever moves forward:
+// the log is cumulative, so the latest matching phase wins.
+function updateStartupProgress(logs) {
+    if (!_startupWatching) return;
+    let reached = STARTUP_PHASES[0];
+    for (let i = 1; i < STARTUP_PHASES.length; i++) {
+        if (STARTUP_PHASES[i].test.test(logs)) reached = STARTUP_PHASES[i];
+    }
+    setStartupPhase(reached);
+}
+
+function tickStartupWatch() {
+    if (!_startupWatching) return;
+    const elapsed = Math.floor((Date.now() - _startupStartedAt) / 1000);
+    const el = _startupEl('reading-startup-elapsed');
+    if (el) el.textContent = `${elapsed}s`;
+
+    // Past halfway, say plainly that this is slower than usual but still alive,
+    // so the wait doesn't read as a freeze.
+    const limit = startupTimeoutSec();
+    const box = _startupEl('reading-startup');
+    if (box && elapsed >= Math.floor(limit / 2)) box.classList.add('is-late');
+    if (elapsed >= limit) failStartupWatch(elapsed);
+}
+
+// The device never answered. Stop the run — a session that never started writes
+// nothing, and leaving the logger attached holds the serial port.
+function failStartupWatch(elapsed) {
+    endStartupWatch({ failed: true });
+    const box = _startupEl('reading-startup');
+    if (box) { box.classList.remove('hidden', 'is-late'); box.classList.add('is-failed'); }
+    const note = _startupEl('reading-startup-note');
+    if (note) note.classList.add('hidden');
+    const msg = t('cdc.startup.timeout_text',
+        'The colorimeter did not start a session in time. Check that it is connected and switched on, then try again.');
+    _setToggleLabel('reading-startup-text', 'cdc.startup.timeout', t('cdc.startup.timeout', 'The device did not respond'));
+    $append('log-display', `Error: ${msg} (${elapsed}s)\n`);
+    // Route through the shared error path so the run is torn down exactly like
+    // any other failed start (guarded, so it fires at most once).
+    showTerminationNotice(msg, 'error');
+}
+
+// Stop watching. `failed` skips the success bookkeeping; otherwise the notice is
+// simply hidden because the run is now live and the timer widget takes over.
+function endStartupWatch(opts) {
+    _startupWatching = false;
+    if (_startupTicker) { clearInterval(_startupTicker); _startupTicker = null; }
+    if (!(opts && opts.failed)) {
+        const box = _startupEl('reading-startup');
+        // A failed start keeps its message on screen until the next Start —
+        // otherwise the teardown it triggers would immediately erase the reason.
+        if (box && !box.classList.contains('is-failed')) box.classList.add('hidden');
     }
 }
 
@@ -586,6 +699,10 @@ async function runScript() {
             $text("log-display", "Script started...\n");
             if (saveMode === 'new' && typeof loadDataFolders === 'function') loadDataFolders();
             startSessionTimer(payload.interval_sec);
+            // /run_script returns as soon as the logger process survives its
+            // first half-second — the device has NOT been reached yet. Watch the
+            // start-up from here so the wait is visible and bounded.
+            beginStartupWatch();
             // Manual capture: reveal the "Measure now" button but keep it disabled
             // until Turn 1 lands — the logger auto-records the first Turn on start,
             // and onNewDataPoint arms the button once it arrives (so an early press
@@ -693,6 +810,11 @@ async function fetchLogs() {
         if (response.status === "success") {
             const logs = response.logs;
             $text("log-display", logs);
+
+            // Advance the start-up notice from the logger's own progress lines.
+            // Runs before the data-point check so a run that goes live inside a
+            // single poll still clears the notice.
+            updateStartupProgress(logs);
 
             // Detect newly recorded data points by counting log entries
             const dpCount = (logs.match(/Received: (?:Timestamp|Turn):/g) || []).length;

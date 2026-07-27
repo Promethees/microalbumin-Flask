@@ -49,6 +49,12 @@ DEFAULTS = {
     "default_interval_unit": "seconds",
     "cdc_axis": "time",
     "cdc_run_mode": "auto",
+    # Seconds to wait for a started run to actually reach the device before the
+    # client calls it a failed start. Covers port probing + the command
+    # handshake (worst case ~15 s of retries) + the firmware settle, none of
+    # which produce visible output — hence the wait notice. Configurable because
+    # a slow/hub-attached board legitimately takes longer on some machines.
+    "reading_start_timeout_sec": 60,
     "merge_directory_picker": False,
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
@@ -103,6 +109,16 @@ def save(updates: dict) -> bool:
         current["cdc_axis"] = updates["cdc_axis"]
     if "cdc_run_mode" in updates and updates["cdc_run_mode"] in ("auto", "manual"):
         current["cdc_run_mode"] = updates["cdc_run_mode"]
+    if "reading_start_timeout_sec" in updates:
+        try:
+            # Floor of 10 s: anything shorter would fire during a normal
+            # handshake and kill working runs. Ceiling keeps a typo from
+            # disabling the guard outright.
+            secs = int(updates["reading_start_timeout_sec"])
+            if 10 <= secs <= 600:
+                current["reading_start_timeout_sec"] = secs
+        except (ValueError, TypeError):
+            pass
     if "default_subfolder" in updates:
         val = updates["default_subfolder"]
         current["default_subfolder"] = val if (isinstance(val, str) and val) or val is None else None

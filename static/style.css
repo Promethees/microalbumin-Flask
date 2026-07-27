@@ -1558,6 +1558,126 @@ body.dark #plot-analysis {
     --blink-color: #00ff00;
 }
 
+/* ── Reading start-up notice ───────────────────────────────────────────────
+   Shown between Start and the first row: port probe + command handshake +
+   firmware settle produce no visible output, so without this the panel sits
+   silent and a working run reads as frozen. Same surface language as the
+   transport bars and #session-timer. */
+.reading-startup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0 8px;
+    padding: 10px 14px;
+    border-radius: var(--border-radius);
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.reading-startup.hidden {
+    display: none;
+}
+
+body.light .reading-startup {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #3730a3;
+}
+
+body.dark .reading-startup {
+    background: #24263a;
+    border-color: #4c4f79;
+    color: #c7d2fe;
+}
+
+.reading-startup-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#reading-startup-text {
+    font-weight: 600;
+}
+
+.reading-startup-note {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+
+.reading-startup-note.hidden {
+    display: none;
+}
+
+/* Monospace elapsed counter — same instrument readout as #session-timer, and
+   it is the proof that the app is still working rather than wedged. */
+.reading-startup-elapsed {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.8;
+    flex: 0 0 auto;
+}
+
+.reading-startup-spinner {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    opacity: 0.8;
+    animation: reading-startup-spin 0.9s linear infinite;
+}
+
+/* Slower than usual, still alive: warm the notice rather than alarm with it. */
+body.light .reading-startup.is-late {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+body.dark .reading-startup.is-late {
+    background: #40320f;
+    border-color: #b45309;
+    color: #fde68a;
+}
+
+/* Timed out — the run has been torn down and this stays until the next Start. */
+body.light .reading-startup.is-failed {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+body.dark .reading-startup.is-failed {
+    background: #451c1c;
+    border-color: #b91c1c;
+    color: #fecaca;
+}
+
+.reading-startup.is-failed .reading-startup-spinner {
+    animation: none;
+    border-top-color: currentColor;
+    opacity: 0.5;
+}
+
+@keyframes reading-startup-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* The spinner is decorative; the text and the counter carry the meaning. */
+@media (prefers-reduced-motion: reduce) {
+    .reading-startup-spinner {
+        animation: none;
+        border-top-color: currentColor;
+        opacity: 0.5;
+    }
+}
+
 @keyframes measure-fab-in {
     from { opacity: 0; }
     to   { opacity: 1; }

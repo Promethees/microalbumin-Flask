@@ -479,6 +479,20 @@
                     <button id="go-to-btn" onclick="browseSavingLocation(false, this)" disabled
                         data-i18n="cdc.view_live_data" data-i18n-hint="hint.view_live_data"
                         data-hint="Open the folder where the live data is being saved">View live data</button>
+                    <!-- Start-up progress. Reaching the device takes port probing,
+                         a command handshake (up to 3 retries) and a firmware
+                         settle — none of which print anything, so without this the
+                         panel sits silent for many seconds after Start and the run
+                         looks hung. Phases are read out of the logger's own log
+                         lines; see startupPhaseFromLogs(). -->
+                    <div id="reading-startup" class="reading-startup hidden" role="status" aria-live="polite">
+                        <span class="reading-startup-spinner" aria-hidden="true"></span>
+                        <span class="reading-startup-body">
+                            <span id="reading-startup-text" data-i18n="cdc.startup.connecting">Looking for the colorimeter…</span>
+                            <span id="reading-startup-note" class="reading-startup-note" data-i18n="cdc.startup.note">The device can take a few seconds to answer. Recording starts on its own.</span>
+                        </span>
+                        <span id="reading-startup-elapsed" class="reading-startup-elapsed">0s</span>
+                    </div>
                     <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
             </div>
