@@ -12,6 +12,8 @@ from export_cal_json import replace_empty
 from file_merge import merge_csv_contents
 from extensions import socketio
 from validators import validate_csv_content, validate_json_content, validate_json
+from file_path import (detect_csv_schema, CSV_SCHEMA_TIMESERIES,
+                       CSV_SCHEMA_TIMESERIES_TURN)
 
 file_bp = Blueprint('file', __name__)
 
@@ -459,6 +461,77 @@ def save_normalized_csv(validated_data):
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
+
+@file_bp.route('/convert_timestamp_to_turn', methods=['POST'])
+@validate_json({'filename': str})
+def convert_timestamp_to_turn(validated_data):
+    """Rewrite a point-mode Timestamp series CSV into a Turn series in place.
+
+    The ``Timestamp`` header becomes ``Turn`` and every data row's first cell is
+    replaced by its 1-based turn index (1,2,3…); metadata lines and all Value
+    columns are preserved verbatim. A Turn file carries no Timestamp column, so
+    this is a one-way relabel of the X axis (the recorded times are dropped).
+    Only a timeseries file is convertible; a Turn file or a calibration file is
+    rejected.
+    """
+    import csv as csv_mod
+    from io import StringIO
+
+    file_name = os.path.basename((validated_data['filename'] or '').strip())
+    if not file_name.lower().endswith('.csv'):
+        return jsonify({'status': 'error', 'message': 'Only CSV files are supported'}), HTTPStatus.BAD_REQUEST
+
+    try:
+        user_data = get_user_data()
+        content = user_data['csv'].get(file_name)
+        if content is None:
+            return jsonify({'status': 'error', 'message': f'File {file_name} not found'}), HTTPStatus.NOT_FOUND
+
+        meta_lines, data_lines = [], []
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith('#'):
+                meta_lines.append(line)
+            elif stripped:
+                data_lines.append(stripped)
+
+        if not data_lines:
+            return jsonify({'status': 'error', 'message': 'File has no data rows'}), HTTPStatus.BAD_REQUEST
+
+        schema = detect_csv_schema(data_lines[0])
+        if schema == CSV_SCHEMA_TIMESERIES_TURN:
+            return jsonify({'status': 'error', 'message': 'File already uses a Turn column'}), HTTPStatus.BAD_REQUEST
+        if schema != CSV_SCHEMA_TIMESERIES:
+            return jsonify({'status': 'error', 'message': 'Only a Timestamp series file can be converted to Turns'}), HTTPStatus.BAD_REQUEST
+
+        header_list = [h.strip() for h in next(csv_mod.reader([data_lines[0]]))]
+        header_list[0] = 'Turn'  # Timestamp -> Turn
+
+        out_rows = []
+        for i, line in enumerate(data_lines[1:], start=1):
+            parsed = next(csv_mod.reader([line]))
+            parsed[0] = str(i)  # sequential turn index 1,2,3…
+            out_rows.append(parsed)
+
+        out = StringIO()
+        for line in meta_lines:
+            out.write(line + '\n')
+        writer = csv_mod.writer(out)
+        writer.writerow(header_list)
+        writer.writerows(out_rows)
+        new_content = out.getvalue()
+
+        with user_data_session() as ud:
+            ud['csv'][file_name] = new_content
+        update_file_metadata(file_name, new_content)
+
+        socketio.emit('update_csv')
+        return jsonify({'status': 'success',
+                        'message': f'Converted {len(out_rows)} rows to Turns',
+                        'count': len(out_rows)})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 # ── Report helpers ─────────────────────────────────────────────────────────────

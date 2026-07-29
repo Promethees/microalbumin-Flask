@@ -234,6 +234,7 @@ function createChartSection({
             </label>
             <div id="${analysisId}"></div>
             ${`
+                ${AppState.xAxis === 'turn' ? '' : `
                 <div id="concentration-reader-section-source-${index}">
                     Concentration from source-${index + 1} sample is
                     ${metaConcentration !== null
@@ -245,7 +246,7 @@ function createChartSection({
                         oninput="adjustInputWidth(this)"
                         onblur="saveConcentrationValue(${index})"
                         min=0 style="width: ${Math.max(7, previousValue.length + 2)}ch;"> </input>`} ${concenUnit}
-                </div>
+                </div>`}
                 <div id="derived-concentration-section-source-${index}" class="hidden">
                     Concentration derived from the source-${index + 1} is <span id="der-con-value-source-${index}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
                 </div>
@@ -380,12 +381,14 @@ function splitMultiSourceRoutine(allGroups, XColumn, YColumn) {
 
         // Update analysis info display
         const analysisInfo = formatAnalysisInfo(analysis, label);
-        document.getElementById(analysisId).innerHTML = formatAnalysisHtml(analysisInfo,
-            AppState.plotColors[i % AppState.plotColors.length],
-            `Source ${i + 1}`,
-            `plot-analysis-source-${i}`
-        );
-        if (analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
+        const sourceColor = AppState.plotColors[i % AppState.plotColors.length];
+        // Point mode has no kinetics analysis panel; still show the Source label
+        // so the Normalize button (appended next) sits beside it.
+        document.getElementById(analysisId).innerHTML = (AppState.currentMeasurementMode === 'point')
+            ? `<span class="point-source-label" style="color: ${sourceColor}; font-weight: 600; margin-right: 8px;">Source ${i + 1}:</span>`
+            : formatAnalysisHtml(analysisInfo, sourceColor, `Source ${i + 1}`, `plot-analysis-source-${i}`);
+        // Linearity range is a kinetics concept — not shown in point mode.
+        if (AppState.currentMeasurementMode !== 'point' && analysis && analysis.linearXMin != null && analysis.linearXMax != null) {
             document.getElementById(analysisId).insertAdjacentHTML('beforeend',
                 `<button class="utility-btn" style="margin-top:4px;"
                     data-hint="Save the linearity range rows for this source to a new CSV file"
@@ -428,8 +431,16 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
     // Update analysis info display
     let html = '';
     analysisInfo.forEach((info, i) => {
-        html += formatAnalysisHtml(info, AppState.plotColors[i % AppState.plotColors.length], `Source ${i + 1}`, `plot-analysis-source-${i}`);
-        if (analyses[i] && analyses[i].linearXMin != null && analyses[i].linearXMax != null) {
+        const sourceColor = AppState.plotColors[i % AppState.plotColors.length];
+        // Point mode has no kinetics analysis panel; still show the Source label
+        // so the Normalize button (appended next) sits beside it.
+        if (AppState.currentMeasurementMode === 'point') {
+            html += `<span class="point-source-label" style="color: ${sourceColor}; font-weight: 600; margin-right: 8px;">Source ${i + 1}:</span>`;
+        } else {
+            html += formatAnalysisHtml(info, sourceColor, `Source ${i + 1}`, `plot-analysis-source-${i}`);
+        }
+        // Linearity range is a kinetics concept — not shown in point mode.
+        if (AppState.currentMeasurementMode !== 'point' && analyses[i] && analyses[i].linearXMin != null && analyses[i].linearXMax != null) {
             html += `<button class="utility-btn" style="margin-top:4px;"
                 data-hint="Save the linearity range rows for this source to a new CSV file"
                 onclick="saveLinearityRangeCsvForSource(${i}, ${analyses[i].linearXMin}, ${analyses[i].linearXMax})">📐 Save Linearity Range</button>`;
@@ -439,7 +450,11 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
             onclick="saveNormalizedCsvForSource(${i})">🧮 Normalize</button>`;
         const metaConcentration = getMetaConcentration(AppState.metaData);
         const concenUnit = getMetaConcenUnit(AppState.metaData);
+        // Turn files assign a concentration per Turn (the per-Turn calibration
+        // table), so the per-source "Concentration from sample" reader is
+        // redundant and omitted.
         html += `
+            ${AppState.xAxis === 'turn' ? '' : `
             <div id="concentration-reader-section-source-${i}">
                 Concentration from source-${i + 1} sample is ${metaConcentration !== null
                     ? `<span class="der-con-value" id="con-value-read-display-source-${i}">${metaConcentration}</span>
@@ -448,7 +463,7 @@ function groupMultiSourceRoutine(allGroups, XColumn, YColumn) {
                     value="${localStorage.getItem(`con-value-read-source-${i}`) || ''}"
                     oninput="adjustInputWidth(this)"
                     min=0 style="width: ${Math.max(7, (localStorage.getItem(`con-value-read-source-${i}`) || '').length + 2)}ch;"> </input>`} ${concenUnit}
-            </div>
+            </div>`}
             <div id="derived-concentration-section-source-${i}" class="hidden">
                 Concentration derived from the source-${i + 1} is <span id="der-con-value-source-${i}" class="der-con-value" tabindex="-1"></span> ${concenUnit}
             </div>
@@ -567,7 +582,19 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
             }))
             : null;
     } else if (calDiv.getAttribute('data-value') === "point") {
-        mixAnalysis = calculateCoefAndRSquared(extractColumnAndNormalize(allGroups.allData, YColumn), extractColumnAndConvert(allGroups.allData, XColumn), regressAlgo = document.getElementById("exp-json-regress-algo").value);
+        // Replicate standards at the same concentration (e.g. several Turns
+        // recorded at one concentration) are averaged so each concentration is
+        // weighted once when fitting the standard curve — matching the averaged
+        // points + error bars the chart already shows.
+        const valueRaw = extractColumnAndNormalize(allGroups.allData, YColumn);
+        const concRaw = extractColumnAndConvert(allGroups.allData, XColumn);
+        const { XColumn: concUniq, YColumn: valueAvg } = averageDuplicates(concRaw, valueRaw);
+        const fitConc = [], fitValue = [];
+        concUniq.forEach((c, i) => {
+            const v = valueAvg[i];
+            if (c !== null && !isNaN(c) && v !== null && !isNaN(v)) { fitConc.push(c); fitValue.push(v); }
+        });
+        mixAnalysis = calculateCoefAndRSquared(fitValue, fitConc, document.getElementById("exp-json-regress-algo").value);
     }
 
     // Generate chart
@@ -593,6 +620,11 @@ function calibrateRoutine(allGroups, XColumn, YColumn, rawData) {
 function filteredByRangeValue(isFullDisplay, data, XColumn, YColumn) {
     if (AppState.currentMeasurementMode === "calibrate") {
         return data.filter(row => row[XColumn] !== "NONE" && row[YColumn] !== "NONE");
+    }
+    // Point mode has no display-range control (hidden), so it never clips — the
+    // whole series is shown (Turn index or full time-series).
+    if (AppState.currentMeasurementMode === "point") {
+        return data.filter(row => row[XColumn] !== "NONE" && row[XColumn] != null);
     }
     else {
         const range = getRangeStartEnd(isFullDisplay);
@@ -789,10 +821,13 @@ function extractColumnAndNormalize(data, colName) {
 }
 
 function extractColumnAndConvert(data, colName, convert = false) {
-    const factor = getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue());
-    return data.map(row => {
-        return convert ? Number((row[colName] * factor)) : Number(row[colName]);
-    });
+    // A Turn X axis is a unitless 1,2,3… index — the seconds→time-unit rescale
+    // must never be applied to it.
+    const isTurnAxis = AppState.currentMeasurementMode !== 'calibrate' && AppState.xAxis === 'turn';
+    const factor = (convert && !isTurnAxis)
+        ? getTimeUnitMultiplier('seconds') / getTimeUnitMultiplier(getTimeUnitValue())
+        : 1;
+    return data.map(row => Number(row[colName] * factor));
 }
 
 function getDataGroups(data, XColumn, YColumn) {
@@ -841,6 +876,9 @@ function createToggleButton(analysisId = "plot-analysis", showText = 'See the an
 
 function formatAnalysisHtml(analysisInfo, color = null, label = '', analysisId = "plot-analysis") {
     if (!analysisInfo) return '';
+    // Point mode reads a single value at a point — the kinetics slope / maxRate /
+    // saturation analysis does not apply, so no analysis table is shown.
+    if (AppState.currentMeasurementMode === 'point') return '';
     const unitDisplay = getMetaUnit(AppState.metaData) !== "NONE" ? getMetaUnit(AppState.metaData) : '';
     const timeUnit = getTimeUnitValue().slice(0, -1);
     const displaySat = (!isNaN(analysisInfo.saturationValue)) ? analysisInfo.saturationValue : "--";

@@ -3322,3 +3322,253 @@ body.dark .file-identity {
     opacity: 0.45;
     cursor: not-allowed;
 }
+
+/* Turn-based point calibration tables: per-Turn concentration entry (build side)
+   and per-Turn derived concentration (derive side). */
+.turn-cal-table {
+    border-collapse: collapse;
+    width: auto;
+    font-size: 0.95em;
+}
+
+.turn-cal-table th,
+.turn-cal-table td {
+    border: 1px solid var(--border-color, #ccc);
+    padding: 4px 10px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.turn-cal-table th {
+    font-weight: 600;
+    background: var(--section-bg, rgba(127, 127, 127, 0.12));
+}
+
+/* ── User reviews banner ──────────────────────────────────────────────────
+   Collapsible strip above the app. Collapsed by default (see
+   initReviewsBanner) so the tool stays the first thing on screen. */
+.reviews-banner {
+    margin: 0 auto 10px;
+    max-width: 1600px;
+    border: 1px solid var(--border-color, #d8dee4);
+    border-radius: 10px;
+    background: var(--section-bg, rgba(52, 152, 219, 0.06));
+    overflow: hidden;
+}
+
+.reviews-banner-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.reviews-banner-toggle:hover {
+    background: rgba(52, 152, 219, 0.10);
+}
+
+.reviews-banner-title {
+    font-weight: 600;
+    font-size: 0.98rem;
+}
+
+.reviews-banner-count {
+    font-size: 0.82rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(52, 152, 219, 0.18);
+    white-space: nowrap;
+}
+
+/* The chevron sits at the far right of the toggle row. */
+.reviews-banner-toggle .folder-chevron {
+    margin-left: auto;
+}
+
+.reviews-banner-body {
+    padding: 0 16px 14px;
+    max-height: 1200px;
+    transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+}
+
+.reviews-banner.collapsed .reviews-banner-body {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+/* Horizontal rail of review cards — scrolls sideways rather than stacking, so
+   the banner never grows tall enough to push the app off screen. */
+.reviews-track {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+
+.review-card {
+    flex: 0 0 320px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border-color, #e1e6eb);
+    border-radius: 8px;
+    background: var(--card-bg, #fff);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.review-rating {
+    color: #f1c40f;
+    letter-spacing: 1px;
+    font-size: 0.95rem;
+}
+
+.review-quote {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    font-style: italic;
+}
+
+.review-author {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    margin-top: auto;
+}
+
+.review-author strong {
+    color: inherit;
+    font-size: 0.85rem;
+}
+
+.reviews-empty {
+    margin: 4px 0 10px;
+    font-size: 0.88rem;
+    color: #7f8c8d;
+}
+
+.reviews-banner-actions {
+    margin-top: 10px;
+}
+
+.review-field {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+body.dark .reviews-banner {
+    background: rgba(52, 152, 219, 0.10);
+    border-color: #3a4551;
+}
+
+body.dark .review-card {
+    background: #2b3138;
+    border-color: #3a4551;
+}
+
+body.dark .reviews-banner-toggle:hover {
+    background: rgba(52, 152, 219, 0.16);
+}
+
+/* ── Publication reference ────────────────────────────────────────────────── */
+.publication-section {
+    max-width: 1600px;
+    margin: 20px auto 10px;
+    padding: 0 16px;
+    flex-shrink: 0;
+}
+
+.publication-section h4 {
+    margin: 14px 0 6px;
+    font-size: 0.95rem;
+}
+
+.cite-hint,
+.pub-empty {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin: 0 0 10px;
+}
+
+.cite-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.cite-label {
+    flex: 0 0 60px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding-top: 4px;
+}
+
+.cite-text {
+    flex: 1 1 320px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #e1e6eb);
+    border-radius: 6px;
+    background: var(--card-bg, #fafbfc);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.cite-bibtex {
+    margin: 0;
+    overflow-x: auto;
+}
+
+.cite-doi {
+    font-size: 0.82rem;
+    margin: 4px 0 0;
+}
+
+.pub-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.pub-item {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.pub-title {
+    font-weight: 600;
+    display: block;
+}
+
+.pub-authors,
+.pub-venue,
+.pub-note {
+    display: block;
+    color: #7f8c8d;
+}
+
+.pub-link {
+    font-size: 0.8rem;
+}
+
+body.dark .cite-text {
+    background: #2b3138;
+    border-color: #3a4551;
+}

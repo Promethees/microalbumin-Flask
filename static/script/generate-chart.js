@@ -262,7 +262,9 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     type: 'linear',
                     title: {
                         display: true,
-                        text: (AppState.currentMeasurementMode !== "calibrate") ? `Time (${getTimeUnitValue()})` : `Concentration (${typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL'})`,
+                        text: (AppState.currentMeasurementMode !== "calibrate")
+                            ? (AppState.xAxis === 'turn' ? 'Turn' : `Time (${getTimeUnitValue()})`)
+                            : `Concentration (${typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL'})`,
                         color: getAxisStyle('label')
                     },
                     min: xMin,
@@ -271,7 +273,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     ticks: {
                         stepSize: xStepSize,
                         color: getAxisStyle('label'),
-                        callback: value => Number(value).toFixed(2)
+                        // Turn is an integer index; show whole numbers, not 1.00, 2.00.
+                        callback: value => (AppState.currentMeasurementMode !== "calibrate" && AppState.xAxis === 'turn')
+                            ? String(Math.round(Number(value)))
+                            : Number(value).toFixed(2)
                     }
                 },
                 y: {

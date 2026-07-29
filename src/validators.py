@@ -3,7 +3,9 @@ import json
 from functools import wraps
 from flask import request, jsonify
 from file_path import (parse_csv_metadata, detect_csv_schema,
-                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL)
+                       CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_TIMESERIES_TURN,
+                       CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
+                       CSV_SCHEMA_POINT_CAL_TURN)
 
 def validate_json(schema):
     """
@@ -93,6 +95,13 @@ _SCHEMA_VALIDATORS = {
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Point calibration). Header must be: Concentration,Value,TimePoint. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
     },
+    # Turn-based point calibration: each recorded Turn is one standard, so the
+    # table is Concentration,Value with no TimePoint column.
+    CSV_SCHEMA_POINT_CAL_TURN: {
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+)$",
+        'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
+        'error': 'Invalid format (Turn point calibration). Header must be: Concentration,Value. Metadata must include Measurement, MeasUnit, TimeUnit and MeasMode.'
+    },
     CSV_SCHEMA_TIMESERIES: {
         # Each repetition of the outer group must start with a literal comma, so
         # every iteration consumes at least one character. Without that anchor
@@ -103,6 +112,15 @@ _SCHEMA_VALIDATORS = {
         'data': r'^[ \t]*\d+(?:\.\d{1,2})?[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?[ \t]*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
+    },
+    # Point-mode Turn series: identical to the timeseries schema except the first
+    # (X) column is an integer turn index (1,2,3…) rather than a decimal
+    # Timestamp. The mandatory comma in the repeated group keeps matching linear
+    # (same ReDoS fix as above).
+    CSV_SCHEMA_TIMESERIES_TURN: {
+        'data': r'^[ \t]*\d+[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?[ \t]*)*$',
+        'meta': ["Measurement", "Unit", "Concentration"],
+        'error': 'Invalid format (Turn series). Header must be: Turn,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
     },
 }
 

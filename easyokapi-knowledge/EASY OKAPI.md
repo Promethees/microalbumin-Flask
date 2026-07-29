@@ -60,6 +60,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | File Ops | `src/routes/file_routes.py` | CSV/JSON CRUD operations (Edit, Delete, Copy, Upload, Merge) |
 | Data API | `src/routes/data_routes.py` | Data fetching, Header parsing, CSV/JSON metadata export; `export_data`/`export_cal_coefs` record the concentration unit + curve identity; `get_csv`/`get_json_cal` return `files_identity` for the CSV↔JSON match (Rule.md §2.11) |
 | AI | `src/routes/ai_routes.py` | AI assistant: chat, settings, guides, **desktop proxy** (`/ai/*`) |
+| Community | `src/routes/community_routes.py` | Curated reviews + publication reference (`/api/testimonials`, `/api/publications`) and the review submission relay (`POST /api/testimonials/submit` → email to admin, never published directly; Rule.md §2.13) |
 | Extensions | `src/extensions.py` | Centralized SocketIO instance to avoid circular imports |
 
 ### 2.2 Backend Modules (`src/`)
@@ -72,7 +73,9 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `export_data.py`                                         | CSV metadata parsing, header writing, export utilities with thread locks; `write_metadata`/`is_metadata_consistent` carry the `# ConcenUnit` (concentration unit) — see Rule.md §2.11 |
 | [[src/export_cal_json.py\|export_cal_json.py]]           | Standard curve coefficient processing, JSON export for calibration data (the JSON also records its identity — `for_meas`/`meas_unit`/`concen_unit` — written by `export_cal_coefs`) |
 | [[src/file_merge.py\|file_merge.py]]                     | Merging CSV contents from two files                                                       |
-| `file_path.py`                                           | File path utilities; CSV schema (`parse_csv_metadata`/`detect_csv_schema`) + concentration-unit (`CONCEN_UNITS` ng/µL·nM·%, `get_concen_unit`) + in-memory identity builders `build_csv_identity_from_store`/`build_json_identity_from_store` (powering the table badge + CSV↔JSON match, Rule.md §2.11) |
+| `community.py`                                           | Curated community content: `get_testimonials()` / `get_publications()` read `testimonials.json` / `publications.json` (cached); `validate_submission()` + `send_testimonial_submission()` relay a visitor's review to the admin inbox — see Rule.md §2.13 |
+| `rate_limit.py`                                          | Shared Flask-Limiter singleton + per-endpoint limit constants (AI, activation, signup, review submission) |
+| `file_path.py`                                           | File path utilities; CSV schema (`parse_csv_metadata`/`detect_csv_schema`, incl. the point-mode Turn schemas + `timeseries_x_column`, Rule.md §2.12) + concentration-unit (`CONCEN_UNITS` ng/µL·nM·%, `get_concen_unit`) + in-memory identity builders `build_csv_identity_from_store`/`build_json_identity_from_store` (powering the table badge + CSV↔JSON match, Rule.md §2.11) |
 | `get_next_filename.py`                                   | Auto-naming duplicates (e.g., `file_1.csv`, `file_2.csv`)                                 |
 | `mode.py`                                                | Returns available measurement modes: `kinetics`, `point`, `calibrate`, `report`           |
 | `quantity.py`                                            | Returns available quantity options for kinetics analysis                                  |
@@ -86,7 +89,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
 | `download_service.py`                                    | JWT helpers: generate/validate download tokens (30 min) and activation tokens (permanent) |
 
-### 2.3 Frontend (`static/script/` — 13 JS files)
+### 2.3 Frontend (`static/script/` — 14 JS files)
 
 | File | Responsibility |
 |---|---|
@@ -104,6 +107,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `user-guide.js` | Interactive step-by-step user guide with spotlight overlay; `UserGuide` class with `startWorkflow(id)` and `startCustomSteps(steps)` |
 | `ai-chat.js` | Floating AI chat widget; language dropdown (`toggleLangMenu`/`setLang`); SSE consumer; dispatches `guide_action` events to `window.userGuide` |
 | `report.js` | Report management UI: subject CRUD, item ordering, Excel/HTML export (`finalizeReportExcel`, `finalizeReport`) |
+| `community.js` | Collapsible user-reviews banner (top of page, state in `localStorage`) + publication-reference interactions: `toggleReviewsBanner`, `openReviewForm` (submission dialog → `/api/testimonials/submit`), `copyCitation` |
 
 ### 2.4 Templates (`templates/`)
 
@@ -326,7 +330,7 @@ microalbumin-Flask/
 │       └── account_routes.py   # Register/login/verify/reset/delete/download/activate
 ├── static/
 │   ├── style.css               # Source CSS
-│   ├── script/                 # Source JS (13 files)
+│   ├── script/                 # Source JS (14 files)
 │   │   ├── tooltip.js           # Styled [data-hint] hover tooltips
 │   │   ├── short-hands.js
 │   │   ├── init.js
@@ -340,7 +344,8 @@ microalbumin-Flask/
 │   │   ├── drive-integration.js
 │   │   ├── user-guide.js       # UserGuide class with spotlight overlay
 │   │   ├── ai-chat.js          # AI chat widget + SSE consumer
-│   │   └── report.js           # Report subject/item management + Excel/HTML export
+│   │   ├── report.js           # Report subject/item management + Excel/HTML export
+│   │   └── community.js       # Reviews banner + publication reference
 │   └── dist/                   # Built/minified assets (auto-generated by npm run build)
 ├── templates/
 │   ├── index.html              # Main SPA template (Jinja2)

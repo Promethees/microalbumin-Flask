@@ -24,6 +24,8 @@ from routes.ai_routes import ai_bp
 from routes.account_routes import account_bp
 from download_service import get_release, get_release_asset, _RELEASE_ASSET_SUFFIX, resolve_asset_location
 from routes.oauth_routes import oauth_bp
+from routes.community_routes import community_bp
+import community
 from account import db, run_migrations
 
 app = Flask(__name__, static_folder='static')
@@ -71,6 +73,7 @@ app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(oauth_bp)
+app.register_blueprint(community_bp)
 
 delimiter = "/"
 
@@ -185,6 +188,11 @@ def index():
                          cal_json_list=cal_json_list,
                          cal_json_identity=cal_json_identity,
                          concen_units=CONCEN_UNITS,
+                         # Curated community content (src/community.py) —
+                         # rendered server-side so the banner and the
+                         # publication list need no extra round-trip.
+                         testimonials=community.get_testimonials(),
+                         publication_ref=community.get_publications(),
                          delimiter=delimiter,
                          production_mode= app.config['PRODUCTION_MODE'],
                          download_available=DOWNLOAD_AVAILABLE,

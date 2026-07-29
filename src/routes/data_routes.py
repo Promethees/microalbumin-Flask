@@ -10,7 +10,7 @@ from export_data import (
     extract_single_entry, sort_csv_content, get_user_lock
 )
 from file_path import (DEFAULT_CONCEN_UNIT, build_csv_identity_from_store,
-                       build_json_identity_from_store)
+                       build_json_identity_from_store, timeseries_x_column)
 from get_next_filename import get_next_filename
 
 data_bp = Blueprint('data', __name__)
@@ -108,10 +108,23 @@ def get_data():
                         metadata[key.strip()] = value.strip()
                 elif line.strip():
                     data_lines.append(line)
+            # Point-mode Turn files carry a "Turn" X column (1,2,3…) instead of
+            # "Timestamp". Rather than teach the whole timeseries pipeline (plot,
+            # value-at-point, reports — all keyed on "Timestamp") a second X name,
+            # rename the key to "Timestamp" on read and flag x_axis="turn" so the
+            # client relabels the axis / reference input. The stored file keeps
+            # its "Turn" header (a Turn file never has a Timestamp column).
+            x_axis = 'time'
             if data_lines:
                 df = pd.read_csv(StringIO("\n".join(data_lines)))
                 df = df.astype(object).where(pd.notnull(df), None)
                 data = df.to_dict('records')
+                if timeseries_x_column(data_lines[0]) == 'Turn':
+                    x_axis = 'turn'
+                    data = [
+                        {('Timestamp' if k == 'Turn' else k): v for k, v in row.items()}
+                        for row in data
+                    ]
             else:
                 data = []
             unit = "NONE"
@@ -121,7 +134,8 @@ def get_data():
                     break
             return jsonify({
                 'data': data, 'unit': unit, 'error': None, 'metadata': metadata,
-                'num_sources': len([col for col in df.columns if col.startswith('Value:')]) if data_lines else 1
+                'num_sources': len([col for col in df.columns if col.startswith('Value:')]) if data_lines else 1,
+                'x_axis': x_axis
             })
         elif selected_file.lower().endswith('.json'):
             json_data = json.loads(content)
@@ -169,6 +183,9 @@ def export_data():
     if meas_mode not in ('kinetics', 'point'):
         return jsonify({"status": "error", "message": "Invalid measMode"}), 400
     newFile = data.get('newFile', True)
+    # 'turn' marks a point-mode Turn calibration (each Turn is a standard) — the
+    # written table drops the TimePoint column.
+    x_axis = 'turn' if str(data.get('xAxis', 'time')).strip().lower() == 'turn' else 'time'
     time_unit = "minute" if meas_mode == "point" else "minutes"
     full_name = f"{file_name}_{meas_mode}.csv"
     try:
@@ -186,14 +203,31 @@ def export_data():
                             f"Concentration unit mismatch: this file records {existing_unit}, "
                             f"but the export is in {concen_unit}. Pick a different file or unit.")})
                     return jsonify({"status": "error", "message": "Metadata inconsistency"})
+                # Appending to an existing point calibration file must not mix a
+                # turn-based table (Concentration,Value) with a time-based one
+                # (Concentration,Value,TimePoint) — the column counts differ.
+                if meas_mode == "point":
+                    existing_header = next(
+                        (l.strip() for l in content.splitlines()
+                         if l.strip() and not l.strip().startswith('#')), '')
+                    if existing_header:
+                        existing_is_turn = 'TimePoint' not in existing_header
+                        if existing_is_turn != (x_axis == 'turn'):
+                            return jsonify({"status": "error", "message": (
+                                'Cannot append to "{name}": it is a {existing} point '
+                                'calibration table but this export is {incoming}. Use a '
+                                'different file name.').format(
+                                    name=full_name,
+                                    existing="turn-based" if existing_is_turn else "time-based",
+                                    incoming="turn-based" if x_axis == 'turn' else "time-based")})
             output = StringIO()
             writer = csv.writer(output)
             if not file_exists and newFile:
                 write_metadata(output, measurement, meas_unit, time_unit, meas_mode, concen_unit)
-                write_headers(writer, meas_mode)
+                write_headers(writer, meas_mode, x_axis)
             elif file_exists:
                 output.write(content.rstrip('\n') + '\n')
-            entries_to_write = [extract_single_entry(entry, meas_mode) for entry in entries] if is_batch else [extract_single_entry(data, meas_mode)]
+            entries_to_write = [extract_single_entry(entry, meas_mode, x_axis) for entry in entries] if is_batch else [extract_single_entry(data, meas_mode, x_axis)]
             for entry in entries_to_write:
                 writer.writerow(entry)
             new_content = sort_csv_content(output.getvalue())
@@ -213,6 +247,9 @@ def export_cal_coefs():
     concen_unit = data.get('concenUnit') or DEFAULT_CONCEN_UNIT
     coef_content = data.get('coef_content')
     time = data.get('time')
+    # 'turn' → a turn-based point calibration curve (each standard is a Turn);
+    # the JSON omits the time/time-unit reference.
+    x_axis = 'turn' if str(data.get('x_axis', 'time')).strip().lower() == 'turn' else 'time'
     time_unit = "minute"
     file_name = data.get('file_name', 'calibrate')
     cal_mode = data.get('cal_mode', "kinetics")
@@ -234,7 +271,12 @@ def export_cal_coefs():
         # against it: Measurement (for_meas), measurement Unit, ConcenUnit.
         json_content.update({"fit_type": fit_type, "for_meas": for_meas,
                              "meas_unit": meas_unit, "concen_unit": concen_unit})
-        if cal_mode == "point":
+        # A turn-based point curve has no time reference — each Turn is already a
+        # discrete standard, so the concentration is derived from the raw value
+        # with no time lookup. Record x_axis so a reader can tell.
+        if cal_mode == "point" and x_axis == 'turn':
+            json_content.update({"x_axis": "turn"})
+        elif cal_mode == "point":
             json_content.update({"time": time, "time-unit": time_unit})
         user_data['json'][cal_mode][full_name] = json.dumps(json_content, cls=CustomEncoder, indent=4)
         from user_data import save_user_data

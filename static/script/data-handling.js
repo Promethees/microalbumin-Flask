@@ -141,7 +141,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                             const tbody = document.createElement("tbody");
 
                             for (const [key, value] of Object.entries(json)) {
-                                if (["fit_type", "for_meas", "meas_unit", "concen_unit"].includes(key)) continue;
+                                if (["fit_type", "for_meas", "meas_unit", "concen_unit", "x_axis"].includes(key)) continue;
                                 const tr = document.createElement("tr");
                                 const tdKey = document.createElement("td");
                                 tdKey.textContent = key;
@@ -461,6 +461,7 @@ function deselectFile(tableSelector = "#file-table") {
 
     if (tableSelector === "#file-table") {
         AppState.responseData = null;
+        AppState.xAxis = 'time';
         destroyCharts();
 
         // Hide canvas
@@ -688,6 +689,10 @@ function processResponse(response, jsonFile) {
     AppState.responseData = response.data;
     AppState.metaData = response.metadata;
     AppState.numSources = response.num_sources || 1;
+    // Point-mode Turn files stream a 1,2,3… turn index instead of a Timestamp.
+    // The server normalizes the key to "Timestamp" and flags x_axis so the chart
+    // axis / reference input relabel to "Turn" (see /get_data).
+    AppState.xAxis = response.x_axis || 'time';
 
     // Reflect the loaded file's concentration unit in the #concen-unit dropdown.
     if (typeof syncConcenUnitDropdown === 'function') {
@@ -715,10 +720,21 @@ function processResponse(response, jsonFile) {
         handleCalibrationMode();
     }
 
+    // Point-mode Turn files build a calibration per-Turn (no time reference), so
+    // swap in the per-Turn concentration table for the time-point controls.
+    if (AppState.currentMeasurementMode === "point") {
+        applyTurnCalUI();
+    }
+
     return response;
 };
 
 function handleNonCalibrationMode(jsonFile) {
+    // Turn files derive a concentration per Turn (processTurnDerive renders the
+    // per-Turn table), so the per-source derived-concentration sections do not
+    // apply and must not be un-hidden.
+    if (AppState.currentMeasurementMode === "point" && AppState.xAxis === 'turn') return;
+
     const derivedSettings = settingDerivedCon();
     if (derivedSettings) {
         updateDerivedSections(derivedSettings);
@@ -856,6 +872,14 @@ function updateRefCalPoint(jsonFile) {
     const jsonTimePoint = jsonFile["time"];
     const jsonTimeUnit = jsonFile["time-unit"];
 
+    // Turn files carry a unitless 1,2,3… index, so the reference point IS the
+    // turn number — no time-unit conversion applies.
+    if (AppState.xAxis === 'turn') {
+        AppState.refCalPoint = jsonTimePoint;
+        document.getElementById("cal-point").textContent = AppState.refCalPoint;
+        return;
+    }
+
     // Convert time units
     const conversionFactor = getTimeUnitMultiplier(jsonTimeUnit + "s") / getTimeUnitMultiplier(getTimeUnitValue());
     AppState.refCalPoint = jsonTimePoint * conversionFactor;
@@ -869,7 +893,11 @@ function processPointMode(jsonFile, derived_con_text) {
     if (derived_con_text && derived_con_text.id.includes("source-")) {
         sourceIndex = parseInt(derived_con_text.id.split("source-")[1]) + 1;
     }
-    const estValueRead = getEstimatedValue(AppState.responseData, AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue()), sourceIndex).toFixed(4);
+    // Turn X axis: refCalPoint is the raw turn index (no time-unit scaling).
+    const lookupPoint = AppState.xAxis === 'turn'
+        ? AppState.refCalPoint
+        : AppState.refCalPoint * getTimeUnitMultiplier(getTimeUnitValue());
+    const estValueRead = getEstimatedValue(AppState.responseData, lookupPoint, sourceIndex).toFixed(4);
     if (estValueRead) {
         const unitPrinted = (AppState.metaData["Unit"] || "").toLowerCase() === "none" ? "" : AppState.metaData["Unit"];
         // Target the specific source message container
@@ -892,6 +920,42 @@ function processPointMode(jsonFile, derived_con_text) {
     }
 }
 
+// Derive a concentration for every Turn using a turn-based calibration curve
+// (no time reference — each Turn's value maps straight through the fit).
+// Renders a Turn × source table into #add-json-section.
+function processTurnDerive(jsonFile) {
+    $hidden(["point-json-exp-section"], false);
+    const container = document.getElementById('add-json-section');
+    if (!container) return;
+    const rows = AppState.responseData || [];
+    const n = AppState.numSources || 1;
+    const concenUnit = (typeof getMetaConcenUnit === 'function') ? getMetaConcenUnit(AppState.metaData) : 'ng/µL';
+
+    let html = `<div style="overflow-x:auto;"><table class="turn-cal-table"><thead><tr><th>Turn</th>`;
+    for (let s = 1; s <= n; s++) {
+        html += `<th>${n > 1 ? 'Value:' + s + ' → ' : ''}Concentration (${_escHtml(concenUnit)})</th>`;
+    }
+    html += `</tr></thead><tbody>`;
+    rows.forEach(row => {
+        html += `<tr><td>${_escHtml(row['Timestamp'])}</td>`;
+        for (let s = 1; s <= n; s++) {
+            const val = row['Value:' + s];
+            let cell = '—';
+            if (val !== undefined && val !== null && val !== 'NONE' && val !== '') {
+                try {
+                    cell = computeFit(parseFloat(val), jsonFile["fit_type"], jsonFile["fit_coef"]).toFixed(4);
+                } catch (e) {
+                    cell = '<span style="color:red;">err</span>';
+                }
+            }
+            html += `<td>${cell}</td>`;
+        }
+        html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+}
+
 function handleCalibrationMode() {
     if (calDiv.getAttribute('data-value') === "kinetics") {
         $hidden(["select-quantity-section"], false);
@@ -907,19 +971,31 @@ function updatePlotBasedOnMode(jsonFile) {
             AppState.exp_json_content = updatePlot(AppState.responseData, "Concentration", quantity_obj.selectedOptions[0].text
             );
         } else if (cal_type === "point") {
-            const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
-            console.log("Give me uniqueTimePoints ", uniqueTimePoints);
-            AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
-            const timePoint = document.getElementById("regressed-time-point").value;
-            const processingData = AppState.responseData.filter(row =>
-                !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
-            );
-            AppState.exp_json_content = updatePlot(processingData, "Concentration", "Value");
+            if (isTurnPointCal()) {
+                // Turn-based curve: no TimePoint column, so every row is a
+                // standard — fit Concentration vs Value directly.
+                $hidden(['select-time-point'], true);
+                AppState.exp_json_content = updatePlot(AppState.responseData, "Concentration", "Value");
+            } else {
+                $hidden(['select-time-point'], false);
+                const uniqueTimePoints = getUniqueColumnEntries(AppState.responseData, 'TimePoint');
+                AppState.prevDropdownEntries = populateDropdown(uniqueTimePoints);
+                const timePoint = document.getElementById("regressed-time-point").value;
+                const processingData = AppState.responseData.filter(row =>
+                    !timePoint || parseFloat(row["TimePoint"]) === parseFloat(timePoint)
+                );
+                AppState.exp_json_content = updatePlot(processingData, "Concentration", "Value");
+            }
         }
     } else {
         updateMultiSourceExportOptions();
+        // A turn-based calibration curve (built from a Turn file) has no time
+        // reference — it derives a concentration from every Turn's value
+        // directly, not at one reference point.
+        const turnDerive = !!(jsonFile && jsonFile["x_axis"] === 'turn');
         if (AppState.currentMeasurementMode === "point" && jsonFile) {
-            updateRefCalPoint(jsonFile);
+            $hidden(['ref-point-line'], turnDerive);
+            if (!turnDerive) updateRefCalPoint(jsonFile);
             document.getElementById("add-json-section").textContent = "";
         }
 
@@ -935,15 +1011,19 @@ function updatePlotBasedOnMode(jsonFile) {
         );
 
         if (AppState.currentMeasurementMode === "point" && jsonFile) {
-            const derived_con_texts = settingDerivedCon().derived_con_text;
-            const derived_con_section = settingDerivedCon().derived_section;
-            if (derived_con_section && Array.isArray(derived_con_section)) {
-                derived_con_section.forEach(section => section.classList.remove("hidden"));
-            }
-            if (Array.isArray(derived_con_texts)) {
-                derived_con_texts.forEach((textElem) => {
-                    processPointMode(jsonFile, textElem);
-                });
+            if (turnDerive) {
+                processTurnDerive(jsonFile);
+            } else {
+                const derived_con_texts = settingDerivedCon().derived_con_text;
+                const derived_con_section = settingDerivedCon().derived_section;
+                if (derived_con_section && Array.isArray(derived_con_section)) {
+                    derived_con_section.forEach(section => section.classList.remove("hidden"));
+                }
+                if (Array.isArray(derived_con_texts)) {
+                    derived_con_texts.forEach((textElem) => {
+                        processPointMode(jsonFile, textElem);
+                    });
+                }
             }
         }
 
@@ -1524,11 +1604,20 @@ function exportData() {
         return;
     }
 
+    const saveFile = document.getElementById("save-file").value.trim() || "results";
+
+    // Turn files build the whole calibration curve from one file: each Turn is a
+    // standard with its own concentration. It has its own per-Turn validation
+    // and payload shape, so it bypasses the source-based flow.
+    if (isTurnRawFile()) {
+        exportTurnCal(saveFile);
+        return;
+    }
+
     // Validate concentration values
     if (!validateConcentration()) {
         return;
     }
-    const saveFile = document.getElementById("save-file").value.trim() || "results";
 
     // Bind button to export path
     bindButtonToString("#go-to-exp-btn");
@@ -1632,6 +1721,150 @@ function generatePointData() {
             measUnit: AppState.globalAnalysis.meas_unit
         }];
     }
+}
+
+// ── Turn-based point calibration ─────────────────────────────────────────────
+// A point-mode Turn file records each standard as one Turn. Instead of reading a
+// value at a reference time, the user assigns a concentration to every Turn; the
+// (Concentration, Value) pairs across turns ARE the calibration curve. There is
+// no time reference, so the "Set reference point"/"Select time point" controls
+// are replaced by a per-Turn concentration table.
+
+// True when the loaded raw measurement file is a point-mode Turn file.
+function isTurnRawFile() {
+    return AppState.currentMeasurementMode === 'point' && AppState.xAxis === 'turn';
+}
+
+// True when a calibration CSV loaded in calibrate/point mode is turn-based
+// (Concentration,Value — no TimePoint column).
+function isTurnPointCal() {
+    return AppState.currentMeasurementMode === 'calibrate'
+        && calDiv.getAttribute('data-value') === 'point'
+        && Array.isArray(AppState.responseData) && AppState.responseData.length > 0
+        && !('TimePoint' in AppState.responseData[0]);
+}
+
+// Swap the point-mode export UI between the time-reference control and the
+// per-Turn concentration table, based on the loaded file's X axis.
+function applyTurnCalUI() {
+    const turn = isTurnRawFile();
+    $hidden(['set-exp-point-section'], turn);
+    $hidden(['turn-cal-section'], !turn);
+    // A Turn file has no time axis, so the whole Display-range section (its only
+    // remaining control in point mode is the Time unit selector) does not apply;
+    // a time-series point file keeps it for the reference point / chart axis.
+    $hidden(['range-display'], turn);
+    if (turn) {
+        // A Turn file has no time, so these time-point controls do not apply.
+        $hidden(['select-time-point'], true);
+        renderTurnCalTable();
+    }
+}
+
+// Render one row per Turn: [Turn #] [Value:1 .. Value:N] [Concentration]. The
+// concentration is shared across sources (each Turn is one standard), so it is a
+// single input per Turn; every source's value is shown so the user can see what
+// each selected source contributes. Concentration inputs persist per Turn in
+// localStorage, keyed by file name.
+function renderTurnCalTable() {
+    const table = document.getElementById('turn-cal-table');
+    if (!table) return;
+    const rows = AppState.responseData || [];
+    const n = AppState.numSources || 1;
+    const concenUnit = (typeof getMetaConcenUnit === 'function') ? getMetaConcenUnit(AppState.metaData) : 'ng/µL';
+    const fileKey = AppState.currentFile || 'turn-cal';
+    const isVal = v => !(v === undefined || v === null || v === 'NONE' || v === '');
+
+    let html = `<thead><tr><th>Turn</th>`;
+    for (let s = 1; s <= n; s++) {
+        html += `<th>${n > 1 ? 'Value:' + s : 'Value'}</th>`;
+    }
+    html += `<th>Concentration (${_escHtml(concenUnit)})</th></tr></thead><tbody>`;
+    rows.forEach((row) => {
+        const turn = row['Timestamp'];  // Turn index (renamed to Timestamp on read)
+        const storeKey = `turn-con-${fileKey}-${turn}`;
+        const saved = localStorage.getItem(storeKey) || '';
+        html += `<tr><td>${_escHtml(turn)}</td>`;
+        for (let s = 1; s <= n; s++) {
+            const v = row['Value:' + s];
+            html += `<td>${isVal(v) ? _escHtml(v) : '—'}</td>`;
+        }
+        html += `<td><input type="number" class="turn-con-input" data-turn="${_escHtml(turn)}"
+                 value="${_escHtml(saved)}" min="0" style="width:8ch;"
+                 onchange="saveTurnConcentration(this)"></td></tr>`;
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+
+// Persist one Turn's concentration entry (keyed by file + turn index).
+function saveTurnConcentration(input) {
+    const fileKey = AppState.currentFile || 'turn-cal';
+    localStorage.setItem(`turn-con-${fileKey}-${input.getAttribute('data-turn')}`, input.value);
+}
+
+// Build and send turn-based point calibration files (Concentration,Value). The
+// concentration is shared per Turn; each selected source ("Select Source to
+// export": ALL or one index) is written as its own calibration curve — one file
+// per source, name suffixed with the source index when more than one.
+function exportTurnCal(saveFile) {
+    const rows = AppState.responseData || [];
+    const conByTurn = {};
+    document.querySelectorAll('#turn-cal-table .turn-con-input').forEach(inp => {
+        conByTurn[inp.getAttribute('data-turn')] = (inp.value || '').trim();
+    });
+
+    const sourceValue = document.getElementById('exp-json-source').value;
+    const selected = (sourceValue === 'ALL')
+        ? Array.from({ length: AppState.numSources }, (_, i) => i + 1)
+        : [getValInt('exp-json-source')];
+
+    const isVal = v => !(v === undefined || v === null || v === 'NONE' || v === '');
+    const jobs = selected.map(src => {
+        const entries = [];
+        rows.forEach(row => {
+            const con = conByTurn[String(row['Timestamp'])];
+            const val = row['Value:' + src];
+            if (!con || !isVal(val)) return;  // skip turns lacking a concentration or value
+            entries.push({ con: con, estValue: val });
+        });
+        return { src, entries };
+    });
+
+    const short = jobs.filter(j => j.entries.length < 2).map(j => j.src);
+    if (short.length) {
+        alert(`Each selected source needs at least two Turns with a concentration assigned. Not enough for source: ${short.join(', ')}.`);
+        return;
+    }
+
+    const multi = selected.length > 1;
+    const common = {
+        measMode: 'point',
+        xAxis: 'turn',
+        newFile: true,
+        meas: (AppState.globalAnalysis && AppState.globalAnalysis.meas) || (AppState.metaData && AppState.metaData.Measurement) || 'NONE',
+        measUnit: (AppState.globalAnalysis && AppState.globalAnalysis.meas_unit) || 'NONE',
+        concenUnit: (typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL')
+    };
+
+    const requests = jobs.map(j => {
+        const fname = multi ? `${saveFile}_source${j.src}` : saveFile;
+        return $.ajax({
+            url: '/export_data', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify({ ...common, save_file: fname, entries: j.entries })
+        }).then(resp => ({ src: j.src, resp }), () => ({ src: j.src, resp: { status: 'error', message: 'request failed' } }));
+    });
+
+    Promise.all(requests).then(results => {
+        const fail = results.filter(r => !r.resp || r.resp.status !== 'success');
+        if (fail.length === 0) {
+            alert(multi
+                ? `Success: exported ${results.length} calibration files (one per source)!`
+                : `Success: ${results[0].resp.message}!`);
+        } else {
+            alert('Error: ' + fail.map(f => `source ${f.src}: ${(f.resp && f.resp.message) || 'failed'}`).join('; '));
+        }
+    });
 }
 
 // Send export data to sources
@@ -1757,7 +1990,8 @@ function exportJSONCoef() {
     }
 
     const selectElement = document.getElementById('regressed-quantity');
-    if (calDiv.getAttribute('data-value') === "point" && (!document.getElementById("regressed-time-point").value)) {
+    const turnCal = isTurnPointCal();
+    if (calDiv.getAttribute('data-value') === "point" && !turnCal && (!document.getElementById("regressed-time-point").value)) {
         alert("Please set time point to regress data from");
         return null;
     } else {
@@ -1768,7 +2002,9 @@ function exportJSONCoef() {
                 measUnit: (typeof getMetaUnit === 'function' ? getMetaUnit(AppState.metaData) : (AppState.metaData && AppState.metaData['MeasUnit'])) || 'NONE',
                 concenUnit: (typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL'),
                 coef_content: AppState.exp_json_content.analysis,
-                time: document.getElementById("regressed-time-point").value,
+                time: turnCal ? null : document.getElementById("regressed-time-point").value,
+                // A turn-based point curve records no time reference.
+                x_axis: turnCal ? 'turn' : 'time',
                 file_name: document.getElementById("save-json-file").value,
                 cal_mode: calDiv.getAttribute('data-value'),
                 cal_params: Array.from(selectElement.options).map(option => { return option.dataset.original }),

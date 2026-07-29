@@ -27,12 +27,17 @@ def merge_csv_contents(contents):
 
     if all('Timestamp' in df.columns for _, df in parsed):
         join_key = 'Timestamp'
+    elif all('Turn' in df.columns for _, df in parsed):
+        # Point-mode Turn series merge on the integer turn index exactly as a
+        # Timestamp series does. Mixing Turn + Timestamp files falls through to
+        # Concentration and fails — they are not the same axis.
+        join_key = 'Turn'
     elif all('Concentration' in df.columns for _, df in parsed):
         join_key = 'Concentration'
     else:
-        return False, "Could not find common key column (Timestamp or Concentration)"
+        return False, "Could not find common key column (Timestamp, Turn or Concentration)"
 
-    if join_key == 'Timestamp':
+    if join_key in ('Timestamp', 'Turn'):
         value_offset = 0
         dfs_renamed = []
         for _, df in parsed:
@@ -43,7 +48,7 @@ def merge_csv_contents(contents):
 
         merged_df = dfs_renamed[0]
         for df in dfs_renamed[1:]:
-            merged_df = pd.merge(merged_df, df, on='Timestamp', how='outer')
+            merged_df = pd.merge(merged_df, df, on=join_key, how='outer')
     else:
         merged_df = pd.concat([df for _, df in parsed], ignore_index=True)
 

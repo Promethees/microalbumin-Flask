@@ -225,3 +225,52 @@ def test_is_metadata_consistent_concen_unit_must_match():
             'MeasMode': 'kinetics', 'ConcenUnit': 'nM'}
     assert is_metadata_consistent(meta, 'ABS', 'AU', 'min', 'kinetics', 'nM') is True
     assert is_metadata_consistent(meta, 'ABS', 'AU', 'min', 'kinetics', '%') is False
+
+
+# ---------------------------------------------------------------------------
+# Turn-based point calibration (Concentration,Value — no TimePoint)
+# ---------------------------------------------------------------------------
+
+def test_write_headers_point_turn_drops_timepoint():
+    out = io.StringIO()
+    write_headers(csv.writer(out), 'point', 'turn')
+    assert out.getvalue().strip() == 'Concentration,Value'
+
+
+def test_write_headers_point_time_keeps_timepoint():
+    out = io.StringIO()
+    write_headers(csv.writer(out), 'point', 'time')
+    assert out.getvalue().strip() == 'Concentration,Value,TimePoint'
+
+
+def test_write_headers_kinetics_ignores_x_axis():
+    out = io.StringIO()
+    write_headers(csv.writer(out), 'kinetics', 'turn')
+    assert out.getvalue().strip() == 'Concentration,maxRate,Slope,Sat,Time To Sat'
+
+
+def test_extract_single_entry_point_turn_two_columns():
+    entry = {'con': '5', 'estValue': '0.42', 'timePoint': '2'}
+    assert extract_single_entry(entry, 'point', 'turn') == ['5', '0.42']
+
+
+def test_extract_single_entry_point_time_three_columns():
+    entry = {'con': '5', 'estValue': '0.42', 'timePoint': '2'}
+    assert extract_single_entry(entry, 'point', 'time') == ['5', '0.42', '2']
+
+
+def test_extract_single_entry_defaults_to_time_axis():
+    entry = {'con': '5', 'estValue': '0.42', 'timePoint': '2'}
+    assert extract_single_entry(entry, 'point') == ['5', '0.42', '2']
+
+
+def test_sort_csv_content_handles_two_column_turn_table():
+    content = (
+        "# MeasMode: point\n"
+        "Concentration,Value\n"
+        "10,0.5\n"
+        "2,0.1\n"
+    )
+    sorted_content = sort_csv_content(content)
+    rows = [l for l in sorted_content.splitlines() if l and not l.startswith('#')]
+    assert rows == ['Concentration,Value', '2,0.1', '10,0.5']

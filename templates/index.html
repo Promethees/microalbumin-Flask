@@ -40,6 +40,53 @@
         User Guide
     </button>
 
+    <!-- ── User reviews banner ──────────────────────────────────────────────
+         Curated reviews from testimonials.json (src/community.py). Collapsible
+         and sits above the whole app; the collapsed/expanded choice persists in
+         localStorage. Visitors cannot publish here — "Share your experience"
+         emails the admin, who adds approved reviews to the file by hand. With no
+         published reviews yet the banner still shows, inviting the first one. -->
+    <section id="reviews-banner" class="reviews-banner" aria-label="User reviews">
+        <button type="button" id="reviews-banner-toggle" class="reviews-banner-toggle"
+            onclick="toggleReviewsBanner()" aria-expanded="true" aria-controls="reviews-banner-body">
+            <span class="reviews-banner-title">💬 What researchers say about Easy OKAPI</span>
+            <span class="reviews-banner-count">
+                {%- if testimonials -%}
+                {{ testimonials|length }} review{{ '' if testimonials|length == 1 else 's' }}
+                {%- else -%}
+                be the first
+                {%- endif -%}
+            </span>
+            <span id="reviews-chevron" class="folder-chevron">▼</span>
+        </button>
+        <div id="reviews-banner-body" class="reviews-banner-body">
+            {% if testimonials %}
+            <div class="reviews-track scrollbar-style">
+                {% for t in testimonials %}
+                <figure class="review-card">
+                    <div class="review-rating" aria-label="{{ t.rating }} out of 5">{{ '★' * t.rating }}{{ '☆' * (5 - t.rating) }}</div>
+                    <blockquote class="review-quote">{{ t.quote }}</blockquote>
+                    <figcaption class="review-author">
+                        <strong>{{ t.name }}</strong>
+                        {% if t.role %}<span class="review-role">{{ t.role }}</span>{% endif %}
+                        {% if t.affiliation %}<span class="review-affiliation">{{ t.affiliation }}</span>{% endif %}
+                    </figcaption>
+                </figure>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="reviews-empty">No reviews published yet. If Easy OKAPI helped your work, tell us
+                about it — we publish reviews only after confirming with the author.</p>
+            {% endif %}
+            <div class="reviews-banner-actions">
+                <button type="button" class="utility-btn" onclick="openReviewForm()"
+                    data-hint="Send your experience to our team — reviews are published only after we confirm with you">
+                    ✍️ Share your experience
+                </button>
+            </div>
+        </div>
+    </section>
+
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
@@ -475,9 +522,11 @@
                 <!-- Display selected file name -->
                 <div id="selected-file-display">No file selected</div>
                 <div class="section" id="point-json-exp-section">
-                    Reference point is at <span type="number" id="cal-point"></span>
-                    <span id="cal-time-unit" style="font-weight: bold;">second</span>
-                    <br />
+                    <span id="ref-point-line">
+                        Reference point is at <span type="number" id="cal-point"></span>
+                        <span id="cal-time-unit" style="font-weight: bold;">second</span>
+                        <br />
+                    </span>
                     <span id="add-json-section"></span>
                 </div>
                 <div class="section" id="window-size-section"
@@ -513,7 +562,10 @@
                 </div>
                 <div id="func-desc" class="hidden"></div>
                 <div class="section" id="range-display">
-                    <h3 class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')">{{
+                    <!-- Display range (From/To + Save Range/Normalize) is hidden in
+                         point mode; the Time unit selector below is kept because the
+                         point-mode chart axis / reference point still need it. -->
+                    <h3 id="range-display-header" class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')">{{
                         range_input.title }} <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span>
                     </h3>
                     <div id="range-collapse" class="section-collapse collapsed">
@@ -525,16 +577,19 @@
                         <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
                             style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
-                        <select id="time-unit" onchange="toggleMode()">
-                            {% for unit in range_input.units %}
-                            <option value="{{ unit }}">{{ unit }}</option>
-                            {% endfor %}
-                        </select>
                         <span id="range-value-error" class="error"></span>
                         <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
                             data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
                         <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
                             data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
+                    </div>
+                    <div id="time-unit-row" style="margin-top:4px;">
+                        <span style="font-weight:600;">Time unit:</span>
+                        <select id="time-unit" onchange="toggleMode()">
+                            {% for unit in range_input.units %}
+                            <option value="{{ unit }}">{{ unit }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
                 <div id="mode-toggle">
@@ -571,6 +626,20 @@
                             <br />
                             <span id="est-val-error" class="error"></span>
                             <span id="est-val-exp"></span>
+                        </div>
+
+                        <!-- Turn-based point calibration: each recorded Turn is one
+                             standard, so the user assigns a concentration to each Turn
+                             and the (Concentration, Value) pairs are the standard curve.
+                             No time reference applies. Shown only for a point-mode Turn
+                             file; replaces #set-exp-point-section. -->
+                        <div class="section hidden" id="turn-cal-section">
+                            <p style="margin:0 0 6px;">Assign a concentration to each recorded Turn — every Turn is one standard, and these points form the calibration curve.</p>
+                            <p style="margin:0 0 6px; font-size:0.9em; opacity:0.85;">For multiple sources, pick the source in "Select Source to export" below — each selected source is written as its own calibration curve.</p>
+                            <div style="overflow-x:auto;">
+                                <table id="turn-cal-table" class="turn-cal-table"></table>
+                            </div>
+                            <span id="turn-cal-error" class="error"></span>
                         </div>
                     </div>
                     <div class="export-row">
@@ -646,6 +715,75 @@
                 </div>
             </div>
         </div>
+        <!-- ── Publication reference ────────────────────────────────────────
+             Curated from publications.json (src/community.py): how to cite Easy
+             OKAPI itself, plus papers that used or cited it. Page-bottom section,
+             collapsed by default. -->
+        <section id="publication-section" class="publication-section" aria-label="Publication reference">
+            <h3 class="folder-section-toggle" onclick="toggleFolderList('publication-collapse', 'publication-chevron')">
+                📚 Publication reference
+                <span id="publication-chevron" class="folder-chevron collapsed-chevron">▼</span>
+            </h3>
+            <div id="publication-collapse" class="section-collapse collapsed">
+                {% if publication_ref.citation %}
+                {% set cite = publication_ref.citation %}
+                <div class="cite-block">
+                    <h4>How to cite Easy OKAPI</h4>
+                    <p class="cite-hint">If Easy OKAPI contributed to your work, please cite it.</p>
+                    {% if cite.apa %}
+                    <div class="cite-row">
+                        <span class="cite-label">APA</span>
+                        <code class="cite-text" id="cite-apa">{{ cite.apa }}</code>
+                        <button type="button" class="utility-btn" onclick="copyCitation('cite-apa', this)"
+                            data-hint="Copy the APA citation to your clipboard">📋 Copy</button>
+                    </div>
+                    {% endif %}
+                    {% if cite.bibtex %}
+                    <div class="cite-row">
+                        <span class="cite-label">BibTeX</span>
+                        <pre class="cite-text cite-bibtex" id="cite-bibtex">{{ cite.bibtex }}</pre>
+                        <button type="button" class="utility-btn" onclick="copyCitation('cite-bibtex', this)"
+                            data-hint="Copy the BibTeX entry to your clipboard">📋 Copy</button>
+                    </div>
+                    {% endif %}
+                    {% if cite.doi %}
+                    <p class="cite-doi">DOI: <a href="https://doi.org/{{ cite.doi }}" target="_blank"
+                            rel="noopener noreferrer">{{ cite.doi }}</a></p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="pub-list-block">
+                    <h4>Publications using Easy OKAPI</h4>
+                    {% if publication_ref.publications %}
+                    <ol class="pub-list">
+                        {% for p in publication_ref.publications %}
+                        <li class="pub-item">
+                            <span class="pub-title">{{ p.title }}</span>
+                            {% if p.authors %}<span class="pub-authors">{{ p.authors }}</span>{% endif %}
+                            <span class="pub-venue">
+                                {%- if p.journal %}<em>{{ p.journal }}</em>{% endif -%}
+                                {%- if p.year %}, {{ p.year }}{% endif -%}
+                                {%- if p.volume %}, {{ p.volume }}{% endif -%}
+                                {%- if p.pages %}, pp. {{ p.pages }}{% endif -%}
+                            </span>
+                            {% if p.doi %}
+                            <a class="pub-link" href="https://doi.org/{{ p.doi }}" target="_blank"
+                                rel="noopener noreferrer">doi:{{ p.doi }}</a>
+                            {% elif p.url %}
+                            <a class="pub-link" href="{{ p.url }}" target="_blank" rel="noopener noreferrer">link</a>
+                            {% endif %}
+                            {% if p.note %}<span class="pub-note">{{ p.note }}</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="pub-empty">No publications listed yet. Published work that used Easy OKAPI?
+                        Let us know and we will add it here.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
             © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
         </footer>
@@ -958,6 +1096,7 @@
     <script src="{{ url_for('static', filename='dist/user-guide.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/report.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/ai-chat.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/community.min.js') }}"></script>
     {% else %}
     <script src="{{ url_for('static', filename='script/tooltip.js') }}"></script>
     <script src="{{ url_for('static', filename='script/short-hands.js') }}"></script>
@@ -972,6 +1111,7 @@
     <script src="{{ url_for('static', filename='script/user-guide.js') }}"></script>
     <script src="{{ url_for('static', filename='script/report.js') }}"></script>
     <script src="{{ url_for('static', filename='script/ai-chat.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/community.js') }}"></script>
     {% endif %}
 </body>
 

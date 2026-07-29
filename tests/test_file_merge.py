@@ -128,3 +128,39 @@ def test_single_timeseries_file_succeeds():
     success, result = merge_csv_contents([_TS_A])
     assert success
     assert 'Value:1' in result
+
+
+# ---------------------------------------------------------------------------
+# Turn series (point mode) — joins on the integer Turn index
+# ---------------------------------------------------------------------------
+
+_TURN_A = (
+    "# Measurement: ABS\n"
+    "# Unit: AU\n"
+    "Turn,Value:1\n"
+    "1,0.1\n"
+    "2,0.2\n"
+)
+
+_TURN_B = (
+    "# Measurement: ABS\n"
+    "# Unit: AU\n"
+    "Turn,Value:1\n"
+    "1,0.3\n"
+    "3,0.4\n"
+)
+
+
+def test_turn_series_merge_joins_on_turn_index():
+    success, result = merge_csv_contents([_TURN_A, _TURN_B])
+    assert success, result
+    lines = [l for l in result.splitlines() if l and not l.startswith('#')]
+    assert lines[0] == 'Turn,Value:1,Value:2'
+    # Outer join over turns 1, 2, 3; the missing cells become NONE.
+    assert lines[1:] == ['1,0.1,0.3', '2,0.2,NONE', '3,NONE,0.4']
+
+
+def test_mixing_turn_and_timestamp_files_fails():
+    success, result = merge_csv_contents([_TURN_A, _TS_A])
+    assert not success
+    assert 'common key column' in result

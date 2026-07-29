@@ -41,14 +41,18 @@ def write_metadata(output, measurement, meas_unit, time_unit, meas_mode,
     output.write(f"# ConcenUnit: {concen_unit}\n")
 
 # Helper: Write headers
-def write_headers(writer, meas_mode):
+# ``x_axis`` = 'turn' marks a point-mode Turn calibration (each Turn is a
+# standard); it drops the TimePoint column — there is no time.
+def write_headers(writer, meas_mode, x_axis='time'):
     if meas_mode == "kinetics":
         writer.writerow(['Concentration', 'maxRate', 'Slope', 'Sat', 'Time To Sat'])
+    elif x_axis == 'turn':
+        writer.writerow(['Concentration', 'Value'])
     else:
         writer.writerow(['Concentration', 'Value', 'TimePoint'])
 
 # Helper: Extract single entry from data
-def extract_single_entry(data, meas_mode):
+def extract_single_entry(data, meas_mode, x_axis='time'):
     concentration = data.get('con', 'NONE')
     if meas_mode == "kinetics":
         return [
@@ -57,6 +61,11 @@ def extract_single_entry(data, meas_mode):
             data.get('slope', 'NONE'),
             data.get('sat', 'NONE'),
             data.get('timeSat', 'NONE')
+        ]
+    elif x_axis == 'turn':
+        return [
+            concentration,
+            data.get('estValue', 'NONE')
         ]
     else:
         return [

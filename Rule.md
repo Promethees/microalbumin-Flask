@@ -134,6 +134,29 @@
 
 ---
 
+### 2.12 Point-Mode Turn Axis
+
+- **A raw series file's X column is `Timestamp` (elapsed seconds) *or* `Turn`** — a 1,2,3… measurement index for point mode. A Turn file has header `Turn,Value:1[,Value:2,…]` and **never** carries a Timestamp column. Schema `CSV_SCHEMA_TIMESERIES_TURN` (`src/file_path.py`); `timeseries_x_column(header)` names the X column of either.
+- **The read path renames, it does not branch**: `/get_data` renames the `Turn` key → `Timestamp` on read and returns `x_axis: 'turn'`. The entire `"Timestamp"`-keyed client pipeline (plot, value-at-point, reports) is therefore unchanged; the client stores `AppState.xAxis` and only relabels the chart axis / reference input. **Never** back-fill or rewrite stored content on a read.
+- **Turn calibration**: a Turn file has no time, so each recorded Turn is treated as one concentration standard. A point-mode Turn file hides the time-point controls and shows a per-Turn concentration table (`applyTurnCalUI` / `renderTurnCalTable` / `exportTurnCal` in `data-handling.js`), exporting a `Concentration,Value` calibration CSV (schema `CSV_SCHEMA_POINT_CAL_TURN`, **no TimePoint**). The resulting calibration JSON records `x_axis: 'turn'` and omits `time`/`time-unit`; deriving reads each Turn's value straight through the fit (`processTurnDerive`).
+- **Turn and time never mix.** `/export_data` refuses to append turn rows to a time-based point calibration table (and vice versa) — the column counts differ. Identity gains an **axis** dimension: a Turn data file pairs only with a turn calibration and a Timestamp file only with a time calibration (`build_csv_identity_from_store` / `build_json_identity_from_store` → `axis`; `identityMatch` in `navigation.js`). `merge_csv_contents` joins Turn files on the `Turn` index; mixing Turn + Timestamp files fails.
+- **Converter**: **Timestamps → Turns** in the CSV editor (`POST /convert_timestamp_to_turn`) rewrites a stored timeseries file in place — header `Timestamp` → `Turn`, first cell → 1-based index. One-way and destructive (the recorded times are dropped); a Turn file or a calibration file is rejected.
+- **Point-mode display**: no kinetics analysis table and no Save Linearity button (point reads a value at a point, it does not fit a slope); the Expand/Collapse-all-analyses toggle and the Display range (From/To) are hidden — only the Time unit selector (`#time-unit-row`) survives, and even that is hidden for a Turn file. `filteredByRangeValue` never clips in point mode, and `extractColumnAndConvert` never applies the seconds→time-unit rescale to a Turn index.
+- **Replicate standards are averaged.** A point calibration fit averages values sharing a concentration so each standard is weighted once (`averageDuplicates` in the live display, `averagePointsByConcentration` in reports), and the value spread renders as min–max error bars. Keep the live fit, the report fit and the exported coefficients consistent.
+- Keep the three schema mirrors in lockstep: backend `_SCHEMA_VALIDATORS` (`src/validators.py`), the editor `patternSets` (`static/script/edit-file.js`), and `detect_csv_schema`.
+
+---
+
+### 2.13 Community Content — Reviews and Publication Reference
+
+- **Both lists are curated repo files**, read by `src/community.py`: `testimonials.json` (reviews banner) and `publications.json` (citation block + publication list). They are gitignored by `*.json` but explicitly un-ignored in `.gitignore`. Content is injected server-side by `main.py` `index()` (`testimonials`, `publication_ref`) so neither section costs a round-trip; `GET /api/testimonials` and `GET /api/publications` expose the same data for any other consumer.
+- **Nothing a visitor sends is ever published.** `POST /api/testimonials/submit` validates the payload and **emails it to the admin** (`REVIEW_ADMIN_EMAIL`, falling back to `SMTP_USER`); the admin confirms consent with the author and adds the entry to `testimonials.json` by hand. There is no moderation table and no write path from the web to either file — do not add one. The submission mail is **plain text only** (the body is visitor-supplied and must never be rendered as HTML), and `Reply-To` is the reviewer so consent can be confirmed in one click.
+- The endpoint sends real mail and needs no account, so it is rate-limited (`REVIEW_SUBMIT_LIMIT`, `src/rate_limit.py`). An SMTP failure returns a generic 503 — never leak the underlying error to the caller.
+- **Never fabricate a review or a publication.** Only add an entry whose author actually said it and consented to the attribution; an empty list is the correct state until then (both sections render an invitation instead).
+- UI: the reviews banner (`#reviews-banner`) is a collapsible strip **above** the app, collapsed by default with the choice persisted in `localStorage` (`reviews-banner-collapsed`); the Publication reference (`#publication-section`) sits at the page bottom, collapsed by default. Interaction lives in `static/script/community.js` (`toggleReviewsBanner`, `openReviewForm`, `copyCitation`) — all four public names are in `MANUAL_RESERVED_NAMES` in `build.js`.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.

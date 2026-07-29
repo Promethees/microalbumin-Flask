@@ -214,7 +214,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 // Get reference values from first existing row (if available)
                 const referenceValues = {};
                 const defaultValues = {
-                    'Timestamp': '0.00', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
+                    'Timestamp': '0.00', 'Turn': '1', 'Measurement': 'ABSORBANCE', 'Unit': 'NONE',
                     'Type': 'NONE', 'Concentration': 'NONE',
                     'Value': '0.00', 'maxRate': '0.00', 'Slope': '0.00',
                     'Sat': '0.00', 'Time To Sat': '0.00', 'MeasUnit': 'NONE',
@@ -288,6 +288,56 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     selectedRow = null;
                     deleteRowBtn.disabled = true;
                 }
+            });
+        }
+
+        // Convert Timestamps -> Turns (point mode): rewrites the stored file's
+        // first column to a 1,2,3… turn index. Destructive (drops the recorded
+        // times and any unsaved editor edits), so it confirms first. The editor
+        // is reopened afterwards to show the reloaded (converted) file; on
+        // cancel/error it is reopened unchanged.
+        const convertBtn = document.getElementById('convert-turn-btn');
+        if (convertBtn) {
+            convertBtn.addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Convert to Turns?',
+                    text: 'The Timestamp column will be replaced by a Turn index (1, 2, 3 …). Recorded times and any unsaved edits will be lost.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Convert',
+                    cancelButtonText: 'Cancel'
+                }).then(function (res) {
+                    if (!res.isConfirmed) {
+                        editFile(fileName, button, tableSelector);  // restore editor
+                        return;
+                    }
+                    $.ajax({
+                        url: '/convert_timestamp_to_turn',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ filename: fileName }),
+                        success: function (resp) {
+                            if (resp.status === 'success') {
+                                // Reopen the editor so the converted (Turn) file is
+                                // visible; if this file is the active display, reload
+                                // it too so the chart reflects the new X axis.
+                                if (tableSelector === '#file-table' && AppState.currentFile === fileName) {
+                                    deselectFile(tableSelector);
+                                    selectFile(fileName, button, tableSelector);
+                                }
+                                editFile(fileName, button, tableSelector);
+                            } else {
+                                Swal.fire({ title: 'Error!', text: resp.message, icon: 'error', confirmButtonText: 'OK' })
+                                    .then(function () { editFile(fileName, button, tableSelector); });
+                            }
+                        },
+                        error: function (jqXHR) {
+                            const msg = (jqXHR.responseJSON && jqXHR.responseJSON.message) || 'Conversion failed.';
+                            Swal.fire({ title: 'Error!', text: msg, icon: 'error', confirmButtonText: 'OK' })
+                                .then(function () { editFile(fileName, button, tableSelector); });
+                        }
+                    });
+                });
             });
         }
     }
@@ -391,6 +441,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     <button id="delete-row-btn" class="swal2-deny swal2-styled" style="padding: 5px 10px;" disabled>
                         Delete Selected Row (-)
                     </button>
+                    ${(tableSelector === '#file-table' && headers[0] === 'Timestamp') ? `
+                    <button id="convert-turn-btn" type="button" class="swal2-styled"
+                        style="padding: 5px 10px; background-color: #2980b9;"
+                        title="Replace the Timestamp column with a Turn index (1, 2, 3 …) for point mode. This discards the recorded times and any unsaved edits.">
+                        Timestamps &rarr; Turns
+                    </button>` : ''}
                 </div>
                 <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
                     <table id="swal-edit-table" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
@@ -873,6 +929,30 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                     /^#\s*Unit\s*:\s*.+$/,
                                     /^#\s*Concentration\s*:\s*.+$/
                                 ]
+                            },
+                            {
+                                // Point-mode Turn series: same as the Timestamp
+                                // series but the first column is an integer turn
+                                // index (no decimal). Mirrors the backend
+                                // CSV_SCHEMA_TIMESERIES_TURN validator.
+                                header: /^\s*Turn\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
+                                data: /^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
+                                error: 'Invalid format (Pattern 4). Header must be: Turn,Value:1,Value:2,...',
+                                meta: [
+                                    /^#\s*Measurement\s*:\s*.+$/,
+                                    /^#\s*Unit\s*:\s*.+$/,
+                                    /^#\s*Concentration\s*:\s*.+$/
+                                ]
+                            },
+                            {
+                                // Turn-based point calibration: each Turn is a
+                                // standard, so the table is Concentration,Value
+                                // with no TimePoint column. Mirrors backend
+                                // CSV_SCHEMA_POINT_CAL_TURN.
+                                header: /^\s*Concentration\s*,\s*Value\s*$/,
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*$/,
+                                error: 'Invalid format (Pattern 5). Header must be: Concentration,Value',
+                                meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             }
                         ];
 

@@ -24,6 +24,8 @@ npm-debug.log
 !package-lock.json
 !guide_training.json
 !guide_translations/*.json
+!testimonials.json
+!publications.json
 
 # Google Drive API credentials (DO NOT COMMIT)
 credentials.json

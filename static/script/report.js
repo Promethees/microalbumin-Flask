@@ -215,22 +215,47 @@ function removePointTimePoint(btn, filename) {
     }
 }
 
+// Average replicate {x: concentration, y: value} points that share the same
+// concentration, so each standard is weighted once when fitting a calibration
+// curve. Matches the calibrate-mode display (averaged points + error bars) and
+// keeps report coefficients consistent with the exported JSON. Each output point
+// carries the value spread (yMin/yMax/n) so replicate ranges can render as error
+// bars.
+function averagePointsByConcentration(pts) {
+    const groups = new Map();
+    pts.forEach(p => {
+        if (p.x === null || isNaN(p.x) || p.y === null || isNaN(p.y)) return;
+        if (!groups.has(p.x)) groups.set(p.x, []);
+        groups.get(p.x).push(p.y);
+    });
+    const out = [];
+    for (const [x, ys] of groups) {
+        out.push({ x, y: ys.reduce((a, b) => a + b, 0) / ys.length, yMin: Math.min(...ys), yMax: Math.max(...ys), n: ys.length });
+    }
+    return out.sort((a, b) => a.x - b.x);
+}
+
+// Build a per-point {yMin,yMax} spread array from an averaged-points list; used
+// to feed error bars to renderCalibrationChartImage.
+function _spreadFromAveraged(pts) {
+    return pts.map(p => ({ yMin: p.yMin, yMax: p.yMax }));
+}
+
 // Extract the point-mode calibration standards (Concentration, Value), filtered
-// to a time point. When `timePointOverride` is provided (incl. '' = all points)
-// it wins; otherwise the live data-display picker is used, the same way
-// updatePlotBasedOnMode() builds the on-screen chart.
+// to a time point and averaged per concentration. When `timePointOverride` is
+// provided (incl. '' = all points) it wins; otherwise the live data-display
+// picker is used, the same way updatePlotBasedOnMode() builds the chart.
 function getPointCalibrationData(timePointOverride) {
     const timePoint = (timePointOverride !== undefined && timePointOverride !== null)
         ? timePointOverride
         : document.getElementById('regressed-time-point')?.value;
     const rows = (AppState.responseData || []).filter(r =>
         !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint));
-    const pts = rows
+    const pts = averagePointsByConcentration(rows
         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-        .filter(p => !isNaN(p.x) && !isNaN(p.y))
-        .sort((a, b) => a.x - b.x);
-    return { x: pts.map(p => p.x), y: pts.map(p => p.y) };
+        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
+    return { x: pts.map(p => p.x), y: pts.map(p => p.y),
+             yMin: pts.map(p => p.yMin), yMax: pts.map(p => p.yMax) };
 }
 
 // Build the {x,y} points of a calibration regression curve across the
@@ -260,20 +285,56 @@ function buildCalibrationRegressionLine(xConc, coefficients, algo) {
     return line;
 }
 
+// Draw min–max whiskers on a calibration scatter whose "Standards" dataset
+// carries `_errBars` (array of {yMin, yMax} aligned to the points) — the report
+// equivalent of the live chart's distributionBarsPlugin.
+const reportErrorBarsPlugin = {
+    id: 'reportErrorBars',
+    afterDatasetsDraw(chart) {
+        const { ctx, scales: { y } } = chart;
+        if (!y) return;
+        chart.data.datasets.forEach((ds, di) => {
+            if (!ds._errBars) return;
+            const meta = chart.getDatasetMeta(di);
+            if (meta.hidden) return;
+            const cap = Math.max(3, (meta.data[0] && meta.data[0].options && meta.data[0].options.radius) ? meta.data[0].options.radius / 2 : 3);
+            ctx.save();
+            ctx.strokeStyle = ds.backgroundColor || '#3498db';
+            ctx.lineWidth = 1.5;
+            ds.data.forEach((pt, i) => {
+                const eb = ds._errBars[i];
+                if (!eb || eb.yMin == null || eb.yMax == null || Math.abs(eb.yMax - eb.yMin) < 1e-9) return;
+                const px = meta.data[i].x;
+                const top = y.getPixelForValue(eb.yMax);
+                const bot = y.getPixelForValue(eb.yMin);
+                ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, bot);
+                ctx.moveTo(px - cap, top); ctx.lineTo(px + cap, top);
+                ctx.moveTo(px - cap, bot); ctx.lineTo(px + cap, bot);
+                ctx.stroke();
+            });
+            ctx.restore();
+        });
+    }
+};
+
 // Render a calibration scatter (standards) + fit line to a PNG data URL,
 // off-screen at print resolution. Shared by the PDF and Excel generators.
-function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo }) {
+// `spread` (optional) = per-point {yMin, yMax} → min–max error bars.
+function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, algo, spread }) {
     return new Promise(resolve => {
         const cv = document.createElement('canvas');
         cv.width = 1600; cv.height = 800;
+        const standards = { label: 'Standards', data: xConc.map((x, i) => ({ x, y: yMetric[i] })), backgroundColor: '#3498db', pointRadius: 6 };
+        if (spread && spread.length) standards._errBars = spread;
         const tc = new Chart(cv.getContext('2d'), {
             type: 'scatter',
             data: {
                 datasets: [
-                    { label: 'Standards', data: xConc.map((x, i) => ({ x, y: yMetric[i] })), backgroundColor: '#3498db', pointRadius: 6 },
+                    standards,
                     { label: `Fit (${algo})`, data: regLine, type: 'line', borderColor: '#e74c3c', borderWidth: 3, fill: false, pointRadius: 0, tension: 0.2 }
                 ]
             },
+            plugins: [reportErrorBarsPlugin],
             options: {
                 responsive: false, animation: false,
                 plugins: {
@@ -482,6 +543,7 @@ async function generateReport() {
                     const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, algo);
                     const chartImg = await renderCalibrationChartImage({
                         xConc: pd.x, yMetric: pd.y, regLine,
+                        spread: (pd.yMin || []).map((mn, i) => ({ yMin: mn, yMax: (pd.yMax || [])[i] })),
                         title: `Calibration Curve (${measLabel} @ ${tpLabel}) — ${algo}`, yLabel: measLabel, algo
                     });
                     chartsMarkup += `
@@ -843,10 +905,12 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
             // One Value-vs-Concentration fit per selected time point × algorithm.
             const measLabel = (AppState.metaData && AppState.metaData['Measurement']) || 'Value';
 
-            itemData.csv_columns = ['Concentration', 'Value', 'TimePoint'];
-            itemData.csv_rows = renderData.map(row => ({
-                Concentration: row['Concentration'], Value: row['Value'], TimePoint: row['TimePoint']
-            }));
+            // A turn-based point curve has no TimePoint column.
+            const turnCal = !(renderData[0] && 'TimePoint' in renderData[0]);
+            itemData.csv_columns = turnCal ? ['Concentration', 'Value'] : ['Concentration', 'Value', 'TimePoint'];
+            itemData.csv_rows = renderData.map(row => turnCal
+                ? { Concentration: row['Concentration'], Value: row['Value'] }
+                : { Concentration: row['Concentration'], Value: row['Value'], TimePoint: row['TimePoint'] });
 
             const fits = [];
             for (const { timePoint, algos } of (timePointAlgos || [])) {
@@ -860,6 +924,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                     const regLine = buildCalibrationRegressionLine(pd.x, analysis.coefficients, algo);
                     const imgData = await renderCalibrationChartImage({
                         xConc: pd.x, yMetric: pd.y, regLine,
+                        spread: (pd.yMin || []).map((mn, i) => ({ yMin: mn, yMax: (pd.yMax || [])[i] })),
                         title: fitLabel, yLabel: measLabel, algo
                     });
                     if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
@@ -1241,7 +1306,11 @@ async function loadReportItems(subject) {
                 const cols = (response && response.data && response.data[0]) ? Object.keys(response.data[0]) : [];
                 // A calibrate file carrying Concentration/TimePoint/Value columns is
                 // a point-mode standard curve; anything else is a kinetics curve.
-                const isPointCal = isCalibrate && cols.includes('Value') && cols.includes('TimePoint');
+                // A calibrate file carrying a Value column is a point-mode standard
+                // curve — time-based (…,TimePoint) or turn-based (Concentration,Value,
+                // no TimePoint). A kinetics curve has per-metric columns
+                // (Slope/maxRate/…) and no Value column.
+                const isPointCal = isCalibrate && cols.includes('Value');
                 const calType = isPointCal ? 'point' : (isCalibrate ? 'kinetics' : null);
                 const card = document.createElement('div');
                 card.className = 'report-item-card';
@@ -1477,16 +1546,20 @@ async function initItemPreview(item, itemID, preloaded = null, calType = null) {
             // updatePointPreview() re-renders when the time point changes.
             const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
             const ctx = document.getElementById(`preview-chart-${itemID}-point`).getContext('2d');
+            // Average replicate standards per concentration and show the value
+            // spread as error bars — consistent with the fit + live display.
+            const avg = averagePointsByConcentration(response.data
+                .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
+                .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
             config.pointChart = new Chart(ctx, {
                 type: 'scatter',
                 data: { datasets: [{
                     label: measLabel,
-                    data: response.data
-                        .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                        .filter(p => !isNaN(p.x) && !isNaN(p.y)),
+                    data: avg.map(p => ({ x: p.x, y: p.y })),
+                    _errBars: _spreadFromAveraged(avg),
                     backgroundColor: '#6366f1'
                 }]},
+                plugins: [reportErrorBarsPlugin],
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     scales: { x: _darkScale({ type: 'linear', display: true }), y: _darkScale({ display: true }) },
@@ -1613,12 +1686,12 @@ function updatePointPreview(filename) {
     const tps = card ? Array.from(card.querySelectorAll('.point-timepoint-select')).map(s => s.value) : [];
     const showAll = tps.length === 0 || tps.some(v => v === '');
     const tpSet = new Set(tps.filter(v => v !== '').map(v => String(parseFloat(v))));
-    const pts = (config.data || [])
+    const avg = averagePointsByConcentration((config.data || [])
         .filter(r => showAll || tpSet.has(String(parseFloat(r['TimePoint']))))
         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-        .filter(p => !isNaN(p.x) && !isNaN(p.y));
-    config.pointChart.data.datasets[0].data = pts;
+        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
+    config.pointChart.data.datasets[0].data = avg.map(p => ({ x: p.x, y: p.y }));
+    config.pointChart.data.datasets[0]._errBars = _spreadFromAveraged(avg);
     config.pointChart.update();
 }
 
@@ -1724,12 +1797,10 @@ async function finalizeReport() {
                     const tpLabel = timePoint ? `t=${timePoint}` : 'all pooled';
                     const includeAlgos = Array.from(entry.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
 
-                    const pts = (config.data || [])
+                    const pts = averagePointsByConcentration((config.data || [])
                         .filter(r => (!timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint)))
                         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                        .filter(p => !isNaN(p.x) && !isNaN(p.y))
-                        .sort((a, b) => a.x - b.x);
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
                     const xValues = pts.map(p => p.x);
                     const yValues = pts.map(p => p.y);
 
@@ -1743,7 +1814,8 @@ async function finalizeReport() {
                         fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
                         const regLine = buildCalibrationRegressionLine(xValues, analysis.coefficients, algo);
                         const img = await renderCalibrationChartImage({
-                            xConc: xValues, yMetric: yValues, regLine, title: `${measLabel} @ ${tpLabel} - ${algo}`, yLabel: measLabel, algo
+                            xConc: xValues, yMetric: yValues, regLine, spread: _spreadFromAveraged(pts),
+                            title: `${measLabel} @ ${tpLabel} - ${algo}`, yLabel: measLabel, algo
                         });
                         if (img) itemChartsMarkup += `
                             <div style="width: 48%; margin-bottom: 20px; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fff;">
@@ -2503,22 +2575,22 @@ async function finalizeReportExcel() {
                 const measLabel = (config.metadata && config.metadata['Measurement']) || 'Value';
                 const tpEntries = Array.from(card.querySelectorAll('.point-tp-entry'));
 
-                itemData.csv_columns = ['Concentration', 'Value', 'TimePoint'];
-                itemData.csv_rows = (config.data || []).map(r => ({
-                    Concentration: r['Concentration'], Value: r['Value'], TimePoint: r['TimePoint']
-                }));
+                // A turn-based point curve has no TimePoint column.
+                const turnCal = !((config.data || [])[0] && 'TimePoint' in config.data[0]);
+                itemData.csv_columns = turnCal ? ['Concentration', 'Value'] : ['Concentration', 'Value', 'TimePoint'];
+                itemData.csv_rows = (config.data || []).map(r => turnCal
+                    ? { Concentration: r['Concentration'], Value: r['Value'] }
+                    : { Concentration: r['Concentration'], Value: r['Value'], TimePoint: r['TimePoint'] });
 
                 const fits = [];
                 for (const entry of tpEntries) {
                     const timePoint = entry.querySelector('.point-timepoint-select')?.value || '';
                     const tpLabel = timePoint ? `t=${timePoint}` : 'all pooled';
                     const includeAlgos = Array.from(entry.querySelectorAll('.point-algo-checkbox:checked')).map(c => c.dataset.algo);
-                    const pts = (config.data || [])
+                    const pts = averagePointsByConcentration((config.data || [])
                         .filter(r => !timePoint || parseFloat(r['TimePoint']) === parseFloat(timePoint))
                         .filter(r => r['Concentration'] !== 'NONE' && r['Value'] !== 'NONE')
-                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) }))
-                        .filter(p => !isNaN(p.x) && !isNaN(p.y))
-                        .sort((a, b) => a.x - b.x);
+                        .map(r => ({ x: parseFloat(r['Concentration']), y: parseFloat(r['Value']) })));
                     const xVals = pts.map(p => p.x);
                     const yVals = pts.map(p => p.y);
 
@@ -2530,7 +2602,8 @@ async function finalizeReportExcel() {
                         fits.push({ entity: `${measLabel} @ ${tpLabel}`, algo, coefficients: analysis.coefficients, rSquared: analysis.rSquared });
                         const regLine = buildCalibrationRegressionLine(xVals, analysis.coefficients, algo);
                         const imgData = await renderCalibrationChartImage({
-                            xConc: xVals, yMetric: yVals, regLine, title: fitLabel, yLabel: measLabel, algo
+                            xConc: xVals, yMetric: yVals, regLine, spread: _spreadFromAveraged(pts),
+                            title: fitLabel, yLabel: measLabel, algo
                         });
                         if (imgData) itemData.chart_images.push({ label: fitLabel, b64: imgData });
                     }

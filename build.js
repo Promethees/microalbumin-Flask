@@ -47,7 +47,7 @@ const MANUAL_RESERVED_NAMES = [
   // Calculation & Logic
   'processDataDisplay', 'processResponse', 'handleResponse', 'handleError', 'handleFetchError',
   'getMetaUnit', 'getTimeUnitValue', 'getTimeUnitMultiplier', 'getBtnChecked', 'getValInt', 'getValFloat',
-  'arraysEqual', 'checkMeasHeader', 'buildMeasHeaders', 'filterFiles',
+  'arraysEqual', 'checkMeasHeader', 'filterFiles',
   
   // Charting
   'generateChart', 'updatePlot', 'updatePlotBasedOnMode', 'drawMeasurementChart', 'destroyCharts',
@@ -60,6 +60,9 @@ const MANUAL_RESERVED_NAMES = [
 
   // AI Assistant
   'OkapiAI',
+
+  // Community (reviews banner + publication reference)
+  'toggleReviewsBanner', 'initReviewsBanner', 'openReviewForm', 'copyCitation',
 ];
 
 function getReservedNames() {

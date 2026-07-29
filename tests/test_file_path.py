@@ -12,8 +12,11 @@ from file_path import (
     get_parent_directory,
     get_child_directories,
     CSV_SCHEMA_TIMESERIES,
+    CSV_SCHEMA_TIMESERIES_TURN,
     CSV_SCHEMA_KINETICS_CAL,
     CSV_SCHEMA_POINT_CAL,
+    CSV_SCHEMA_POINT_CAL_TURN,
+    timeseries_x_column,
     CONCEN_UNITS,
     DEFAULT_CONCEN_UNIT,
     get_concen_unit,
@@ -111,6 +114,26 @@ def test_detect_csv_schema_point_cal():
     assert detect_csv_schema('Concentration,Value,TimePoint') == CSV_SCHEMA_POINT_CAL
 
 
+def test_detect_csv_schema_turn_series():
+    # Point-mode Turn series: the X column is a 1,2,3… index, not a Timestamp.
+    assert detect_csv_schema('Turn,Value:1,Value:2') == CSV_SCHEMA_TIMESERIES_TURN
+    assert detect_csv_schema('Turn , Value:1') == CSV_SCHEMA_TIMESERIES_TURN
+
+
+def test_detect_csv_schema_turn_point_cal():
+    # Turn-based point calibration drops the TimePoint column.
+    assert detect_csv_schema('Concentration,Value') == CSV_SCHEMA_POINT_CAL_TURN
+    assert detect_csv_schema('Concentration , Value') == CSV_SCHEMA_POINT_CAL_TURN
+
+
+def test_timeseries_x_column():
+    assert timeseries_x_column('Timestamp,Value:1') == 'Timestamp'
+    assert timeseries_x_column('Turn,Value:1') == 'Turn'
+    # Not a raw series header → no X column.
+    assert timeseries_x_column('Concentration,Value,TimePoint') is None
+    assert timeseries_x_column('Turn,NotAValue') is None
+
+
 def test_detect_csv_schema_unknown_returns_none():
     assert detect_csv_schema('Unknown,Header,Columns') is None
 
@@ -191,11 +214,18 @@ def test_build_csv_identity_from_store():
                              "# MeasMode: kinetics\n# ConcenUnit: nM\n"
                              "Concentration,maxRate,Slope,Sat,Time To Sat\n5,0.1,0.2,0.3,10\n"),
         'raw.csv': "# Measurement: ABS\n# Unit: abs\n# Concentration: 5\nTimestamp,Value:1\n0,0.1\n",
+        'turn.csv': "# Measurement: ABS\n# Unit: abs\n# Concentration: 5\nTurn,Value:1\n1,0.1\n",
     }
     ident = build_csv_identity_from_store(store)
-    assert ident['cal_kinetics.csv'] == {'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+    # A calibration CSV is not a raw series → axis is a wildcard (None).
+    assert ident['cal_kinetics.csv'] == {'measurement': 'ABS', 'unit': 'abs',
+                                         'concen_unit': 'nM', 'axis': None}
     # Timeseries uses # Unit; absent ConcenUnit defaults to ng/µL
-    assert ident['raw.csv'] == {'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'ng/µL'}
+    assert ident['raw.csv'] == {'measurement': 'ABS', 'unit': 'abs',
+                                'concen_unit': 'ng/µL', 'axis': 'time'}
+    # A Turn series reads its Unit from # Unit too, and reports axis 'turn'.
+    assert ident['turn.csv'] == {'measurement': 'ABS', 'unit': 'abs',
+                                 'concen_unit': 'ng/µL', 'axis': 'turn'}
 
 
 def test_build_json_identity_from_store_full_and_legacy():
@@ -203,12 +233,20 @@ def test_build_json_identity_from_store_full_and_legacy():
         'curve.json': '{"fit_type":"linear","for_meas":"ABS","meas_unit":"abs","concen_unit":"nM"}',
         'legacy.json': '{"fit_type":"linear","for_meas":"ABS"}',
         'filled.json': '{"for_meas":"ABS","meas_unit":"NONE","concen_unit":"ng/µL"}',
+        'time_curve.json': '{"for_meas":"ABS","time":2.0,"time-unit":"minute"}',
+        'turn_curve.json': '{"for_meas":"ABS","x_axis":"turn"}',
         'skip.meta.json': '{"for_meas":"X"}',
     }
     ident = build_json_identity_from_store(store)
-    assert ident['curve.json'] == {'measurement': 'ABS', 'unit': 'abs', 'concen_unit': 'nM'}
+    assert ident['curve.json'] == {'measurement': 'ABS', 'unit': 'abs',
+                                   'concen_unit': 'nM', 'axis': None}
     # Legacy: missing unit → None (wildcard); concen defaults ng/µL
-    assert ident['legacy.json'] == {'measurement': 'ABS', 'unit': None, 'concen_unit': 'ng/µL'}
+    assert ident['legacy.json'] == {'measurement': 'ABS', 'unit': None,
+                                    'concen_unit': 'ng/µL', 'axis': None}
     # "NONE" meas_unit normalizes to None (wildcard)
-    assert ident['filled.json'] == {'measurement': 'ABS', 'unit': None, 'concen_unit': 'ng/µL'}
+    assert ident['filled.json'] == {'measurement': 'ABS', 'unit': None,
+                                    'concen_unit': 'ng/µL', 'axis': None}
+    # A point curve declares its axis: time/time-unit → 'time', x_axis → 'turn'.
+    assert ident['time_curve.json']['axis'] == 'time'
+    assert ident['turn_curve.json']['axis'] == 'turn'
     assert 'skip.meta.json' not in ident

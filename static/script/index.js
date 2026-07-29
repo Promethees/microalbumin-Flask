@@ -5,6 +5,7 @@ function initDefaultState() {
         'select-quantity-section',
         'derived-concentration-section',
         'set-exp-point-section',
+        'turn-cal-section',
         'select-regress-algo',
         'select-time-point',
         'export-coef'
@@ -33,6 +34,9 @@ const AppState = {
     chartInstances: {},
     responseData: null,
     metaData: null,
+    // X axis of the loaded raw measurement file: 'time' (Timestamp) or 'turn'
+    // (a 1,2,3… point-mode measurement index). Set from /get_data's x_axis.
+    xAxis: 'time',
     lightDisplay: !document.body.classList.contains('dark'),
     globalEstimatedValue: null,
     multiSource: false,
@@ -70,6 +74,7 @@ const AppState = {
         this.exp_json_content = null;
         this.responseData = null;
         this.metaData = null;
+        this.xAxis = 'time';
         this.globalEstimatedValue = null;
         this.multiSource = false;
         this.numSources = 1;
@@ -273,6 +278,7 @@ function kineticsModeBehaviour() {
         'point-json-exp-section',
         'cal-json-exp-section',
         'set-exp-point-section',
+        'turn-cal-section',
         'select-time-point',
         'select-regress-algo',
         'export-coef',
@@ -287,6 +293,9 @@ function kineticsModeBehaviour() {
         'json-display',
         'export-analysis',
         'range-display',
+        'range-display-header',
+        'range-collapse',
+        'open-all-analysis-section',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -311,6 +320,7 @@ function reportModeBehaviour() {
         'cal-json-exp-section',
         'select-quantity-section',
         'set-exp-point-section',
+        'turn-cal-section',
         'select-regress-algo',
         'select-time-point',
         'export-coef',
@@ -356,7 +366,18 @@ function pointModeBehaviour() {
         'select-regress-algo',
         'export-coef',
         'func-desc',
-        'report-console-section'
+        'report-console-section',
+        // Default hidden in point mode; applyTurnCalUI() shows it (and hides
+        // set-exp-point-section) only for a Turn file.
+        'turn-cal-section',
+        // Point mode has no per-source kinetics analysis panels, so the
+        // Expand/Collapse-all-analyses toggle is meaningless here.
+        'open-all-analysis-section',
+        // Display range (From/To + Save Range/Normalize) does not apply in point
+        // mode — point reads a single value, it does not clip a time window. The
+        // Time unit selector (time-unit-row) is kept.
+        'range-display-header',
+        'range-collapse',
     ];
 
     const removeHidden = [
@@ -365,6 +386,7 @@ function pointModeBehaviour() {
         'export-analysis',
         'set-exp-point-section',
         'range-display',
+        'time-unit-row',
         'source-options',
         'normalize-mode-section',
         'select-source-to-export',
@@ -391,6 +413,7 @@ function calModeBehaviour() {
         'kinetics-lines',
         'json-display',
         'export-analysis',
+        'turn-cal-section',
         'range-display',
         'full-display-section',
         'split-source-section',
@@ -399,6 +422,7 @@ function calModeBehaviour() {
         'normalize-mode-section',
         'select-source-to-export',
         'source-options',
+        'open-all-analysis-section',
         'num-sources-section',
         'report-console-section'
     ];

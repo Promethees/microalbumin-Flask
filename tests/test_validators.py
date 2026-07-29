@@ -55,6 +55,52 @@ Timestamp,Value:1,Value:2
         self.assertFalse(success)
         self.assertIn("Metadata must include", result)
 
+    def test_validate_csv_turn_series_legal(self):
+        # Point-mode Turn series: integer X index instead of a decimal Timestamp.
+        legal_turn = """# Measurement: ABSORBANCE
+# Unit: AU
+# Concentration: 5
+Turn,Value:1,Value:2
+1,0.101,0.202
+2,0.111,0.212
+"""
+        success, result = validate_csv_content(legal_turn)
+        self.assertTrue(success, result)
+
+    def test_validate_csv_turn_series_rejects_decimal_index(self):
+        bad_turn = """# Measurement: ABSORBANCE
+# Unit: AU
+# Concentration: 5
+Turn,Value:1
+1.50,0.101
+"""
+        success, result = validate_csv_content(bad_turn)
+        self.assertFalse(success)
+
+    def test_validate_csv_turn_point_cal_legal(self):
+        # Turn-based point calibration: Concentration,Value (no TimePoint).
+        legal_turn_cal = """# Measurement: ABSORBANCE
+# MeasUnit: AU
+# TimeUnit: minute
+# MeasMode: point
+Concentration,Value
+0,0.15
+10,0.25
+"""
+        success, result = validate_csv_content(legal_turn_cal)
+        self.assertTrue(success, result)
+
+    def test_validate_csv_turn_point_cal_rejects_extra_column(self):
+        bad = """# Measurement: ABSORBANCE
+# MeasUnit: AU
+# TimeUnit: minute
+# MeasMode: point
+Concentration,Value
+0,0.15,2
+"""
+        success, result = validate_csv_content(bad)
+        self.assertFalse(success)
+
     def test_validate_json_legal(self):
         legal_json = '{"key": "value", "list": [1, 2, 3]}'
         success, result = validate_json_content(legal_json)

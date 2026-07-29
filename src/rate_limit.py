@@ -27,6 +27,9 @@ LICENSE_CHECK_LIMIT = "60 per minute"  # desktop revocation poll (/api/license/c
 # arbitrary inbox and drain the mail quota. Low enough to make that useless,
 # high enough for a human retrying a typo'd address.
 REGISTER_LIMIT = "5 per hour"          # account signup (/api/account/register)
+# A review submission sends real mail to the admin inbox, and needs no account —
+# so it is the easiest endpoint to flood. A human writes one review, not five.
+REVIEW_SUBMIT_LIMIT = "3 per hour"     # review submission (/api/testimonials/submit)
 
 
 def _storage_uri():

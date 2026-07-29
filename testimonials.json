@@ -1,0 +1,12 @@
+{
+  "_comment": "Curated user reviews shown in the Easy OKAPI reviews banner. Visitors cannot write here: they submit through the in-app form, which emails REVIEW_ADMIN_EMAIL. Add a review to `testimonials` only after you have the reviewer's consent to publish their words and attribution. Fields: name (required), quote (required), role, affiliation, rating 1-5, date YYYY-MM-DD. An empty list hides the banner.",
+  "_template": {
+    "name": "Reviewer name",
+    "role": "Job title",
+    "affiliation": "Institution",
+    "quote": "What they said about Easy OKAPI, in their own words.",
+    "rating": 5,
+    "date": "2026-01-31"
+  },
+  "testimonials": []
+}
