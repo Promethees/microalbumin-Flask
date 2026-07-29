@@ -33,5 +33,11 @@
   "ai_feedback_enabled": true,
   "y_axis_scale_mode": "auto",
   "y_axis_custom_min": 0.0,
-  "y_axis_custom_max": 0.6
+  "y_axis_custom_max": 0.6,
+  "music_enabled": true,
+  "music_station": "fluid",
+  "music_volume": 23,
+  "music_source": "radio",
+  "music_loop_mode": "off",
+  "music_shuffle": false
 }
