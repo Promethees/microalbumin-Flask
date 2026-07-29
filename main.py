@@ -111,6 +111,7 @@ _report(93, "Loading route blueprints …")
 from routes.math_routes import math_bp
 from routes.ai_routes import ai_bp
 from routes.update_routes import update_bp
+from routes.music_routes import music_bp
 
 # ── Flask application ────────────────────────────────────────────────────────
 _report(95, "Configuring Flask application …")
@@ -128,6 +129,7 @@ app.register_blueprint(report_bp)
 app.register_blueprint(math_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(update_bp)
+app.register_blueprint(music_bp)
 
 # ── Request-origin guard (CSRF + DNS-rebinding) ──────────────────────────────
 # Registered first so a cross-origin / rebound state-changing request is refused

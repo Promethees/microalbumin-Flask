@@ -1,5 +1,6 @@
 import json
 import os
+import music
 import state
 
 # Canonical registry of the six languages the UI and AI chat support. This is
@@ -21,6 +22,8 @@ _VALID_SORT_ORDERS = {"name_asc", "name_desc", "date_asc", "date_desc"}
 _VALID_TIME_TAG_FORMATS = {"iso", "iso_sec", "us", "eu", "date_only"}
 _VALID_CONCEN_UNITS = {"ng/µL", "nM", "%", "CFU", "OD600"}
 _VALID_Y_AXIS_MODES = {"auto", "custom"}
+_VALID_MUSIC_SOURCES = {"radio", "youtube"}
+_VALID_LOOP_MODES = {"off", "one", "all"}
 
 DEFAULTS = {
     "theme": "auto",
@@ -68,6 +71,18 @@ DEFAULTS = {
     "y_axis_scale_mode": "auto",
     "y_axis_custom_min": 0.0,
     "y_axis_custom_max": 0.6,
+    # Background music widget (src/music.py). Off by default: it is an
+    # entertainment extra on an instrument app, and it reaches the internet —
+    # neither is something to opt a user into silently. Station id and volume
+    # are remembered so the next session picks up where the last left off.
+    "music_enabled": False,
+    "music_station": "groovesalad",
+    "music_volume": 40,
+    # Which source the widget last had open: a curated radio station, or the
+    # user's own YouTube queue. Playback settings are shared between the two.
+    "music_source": "radio",
+    "music_loop_mode": "all",
+    "music_shuffle": False,
 }
 
 
@@ -168,7 +183,7 @@ def save(updates: dict) -> bool:
                      "log_section_collapsed", "default_notify",
                      "default_inf_timeout", "merge_directory_picker",
                      "disable_popups", "ai_feedback_enabled",
-                     "live_stream_enabled"):
+                     "live_stream_enabled", "music_enabled", "music_shuffle"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])
     if "log_display_height" in updates:
@@ -193,6 +208,20 @@ def save(updates: dict) -> bool:
                         current[num_key] = n
                 except (ValueError, TypeError):
                     pass
+    # Station ids are validated against the catalogue, so a station retired from
+    # music.STATIONS can never be written back and left unplayable.
+    if "music_station" in updates and music.valid_station_id(updates["music_station"]):
+        current["music_station"] = updates["music_station"]
+    if "music_source" in updates and updates["music_source"] in _VALID_MUSIC_SOURCES:
+        current["music_source"] = updates["music_source"]
+    if "music_loop_mode" in updates and updates["music_loop_mode"] in _VALID_LOOP_MODES:
+        current["music_loop_mode"] = updates["music_loop_mode"]
+    if "music_volume" in updates:
+        try:
+            v = int(updates["music_volume"])
+            current["music_volume"] = max(0, min(100, v))
+        except (ValueError, TypeError):
+            pass
     if "y_axis_scale_mode" in updates and updates["y_axis_scale_mode"] in _VALID_Y_AXIS_MODES:
         current["y_axis_scale_mode"] = updates["y_axis_scale_mode"]
     for axis_key in ("y_axis_custom_min", "y_axis_custom_max"):

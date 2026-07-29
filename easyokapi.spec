@@ -53,6 +53,11 @@ hiddenimports = [
     'routes.math_routes',
     'routes.ai_routes',
     'routes.update_routes',
+    'routes.music_routes',
+    # Background-music catalogue/link parsing and the persisted play queue
+    # (imported by routes.music_routes; music is also imported by user_settings).
+    'music',
+    'music_queue',
     # Offline RS256 verification of hardware-locked activation tokens
     # (src/activation.py → import jwt + cryptography backend).
     'hwid',

@@ -4759,3 +4759,410 @@ body.dark #okapi-tooltip {
     font-weight: 600;
     background: var(--section-bg, rgba(127, 127, 127, 0.12));
 }
+
+/* ==========================================================================
+   OKAPI Chill — floating background-music widget (static/script/music.js)
+   Bottom-LEFT on purpose: the AI assistant FAB owns bottom-right and the
+   reading transport owns bottom-centre.
+   ========================================================================== */
+
+#okapi-music-fab {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 9000;
+    width: 52px;
+    height: 52px;
+    border-radius: 26px;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    background: var(--primary-gradient);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#okapi-music-fab:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+}
+
+.okapi-music-fab-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+/* Equaliser bars: the only playing/stopped indicator visible with the panel
+   closed, so it replaces the icon rather than sitting beside it. */
+.okapi-music-bars {
+    display: none;
+    align-items: flex-end;
+    gap: 3px;
+    height: 18px;
+}
+
+.okapi-music-bars i {
+    display: block;
+    width: 3px;
+    height: 6px;
+    border-radius: 2px;
+    background: #fff;
+    animation: okapi-music-bounce 0.9s ease-in-out infinite;
+}
+
+.okapi-music-bars i:nth-child(2) { animation-delay: 0.15s; }
+.okapi-music-bars i:nth-child(3) { animation-delay: 0.3s; }
+
+#okapi-music.is-playing .okapi-music-fab-icon { display: none; }
+#okapi-music.is-playing .okapi-music-bars { display: flex; }
+
+@keyframes okapi-music-bounce {
+    0%, 100% { height: 5px; }
+    50%      { height: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .okapi-music-bars i { animation: none; height: 12px; }
+    #okapi-music-fab:hover { transform: none; }
+}
+
+/* Panel. Widens for the YouTube source, whose player must stay visible and at
+   least 200x200px while it plays (YouTube ToS) — do not shrink it below that. */
+#okapi-music-panel {
+    position: fixed;
+    bottom: 88px;
+    left: 24px;
+    z-index: 8999;
+    width: 268px;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 12px 14px 10px;
+    border-radius: 16px;
+    background: var(--surface-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(99, 102, 241, 0.15);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.85rem;
+}
+
+body.dark #okapi-music-panel {
+    background: var(--surface-dark);
+    color: #e5e7eb;
+}
+
+#okapi-music-panel.okapi-music-hidden { display: none; }
+
+#okapi-music-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+#okapi-music-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+#okapi-music-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.6;
+    padding: 2px 4px;
+}
+
+#okapi-music-close:hover { opacity: 1; }
+
+#okapi-music-station {
+    width: 100%;
+    padding: 5px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    background: transparent;
+    color: inherit;
+    font-size: 0.82rem;
+}
+
+body.dark #okapi-music-station option { color: #111827; }
+
+#okapi-music-desc {
+    margin: 5px 0 9px;
+    font-size: 0.76rem;
+    opacity: 0.7;
+    min-height: 1.1em;
+}
+
+#okapi-music-controls {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.okapi-music-btn {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 17px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+    background: var(--primary-gradient);
+    font-size: 0.85rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.okapi-music-icon-stop { display: none; }
+#okapi-music.is-playing .okapi-music-icon-play { display: none; }
+#okapi-music.is-playing .okapi-music-icon-stop { display: inline; }
+
+#okapi-music-vol {
+    flex: 1 1 auto;
+    min-width: 0;
+    accent-color: #6366f1;
+}
+
+#okapi-music-vol-value {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    opacity: 0.7;
+    width: 34px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+#okapi-music-status {
+    margin: 8px 0 0;
+    font-size: 0.74rem;
+    opacity: 0.75;
+    min-height: 1.1em;
+    word-break: break-word;
+}
+
+#okapi-music-status.okapi-music-error { color: #ef4444; opacity: 1; }
+#okapi-music-status.okapi-music-ok { color: #10b981; opacity: 1; }
+
+@media (max-width: 600px) {
+    #okapi-music-panel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+    }
+    #okapi-music-fab { left: 12px; bottom: 12px; }
+}
+
+/* --- Music widget: source tabs, YouTube pane, queue -------------------- */
+
+#okapi-music.is-youtube #okapi-music-panel { width: 372px; }
+
+#okapi-music-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 9px;
+    padding: 2px;
+    border-radius: 9px;
+    background: rgba(127, 127, 127, 0.14);
+}
+
+.okapi-music-tab {
+    flex: 1 1 0;
+    padding: 4px 6px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+    opacity: 0.65;
+}
+
+.okapi-music-tab.is-active {
+    background: var(--primary-gradient);
+    color: #fff;
+    opacity: 1;
+}
+
+/* The player must remain visible while playing. 200px tall is the floor. */
+#okapi-music-video {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+}
+
+#okapi-music-video iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+#okapi-music-add-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+#okapi-music-add-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 5px 7px;
+    border-radius: 8px;
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    background: transparent;
+    color: inherit;
+    font-size: 0.78rem;
+}
+
+#okapi-music-add-btn {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #fff;
+    background: var(--primary-gradient);
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+#okapi-music-track {
+    margin: 7px 0 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    min-height: 1.1em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#okapi-music-queue-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    opacity: 0.7;
+    margin-bottom: 3px;
+}
+
+.okapi-music-link {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+#okapi-music-queue {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    max-height: 132px;
+    overflow-y: auto;
+}
+
+.okapi-music-q-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 0.76rem;
+}
+
+.okapi-music-q-item:hover { background: rgba(127, 127, 127, 0.14); }
+
+.okapi-music-q-item.is-current {
+    background: rgba(99, 102, 241, 0.16);
+    font-weight: 600;
+}
+
+.okapi-music-q-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.okapi-music-q-badge {
+    margin-left: 5px;
+    padding: 0 5px;
+    border-radius: 6px;
+    font-size: 0.64rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.22);
+    vertical-align: middle;
+}
+
+.okapi-music-q-remove {
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.45;
+    font-size: 0.7rem;
+    padding: 2px 3px;
+}
+
+.okapi-music-q-remove:hover { opacity: 1; color: #ef4444; }
+
+.okapi-music-btn--ghost {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    color: inherit;
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    font-size: 0.72rem;
+}
+
+.okapi-music-toggle {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: rgba(127, 127, 127, 0.16);
+    color: inherit;
+    font-size: 0.78rem;
+    line-height: 1;
+    opacity: 0.6;
+}
+
+.okapi-music-toggle.is-active {
+    opacity: 1;
+    background: rgba(99, 102, 241, 0.28);
+}
+
+#okapi-music-controls { flex-wrap: wrap; }
+
+@media (max-width: 600px) {
+    #okapi-music.is-youtube #okapi-music-panel { width: auto; }
+}
+
+/* The hidden class is used on the panel, on each source section, and on the
+   transport buttons that only apply to the YouTube queue — so it has to be a
+   plain class rule, not the panel-scoped one above. `!important` because the
+   elements it hides carry their own `display` (`.okapi-music-btn` is flex,
+   `.okapi-music-toggle` is inline-block) at equal specificity. */
+.okapi-music-hidden { display: none !important; }

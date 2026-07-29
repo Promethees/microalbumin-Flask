@@ -648,6 +648,9 @@ const SETTINGS_DEFAULTS = {
     y_axis_scale_mode: 'auto',
     y_axis_custom_min: 0.0,
     y_axis_custom_max: 0.6,
+    music_enabled: false,
+    music_station: 'groovesalad',
+    music_volume: 40,
 };
 
 function _buildSettingsHTML(s, folders, aiStats) {
@@ -835,6 +838,11 @@ function _buildSettingsHTML(s, folders, aiStats) {
             </div>
             <p id="swal-ai-feedback-status" style="font-size:0.8em;color:#888;margin-top:5px;min-height:1.2em;"></p>
         </div>
+        <div class="sm-section sm-section--full">
+            <p class="sm-section-title">${t('settings.section.music', 'Background Music')}</p>
+            ${rowCheck(t('settings.music_enabled', 'Play background music while you work'), 'swal-music-enabled', s.music_enabled === true)}
+            <p class="sm-help" style="margin-top:2px;">${t('settings.music.help', 'Adds a 🎧 player at the bottom-left corner: free listener-supported radio (SomaFM, Radio Paradise) or your own YouTube queue built from pasted links. Needs an internet connection — the player hides itself when offline.')}</p>
+        </div>
         <div class="sm-section">
             <p class="sm-section-title">${t('settings.section.about', 'About')}</p>
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -883,6 +891,7 @@ function _readSettingsForm() {
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
         ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
+        music_enabled: document.getElementById('swal-music-enabled').checked,
         y_axis_scale_mode: document.getElementById('swal-yaxis-mode').value,
         y_axis_custom_min: parseFloat(document.getElementById('swal-yaxis-min').value) || 0,
         y_axis_custom_max: parseFloat(document.getElementById('swal-yaxis-max').value) || 0.6,
@@ -931,6 +940,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;
+    document.getElementById('swal-music-enabled').checked = s.music_enabled === true;
     const yMode = s.y_axis_scale_mode || 'auto';
     document.getElementById('swal-yaxis-mode').value = yMode;
     const yMinEl = document.getElementById('swal-yaxis-min');
@@ -1038,6 +1048,10 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     // Apply notify default
     const notifyEl = document.getElementById('notify-me');
     if (notifyEl) notifyEl.checked = formValues.default_notify !== false;
+
+    // Apply the background-music toggle: mount or tear down the widget now
+    // rather than waiting for the next page load.
+    if (typeof OkapiMusic !== 'undefined') OkapiMusic.refresh();
 
     // Apply default file sort order so the re-render below reflects the new choice
     if (formValues.file_sort_order) AppState.fileSortOrder = formValues.file_sort_order;

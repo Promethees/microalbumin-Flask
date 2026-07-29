@@ -59,6 +59,7 @@ graph TD
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities`, `/calculate_concentration` | `calculate.js`, `data-display.js` |
 | `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides`, `/ai/match`, `/ai/feedback` (POST), `/ai/feedback/stats` (GET), `/ai/feedback/reset` (POST), `/ai/feedback/export` (GET) | `ai-chat.js`, `init.js` |
 | `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream), `/update/finalize` (POST — shutdown for relaunch) | `init.js` |
+| `music_bp` | `music_routes.py` | `/music/stations` (GET — catalogue + online verdict + saved queue/modes), `/music/resolve` (POST — parse+name a pasted YouTube link), `/music/queue` (GET, POST — replace wholesale), `/music/queue/add` (POST — resolve + append) | `music.js`, `init.js` |
 
 * **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
 * **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init — suppressed by `--no-browser` (set on restart relaunches so a second tab doesn't steal the one-shot reset-display marker).
@@ -113,6 +114,8 @@ graph TD
 
 **Pause / Resume a live run:** an automatic capture can be held without ending it — `POST /pause_reading` / `POST /resume_reading` drop `log/control_trigger.txt` holding the desired state (`PAUSE`/`RESUME`), which the logger's read loop forwards to the device (ACK `ACK_PAUSE`/`ACK_RESUME`). The device stops measuring and freezes its session clock, so timestamps stay continuous and the pause does not consume the timeout; the logger also drops any row that still arrives, which keeps the pause working against firmware predating the command (at the cost of a gap in Timestamp). Two UI entry points share the state: the inline **Pause reading** button on the reading-panel button line and the floating `#reading-control-fab` — a session transport bar (breathing dot + `RECORDING`/`PAUSED` readout, divider, Pause/Resume + Stop) shown when that line scrolls out of view. Manual point-mode runs get **Measure now** instead — there is nothing to pause. See **Rule.md §2.29**.
 
+**Background music (online-only):** `GET /music/stations` (`src/routes/music_routes.py`) returns the curated station catalogue from `src/music.py` plus an `online` verdict from a cached TCP probe (`is_online()`, 30 s cache, two hosts tried). `static/script/music.js` mounts a bottom-left 🎧 widget — station picker, play/stop, volume — whose `<audio>` element connects **straight to the broadcaster**; no audio passes through Flask. Stations are free, listener-supported, https streams (SomaFM, Radio Paradise). The widget mounts only when `music_enabled` is on *and* the browser and the probe both say online, unmounts on the `offline` event, and gives up on a station that has not produced audio within 12 s. Gated by `music_enabled` (default **off**, App Settings → Background Music); `music_station` / `music_volume` are remembered and saved through `/settings` debounced. A second source plays the user's own **YouTube** queue: links are pasted, not searched (search would need a Data API key whose 10,000-unit daily quota one shipped key could not survive), parsed and named server-side by `music.parse_youtube_ref()` + the keyless oEmbed endpoint, queued in `music_queue.json` (`src/music_queue.py` — server-side because a restart clears per-view `localStorage`, §2.20), and played by YouTube's IFrame player in a **visible** 200 px video pane as its terms require. Nothing extracts or caches the media. Repeat (`off`/`one`/`all`) and shuffle are applied by the widget over the queue. Spotify is deliberately absent: third-party playback there requires Premium plus OAuth, so it cannot be free. See **Rule.md §2.32** and §2.32.1.
+
 **Zero-software fallback (HID keyboard):** triggered by the device's **Left button** only — the firmware "types" the CSV via keyboard emulation into whatever text field has focus (e.g. a text editor). There is no host-side HID capture script. The app's automated flow does not use HID.
 
 Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` — host-initiated sessions use `transport="cdc"` (`usb_cdc.data`), button-initiated use `transport="hid"`.
@@ -143,6 +146,7 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 | `report.js` | Report generation (`generateReport`), subject CRUD UI (create/rename/copy/delete subjects, export to subject, view items) |
 | `user-guide.js` | Interactive step-by-step user guide with spotlight overlay; supports *dialog steps* (`.swal2-*` targets) that lift above SweetAlert2 and auto-advance on dialog close (see Rule.md) |
 | `ai-chat.js` | Floating AI chat widget: panel toggle, multilingual language selector, settings panel, model download progress, conversation history, edit-and-resend on user messages, new-conversation button, 👍/👎 answer feedback |
+| `music.js` | Floating background-music widget (bottom-left 🎧). Two sources: **Radio** (free listener-supported stations, `<audio>` straight to the broadcaster) and **YouTube** (queue of pasted links played by the IFrame player, visible video pane). Play/stop, prev/next, volume, repeat off/one/all, shuffle, queue add/remove/clear, online-only mount/unmount. Flask serves metadata only — no audio passes through the app |
 | `bug-report.js` | "Report a Bug" button (left column, below Options): SweetAlert flow — (1) attach logs? (2) pick up to 5 `log/events/` files (`/list_event_log_files`), (3) name the zip. `POST /download_event_logs` bundles the chosen files and downloads the zip to the machine, then a `mailto:` draft to `state.MAINTAINER_EMAIL` opens with an instruction to attach that downloaded zip manually (mailto: cannot pre-attach files). "No, just email" opens a plain `mailto:` with no attachment. |
 
 ### 2.5 Templates (`templates/`)
@@ -296,13 +300,16 @@ microalbumin-Flask/
 │   ├── data_root.py            # User-selectable data root (.dataroot pointer)
 │   ├── validators.py           # @validate_json decorator
 │   ├── live_stream.py          # SSE tail of a live session (log + active CSV, by byte offset)
+│   ├── music.py                # Radio catalogue + connectivity probe + YouTube link parsing/oEmbed
+│   ├── music_queue.py          # Persisted YouTube play queue (music_queue.json)
 │   ├── math_ops.py             # Server-side regression (scipy/numpy)
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── core_routes.py      # Core + browse + report subjects
 │   │   ├── file_routes.py      # CSV/JSON CRUD + report CRUD
 │   │   ├── hardware_routes.py  # Data-logger subprocess control (CDC default)
-│   │   └── math_routes.py      # Regression math API
+│   │   ├── math_routes.py      # Regression math API
+│   │   └── music_routes.py     # Background music: catalogue, link resolve, queue (metadata only)
 │   ├── browser_mgt.py
 │   ├── excel_formula.py
 │   ├── export_cal_json.py
@@ -335,7 +342,8 @@ microalbumin-Flask/
 │       ├── tooltip.js          # Styled [data-hint] hover tooltips
 │       ├── i18n.js             # UI translation applier (t() + applyTranslations)
 │       ├── user-guide.js       # Interactive user guide
-│       └── ai-chat.js          # Floating AI chat widget
+│       ├── ai-chat.js          # Floating AI chat widget
+│       └── music.js            # Floating music widget: radio + YouTube queue (online-only)
 ├── templates/
 │   ├── index.html
 │   └── goodbye.html
