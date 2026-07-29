@@ -2,13 +2,13 @@
   "_comment": "Publication reference section. `citation` is how users should cite Easy OKAPI itself; `publications` lists papers that used or cited it. Add entries by hand — nothing here is user-writable. Publication fields: title (required), authors, journal, year, volume, pages, doi, url, note.",
   "citation": {
     "title": "Easy OKAPI: an open colorimeter data platform for bio-sensor assays",
-    "authors": "Tran, Q. M. T., et al.",
+    "authors": "Tra, Q. M. T., et al.",
     "journal": "Manuscript in preparation",
     "year": 2026,
     "doi": "",
     "url": "https://www.easyokapi.cbbiotec.vn/",
-    "apa": "Tran, Q. M. T., et al. (2026). Easy OKAPI: an open colorimeter data platform for bio-sensor assays. Manuscript in preparation. https://www.easyokapi.cbbiotec.vn/",
-    "bibtex": "@misc{easyokapi2026,\n  title  = {Easy OKAPI: an open colorimeter data platform for bio-sensor assays},\n  author = {Tran, Quang Minh Thong and others},\n  year   = {2026},\n  note   = {Manuscript in preparation},\n  url    = {https://www.easyokapi.cbbiotec.vn/}\n}"
+    "apa": "Tra, Q. M. T., et al. (2026). Easy OKAPI: an open colorimeter data platform for bio-sensor assays. Manuscript in preparation. https://www.easyokapi.cbbiotec.vn/",
+    "bibtex": "@misc{easyokapi2026,\n  title  = {Easy OKAPI: an open colorimeter data platform for bio-sensor assays},\n  author = {Tra, Quang Minh Thong and others},\n  year   = {2026},\n  note   = {Manuscript in preparation},\n  url    = {https://www.easyokapi.cbbiotec.vn/}\n}"
   },
   "publications": []
 }

@@ -3366,7 +3366,10 @@ body.dark .file-identity {
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1200;
+    /* Above the page and the .top-right panel (100), but below SweetAlert2's
+       container (1060) — otherwise the bar floats over its own review dialog,
+       undimmed by the backdrop. */
+    z-index: 500;
     background: var(--surface-light);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
