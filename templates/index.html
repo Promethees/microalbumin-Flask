@@ -719,12 +719,13 @@
              Curated from publications.json (src/community.py): how to cite Easy
              OKAPI itself, plus papers that used or cited it. Page-bottom section,
              collapsed by default. -->
-        <section id="publication-section" class="publication-section" aria-label="Publication reference">
-            <h3 class="folder-section-toggle" onclick="toggleFolderList('publication-collapse', 'publication-chevron')">
-                📚 Publication reference
-                <span id="publication-chevron" class="folder-chevron collapsed-chevron">▼</span>
-            </h3>
-            <div id="publication-collapse" class="section-collapse collapsed">
+        <div id="publication-section" class="publication-section">
+            <section class="section" aria-label="Publication reference">
+                <h3 class="folder-section-toggle" onclick="toggleFolderList('publication-collapse', 'publication-chevron')">
+                    📚 Publication reference
+                    <span id="publication-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                </h3>
+                <div id="publication-collapse" class="section-collapse collapsed">
                 {% if publication_ref.citation %}
                 {% set cite = publication_ref.citation %}
                 <div class="cite-block">
@@ -782,8 +783,9 @@
                         Let us know and we will add it here.</p>
                     {% endif %}
                 </div>
-            </div>
-        </section>
+                </div>
+            </section>
+        </div>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
             © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
         </footer>

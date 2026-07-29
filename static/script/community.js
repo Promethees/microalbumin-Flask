@@ -7,6 +7,21 @@
 
 const REVIEWS_COLLAPSED_KEY = 'reviews-banner-collapsed';
 
+// The banner is fixed to the top of the viewport, so the page has to reserve
+// room for it. Only the *header row* is reserved (--reviews-bar-h): the expanded
+// review rail then drops over the page like a menu, so opening it never pushes
+// the whole app down. Everything pinned to the top of the viewport — the page
+// padding, .top-left and the User Guide button — reads the same variable.
+function syncReviewsBarHeight() {
+    const toggle = document.getElementById('reviews-banner-toggle');
+    if (!toggle) return;
+    const h = Math.round(toggle.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--reviews-bar-h', `${h}px`);
+    // .top-right is positioned from a measured offset rather than the variable,
+    // so it has to be re-measured once the reserved gap changes.
+    if (typeof window.alignTopWithReference === 'function') window.alignTopWithReference();
+}
+
 // Collapse/expand the reviews banner and remember the choice — a returning user
 // who closed it should not have to close it again on every load.
 function toggleReviewsBanner(force) {
@@ -25,7 +40,7 @@ function toggleReviewsBanner(force) {
     try { localStorage.setItem(REVIEWS_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) { /* private mode */ }
 }
 
-// Restore the stored collapse state before first paint of the banner.
+// Restore the stored collapse state and reserve the bar's height.
 function initReviewsBanner() {
     if (!document.getElementById('reviews-banner')) return;
     let stored = null;
@@ -33,6 +48,9 @@ function initReviewsBanner() {
     // Default collapsed: the banner sits above the app, and the tool — not the
     // testimonials — is what a returning user came for.
     toggleReviewsBanner(stored === null ? true : stored === '1');
+    syncReviewsBarHeight();
+    // The header row wraps to two lines on a narrow viewport, changing its height.
+    window.addEventListener('resize', syncReviewsBarHeight);
 }
 
 // Review submission dialog. Nothing here publishes: the payload is emailed to
