@@ -8,17 +8,19 @@
 const REVIEWS_COLLAPSED_KEY = 'reviews-banner-collapsed';
 
 // The banner is fixed to the top of the viewport, so the page has to reserve
-// room for it. Only the *header row* is reserved (--reviews-bar-h): the expanded
-// review rail then drops over the page like a menu, so opening it never pushes
-// the whole app down. Everything pinned to the top of the viewport — the page
-// padding, .top-left and the User Guide button — reads the same variable.
+// room for it — and it must reserve the banner's *whole* current height, not
+// just the header row. Reserving only the header made an expanded banner overlay
+// the app, burying the logo and the User Guide button. Everything pinned to the
+// top of the viewport — the page padding, .top-left and the User Guide button —
+// reads --reviews-bar-h, so expanding pushes them all down instead.
 function syncReviewsBarHeight() {
-    const toggle = document.getElementById('reviews-banner-toggle');
-    if (!toggle) return;
-    const h = Math.round(toggle.getBoundingClientRect().height);
+    const banner = document.getElementById('reviews-banner');
+    if (!banner) return;
+    const h = Math.round(banner.getBoundingClientRect().height);
     document.documentElement.style.setProperty('--reviews-bar-h', `${h}px`);
     // .top-right is positioned from a measured offset rather than the variable,
-    // so it has to be re-measured once the reserved gap changes.
+    // so it has to be re-measured once the reserved gap changes. Reading the
+    // rect above already forced the layout the measurement below depends on.
     if (typeof window.alignTopWithReference === 'function') window.alignTopWithReference();
 }
 
@@ -38,6 +40,9 @@ function toggleReviewsBanner(force) {
     if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
 
     try { localStorage.setItem(REVIEWS_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) { /* private mode */ }
+
+    // The reserved gap is the banner's height, which just changed.
+    syncReviewsBarHeight();
 }
 
 // Restore the stored collapse state and reserve the bar's height.
@@ -48,8 +53,7 @@ function initReviewsBanner() {
     // Default collapsed: the banner sits above the app, and the tool — not the
     // testimonials — is what a returning user came for.
     toggleReviewsBanner(stored === null ? true : stored === '1');
-    syncReviewsBarHeight();
-    // The header row wraps to two lines on a narrow viewport, changing its height.
+    // Content reflows at narrow widths, changing the banner's height.
     window.addEventListener('resize', syncReviewsBarHeight);
 }
 

@@ -3350,9 +3350,11 @@ body.dark .file-identity {
    here would be squeezed into the flex row and painted under them — hence
    fixed positioning plus a reserved gap.
 
-   Only the header row reserves space (--reviews-bar-h, set by JS from the
-   header's measured height): expanding drops the review rail *over* the page
-   like a menu, so opening it never reflows the app. */
+   The page reserves the banner's whole current height in --reviews-bar-h (set
+   by JS on load, on toggle and on resize), so expanding pushes the app down
+   rather than covering the logo and the User Guide button. The expanded body is
+   capped and scrolls internally so opening it can never shove the app off
+   screen. */
 :root {
     /* Close to the real collapsed height, so the page is not briefly laid out
        under the bar before syncReviewsBarHeight() measures it. */
@@ -3426,8 +3428,8 @@ body.dark .file-identity {
 }
 
 .reviews-banner-body {
-    padding: 4px 18px 14px;
-    max-height: min(60vh, 420px);
+    padding: 4px 18px 12px;
+    max-height: min(38vh, 260px);
     overflow-y: auto;
     background: inherit;
     border-top: 1px solid rgba(127, 127, 127, 0.14);
