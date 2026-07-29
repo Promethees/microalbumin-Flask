@@ -1,14 +1,14 @@
 {
   "_comment": "Publication reference section. `citation` is how users should cite Easy OKAPI itself; `publications` lists papers that used or cited it. Add entries by hand — nothing here is user-writable. Publication fields: title (required), authors, journal, year, volume, pages, doi, url, note.",
   "citation": {
-    "title": "Easy OKAPI: open-source software for Open Colorimeter control and colorimetric data analysis",
+    "title": "Easy OKAPI: Device Control software for the Open Colorimeter and colorimetric data analysis",
     "authors": "Tra, Q. M. T., et al.",
     "journal": "Manuscript in preparation",
     "year": 2026,
     "doi": "",
     "url": "https://www.easyokapi.cbbiotec.vn/",
-    "apa": "Tra, Q. M. T., et al. (2026). Easy OKAPI: open-source software for Open Colorimeter control and colorimetric data analysis [Computer software]. Manuscript in preparation. https://www.easyokapi.cbbiotec.vn/",
-    "bibtex": "@misc{easyokapi2026,\n  title  = {Easy OKAPI: open-source software for {Open} {Colorimeter} control and colorimetric data analysis},\n  author = {Tra, Quang Minh Thong and others},\n  year   = {2026},\n  note   = {Manuscript in preparation},\n  url    = {https://www.easyokapi.cbbiotec.vn/}\n}"
+    "apa": "Tra, Q. M. T., et al. (2026). Easy OKAPI: Device Control software for the Open Colorimeter and colorimetric data analysis [Computer software]. Manuscript in preparation. https://www.easyokapi.cbbiotec.vn/",
+    "bibtex": "@misc{easyokapi2026,\n  title  = {Easy OKAPI: {Device} {Control} software for the {Open} {Colorimeter} and colorimetric data analysis},\n  author = {Tra, Quang Minh Thong and others},\n  year   = {2026},\n  note   = {Manuscript in preparation},\n  url    = {https://www.easyokapi.cbbiotec.vn/}\n}"
   },
   "publications": []
 }
