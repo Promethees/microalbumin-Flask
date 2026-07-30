@@ -3,7 +3,7 @@
 This file serves as the primary orientation for any AI agent or developer regarding the **Main** branch of the `microalbumin-Flask` project. **Before writing code, study the relationships and file structures documented here.**
 
 ## 1. Project Overview
-The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.3.11**.
+The `main` branch contains the **Local Desktop/Web Application** (Easy OKAPI) — version **1.4.0**.
 It is a Flask-based web application meant to run locally on a user's machine (Windows or Mac). It communicates with a physical colorimeter device (powered by a PyBadge with CircuitPython) over a USB CDC serial connection (with an HID-keyboard fallback the device triggers via its Left button). 
 
 The application provides a Web GUI (via Flask templates and vanilla JavaScript) for users to:
@@ -126,6 +126,20 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 
 `script_monitor.check_log_for_end_reason()` maps the log to `'timeout'`/`'stopped'`, which `check_status` turns into a reason-aware completion message; `cdc-logging.js` (`fetchLogs` + `resetUIAfterCompletion`) shows "Session ended due to timeout." vs "Session stopped manually on the device.".
 
+### 2.3.9 Visual design system (`static/style.css` + `static/fonts/`)
+
+`style.css` opens with a **token block** that is the single source of colour, type, radius and elevation: `:root` carries the light-mode values and `body.dark` re-steps them for graphite (dark is designed, not inverted). Semantic tokens are `--bg / --panel / --well / --hairline / --hairline-soft / --ink / --ink-muted / --ink-dim`, `--accent / --accent-strong / --accent-wash`, the reserved status trio `--danger / --warn / --go`, the sequential `--ramp-1..10 / --ramp-blank`, the two radii `--r-flat` (0, data surfaces + fields) and `--r-press` (4px, pressables), and the three type roles `--font-ui / --font-mono / --font-label`. Legacy names (`--primary-gradient`, `--surface-light`, `--border-radius`, `--shadow-*`) are kept as aliases resolving to the tokens, so the whole 5000-line sheet inherits the palette; the "gradients" are flat fills.
+
+The palette is derived from the **assay**, not from light: `--accent` is bromophenol blue, and the device has no selectable wavelength to colour-code (see Rule §2.33). Chrome (`.section`, fields, buttons) is flat and hairline-bounded; only plots, readouts, tables and genuinely floating layers get elevation.
+
+**Type** is IBM Plex, self-hosted: `static/fonts/plex.css` declares one `@font-face` per weight per subset (latin / latin-ext / vietnamese / cyrillic / greek, original `unicode-range` preserved) against the `.woff2` files beside it, and `style.css` imports it. Nothing is fetched from Google Fonts — the app vendors every dependency and must render the same offline (Rule §2.4). Mono with tabular figures is used for every measured value, field and axis tick; condensed uppercase is the panel-label voice (a `.section` heading).
+
+**Source colours** come from `sourceRamp(n)` in `index.js`, which spreads *n* series across `--ramp-1..10`; `AppState.plotColors` is a getter over it so a theme switch repaints. Multi-source data is ordered (standards on consecutive mux channels), so it gets a sequential ramp rather than a cycled categorical palette.
+
+**Interface style switch** — `ui_style` (`instrument` default / `classic`) selects the visual language. `classic` is the pre-1.4.0 look, restored by a `body.ui-classic` override layer at the end of `style.css` — a **generated** declaration-level diff of v1.3.11's stylesheet (`tools/gen_classic_style.py`, between the BEGIN/END GENERATED CLASSIC LAYER markers), plus a hand-written token block and a reset block for the rules the redesign added (Tailwind greys + indigo/purple gradients, blurred cards with a hover lift, 12px radius, Inter/Outfit from `static/fonts/classic.css`, headline panel headings, the 16-colour categorical palette, the pill theme toggle, the orb splash). The class is stamped on `<body>` by the index render, so there is no flash; `isClassicUI()` in `index.js` reads that class and gates the two JS-side differences — `sourceRamp()` returns `CLASSIC_PLOT_COLORS`, and `stripEnabled()` returns false so the session strip stays down and the top-right timer widget is the live readout again. Correctness fixes (unitless-axis label, chart heading, marker density, self-hosted fonts) are shared by both styles. See **Rule.md §2.34**.
+
+**Session strip** — `#session-strip` in `index.html`, drawn by `drawSessionStrip()` in `cdc-logging.js`: a fixed 64px chart-recorder trace of the run in progress (one polyline per source, same ramp), plus a `Recording`/`Paused` state readout, the session clock, the countdown to the next reading, and either the latest value (single source) or the row count. It reads `AppState.responseData`, so it issues no requests of its own; it is revealed on the first landed row and torn down with the session timer, and greys/freezes when the run is paused. It **replaces** the top-right `#session-timer` widget, which `onNewDataPoint` now mounts only when the strip is off — `tickSessionTimer()` computes the clocks once and writes both readouts, so there is still one clock. The countdown field hides itself when there is no interval (manual point mode). Setting: `session_strip_enabled` (default on).
+
 ### 2.4 Frontend (`static/script/` — 16 JS files)
 
 | File | Responsibility |
@@ -135,12 +149,12 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 | `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, etc.) |
 | `i18n.js` | UI translation applier (loaded after `short-hands.js`, before all app scripts). Reads the injected `UI_STRINGS`/`UI_LANG`; `applyTranslations()` translates `[data-i18n]`/`-html`/`-hint`/`-ph`/`-aria` elements on load; `window.t(key, fallback)` for dynamic strings (Swal dialogs, JS-built tables). English text in the HTML is the fallback. See Rule.md §2.22 |
 | `init.js` | Page initialization, event listeners, mode/filter setup |
-| `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus` |
+| `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus`, and the **source ramp** (`sourceRamp(n)` / `rampStops()` reading `--ramp-*`; `AppState.plotColors` is a getter over it) |
 | `navigation.js` | File table population (CSV and JSON), **data subfolder picker** (`loadDataFolders`, `selectDataFolder`, `filterDataFolderList`, `updateFolderListSelection`, `renameDataFolder`, `deleteDataFolder`), **identity-aware file search** (`filterTable` + `parseSearchQuery` / `_identityFieldMatch`: space-separated positional filters `name meas unit concen`, all AND-ed, matched against `AppState.fileIdentity`/`jsonIdentity` — see Rule.md §2.10) |
 | `hid-logging.js` | **PyBadge control UI**: `runScript`, `terminateScript`, `checkScriptStatus`, log display |
 | `data-handling.js` | File select/deselect/delete/copy/move, data fetching, export logic |
 | `data-display.js` | Chart rendering orchestration, multi-source handling, calibration routines |
-| `generate-chart.js` | Chart.js chart creation, dataset construction, annotations |
+| `generate-chart.js` | Chart.js chart creation, dataset construction, annotations. Chart chrome follows the design tokens: mono tick figures, condensed axis/chart titles, `Measurement — filename` heading, measurement-name fallback for a unitless y-axis (`isNoneUnit`), markers dropped past 40 points |
 | `calculate.js` | Math: regression (linear, polynomial, logarithmic, exponential, Michaelis-Menten), R²; calls `/calculate_coef_and_rsquared` for server-side computation |
 | `edit-file.js` | SweetAlert2-based file editor modal (CSV and JSON), column operations |
 | `report.js` | Report generation (`generateReport`), subject CRUD UI (create/rename/copy/delete subjects, export to subject, view items) |
@@ -325,7 +339,8 @@ microalbumin-Flask/
 │   ├── script_monitor.py
 │   └── send_command.py
 ├── static/
-│   ├── style.css
+│   ├── style.css                # design tokens + all UI styling
+│   ├── fonts/                   # self-hosted type: plex.css (instrument) + classic.css (classic)
 │   └── script/
 │       ├── calculate.js
 │       ├── data-display.js
