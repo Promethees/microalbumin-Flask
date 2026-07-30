@@ -62,9 +62,35 @@ function processData(allXColumn, allYColumnOrArray, timeUnit) {
 
 function toHex(color) {
     if (/^#[0-9a-f]{6}/i.test(color)) return color.slice(0, 7);
+    if (/^#[0-9a-f]{6}$/i.test(color)) return color.toLowerCase();
+    if (/^#[0-9a-f]{3}$/i.test(color)) {
+        return '#' + color.slice(1).split('').map(c => c + c).join('').toLowerCase();
+    }
     const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
     if (!m) return '#000000';
     return '#' + [m[1], m[2], m[3]].map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+}
+
+/* Chart type comes from the same tokens as the page: mono (tabular) for every
+   tick figure, condensed for axis and chart titles. Chart.js takes a plain font
+   family string, so the token is read once per module load. */
+const _cssFont = name => (getComputedStyle(document.body).getPropertyValue(name) || '').trim();
+const TICK_FONT = _cssFont('--font-mono') || 'ui-monospace, monospace';
+const AXIS_TITLE_FONT = _cssFont('--font-label') || 'system-ui, sans-serif';
+
+/* "None"/"NONE"/blank all mean the measurement has no unit. */
+function isNoneUnit(unit) {
+    return !unit || String(unit).trim().toUpperCase() === 'NONE';
+}
+
+/* The main chart's heading: what was measured, and which file it came from. */
+function chartHeading() {
+    const meta = AppState.metaData || {};
+    const meas = meta['Measurement'];
+    const file = AppState.currentFile;
+    if (meas && file) return `${meas} — ${file}`;
+    if (meas) return meas;
+    return t('chart.title_csv_content', 'Display selected CSV Content');
 }
 
 function getSourceColor(index) {
@@ -75,7 +101,10 @@ function getSourceColor(index) {
 function createDataset(yData, label, analysis, selectColor, i, isSinglePoint) {
     const yColumn = yData.avg;
     const thisYAllEqual = yColumn.every(y => y === yColumn[0]);
-    const pointRadius = isSinglePoint || thisYAllEqual ? 5 : 3;
+    // A marker per reading turns a 120-point kinetics trace into a bead chain and
+    // hides its shape. Points earn a marker only when there are few enough to read
+    // individually; a long series is a line, with the tooltip for exact values.
+    const pointRadius = isSinglePoint || thisYAllEqual ? 5 : (yColumn.length > 40 ? 0 : 3);
 
     const dataset = {
         label,
@@ -289,7 +318,8 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                         text: (AppState.currentMeasurementMode !== "calibrate")
                             ? (AppState.xAxis === 'turn' ? t('chart.axis_turn', 'Turn') : `Time (${getTimeUnitValue()})`)
                             : `Concentration (${typeof getMetaConcenUnit === 'function' ? getMetaConcenUnit(AppState.metaData) : 'ng/µL'})`,
-                        color: getAxisStyle('label')
+                        color: getAxisStyle('label'),
+                        font: { family: AXIS_TITLE_FONT, size: 11, weight: '600' }
                     },
                     min: xMin,
                     max: xMax,
@@ -297,6 +327,10 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     ticks: {
                         stepSize: xStepSize,
                         color: getAxisStyle('label'),
+                        font: { family: TICK_FONT, size: 10 },
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 12,
                         // Turn is an integer index; show whole numbers, not 1.00, 2.00.
                         callback: value => (AppState.currentMeasurementMode !== "calibrate" && AppState.xAxis === 'turn')
                             ? String(Math.round(Number(value)))
@@ -307,8 +341,17 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     type: 'linear',
                     title: {
                         display: true,
-                        text: unit !== "NONE" ? unit : '',
-                        color: getAxisStyle('label')
+                        // A unitless measurement still has a name: an absorbance axis
+                        // labelled "None" (or blank) told the reader nothing. Metadata,
+                        // not UI copy, so it is never translated (Rule 2.22).
+                        // "# Unit: None" is written by the firmware with that exact
+                        // casing, and older files carry "NONE" — compare case-insensitively
+                        // or a unitless axis ends up literally labelled "None".
+                        text: !isNoneUnit(unit)
+                            ? unit
+                            : (AppState.metaData && AppState.metaData['Measurement']) || '',
+                        color: getAxisStyle('label'),
+                        font: { family: AXIS_TITLE_FONT, size: 11, weight: '600' }
                     },
                     min: yMin,
                     max: yMax,
@@ -316,6 +359,7 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     ticks: {
                         stepSize: yStepSize,
                         color: getAxisStyle('label'),
+                        font: { family: TICK_FONT, size: 10 },
                         callback: value => Number(value).toFixed(3)
                     }
                 }
@@ -348,10 +392,15 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
                     : { display: false },
                 title: {
                     display: true,
+                    // "Display selected CSV Content" described the app's action. The
+                    // title now names the data: measurement + file, both metadata, so
+                    // it needs no translation. The old key stays as the fallback for a
+                    // chart drawn before any metadata is known.
                     text: index !== null
                         ? t('chart.title_source_data', 'Source {n} Data').replace('{n}', index + 1)
-                        : t('chart.title_csv_content', 'Display selected CSV Content'),
-                    color: getAxisStyle('title')
+                        : chartHeading(),
+                    color: getAxisStyle('title'),
+                    font: { family: AXIS_TITLE_FONT, size: 12, weight: '600' }
                 },
                 annotation: {
                     annotations: createAnnotations(isFullDisplay, AppState.currentMeasurementMode, analyses[0], conversionFactor,

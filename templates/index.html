@@ -179,7 +179,7 @@
     </script>
 </head>
 
-<body>
+<body class="{{ 'ui-classic' if user_settings.get('ui_style') == 'classic' else '' }}">
     <div id="print-report-container" class="hidden"></div>
     <div id="global-spinner" class="hidden">
         <div class="spinner-container">
@@ -187,7 +187,47 @@
             <div class="spinner-message" data-i18n="spinner.processing">Process is ongoing, please wait...</div>
         </div>
     </div>
-    <!-- Top-right controls: session timer + User Guide + Shutdown -->
+    <!-- ── Session strip ────────────────────────────────────────────────────
+         The run in progress, drawn as a chart-recorder trace across the top of
+         the page: one thin line per source, in the same sequential ramp the main
+         chart uses, advancing left to right as rows land. The trace IS the
+         recording indicator — it grows while the device streams and freezes grey
+         when the run is held — so the state is visible at any scroll position,
+         which neither the timer widget nor the floating transport can promise.
+         Fed by the rows /stream_session already pushes (see Rule.md §2.33).
+         Shown from the first data row; hidden between runs. -->
+    <header id="session-strip" class="hidden" aria-live="polite">
+        <div class="strip-plot">
+            <svg id="strip-svg" viewBox="0 0 900 64" preserveAspectRatio="none" aria-hidden="true">
+                <g id="strip-traces"></g>
+            </svg>
+            <span class="strip-scale" id="strip-scale"></span>
+        </div>
+        <div class="strip-read">
+            <span class="strip-state" id="strip-state" data-i18n="cdc.state_recording">Recording</span>
+            <span class="strip-field">
+                <span class="lbl" data-i18n="timer.session">Session</span>
+                <span class="strip-value" id="strip-elapsed">00:00</span>
+            </span>
+            <!-- Countdown to the next reading. Hidden when there is no interval to
+                 count: a manual point-mode run measures on demand, so "Next --:--"
+                 would be a permanently empty field. -->
+            <span class="strip-field hidden" id="strip-next-field">
+                <span class="lbl" data-i18n="timer.next">Next</span>
+                <span class="strip-value" id="strip-next">--:--</span>
+            </span>
+            <span class="strip-field">
+                <span class="lbl" id="strip-latest-label" data-i18n="strip.latest">Latest</span>
+                <span class="strip-value" id="strip-latest">—</span>
+            </span>
+        </div>
+    </header>
+
+    <!-- Top-right controls: session timer + User Guide + Shutdown.
+         The timer widget is the FALLBACK readout: it only appears when the session
+         strip above is switched off (`session_strip_enabled`), because the strip
+         carries the same three numbers and stays on screen at any scroll position.
+         Two live clocks at once was one too many. -->
     <div id="top-right-controls">
         <div id="session-timer" class="hidden">
             <div class="timer-row">
@@ -315,12 +355,18 @@
         </div>
         <!-- Initial prompt shown on page load -->
         <div id="init-prompt">
-            <!-- Ambient background orbs -->
+            <!-- Ambient orbs: the classic UI style's splash background. Inert (display:none)
+                 unless body.ui-classic is on — see Rule.md §2.34. -->
             <div class="init-orb init-orb-1"></div>
             <div class="init-orb init-orb-2"></div>
             <div class="init-orb init-orb-3"></div>
 
-            <!-- Glassmorphism card -->
+            <!-- The instrument style's splash is the device's own trace, drawn once on
+                 load: the shape of a saturating absorbance run, hairline, no fill. -->
+            <svg class="init-trace" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
+                <path class="init-trace-line" d="M0 240 C 180 232, 300 150, 430 108 S 700 44, 900 30 L 1200 24" />
+            </svg>
+
             <div class="init-card">
                 <div class="init-logo-wrap">
                     <img src="../static/cbb.png" alt="Company Logo" class="init-logo">

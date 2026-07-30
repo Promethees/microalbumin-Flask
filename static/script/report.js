@@ -1601,7 +1601,7 @@ async function initItemPreview(item, itemID, preloaded = null, calType = null) {
 
             const ctx = document.getElementById(`preview-chart-${itemID}`).getContext('2d');
             const datasets = [];
-            const colors = AppState.plotColors;   // shared 16-color palette (index.js)
+            const colors = sourceRamp(numSources);   // sequential source ramp (index.js)
 
             for (let i = 1; i <= numSources; i++) {
                 datasets.push({
@@ -1943,7 +1943,7 @@ async function finalizeReport() {
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = 1600; tempCanvas.height = 800;
                     const tempCtx = tempCanvas.getContext('2d');
-                    const colors = AppState.plotColors;   // shared 16-color palette (index.js)
+                    const colors = sourceRamp(numSources);   // sequential source ramp (index.js)
 
                     const tempChart = new Chart(tempCtx, {
                         type: 'line',

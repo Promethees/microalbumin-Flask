@@ -1,5 +1,5 @@
 /* Inter + Outfit — self-hosted, used ONLY by the classic UI style
-   (`body.ui-classic`, the pre-1.3.12 look; see Rule.md 2.34). The instrument
+   (`body.ui-classic`, the pre-1.4.0 look; see Rule.md 2.34). The instrument
    style uses IBM Plex from plex.css. Same generation recipe as plex.css: one face
    per weight per subset with the original unicode-range, so a browser downloads
    only what the active language needs and nothing is fetched over the network. */

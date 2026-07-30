@@ -29,6 +29,145 @@ let sessionIntervalSec = null;
 let sessionTimerHandle = null;
 let _prevDataPointCount = 0;
 
+/* ==========================================================================
+   Session strip (#session-strip) — the live run drawn across the top of the page.
+
+   One thin polyline per source, in the same `--ramp-*` steps as the main chart,
+   redrawn from AppState.responseData (which both the SSE push and the fallback
+   poll already keep current — so this adds no fetching of its own). The pen
+   advances left to right across the session rather than scrolling a window: the
+   shape of the run so far is the useful thing, and a fixed left edge means the
+   trace does not appear to move when nothing is happening.
+
+   The trace is the recording indicator. Paused greys every line and stops the
+   advance, so a held run looks held at any scroll position — the timer widget
+   and the floating transport can both be off-screen (Rule.md §2.33).
+   Opt out with the `session_strip_enabled` setting.
+========================================================================== */
+const STRIP_W = 900, STRIP_H = 64;
+
+function stripEnabled() {
+    // The strip is an instrument-style element: the classic style's live readout is
+    // the top-right timer widget, exactly as it was before (Rule.md §2.34).
+    if (typeof isClassicUI === 'function' && isClassicUI()) return false;
+    return typeof USER_SETTINGS === 'undefined' || USER_SETTINGS.session_strip_enabled !== false;
+}
+
+function showSessionStrip() {
+    if (!stripEnabled()) return;
+    const el = document.getElementById('session-strip');
+    if (!el) return;
+    el.classList.remove('hidden');
+    document.body.classList.add('strip-open');
+}
+
+function hideSessionStrip() {
+    const el = document.getElementById('session-strip');
+    if (el) {
+        el.classList.add('hidden');
+        el.classList.remove('is-paused');
+    }
+    document.body.classList.remove('strip-open');
+    const traces = document.getElementById('strip-traces');
+    if (traces) traces.textContent = '';
+    const elapsed = document.getElementById('strip-elapsed');
+    if (elapsed) elapsed.textContent = '00:00';
+    const latest = document.getElementById('strip-latest');
+    if (latest) latest.textContent = '\u2014';
+    const next = document.getElementById('strip-next');
+    if (next) { next.textContent = '--:--'; next.classList.remove('urgent'); }
+    const nextField = document.getElementById('strip-next-field');
+    if (nextField) nextField.classList.add('hidden');
+    const scale = document.getElementById('strip-scale');
+    if (scale) scale.textContent = '';
+}
+
+/* Redraw from the rows the session has produced so far. */
+function drawSessionStrip() {
+    const svgGroup = document.getElementById('strip-traces');
+    // AppState.responseData is the row array itself (see processResponse); the
+    // `.data` shape is what a raw /get_data payload looks like, so accept both.
+    const raw = AppState.responseData;
+    const rows = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.data) ? raw.data : []);
+    if (!svgGroup || !rows.length) return;
+
+    const n = Math.max(1, AppState.numSources || 1);
+    const colors = sourceRamp(Math.max(2, n));
+    const xs = rows.map(r => Number(r.Timestamp));
+    // The x scale is the session so far, so the pen sits at the right edge as
+    // soon as there are two rows; the trace lengthens rather than sliding.
+    const xMax = Math.max(...xs.filter(Number.isFinite), 1);
+
+    // One shared y scale across sources, from the data itself — a per-source
+    // scale would make two different absorbances look identical.
+    let lo = Infinity, hi = -Infinity;
+    for (const row of rows) {
+        for (let i = 1; i <= n; i++) {
+            const v = Number(row[`Value:${i}`]);
+            if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+        }
+    }
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
+    if (hi - lo < 1e-6) { hi = lo + 0.05; }
+    const pad = (hi - lo) * 0.12;
+    lo -= pad; hi += pad;
+
+    const px = x => (Number.isFinite(xMax) && xMax > 0 ? (x / xMax) * STRIP_W : 0);
+    const py = v => STRIP_H - 6 - ((v - lo) / (hi - lo)) * (STRIP_H - 14);
+
+    let markup = '';
+    for (let i = 1; i <= n; i++) {
+        let d = '', started = false;
+        for (const row of rows) {
+            const x = Number(row.Timestamp), v = Number(row[`Value:${i}`]);
+            if (!Number.isFinite(x) || !Number.isFinite(v)) continue;   // OVFL / NONE
+            d += `${started ? 'L' : 'M'}${px(x).toFixed(1)} ${py(v).toFixed(1)}`;
+            started = true;
+        }
+        if (d) {
+            markup += `<path class="strip-trace" d="${d}" style="stroke:${colors[(i - 1) % colors.length]}"></path>`;
+        }
+    }
+    svgGroup.innerHTML = markup;
+
+    const scale = document.getElementById('strip-scale');
+    if (scale) {
+        const axis = AppState.xAxis === 'turn' ? 'turns' : 's';
+        scale.textContent = `${rows.length} rows \u00b7 ${n} src \u00b7 ${xMax.toFixed(0)} ${axis} \u00b7 ${lo.toFixed(2)}\u2013${hi.toFixed(2)}`;
+    }
+
+    // A single-source run has one unambiguous latest value, so show it. With
+    // several sources there is no honest single number — show the row count.
+    const latest = document.getElementById('strip-latest');
+    const latestLabel = document.getElementById('strip-latest-label');
+    const last = rows[rows.length - 1];
+    if (latest && latestLabel) {
+        if (n === 1) {
+            const v = Number(last['Value:1']);
+            latest.textContent = Number.isFinite(v) ? v.toFixed(3) : String(last['Value:1'] ?? '\u2014');
+            latestLabel.setAttribute('data-i18n', 'strip.latest');
+            latestLabel.textContent = t('strip.latest', 'Latest');
+        } else {
+            latest.textContent = String(rows.length);
+            latestLabel.setAttribute('data-i18n', 'strip.rows');
+            latestLabel.textContent = t('strip.rows', 'Rows');
+        }
+    }
+}
+
+/* Mirror the pause state onto the strip: grey, still, and it says so. */
+function applyStripPausedState(paused) {
+    const el = document.getElementById('session-strip');
+    if (el) el.classList.toggle('is-paused', paused);
+    const state = document.getElementById('strip-state');
+    if (state) {
+        state.setAttribute('data-i18n', paused ? 'timer.paused' : 'cdc.state_recording');
+        state.textContent = paused
+            ? t('timer.paused', 'Paused')
+            : t('cdc.state_recording', 'Recording');
+    }
+}
+
 function formatHMS(totalSeconds) {
     const s = Math.floor(totalSeconds);
     const h = Math.floor(s / 3600);
@@ -44,21 +183,32 @@ function tickSessionTimer() {
     const now = Date.now();
     const elapsedSec = (now - sessionStartTime) / 1000;
 
+    // Both readouts run off this one tick: the strip (on screen at any scroll
+    // position) and the timer widget (the fallback, only mounted when the strip
+    // is switched off). They can never drift because there is one clock.
+    const elapsed = formatHMS(elapsedSec);
     const elapsedEl = document.getElementById('session-elapsed');
-    if (elapsedEl) elapsedEl.textContent = formatHMS(elapsedSec);
+    if (elapsedEl) elapsedEl.textContent = elapsed;
+    const stripElapsed = document.getElementById('strip-elapsed');
+    if (stripElapsed) stripElapsed.textContent = elapsed;
 
-    const nextEl = document.getElementById('session-next');
-    if (nextEl) {
-        if (sessionIntervalSec && sessionIntervalSec > 0 && lastDataPointTime) {
-            const sinceLastPoint = (now - lastDataPointTime) / 1000;
-            const remaining = Math.max(0, sessionIntervalSec - sinceLastPoint);
-            nextEl.textContent = formatHMS(remaining);
-            nextEl.classList.toggle('urgent', remaining <= 10);
-        } else {
-            nextEl.textContent = '--:--';
-            nextEl.classList.remove('urgent');
-        }
+    const counting = !!(sessionIntervalSec && sessionIntervalSec > 0 && lastDataPointTime);
+    let next = '--:--', urgent = false;
+    if (counting) {
+        const remaining = Math.max(0, sessionIntervalSec - (now - lastDataPointTime) / 1000);
+        next = formatHMS(remaining);
+        urgent = remaining <= 10;
     }
+    for (const id of ['session-next', 'strip-next']) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.textContent = next;
+        el.classList.toggle('urgent', urgent);
+    }
+    // A manual point-mode run has no interval, so it gets no countdown field
+    // rather than a permanently blank one.
+    const nextField = document.getElementById('strip-next-field');
+    if (nextField) nextField.classList.toggle('hidden', !counting);
 }
 
 // Called when runScript succeeds — prepares state but keeps widget hidden
@@ -78,10 +228,12 @@ function onNewDataPoint() {
     // job and the session timer takes over from here.
     endStartupWatch();
     if (!sessionStartTime) {
-        // First data point: reveal widget and start ticking.
+        // First data point: reveal the live readout and start ticking. The strip
+        // shows the same elapsed/next/state, so the timer widget appears only when
+        // the strip is switched off — two live clocks was one too many.
         sessionStartTime = now;
         const timerEl = document.getElementById('session-timer');
-        if (timerEl) timerEl.classList.remove('hidden');
+        if (timerEl) timerEl.classList.toggle('hidden', stripEnabled());
         sessionTimerHandle = setInterval(tickSessionTimer, 1000);
     } else if (!sessionIntervalSec && !manualSession) {
         // Second data point with no configured interval: measure the device's
@@ -91,6 +243,8 @@ function onNewDataPoint() {
     }
     lastDataPointTime = now;
     tickSessionTimer();
+    showSessionStrip();
+    drawSessionStrip();
     // Manual capture: each requested row has landed, so re-arm "Measure now".
     if (manualSession && AppState.scriptRunning) setMeasureArmed(true);
 }
@@ -106,6 +260,7 @@ function stopSessionTimer() {
     _prevDataPointCount = 0;
     const timerEl = document.getElementById('session-timer');
     if (timerEl) timerEl.classList.add('hidden');
+    hideSessionStrip();
     const elapsedEl = document.getElementById('session-elapsed');
     const nextEl = document.getElementById('session-next');
     if (elapsedEl) elapsedEl.textContent = '00:00:00';
@@ -569,6 +724,7 @@ function applyPausedState(paused) {
         }
     }
     applyPauseControlsUI();
+    applyStripPausedState(paused);
     syncReadingFab();
 }
 

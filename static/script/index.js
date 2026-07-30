@@ -1,3 +1,71 @@
+/* ---------------------------------------------------------------------------
+   Source colours: steps of one sequential ramp, read from the CSS tokens.
+
+   `--ramp-1..--ramp-10` in style.css are a single hue stepped on lightness, with
+   their own range per theme. sourceRamp(n) spreads n series across those ten
+   stops (interpolating in sRGB between adjacent stops when n > 10), so two
+   sources next to each other are next to each other in colour too. Reading the
+   tokens instead of hardcoding hex keeps the chart, the source labels and the
+   panel chrome on one palette, and makes a theme switch a repaint.
+--------------------------------------------------------------------------- */
+/* The classic UI style keeps its original 16-entry categorical palette, because
+   that is what "the previous look" means; the instrument style uses the ramp. */
+const CLASSIC_PLOT_COLORS = [
+    'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgba(190, 136, 9, 1)',
+    'rgb(54, 162, 235)', 'rgb(153, 102, 255)', 'rgba(139, 144, 75, 1)',
+    'rgba(228, 87, 246, 1)', 'rgba(44, 136, 115, 1)', 'rgba(255, 159, 64, 1)',
+    'rgba(199, 199, 199, 1)', 'rgba(83, 102, 255, 1)', 'rgba(255, 102, 178, 1)',
+    'rgba(60, 179, 113, 1)', 'rgba(255, 140, 0, 1)', 'rgba(100, 149, 237, 1)',
+    'rgba(216, 191, 216, 1)'
+];
+
+/* Which visual language is active. Read off the class the server stamped on
+   <body> rather than USER_SETTINGS, so it is right even before that object is
+   defined and can never disagree with what is on screen. */
+function isClassicUI() {
+    return document.body.classList.contains('ui-classic');
+}
+
+function rampStops() {
+    const css = getComputedStyle(document.body);
+    const stops = [];
+    for (let i = 1; i <= 10; i++) {
+        const v = css.getPropertyValue(`--ramp-${i}`).trim();
+        if (v) stops.push(v);
+    }
+    // A stylesheet that failed to load must not take the chart down with it.
+    return stops.length ? stops : ['#b85207', '#d98558', '#ffc3a4'];
+}
+
+function _hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function sourceRamp(count) {
+    if (isClassicUI()) return CLASSIC_PLOT_COLORS;
+    const stops = rampStops();
+    const n = Math.max(1, count | 0);
+    if (n === 1) return [stops[stops.length - 1]];
+    const out = [];
+    for (let i = 0; i < n; i++) {
+        const t = (i / (n - 1)) * (stops.length - 1);
+        const lo = Math.floor(t);
+        const hi = Math.min(stops.length - 1, lo + 1);
+        const f = t - lo;
+        if (f === 0 || lo === hi) {
+            out.push(stops[lo]);
+            continue;
+        }
+        const a = _hexToRgb(stops[lo]);
+        const b = _hexToRgb(stops[hi]);
+        const mix = a.map((v, k) => Math.round(v + (b[k] - v) * f));
+        out.push(`rgb(${mix[0]}, ${mix[1]}, ${mix[2]})`);
+    }
+    return out;
+}
+
 function initDefaultState() {
     [
         'point-json-exp-section',
@@ -52,25 +120,21 @@ const AppState = {
     globalEstimatedValue: null,
     multiSource: false,
     numSources: 1,
-    // Shared 16-color chart palette — report.js preview/export charts read this too.
-    plotColors: [
-        'rgb(75, 192, 192)',
-        'rgb(255, 99, 132)',
-        'rgba(190, 136, 9, 1)',
-        'rgb(54, 162, 235)',
-        'rgb(153, 102, 255)',
-        'rgba(139, 144, 75, 1)',
-        'rgba(228, 87, 246, 1)',
-        'rgba(44, 136, 115, 1)',
-        'rgba(255, 159, 64, 1)',
-        'rgba(199, 199, 199, 1)',
-        'rgba(83, 102, 255, 1)',
-        'rgba(255, 102, 178, 1)',
-        'rgba(60, 179, 113, 1)',
-        'rgba(255, 140, 0, 1)',
-        'rgba(100, 149, 237, 1)',
-        'rgba(216, 191, 216, 1)'
-    ],
+    // Shared chart palette — report.js preview/export charts read this too.
+    //
+    // The sources of a multi-source file are the standards of one series, read
+    // through the cuvettes of consecutive multiplexer channels: ORDERED data.
+    // A cycled categorical palette (the old 16 rainbow entries) threw away that
+    // order and made source 3 look unrelated to source 4. These are steps of one
+    // sequential ramp instead — `--ramp-1..10` in style.css, re-stepped per theme
+    // and validated for monotonic lightness and >= 3:1 against the plot well.
+    // It is a getter so a theme switch repaints from the live tokens.
+    get plotColors() {
+        // Sized to the file's own source count so the series span the whole ramp:
+        // three sources are dark / middle / light, not the first three steps. Every
+        // consumer indexes with `% length`, so a short array stays safe.
+        return sourceRamp(Math.max(2, this.numSources || 1));
+    },
     quantity_input: temp_quantity_input,
     report_root_path: REPORT_ROOT,
 
