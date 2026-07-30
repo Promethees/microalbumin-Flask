@@ -67,3 +67,5 @@ log/script_logs.txt
 # The ".nosync" suffix tells iCloud (Desktop & Documents) to skip it; this keeps
 # the file-sync service from corrupting the repo. See README/setup notes.
 /.git.nosync/
+
+/static/dist/
