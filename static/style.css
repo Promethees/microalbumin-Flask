@@ -5495,7 +5495,7 @@ body.dark #run-script-btn:enabled {
 }
 
 /* ==========================================================================
-   CLASSIC UI STYLE (`body.ui-classic`) — the pre-1.4.0 look, kept switchable.
+   CLASSIC UI STYLE (`body.ui-classic`) — the previous look, kept switchable.
 
    This is a token override, not a second stylesheet: the palette, the materials,
    the type and the radii are all read from variables, so restoring the previous
