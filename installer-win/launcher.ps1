@@ -4,7 +4,33 @@ Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
-$Xaml = @'
+# Resolved once, up here, because Get-UiStyle below needs it: inside a function
+# $MyInvocation.MyCommand.Path describes the function call, not the script file.
+$script:ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
+
+# ── Which splash to show ─────────────────────────────────────────────────────
+# The app wears one of two interface styles (the `ui_style` setting) and the
+# splash is the first thing on screen, so it follows the window that will open
+# behind it. A source install keeps the checkout in .\code beside this script —
+# the same path this launcher already uses for main.py and the venv — and a
+# source build's data root is the project root, so the settings file is
+# .\code\user_settings.json. Any problem reading it falls back to the instrument
+# style: a splash must never be the reason a launch fails.
+function Get-UiStyle {
+    try {
+        $settings = Join-Path $script:ScriptDir 'code\user_settings.json'
+        if (-not (Test-Path $settings)) { return 'instrument' }
+        $style = (Get-Content -LiteralPath $settings -Raw -ErrorAction Stop |
+                  ConvertFrom-Json).ui_style
+        if ($style -eq 'classic') { return 'classic' }
+        return 'instrument'
+    } catch { return 'instrument' }
+}
+
+# Classic: the pre-1.4.0 splash, unchanged.
+$XamlClassic = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         Title="EasyOKAPI" Height="190" Width="480"
         WindowStartupLocation="CenterScreen"
@@ -49,17 +75,57 @@ $Xaml = @'
 </Window>
 '@
 
+# Instrument: the app's own tokens (style.css) — graphite card on a hairline
+# border, bromophenol-blue accent, 4px radius, a flat progress fill rather than a
+# gradient, and the percentage in a mono face because it is a number that counts up.
+$XamlInstrument = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Title="EasyOKAPI" Height="190" Width="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize" WindowStyle="None"
+        AllowsTransparency="True" Background="Transparent">
+  <Border CornerRadius="4" Background="#0E1113" BorderBrush="#262C31" BorderThickness="1"
+          ClipToBounds="True" Padding="36,28">
+    <StackPanel VerticalAlignment="Center">
+
+      <TextBlock FontSize="22" FontWeight="SemiBold" FontFamily="Segoe UI"
+                 HorizontalAlignment="Center">
+        <Run Text="Easy" Foreground="#2E8FC4"/><Run Text="OKAPI" Foreground="#E6EAEC"/>
+      </TextBlock>
+
+      <TextBlock Text="LAUNCHING"
+                 FontSize="10" FontFamily="Segoe UI Semibold" Foreground="#8A959B"
+                 HorizontalAlignment="Center" Margin="0,6,0,0"/>
+
+      <Border Height="20"/>
+
+      <Border Name="ProgressTrack" Height="4" CornerRadius="0"
+              Background="#262C31" ClipToBounds="True">
+        <Border Name="ProgressFill" HorizontalAlignment="Left" Width="0"
+                Background="#2E8FC4"/>
+      </Border>
+
+      <Grid Margin="0,8,0,0">
+        <TextBlock Name="StatusLabel"
+                   FontSize="10" FontFamily="Segoe UI" Foreground="#5D666B"/>
+        <TextBlock Name="PctLabel" Text="0%"
+                   FontSize="10" FontFamily="Cascadia Mono, Consolas, Courier New"
+                   Foreground="#2E8FC4" HorizontalAlignment="Right"/>
+      </Grid>
+
+    </StackPanel>
+  </Border>
+</Window>
+'@
+
+$Xaml = if ((Get-UiStyle) -eq 'classic') { $XamlClassic } else { $XamlInstrument }
+
 $Reader  = [System.Xml.XmlReader]::Create([System.IO.StringReader]$Xaml)
 $Window  = [Windows.Markup.XamlReader]::Load($Reader)
 $Track   = $Window.FindName('ProgressTrack')
 $Fill    = $Window.FindName('ProgressFill')
 $Status  = $Window.FindName('StatusLabel')
 $PctTxt  = $Window.FindName('PctLabel')
-
-# Use $script: scope so the DispatcherTimer callback can see these variables
-$script:ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else {
-    Split-Path -Parent $MyInvocation.MyCommand.Path
-}
 
 # Set window icon
 if (Test-Path "$script:ScriptDir\ht.ico") {
