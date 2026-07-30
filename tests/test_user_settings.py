@@ -465,3 +465,48 @@ class TestReadingStartTimeout:
         assert user_settings.load()["reading_start_timeout_sec"] == 10
         user_settings.save({"reading_start_timeout_sec": 600})
         assert user_settings.load()["reading_start_timeout_sec"] == 600
+
+
+class TestUiStyle:
+    """`ui_style` picks the interface's visual language (Rule.md §2.34).
+
+    A closed choice, like `ui_language`: the value is stamped straight onto
+    <body> as a class by the index render, and the chart palette and session
+    strip branch on it, so an unknown value must never reach the template.
+    """
+
+    def test_defaults_to_instrument(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["ui_style"] == "instrument"
+
+    @pytest.mark.parametrize("value", ["classic", "instrument"])
+    def test_accepts_known_styles(self, tmp_path, monkeypatch, value):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"ui_style": value})
+        assert user_settings.load()["ui_style"] == value
+
+    def test_normalises_case_and_whitespace(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"ui_style": "  Classic  "})
+        assert user_settings.load()["ui_style"] == "classic"
+
+    @pytest.mark.parametrize("bad", ["retro", "", None, 1, [], {}])
+    def test_rejects_unknown_styles(self, tmp_path, monkeypatch, bad):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"ui_style": "classic"})
+        user_settings.save({"ui_style": bad})
+        assert user_settings.load()["ui_style"] == "classic"
+
+
+class TestSessionStripSetting:
+    """`session_strip_enabled` is the instrument style's live-readout opt-out."""
+
+    def test_defaults_on(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["session_strip_enabled"] is True
+
+    @pytest.mark.parametrize("value,expected", [(False, False), (True, True), (0, False), (1, True)])
+    def test_coerced_to_bool(self, tmp_path, monkeypatch, value, expected):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"session_strip_enabled": value})
+        assert user_settings.load()["session_strip_enabled"] is expected

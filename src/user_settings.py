@@ -64,6 +64,20 @@ DEFAULTS = {
     # where a buffering intermediary sits between the browser and the app and
     # holds SSE frames back.
     "live_stream_enabled": True,
+    # The sticky session strip at the top of the page: a chart-recorder trace of
+    # the run in progress plus its state readout (see Rule.md 2.33). On by
+    # default; off leaves the timer widget and the floating transport as the only
+    # live-state indicators, which is the pre-1.4.0 behaviour.
+    "session_strip_enabled": True,
+    # Which visual language the interface wears (Rule.md 2.34):
+    #   "instrument" - the current design: photometric graphite + bromophenol blue,
+    #                  flat hairline chrome, IBM Plex, sequential source ramp, the
+    #                  session strip.
+    #   "classic"    - the pre-1.4.0 look: Tailwind greys + indigo/purple gradients,
+    #                  translucent cards, Inter/Outfit, the 16-colour series palette.
+    # A token override, not a second stylesheet; the class is stamped on <body> by
+    # the index render so the page never flashes the other style.
+    "ui_style": "instrument",
     "merge_directory_picker": False,
     "disable_popups": False,
     "default_concentration_unit": "ng/µL",
@@ -178,12 +192,18 @@ def save(updates: dict) -> bool:
                 current["chart_height"] = h
         except (ValueError, TypeError):
             pass
+    if "ui_style" in updates:
+        style = str(updates["ui_style"]).strip().lower()
+        if style in ("instrument", "classic"):
+            current["ui_style"] = style
+
     for bool_key in ("default_normalize", "default_split_sources",
                      "range_expanded_default", "export_expanded_default",
                      "log_section_collapsed", "default_notify",
                      "default_inf_timeout", "merge_directory_picker",
                      "disable_popups", "ai_feedback_enabled",
-                     "live_stream_enabled", "music_enabled", "music_shuffle"):
+                     "live_stream_enabled", "session_strip_enabled",
+                     "music_enabled", "music_shuffle"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])
     if "log_display_height" in updates:

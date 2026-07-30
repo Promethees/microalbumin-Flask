@@ -641,6 +641,8 @@ const SETTINGS_DEFAULTS = {
     cdc_run_mode: 'auto',
     reading_start_timeout_sec: 60,
     live_stream_enabled: true,
+    session_strip_enabled: true,
+    ui_style: 'instrument',
     merge_directory_picker: false,
     disable_popups: false,
     default_concentration_unit: 'ng/µL',
@@ -701,6 +703,9 @@ function _buildSettingsHTML(s, folders, aiStats) {
                  <option value="fr" ${s.ui_language==='fr'?'selected':''}>Français</option>
                  <option value="ja" ${s.ui_language==='ja'?'selected':''}>日本語</option>
                  <option value="ru" ${s.ui_language==='ru'?'selected':''}>Русский</option>`))}
+            ${row(t('settings.ui_style', 'Interface style'), t('settings.ui_style.help', 'Switch between the current instrument look and the previous one'), sel('swal-ui-style',
+                `<option value="instrument" ${(s.ui_style||'instrument')==='instrument'?'selected':''}>${t('settings.ui_style.instrument', 'Instrument')}</option>
+                 <option value="classic"    ${s.ui_style==='classic'?'selected':''}>${t('settings.ui_style.classic', 'Classic')}</option>`))}
             ${rowCheck(t('settings.disable_popups', 'Disable popups'), 'swal-disable-popups', s.disable_popups)}
             ${row(t('settings.time_format', 'Date / time format'), t('settings.time_format.help', 'Used for file modified-date tags'), sel('swal-time-format',
                 `<option value="iso"       ${(s.time_tag_format||'iso')==='iso'?'selected':''}>YYYY-MM-DD HH:MM</option>
@@ -768,6 +773,7 @@ function _buildSettingsHTML(s, folders, aiStats) {
                      <option value="manual" ${s.cdc_run_mode==='manual'?'selected':''}>Manual</option>`))}
                 ${row('Wait for device on start', 's (10-600)', num('swal-reading-start-timeout', 10, s.reading_start_timeout_sec ?? 60))}
                 ${rowCheck(t('settings.live_stream', 'Stream live readings (recommended)'), 'swal-live-stream', s.live_stream_enabled !== false)}
+                ${rowCheck(t('settings.session_strip', 'Show the session strip while reading'), 'swal-session-strip', s.session_strip_enabled !== false)}
             </div>
         </div>
         <div class="sm-section sm-section--full">
@@ -861,6 +867,7 @@ function _readSettingsForm() {
     return {
         theme: document.getElementById('swal-theme').value,
         ui_language: document.getElementById('swal-ui-language').value,
+        ui_style: document.getElementById('swal-ui-style').value,
         time_tag_format: document.getElementById('swal-time-format').value,
         file_table_height: Math.max(80, parseInt(document.getElementById('swal-table-height').value, 10) || 240),
         file_sort_order: document.getElementById('swal-file-sort').value,
@@ -901,6 +908,7 @@ function _readSettingsForm() {
 function _fillSettingsForm(s) {
     document.getElementById('swal-theme').value = s.theme;
     document.getElementById('swal-ui-language').value = s.ui_language || 'en';
+    document.getElementById('swal-ui-style').value = s.ui_style || 'instrument';
     document.getElementById('swal-time-format').value = s.time_tag_format || 'iso';
     document.getElementById('swal-table-height').value = s.file_table_height || 240;
     document.getElementById('swal-file-sort').value = s.file_sort_order || 'date_desc';
@@ -937,6 +945,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-cdc-run-mode').value = s.cdc_run_mode === 'manual' ? 'manual' : 'auto';
     document.getElementById('swal-reading-start-timeout').value = s.reading_start_timeout_sec ?? 60;
     document.getElementById('swal-live-stream').checked = s.live_stream_enabled !== false;
+    document.getElementById('swal-session-strip').checked = s.session_strip_enabled !== false;
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;
@@ -962,6 +971,7 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     const folders = (foldersRes && Array.isArray(foldersRes.folders)) ? foldersRes.folders : [];
 
     const prevUiLang = s.ui_language || 'en';
+    const prevUiStyle = s.ui_style || 'instrument';
     const { value: formValues, isConfirmed } = await Swal.fire({
         title: t('settings.title', 'App Settings'),
         width: 'min(92vw, 680px)',
@@ -1001,6 +1011,15 @@ document.getElementById('settingsBtn').addEventListener('click', async function 
     // (the server injects the matching catalog on the next load). Reload now so
     // every static label and dynamic dialog comes up consistently translated.
     if ((formValues.ui_language || 'en') !== prevUiLang) {
+        window.location.reload();
+        return;
+    }
+
+    // The interface style is applied the same way, and for the same reason: the
+    // `ui-classic` class is stamped on <body> by the server render (so the page
+    // never flashes the other look), and the chart palette + session strip read
+    // the style at build time. Reload so every surface comes up consistent.
+    if ((formValues.ui_style || 'instrument') !== prevUiStyle) {
         window.location.reload();
         return;
     }
