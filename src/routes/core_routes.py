@@ -135,7 +135,13 @@ def shutdown(validated_data):
     # malformed body gets a 400 without killing the server.
     threading.Thread(target=delayed_termination).start()
     mode = validated_data['mode'] or 'light'
-    return render_template('goodbye.html', production_mode=state.PRODUCTION_MODE, mode=mode)
+    # The last frame of the session must not contradict the window it replaces,
+    # so the page follows `ui_style` the same way index.html does (Rule.md §2.34).
+    # The template tests for 'classic' only, so an unexpected stored value falls
+    # through to the instrument style rather than reaching the markup.
+    ui_style = _user_settings.load().get('ui_style', 'instrument')
+    return render_template('goodbye.html', production_mode=state.PRODUCTION_MODE,
+                           mode=mode, ui_style=ui_style)
 
 @core_bp.route('/browse', methods=['POST'])
 def browse():

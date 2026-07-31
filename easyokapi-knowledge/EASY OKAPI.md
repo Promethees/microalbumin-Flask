@@ -170,7 +170,7 @@ The palette is derived from the **assay**, not from light: `--accent` is bromoph
 | File | Purpose |
 |---|---|
 | `index.html` | Main SPA template. Jinja2-rendered with server-side data: `data_root`, `report_root`, `json_root` path constants (instead of `directory`), plus file list, mode, quantity, delimiter, etc. Also `ui_lang` → `<html lang>` + `const UI_LANG`, and `ui_strings` → `const UI_STRINGS` (the active i18n catalog) consumed by `i18n.js`; in-scope elements carry `data-i18n*` attributes with English text as the fallback (Rule.md §2.22). Also `reset_display` → `const RESET_DISPLAY`: when true (first load after a restart) it drops per-view `localStorage` UI state (keeping `theme`/`okapi_ai_lang`/`okapi_ai_first_run`) before `init.js` runs, which then forces kinetics mode — the default display — see Rule.md §2.20. |
-| `goodbye.html` | Displayed on `/shutdown` — shows farewell screen before process termination |
+| `goodbye.html` | Displayed on `/shutdown` — the shutdown screen shown while the process terminates (5 s countdown, then closes the tab). Rendered in **both interface styles** (Rule.md §2.34): `/shutdown` passes `ui_style` from `user_settings`, and the template branches server-side — `classic` keeps the orb/glass card with the checkmark and countdown ring, anything else (i.e. `instrument`) draws the flat hairline-bounded panel with the parked chart-recorder trace and a draining hairline countdown bar. Tokens are copied from `static/style.css` rather than linked (the page must not inherit app layout) — keep them in step. Type is self-hosted for both styles (`fonts/plex.css` / `fonts/classic.css`, no Google Fonts request). One shared countdown script drives whichever of `#ring-fill` / `#countdown-fill` the render produced. |
 
 ---
 

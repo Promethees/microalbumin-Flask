@@ -1388,6 +1388,49 @@ def test_shutdown_happy_path_schedules_termination(client, no_real_threads):
     assert no_real_threads.started == [core_routes.delayed_termination]
 
 
+def _shutdown_html(client, monkeypatch, stored_style):
+    """Render /shutdown with `ui_style` pinned to `stored_style`."""
+    from routes import core_routes
+    monkeypatch.setattr(core_routes._user_settings, 'load',
+                        lambda: {'ui_style': stored_style})
+    rv = client.post('/shutdown', json={'mode': 'light'})
+    assert rv.status_code == 200
+    return rv.get_data(as_text=True)
+
+
+def test_shutdown_page_follows_instrument_style(client, no_real_threads, monkeypatch):
+    """The shutdown page is the last frame of the session and must be drawn in the
+    same visual language as the window it replaces (Rule.md §2.34)."""
+    html = _shutdown_html(client, monkeypatch, 'instrument')
+    assert 'fonts/plex.css' in html          # self-hosted IBM Plex, not Inter
+    assert 'trace-pen' in html               # the parked chart-recorder trace
+    assert 'id="countdown-fill"' in html     # hairline bar, not the classic ring
+    assert 'id="ring-fill"' not in html
+    assert 'orb orb-1' not in html           # no blurred orbs in the instrument look
+
+
+def test_shutdown_page_follows_classic_style(client, no_real_threads, monkeypatch):
+    html = _shutdown_html(client, monkeypatch, 'classic')
+    assert 'fonts/classic.css' in html
+    assert 'id="ring-fill"' in html
+    assert 'orb orb-1' in html
+    assert 'trace-pen' not in html
+
+
+def test_shutdown_page_unknown_style_falls_back_to_instrument(client, no_real_threads,
+                                                              monkeypatch):
+    """An unexpected stored value must not reach the markup as a style."""
+    html = _shutdown_html(client, monkeypatch, 'neon')
+    assert 'trace-pen' in html
+    assert 'id="ring-fill"' not in html
+
+
+def test_shutdown_page_never_requests_google_fonts(client, no_real_threads, monkeypatch):
+    """Both styles' type is vendored — the page renders offline (Rule.md §2.4)."""
+    for style in ('instrument', 'classic'):
+        assert 'fonts.googleapis.com' not in _shutdown_html(client, monkeypatch, style)
+
+
 def test_shutdown_wrong_type_mode_is_400(client, no_real_threads):
     rv = client.post('/shutdown', json={'mode': ['dark']})
     assert rv.status_code == 400

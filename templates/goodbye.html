@@ -4,9 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Goodbye — EasyOKAPI</title>
+    <!-- Type is self-hosted for both styles (Rule.md §2.4 / §2.34): this page must
+         render identically on a machine that has never had a network. The style is
+         chosen server-side from `ui_style`, so only the family in use is linked. -->
+    {% if ui_style == 'classic' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/classic.css') }}">
+    {% else %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/plex.css') }}">
+    {% endif %}
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
+    {% if ui_style == 'classic' %}
         @keyframes bgShift {
             0%   { background-position: 0% 50%; }
             50%  { background-position: 100% 50%; }
@@ -231,9 +238,246 @@
             font-size: 0.76rem;
             letter-spacing: 0.02em;
         }
+    {% else %}
+        /* ==================================================================
+           INSTRUMENT STYLE (Rule.md §2.33 / §2.34)
+
+           The shutdown page is the last frame of a session, so it is drawn in
+           the same language as the session strip: a flat hairline-bounded
+           panel, a chart-recorder trace that runs and then parks, condensed
+           uppercase labels, and mono tabular figures for the one number that
+           changes. No orbs, no blur, no gradient, no lift — the tokens below
+           are the same values as the top of static/style.css, copied rather
+           than linked because this page must not inherit 5000 lines of app
+           layout. Keep them in step with that token block.
+           ================================================================== */
+        :root {
+            --bg: #eef1f2;
+            --panel: #ffffff;
+            --well: #fbfcfc;
+            --hairline: #d5dbde;
+            --hairline-soft: #e6eaec;
+            --ink: #12171a;
+            --ink-muted: #5c666c;
+            --ink-dim: #869197;
+            --accent: #1c6e9c;
+            --warn: #b0741f;
+            --warn-wash: rgba(176, 116, 31, 0.12);
+            /* The pen colour is --ramp-6, the same step the live trace uses. */
+            --trace: #ac4d05;
+
+            --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+            --font-label: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+
+            --r-flat: 0px;
+            --r-press: 4px;
+        }
+
+        body.dark {
+            --bg: #0e1113;
+            --panel: #14181b;
+            --well: #0a0d0f;
+            --hairline: #262c31;
+            --hairline-soft: #1b2024;
+            --ink: #e6eaec;
+            --ink-muted: #8a959b;
+            --ink-dim: #5d666b;
+            --accent: #2e8fc4;
+            --warn: #e8a33a;
+            --warn-wash: rgba(232, 163, 58, 0.14);
+            --trace: #e19167;
+        }
+
+        @keyframes penRun {
+            from { stroke-dashoffset: 100; }
+            to   { stroke-dashoffset: 0; }
+        }
+
+        @keyframes penPark {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg);
+            color: var(--ink);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* ── Panel ───────────────────────────────────────── */
+        .panel {
+            width: min(560px, 100%);
+            background: var(--panel);
+            border: 1px solid var(--hairline);
+            border-radius: var(--r-flat);
+            animation: riseIn 0.28s ease both;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 11px 18px;
+            border-bottom: 1px solid var(--hairline);
+            font-family: var(--font-label);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-muted);
+        }
+
+        /* The state mark is a parked pen tip — the same mark the live strip
+           uses, in the dim ink that means "not recording". */
+        .panel-state {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--ink-dim);
+        }
+        .panel-state::before {
+            content: "";
+            width: 4px;
+            height: 14px;
+            background: currentColor;
+        }
+
+        /* ── Parked trace ────────────────────────────────── */
+        .trace {
+            position: relative;
+            background: var(--well);
+            border-bottom: 1px solid var(--hairline);
+        }
+        .trace svg {
+            display: block;
+            width: 100%;
+            height: 96px;
+        }
+        .trace-baseline {
+            fill: none;
+            stroke: var(--hairline);
+            stroke-width: 1;
+            stroke-dasharray: 2 5;
+            vector-effect: non-scaling-stroke;
+        }
+        .trace-pen {
+            fill: none;
+            stroke: var(--trace);
+            stroke-width: 1.6;
+            stroke-linejoin: round;
+            vector-effect: non-scaling-stroke;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: penRun 1.3s ease-out 0.1s forwards;
+        }
+        .trace-tip {
+            fill: var(--trace);
+            opacity: 0;
+            animation: penPark 0.3s ease 1.4s forwards;
+        }
+        .trace-scale {
+            position: absolute;
+            left: 14px;
+            top: 6px;
+            font-family: var(--font-mono);
+            font-size: 9.5px;
+            letter-spacing: 0.04em;
+            color: var(--ink-dim);
+            pointer-events: none;
+        }
+
+        /* ── Body ────────────────────────────────────────── */
+        .panel-body { padding: 20px 22px 22px; }
+
+        .card-title {
+            font-size: 19px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+        }
+        .card-subtitle {
+            margin-top: 8px;
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: var(--ink-muted);
+        }
+
+        /* Production note: a flat rule-bounded strip, not a pill badge. */
+        .warning-badge {
+            display: block;
+            margin-top: 14px;
+            padding: 9px 12px;
+            background: var(--warn-wash);
+            border-left: 2px solid var(--warn);
+            border-radius: var(--r-flat);
+            font-size: 12.5px;
+            color: var(--ink-muted);
+        }
+
+        /* ── Countdown ───────────────────────────────────── */
+        .countdown-wrap {
+            margin-top: 20px;
+            padding-top: 14px;
+            border-top: 1px solid var(--hairline-soft);
+        }
+        .countdown-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .countdown-label {
+            font-family: var(--font-label);
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-dim);
+        }
+        .countdown-number {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--ink);
+        }
+        .countdown-bar {
+            margin-top: 9px;
+            height: 2px;
+            background: var(--hairline-soft);
+        }
+        .countdown-fill {
+            height: 100%;
+            width: 100%;
+            background: var(--accent);
+            transition: width 0.92s linear;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .panel, .trace-pen, .trace-tip { animation: none; }
+            .trace-pen { stroke-dashoffset: 0; }
+            .trace-tip { opacity: 1; }
+            .countdown-fill { transition: none; }
+        }
+    {% endif %}
     </style>
 </head>
 <body class="{{ mode }}">
+{% if ui_style == 'classic' %}
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
@@ -269,16 +513,66 @@
             <span class="countdown-label">Closing window…</span>
         </div>
     </div>
+{% else %}
+    <main class="panel" role="status" aria-live="polite">
+        <div class="panel-head">
+            <span>EasyOKAPI</span>
+            <span class="panel-state">Stopped</span>
+        </div>
+
+        <!-- The pen runs once, then parks flat: the visual statement that the
+             instrument is no longer producing readings. pathLength="100"
+             normalises the dash so the draw does not depend on the geometry. -->
+        <div class="trace">
+            <svg viewBox="0 0 640 96" preserveAspectRatio="none" aria-hidden="true">
+                <line class="trace-baseline" x1="0" y1="84" x2="640" y2="84"/>
+                <polyline class="trace-pen" pathLength="100"
+                          points="0,78 40,73 80,66 120,69 160,58 200,50 240,54 280,43 320,36
+                                  360,30 400,26 440,24 470,23 490,23 640,23"/>
+                <rect class="trace-tip" x="630" y="20" width="6" height="6"/>
+            </svg>
+            <span class="trace-scale">SESSION ENDED</span>
+        </div>
+
+        <div class="panel-body">
+            <h1 class="card-title">Shutdown complete</h1>
+            <p class="card-subtitle" id="card-subtitle">
+                All processes have stopped. Your files stay on disk — reopen
+                EasyOKAPI to pick up where you left off.
+            </p>
+
+            {% if production_mode %}
+            <p class="warning-badge">Shutting down EasyOKAPI. See ya!</p>
+            {% endif %}
+
+            <div class="countdown-wrap">
+                <div class="countdown-row">
+                    <span class="countdown-label">Closing window</span>
+                    <span class="countdown-number" id="countdown">5</span>
+                </div>
+                <div class="countdown-bar">
+                    <div class="countdown-fill" id="countdown-fill"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+{% endif %}
 
     <script>
+        /* One countdown for both styles: the classic look winds down a ring,
+           the instrument look drains a hairline bar. Whichever element the
+           render produced is the one that gets driven. */
         const TOTAL = 5;
-        const circumference = 2 * Math.PI * 24; // ≈ 150.8
+        const circumference = 2 * Math.PI * 24; // ≈ 150.8 — classic ring
         const ringFill = document.getElementById('ring-fill');
+        const barFill = document.getElementById('countdown-fill');
         const countdownEl = document.getElementById('countdown');
         const subtitleEl = document.getElementById('card-subtitle');
 
-        ringFill.style.strokeDasharray = circumference;
-        ringFill.style.strokeDashoffset = 0;
+        if (ringFill) {
+            ringFill.style.strokeDasharray = circumference;
+            ringFill.style.strokeDashoffset = 0;
+        }
 
         let seconds = TOTAL;
         const productionMode = "{{ production_mode }}" === 'True';
@@ -286,7 +580,12 @@
         const tick = setInterval(() => {
             seconds--;
             countdownEl.textContent = seconds;
-            ringFill.style.strokeDashoffset = circumference * (1 - seconds / TOTAL);
+            if (ringFill) {
+                ringFill.style.strokeDashoffset = circumference * (1 - seconds / TOTAL);
+            }
+            if (barFill) {
+                barFill.style.width = (100 * seconds / TOTAL) + '%';
+            }
 
             if (seconds <= 0) {
                 clearInterval(tick);
