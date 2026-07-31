@@ -29,6 +29,7 @@
   "live_stream_enabled": true,
   "session_strip_enabled": true,
   "device_control_enabled": true,
+  "device_link_enabled": true,
   "device_state_poll_ms": 1500,
   "ui_style": "instrument",
   "merge_directory_picker": false,
