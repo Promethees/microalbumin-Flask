@@ -381,6 +381,47 @@ def device_menu_select(validated_data):
         return jsonify({'status': 'success', 'state': None})
 
 
+@hardware_bp.route('/device/concentration', methods=['GET'])
+def device_concentration():
+    """The units the device's concentration screen offers (CONC?).
+
+    The current value is not here — it is `conc`/`cunit` in /device/state, which
+    the panel is already polling. This answers the one thing the state does not
+    carry, and the client asks for it once per connection.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        return jsonify({'status': 'success', 'units': device_link.link.concentration_units()})
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+
+
+@hardware_bp.route('/device/concentration', methods=['POST'])
+@validate_json({'value': (float, None, False), 'unit': (str, None, False)})
+def device_concentration_set(validated_data):
+    """Set the device's concentration (CONC:).
+
+    A null/absent value means **Unknown**, which is a real state on that screen
+    rather than a missing field. Negatives are refused here as well as on the
+    device: the keypad clamps at zero, so no operator can reach one.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    value = validated_data['value']
+    unit = (validated_data['unit'] or '').strip() or None
+    if value is not None and value < 0:
+        return jsonify({'status': 'failure', 'message': 'Concentration cannot be negative'}), 400
+    try:
+        device_link.link.set_concentration(value, unit)
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'state': None})
+
+
 @hardware_bp.route('/stream_session', methods=['GET'])
 def stream_session():
     """SSE tail of the running session: new CSV rows + new log text, pushed.

@@ -139,6 +139,47 @@ def test_select_menu_sends_the_index():
     assert link.sent == ['MENU:3']
 
 
+def test_concentration_units_splits_the_list():
+    link = FakeLink(["CONCUNITS ng/µL,nM,%,CFU,OD600"])
+    assert link.concentration_units() == ['ng/µL', 'nM', '%', 'CFU', 'OD600']
+    assert link.sent == ['CONC?']
+
+
+def test_set_concentration_sends_a_whole_number_without_a_decimal():
+    """The device prints the value verbatim and its keypad only makes whole
+    numbers, so 12.0 must go out as "12"."""
+    link = FakeLink(["ACK_CONC"])
+    link.set_concentration(12.0, 'nM')
+    assert link.sent == ['CONC:12,nM']
+
+
+def test_set_concentration_keeps_a_fraction():
+    link = FakeLink(["ACK_CONC"])
+    link.set_concentration(2.5)
+    assert link.sent == ['CONC:2.5']
+
+
+def test_set_concentration_none_is_unknown():
+    """Unknown is a value on that screen, not a missing one."""
+    link = FakeLink(["ACK_CONC"])
+    link.set_concentration(None)
+    assert link.sent == ['CONC:none']
+
+
+def test_set_concentration_surfaces_the_device_reason():
+    link = FakeLink(["ERR_CONC unknown unit"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.set_concentration(1, 'mM')
+    assert 'unknown unit' in str(excinfo.value)
+
+
+def test_concentration_on_firmware_without_the_command_says_so():
+    link = FakeLink(["ERR_UNKNOWN"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.concentration_units()
+    assert 'firmware' in str(excinfo.value)
+
+
 def test_select_menu_surfaces_the_device_reason():
     link = FakeLink(["ERR_MENU out of range"])
     with pytest.raises(device_link.DeviceLinkError) as excinfo:
@@ -225,7 +266,9 @@ def test_controller_is_unavailable_during_a_session(client):
                  lambda: client.post('/device/button', json={'button': 'menu'}),
                  lambda: client.post('/device/channels', json={'channels': [0]}),
                  lambda: client.get('/device/menu'),
-                 lambda: client.post('/device/menu', json={'index': 0})):
+                 lambda: client.post('/device/menu', json={'index': 0}),
+                 lambda: client.get('/device/concentration'),
+                 lambda: client.post('/device/concentration', json={'value': 1})):
         rv = call()
         assert rv.status_code == 409
         assert rv.get_json()['status'] == 'busy'
@@ -304,6 +347,43 @@ def test_menu_route_accepts_index_zero(client):
         rv = client.post('/device/menu', json={'index': 0})
     assert rv.status_code == 200
     select.assert_called_once_with(0)
+
+
+def test_concentration_route_returns_the_units(client):
+    with patch.object(device_link.link, 'concentration_units', return_value=['nM', '%']):
+        rv = client.get('/device/concentration')
+    assert rv.status_code == 200
+    assert rv.get_json()['units'] == ['nM', '%']
+
+
+def test_concentration_route_sets_value_and_unit(client):
+    with patch.object(device_link.link, 'set_concentration', return_value=True) as apply, \
+         patch.object(device_link.link, 'state', return_value={'conc': '250'}):
+        rv = client.post('/device/concentration', json={'value': 250, 'unit': 'nM'})
+    apply.assert_called_once_with(250.0, 'nM')
+    assert rv.get_json()['state']['conc'] == '250'
+
+
+def test_concentration_route_null_value_is_unknown(client):
+    """A null value is Unknown — a real state on that screen, not a bad field."""
+    with patch.object(device_link.link, 'set_concentration', return_value=True) as apply, \
+         patch.object(device_link.link, 'state', return_value={}):
+        rv = client.post('/device/concentration', json={'value': None, 'unit': 'nM'})
+    assert rv.status_code == 200
+    apply.assert_called_once_with(None, 'nM')
+
+
+def test_concentration_route_rejects_a_negative(client):
+    """The keypad clamps at zero, so no operator can reach a negative."""
+    rv = client.post('/device/concentration', json={'value': -1})
+    assert rv.status_code == 400
+
+
+def test_concentration_route_502_when_the_device_refuses(client):
+    with patch.object(device_link.link, 'set_concentration',
+                      side_effect=device_link.DeviceLinkError('unknown unit')):
+        rv = client.post('/device/concentration', json={'value': 1, 'unit': 'mM'})
+    assert rv.status_code == 502
 
 
 def test_run_script_releases_the_port_first(client):

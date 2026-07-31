@@ -194,6 +194,7 @@ function setDeviceControlStatus(kind, text) {
     if (kind !== 'live') {
         deviceState = null;
         deviceMenuItems = null;
+        deviceConcUnits = null;
     }
 }
 
@@ -204,6 +205,7 @@ function applyDeviceState(state) {
     renderDeviceKeypad(state);
     renderDeviceChannels(state);
     renderDeviceMenu(state);
+    renderDeviceConcentration(state);
 }
 
 function renderDeviceReadout(state) {
@@ -656,12 +658,173 @@ async function selectDeviceMenu(index) {
     }
 }
 
+// ── concentration ───────────────────────────────────────────────────────────
+// The value the device sends as metadata with every session. Its keypad can only
+// *step* it (+1, +10, +100 and back), so dialling in 250 was twelve presses; the
+// firmware's CONC: takes it whole. The panel is mounted **only while the device
+// is on its Concentration screen**, because that is the screen the value belongs
+// to — the same rule the device itself follows.
+
+let deviceConcUnits = null;    // null = not fetched yet for this connection
+let deviceConcPending = false;
+// True once the operator has typed or picked something not yet sent. Without it
+// the 1.5 s poll would overwrite a half-typed value with the device's.
+let deviceConcDirty = false;
+
+function deviceSupportsConcentration(state) {
+    return (state.caps || []).indexOf('conc') !== -1;
+}
+
+function renderDeviceConcentration(state) {
+    const panel = document.getElementById('devctl-conc');
+    if (!panel) return;
+    const onScreen = state.mode === 'CONCENTRATION' && deviceSupportsConcentration(state);
+    panel.classList.toggle('hidden', !onScreen);
+    if (!onScreen) {
+        // Leaving the screen drops the half-made edit with it: it was an edit to
+        // a screen the device is no longer on.
+        deviceConcDirty = false;
+        return;
+    }
+    if (deviceConcUnits === null) {
+        loadDeviceConcentrationUnits(state);
+        return;
+    }
+    drawDeviceConcentration(state);
+}
+
+async function loadDeviceConcentrationUnits(state) {
+    if (deviceConcPending) return;
+    deviceConcPending = true;
+    try {
+        const res = await fetch('/device/concentration');
+        const data = await res.json();
+        if (data.status === 'success' && Array.isArray(data.units)) {
+            deviceConcUnits = data.units;
+            if (deviceState) drawDeviceConcentration(deviceState);
+        }
+    } catch (err) {
+        /* retried by the next poll */
+    } finally {
+        deviceConcPending = false;
+    }
+}
+
+function drawDeviceConcentration(state) {
+    const unitSelect = document.getElementById('devctl-conc-unit');
+    const input = document.getElementById('devctl-conc-value');
+    const current = document.getElementById('devctl-conc-current');
+    if (!unitSelect || !input || !current) return;
+
+    // "" is the firmware's "not applicable" — here it means Unknown, which is a
+    // value on this screen and not a blank one.
+    const value = (state.conc === undefined || state.conc === null || state.conc === '')
+        ? null : state.conc;
+    const unit = state.cunit || '';
+    current.textContent = value === null
+        ? `${t('devctl.conc_unknown_value', 'Unknown')}${unit ? ' ' + unit : ''}`
+        : `${value}${unit ? ' ' + unit : ''}`;
+
+    if (unitSelect.options.length !== (deviceConcUnits || []).length) {
+        unitSelect.innerHTML = '';
+        (deviceConcUnits || []).forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            unitSelect.appendChild(option);
+        });
+    }
+    // The device's own value and unit are what the fields show until the
+    // operator touches them — then they are the operator's until sent.
+    if (!deviceConcDirty) {
+        input.value = value === null ? '' : value;
+        if (unit) unitSelect.value = unit;
+    }
+    input.disabled = deviceConcPending;
+    unitSelect.disabled = deviceConcPending;
+    $disabled('devctl-conc-set', deviceConcPending);
+    $disabled('devctl-conc-unknown', deviceConcPending);
+}
+
+function $disabled(id, disabled) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!disabled;
+}
+
+function onDeviceConcentrationEdited() {
+    deviceConcDirty = true;
+}
+
+function applyDeviceConcentration() {
+    const input = document.getElementById('devctl-conc-value');
+    if (!input) return;
+    const text = input.value.trim();
+    if (text === '') {
+        // An empty box is not an accident to be rejected — it is Unknown, and
+        // there is a button that says so; use it rather than guessing.
+        showDeviceControlError(t('devctl.conc_empty',
+            'Enter a value, or use Unknown to clear it on the device'));
+        return;
+    }
+    const value = Number(text);
+    if (!isFinite(value) || value < 0) {
+        showDeviceControlError(t('devctl.conc_invalid', 'Concentration must be zero or more'));
+        return;
+    }
+    sendDeviceConcentration(value);
+}
+
+function clearDeviceConcentration() {
+    sendDeviceConcentration(null);
+}
+
+async function sendDeviceConcentration(value) {
+    if (deviceConcPending) return;
+    const unitSelect = document.getElementById('devctl-conc-unit');
+    const unit = unitSelect ? unitSelect.value : '';
+    deviceConcPending = true;
+    if (deviceState) drawDeviceConcentration(deviceState);
+    try {
+        const res = await fetch('/device/concentration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: value, unit: unit || undefined }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            // Sent: the fields go back to following the device, which is now the
+            // authority on what the concentration is.
+            deviceConcDirty = false;
+            deviceConcPending = false;
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        showDeviceControlError(data.message || t('devctl.conc_failed', 'The device refused that concentration'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        deviceConcPending = false;
+        if (deviceState) drawDeviceConcentration(deviceState);
+    }
+}
+
 // ── wiring ──────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
     const section = document.getElementById('device-control-section');
     if (!section) return;
     if (!deviceControlEnabled()) section.classList.add('hidden');
+    // Typing in the concentration fields takes them off the poll's redraw until
+    // the value is sent (see deviceConcDirty).
+    const concValue = document.getElementById('devctl-conc-value');
+    const concUnit = document.getElementById('devctl-conc-unit');
+    if (concValue) concValue.addEventListener('input', onDeviceConcentrationEdited);
+    if (concUnit) concUnit.addEventListener('change', onDeviceConcentrationEdited);
     // Nothing else to wire: the panel starts collapsed, and expanding it is what
     // starts the poll. A run beginning or ending is picked up by that same poll
     // (the route answers 409 for the duration), so the panel needs no hook into

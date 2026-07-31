@@ -260,6 +260,48 @@ class DeviceLink:
             raise DeviceLinkError(detail or "The device refused that menu entry")
         return True
 
+    def concentration_units(self):
+        """The units the device's concentration screen cycles through (CONC?).
+
+        Asked for rather than hardcoded: the list is the firmware's
+        CONCENTRATION_UNITS, and a host offering a unit the device does not know
+        would have the device refuse every set.
+        """
+        reply = self.command(
+            "CONC?", lambda line: line.startswith("CONCUNITS") or line in ("ERR_CONC", "ERR_UNKNOWN"))
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot set the concentration")
+        if reply == "ERR_CONC":
+            raise DeviceLinkError("The device could not report its concentration units")
+        body = reply[len("CONCUNITS"):].strip()
+        return [unit.strip() for unit in body.split(",") if unit.strip()]
+
+    def set_concentration(self, value, unit=None):
+        """Set the concentration outright (CONC:). ``None`` means Unknown.
+
+        Unknown is a value on that screen, not a missing one — it is what the
+        device shows before a concentration is dialled in — so it is spelled out
+        rather than skipped.
+        """
+        if value is None:
+            text = "none"
+        else:
+            number = float(value)
+            # The device stores a whole value as an int and prints it verbatim;
+            # sending "12.0" would have it show 12 anyway, but "12" is what the
+            # keypad would have produced.
+            text = str(int(number)) if number == int(number) else repr(number)
+        spec = f"{text},{unit}" if unit else text
+        reply = self.command(
+            f"CONC:{spec}",
+            lambda line: line == "ACK_CONC" or line.startswith("ERR_CONC") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot set the concentration")
+        if reply != "ACK_CONC":
+            detail = reply[len("ERR_CONC"):].strip()
+            raise DeviceLinkError(detail or "The device refused that concentration")
+        return True
+
 
 # One link per process: the port has one owner, so the object that owns it is a
 # singleton rather than something a route constructs.

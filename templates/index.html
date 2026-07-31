@@ -620,6 +620,30 @@
                             </div>
                             <div id="devctl-menu-items" class="devctl-menu-items devctl-strip"></div>
                         </div>
+                        <!-- Concentration. Mounted only while the device is on its
+                             Concentration screen: that is the screen the value
+                             belongs to, and the keypad can only step it there. -->
+                        <div id="devctl-conc" class="devctl-conc hidden">
+                            <div class="devctl-channels-head">
+                                <span class="devctl-label" data-i18n="devctl.concentration">Concentration</span>
+                                <span class="devctl-note" data-i18n="devctl.concentration_note">Sets the value on the device, whole — the keypad can only step it.</span>
+                            </div>
+                            <div class="devctl-conc-row">
+                                <span class="devctl-conc-current">
+                                    <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>
+                                    <span id="devctl-conc-current" class="devctl-value devctl-value--num">—</span>
+                                </span>
+                                <input type="number" id="devctl-conc-value" class="devctl-conc-input" min="0" step="any"
+                                    data-i18n-ph="devctl.conc_placeholder" placeholder="Value">
+                                <select id="devctl-conc-unit" class="devctl-conc-unit"></select>
+                                <button type="button" id="devctl-conc-set" onclick="applyDeviceConcentration()"
+                                    data-i18n="devctl.conc_set" data-i18n-hint="hint.devctl_conc_set"
+                                    data-hint="Send this value to the device and save it as the session's concentration.">Set</button>
+                                <button type="button" id="devctl-conc-unknown" onclick="clearDeviceConcentration()"
+                                    data-i18n="devctl.conc_unknown" data-i18n-hint="hint.devctl_conc_unknown"
+                                    data-hint="Set the device's concentration back to Unknown.">Unknown</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -5949,10 +5949,70 @@ body.dark #run-script-btn:enabled {
     margin-bottom: 10px;
 }
 
-.devctl-menu {
+.devctl-menu,
+.devctl-conc {
     flex: 1 1 100%;
     padding-top: 12px;
     border-top: 1px solid var(--hairline-soft);
+}
+
+/* One line while there is room, wrapping rather than scrolling: unlike the chip
+   strips this is a form, and a Set button that scrolls out of reach of its own
+   field is worse than a second line. */
+.devctl-conc-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.devctl-conc-current {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--well);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-flat);
+}
+
+/* Scoped past the sheet's `input[type="number"] { width: 100% }` and
+   `select { min-width: 150px }` — left alone, the value box took the whole row
+   and pushed Set onto a line of its own. */
+.devctl-body .devctl-conc .devctl-conc-row .devctl-conc-input {
+    flex: none;
+    width: 110px;
+    padding: 6px 10px;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-flat);
+}
+
+.devctl-body .devctl-conc .devctl-conc-row .devctl-conc-unit {
+    flex: none;
+    width: auto;
+    min-width: 90px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-flat);
+}
+
+/* Narrow panel: the form stacks with the strips, each control full width. */
+@container (max-width: 620px) {
+    .devctl-body .devctl-conc .devctl-conc-row > * { width: 100%; }
+    .devctl-body .devctl-conc .devctl-conc-current { justify-content: space-between; }
+}
+
+@media (max-width: 620px) {
+    .devctl-body .devctl-conc .devctl-conc-row > * { width: 100%; }
+    .devctl-body .devctl-conc .devctl-conc-current { justify-content: space-between; }
 }
 
 /* Entries are device text of any length, so a menu chip is not a fixed box the
@@ -5998,7 +6058,10 @@ body.dark #run-script-btn:enabled {
     .devctl-strip {
         flex-direction: column;
         align-items: stretch;
-        overflow-x: visible;
+        /* Both axes, not just x: with overflow-y left at hidden, a visible x
+           computes back to auto and the rail reappears under a stack that has
+           nothing to scroll. */
+        overflow: visible;
         padding-bottom: 0;
     }
 
@@ -6012,7 +6075,10 @@ body.dark #run-script-btn:enabled {
     .devctl-strip {
         flex-direction: column;
         align-items: stretch;
-        overflow-x: visible;
+        /* Both axes, not just x: with overflow-y left at hidden, a visible x
+           computes back to auto and the rail reappears under a stack that has
+           nothing to scroll. */
+        overflow: visible;
         padding-bottom: 0;
     }
 
