@@ -5500,8 +5500,9 @@ body.dark #run-script-btn:enabled {
    Built entirely from tokens, so it follows whichever visual style is on without
    a classic counterpart (Rule.md 2.34): chrome materials, hairline bounds, mono
    with tabular figures for every measured value, the condensed label voice for
-   the field names. The keypad is laid out as the PyBadge is — d-pad left, face
-   buttons right — because a control that mirrors the hardware needs no legend.
+   the field names. The keypad is laid out as the PyBadge is — SELECT and START
+   in the top corners, d-pad below-left, A and B below-right — because a control
+   that mirrors the hardware needs no legend.
    ========================================================================== */
 .devctl-status {
     display: flex;
@@ -5534,21 +5535,34 @@ body.dark #run-script-btn:enabled {
 .devctl-status--offline .devctl-status-dot { background: var(--ink-dim); }
 
 .devctl-body {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: 20px;
-    align-items: flex-start;
+    /* The face folds on the *panel's* width, not the window's — this section can
+       be narrow inside a wide window (and page zoom moves the two apart), which
+       a media query cannot see. The @media below is the fallback for browsers
+       without container queries; both fold to the same stack. */
+    container-type: inline-size;
+    /* Key geometry is fixed, not content-driven: a keypad whose keys resize with
+       their labels stops being a map of the board. Long labels scroll instead
+       (.devctl-btn-fn), and the hover hint always carries the full text. */
+    --devctl-key-w: 70px;
+    --devctl-key-h: 44px;
 }
 
 /* The readout is a data surface: square corners, its own well, and it gets the
-   space. It is the part that answers "what is the device doing right now". */
+   space. It sits in the middle column of the keypad because that is where the
+   screen is on the board — d-pad to its left, A and B to its right. */
 .devctl-readout {
-    flex: 1 1 240px;
     min-width: 220px;
     padding: 12px 14px;
     background: var(--well);
     border: 1px solid var(--hairline);
     border-radius: var(--r-flat);
+}
+
+.devctl-screen {
+    grid-area: kscreen;
+    align-self: stretch;
 }
 
 .devctl-readout-row {
@@ -5581,28 +5595,75 @@ body.dark #run-script-btn:enabled {
     font-variant-numeric: tabular-nums;
 }
 
+/* The board's own face, as a grid: the screen in the middle column, SELECT and
+   START in the two top corners that flank it, the d-pad down its left side and
+   A / B down its right — the PyBadge, read straight off the case. */
 .devctl-keypad {
-    display: flex;
-    gap: 18px;
-    flex: 1 1 320px;
+    display: grid;
+    /* The two key columns are exactly as wide as their clusters; the screen takes
+       the middle and absorbs the slack up to a cap, so the d-pad stays flush with
+       the panel's left edge and A / B with its right — the same content box the
+       Active Channels row below lines up to. */
+    grid-template-columns: auto minmax(200px, 720px) auto;
+    grid-template-areas:
+        "kmenu .       kblank"
+        "kdpad kscreen kab";
+    gap: 10px 18px;
+    align-content: start;
+    justify-content: space-between;
+    width: 100%;
+    /* Last resort only: the narrow arrangement below keeps the face whole down
+       to a phone, so this catches the case where even that does not fit. */
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
 }
+
+/* The keypad's own scrollbar: a hairline rail under the face, the same weight
+   as the panel's borders, so a face that scrolls does not grow a piece of
+   chrome heavier than the keys above it. */
+.devctl-keypad::-webkit-scrollbar {
+    height: 6px;
+}
+
+.devctl-keypad::-webkit-scrollbar-track {
+    background: var(--well);
+    border-radius: 3px;
+}
+
+.devctl-keypad::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 3px;
+}
+
+.devctl-keypad::-webkit-scrollbar-thumb:hover {
+    background-color: var(--accent);
+}
+
 
 .devctl-cluster {
     display: grid;
     gap: 6px;
-    flex: 1 1 0;
+    align-content: start;
 }
 
-/* The d-pad keeps its cross so up/down/left/right are where the thumb expects;
-   the face buttons stack in one column because their labels are words, not
-   directions, and a 2x2 grid would truncate every one of them. */
+/* The corner keys hug the outside edges, the way they sit on the case; the two
+   key clusters centre on the screen beside them, as the d-pad and A / B do. */
+.devctl-cluster--topleft { grid-area: kmenu; justify-items: start; }
+.devctl-cluster--topright { grid-area: kblank; justify-items: end; }
+.devctl-cluster--dpad { grid-area: kdpad; align-self: center; }
+.devctl-cluster--ab { grid-area: kab; align-self: center; }
+
+/* The d-pad keeps its cross so up/down/left/right are where the thumb expects.
+   (On the board it is the same cross rotated into a diamond — a rotation these
+   word-labelled keys cannot carry, and the topology is what matters.) */
 .devctl-cluster--dpad {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, var(--devctl-key-w));
     grid-template-areas:
         ".     kup    ."
         "kleft .      kright"
         ".     kdown  .";
-    align-content: start;
 }
 
 /* Area names are prefixed: a bare `left`/`right` in grid-area is an ident the
@@ -5612,61 +5673,177 @@ body.dark #run-script-btn:enabled {
 .devctl-btn--kright { grid-area: kright; }
 .devctl-btn--kdown { grid-area: kdown; }
 
-.devctl-cluster--face {
-    grid-template-columns: 1fr;
-    align-content: start;
+/* A and B are diagonal on the board — A above and to the right of B — so the
+   pair is staggered by half a key rather than stacked square. */
+.devctl-cluster--ab {
+    grid-template-columns: calc(var(--devctl-key-w) * 1.5);
+    justify-items: start;
 }
 
-.devctl-btn {
+.devctl-btn--ka { margin-left: calc(var(--devctl-key-w) / 2); }
+.devctl-btn--kb { margin-left: 0; }
+
+/* Four classes deep on purpose: the sheet's blanket button rule carries three
+   :not()s (0,3,1), and it centres its content, forces white-space: nowrap and
+   clips the overflow — which quietly truncated every key label here. A key is a
+   third of a column wide and its label is a sentence, so it has to wrap. */
+.devctl-body .devctl-keypad .devctl-cluster .devctl-btn {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    justify-content: flex-start;
     gap: 2px;
     padding: 7px 9px;
-    min-height: 44px;
+    /* Every key is the same box, whatever it happens to say on this screen. */
+    width: var(--devctl-key-w);
+    height: var(--devctl-key-h);
     background: var(--panel);
     color: var(--ink);
     border: 1px solid var(--hairline);
     border-radius: var(--r-press);
     text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
     cursor: pointer;
 }
 
-.devctl-btn:enabled:hover {
+.devctl-body .devctl-keypad .devctl-cluster .devctl-btn:enabled:hover {
     border-color: var(--accent);
     background: var(--accent-wash);
+    color: var(--ink);
 }
 
+/* Two lines per key: the board's silkscreen mark for it — a d-pad arrow, or the
+   letter/word printed beside the button (A, B, SELECT, START) — over what it
+   does here. Never wraps: a broken "SELECT" stops reading as the thing printed
+   on the case, and it is sized to fit a key box, not the other way round. The
+   firmware's own name for the button lives in the hover hint. */
 .devctl-btn-glyph {
+    flex: none;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
     color: var(--accent);
 }
 
-.devctl-btn-name {
-    font: 600 9.5px/1 var(--font-label);
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: var(--ink-dim);
-}
-
 /* The function label is the reason this panel exists, so it is the readable
-   line — not the button's hardware name. */
+   line — not the button's hardware name. One line, always: the key box is
+   fixed, so a label longer than the box scrolls through it on a loop instead of
+   re-flowing the keypad. The hover hint carries the whole string either way, so
+   nothing depends on catching the marquee at the right moment. */
 .devctl-btn-fn {
+    display: block;
+    width: 100%;
+    overflow: hidden;
     font-size: 11px;
-    line-height: 1.25;
+    line-height: 1.35;
     color: var(--ink-muted);
 }
 
+/* Two copies of the label chase each other across the box, so the loop has no
+   blank sweep — the second is aria-hidden, and the shift is exactly one copy
+   plus the gap, which is what makes the wrap invisible. */
+.devctl-btn-fn-track {
+    display: inline-flex;
+    gap: 28px;
+    white-space: nowrap;
+}
+
+/* Only the keys that scroll get the trailing fade — it is the cue that there is
+   more text than box, so a key whose label fits must not wear it. */
+.devctl-btn-fn--scroll {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent);
+}
+
+.devctl-btn-fn--scroll .devctl-btn-fn-track {
+    animation: devctl-marquee var(--devctl-marquee-time, 9s) linear infinite;
+}
+
+/* Held still while the pointer is on the key: that is the moment the operator
+   is reading it, and the hint beside it says the same thing. */
+.devctl-btn:hover .devctl-btn-fn--scroll .devctl-btn-fn-track {
+    animation-play-state: paused;
+}
+
+/* A key that does nothing on this screen does not get to move. Eight labels
+   scrolling at once is noise, and the ones worth reading are the live ones —
+   the dimmed key keeps its fade and its hint. */
+.devctl-btn--idle .devctl-btn-fn--scroll .devctl-btn-fn-track {
+    animation: none;
+}
+
+@keyframes devctl-marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(calc(-1 * var(--devctl-marquee-shift, 0px))); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .devctl-btn-fn--scroll .devctl-btn-fn-track { animation: none; }
+}
+
 /* A button with no effect on the current screen is shown, not hidden: knowing
-   that Up does nothing here is part of what the panel is for. */
-.devctl-btn--idle {
+   that Up does nothing here is part of what the panel is for. It is disabled,
+   so this has to out-weigh the blanket :disabled rule (0,4,1) as well — a key
+   greyed to the generic disabled fill stops reading as part of the keypad. */
+.devctl-body .devctl-keypad .devctl-cluster .devctl-btn--idle:disabled {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--hairline);
     opacity: 0.45;
     cursor: default;
 }
 
 .devctl-btn--idle .devctl-btn-glyph { color: var(--ink-dim); }
+
+/* Too narrow for three columns: the face folds into one, in the order it is
+   read across the board — the left-hand keys (SELECT, then the d-pad), the
+   screen, then the right-hand keys (START, then A / B). Squeezing the three
+   columns instead is what put the screen half off the panel. */
+@container (max-width: 760px) {
+    .devctl-keypad {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "kmenu"
+            "kdpad"
+            "kscreen"
+            "kblank"
+            "kab";
+        row-gap: 14px;
+        justify-content: start;
+        overflow-x: visible;
+    }
+
+    .devctl-cluster--topright { justify-items: start; }
+    .devctl-cluster--dpad,
+    .devctl-cluster--ab { align-self: start; }
+    .devctl-screen { justify-self: stretch; min-width: 0; }
+}
+
+/* Fallback for browsers without container queries: the window is the best
+   guess available there. */
+@media (max-width: 760px) {
+    .devctl-keypad {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "kmenu"
+            "kdpad"
+            "kscreen"
+            "kblank"
+            "kab";
+        row-gap: 14px;
+        justify-content: start;
+    }
+
+    .devctl-cluster--topright { justify-items: start; }
+    .devctl-screen { justify-self: stretch; min-width: 0; }
+}
+
+/* Below that the key itself steps down rather than the face overflowing. */
+@media (max-width: 420px) { .devctl-body { --devctl-key-w: 62px; } }
 
 .devctl-channels {
     flex: 1 1 100%;

@@ -18,16 +18,32 @@
 
 // ── the keypad ──────────────────────────────────────────────────────────────
 // Names are the firmware's own (colorimeter.button_map), which is also what the
-// BTN: command takes; `cluster` places each one the way the PyBadge is laid out.
+// BTN: command takes. `cluster` + `slot` place each one where it sits on the
+// board, so the panel can be read against the instrument in front of the
+// operator without a legend:
+//
+//        [SELECT]                        [START]
+//          ▲          ┌────────┐             [A]
+//        ◀   ▶        │ screen │         [B]
+//          ▼          └────────┘
+//
+// — the screen in the middle column being the readout panel, where the PyBadge's
+// own display sits.
+//
+// `glyph` is therefore the PyBadge's own silkscreen label, not a mnemonic for
+// the firmware role — B is the button marked B (gain), which is exactly the
+// letter the operator's thumb is over. Board mapping is colorimeter.button_map
+// keyed by the PyBadge shift-register order (constants.BUTTON): bit0 B, bit1 A,
+// bit2 START, bit3 SELECT, bits 4-7 the d-pad.
 const DEVICE_BUTTONS = [
+    { name: 'menu',  cluster: 'topleft',  glyph: 'SELECT', slot: 'kmenu' },
+    { name: 'blank', cluster: 'topright', glyph: 'START',  slot: 'kblank' },
     { name: 'up',    cluster: 'dpad', glyph: '▲', slot: 'kup' },
     { name: 'left',  cluster: 'dpad', glyph: '◀', slot: 'kleft' },
     { name: 'right', cluster: 'dpad', glyph: '▶', slot: 'kright' },
     { name: 'down',  cluster: 'dpad', glyph: '▼', slot: 'kdown' },
-    { name: 'gain',  cluster: 'face', glyph: 'G', slot: 'a' },
-    { name: 'itime', cluster: 'face', glyph: 'T', slot: 'b' },
-    { name: 'blank', cluster: 'face', glyph: 'B', slot: 'c' },
-    { name: 'menu',  cluster: 'face', glyph: 'M', slot: 'd' },
+    { name: 'itime', cluster: 'ab',   glyph: 'A', slot: 'ka' },
+    { name: 'gain',  cluster: 'ab',   glyph: 'B', slot: 'kb' },
 ];
 
 // What each button does on each device screen. Mirrors the firmware's
@@ -295,15 +311,71 @@ function renderDeviceKeypad(state) {
             + (fn ? deviceButtonTargetSuffix(state, button.name) : '');
         el.disabled = !fn || unavailable;
         el.classList.toggle('devctl-btn--idle', !fn || unavailable);
-        el.setAttribute('data-hint', label);
+        // The key face is a keycap: the board's mark plus the function. The
+        // firmware's own name for the button (`menu`, `itime`) rides in the hint
+        // instead, which is where it is wanted — when matching this panel
+        // against a firmware handler or a log line, not while pressing keys.
+        el.setAttribute('data-hint', `${button.name} · ${label}`);
         el.setAttribute('aria-label', `${button.name}: ${label}`);
-        const fnEl = el.querySelector('.devctl-btn-fn');
-        if (fnEl) fnEl.textContent = label;
+        setDeviceButtonLabel(el, label);
     }
 }
 
+// A key is a fixed box and its label is one line, so a label wider than the box
+// is scrolled through it on a loop rather than wrapped or clipped. Two copies
+// chase each other so the loop has no blank sweep; the shift is one copy plus
+// the gap between them, which is what makes the wrap invisible.
+const DEVICE_MARQUEE_SPEED = 18;    // px per second — a reading pace, not a ticker
+const DEVICE_MARQUEE_GAP = 28;      // px between the two copies; matches the CSS
+
+function setDeviceButtonLabel(el, label) {
+    const fnEl = el.querySelector('.devctl-btn-fn');
+    if (!fnEl) return;
+    // The label is its own cache key: re-writing an unchanged one on every poll
+    // would restart the animation every 1.5 s and the text would never get far
+    // enough to be read. It also keeps the measuring reflow off the poll path.
+    if (fnEl.dataset.label === label) return;
+
+    fnEl.dataset.label = label;
+    fnEl.classList.remove('devctl-btn-fn--scroll');
+    const track = document.createElement('span');
+    track.className = 'devctl-btn-fn-track';
+    const copy = document.createElement('span');
+    copy.textContent = label;
+    track.appendChild(copy);
+    fnEl.innerHTML = '';
+    fnEl.appendChild(track);
+
+    const room = fnEl.clientWidth;
+    const width = copy.offsetWidth;
+    // Zero room means the panel is not laid out yet (collapsed, or hidden while
+    // offline). Forget the cache rather than deciding it fits — the next render
+    // with the panel open measures for real.
+    if (!room) { delete fnEl.dataset.label; return; }
+    if (width <= room) return;
+
+    const second = copy.cloneNode(true);
+    second.setAttribute('aria-hidden', 'true');
+    track.appendChild(second);
+    const shift = width + DEVICE_MARQUEE_GAP;
+    fnEl.style.setProperty('--devctl-marquee-shift', `${shift}px`);
+    fnEl.style.setProperty('--devctl-marquee-time', `${(shift / DEVICE_MARQUEE_SPEED).toFixed(1)}s`);
+    fnEl.classList.add('devctl-btn-fn--scroll');
+}
+
+// Which labels overflow depends on the key width, and that steps with the
+// window. Drop the caches and re-measure once the resize settles.
+function remeasureDeviceLabels() {
+    for (const button of DEVICE_BUTTONS) {
+        const el = document.getElementById(`devctl-btn-${button.name}`);
+        const fnEl = el && el.querySelector('.devctl-btn-fn');
+        if (fnEl) delete fnEl.dataset.label;
+    }
+    if (deviceState) renderDeviceKeypad(deviceState);
+}
+
 function buildDeviceKeypad() {
-    for (const cluster of ['dpad', 'face']) {
+    for (const cluster of ['topleft', 'topright', 'dpad', 'ab']) {
         const host = document.getElementById(`devctl-${cluster}`);
         if (!host) continue;
         host.innerHTML = DEVICE_BUTTONS
@@ -312,7 +384,6 @@ function buildDeviceKeypad() {
                 <button type="button" id="devctl-btn-${b.name}" class="devctl-btn devctl-btn--${b.slot}"
                         onclick="pressDeviceButton('${b.name}')">
                     <span class="devctl-btn-glyph" aria-hidden="true">${b.glyph}</span>
-                    <span class="devctl-btn-name">${b.name}</span>
                     <span class="devctl-btn-fn"></span>
                 </button>`)
             .join('');
@@ -475,6 +546,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // starts the poll. A run beginning or ending is picked up by that same poll
     // (the route answers 409 for the duration), so the panel needs no hook into
     // the reading lifecycle to stay honest.
+});
+
+let deviceResizeTimer = null;
+window.addEventListener('resize', () => {
+    if (deviceResizeTimer) clearTimeout(deviceResizeTimer);
+    deviceResizeTimer = setTimeout(remeasureDeviceLabels, 200);
 });
 
 // Stop touching the port when the tab goes away — a hidden tab polling a serial

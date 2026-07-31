@@ -560,39 +560,43 @@
                         <span id="device-control-status-text" data-i18n="devctl.connecting">Reaching the device…</span>
                     </div>
                     <div id="device-control-body" class="devctl-body hidden">
-                        <div class="devctl-readout">
-                            <div class="devctl-readout-row">
-                                <span class="devctl-label" data-i18n="devctl.screen">Screen</span>
-                                <span id="devctl-mode" class="devctl-value">—</span>
-                            </div>
-                            <div class="devctl-readout-row">
-                                <span class="devctl-label" data-i18n="devctl.measurement">Measurement</span>
-                                <span id="devctl-meas" class="devctl-value">—</span>
-                            </div>
-                            <div class="devctl-readout-row">
-                                <span class="devctl-label" data-i18n="devctl.reading">Reading</span>
-                                <span id="devctl-vals" class="devctl-value devctl-value--num">—</span>
-                            </div>
-                            <div class="devctl-readout-row">
-                                <span class="devctl-label" data-i18n="devctl.settings">Gain · time</span>
-                                <span id="devctl-settings" class="devctl-value devctl-value--num">—</span>
-                            </div>
-                            <div class="devctl-readout-row">
-                                <span class="devctl-label" data-i18n="devctl.blank">Blank</span>
-                                <span id="devctl-blank" class="devctl-value">—</span>
-                            </div>
-                            <div class="devctl-readout-row">
-                                <span class="devctl-label" data-i18n="devctl.battery">Battery</span>
-                                <span id="devctl-bat" class="devctl-value devctl-value--num">—</span>
-                            </div>
-                        </div>
-                        <!-- Two clusters, laid out as the PyBadge is: the d-pad on
-                             the left, the four face buttons on the right. Filled by
+                        <!-- The board's face: SELECT and START in the top corners,
+                             the d-pad down the left, A and B down the right, and the
+                             screen — the readout — in the middle column where the
+                             PyBadge's own display sits. Key clusters are filled by
                              renderDeviceKeypad() so the per-screen function labels
                              and the disabled states come from one table. -->
                         <div class="devctl-keypad">
+                            <div id="devctl-topleft" class="devctl-cluster devctl-cluster--topleft"></div>
+                            <div id="devctl-topright" class="devctl-cluster devctl-cluster--topright"></div>
                             <div id="devctl-dpad" class="devctl-cluster devctl-cluster--dpad"></div>
-                            <div id="devctl-face" class="devctl-cluster devctl-cluster--face"></div>
+                            <div class="devctl-readout devctl-screen">
+                                <div class="devctl-readout-row">
+                                    <span class="devctl-label" data-i18n="devctl.screen">Screen</span>
+                                    <span id="devctl-mode" class="devctl-value">—</span>
+                                </div>
+                                <div class="devctl-readout-row">
+                                    <span class="devctl-label" data-i18n="devctl.measurement">Measurement</span>
+                                    <span id="devctl-meas" class="devctl-value">—</span>
+                                </div>
+                                <div class="devctl-readout-row">
+                                    <span class="devctl-label" data-i18n="devctl.reading">Reading</span>
+                                    <span id="devctl-vals" class="devctl-value devctl-value--num">—</span>
+                                </div>
+                                <div class="devctl-readout-row">
+                                    <span class="devctl-label" data-i18n="devctl.settings">Gain · time</span>
+                                    <span id="devctl-settings" class="devctl-value devctl-value--num">—</span>
+                                </div>
+                                <div class="devctl-readout-row">
+                                    <span class="devctl-label" data-i18n="devctl.blank">Blank</span>
+                                    <span id="devctl-blank" class="devctl-value">—</span>
+                                </div>
+                                <div class="devctl-readout-row">
+                                    <span class="devctl-label" data-i18n="devctl.battery">Battery</span>
+                                    <span id="devctl-bat" class="devctl-value devctl-value--num">—</span>
+                                </div>
+                            </div>
+                            <div id="devctl-ab" class="devctl-cluster devctl-cluster--ab"></div>
                         </div>
                         <!-- Only mounted when the device reports the "channels"
                              capability and more than one multiplexer channel. -->
