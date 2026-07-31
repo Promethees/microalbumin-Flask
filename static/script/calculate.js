@@ -52,7 +52,7 @@ function getEstimatedValue(data, timepoint, sourceIndex, maxTolerance = 60) {
 
     // Filter only rows with valid numeric values for this specific source
     const validData = data
-        .filter(row => row[valueKey] !== null && row[valueKey] !== "NONE" && row[valueKey] !== "OVFL" && !isNaN(parseFloat(row[valueKey])))
+        .filter(row => measNumber(row[valueKey]) !== null)
         .sort((a, b) => a["Timestamp"] - b["Timestamp"]);
 
     if (validData.length === 0) return null;
@@ -154,8 +154,8 @@ function averageDuplicates(xColumn, yColumn) {
     for (let [x, yValues] of dataMap) {
         uniqueX.push(x);
         const validValues = yValues
-            .filter(v => v !== null && v !== "NONE" && v !== "OVFL" && !isNaN(parseFloat(v)))
-            .map(v => parseFloat(v));
+            .map(measNumber)
+            .filter(v => v !== null);
 
         if (validValues.length > 0) {
             const avg = validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
@@ -199,27 +199,21 @@ function mapDuplicates(x, y, keepGaps = false) {
         const currentX = x[i];
         const currentY = y[i];
 
-        // Skip or mark as gap if y is "NONE" or null
-        const isNone = currentY === "NONE" || currentY === null || currentY === "OVFL";
-        if (isNone) {
+        // Skip or mark as gap when y is not a finite number: null, or one of the
+        // device's sentinels (NONE / OVFL / INF — see short-hands.js).
+        const val = measNumber(currentY);
+        if (val === null) {
             if (!keepGaps) continue;
             if (!xMap.has(currentX)) {
                 xMap.set(currentX, { values: [], hasValid: false });
             }
         } else {
-            const val = parseFloat(currentY);
-            if (!isNaN(val)) {
-                if (!xMap.has(currentX)) {
-                    xMap.set(currentX, { values: [val], hasValid: true });
-                } else {
-                    const entry = xMap.get(currentX);
-                    entry.values.push(val);
-                    entry.hasValid = true;
-                }
-            } else if (keepGaps) {
-                if (!xMap.has(currentX)) {
-                    xMap.set(currentX, { values: [], hasValid: false });
-                }
+            if (!xMap.has(currentX)) {
+                xMap.set(currentX, { values: [val], hasValid: true });
+            } else {
+                const entry = xMap.get(currentX);
+                entry.values.push(val);
+                entry.hasValid = true;
             }
         }
     }

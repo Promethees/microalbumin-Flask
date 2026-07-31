@@ -10,6 +10,7 @@ import shutil
 from pathlib import Path
 
 import state
+import sentinels
 from file_path import DATA_ROOT, validate_in_data_root
 from get_next_filename import get_next_filename
 from validators import validate_json
@@ -428,16 +429,12 @@ def export_report_excel(validated_data):
             stored as text" marker) and ignores the user's locale decimal
             separator. Writing a real float fixes both — the point plots, and the
             cell is formatted per the user's regional settings (no forced format).
+
+            Sentinels are dropped rather than coerced: float("INF") returns an
+            infinity, and openpyxl writes that into a cell Excel then reads as an
+            error value.
             """
-            if v is None or isinstance(v, bool):
-                return None
-            if isinstance(v, (int, float)):
-                return float(v)
-            try:
-                t = str(v).strip()
-                return float(t) if t else None
-            except (TypeError, ValueError):
-                return None
+            return sentinels.to_number(v)
 
         points, fit = [], []
         for p in (s.get('points') or []):
@@ -673,6 +670,18 @@ def export_report_excel(validated_data):
         ws['F2'] = f'Generated: {timestamp}'
         ws.row_dimensions[2].height = 18
 
+    def _cell_value(val):
+        """A numeric string as a real number, anything else left as it is.
+
+        Sentinels stay text so the cell reads OVFL / NONE / INF. Coercing them
+        would be worse than useless for INF: float("INF") is an infinity, which
+        openpyxl writes as a value Excel renders as an error.
+        """
+        if val is None:
+            return None
+        number = sentinels.to_number(val)
+        return val if number is None else number
+
     def _write_table(ws, r, section_label, columns, rows):
         _cell(ws, r, 1, section_label, bold=True, size=11, fill=SECTION_FILL, color='2c3e50')
         if len(columns) > 1:
@@ -686,13 +695,7 @@ def export_report_excel(validated_data):
         r += 1
         for row_data in rows:
             for ci, col in enumerate(columns, 1):
-                val = row_data.get(col)
-                if val is not None:
-                    try:
-                        val = float(val)
-                    except (ValueError, TypeError):
-                        pass
-                ws.cell(r, ci, value=val).border = CELL_BORDER
+                ws.cell(r, ci, value=_cell_value(row_data.get(col))).border = CELL_BORDER
             r += 1
         return r + 1
 
@@ -714,13 +717,7 @@ def export_report_excel(validated_data):
         data_start = r
         for row_data in csv_rows:
             for ci, col in enumerate(csv_columns, 1):
-                val = row_data.get(col)
-                if val is not None:
-                    try:
-                        val = float(val)
-                    except (ValueError, TypeError):
-                        pass
-                ws.cell(r, ci, value=val).border = CELL_BORDER
+                ws.cell(r, ci, value=_cell_value(row_data.get(col))).border = CELL_BORDER
             r += 1
         return r, hdr_row, data_start
 
@@ -759,12 +756,9 @@ def export_report_excel(validated_data):
                     conc_col = csv_columns[0] if csv_columns else 'Concentration'
                     conc_values = []
                     for rd in csv_rows:
-                        v = rd.get(conc_col)
-                        try:
-                            if v not in (None, '', 'NONE'):
-                                conc_values.append(float(v))
-                        except (ValueError, TypeError):
-                            pass
+                        v = sentinels.to_number(rd.get(conc_col))
+                        if v is not None:
+                            conc_values.append(v)
                     for s in chart_series:
                         label = s.get('label', '')
                         if label:

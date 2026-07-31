@@ -6,6 +6,21 @@ function arraysEqual(arr1, arr2) {
     if (arr1.length !== arr2.length) return false;
     return arr1.every((value, index) => value === arr2[index]);
 }
+// Shared: the non-numeric tokens a colorimeter value cell can carry — mirror of
+// src/sentinels.py (OVFL saturated, NONE nothing measured yet, INF a fully
+// attenuated channel; firmware predating the token writes "inf"). Single global
+// definition — do not redefine elsewhere.
+const MEAS_SENTINELS = ["NONE", "OVFL", "INF", "-INF", "inf", "-inf"];
+const isMeasSentinel = v => typeof v === 'string' && MEAS_SENTINELS.includes(v.trim());
+// A value cell as a finite number, or null when it is not one: sentinel, blank,
+// text, or an infinity — Number("Infinity") parses and must never reach a chart.
+const measNumber = v => {
+    if (v === null || v === undefined || isMeasSentinel(v)) return null;
+    if (typeof v === 'string' && v.trim() === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+};
+
 const $id = id => document.getElementById(id);
 const $text = (id, text) => {
     const element = $id(id);

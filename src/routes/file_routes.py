@@ -13,6 +13,7 @@ from filelock import FileLock, Timeout
 import shutil
 
 import state
+import sentinels
 from file_path import (DATA_ROOT, validate_in_data_root, validate_in_allowed_roots,
                        is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER,
                        parse_csv_metadata, detect_csv_schema,
@@ -84,15 +85,19 @@ _SCHEMA_VALIDATORS = {
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Turn point calibration).'
     },
+    # Value cells: a number or one of the device's tokens — OVFL / NONE / INF
+    # (sentinels.TOKEN_PATTERN, mirrored client-side in edit-file.js patternSets).
     CSV_SCHEMA_TIMESERIES: {
-        'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
+        'data': r'^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|'
+                + sentinels.TOKEN_PATTERN + r')?\s*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Pattern 4).'
     },
     # Point-mode Turn series: same as the timeseries schema but the first (X)
     # column is an integer turn index (1,2,3…) instead of a decimal Timestamp.
     CSV_SCHEMA_TIMESERIES_TURN: {
-        'data': r'^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$',
+        'data': r'^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|'
+                + sentinels.TOKEN_PATTERN + r')?\s*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Turn series).'
     },

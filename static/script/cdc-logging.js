@@ -103,8 +103,8 @@ function drawSessionStrip() {
     let lo = Infinity, hi = -Infinity;
     for (const row of rows) {
         for (let i = 1; i <= n; i++) {
-            const v = Number(row[`Value:${i}`]);
-            if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+            const v = measNumber(row[`Value:${i}`]);
+            if (v !== null) { if (v < lo) lo = v; if (v > hi) hi = v; }
         }
     }
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
@@ -119,8 +119,8 @@ function drawSessionStrip() {
     for (let i = 1; i <= n; i++) {
         let d = '', started = false;
         for (const row of rows) {
-            const x = Number(row.Timestamp), v = Number(row[`Value:${i}`]);
-            if (!Number.isFinite(x) || !Number.isFinite(v)) continue;   // OVFL / NONE
+            const x = Number(row.Timestamp), v = measNumber(row[`Value:${i}`]);
+            if (!Number.isFinite(x) || v === null) continue;   // OVFL / NONE / INF
             d += `${started ? 'L' : 'M'}${px(x).toFixed(1)} ${py(v).toFixed(1)}`;
             started = true;
         }
@@ -274,10 +274,16 @@ function checkScriptStatus() {
             url: '/check_status',
             type: 'GET',
             success: function(response) {
-                if (response.status === 'device_not_found' || response.status === 'failure' || response.status === 'success' || response.status === 'not_running') {
+                if (response.status === 'device_not_found' || response.status === 'failure' || response.status === 'success' || response.status === 'warning' || response.status === 'not_running') {
                     clearStatusCheck();
                     AppState.scriptRunning = false;
-                    if (response.status !== 'success') {
+                    if (response.status === 'warning') {
+                        // The device dropped and never came back. Rows captured
+                        // before it vanished are saved, so this ends the run the
+                        // same way a completion does — only the wording differs.
+                        logDisplay.insertAdjacentText('beforeend', `${response.message}\n`);
+                        resetUIAfterCompletion(response.message);
+                    } else if (response.status !== 'success') {
                         if (response.status !== 'not_running') {
                             logDisplay.insertAdjacentText('beforeend', `Error: ${response.message}\n`);
                         }

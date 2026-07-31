@@ -1100,7 +1100,10 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 },
                                 {
                                     header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                    data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
+                                    // Value cells: a number or a device token — OVFL / NONE /
+                                    // INF (lower-case "inf" from firmware predating the token).
+                                    // Mirrors sentinels.TOKEN_PATTERN in the backend validator.
+                                    data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE|[+-]?[Ii][Nn][Ff])?\s*)*$/,
                                     error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
                                     meta: [
                                         /^#\s*Measurement\s*:\s*.+$/,
@@ -1114,7 +1117,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                     // integer turn index (no decimal). Mirrors the
                                     // backend CSV_SCHEMA_TIMESERIES_TURN validator.
                                     header: /^\s*Turn\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                    data: /^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
+                                    data: /^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE|[+-]?[Ii][Nn][Ff])?\s*)*$/,
                                     error: 'Invalid format (Pattern 4). Header must be: Turn,Value:1,Value:2,...',
                                     meta: [
                                         /^#\s*Measurement\s*:\s*.+$/,

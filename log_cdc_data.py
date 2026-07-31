@@ -34,9 +34,36 @@ _SRC_DIR = os.path.join(_SCRIPT_DIR, "src")
 if _SRC_DIR not in sys.path:
     sys.path.append(_SRC_DIR)
 
+import serial
+
 import state
+import sentinels
 from get_next_filename import get_next_filename
 from send_command import connect_to_device, send_command_and_wait_ack, LineReader
+
+# ── mid-session recovery ────────────────────────────────────────────────────
+# A CircuitPython board re-enumerates on auto-reload, on a brownout, and on a
+# jiggled cable. The port handle dies with it, and the run used to end there:
+# one SerialException out of the read loop and the logger exited, truncating the
+# CSV at whatever rows had landed. The device is fine seconds later, so a run is
+# worth holding open for a while.
+RECONNECT_WINDOW = 90.0
+# Back-off between attempts, holding at the last value. Short at first (a
+# re-enumeration is over in a second or two), then patient.
+RECONNECT_DELAYS = (0.5, 1.0, 2.0, 3.0, 5.0)
+
+# A board that rebooted comes back with the port present but no session running,
+# so the only symptom is silence — no exception to catch. Treat a gap this much
+# longer than the transmission interval as a drop and re-arm the device. Auto
+# sessions only: a manual or paused session is idle by design.
+SILENCE_GRACE = 20.0
+SILENCE_INTERVAL_FACTOR = 3
+
+# Logged when the device never comes back, so the UI can say so rather than
+# announcing a completed reading (script_monitor.check_log_for_end_reason).
+# Deliberately NOT the string check_log_for_errors looks for: that one tears the
+# session down from /check_status, which is exactly what recovery must avoid.
+DISCONNECTED_SENTINEL = "SESSION DISCONNECTED"
 
 
 class CDCDataCollector:
@@ -71,9 +98,18 @@ class CDCDataCollector:
         self.metadata = {}
         self.num_values = None
         self.session_started = False
-        # First-column name from the received header ("Timestamp" or "Turn"),
-        # used only for log wording.
+        # First-column name from the received header ("Timestamp" or "Turn").
         self.x_label = "Timestamp"
+
+        # Recovery bookkeeping. A resumed device restarts its own X column at
+        # zero (or turn 1) and its own timeout, so the host keeps the totals:
+        # how many rows are already in the file, when the session really began,
+        # and the offset to add to the device's X so the file stays one series.
+        self.rows_written = 0
+        self.reconnects = 0
+        self.x_offset = 0.0
+        self._session_wall_start = None
+        self._last_line_at = None
 
         # CDC delivers the device's exact bytes, so these patterns match the
         # clean text emitted by serial_manager._write() — no up-casing /
@@ -83,7 +119,12 @@ class CDCDataCollector:
         # accept either header and either first-field form (int turn or decimal
         # timestamp). A Turn file never carries a Timestamp column.
         self.header_pattern = r"^(?:Timestamp|Turn),Value:\d+(?:,Value:\d+)*$"
-        self.data_pattern = r"^\d+(?:\.\d{1,2})?,(?:-?\d+\.\d{1,3}|OVFL)(?:,(?:-?\d+\.\d{1,3}|OVFL))*$"
+        # A value cell is a number or one of the device's tokens (sentinels.py).
+        # The row is validated whole, so a token missing from this list costs the
+        # entire row — the healthy channels in it included, which is how one dark
+        # cuvette used to empty a whole session file.
+        _value = r"(?:-?\d+\.\d{1,3}|" + sentinels.TOKEN_PATTERN + r")"
+        self.data_pattern = r"^\d+(?:\.\d{1,2})?," + _value + r"(?:," + _value + r")*$"
         self.end_pattern = r"^SESSION TIMEOUT$"
         # Replies to the pause/resume commands. ERR_UNKNOWN is the answer from
         # firmware predating PAUSE — meaningful only right after we sent one,
@@ -168,6 +209,11 @@ class CDCDataCollector:
             f.write(line + "\n")
         self.log(f"New session started. Header written to {self.output_file}")
         self.session_started = True
+        # Wall clock for the whole session, spanning any reconnect: it is what
+        # the remaining timeout and the resumed Timestamp column are measured
+        # against, and unlike the device's own clock it survives a reboot.
+        self._session_wall_start = time.time()
+        self._last_line_at = time.time()
 
     def process_data(self, line):
         # Paused: never write a row. Reaching here means the device is still
@@ -177,10 +223,32 @@ class CDCDataCollector:
             self.log(f"Dropped row while paused: {line}")
             return
         fields = line.split(",")
+        if self.x_offset:
+            fields[0] = self._shift_x(fields[0])
+            line = ",".join(fields)
         unit = "" if self.x_label == "Turn" else "s"
         self.log(f"Received: {self.x_label}: {fields[0]}{unit}, Values: {', '.join(fields[1:])}")
         with open(self.output_file, "a", encoding="utf-8") as f:
             f.write(line + "\n")
+        self.rows_written += 1
+
+    def _shift_x(self, field):
+        """Carry the X column across a reconnect: the device restarts its own.
+
+        Turn: the resumed device counts from 1 again, so add the turns already
+        in the file and the numbering continues.
+        Timestamp: add the elapsed time at the moment of the resume, so the gap
+        the disruption caused shows up in the data as a gap. Papering over it —
+        continuing from the last row plus one interval — would put a fabricated
+        acquisition time on every row after the first drop.
+        """
+        try:
+            value = float(field)
+        except ValueError:
+            return field
+        if self.x_label == "Turn":
+            return str(int(value) + int(self.x_offset))
+        return "{:.2f}".format(value + self.x_offset)
 
     def process_line(self, raw):
         line = raw.strip()
@@ -288,9 +356,95 @@ class CDCDataCollector:
         self.num_values = None
         self.running = False
 
+    # ── recovery ────────────────────────────────────────────────────────
+    def _remaining_timeout(self):
+        """Seconds of the requested session left, or None when it has no limit.
+
+        The device restarts its own timeout every time it is re-armed, so a run
+        that reconnected three times would otherwise last four times as long as
+        the operator asked for. The host holds the real budget.
+        """
+        if self.timeout_sec is None or float(self.timeout_sec) < 0:
+            return None
+        if self._session_wall_start is None:
+            return float(self.timeout_sec)
+        return float(self.timeout_sec) - (time.time() - self._session_wall_start)
+
+    def _silence_exceeded(self):
+        """True when an auto session has gone quiet for longer than it should.
+
+        Covers the drop that raises nothing: the board rebooted, the port came
+        back by itself, and the device is sitting there idle because a reboot
+        ends its session. Manual sessions idle by design, and a paused one is
+        idle on purpose, so neither is watched.
+        """
+        if self.manual or self.paused or not self.session_started:
+            return False
+        if self._last_line_at is None:
+            return False
+        interval = float(self.interval_sec or 0)
+        limit = max(SILENCE_GRACE, interval * SILENCE_INTERVAL_FACTOR)
+        return time.time() - self._last_line_at > limit
+
+    def _reconnect(self, why):
+        """Get the device back and re-arm it, or end the run. Returns a reader.
+
+        The CSV is kept open and appended to: this is one session that lost its
+        cable for a moment, not a new reading. What changes is the X offset (the
+        resumed device counts from zero again) and the timeout we ask for (only
+        what is left of the original budget).
+        """
+        self.log(f"Device connection lost ({why}). Reconnecting…")
+        deadline = time.time() + RECONNECT_WINDOW
+        attempt = 0
+        while self.running and time.time() < deadline:
+            delay = RECONNECT_DELAYS[min(attempt, len(RECONNECT_DELAYS) - 1)]
+            attempt += 1
+            time.sleep(delay)
+
+            try:
+                if self.serial and self.serial.is_open:
+                    self.serial.close()
+            except Exception:
+                pass
+
+            try:
+                self.serial = connect_to_device()
+            except Exception as error:
+                self.log(f"Reconnect attempt {attempt} failed: {error}")
+                continue
+
+            remaining = self._remaining_timeout()
+            if remaining is not None and remaining <= 0:
+                self.log("Session timeout elapsed while the device was away.")
+                self._finish_session("SESSION TIMEOUT")
+                return None
+
+            success, error_msg = self._send_start_commands(timeout_override=remaining)
+            if not success:
+                self.log(f"Reconnected but the device refused to resume: {error_msg}")
+                continue
+
+            self.reconnects += 1
+            self.x_offset = (
+                self.rows_written if self.x_label == "Turn"
+                else round(time.time() - self._session_wall_start, 2))
+            self._last_line_at = time.time()
+            self.log(f"Device reconnected on {self.serial.port}. Resuming session "
+                     f"({self.rows_written} rows recorded so far).")
+            return LineReader(self.serial)
+
+        self.log(f"{DISCONNECTED_SENTINEL}: the device did not come back within "
+                 f"{RECONNECT_WINDOW:.0f}s. {self.rows_written} rows were saved.")
+        self.running = False
+        return None
+
     # ── lifecycle ───────────────────────────────────────────────────────
-    def _send_start_commands(self):
-        timeout = float(self.timeout_sec) if self.timeout_sec is not None else -1
+    def _send_start_commands(self, timeout_override=None):
+        if timeout_override is not None:
+            timeout = float(timeout_override)
+        else:
+            timeout = float(self.timeout_sec) if self.timeout_sec is not None else -1
         interval = float(self.interval_sec) if self.interval_sec is not None else -1
         # AXIS goes between TIMEOUT and INTERVAL (INTERVAL is the stage that
         # starts the device talking, so the axis must be set before it). For a
@@ -358,11 +512,31 @@ class CDCDataCollector:
                 # Forward any pending manual-measure / pause-resume request
                 # before blocking on the next read (each read blocks ≤ one port
                 # timeout, 0.15s).
-                self._check_measure_trigger()
-                self._check_control_trigger()
-                for line in reader.read_lines():
+                try:
+                    self._check_measure_trigger()
+                    self._check_control_trigger()
+                    lines = reader.read_lines()
+                except (serial.SerialException, OSError) as error:
+                    # The port went away mid-run — the board re-enumerated, or
+                    # the cable moved. Recover rather than end the session: the
+                    # CSV stays open and the rows already in it stay valid.
+                    reader = self._reconnect(str(error))
+                    if reader is None:
+                        break
+                    continue
+
+                if lines:
+                    self._last_line_at = time.time()
+                for line in lines:
                     self.process_line(line)
                     if not self.running:
+                        break
+
+                # The silent drop: port alive, device rebooted and idle. Nothing
+                # raises, so the only tell is that the rows stopped coming.
+                if self.running and self._silence_exceeded():
+                    reader = self._reconnect("no data for longer than the interval allows")
+                    if reader is None:
                         break
         except Exception as e:
             self.log(f"Error: {e}")
