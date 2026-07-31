@@ -180,6 +180,34 @@ def test_concentration_on_firmware_without_the_command_says_so():
     assert 'firmware' in str(excinfo.value)
 
 
+def test_timing_units_splits_the_list():
+    link = FakeLink(["TIMINGUNITS sec,min,hour"])
+    assert link.timing_units() == ['sec', 'min', 'hour']
+    assert link.sent == ['TIMING?']
+
+
+def test_set_timing_formats_the_payload():
+    link = FakeLink(["ACK_TIMING"])
+    link.set_timing(20, 'min', 1, 'min')
+    assert link.sent == ['TIMING:20,min,1,min']
+
+
+def test_set_timing_no_timeout():
+    """No timeout is a setting, not a missing field: the run goes until stopped."""
+    link = FakeLink(["ACK_TIMING"])
+    link.set_timing(None, None, 30, 'sec')
+    assert link.sent == ['TIMING:none,,30,sec']
+
+
+def test_set_timing_surfaces_the_device_reason():
+    """The device owns the rule that the timeout must outlast the interval, and
+    its wording is the part the operator can act on."""
+    link = FakeLink(["ERR_TIMING timeout is not longer than the interval"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.set_timing(1, 'min', 2, 'min')
+    assert 'not longer than' in str(excinfo.value)
+
+
 def test_select_menu_surfaces_the_device_reason():
     link = FakeLink(["ERR_MENU out of range"])
     with pytest.raises(device_link.DeviceLinkError) as excinfo:
@@ -268,7 +296,10 @@ def test_controller_is_unavailable_during_a_session(client):
                  lambda: client.get('/device/menu'),
                  lambda: client.post('/device/menu', json={'index': 0}),
                  lambda: client.get('/device/concentration'),
-                 lambda: client.post('/device/concentration', json={'value': 1})):
+                 lambda: client.post('/device/concentration', json={'value': 1}),
+                 lambda: client.get('/device/timing'),
+                 lambda: client.post('/device/timing',
+                                     json={'interval_value': 1, 'interval_unit': 'min'})):
         rv = call()
         assert rv.status_code == 409
         assert rv.get_json()['status'] == 'busy'
@@ -384,6 +415,42 @@ def test_concentration_route_502_when_the_device_refuses(client):
                       side_effect=device_link.DeviceLinkError('unknown unit')):
         rv = client.post('/device/concentration', json={'value': 1, 'unit': 'mM'})
     assert rv.status_code == 502
+
+
+def test_timing_route_returns_the_units(client):
+    with patch.object(device_link.link, 'timing_units', return_value=['sec', 'min', 'hour']):
+        rv = client.get('/device/timing')
+    assert rv.get_json()['units'] == ['sec', 'min', 'hour']
+
+
+def test_timing_route_sets_both_values(client):
+    with patch.object(device_link.link, 'set_timing', return_value=True) as apply, \
+         patch.object(device_link.link, 'state', return_value={'timeout': '20'}):
+        rv = client.post('/device/timing', json={
+            'timeout_value': 20, 'timeout_unit': 'min',
+            'interval_value': 1, 'interval_unit': 'min'})
+    apply.assert_called_once_with(20.0, 'min', 1.0, 'min')
+    assert rv.get_json()['state']['timeout'] == '20'
+
+
+def test_timing_route_null_timeout_runs_until_stopped(client):
+    with patch.object(device_link.link, 'set_timing', return_value=True) as apply, \
+         patch.object(device_link.link, 'state', return_value={}):
+        rv = client.post('/device/timing', json={
+            'timeout_value': None, 'interval_value': 30, 'interval_unit': 'sec'})
+    assert rv.status_code == 200
+    apply.assert_called_once_with(None, None, 30.0, 'sec')
+
+
+def test_timing_route_rejects_a_zero_interval(client):
+    rv = client.post('/device/timing', json={'interval_value': 0, 'interval_unit': 'min'})
+    assert rv.status_code == 400
+
+
+def test_timing_route_needs_a_unit_for_a_timeout(client):
+    rv = client.post('/device/timing', json={
+        'timeout_value': 5, 'interval_value': 1, 'interval_unit': 'min'})
+    assert rv.status_code == 400
 
 
 def test_run_script_releases_the_port_first(client):

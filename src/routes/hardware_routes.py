@@ -422,6 +422,58 @@ def device_concentration_set(validated_data):
         return jsonify({'status': 'success', 'state': None})
 
 
+@hardware_bp.route('/device/timing', methods=['GET'])
+def device_timing():
+    """The units the device's settings screen offers (TIMING?).
+
+    The values themselves are `timeout`/`timeoutunit`/`interval`/`intervalunit`
+    in /device/state, which the panel already polls.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        return jsonify({'status': 'success', 'units': device_link.link.timing_units()})
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+
+
+@hardware_bp.route('/device/timing', methods=['POST'])
+@validate_json({
+    'timeout_value': (float, None, False),
+    'timeout_unit': (str, None, False),
+    'interval_value': (float, None, True),
+    'interval_unit': (str, None, True),
+})
+def device_timing_set(validated_data):
+    """Set the device's timeout and transmission interval (TIMING:).
+
+    A null timeout means **no timeout** — a real setting rather than a missing
+    field: the run then goes until it is stopped. The device is the authority on
+    whether the pair is legal (the timeout has to outlast the interval), and its
+    refusal carries the reason.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    timeout_value = validated_data['timeout_value']
+    interval_value = validated_data['interval_value']
+    if timeout_value is not None and timeout_value < 0:
+        return jsonify({'status': 'failure', 'message': 'Timeout cannot be negative'}), 400
+    if interval_value <= 0:
+        return jsonify({'status': 'failure', 'message': 'Interval must be more than zero'}), 400
+    if timeout_value is not None and not validated_data['timeout_unit']:
+        return jsonify({'status': 'failure', 'message': 'A timeout needs a unit'}), 400
+    try:
+        device_link.link.set_timing(
+            timeout_value, validated_data['timeout_unit'],
+            interval_value, validated_data['interval_unit'])
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'state': None})
+
+
 @hardware_bp.route('/stream_session', methods=['GET'])
 def stream_session():
     """SSE tail of the running session: new CSV rows + new log text, pushed.

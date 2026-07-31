@@ -195,6 +195,7 @@ function setDeviceControlStatus(kind, text) {
         deviceState = null;
         deviceMenuItems = null;
         deviceConcUnits = null;
+        deviceTimingUnits = null;
     }
 }
 
@@ -206,6 +207,7 @@ function applyDeviceState(state) {
     renderDeviceChannels(state);
     renderDeviceMenu(state);
     renderDeviceConcentration(state);
+    renderDeviceTiming(state);
 }
 
 function renderDeviceReadout(state) {
@@ -725,15 +727,7 @@ function drawDeviceConcentration(state) {
         ? `${t('devctl.conc_unknown_value', 'Unknown')}${unit ? ' ' + unit : ''}`
         : `${value}${unit ? ' ' + unit : ''}`;
 
-    if (unitSelect.options.length !== (deviceConcUnits || []).length) {
-        unitSelect.innerHTML = '';
-        (deviceConcUnits || []).forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            unitSelect.appendChild(option);
-        });
-    }
+    fillDeviceUnitSelect(unitSelect, deviceConcUnits);
     // The device's own value and unit are what the fields show until the
     // operator touches them — then they are the operator's until sent.
     if (!deviceConcDirty) {
@@ -813,6 +807,172 @@ async function sendDeviceConcentration(value) {
     }
 }
 
+// ── settings (timeout + interval) ───────────────────────────────────────────
+// The Settings screen's own pair. Same shape as the concentration form and the
+// same rule: mounted only while the device is on that screen. The device is the
+// authority on whether the pair is legal — the timeout has to outlast the
+// interval, or a run times out before its first reading — so the refusal comes
+// back from it rather than being second-guessed here.
+
+let deviceTimingUnits = null;
+let deviceTimingPending = false;
+let deviceTimingDirty = false;
+
+function deviceSupportsTiming(state) {
+    return (state.caps || []).indexOf('timing') !== -1;
+}
+
+function renderDeviceTiming(state) {
+    const panel = document.getElementById('devctl-timing');
+    if (!panel) return;
+    const onScreen = state.mode === 'SETTINGS' && deviceSupportsTiming(state);
+    panel.classList.toggle('hidden', !onScreen);
+    if (!onScreen) {
+        deviceTimingDirty = false;
+        return;
+    }
+    if (deviceTimingUnits === null) {
+        loadDeviceTimingUnits();
+        return;
+    }
+    drawDeviceTiming(state);
+}
+
+async function loadDeviceTimingUnits() {
+    if (deviceTimingPending) return;
+    deviceTimingPending = true;
+    try {
+        const res = await fetch('/device/timing');
+        const data = await res.json();
+        if (data.status === 'success' && Array.isArray(data.units)) {
+            deviceTimingUnits = data.units;
+            if (deviceState) drawDeviceTiming(deviceState);
+        }
+    } catch (err) {
+        /* retried by the next poll */
+    } finally {
+        deviceTimingPending = false;
+    }
+}
+
+function drawDeviceTiming(state) {
+    const current = document.getElementById('devctl-timing-current');
+    const timeoutValue = document.getElementById('devctl-timeout-value');
+    const timeoutUnit = document.getElementById('devctl-timeout-unit');
+    const intervalValue = document.getElementById('devctl-interval-value');
+    const intervalUnit = document.getElementById('devctl-interval-unit');
+    if (!current || !timeoutValue || !timeoutUnit || !intervalValue || !intervalUnit) return;
+
+    // "" is the firmware's "not applicable": for the timeout it means the run
+    // has no timeout at all, which is a setting rather than a blank.
+    const hasTimeout = state.timeout !== undefined && state.timeout !== null && state.timeout !== '';
+    if (current) {
+        const timeoutText = hasTimeout
+            ? `${state.timeout} ${state.timeoutunit || ''}`.trim()
+            : t('devctl.timing_none', 'no timeout');
+        current.textContent = `${timeoutText} · ${state.interval || '—'} ${state.intervalunit || ''}`.trim();
+    }
+
+    fillDeviceUnitSelect(timeoutUnit, deviceTimingUnits);
+    fillDeviceUnitSelect(intervalUnit, deviceTimingUnits);
+    if (!deviceTimingDirty) {
+        timeoutValue.value = hasTimeout ? state.timeout : '';
+        if (state.timeoutunit) timeoutUnit.value = state.timeoutunit;
+        intervalValue.value = (state.interval === undefined || state.interval === null) ? '' : state.interval;
+        if (state.intervalunit) intervalUnit.value = state.intervalunit;
+    }
+    for (const el of [timeoutValue, timeoutUnit, intervalValue, intervalUnit]) {
+        el.disabled = deviceTimingPending;
+    }
+    $disabled('devctl-timing-set', deviceTimingPending);
+    $disabled('devctl-timing-none', deviceTimingPending);
+}
+
+function fillDeviceUnitSelect(select, units) {
+    if (!select || !units || select.options.length === units.length) return;
+    select.innerHTML = '';
+    units.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+    });
+}
+
+function onDeviceTimingEdited() {
+    deviceTimingDirty = true;
+}
+
+function applyDeviceTiming() {
+    sendDeviceTiming(false);
+}
+
+function clearDeviceTimeout() {
+    sendDeviceTiming(true);
+}
+
+async function sendDeviceTiming(noTimeout) {
+    if (deviceTimingPending) return;
+    const timeoutText = (document.getElementById('devctl-timeout-value') || {}).value || '';
+    const intervalText = (document.getElementById('devctl-interval-value') || {}).value || '';
+    const timeoutUnit = (document.getElementById('devctl-timeout-unit') || {}).value || '';
+    const intervalUnit = (document.getElementById('devctl-interval-unit') || {}).value || '';
+
+    const interval = Number(intervalText);
+    if (intervalText.trim() === '' || !isFinite(interval) || interval <= 0) {
+        showDeviceControlError(t('devctl.timing_interval_invalid', 'Interval must be more than zero'));
+        return;
+    }
+    let timeout = null;
+    if (!noTimeout) {
+        if (timeoutText.trim() === '') {
+            showDeviceControlError(t('devctl.timing_timeout_empty',
+                'Enter a timeout, or use No timeout to run until stopped'));
+            return;
+        }
+        timeout = Number(timeoutText);
+        if (!isFinite(timeout) || timeout < 0) {
+            showDeviceControlError(t('devctl.timing_timeout_invalid', 'Timeout must be zero or more'));
+            return;
+        }
+    }
+
+    deviceTimingPending = true;
+    if (deviceState) drawDeviceTiming(deviceState);
+    try {
+        const res = await fetch('/device/timing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                timeout_value: timeout,
+                timeout_unit: timeout === null ? undefined : timeoutUnit,
+                interval_value: interval,
+                interval_unit: intervalUnit,
+            }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            deviceTimingDirty = false;
+            deviceTimingPending = false;
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        // The device's own reason ("timeout is not longer than the interval") is
+        // the actionable part, so it is shown rather than a generic refusal.
+        showDeviceControlError(data.message || t('devctl.timing_failed', 'The device refused those settings'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        deviceTimingPending = false;
+        if (deviceState) drawDeviceTiming(deviceState);
+    }
+}
+
 // ── wiring ──────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -825,6 +985,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const concUnit = document.getElementById('devctl-conc-unit');
     if (concValue) concValue.addEventListener('input', onDeviceConcentrationEdited);
     if (concUnit) concUnit.addEventListener('change', onDeviceConcentrationEdited);
+    for (const id of ['devctl-timeout-value', 'devctl-interval-value',
+                      'devctl-timeout-unit', 'devctl-interval-unit']) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', onDeviceTimingEdited);
+    }
     // Nothing else to wire: the panel starts collapsed, and expanding it is what
     // starts the poll. A run beginning or ending is picked up by that same poll
     // (the route answers 409 for the duration), so the panel needs no hook into

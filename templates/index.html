@@ -644,6 +644,37 @@
                                     data-hint="Set the device's concentration back to Unknown.">Unknown</button>
                             </div>
                         </div>
+                        <!-- Timeout and interval. Mounted only while the device is
+                             on its Settings screen, the same rule the Concentration
+                             form follows. -->
+                        <div id="devctl-timing" class="devctl-conc hidden">
+                            <div class="devctl-channels-head">
+                                <span class="devctl-label" data-i18n="devctl.timing">Settings</span>
+                                <span class="devctl-note" data-i18n="devctl.timing_note">The device saves these when they are sent — the timeout must outlast the interval.</span>
+                            </div>
+                            <div class="devctl-conc-row">
+                                <span class="devctl-conc-current">
+                                    <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>
+                                    <span id="devctl-timing-current" class="devctl-value devctl-value--num">—</span>
+                                </span>
+                                <label class="devctl-timing-field">
+                                    <span class="devctl-label" data-i18n="devctl.timing_timeout">Timeout</span>
+                                    <input type="number" id="devctl-timeout-value" class="devctl-conc-input" min="0" step="any">
+                                    <select id="devctl-timeout-unit" class="devctl-conc-unit"></select>
+                                </label>
+                                <label class="devctl-timing-field">
+                                    <span class="devctl-label" data-i18n="devctl.timing_interval">Interval</span>
+                                    <input type="number" id="devctl-interval-value" class="devctl-conc-input" min="0" step="any">
+                                    <select id="devctl-interval-unit" class="devctl-conc-unit"></select>
+                                </label>
+                                <button type="button" id="devctl-timing-set" onclick="applyDeviceTiming()"
+                                    data-i18n="devctl.timing_set" data-i18n-hint="hint.devctl_timing_set"
+                                    data-hint="Send both values to the device and save them as its settings.">Save</button>
+                                <button type="button" id="devctl-timing-none" onclick="clearDeviceTimeout()"
+                                    data-i18n="devctl.timing_no_timeout" data-i18n-hint="hint.devctl_timing_none"
+                                    data-hint="Save with no timeout: the run goes until it is stopped.">No timeout</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

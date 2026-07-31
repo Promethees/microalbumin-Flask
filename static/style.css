@@ -6004,6 +6004,14 @@ body.dark #run-script-btn:enabled {
     border-radius: var(--r-flat);
 }
 
+/* A labelled pair (Timeout / Interval): the name, the box and its unit read as
+   one control, so they travel together when the row wraps. */
+.devctl-timing-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* Narrow panel: the form stacks with the strips, each control full width. */
 @container (max-width: 620px) {
     .devctl-body .devctl-conc .devctl-conc-row > * { width: 100%; }

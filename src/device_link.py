@@ -44,6 +44,15 @@ REAP_INTERVAL = 5.0
 # reallocate, which is the slowest thing a button press can trigger.
 REPLY_TIMEOUT = 3.0
 
+# A command that changes a screen (MENU:, CONC:, TIMING:) is *queued* by the
+# firmware and applied from its main loop, because building or repainting a
+# screen from inside the serial handler runs three frames deeper than a keypad
+# press — deep and tight enough that the font stopped loading uncached glyphs and
+# screens came out with letters missing. The ACK therefore arrives before the
+# work is done, so the state read straight after would still be the old one.
+# One loop period is ~0.174 s; this is that with room for a screen rebuild.
+SETTLE_AFTER_QUEUED = 0.4
+
 # Fields of a STATE line that are integers, lists of integers, or lists of text.
 # Kept in lockstep with the firmware's SerialManager._state_line().
 _STATE_INTS = ("blanked", "needsblank", "talking", "paused", "maxchan", "menupos", "sel")
@@ -53,6 +62,16 @@ _STATE_TEXT_LISTS = ("caps", "gains", "itimes", "vals")
 
 class DeviceLinkError(Exception):
     """The device could not be reached, or refused the command."""
+
+
+def _number_text(value):
+    """Format a number the way the device would have produced it.
+
+    The screens print a value verbatim and the keypad only ever makes whole
+    numbers, so 12.0 goes out as "12" rather than "12.0".
+    """
+    number = float(value)
+    return str(int(number)) if number == int(number) else repr(number)
 
 
 def parse_state(line):
@@ -258,6 +277,7 @@ class DeviceLink:
         if reply != "ACK_MENU":
             detail = reply[len("ERR_MENU"):].strip()
             raise DeviceLinkError(detail or "The device refused that menu entry")
+        time.sleep(SETTLE_AFTER_QUEUED)
         return True
 
     def concentration_units(self):
@@ -283,14 +303,7 @@ class DeviceLink:
         device shows before a concentration is dialled in — so it is spelled out
         rather than skipped.
         """
-        if value is None:
-            text = "none"
-        else:
-            number = float(value)
-            # The device stores a whole value as an int and prints it verbatim;
-            # sending "12.0" would have it show 12 anyway, but "12" is what the
-            # keypad would have produced.
-            text = str(int(number)) if number == int(number) else repr(number)
+        text = "none" if value is None else _number_text(value)
         spec = f"{text},{unit}" if unit else text
         reply = self.command(
             f"CONC:{spec}",
@@ -300,6 +313,39 @@ class DeviceLink:
         if reply != "ACK_CONC":
             detail = reply[len("ERR_CONC"):].strip()
             raise DeviceLinkError(detail or "The device refused that concentration")
+        time.sleep(SETTLE_AFTER_QUEUED)
+        return True
+
+    def timing_units(self):
+        """The units the device's settings screen cycles (TIMING?)."""
+        reply = self.command(
+            "TIMING?", lambda line: line.startswith("TIMINGUNITS") or line in ("ERR_TIMING", "ERR_UNKNOWN"))
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot set the timing")
+        if reply == "ERR_TIMING":
+            raise DeviceLinkError("The device could not report its timing units")
+        body = reply[len("TIMINGUNITS"):].strip()
+        return [unit.strip() for unit in body.split(",") if unit.strip()]
+
+    def set_timing(self, timeout_value, timeout_unit, interval_value, interval_unit):
+        """Set the Settings screen's pair (TIMING:).
+
+        ``timeout_value`` of ``None`` means **no timeout** — a real setting, not
+        a missing one: the run then goes until the host stops it. The device
+        refuses a timeout that does not outlast the interval, and the reason it
+        gives is the one worth showing.
+        """
+        timeout = "none" if timeout_value is None else _number_text(timeout_value)
+        spec = ",".join((timeout, timeout_unit or "", _number_text(interval_value), interval_unit or ""))
+        reply = self.command(
+            f"TIMING:{spec}",
+            lambda line: line == "ACK_TIMING" or line.startswith("ERR_TIMING") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot set the timing")
+        if reply != "ACK_TIMING":
+            detail = reply[len("ERR_TIMING"):].strip()
+            raise DeviceLinkError(detail or "The device refused those timing values")
+        time.sleep(SETTLE_AFTER_QUEUED)
         return True
 
 
