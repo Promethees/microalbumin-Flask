@@ -356,6 +356,8 @@
   "music.yt_unavailable": "Mục này không khả dụng. Đang bỏ qua.",
   "devctl.title": "Bộ điều khiển thiết bị",
   "devctl.connecting": "Đang kết nối thiết bị…",
+  "devctl.link": "Kết nối với thiết bị",
+  "devctl.link_off": "Chưa kết nối — cổng đang rảnh",
   "devctl.connected": "Đã kết nối",
   "devctl.busy": "Không khả dụng khi đang có phiên đọc dữ liệu",
   "devctl.offline": "Không tìm thấy máy đo màu",
@@ -435,11 +437,13 @@
   "devctl.fn.minus_100": "−100",
   "devctl.fn.dismiss": "Đóng",
   "hint.devctl_channels": "Chuyển thiết bị sang các kênh multiplexer này. Blank sẽ bị xoá — cần blank lại.",
+  "hint.devctl_link": "Cho phép ứng dụng giữ cổng serial của thiết bị. Tắt để nhường cổng cho việc nạp firmware hoặc serial monitor.",
   "hint.devctl_conc_set": "Gửi giá trị này xuống thiết bị và lưu làm nồng độ của phiên đo.",
   "hint.devctl_conc_unknown": "Đưa nồng độ trên thiết bị về Chưa rõ.",
   "hint.devctl_timing_set": "Gửi cả hai giá trị xuống thiết bị và lưu làm cài đặt.",
   "hint.devctl_timing_none": "Lưu với không timeout: phiên đo chạy đến khi được dừng.",
   "settings.device_control": "Hiện bảng Bộ điều khiển thiết bị",
+  "settings.device_link": "Kết nối với thiết bị khi bảng đang mở",
   "settings.device_poll": "Tần suất làm mới Bộ điều khiển",
   "devctl.fn.next_uv_channel": "Kênh phổ kế tiếp"
 }

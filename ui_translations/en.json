@@ -356,6 +356,8 @@
   "music.yt_unavailable": "That item is unavailable. Skipping.",
   "devctl.title": "Device Controller",
   "devctl.connecting": "Reaching the device…",
+  "devctl.link": "Connect to the device",
+  "devctl.link_off": "Not connected — the port is free",
   "devctl.connected": "Connected",
   "devctl.busy": "Unavailable while a reading session is running",
   "devctl.offline": "No colorimeter found",
@@ -435,11 +437,13 @@
   "devctl.fn.minus_100": "−100",
   "devctl.fn.dismiss": "Dismiss",
   "hint.devctl_channels": "Re-point the device at these multiplexer channels. Clears the blank — the device must be blanked again.",
+  "hint.devctl_link": "Let the app hold the device's serial port. Turn this off to leave the port free for a firmware update or a serial monitor.",
   "hint.devctl_conc_set": "Send this value to the device and save it as the session's concentration.",
   "hint.devctl_conc_unknown": "Set the device's concentration back to Unknown.",
   "hint.devctl_timing_set": "Send both values to the device and save them as its settings.",
   "hint.devctl_timing_none": "Save with no timeout: the run goes until it is stopped.",
   "settings.device_control": "Show the Device Controller panel",
+  "settings.device_link": "Connect to the device when the panel is open",
   "settings.device_poll": "Device Controller refresh",
   "devctl.fn.next_uv_channel": "Next spectral channel"
 }

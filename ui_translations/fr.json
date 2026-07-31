@@ -356,6 +356,8 @@
   "music.yt_unavailable": "Cet élément est indisponible. Passage au suivant.",
   "devctl.title": "Contrôleur de l'appareil",
   "devctl.connecting": "Connexion à l'appareil…",
+  "devctl.link": "Se connecter à l'appareil",
+  "devctl.link_off": "Non connecté — le port est libre",
   "devctl.connected": "Connecté",
   "devctl.busy": "Indisponible pendant une session de lecture",
   "devctl.offline": "Aucun colorimètre détecté",
@@ -435,11 +437,13 @@
   "devctl.fn.minus_100": "−100",
   "devctl.fn.dismiss": "Fermer",
   "hint.devctl_channels": "Bascule l'appareil sur ces canaux du multiplexeur. Le blanc est effacé — il faut le refaire.",
+  "hint.devctl_link": "Autorise l'application à occuper le port série de l'appareil. Désactivez pour laisser le port libre pour une mise à jour du firmware ou un moniteur série.",
   "hint.devctl_conc_set": "Envoie cette valeur à l'appareil et l'enregistre comme concentration de la session.",
   "hint.devctl_conc_unknown": "Remet la concentration de l'appareil sur Inconnue.",
   "hint.devctl_timing_set": "Envoie les deux valeurs à l'appareil et les enregistre comme réglages.",
   "hint.devctl_timing_none": "Enregistre sans timeout : la mesure va jusqu'à l'arrêt.",
   "settings.device_control": "Afficher le panneau Contrôleur de l'appareil",
+  "settings.device_link": "Se connecter à l'appareil quand le panneau est ouvert",
   "settings.device_poll": "Rafraîchissement du contrôleur",
   "devctl.fn.next_uv_channel": "Canal spectral suivant"
 }

@@ -422,6 +422,19 @@ def device_concentration_set(validated_data):
         return jsonify({'status': 'success', 'state': None})
 
 
+@hardware_bp.route('/device/disconnect', methods=['POST'])
+def device_disconnect():
+    """Release the serial port now (the controller's connection switch).
+
+    The idle reaper drops the port after 30 s of quiet anyway, but a user who
+    turns the connection off is usually about to hand the port to something else
+    — a firmware update, a serial monitor — and waiting out the reaper looks like
+    the switch did nothing. Safe to call when nothing is open: close() no-ops.
+    """
+    device_link.link.close()
+    return jsonify({'status': 'success'})
+
+
 @hardware_bp.route('/device/timing', methods=['GET'])
 def device_timing():
     """The units the device's settings screen offers (TIMING?).

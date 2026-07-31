@@ -453,6 +453,15 @@ def test_timing_route_needs_a_unit_for_a_timeout(client):
     assert rv.status_code == 400
 
 
+def test_disconnect_route_releases_the_port(client):
+    """The connection switch: releasing now rather than waiting out the 30 s idle
+    reaper, because the user is usually handing the port to something else."""
+    with patch.object(device_link.link, 'close') as close:
+        rv = client.post('/device/disconnect')
+    assert rv.status_code == 200
+    close.assert_called_once()
+
+
 def test_run_script_releases_the_port_first(client):
     """The logger cannot wait its turn, so the link must be closed before the
     subprocess is spawned — otherwise the run fails on a port we hold."""

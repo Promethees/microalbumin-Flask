@@ -356,6 +356,8 @@
   "music.yt_unavailable": "この項目は利用できません。スキップします。",
   "devctl.title": "デバイスコントローラー",
   "devctl.connecting": "デバイスに接続中…",
+  "devctl.link": "デバイスに接続",
+  "devctl.link_off": "未接続 — ポートは空いています",
   "devctl.connected": "接続済み",
   "devctl.busy": "測定セッション実行中は使用できません",
   "devctl.offline": "比色計が見つかりません",
@@ -435,11 +437,13 @@
   "devctl.fn.minus_100": "−100",
   "devctl.fn.dismiss": "閉じる",
   "hint.devctl_channels": "デバイスをこれらのマルチプレクサチャンネルに切り替えます。ブランクは破棄されるため、再度ブランクが必要です。",
+  "hint.devctl_link": "アプリがデバイスのシリアルポートを保持することを許可します。ファームウェア更新やシリアルモニタに使う場合はオフにしてください。",
   "hint.devctl_conc_set": "この値をデバイスに送り、セッションの濃度として保存します。",
   "hint.devctl_conc_unknown": "デバイスの濃度を不明に戻します。",
   "hint.devctl_timing_set": "両方の値をデバイスに送り、その設定として保存します。",
   "hint.devctl_timing_none": "timeout なしで保存します。停止するまで測定を続けます。",
   "settings.device_control": "デバイスコントローラーパネルを表示",
+  "settings.device_link": "パネルを開いている間はデバイスに接続する",
   "settings.device_poll": "コントローラーの更新間隔",
   "devctl.fn.next_uv_channel": "次のスペクトルチャンネル"
 }

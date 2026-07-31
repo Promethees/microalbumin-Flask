@@ -356,6 +356,8 @@
   "music.yt_unavailable": "该内容不可用，正在跳过。",
   "devctl.title": "设备控制器",
   "devctl.connecting": "正在连接设备…",
+  "devctl.link": "连接设备",
+  "devctl.link_off": "未连接 — 串口空闲",
   "devctl.connected": "已连接",
   "devctl.busy": "读取会话进行中时不可用",
   "devctl.offline": "未找到比色计",
@@ -435,11 +437,13 @@
   "devctl.fn.minus_100": "−100",
   "devctl.fn.dismiss": "关闭",
   "hint.devctl_channels": "将设备切换到这些多路复用通道。Blank 会被清除 — 需要重新执行 blank。",
+  "hint.devctl_link": "允许应用占用设备的串口。关闭后可将串口留给固件更新或串口监视器使用。",
   "hint.devctl_conc_set": "将此数值发送到设备，并保存为本次测量的浓度。",
   "hint.devctl_conc_unknown": "将设备上的浓度恢复为未知。",
   "hint.devctl_timing_set": "将两个数值发送到设备并保存为其设置。",
   "hint.devctl_timing_none": "保存为无 timeout：测量持续到手动停止。",
   "settings.device_control": "显示设备控制器面板",
+  "settings.device_link": "面板展开时连接设备",
   "settings.device_poll": "设备控制器刷新间隔",
   "devctl.fn.next_uv_channel": "下一个光谱通道"
 }

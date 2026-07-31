@@ -555,9 +555,19 @@
                     <span id="device-control-chevron" class="folder-chevron collapsed-chevron">▼</span>
                 </h2>
                 <div id="device-control-collapse" class="section-collapse collapsed">
-                    <div id="device-control-status" class="devctl-status" role="status" aria-live="polite">
-                        <span class="devctl-status-dot" aria-hidden="true"></span>
-                        <span id="device-control-status-text" data-i18n="devctl.connecting">Reaching the device…</span>
+                    <!-- The status strip carries the connection switch: turning it
+                         off releases the port at once, so the panel can stay open
+                         while a firmware update or a serial monitor uses it. -->
+                    <div class="devctl-status-row">
+                        <div id="device-control-status" class="devctl-status" role="status" aria-live="polite">
+                            <span class="devctl-status-dot" aria-hidden="true"></span>
+                            <span id="device-control-status-text" data-i18n="devctl.connecting">Reaching the device…</span>
+                        </div>
+                        <label class="devctl-link-toggle" data-i18n-hint="hint.devctl_link"
+                            data-hint="Let the app hold the device's serial port. Turn this off to leave the port free for a firmware update or a serial monitor.">
+                            <input type="checkbox" id="devctl-link-toggle" onchange="onDeviceLinkToggle()" checked>
+                            <span data-i18n="devctl.link">Connect to the device</span>
+                        </label>
                     </div>
                     <div id="device-control-body" class="devctl-body hidden">
                         <!-- The board's face: SELECT and START in the top corners,

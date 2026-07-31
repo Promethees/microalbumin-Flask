@@ -498,6 +498,30 @@ class TestUiStyle:
         assert user_settings.load()["ui_style"] == "classic"
 
 
+class TestDeviceLinkSetting:
+    """`device_link_enabled` is the controller's connection switch: whether the
+    app may hold the serial port while the panel is open. Distinct from
+    `device_control_enabled`, which hides the panel altogether."""
+
+    def test_defaults_on(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        assert user_settings.load()["device_link_enabled"] is True
+
+    @pytest.mark.parametrize("value,expected", [(False, False), (True, True), (0, False), (1, True)])
+    def test_coerced_to_bool(self, tmp_path, monkeypatch, value, expected):
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"device_link_enabled": value})
+        assert user_settings.load()["device_link_enabled"] is expected
+
+    def test_is_independent_of_the_panel_setting(self, tmp_path, monkeypatch):
+        """Parking the port must not hide the panel, and vice versa."""
+        monkeypatch.setattr(state, "script_dir", str(tmp_path))
+        user_settings.save({"device_link_enabled": False})
+        loaded = user_settings.load()
+        assert loaded["device_link_enabled"] is False
+        assert loaded["device_control_enabled"] is True
+
+
 class TestSessionStripSetting:
     """`session_strip_enabled` is the instrument style's live-readout opt-out."""
 

@@ -116,6 +116,16 @@ function deviceControlEnabled() {
     return typeof USER_SETTINGS === 'undefined' || USER_SETTINGS.device_control_enabled !== false;
 }
 
+// The connection switch beside the status strip. Distinct from the setting
+// above: that one hides the feature, this one decides whether the app may hold
+// the port while the panel is open — the state to be in when a firmware update
+// or a serial monitor wants the device.
+function deviceLinkEnabled() {
+    const box = document.getElementById('devctl-link-toggle');
+    if (box) return box.checked;
+    return typeof USER_SETTINGS === 'undefined' || USER_SETTINGS.device_link_enabled !== false;
+}
+
 function devicePollInterval() {
     const ms = (typeof USER_SETTINGS !== 'undefined') ? USER_SETTINGS.device_state_poll_ms : null;
     return (typeof ms === 'number' && ms >= 500) ? ms : 1500;
@@ -137,8 +147,39 @@ function toggleDeviceController() {
     }
 }
 
+// Flipping the switch: on resumes the poll, off stops it and releases the port
+// rather than leaving it to the 30 s idle reaper — someone who turns this off is
+// usually about to give the port to something else, and a switch that appears to
+// do nothing for half a minute is a switch that gets flipped again.
+function onDeviceLinkToggle() {
+    const enabled = deviceLinkEnabled();
+    if (typeof saveUserSetting === 'function') saveUserSetting('device_link_enabled', enabled);
+    if (enabled) {
+        if (deviceControlExpanded()) startDevicePolling();
+        return;
+    }
+    stopDevicePolling();
+    releaseDeviceLink();
+    setDeviceControlStatus('offline', t('devctl.link_off', 'Not connected — the port is free'));
+}
+
+async function releaseDeviceLink() {
+    try {
+        await fetch('/device/disconnect', { method: 'POST' });
+    } catch (err) {
+        // Nothing to tell the user: the reaper drops the port regardless, and
+        // this runs while they are switching away from the device.
+    }
+}
+
 function startDevicePolling() {
     if (devicePollTimer) return;
+    // The switch is checked here rather than at every call site, so no path can
+    // start a poll behind the user's back.
+    if (!deviceLinkEnabled()) {
+        setDeviceControlStatus('offline', t('devctl.link_off', 'Not connected — the port is free'));
+        return;
+    }
     pollDeviceState();
     devicePollTimer = setInterval(pollDeviceState, devicePollInterval());
 }
@@ -979,6 +1020,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const section = document.getElementById('device-control-section');
     if (!section) return;
     if (!deviceControlEnabled()) section.classList.add('hidden');
+    // The switch remembers its position across reloads: a user who parked the
+    // port for a firmware update should not find the app holding it again after
+    // the browser reloads.
+    const linkToggle = document.getElementById('devctl-link-toggle');
+    if (linkToggle && typeof USER_SETTINGS !== 'undefined') {
+        linkToggle.checked = USER_SETTINGS.device_link_enabled !== false;
+    }
     // Typing in the concentration fields takes them off the poll's redraw until
     // the value is sent (see deviceConcDirty).
     const concValue = document.getElementById('devctl-conc-value');

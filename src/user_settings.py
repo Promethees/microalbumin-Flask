@@ -74,6 +74,12 @@ DEFAULTS = {
     # panel starts collapsed and only opens the serial port once expanded — so a
     # user who never opens it never touches the device.
     "device_control_enabled": True,
+    # Whether the expanded controller may open the serial port at all. The panel
+    # above hides the whole feature; this is the runtime switch beside the status
+    # strip, for keeping the panel open while handing the port to something else
+    # (a firmware update, a serial monitor). Turning it off releases the port at
+    # once rather than waiting out the idle reaper.
+    "device_link_enabled": True,
     # How often the expanded controller re-reads the device (STATE?). A poll, not
     # a stream: the device answers a question rather than pushing, and at this
     # cadence the readout tracks a button press without the port ever going quiet
@@ -224,7 +230,7 @@ def save(updates: dict) -> bool:
                      "default_inf_timeout", "merge_directory_picker",
                      "disable_popups", "ai_feedback_enabled",
                      "live_stream_enabled", "session_strip_enabled",
-                     "device_control_enabled",
+                     "device_control_enabled", "device_link_enabled",
                      "music_enabled", "music_shuffle"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])

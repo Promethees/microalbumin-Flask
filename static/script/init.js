@@ -643,6 +643,7 @@ const SETTINGS_DEFAULTS = {
     live_stream_enabled: true,
     session_strip_enabled: true,
     device_control_enabled: true,
+    device_link_enabled: true,
     device_state_poll_ms: 1500,
     ui_style: 'instrument',
     merge_directory_picker: false,
@@ -777,6 +778,7 @@ function _buildSettingsHTML(s, folders, aiStats) {
                 ${rowCheck(t('settings.live_stream', 'Stream live readings (recommended)'), 'swal-live-stream', s.live_stream_enabled !== false)}
                 ${rowCheck(t('settings.session_strip', 'Show the session strip while reading'), 'swal-session-strip', s.session_strip_enabled !== false)}
                 ${rowCheck(t('settings.device_control', 'Show the Device Controller panel'), 'swal-device-control', s.device_control_enabled !== false)}
+                ${rowCheck(t('settings.device_link', 'Connect to the device when the panel is open'), 'swal-device-link', s.device_link_enabled !== false)}
                 ${row(t('settings.device_poll', 'Device Controller refresh'), 'ms (500-10000)', num('swal-device-poll', 500, s.device_state_poll_ms ?? 1500))}
             </div>
         </div>
@@ -903,6 +905,7 @@ function _readSettingsForm() {
         // so the setting could not actually be turned off from this dialog.
         session_strip_enabled: document.getElementById('swal-session-strip').checked,
         device_control_enabled: document.getElementById('swal-device-control').checked,
+        device_link_enabled: document.getElementById('swal-device-link').checked,
         device_state_poll_ms: parseInt(document.getElementById('swal-device-poll').value, 10) || 1500,
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
@@ -956,6 +959,7 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-live-stream').checked = s.live_stream_enabled !== false;
     document.getElementById('swal-session-strip').checked = s.session_strip_enabled !== false;
     document.getElementById('swal-device-control').checked = s.device_control_enabled !== false;
+    document.getElementById('swal-device-link').checked = s.device_link_enabled !== false;
     document.getElementById('swal-device-poll').value = s.device_state_poll_ms ?? 1500;
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;

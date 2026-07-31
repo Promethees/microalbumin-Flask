@@ -5504,11 +5504,30 @@ body.dark #run-script-btn:enabled {
    in the top corners, d-pad below-left, A and B below-right — because a control
    that mirrors the hardware needs no legend.
    ========================================================================== */
+/* State on the left, the connection switch on the right — the switch belongs
+   with the state it governs, not in the settings modal two clicks away. */
+.devctl-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.devctl-link-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    cursor: pointer;
+}
+
 .devctl-status {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 12px;
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
