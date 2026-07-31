@@ -2473,6 +2473,117 @@ body.dark .swal2-container.swal2-backdrop-show {
 }
 
 /* ==========================================================================
+   SweetAlert2 buttons — the app's own button language.
+
+   The blanket `button:not(.swal2-*)` rule at the top of this sheet deliberately
+   skips these, so until now every dialog wore SweetAlert's stock palette
+   (#3085d6 confirm, #d33 cancel, 0.25em radius) — the one place in the app where
+   a control was neither flat nor hairline-bounded nor built from a token.
+
+   Three roles, and the *role* decides the colour, never the call site:
+     confirm — the primary: the only filled control in the dialog.
+     cancel  — chrome: the way out is available, not advertised.
+     deny / .swal-danger confirm — destructive, in --danger.
+
+   Scoped to the instrument style: classic keeps SweetAlert's own look, which is
+   what it shipped with (Rule.md 2.34). `!important` throughout because
+   SweetAlert writes `background-color` inline whenever a *ButtonColor option is
+   passed, and an inline style beats any selector.
+   ========================================================================== */
+body:not(.ui-classic) .swal2-popup .swal2-styled {
+    margin: 0 6px;
+    padding: 8px 18px;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--r-press) !important;
+    border: 1px solid transparent;
+    box-shadow: none !important;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled:focus {
+    box-shadow: none !important;
+}
+
+/* Keyboard focus still has to be visible — SweetAlert's own ring is removed
+   above, so an outline replaces it rather than leaving nothing. It takes the
+   button's own colour: SweetAlert autofocuses the confirm button, and an
+   accent-blue ring drawn around a red destructive one reads as two signals
+   disagreeing about what the button is. */
+body:not(.ui-classic) .swal2-popup .swal2-styled:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-deny:focus-visible,
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger:focus-visible {
+    outline-color: var(--danger);
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-confirm {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #ffffff !important;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-confirm:hover:enabled {
+    background: var(--accent-strong) !important;
+    border-color: var(--accent-strong) !important;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-cancel {
+    background: var(--panel) !important;
+    border-color: var(--hairline) !important;
+    color: var(--ink) !important;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-cancel:hover:enabled {
+    border-color: var(--accent) !important;
+    background: var(--accent-wash) !important;
+    color: var(--accent) !important;
+}
+
+/* Destructive: the dialogs that delete a file, a folder, a subject, or the AI's
+   learned weights. `swal-danger` is passed as customClass.confirmButton so the
+   colour follows the *meaning*, not a hex chosen at the call site. */
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-deny,
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger {
+    background: var(--danger) !important;
+    border-color: var(--danger) !important;
+    color: #ffffff !important;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal2-deny:hover:enabled,
+body:not(.ui-classic) .swal2-popup .swal2-styled.swal-danger:hover:enabled {
+    background: var(--danger) !important;
+    filter: brightness(1.12);
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-styled:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* The footer holds a secondary control in the CSV editor (the mode switch), so
+   it reads as chrome rather than as a second primary. */
+body:not(.ui-classic) .swal2-popup .swal2-footer .swal2-styled.swal2-confirm {
+    background: var(--panel) !important;
+    border-color: var(--hairline) !important;
+    color: var(--ink) !important;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-footer .swal2-styled.swal2-confirm:hover:enabled {
+    border-color: var(--accent) !important;
+    background: var(--accent-wash) !important;
+    color: var(--accent) !important;
+}
+
+body:not(.ui-classic) .swal2-popup .swal2-footer {
+    border-top: 1px solid var(--hairline-soft);
+}
+
+/* ==========================================================================
    App Settings Modal (responsive 2-column grid)
    ========================================================================== */
 #settings-modal-body {
@@ -6943,6 +7054,19 @@ body.ui-classic.dark .display {
 
 body.ui-classic.light #plot-analysis {
     color: #333;
+}
+
+/* Destructive confirms stay red in classic too. The colour used to come from a
+   `confirmButtonColor: '#d33'` at each call site; those are gone, so without
+   this the Delete button in classic would render as an ordinary confirm. Which
+   button destroys something is meaning, not styling — it does not belong to
+   either visual language, so both carry it. */
+body.ui-classic .swal2-popup .swal2-styled.swal-danger {
+    /* `background`, not `background-color`: classic redefines --danger-gradient
+       as a linear-gradient, which background-color silently rejects — the button
+       rendered blank white with white text. */
+    background: var(--danger-gradient, #c93a32) !important;
+    color: #ffffff !important;
 }
 
 body.ui-classic .swal2-input {

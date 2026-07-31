@@ -1444,7 +1444,7 @@ async function resetAiFeedback() {
         showCancelButton: true,
         confirmButtonText: t('settings.ai_feedback.reset', 'Reset learning'),
         cancelButtonText: t('common.cancel', 'Cancel'),
-        confirmButtonColor: '#d33',
+        customClass: { confirmButton: 'swal-danger' },
     });
     if (!res.isConfirmed) return;
     const statusEl = document.getElementById('swal-ai-feedback-status');
@@ -1529,7 +1529,6 @@ function showUpdateModal() {
         showCancelButton: true,
         confirmButtonText: 'Update Now',
         cancelButtonText: 'Later',
-        confirmButtonColor: '#f59e0b',
     }).then(result => {
         if (result.isConfirmed) _applyUpdate();
     });

@@ -976,13 +976,11 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                     title: `Edit ${nameToShow}`,
                     width: '800px',
                     html: renderContent({ content: contentToShow }),
-                    footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
+                    footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px;">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
                     focusConfirm: false,
                     showCancelButton: true,
                     confirmButtonText: 'Save Changes',
                     cancelButtonText: 'Cancel',
-                    confirmButtonColor: '#50C878',
-                    cancelButtonColor: '#d33',
                     didOpen: () => {
                         // Restore filename
                         const nameInput = document.getElementById('swal-input-filename');

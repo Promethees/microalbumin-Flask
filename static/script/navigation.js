@@ -268,7 +268,7 @@ async function deleteDataFolder(name, path) {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Delete',
-        confirmButtonColor: '#ef4444'
+        customClass: { confirmButton: 'swal-danger' },
     });
     if (!result.isConfirmed) return;
 

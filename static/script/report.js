@@ -2370,7 +2370,7 @@ async function deleteReportItem(btn) {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Remove',
-        confirmButtonColor: '#ef4444'
+        customClass: { confirmButton: 'swal-danger' },
     });
     if (!result.isConfirmed) return;
 

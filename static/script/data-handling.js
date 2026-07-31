@@ -588,8 +588,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 text: `Do you want to delete ${fileName}? This action cannot be undone.`,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
+                customClass: { confirmButton: 'swal-danger' },
                 confirmButtonText: 'Yes, delete it!'
             }).then((result) => {
                 if (result.isConfirmed) {
@@ -1223,7 +1222,7 @@ function deleteReportSubject(subjectName, button) {
         text: `This will permanently delete '${subjectName}' and all its items.`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
+        customClass: { confirmButton: 'swal-danger' },
         confirmButtonText: 'Yes, delete'
     }).then(async (result) => {
         if (!result.isConfirmed) return;

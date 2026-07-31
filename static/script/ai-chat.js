@@ -1505,7 +1505,6 @@
                     showCancelButton: true,
                     confirmButtonText: _NEW_CHAT_CONFIRM_OK[lang] || _NEW_CHAT_CONFIRM_OK.en,
                     cancelButtonText: _EDIT_CANCEL[lang] || _EDIT_CANCEL.en,
-                    confirmButtonColor: '#6366f1',
                 }).then(res => { if (res.isConfirmed) doReset(); });
             } else {
                 doReset();
