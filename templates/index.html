@@ -605,10 +605,20 @@
                                 <span class="devctl-label" data-i18n="devctl.channels">Active channels</span>
                                 <span class="devctl-note" data-i18n="devctl.channels_note">Runtime only — the device returns to its configured channels when powered off.</span>
                             </div>
-                            <div id="devctl-channel-boxes" class="devctl-channel-boxes"></div>
+                            <div id="devctl-channel-boxes" class="devctl-channel-boxes devctl-strip"></div>
                             <button type="button" id="devctl-channels-apply" onclick="applyDeviceChannels()" disabled
                                 data-i18n="devctl.apply_channels" data-i18n-hint="hint.devctl_channels"
                                 data-hint="Re-point the device at these multiplexer channels. Clears the blank — the device must be blanked again.">Apply channels</button>
+                        </div>
+                        <!-- The device's own menu, as a bar. Only mounted when the
+                             firmware reports the "menu" capability, because the item
+                             list is built on the device and cannot be guessed. -->
+                        <div id="devctl-menu" class="devctl-menu hidden">
+                            <div class="devctl-channels-head">
+                                <span class="devctl-label" data-i18n="devctl.menu">Menu</span>
+                                <span class="devctl-note" data-i18n="devctl.menu_note">Opens the entry on the device, exactly as choosing it on the keypad does.</span>
+                            </div>
+                            <div id="devctl-menu-items" class="devctl-menu-items devctl-strip"></div>
                         </div>
                     </div>
                 </div>

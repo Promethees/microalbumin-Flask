@@ -108,6 +108,44 @@ def test_state_parses_the_reply():
     assert link.state()['chans'] == [0, 3]
 
 
+def test_menu_items_splits_the_list():
+    link = FakeLink(["MENUITEMS Absorbance,Transmittance,glucose,Settings"])
+    assert link.menu_items() == ['Absorbance', 'Transmittance', 'glucose', 'Settings']
+    assert link.sent == ['MENU?']
+
+
+def test_menu_items_keeps_an_empty_entry():
+    """The index is the address MENU: takes, so a blank name may not be dropped
+    — doing so would shift every entry after it onto the wrong screen."""
+    link = FakeLink(["MENUITEMS Absorbance,,Settings"])
+    assert link.menu_items() == ['Absorbance', '', 'Settings']
+
+
+def test_menu_items_on_an_empty_menu():
+    link = FakeLink(["MENUITEMS "])
+    assert link.menu_items() == []
+
+
+def test_menu_items_on_firmware_without_the_command_says_so():
+    link = FakeLink(["ERR_UNKNOWN"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.menu_items()
+    assert 'firmware' in str(excinfo.value)
+
+
+def test_select_menu_sends_the_index():
+    link = FakeLink(["ACK_MENU"])
+    assert link.select_menu(3) is True
+    assert link.sent == ['MENU:3']
+
+
+def test_select_menu_surfaces_the_device_reason():
+    link = FakeLink(["ERR_MENU out of range"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.select_menu(99)
+    assert 'out of range' in str(excinfo.value)
+
+
 def test_exchange_ignores_lines_that_are_not_the_reply():
     """A banner or the tail of an earlier session must not pass for an answer."""
     link = device_link.DeviceLink()
@@ -185,7 +223,9 @@ def test_controller_is_unavailable_during_a_session(client):
     state.process = _running_process()
     for call in (lambda: client.get('/device/state'),
                  lambda: client.post('/device/button', json={'button': 'menu'}),
-                 lambda: client.post('/device/channels', json={'channels': [0]})):
+                 lambda: client.post('/device/channels', json={'channels': [0]}),
+                 lambda: client.get('/device/menu'),
+                 lambda: client.post('/device/menu', json={'index': 0})):
         rv = call()
         assert rv.status_code == 409
         assert rv.get_json()['status'] == 'busy'
@@ -229,6 +269,41 @@ def test_channels_route_applies_the_set(client):
         rv = client.post('/device/channels', json={'channels': [0, 1]})
     apply.assert_called_once_with([0, 1])
     assert rv.get_json()['state']['chans'] == [0, 1]
+
+
+def test_menu_route_returns_the_items(client):
+    with patch.object(device_link.link, 'menu_items', return_value=['Absorbance', 'Settings']):
+        rv = client.get('/device/menu')
+    assert rv.status_code == 200
+    assert rv.get_json()['items'] == ['Absorbance', 'Settings']
+
+
+def test_menu_route_502_when_the_device_cannot_list_it(client):
+    with patch.object(device_link.link, 'menu_items',
+                      side_effect=device_link.DeviceLinkError('no menu')):
+        rv = client.get('/device/menu')
+    assert rv.status_code == 502
+
+
+def test_menu_route_opens_an_entry_and_returns_the_new_state(client):
+    with patch.object(device_link.link, 'select_menu', return_value=True) as select, \
+         patch.object(device_link.link, 'state', return_value={'mode': 'MEASURE'}):
+        rv = client.post('/device/menu', json={'index': 2})
+    select.assert_called_once_with(2)
+    assert rv.get_json()['state'] == {'mode': 'MEASURE'}
+
+
+def test_menu_route_rejects_a_negative_index(client):
+    assert client.post('/device/menu', json={'index': -1}).status_code == 400
+
+
+def test_menu_route_accepts_index_zero(client):
+    """0 is a real entry — the first one — and must not read as a missing field."""
+    with patch.object(device_link.link, 'select_menu', return_value=True) as select, \
+         patch.object(device_link.link, 'state', return_value={}):
+        rv = client.post('/device/menu', json={'index': 0})
+    assert rv.status_code == 200
+    select.assert_called_once_with(0)
 
 
 def test_run_script_releases_the_port_first(client):

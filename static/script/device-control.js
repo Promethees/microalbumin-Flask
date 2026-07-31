@@ -188,7 +188,13 @@ function setDeviceControlStatus(kind, text) {
     // The body stays up while offline would show a frozen snapshot as if it were
     // live, so hide it whenever the device is not answering.
     body.classList.toggle('hidden', kind !== 'live');
-    if (kind !== 'live') deviceState = null;
+    // A device that stopped answering may be a *different* device (or the same
+    // one rebooted with another calibrations.json) by the time it answers again,
+    // so the menu is re-asked for rather than redrawn from the old list.
+    if (kind !== 'live') {
+        deviceState = null;
+        deviceMenuItems = null;
+    }
 }
 
 function applyDeviceState(state) {
@@ -197,6 +203,7 @@ function applyDeviceState(state) {
     renderDeviceReadout(state);
     renderDeviceKeypad(state);
     renderDeviceChannels(state);
+    renderDeviceMenu(state);
 }
 
 function renderDeviceReadout(state) {
@@ -533,6 +540,119 @@ async function applyDeviceChannels() {
         showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
     } finally {
         if (apply) apply.disabled = false;
+    }
+}
+
+// ── the device's menu, as a bar ──────────────────────────────────────────────
+// The entries are built on the device (default measurements + every key in its
+// calibrations.json + Concentration / About / Settings), so the host has to ask
+// for them: `GET /device/menu` once, then `POST` an index to open one. The list
+// changes only when the device reboots, which is why it is not part of the
+// 1.5 s state poll — `menupos` in the state is what moves.
+
+let deviceMenuItems = null;      // null = not fetched yet for this connection
+let deviceMenuPending = false;   // a fetch or a selection is in flight
+
+function deviceSupportsMenu(state) {
+    return (state.caps || []).indexOf('menu') !== -1;
+}
+
+function renderDeviceMenu(state) {
+    const panel = document.getElementById('devctl-menu');
+    if (!panel) return;
+    if (!deviceSupportsMenu(state)) {
+        // An older build cannot list its menu, and a bar that guessed the
+        // entries would be a bar that opens the wrong one.
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+    if (deviceMenuItems === null) {
+        loadDeviceMenu();
+        return;
+    }
+    drawDeviceMenuItems(state);
+}
+
+async function loadDeviceMenu() {
+    if (deviceMenuPending) return;
+    deviceMenuPending = true;
+    try {
+        const res = await fetch('/device/menu');
+        const data = await res.json();
+        if (data.status === 'success' && Array.isArray(data.items)) {
+            deviceMenuItems = data.items;
+            if (deviceState) drawDeviceMenuItems(deviceState);
+        }
+        // A failure leaves the list null so the next poll asks again — the
+        // device may simply have been mid-rebuild when the question arrived.
+    } catch (err) {
+        /* same: retried by the next poll */
+    } finally {
+        deviceMenuPending = false;
+    }
+}
+
+function drawDeviceMenuItems(state) {
+    const host = document.getElementById('devctl-menu-items');
+    if (!host || !deviceMenuItems) return;
+
+    // The device highlights one entry (`menupos`) and is *on* one of them
+    // (`meas`, or the screen it opened) — two different things, and the bar
+    // shows both: the highlighted entry is where the keypad's Up/Down sit, the
+    // open one is what the device is actually doing.
+    const openName = deviceMenuOpenName(state);
+    host.innerHTML = '';
+    deviceMenuItems.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'devctl-menu-item';
+        button.textContent = item || `#${index + 1}`;
+        button.classList.toggle('devctl-menu-item--open', !!openName && item === openName);
+        button.classList.toggle('devctl-menu-item--cursor', index === state.menupos);
+        button.disabled = deviceMenuPending;
+        button.setAttribute('data-hint', t('devctl.menu_open_hint', 'Open on the device') + ` — ${item}`);
+        button.addEventListener('click', () => selectDeviceMenu(index));
+        host.appendChild(button);
+    });
+}
+
+// Which entry the device currently has open. In Measure that is the measurement
+// itself; the three built-in screens name themselves through the mode.
+function deviceMenuOpenName(state) {
+    if (state.mode === 'SETTINGS') return 'Settings';
+    if (state.mode === 'CONCENTRATION') return 'Concentration';
+    if (state.mode === 'MEASURE') return state.meas || null;
+    return null;
+}
+
+async function selectDeviceMenu(index) {
+    if (deviceMenuPending) return;
+    deviceMenuPending = true;
+    if (deviceState) drawDeviceMenuItems(deviceState);   // disables the row
+    try {
+        const res = await fetch('/device/menu', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            deviceMenuPending = false;
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        showDeviceControlError(data.message || t('devctl.menu_failed', 'The device refused that menu entry'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        deviceMenuPending = false;
+        if (deviceState) drawDeviceMenuItems(deviceState);
     }
 }
 

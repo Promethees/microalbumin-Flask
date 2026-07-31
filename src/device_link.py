@@ -231,6 +231,35 @@ class DeviceLink:
             raise DeviceLinkError(detail or "The device refused the channel change")
         return True
 
+    def menu_items(self):
+        """The device's menu, in device order (MENU?).
+
+        The list is built on the device from its own calibrations.json, so it
+        cannot be derived here — it has to be asked for. An empty item is kept:
+        the index *is* the address MENU: takes, so dropping one would silently
+        shift every entry after it.
+        """
+        reply = self.command(
+            "MENU?", lambda line: line.startswith("MENUITEMS") or line in ("ERR_MENU", "ERR_UNKNOWN"))
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot list its menu")
+        if reply == "ERR_MENU":
+            raise DeviceLinkError("The device could not report its menu")
+        body = reply[len("MENUITEMS"):].strip()
+        return [item.strip() for item in body.split(",")] if body else []
+
+    def select_menu(self, index):
+        """Open one menu entry by its index in menu_items() (MENU:)."""
+        reply = self.command(
+            f"MENU:{int(index)}",
+            lambda line: line == "ACK_MENU" or line.startswith("ERR_MENU") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware cannot open menu entries")
+        if reply != "ACK_MENU":
+            detail = reply[len("ERR_MENU"):].strip()
+            raise DeviceLinkError(detail or "The device refused that menu entry")
+        return True
+
 
 # One link per process: the port has one owner, so the object that owns it is a
 # singleton rather than something a route constructs.

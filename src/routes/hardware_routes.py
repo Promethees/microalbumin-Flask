@@ -337,6 +337,50 @@ def device_channels(validated_data):
         return jsonify({'status': 'success', 'state': None})
 
 
+@hardware_bp.route('/device/menu', methods=['GET'])
+def device_menu():
+    """The device's menu entries, in device order (MENU?).
+
+    Its own list: the entries are the default measurements plus every key in the
+    device's calibrations.json plus the built-ins, so the host cannot derive it.
+    Answered separately from /device/state because it changes only when the
+    device reboots, while the state is polled every 1.5 s.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        return jsonify({'status': 'success', 'items': device_link.link.menu_items()})
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+
+
+@hardware_bp.route('/device/menu', methods=['POST'])
+@validate_json({'index': (int, None, True)})
+def device_menu_select(validated_data):
+    """Open one menu entry on the device by index (MENU:).
+
+    The index addresses the list /device/menu returned; the device runs its own
+    menu handler on it, so opening an entry from here does exactly what choosing
+    it on the keypad does.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    index = validated_data['index']
+    if index < 0:
+        return jsonify({'status': 'failure', 'message': 'Menu index must be a whole number'}), 400
+    try:
+        device_link.link.select_menu(index)
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    # Opening an entry changes the screen — and, for a measurement, what the
+    # device is measuring — so the fresh state rides back with the ACK the same
+    # way it does for a button press.
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'state': None})
+
+
 @hardware_bp.route('/stream_session', methods=['GET'])
 def stream_session():
     """SSE tail of the running session: new CSV rows + new log text, pushed.

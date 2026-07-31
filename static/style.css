@@ -5536,6 +5536,11 @@ body.dark #run-script-btn:enabled {
 
 .devctl-body {
     display: grid;
+    /* One column that may not exceed the panel. Without the minmax the column is
+       auto-sized to the face's max-content, so a keypad wider than the panel
+       simply hung off its right edge — and, because the keypad's own scroll box
+       was then exactly as wide as its content, nothing reported an overflow. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
     /* The face folds on the *panel's* width, not the window's — this section can
        be narrow inside a wide window (and page zoom moves the two apart), which
@@ -5799,19 +5804,22 @@ body.dark #run-script-btn:enabled {
 
 .devctl-btn--idle .devctl-btn-glyph { color: var(--ink-dim); }
 
-/* Too narrow for three columns: the face folds into one, in the order it is
-   read across the board — the left-hand keys (SELECT, then the d-pad), the
-   screen, then the right-hand keys (START, then A / B). Squeezing the three
-   columns instead is what put the screen half off the panel. */
-@container (max-width: 760px) {
+/* Too narrow for three columns: the face folds into three bands, in the order it
+   is read across the board — the left-hand keys, the screen, the right-hand
+   keys. Each band keeps its keys on **one line**: the d-pad cross flattens to
+   its own row beside SELECT, and START sits on the line with B and A. A band per
+   region is still a map of the board (left is left); a key per row is a list.
+
+   The threshold is deliberately tight — 620 px is a hair over what the three
+   columns actually need (d-pad 222 + screen 220 + A/B 105 + gaps) — so the face
+   stays whole wherever it fits. */
+@container (max-width: 620px) {
     .devctl-keypad {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         grid-template-areas:
-            "kmenu"
-            "kdpad"
-            "kscreen"
-            "kblank"
-            "kab";
+            "kmenu   kdpad"
+            "kscreen kscreen"
+            "kblank  kab";
         row-gap: 14px;
         justify-content: start;
         overflow-x: visible;
@@ -5821,28 +5829,62 @@ body.dark #run-script-btn:enabled {
     .devctl-cluster--dpad,
     .devctl-cluster--ab { align-self: start; }
     .devctl-screen { justify-self: stretch; min-width: 0; }
+
+    /* The cross, flattened in reading order: ◀ ▲ ▼ ▶. */
+    .devctl-cluster--dpad {
+        grid-template-columns: repeat(4, var(--devctl-key-w));
+        grid-template-areas: "kleft kup kdown kright";
+    }
+
+    /* Side by side in board order — B is the left of the pair — so the diagonal
+       stagger has nothing left to say and is dropped. */
+    .devctl-cluster--ab {
+        grid-template-columns: repeat(2, var(--devctl-key-w));
+        grid-template-areas: "kb ka";
+    }
+
+    /* Placed by area here, not by the wide layout's stagger margin: without the
+       assignment they auto-flow in DOM order and A lands left of B. */
+    .devctl-btn--kb { grid-area: kb; }
+    .devctl-btn--ka { grid-area: ka; margin-left: 0; }
 }
 
 /* Fallback for browsers without container queries: the window is the best
    guess available there. */
-@media (max-width: 760px) {
+@media (max-width: 620px) {
     .devctl-keypad {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: auto minmax(0, 1fr);
         grid-template-areas:
-            "kmenu"
-            "kdpad"
-            "kscreen"
-            "kblank"
-            "kab";
+            "kmenu   kdpad"
+            "kscreen kscreen"
+            "kblank  kab";
         row-gap: 14px;
         justify-content: start;
     }
 
     .devctl-cluster--topright { justify-items: start; }
     .devctl-screen { justify-self: stretch; min-width: 0; }
+
+    .devctl-cluster--dpad {
+        grid-template-columns: repeat(4, var(--devctl-key-w));
+        grid-template-areas: "kleft kup kdown kright";
+    }
+
+    .devctl-cluster--ab {
+        grid-template-columns: repeat(2, var(--devctl-key-w));
+        grid-template-areas: "kb ka";
+    }
+
+    /* Placed by area here, not by the wide layout's stagger margin: without the
+       assignment they auto-flow in DOM order and A lands left of B. */
+    .devctl-btn--kb { grid-area: kb; }
+    .devctl-btn--ka { grid-area: ka; margin-left: 0; }
 }
 
-/* Below that the key itself steps down rather than the face overflowing. */
+/* Below that the key itself steps down rather than a band overflowing. Set on
+   the keypad, not the panel: a container query styles the container's
+   descendants, never the container itself. */
+@container (max-width: 420px) { .devctl-keypad { --devctl-key-w: 62px; } }
 @media (max-width: 420px) { .devctl-body { --devctl-key-w: 62px; } }
 
 .devctl-channels {
@@ -5864,11 +5906,120 @@ body.dark #run-script-btn:enabled {
     color: var(--ink-dim);
 }
 
-.devctl-channel-boxes {
+/* One row of chips that scrolls sideways rather than wrapping: the channel set
+   and the device's menu are both *ordered* lists the operator reads across, and
+   a wrapped second row reads as a second group. Narrow panels stack instead —
+   see the container query at the end of this block. */
+.devctl-strip {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: stretch;
     gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.devctl-strip::-webkit-scrollbar {
+    height: 6px;
+}
+
+.devctl-strip::-webkit-scrollbar-track {
+    background: var(--well);
+    border-radius: 3px;
+}
+
+.devctl-strip::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 3px;
+}
+
+.devctl-strip::-webkit-scrollbar-thumb:hover {
+    background-color: var(--accent);
+}
+
+/* A chip may not shrink to fit the rail — that is what the scroll is for. */
+.devctl-strip > * {
+    flex: none;
+}
+
+.devctl-channel-boxes {
     margin-bottom: 10px;
+}
+
+.devctl-menu {
+    flex: 1 1 100%;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline-soft);
+}
+
+/* Entries are device text of any length, so a menu chip is not a fixed box the
+   way a key is — it is sized by its name and the rail scrolls. Four classes deep
+   for the same reason the keys are: the blanket button rule is (0,3,1) and would
+   centre the name, which reads wrong the moment the strip stacks full width. */
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 6px 12px;
+    background: var(--well);
+    color: var(--ink);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-press);
+    font-size: 12px;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item:enabled:hover {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+    color: var(--ink);
+}
+
+/* Two different facts, two different marks: the device is *on* the open entry,
+   and its keypad cursor is *resting* on the highlighted one. */
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--cursor {
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Narrow panel: both strips become vertical stacks, chips full width, no rail.
+   Same container as the keypad's fold — the panel's width, not the window's. */
+@container (max-width: 620px) {
+    .devctl-strip {
+        flex-direction: column;
+        align-items: stretch;
+        overflow-x: visible;
+        padding-bottom: 0;
+    }
+
+    .devctl-strip > * {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 620px) {
+    .devctl-strip {
+        flex-direction: column;
+        align-items: stretch;
+        overflow-x: visible;
+        padding-bottom: 0;
+    }
+
+    .devctl-strip > * {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
 
 .devctl-channel {
@@ -6060,6 +6211,24 @@ body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):d
     background-color: #f3f4f6;
     color: #9ca3af;
     border: 1px solid #e5e7eb;
+}
+
+/* The menu bar's two marks, restated for classic. The rule above is (0,4,1) and
+   re-declares border, background, colour and shadow — the very properties that
+   carry "the device has this entry open" and "its keypad cursor rests here", so
+   in classic every entry rendered identically and the bar said nothing. Five
+   classes deep to out-weigh it, in classic's own indigo rather than the
+   instrument accent. Which entry is selected is not decoration: it is the one
+   fact the bar exists to show, so it may not be lost to a style switch. */
+body.ui-classic .devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--open {
+    border: 1px solid var(--accent);
+    background: var(--accent-wash);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+body.ui-classic .devctl-body .devctl-menu .devctl-menu-items .devctl-menu-item--cursor {
+    box-shadow: inset 3px 0 0 var(--accent);
 }
 
 body.ui-classic .primary-btn:hover:enabled {
