@@ -1,61 +1,10 @@
-// Community content: the collapsible user-reviews banner at the top of the page
-// and the publication-reference block at the bottom.
+// Community content: the review submission dialog in the app's community strip.
 //
-// The lists themselves are rendered server-side from the curated JSON files
-// (see src/community.py), so this file only handles interaction: collapse state,
-// the review submission dialog, and citation copy-to-clipboard.
-
-const REVIEWS_COLLAPSED_KEY = 'reviews-banner-collapsed';
-
-// The banner is fixed to the top of the viewport, so the page has to reserve
-// room for it — and it must reserve the banner's *whole* current height, not
-// just the header row. Reserving only the header made an expanded banner overlay
-// the app, burying the logo and the User Guide button. Everything pinned to the
-// top of the viewport — the page padding, .top-left and the User Guide button —
-// reads --reviews-bar-h, so expanding pushes them all down instead.
-function syncReviewsBarHeight() {
-    const banner = document.getElementById('reviews-banner');
-    if (!banner) return;
-    const h = Math.round(banner.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--reviews-bar-h', `${h}px`);
-    // .top-right is positioned from a measured offset rather than the variable,
-    // so it has to be re-measured once the reserved gap changes. Reading the
-    // rect above already forced the layout the measurement below depends on.
-    if (typeof window.alignTopWithReference === 'function') window.alignTopWithReference();
-}
-
-// Collapse/expand the reviews banner and remember the choice — a returning user
-// who closed it should not have to close it again on every load.
-function toggleReviewsBanner(force) {
-    const banner = document.getElementById('reviews-banner');
-    if (!banner) return;
-    const collapsed = (force === undefined)
-        ? !banner.classList.contains('collapsed')
-        : !!force;
-    banner.classList.toggle('collapsed', collapsed);
-
-    const chevron = document.getElementById('reviews-chevron');
-    if (chevron) chevron.classList.toggle('collapsed-chevron', collapsed);
-    const toggle = document.getElementById('reviews-banner-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
-
-    try { localStorage.setItem(REVIEWS_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (e) { /* private mode */ }
-
-    // The reserved gap is the banner's height, which just changed.
-    syncReviewsBarHeight();
-}
-
-// Restore the stored collapse state and reserve the bar's height.
-function initReviewsBanner() {
-    if (!document.getElementById('reviews-banner')) return;
-    let stored = null;
-    try { stored = localStorage.getItem(REVIEWS_COLLAPSED_KEY); } catch (e) { /* private mode */ }
-    // Default collapsed: the banner sits above the app, and the tool — not the
-    // testimonials — is what a returning user came for.
-    toggleReviewsBanner(stored === null ? true : stored === '1');
-    // Content reflows at narrow widths, changing the banner's height.
-    window.addEventListener('resize', syncReviewsBarHeight);
-}
+// The reviews carousel and the citation block moved to the landing page
+// (templates/landing.html), which renders them server-side from the same
+// curated files (see src/community.py). What stays here is the one thing a
+// visitor can *do*: send a review. Nothing here publishes — the payload is
+// emailed to the admin, who confirms with the author first.
 
 // Review submission dialog. Nothing here publishes: the payload is emailed to
 // the admin, who confirms with the author before adding it to testimonials.json.
@@ -151,30 +100,3 @@ async function openReviewForm() {
         if (typeof window.hideSpinner === 'function') window.hideSpinner();
     }
 }
-
-// Copy a citation block (APA or BibTeX) and flash confirmation on the button.
-async function copyCitation(elementId, btn) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const text = el.textContent || '';
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch (e) {
-        // Clipboard API needs a secure context; fall back to a hidden textarea.
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); } catch (err) { /* nothing else to try */ }
-        document.body.removeChild(ta);
-    }
-    if (btn) {
-        const original = btn.textContent;
-        btn.textContent = '✅ Copied';
-        setTimeout(() => { btn.textContent = original; }, 1600);
-    }
-}
-
-window.addEventListener('load', initReviewsBanner);

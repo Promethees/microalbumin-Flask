@@ -12,8 +12,14 @@ The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](
 
 The landing page opens no session storage and does not refresh the account
 idle-timeout stamp, so a visitor who never enters the app costs nothing.
-Reviews and the citation block on it are read from the same curated files the
-app uses (`testimonials.json`, `publications.json`).
+
+The two pages do not duplicate each other. Everything product-facing lives on
+`/` only: the reviews, the citation block (`testimonials.json`,
+`publications.json`, both read through `src/community.py`), the intro video,
+and the installer download buttons. `/webapp` keeps what you need while
+working — account controls and the download token in the left column, and a
+page-bottom community strip holding the review submission form plus links to
+`/#reviews` and `/#cite`.
 
 ### Run it locally 
 	- Install `pyenv` with `Python 3.12.11` using `setup-install-pyenv.command`

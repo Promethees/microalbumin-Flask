@@ -17,36 +17,6 @@ function onConcenUnitChange() {
     if (typeof toggleMode === 'function') toggleMode();
 }
 
-(async function initDownloadLinks() {
-    const versionEl = document.getElementById('download-version');
-    try {
-        const resp = await fetch('/api/release-info');
-        if (!resp.ok) {
-            if (versionEl) versionEl.textContent = 'Build info unavailable';
-            return;
-        }
-        const data = await resp.json();
-        if (versionEl) {
-            versionEl.textContent = data.version && data.version !== 'unknown'
-                ? `Latest version available: ${data.version}`
-                : '';
-        }
-        ['mac', 'win', 'linux'].forEach(platform => {
-            const btn = document.getElementById(`download-${platform}-btn`);
-            const small = document.getElementById(`download-${platform}-small`);
-            if (!btn) return;
-            // Manually flagged "Work in progress" buttons are authoritative — leave them as-is.
-            if (btn.classList.contains('download-btn--unavailable')) return;
-            if (!data.available?.[platform]) {
-                btn.classList.add('download-btn--unavailable');
-                if (small) small.textContent = 'Not yet available';
-            }
-        });
-    } catch (e) {
-        console.warn('Could not fetch release info:', e);
-    }
-})();
-
 let serverAvailable = true;
 let logInterval, updateInterval, serverCheckInterval;
 

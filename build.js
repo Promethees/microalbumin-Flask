@@ -61,8 +61,8 @@ const MANUAL_RESERVED_NAMES = [
   // AI Assistant
   'OkapiAI',
 
-  // Community (reviews banner + publication reference)
-  'toggleReviewsBanner', 'initReviewsBanner', 'openReviewForm', 'copyCitation',
+  // Community (review submission dialog)
+  'openReviewForm',
 ];
 
 function getReservedNames() {

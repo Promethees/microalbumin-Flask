@@ -214,14 +214,11 @@ def index():
                          cal_json_list=cal_json_list,
                          cal_json_identity=cal_json_identity,
                          concen_units=CONCEN_UNITS,
-                         # Curated community content (src/community.py) —
-                         # rendered server-side so the banner and the
-                         # publication list need no extra round-trip.
-                         testimonials=community.get_testimonials(),
-                         publication_ref=community.get_publications(),
+                         # Reviews, the citation block and the installer buttons
+                         # are the landing page's job now, so none of the curated
+                         # community content or DOWNLOAD_AVAILABLE is needed here.
                          delimiter=delimiter,
                          production_mode= app.config['PRODUCTION_MODE'],
-                         download_available=DOWNLOAD_AVAILABLE,
                          account_user=account_user))
     return response
 

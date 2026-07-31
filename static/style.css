@@ -115,24 +115,6 @@ body.dark .section {
     display: none !important;
 }
 
-/* Intro video banner (top of #main-content) */
-.intro-video-frame {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-}
-
-.intro-video-frame iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: 0;
-}
-
 .okapi-line {
     /* Enables Flexbox on the <h1> element */
     display: flex;
@@ -2309,16 +2291,7 @@ body.dark .report-analysis td {
     color: #d1d5db !important;
 }
 
-/* ── Download Section ───────────────────────────────────────────────── */
-.download-tagline {
-    font-size: 0.82rem;
-    color: #6b7280;
-    margin: 0 0 12px 0;
-    line-height: 1.4;
-}
-
-body.dark .download-tagline { color: #9ca3af; }
-
+/* ── Account Section (left column) ──────────────────────────────────── */
 .account-nav {
     display: flex;
     align-items: center;
@@ -2379,176 +2352,6 @@ body.dark .logout-btn:hover { background: #450a0a33; }
 body.dark .delete-account-btn { color: #fca5a5; border-color: #fca5a5; }
 body.dark .delete-account-btn:hover { background: #450a0a33; }
 
-.download-version {
-    font-size: 0.78rem;
-    color: #6b7280;
-    margin: -4px 0 10px 0;
-    font-variant-numeric: tabular-nums;
-    min-height: 1em;
-}
-
-body.dark .download-version { color: #9ca3af; }
-
-.download-btn--unavailable {
-    opacity: 0.4;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
-.download-btn-wip {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.download-wip-label {
-    align-self: flex-start;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #b45309;
-    background: #fef3c7;
-    border-radius: 999px;
-    padding: 2px 8px;
-}
-
-body.dark .download-wip-label {
-    color: #fcd34d;
-    background: rgba(180, 83, 9, 0.25);
-}
-
-.download-btn-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.download-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    border-radius: var(--border-radius);
-    text-decoration: none;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    box-shadow: var(--shadow-sm);
-    cursor: pointer;
-}
-
-.download-btn:hover  { transform: translateY(-1px); }
-.download-btn:active { transform: translateY(0); }
-
-.mac-btn { background: #1c1c1e; color: #f5f5f7 !important; }
-.mac-btn:hover {
-    background: #2c2c2e;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-}
-
-.win-btn { background: #0078d4; color: #ffffff !important; }
-.win-btn:hover {
-    background: #006cbf;
-    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.45);
-}
-
-.linux-btn { background: #E95420; color: #ffffff !important; }
-.linux-btn:hover {
-    background: #c94115;
-    box-shadow: 0 4px 12px rgba(233, 84, 32, 0.45);
-}
-
-.download-btn-icon {
-    font-size: 1.3rem;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Official brand logos (Apple, Windows) — inherit the button's text colour */
-.download-btn-icon .brand-logo {
-    width: 1.15rem;
-    height: 1.15rem;
-    display: block;
-}
-
-.download-btn-text {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-}
-
-.download-btn-text small {
-    font-weight: 400;
-    font-size: 0.75rem;
-    opacity: 0.8;
-}
-
-/* Closable hint that points down the left column to the installer downloads.
-   Shown only while the installer buttons are scrolled out of view (toggled by
-   an IntersectionObserver in index.html). */
-.download-scroll-hint {
-    position: fixed;
-    bottom: 24px;
-    left: 1.3vw;
-    max-width: 23.5vw;
-    z-index: 8000; /* below the AI FAB (9000), above page content */
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    border-radius: var(--border-radius);
-    background: var(--primary-gradient);
-    color: #ffffff;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    font-size: 0.85rem;
-    box-shadow: var(--shadow-lg);
-    cursor: pointer;
-    animation: download-scroll-hint-in 0.25s ease;
-}
-
-.download-scroll-hint:hover { box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45); }
-
-.download-scroll-hint__text { flex: 1; line-height: 1.25; }
-
-.download-scroll-hint__arrow {
-    flex-shrink: 0;
-    font-weight: 700;
-    animation: download-scroll-hint-bounce 1.2s ease-in-out infinite;
-}
-
-.download-scroll-hint__close {
-    flex-shrink: 0;
-    width: 22px;
-    height: 22px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.22);
-    color: #ffffff;
-    font-size: 0.8rem;
-    line-height: 1;
-    cursor: pointer;
-    transition: background 0.15s ease;
-}
-.download-scroll-hint__close:hover { background: rgba(255, 255, 255, 0.38); }
-
-@keyframes download-scroll-hint-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes download-scroll-hint-bounce {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(3px); }
-}
-
 /* ── Transient "Pull from Drive" hint ───────────────────────────────────── */
 #folder-pull-hint {
     display: flex;
@@ -2605,18 +2408,6 @@ body.dark .download-wip-label {
 @media (prefers-reduced-motion: reduce) {
     #folder-pull-hint.folder-pull-hint--show { animation: folder-pull-hint-in 0.3s ease both; }
     #folder-pull-hint .folder-pull-hint__arrow { animation: none; }
-}
-
-/* The hint exists because the desktop left column is its own scroll container
-   (#top-left-scrollable), which clips the installer buttons out of view. On
-   mobile that column is overflow-y: visible and the page scrolls as one, so the
-   downloads are reachable by ordinary scrolling — the banner would only cover
-   the bottom of a small screen to say something the user can already do.
-   Hidden in CSS rather than skipped in JS so it tracks rotation and resize. */
-@media (max-width: 768px) {
-    .download-scroll-hint {
-        display: none;
-    }
 }
 
 /* ==========================================================================
@@ -3369,299 +3160,72 @@ body.dark .file-identity {
     background: var(--section-bg, rgba(127, 127, 127, 0.12));
 }
 
-/* ── User reviews banner ──────────────────────────────────────────────────
-   A fixed strip pinned to the top of the viewport. `body` is a flex row and
-   both side panels are `position: fixed; top: 20px`, so a normal-flow element
-   here would be squeezed into the flex row and painted under them — hence
-   fixed positioning plus a reserved gap.
-
-   The page reserves the banner's whole current height in --reviews-bar-h (set
-   by JS on load, on toggle and on resize), so expanding pushes the app down
-   rather than covering the logo and the User Guide button. The expanded body is
-   capped and scrolls internally so opening it can never shove the app off
-   screen. */
-:root {
-    /* Close to the real collapsed height, so the page is not briefly laid out
-       under the bar before syncReviewsBarHeight() measures it. */
-    --reviews-bar-h: 40px;
-}
-
-.reviews-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    /* Above the page and the .top-right panel (100), but below SweetAlert2's
-       container (1060) — otherwise the bar floats over its own review dialog,
-       undimmed by the backdrop. */
-    z-index: 500;
-    background: var(--surface-light);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: var(--shadow-sm);
-}
-
-.reviews-banner:not(.collapsed) {
-    box-shadow: var(--shadow-lg);
-}
-
-/* The id beats the global `button:not(...)` rule (specificity 0,3,1), which
-   would otherwise paint this row as a white pill button. */
-#reviews-banner-toggle {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 9px 18px;
-    border: none;
-    background: transparent;
-    color: inherit;
-    font-family: 'Outfit', sans-serif;
-    text-align: left;
-    cursor: pointer;
-    box-shadow: none;
-    border-radius: 0;
-}
-
-#reviews-banner-toggle:hover {
-    background: rgba(127, 127, 127, 0.08);
-}
-
-.reviews-banner-title {
-    font-weight: 600;
-    font-size: 0.92rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.reviews-banner-count {
-    flex-shrink: 0;
-    font-size: 0.74rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    padding: 3px 9px;
-    border-radius: 999px;
-    background: rgba(52, 152, 219, 0.16);
-    color: #2c7cb8;
-    white-space: nowrap;
-}
-
-/* The chevron closes the row at the far right of the visible padding box. */
-#reviews-banner-toggle .folder-chevron {
-    margin-left: auto;
-    font-size: 0.75rem;
-}
-
-.reviews-banner-body {
-    padding: 4px 18px 12px;
-    max-height: min(38vh, 260px);
-    overflow-y: auto;
-    background: inherit;
-    border-top: 1px solid rgba(127, 127, 127, 0.14);
-}
-
-.reviews-banner.collapsed .reviews-banner-body {
-    display: none;
-}
-
-/* Horizontal rail of review cards — scrolls sideways rather than wrapping, so
-   the overlay never grows tall enough to bury the whole page. */
-.reviews-track {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    padding: 10px 0 8px;
-}
-
-.review-card {
-    flex: 0 0 320px;
-    margin: 0;
-    padding: 12px 14px;
-    border: 1px solid rgba(127, 127, 127, 0.22);
-    border-radius: var(--border-radius);
-    background: rgba(127, 127, 127, 0.06);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.review-rating {
-    color: #f0b429;
-    letter-spacing: 2px;
-    font-size: 0.9rem;
-    line-height: 1;
-}
-
-.review-quote {
-    margin: 0;
-    font-size: 0.86rem;
-    line-height: 1.5;
-    font-style: italic;
-}
-
-.review-author {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.76rem;
-    opacity: 0.72;
-    margin-top: auto;
-}
-
-.review-author strong {
-    font-size: 0.82rem;
-    opacity: 1;
-}
-
-.reviews-empty {
-    margin: 10px 0 4px;
-    font-size: 0.86rem;
-    opacity: 0.75;
-    max-width: 70ch;
-}
-
-.reviews-banner-actions {
-    margin-top: 8px;
-}
-
+/* Field layout inside the "Share your experience" dialog (community.js).
+   The reviews carousel itself lives on the landing page. */
 .review-field {
     display: block;
     margin-bottom: 10px;
     font-weight: 500;
 }
 
-body.dark .reviews-banner {
-    background: var(--surface-dark);
-    border-bottom-color: rgba(255, 255, 255, 0.10);
-}
-
-body.dark .reviews-banner-count {
-    background: rgba(52, 152, 219, 0.22);
-    color: #7cc3f0;
-}
-
-/* Reserve room for the collapsed bar: the page top padding and every element
-   pinned to the top of the viewport shift down by exactly its height. */
-body {
-    padding-top: calc(20px + var(--reviews-bar-h));
-}
-
-/* Only above the 768px breakpoint, where .top-left is still viewport-fixed;
-   below it the panel goes back into normal flow and the body padding is enough. */
-@media (min-width: 769px) {
-    .top-left {
-        top: calc(20px + var(--reviews-bar-h));
-        max-height: calc(100vh - 40px - var(--reviews-bar-h));
-    }
-}
-
-#user-guide-btn {
-    top: calc(14px + var(--reviews-bar-h));
-}
-
-@media (max-width: 900px) {
-    .review-card {
-        flex-basis: 260px;
-    }
-}
-
-/* ── Publication reference ────────────────────────────────────────────────── */
-/* Sits at the page bottom, aligned with the centre column so it clears the two
-   viewport-fixed side panels (mirrors #main-content's width). */
-.publication-section {
+/* ── Community strip ────────────────────────────────────────────────────
+   Page-bottom row: the way into the review form, plus links out to the reviews
+   and citation sections on the landing page. Aligned with the centre column so
+   it clears the two viewport-fixed side panels. */
+.community-strip {
     max-width: 50vw;
     width: 100%;
-    margin: 20px auto 10px;
-    box-sizing: border-box;
-    flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-    .publication-section {
-        max-width: 100%;
-    }
-}
-
-.publication-section h4 {
-    margin: 14px 0 6px;
-    font-size: 0.95rem;
-}
-
-.cite-hint,
-.pub-empty {
-    font-size: 0.85rem;
-    color: #7f8c8d;
-    margin: 0 0 10px;
-}
-
-.cite-row {
+    margin: 18px auto 10px;
+    padding: 10px 14px;
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 10px;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    border-top: 1px solid var(--table-border-light);
+    font-size: 0.85rem;
 }
 
-.cite-label {
-    flex: 0 0 60px;
-    font-weight: 600;
-    font-size: 0.82rem;
-    padding-top: 4px;
+body.dark .community-strip {
+    border-top-color: var(--table-border-dark);
 }
 
-.cite-text {
-    flex: 1 1 320px;
-    min-width: 0;
-    padding: 8px 10px;
-    border: 1px solid var(--border-color, #e1e6eb);
-    border-radius: 6px;
-    background: var(--card-bg, #fafbfc);
-    font-size: 0.8rem;
+.community-strip__text {
+    color: #6b7280;
+    margin-right: auto;
+}
+
+body.dark .community-strip__text {
+    color: #9ca3af;
+}
+
+.community-strip__link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.community-strip__link:hover {
+    text-decoration: underline;
+}
+
+/* Where to find the installers, now that the buttons live on the landing page. */
+.account-nav-hint {
+    font-size: 0.78rem;
+    color: #6b7280;
     line-height: 1.45;
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-.cite-bibtex {
-    margin: 0;
-    overflow-x: auto;
-}
-
-.cite-doi {
-    font-size: 0.82rem;
     margin: 4px 0 0;
 }
 
-.pub-list {
-    margin: 0;
-    padding-left: 20px;
+body.dark .account-nav-hint {
+    color: #9ca3af;
 }
 
-.pub-item {
-    margin-bottom: 10px;
-    font-size: 0.85rem;
-    line-height: 1.5;
+.account-nav-hint a {
+    color: var(--primary-color);
 }
 
-.pub-title {
-    font-weight: 600;
-    display: block;
-}
-
-.pub-authors,
-.pub-venue,
-.pub-note {
-    display: block;
-    color: #7f8c8d;
-}
-
-.pub-link {
-    font-size: 0.8rem;
-}
-
-body.dark .cite-text {
-    background: #2b3138;
-    border-color: #3a4551;
+@media (max-width: 768px) {
+    .community-strip {
+        max-width: 100%;
+    }
 }

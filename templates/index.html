@@ -40,53 +40,6 @@
         User Guide
     </button>
 
-    <!-- ── User reviews banner ──────────────────────────────────────────────
-         Curated reviews from testimonials.json (src/community.py). Collapsible
-         and sits above the whole app; the collapsed/expanded choice persists in
-         localStorage. Visitors cannot publish here — "Share your experience"
-         emails the admin, who adds approved reviews to the file by hand. With no
-         published reviews yet the banner still shows, inviting the first one. -->
-    <section id="reviews-banner" class="reviews-banner" aria-label="User reviews">
-        <button type="button" id="reviews-banner-toggle" class="reviews-banner-toggle"
-            onclick="toggleReviewsBanner()" aria-expanded="true" aria-controls="reviews-banner-body">
-            <span class="reviews-banner-title">💬 What researchers say about Easy OKAPI</span>
-            <span class="reviews-banner-count">
-                {%- if testimonials -%}
-                {{ testimonials|length }} review{{ '' if testimonials|length == 1 else 's' }}
-                {%- else -%}
-                be the first
-                {%- endif -%}
-            </span>
-            <span id="reviews-chevron" class="folder-chevron">▼</span>
-        </button>
-        <div id="reviews-banner-body" class="reviews-banner-body">
-            {% if testimonials %}
-            <div class="reviews-track scrollbar-style">
-                {% for t in testimonials %}
-                <figure class="review-card">
-                    <div class="review-rating" aria-label="{{ t.rating }} out of 5">{{ '★' * t.rating }}{{ '☆' * (5 - t.rating) }}</div>
-                    <blockquote class="review-quote">{{ t.quote }}</blockquote>
-                    <figcaption class="review-author">
-                        <strong>{{ t.name }}</strong>
-                        {% if t.role %}<span class="review-role">{{ t.role }}</span>{% endif %}
-                        {% if t.affiliation %}<span class="review-affiliation">{{ t.affiliation }}</span>{% endif %}
-                    </figcaption>
-                </figure>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="reviews-empty">No reviews published yet. If Easy OKAPI helped your work, tell us
-                about it — we publish reviews only after confirming with the author.</p>
-            {% endif %}
-            <div class="reviews-banner-actions">
-                <button type="button" class="utility-btn" onclick="openReviewForm()"
-                    data-hint="Send your experience to our team — reviews are published only after we confirm with you">
-                    ✍️ Share your experience
-                </button>
-            </div>
-        </div>
-    </section>
-
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
@@ -257,9 +210,7 @@
                     {% endif %}
                 </div>
                 <div class="section" style="position: static;" id="download-section">
-                    <h3>⬇️ Get Offline Version</h3>
-                    <p class="download-tagline">Run Easy OKAPI locally, connected directly to your colorimeter device.
-                    </p>
+                    <h3>👤 Your Account</h3>
                     {% if account_user %}
                     <div class="account-nav">
                         <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
@@ -285,86 +236,13 @@
                             data-hint="Sign in to your existing account">Log In</a>
                     </div>
                     {% endif %}
-                    <p id="download-version" class="download-version"></p>
-                    {# download_available master switch comes from main.py (DOWNLOAD_AVAILABLE) #}
-                    <div class="download-btn-group">
-                        {% if download_available.mac %}
-                        <a href="/download/mac" class="download-btn mac-btn" id="download-mac-btn">
-                            <span class="download-btn-icon" aria-hidden="true"><svg class="brand-logo" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM262.1 104.5c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></span>
-                            <span class="download-btn-text">
-                                <strong>macOS</strong>
-                                <small id="download-mac-small">.dmg installer</small>
-                            </span>
-                        </a>
-                        {% else %}
-                        <div class="download-btn-wip">
-                            <span class="download-wip-label">Work in progress</span>
-                            <div class="download-btn mac-btn download-btn--unavailable" id="download-mac-btn"
-                                aria-disabled="true">
-                                <span class="download-btn-icon" aria-hidden="true"><svg class="brand-logo" viewBox="0 0 384 512" fill="currentColor"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM262.1 104.5c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></span>
-                                <span class="download-btn-text">
-                                    <strong>macOS</strong>
-                                    <small id="download-mac-small">.dmg installer</small>
-                                </span>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if download_available.win %}
-                        <a href="/download/win" class="download-btn win-btn" id="download-win-btn">
-                            <span class="download-btn-icon" aria-hidden="true"><svg class="brand-logo" viewBox="0 0 24 24" fill="currentColor"><path d="M1 1h10v10H1z M13 1h10v10H13z M1 13h10v10H1z M13 13h10v10H13z"/></svg></span>
-                            <span class="download-btn-text">
-                                <strong>Windows</strong>
-                                <small id="download-win-small">.exe installer</small>
-                            </span>
-                        </a>
-                        {% else %}
-                        <div class="download-btn-wip">
-                            <span class="download-wip-label">Work in progress</span>
-                            <div class="download-btn win-btn download-btn--unavailable" id="download-win-btn"
-                                aria-disabled="true">
-                                <span class="download-btn-icon" aria-hidden="true"><svg class="brand-logo" viewBox="0 0 24 24" fill="currentColor"><path d="M1 1h10v10H1z M13 1h10v10H13z M1 13h10v10H1z M13 13h10v10H13z"/></svg></span>
-                                <span class="download-btn-text">
-                                    <strong>Windows</strong>
-                                    <small id="download-win-small">.exe installer</small>
-                                </span>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if download_available.linux %}
-                        <a href="/download/linux" class="download-btn linux-btn" id="download-linux-btn">
-                            <span class="download-btn-icon">🐧</span>
-                            <span class="download-btn-text">
-                                <strong>Linux</strong>
-                                <small id="download-linux-small">.tar.gz installer</small>
-                            </span>
-                        </a>
-                        {% else %}
-                        <div class="download-btn-wip">
-                            <span class="download-wip-label">Work in progress</span>
-                            <div class="download-btn linux-btn download-btn--unavailable" id="download-linux-btn"
-                                aria-disabled="true">
-                                <span class="download-btn-icon">🐧</span>
-                                <span class="download-btn-text">
-                                    <strong>Linux</strong>
-                                    <small id="download-linux-small">.tar.gz installer</small>
-                                </span>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
+                    <p class="account-nav-hint">
+                        Installers for macOS, Windows and Linux are on the
+                        <a href="/#run">home page</a>.
+                    </p>
                 </div>
             </div><!-- #top-left-scrollable -->
 
-            {# Closable hint shown when the installer download buttons are scrolled out of the left column #}
-            <div id="download-scroll-hint" class="download-scroll-hint hidden" role="button" tabindex="0"
-                aria-label="Scroll the panel to reach the installer downloads"
-                onclick="scrollToDownloads()"
-                onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); scrollToDownloads(); }">
-                <span class="download-scroll-hint__text">Get the installer — scroll down</span>
-                <span class="download-scroll-hint__arrow" aria-hidden="true">↓</span>
-                <button type="button" class="download-scroll-hint__close" aria-label="Dismiss"
-                    onclick="event.stopPropagation(); dismissDownloadHint();">✕</button>
-            </div>
         </div>
         <div class="top-right hidden" id="top-right">
             <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
@@ -387,21 +265,6 @@
             });
         </script>
         <div id="main-content">
-            <div class="section" id="intro-video-section">
-                <h2 class="folder-section-toggle"
-                    onclick="toggleFolderList('intro-video-collapse', 'intro-video-chevron')">
-                    🎬 Introducing Easy OKAPI
-                    <span id="intro-video-chevron" class="folder-chevron">▼</span>
-                </h2>
-                <div id="intro-video-collapse" class="section-collapse">
-                    <div class="intro-video-frame">
-                        <iframe src="https://www.youtube-nocookie.com/embed/auOhoa2AaQo?rel=0"
-                            title="Easy OKAPI introduction" loading="lazy" frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen></iframe>
-                    </div>
-                </div>
-            </div>
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
                     Select Coefficients for standard curve <span id="json-sel-chevron"
@@ -719,76 +582,21 @@
                 </div>
             </div>
         </div>
-        <!-- ── Publication reference ────────────────────────────────────────
-             Curated from publications.json (src/community.py): how to cite Easy
-             OKAPI itself, plus papers that used or cited it. Page-bottom section,
-             collapsed by default. -->
-        <div id="publication-section" class="publication-section">
-            <section class="section" aria-label="Publication reference">
-                <h3 class="folder-section-toggle" onclick="toggleFolderList('publication-collapse', 'publication-chevron')">
-                    📚 Publication reference
-                    <span id="publication-chevron" class="folder-chevron collapsed-chevron">▼</span>
-                </h3>
-                <div id="publication-collapse" class="section-collapse collapsed">
-                {% if publication_ref.citation %}
-                {% set cite = publication_ref.citation %}
-                <div class="cite-block">
-                    <h4>How to cite Easy OKAPI</h4>
-                    <p class="cite-hint">If Easy OKAPI contributed to your work, please cite it.</p>
-                    {% if cite.apa %}
-                    <div class="cite-row">
-                        <span class="cite-label">APA</span>
-                        <code class="cite-text" id="cite-apa">{{ cite.apa }}</code>
-                        <button type="button" class="utility-btn" onclick="copyCitation('cite-apa', this)"
-                            data-hint="Copy the APA citation to your clipboard">📋 Copy</button>
-                    </div>
-                    {% endif %}
-                    {% if cite.bibtex %}
-                    <div class="cite-row">
-                        <span class="cite-label">BibTeX</span>
-                        <pre class="cite-text cite-bibtex" id="cite-bibtex">{{ cite.bibtex }}</pre>
-                        <button type="button" class="utility-btn" onclick="copyCitation('cite-bibtex', this)"
-                            data-hint="Copy the BibTeX entry to your clipboard">📋 Copy</button>
-                    </div>
-                    {% endif %}
-                    {% if cite.doi %}
-                    <p class="cite-doi">DOI: <a href="https://doi.org/{{ cite.doi }}" target="_blank"
-                            rel="noopener noreferrer">{{ cite.doi }}</a></p>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-                <div class="pub-list-block">
-                    <h4>Publications using Easy OKAPI</h4>
-                    {% if publication_ref.publications %}
-                    <ol class="pub-list">
-                        {% for p in publication_ref.publications %}
-                        <li class="pub-item">
-                            <span class="pub-title">{{ p.title }}</span>
-                            {% if p.authors %}<span class="pub-authors">{{ p.authors }}</span>{% endif %}
-                            <span class="pub-venue">
-                                {%- if p.journal %}<em>{{ p.journal }}</em>{% endif -%}
-                                {%- if p.year %}, {{ p.year }}{% endif -%}
-                                {%- if p.volume %}, {{ p.volume }}{% endif -%}
-                                {%- if p.pages %}, pp. {{ p.pages }}{% endif -%}
-                            </span>
-                            {% if p.doi %}
-                            <a class="pub-link" href="https://doi.org/{{ p.doi }}" target="_blank"
-                                rel="noopener noreferrer">doi:{{ p.doi }}</a>
-                            {% elif p.url %}
-                            <a class="pub-link" href="{{ p.url }}" target="_blank" rel="noopener noreferrer">link</a>
-                            {% endif %}
-                            {% if p.note %}<span class="pub-note">{{ p.note }}</span>{% endif %}
-                        </li>
-                        {% endfor %}
-                    </ol>
-                    {% else %}
-                    <p class="pub-empty">No publications listed yet. Published work that used Easy OKAPI?
-                        Let us know and we will add it here.</p>
-                    {% endif %}
-                </div>
-                </div>
-            </section>
+        <!-- ── Community strip ──────────────────────────────────────────────
+             The reviews carousel and the full citation block live on the landing
+             page now; what stays here is the way in for someone who is actually
+             using the tool: a link to each, and the submission form (which emails
+             the admin — nothing published from the browser). -->
+        <div id="community-strip" class="community-strip">
+            <span class="community-strip__text">Using Easy OKAPI in your work?</span>
+            <button type="button" class="utility-btn" onclick="openReviewForm()"
+                data-hint="Send your experience to our team — reviews are published only after we confirm with you">
+                ✍️ Share your experience
+            </button>
+            <a href="/#reviews" class="community-strip__link"
+                data-hint="Read published reviews on the home page">Read reviews</a>
+            <a href="/#cite" class="community-strip__link"
+                data-hint="APA and BibTeX citations on the home page">How to cite</a>
         </div>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
             © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
@@ -1053,40 +861,6 @@
             if (document.hidden) onHidden(); else startHeartbeat();
         })();
 
-        // ---- "Scroll for installer" hint -------------------------------------
-        // Shows a closable banner pointing down the left column whenever the
-        // installer download buttons are scrolled out of view. Dismissal sticks
-        // for the rest of the browser session.
-        function scrollToDownloads() {
-            const section = document.getElementById('download-section');
-            if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        function dismissDownloadHint() {
-            const hint = document.getElementById('download-scroll-hint');
-            if (hint) hint.classList.add('hidden');
-            try { sessionStorage.setItem('downloadHintDismissed', '1'); } catch (e) { }
-        }
-
-        (function initDownloadScrollHint() {
-            const hint = document.getElementById('download-scroll-hint');
-            const target = document.getElementById('download-mac-btn');
-            if (!hint || !target || !('IntersectionObserver' in window)) return;
-
-            let dismissed = false;
-            try { dismissed = sessionStorage.getItem('downloadHintDismissed') === '1'; } catch (e) { }
-            if (dismissed) return;
-
-            const observer = new IntersectionObserver((entries) => {
-                const visible = entries[0].isIntersecting;
-                // Clipping by the scrollable left column (or the page on mobile)
-                // is reflected here, so this fires both when the button is below
-                // the fold and when it scrolls back into view.
-                hint.classList.toggle('hidden', visible);
-            }, { threshold: 0.4 });
-
-            observer.observe(target);
-        })();
     </script>
     {% if config.PRODUCTION_MODE %}
     <script src="{{ url_for('static', filename='dist/tooltip.min.js') }}"></script>
