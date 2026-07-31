@@ -642,6 +642,8 @@ const SETTINGS_DEFAULTS = {
     reading_start_timeout_sec: 60,
     live_stream_enabled: true,
     session_strip_enabled: true,
+    device_control_enabled: true,
+    device_state_poll_ms: 1500,
     ui_style: 'instrument',
     merge_directory_picker: false,
     disable_popups: false,
@@ -774,6 +776,8 @@ function _buildSettingsHTML(s, folders, aiStats) {
                 ${row('Wait for device on start', 's (10-600)', num('swal-reading-start-timeout', 10, s.reading_start_timeout_sec ?? 60))}
                 ${rowCheck(t('settings.live_stream', 'Stream live readings (recommended)'), 'swal-live-stream', s.live_stream_enabled !== false)}
                 ${rowCheck(t('settings.session_strip', 'Show the session strip while reading'), 'swal-session-strip', s.session_strip_enabled !== false)}
+                ${rowCheck(t('settings.device_control', 'Show the Device Controller panel'), 'swal-device-control', s.device_control_enabled !== false)}
+                ${row(t('settings.device_poll', 'Device Controller refresh'), 'ms (500-10000)', num('swal-device-poll', 500, s.device_state_poll_ms ?? 1500))}
             </div>
         </div>
         <div class="sm-section sm-section--full">
@@ -895,6 +899,11 @@ function _readSettingsForm() {
         cdc_run_mode: document.getElementById('swal-cdc-run-mode').value === 'manual' ? 'manual' : 'auto',
         reading_start_timeout_sec: parseInt(document.getElementById('swal-reading-start-timeout').value, 10) || 60,
         live_stream_enabled: document.getElementById('swal-live-stream').checked,
+        // The session-strip checkbox was rendered and filled but never collected,
+        // so the setting could not actually be turned off from this dialog.
+        session_strip_enabled: document.getElementById('swal-session-strip').checked,
+        device_control_enabled: document.getElementById('swal-device-control').checked,
+        device_state_poll_ms: parseInt(document.getElementById('swal-device-poll').value, 10) || 1500,
         merge_directory_picker: document.getElementById('swal-merge-picker').checked,
         disable_popups: document.getElementById('swal-disable-popups').checked,
         ai_feedback_enabled: document.getElementById('swal-ai-feedback-enabled').checked,
@@ -946,6 +955,8 @@ function _fillSettingsForm(s) {
     document.getElementById('swal-reading-start-timeout').value = s.reading_start_timeout_sec ?? 60;
     document.getElementById('swal-live-stream').checked = s.live_stream_enabled !== false;
     document.getElementById('swal-session-strip').checked = s.session_strip_enabled !== false;
+    document.getElementById('swal-device-control').checked = s.device_control_enabled !== false;
+    document.getElementById('swal-device-poll').value = s.device_state_poll_ms ?? 1500;
     document.getElementById('swal-merge-picker').checked = !!s.merge_directory_picker;
     document.getElementById('swal-disable-popups').checked = !!s.disable_popups;
     document.getElementById('swal-ai-feedback-enabled').checked = s.ai_feedback_enabled !== false;

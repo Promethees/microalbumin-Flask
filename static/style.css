@@ -5495,6 +5495,230 @@ body.dark #run-script-btn:enabled {
 }
 
 /* ==========================================================================
+   VIRTUAL CONTROLLER (#device-control-section) — the device's keypad, on screen.
+
+   Built entirely from tokens, so it follows whichever visual style is on without
+   a classic counterpart (Rule.md 2.34): chrome materials, hairline bounds, mono
+   with tabular figures for every measured value, the condensed label voice for
+   the field names. The keypad is laid out as the PyBadge is — d-pad left, face
+   buttons right — because a control that mirrors the hardware needs no legend.
+   ========================================================================== */
+.devctl-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+}
+
+.devctl-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ink-dim);
+    flex: none;
+}
+
+/* Three states, three colours, and the dot carries them so the state is legible
+   before the words are read — the same device as the session transport's dot. */
+.devctl-status--live { color: var(--go); }
+.devctl-status--live .devctl-status-dot { background: var(--go); }
+.devctl-status--busy { color: var(--warn); }
+.devctl-status--busy .devctl-status-dot { background: var(--warn); }
+.devctl-status--offline { color: var(--ink-dim); }
+.devctl-status--offline .devctl-status-dot { background: var(--ink-dim); }
+
+.devctl-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* The readout is a data surface: square corners, its own well, and it gets the
+   space. It is the part that answers "what is the device doing right now". */
+.devctl-readout {
+    flex: 1 1 240px;
+    min-width: 220px;
+    padding: 12px 14px;
+    background: var(--well);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-flat);
+}
+
+.devctl-readout-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--hairline-soft);
+}
+
+.devctl-readout-row:last-child { border-bottom: none; }
+
+.devctl-label {
+    font: 600 10.5px/1 var(--font-label);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    white-space: nowrap;
+}
+
+.devctl-value {
+    font-size: 13px;
+    color: var(--ink);
+    text-align: right;
+}
+
+.devctl-value--num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.devctl-keypad {
+    display: flex;
+    gap: 18px;
+    flex: 1 1 320px;
+}
+
+.devctl-cluster {
+    display: grid;
+    gap: 6px;
+    flex: 1 1 0;
+}
+
+/* The d-pad keeps its cross so up/down/left/right are where the thumb expects;
+   the face buttons stack in one column because their labels are words, not
+   directions, and a 2x2 grid would truncate every one of them. */
+.devctl-cluster--dpad {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-areas:
+        ".     kup    ."
+        "kleft .      kright"
+        ".     kdown  .";
+    align-content: start;
+}
+
+/* Area names are prefixed: a bare `left`/`right` in grid-area is an ident the
+   grid shorthand also reads as a line name, and the prefix removes the question. */
+.devctl-btn--kup { grid-area: kup; }
+.devctl-btn--kleft { grid-area: kleft; }
+.devctl-btn--kright { grid-area: kright; }
+.devctl-btn--kdown { grid-area: kdown; }
+
+.devctl-cluster--face {
+    grid-template-columns: 1fr;
+    align-content: start;
+}
+
+.devctl-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 9px;
+    min-height: 44px;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-press);
+    text-align: left;
+    cursor: pointer;
+}
+
+.devctl-btn:enabled:hover {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+}
+
+.devctl-btn-glyph {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.devctl-btn-name {
+    font: 600 9.5px/1 var(--font-label);
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+}
+
+/* The function label is the reason this panel exists, so it is the readable
+   line — not the button's hardware name. */
+.devctl-btn-fn {
+    font-size: 11px;
+    line-height: 1.25;
+    color: var(--ink-muted);
+}
+
+/* A button with no effect on the current screen is shown, not hidden: knowing
+   that Up does nothing here is part of what the panel is for. */
+.devctl-btn--idle {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.devctl-btn--idle .devctl-btn-glyph { color: var(--ink-dim); }
+
+.devctl-channels {
+    flex: 1 1 100%;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline-soft);
+}
+
+.devctl-channels-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.devctl-note {
+    font-size: 11px;
+    color: var(--ink-dim);
+}
+
+.devctl-channel-boxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.devctl-channel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--well);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-press);
+    cursor: pointer;
+}
+
+.devctl-channel-id {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink);
+}
+
+.devctl-channel-detail {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-dim);
+}
+
+/* ==========================================================================
    CLASSIC UI STYLE (`body.ui-classic`) — the previous look, kept switchable.
 
    This is a token override, not a second stylesheet: the palette, the materials,
@@ -7852,4 +8076,12 @@ body.ui-classic.strip-open #top-right-controls {
     .init-orb {
         animation: none;
     }
+}
+
+/* The channel the gain / integration-time buttons act on. The device marks its
+   own screen the same way, so the two read alike when both are in front of you. */
+.devctl-channel--target {
+    outline: 1px solid var(--accent, #4a9eff);
+    outline-offset: 2px;
+    border-radius: 4px;
 }

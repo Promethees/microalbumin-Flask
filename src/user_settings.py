@@ -69,6 +69,16 @@ DEFAULTS = {
     # default; off leaves the timer widget and the floating transport as the only
     # live-state indicators, which is the previous behaviour.
     "session_strip_enabled": True,
+    # The virtual controller panel: the device's own keypad, worked from the app
+    # while no reading session is running (Rule.md 2.35). On by default, but the
+    # panel starts collapsed and only opens the serial port once expanded — so a
+    # user who never opens it never touches the device.
+    "device_control_enabled": True,
+    # How often the expanded controller re-reads the device (STATE?). A poll, not
+    # a stream: the device answers a question rather than pushing, and at this
+    # cadence the readout tracks a button press without the port ever going quiet
+    # long enough for the idle reaper to drop it.
+    "device_state_poll_ms": 1500,
     # Which visual language the interface wears (Rule.md 2.34):
     #   "instrument" - the current design: photometric graphite + bromophenol blue,
     #                  flat hairline chrome, IBM Plex, sequential source ramp, the
@@ -154,6 +164,17 @@ def save(updates: dict) -> bool:
                 current["reading_start_timeout_sec"] = secs
         except (ValueError, TypeError):
             pass
+    if "device_state_poll_ms" in updates:
+        try:
+            # Floor of 500 ms: the firmware's main loop is ~174 ms and a STATE
+            # reply is one round trip, so polling faster only spends the port on
+            # answers that have not changed. Ceiling keeps the readout from going
+            # so stale that a press looks like it did nothing.
+            ms = int(updates["device_state_poll_ms"])
+            if 500 <= ms <= 10000:
+                current["device_state_poll_ms"] = ms
+        except (ValueError, TypeError):
+            pass
     if "default_subfolder" in updates:
         val = updates["default_subfolder"]
         current["default_subfolder"] = val if (isinstance(val, str) and val) or val is None else None
@@ -203,6 +224,7 @@ def save(updates: dict) -> bool:
                      "default_inf_timeout", "merge_directory_picker",
                      "disable_popups", "ai_feedback_enabled",
                      "live_stream_enabled", "session_strip_enabled",
+                     "device_control_enabled",
                      "music_enabled", "music_shuffle"):
         if bool_key in updates:
             current[bool_key] = bool(updates[bool_key])

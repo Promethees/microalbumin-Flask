@@ -6,6 +6,7 @@ import subprocess
 import signal
 import state
 import live_stream
+import device_link
 from script_monitor import check_log_for_errors, check_log_for_session_start, check_log_for_end_reason
 from file_path import is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER
 from validators import validate_json
@@ -194,6 +195,10 @@ def run_script(validated_data):
     clear_measure_trigger()
     # Same for a leftover pause/resume request — a new run always starts running.
     clear_control_trigger()
+    # The virtual controller may be holding the port open between commands
+    # (src/device_link.py). Hand it over before the logger is spawned — one owner
+    # at a time is the whole contract, and the logger has no way to wait its turn.
+    device_link.link.close()
 
     try:
         with open(state.log_file, 'a', encoding='utf-8') as f:
@@ -251,6 +256,87 @@ def resume_reading():
     return _request_pause_state(False)
 
 
+# ── virtual controller ──────────────────────────────────────────────────
+# Working the device's own keypad from the app, while no reading session is
+# running. Only then: during a run the logger subprocess owns the serial port
+# (see src/device_link.py), and the controls that make sense mid-run — pause,
+# stop, measure — are the routes above.
+
+def _session_is_running():
+    return state.process is not None and state.process.poll() is None
+
+
+def _controller_busy_response():
+    return jsonify({
+        'status': 'busy',
+        'message': 'The controller is unavailable while a reading session is running',
+    }), 409
+
+
+@hardware_bp.route('/device/state', methods=['GET'])
+def device_state():
+    """Snapshot of the device: mode, measurement, channels, live values, battery.
+
+    Returns 409 while a session runs rather than an error, so the client can show
+    the controller as unavailable instead of as broken.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'device_not_found', 'message': str(e)}), 503
+
+
+@hardware_bp.route('/device/button', methods=['POST'])
+@validate_json({'button': (str, None, True)})
+def device_button(validated_data):
+    """Press one button on the device (BTN:) — the virtual keypad."""
+    if _session_is_running():
+        return _controller_busy_response()
+    button = validated_data['button'].strip().lower()
+    try:
+        device_link.link.press(button)
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    # The press may have changed the screen, the blank, the gain — anything the
+    # controller draws. Returning the new state with the ACK saves the client a
+    # follow-up round trip and removes the window where the UI shows the old one.
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'state': None})
+
+
+@hardware_bp.route('/device/channels', methods=['POST'])
+@validate_json({'channels': (list, None, True)})
+def device_channels(validated_data):
+    """Set the device's active multiplexer channels (CHANNELS:).
+
+    Runtime only — the device reverts to its configuration.json on a power cycle,
+    because CircuitPython cannot write its own filesystem (see the firmware's
+    Colorimeter.set_active_channels).
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        channels = [int(channel) for channel in validated_data['channels']]
+    except (TypeError, ValueError):
+        return jsonify({'status': 'failure', 'message': 'Channels must be whole numbers'}), 400
+    if not channels:
+        return jsonify({'status': 'failure', 'message': 'Select at least one channel'}), 400
+    if len(set(channels)) != len(channels):
+        return jsonify({'status': 'failure', 'message': 'Duplicate channels'}), 400
+    try:
+        device_link.link.set_channels(channels)
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    try:
+        return jsonify({'status': 'success', 'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'state': None})
+
+
 @hardware_bp.route('/stream_session', methods=['GET'])
 def stream_session():
     """SSE tail of the running session: new CSV rows + new log text, pushed.
@@ -306,6 +392,15 @@ def check_status():
     # first, that path never runs, so without this the log file is left dirty.
     clear_logs()
     if started:
+        # A disconnection is not a clean finish: the data captured before the
+        # device vanished is real and saved, but the series is shorter than the
+        # operator asked for, and saying "completed" would hide that.
+        if reason == 'disconnected':
+            return jsonify({
+                'status': 'warning',
+                'message': ('The device disconnected during the reading and did not come back. '
+                            'The rows captured before it dropped have been saved.'),
+            })
         message = {
             'stopped': 'Session stopped manually on the device.',
             'timeout': 'Session ended due to timeout.',

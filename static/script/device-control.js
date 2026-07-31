@@ -1,0 +1,488 @@
+/* Virtual controller — the colorimeter's own keypad, worked from the app.
+ *
+ * The device has eight buttons and a small screen, and what a button does
+ * depends on which screen is up: `menu` saves in Settings, opens the menu in
+ * Measure, and dismisses in a message. That mapping is the thing the keypad
+ * itself cannot tell you, so this panel's real job is to *label* the buttons for
+ * the screen the device is on — pressing them from here is the second half.
+ *
+ * Everything hangs off one poll of `/device/state`, which answers a STATE line
+ * from the firmware (see src/device_link.py). Two rules shape the rest:
+ *
+ *   * The serial port has exactly one owner. During a reading session that owner
+ *     is the logger subprocess, so the whole panel goes unavailable and says so
+ *     — the mid-run controls live on the reading panel instead (Rule.md 2.29).
+ *   * Polling only runs while the panel is expanded. Opening the panel is what
+ *     opens the port, so a user who never opens it never touches the device.
+ */
+
+// ── the keypad ──────────────────────────────────────────────────────────────
+// Names are the firmware's own (colorimeter.button_map), which is also what the
+// BTN: command takes; `cluster` places each one the way the PyBadge is laid out.
+const DEVICE_BUTTONS = [
+    { name: 'up',    cluster: 'dpad', glyph: '▲', slot: 'kup' },
+    { name: 'left',  cluster: 'dpad', glyph: '◀', slot: 'kleft' },
+    { name: 'right', cluster: 'dpad', glyph: '▶', slot: 'kright' },
+    { name: 'down',  cluster: 'dpad', glyph: '▼', slot: 'kdown' },
+    { name: 'gain',  cluster: 'face', glyph: 'G', slot: 'a' },
+    { name: 'itime', cluster: 'face', glyph: 'T', slot: 'b' },
+    { name: 'blank', cluster: 'face', glyph: 'B', slot: 'c' },
+    { name: 'menu',  cluster: 'face', glyph: 'M', slot: 'd' },
+];
+
+// What each button does on each device screen. Mirrors the firmware's
+// ButtonHandler mode handlers — keep the two in lockstep; a label that lies is
+// worse than no label. A missing entry means the button does nothing there.
+const DEVICE_BUTTON_FUNCTIONS = {
+    MEASURE: {
+        blank: ['devctl.fn.blank', 'Blank / unblank'],
+        menu:  ['devctl.fn.open_menu', 'Open menu'],
+        gain:  ['devctl.fn.gain', 'Cycle gain'],
+        itime: ['devctl.fn.itime', 'Cycle integration time'],
+        // Right is the one button whose *meaning* differs between device builds,
+        // so it is resolved from the firmware's `caps` rather than this table
+        // (see deviceButtonFunction). Nothing here.
+        // `left` starts the device's HID keyboard fallback here, which types the
+        // readings into whichever window has focus. The firmware refuses it from
+        // a host press, so it is shown as unavailable rather than offered.
+        left:  ['devctl.fn.unavailable_hid', 'Unavailable — starts the device keyboard mode'],
+    },
+    MENU: {
+        up:    ['devctl.fn.prev_item', 'Previous item'],
+        down:  ['devctl.fn.next_item', 'Next item'],
+        menu:  ['devctl.fn.select', 'Select'],
+        left:  ['devctl.fn.select', 'Select'],
+        right: ['devctl.fn.select', 'Select'],
+    },
+    SETTINGS: {
+        menu:  ['devctl.fn.save_settings', 'Save settings'],
+        left:  ['devctl.fn.back_to_menu', 'Back to menu'],
+        up:    ['devctl.fn.increase', 'Increase'],
+        down:  ['devctl.fn.decrease', 'Decrease'],
+        right: ['devctl.fn.next_field', 'Next field'],
+        itime: ['devctl.fn.cycle_unit', 'Cycle unit'],
+        blank: ['devctl.fn.revert', 'Revert to saved'],
+        gain:  ['devctl.fn.timeout_none', 'Timeout: none'],
+    },
+    CONCENTRATION: {
+        menu:  ['devctl.fn.save_concentration', 'Save concentration'],
+        blank: ['devctl.fn.unit_or_reset', 'Cycle unit / reset value'],
+        up:    ['devctl.fn.plus_1', '+1'],
+        down:  ['devctl.fn.minus_1', '−1'],
+        right: ['devctl.fn.plus_10', '+10'],
+        left:  ['devctl.fn.minus_10', '−10'],
+        itime: ['devctl.fn.plus_100', '+100'],
+        gain:  ['devctl.fn.minus_100', '−100'],
+    },
+    MESSAGE: { _any: ['devctl.fn.dismiss', 'Dismiss'] },
+    ABORT:   { _any: ['devctl.fn.dismiss', 'Dismiss'] },
+};
+
+// Screen names as the operator sees them.
+const DEVICE_MODE_LABELS = {
+    MEASURE: ['devctl.mode.measure', 'Measure'],
+    MENU: ['devctl.mode.menu', 'Menu'],
+    SETTINGS: ['devctl.mode.settings', 'Settings'],
+    CONCENTRATION: ['devctl.mode.concentration', 'Concentration'],
+    MESSAGE: ['devctl.mode.message', 'Message'],
+    ABORT: ['devctl.mode.abort', 'Halted'],
+};
+
+let deviceState = null;
+let devicePollTimer = null;
+let devicePollInFlight = false;
+let deviceKeypadBuilt = false;
+// Channels the operator has ticked but not applied yet. Null means "follow the
+// device" — without it every poll would undo a half-made selection.
+let devicePendingChannels = null;
+
+function deviceControlEnabled() {
+    return typeof USER_SETTINGS === 'undefined' || USER_SETTINGS.device_control_enabled !== false;
+}
+
+function devicePollInterval() {
+    const ms = (typeof USER_SETTINGS !== 'undefined') ? USER_SETTINGS.device_state_poll_ms : null;
+    return (typeof ms === 'number' && ms >= 500) ? ms : 1500;
+}
+
+function deviceControlExpanded() {
+    const collapse = document.getElementById('device-control-collapse');
+    return !!collapse && !collapse.classList.contains('collapsed');
+}
+
+// ── panel lifecycle ─────────────────────────────────────────────────────────
+
+function toggleDeviceController() {
+    toggleFolderList('device-control-collapse', 'device-control-chevron');
+    if (deviceControlExpanded()) {
+        startDevicePolling();
+    } else {
+        stopDevicePolling();
+    }
+}
+
+function startDevicePolling() {
+    if (devicePollTimer) return;
+    pollDeviceState();
+    devicePollTimer = setInterval(pollDeviceState, devicePollInterval());
+}
+
+function stopDevicePolling() {
+    if (!devicePollTimer) return;
+    clearInterval(devicePollTimer);
+    devicePollTimer = null;
+}
+
+async function pollDeviceState() {
+    // One request at a time: a slow reply must not queue a second poll behind it
+    // and turn a busy port into a backlog of stale answers.
+    if (devicePollInFlight) return;
+    devicePollInFlight = true;
+    try {
+        const res = await fetch('/device/state');
+        const data = await res.json();
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        if (data.status !== 'success' || !data.state) {
+            setDeviceControlStatus('offline', data.message ||
+                t('devctl.offline', 'No colorimeter found'));
+            return;
+        }
+        applyDeviceState(data.state);
+    } catch (err) {
+        setDeviceControlStatus('offline', t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        devicePollInFlight = false;
+    }
+}
+
+// ── rendering ───────────────────────────────────────────────────────────────
+
+function setDeviceControlStatus(kind, text) {
+    const strip = document.getElementById('device-control-status');
+    const label = document.getElementById('device-control-status-text');
+    const body = document.getElementById('device-control-body');
+    if (!strip || !label || !body) return;
+    strip.classList.remove('devctl-status--live', 'devctl-status--busy', 'devctl-status--offline');
+    strip.classList.add(`devctl-status--${kind}`);
+    label.textContent = text;
+    // The body stays up while offline would show a frozen snapshot as if it were
+    // live, so hide it whenever the device is not answering.
+    body.classList.toggle('hidden', kind !== 'live');
+    if (kind !== 'live') deviceState = null;
+}
+
+function applyDeviceState(state) {
+    deviceState = state;
+    setDeviceControlStatus('live', t('devctl.connected', 'Connected'));
+    renderDeviceReadout(state);
+    renderDeviceKeypad(state);
+    renderDeviceChannels(state);
+}
+
+function renderDeviceReadout(state) {
+    const modeLabel = DEVICE_MODE_LABELS[state.mode];
+    $text('devctl-mode', modeLabel ? t(modeLabel[0], modeLabel[1]) : (state.mode || '—'));
+    // The UV build reads one spectral channel of its sensor at a time, and which
+    // one is part of what the measurement *is* — so it rides on that line rather
+    // than claiming a row the other builds would leave empty.
+    const measurement = state.meas || '—';
+    $text('devctl-meas', state.uvchan ? `${measurement} · ${state.uvchan}` : measurement);
+
+    // Values carry their unit when there is one, and are per channel, so they are
+    // tagged with the channel they came from — "0.412 @0" is the only form that
+    // stays readable when the channel set changes underneath.
+    const values = state.vals || [];
+    const channels = state.chans || [];
+    const units = state.units || '';
+    $text('devctl-vals', values.length
+        ? values.map((v, i) => `${v}${units ? ' ' + units : ''}${channels[i] != null ? ' @' + channels[i] : ''}`).join('   ')
+        : '—');
+
+    let blank = t('devctl.blank_na', 'Not needed');
+    if (state.needsblank) {
+        blank = state.blanked ? t('devctl.blank_done', 'Blanked')
+                              : t('devctl.blank_missing', 'Not blanked');
+    }
+    // Gain and integration time per sensor, with the one the buttons act on
+    // marked the way the device marks it on its own screen. Without this the
+    // operator has to press and watch the numbers to find out what moved — and
+    // on the builds with no channel panel there was nowhere to read them at all.
+    const gains = state.gains || [];
+    const itimes = state.itimes || [];
+    const selected = state.sel;
+    $text('devctl-settings', gains.length
+        ? gains.map((gain, i) => {
+            const mark = (i === selected) ? '|' : '';
+            return `${mark}${deviceSensorTag(state, i)} ${gain || '?'}·${itimes[i] || '?'}`;
+        }).join('   ')
+        : '—');
+
+    $text('devctl-blank', blank);
+    $text('devctl-bat', state.bat ? `${state.bat} V` : '—');
+}
+
+// The firmware keeps the gain / integration-time target on the DEVICE, not on
+// the screen (colorimeter.selected_sensor), and steps it with Right:
+// none -> first sensor -> … -> none. "None" is a real position: the two buttons
+// then act on every sensor at once. So the label has to name the current target
+// — "Cycle gain" alone would leave the operator guessing which cuvette moved.
+function deviceSensorTag(state, index) {
+    const channels = state.chans || [];
+    if (channels[index] != null) return `@${channels[index]}`;
+    return `#${index + 1}`;   // builds with fixed sensors report no channel list
+}
+
+function deviceGainTarget(state) {
+    const selected = state.sel;
+    if (selected === null || selected === undefined || selected === '') {
+        return t('devctl.target_all', 'all sensors');
+    }
+    return deviceSensorTag(state, selected);
+}
+
+function deviceButtonFunction(state, name) {
+    // Raw Count is the screen where gain and integration time are dialled in,
+    // so leaving it is what commits them for the run — "Open menu" names the
+    // mechanism rather than what the operator is doing. Session-scoped only:
+    // the device cannot rewrite configuration.json, because CircuitPython mounts
+    // its filesystem read-only while code.py runs.
+    if (state.mode === 'MEASURE' && name === 'menu' && state.meas === 'Raw Count') {
+        return ['devctl.fn.save_settings', 'Save settings'];
+    }
+    // Right in MEASURE mode is not the same control on every device: on the
+    // multi-sensor builds it picks which sensor gain/integration time act on, on
+    // the UV build it steps the sensor's own spectral channel, and on the plain
+    // build it does nothing. The firmware says which in `caps`, so the label
+    // comes from there instead of from a version guess.
+    if (state.mode === 'MEASURE' && name === 'right') {
+        const caps = state.caps || [];
+        if (caps.indexOf('uvchannel') !== -1) return ['devctl.fn.next_uv_channel', 'Next spectral channel'];
+        if (caps.indexOf('selsensor') !== -1) return ['devctl.fn.next_sensor', 'Next sensor'];
+        return null;
+    }
+    const table = DEVICE_BUTTON_FUNCTIONS[state.mode];
+    if (!table) return null;
+    return table[name] || table._any || null;
+}
+
+// Suffix appended to a button's label at render time, for the controls whose
+// meaning depends on the device's current selection rather than on its screen.
+function deviceButtonTargetSuffix(state, name) {
+    if (state.mode !== 'MEASURE') return '';
+    const caps = state.caps || [];
+    if (caps.indexOf('selsensor') === -1) return '';
+    if (name === 'gain' || name === 'itime') {
+        return ` — ${deviceGainTarget(state)}`;
+    }
+    if (name === 'right') {
+        return ` (${t('devctl.target_now', 'now')}: ${deviceGainTarget(state)})`;
+    }
+    return '';
+}
+
+function renderDeviceKeypad(state) {
+    if (!deviceKeypadBuilt) buildDeviceKeypad();
+    for (const button of DEVICE_BUTTONS) {
+        const el = document.getElementById(`devctl-btn-${button.name}`);
+        if (!el) continue;
+        const fn = deviceButtonFunction(state, button.name);
+        const unavailable = fn && fn[0] === 'devctl.fn.unavailable_hid';
+        const label = (fn ? t(fn[0], fn[1]) : t('devctl.fn.none', 'No effect here'))
+            + (fn ? deviceButtonTargetSuffix(state, button.name) : '');
+        el.disabled = !fn || unavailable;
+        el.classList.toggle('devctl-btn--idle', !fn || unavailable);
+        el.setAttribute('data-hint', label);
+        el.setAttribute('aria-label', `${button.name}: ${label}`);
+        const fnEl = el.querySelector('.devctl-btn-fn');
+        if (fnEl) fnEl.textContent = label;
+    }
+}
+
+function buildDeviceKeypad() {
+    for (const cluster of ['dpad', 'face']) {
+        const host = document.getElementById(`devctl-${cluster}`);
+        if (!host) continue;
+        host.innerHTML = DEVICE_BUTTONS
+            .filter(b => b.cluster === cluster)
+            .map(b => `
+                <button type="button" id="devctl-btn-${b.name}" class="devctl-btn devctl-btn--${b.slot}"
+                        onclick="pressDeviceButton('${b.name}')">
+                    <span class="devctl-btn-glyph" aria-hidden="true">${b.glyph}</span>
+                    <span class="devctl-btn-name">${b.name}</span>
+                    <span class="devctl-btn-fn"></span>
+                </button>`)
+            .join('');
+    }
+    deviceKeypadBuilt = true;
+}
+
+// ── actions ─────────────────────────────────────────────────────────────────
+
+async function pressDeviceButton(name) {
+    const el = document.getElementById(`devctl-btn-${name}`);
+    if (el) el.disabled = true;
+    try {
+        const res = await fetch('/device/button', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ button: name }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            // The press may have changed the screen, so a button set drawn for
+            // the old one is wrong immediately. The route hands back the new
+            // state with the ACK precisely so there is no window where it is.
+            // A half-made channel selection is left alone — no button changes
+            // channels, so discarding it here would only lose the user's work.
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        showDeviceControlError(data.message || t('devctl.press_failed', 'The device refused that button'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        // Whatever happened, the next poll re-derives which buttons are live.
+        if (deviceState) renderDeviceKeypad(deviceState);
+    }
+}
+
+function showDeviceControlError(message) {
+    // Only ever called for something the user just did, never for a background
+    // poll — a controller that pops an alert every 1.5 s while the cable is out
+    // is unusable. Honours "Disable popups" the same way the rest of the app does.
+    if (typeof Swal === 'undefined' || getBtnChecked('no-swal-checkbox')) {
+        setDeviceControlStatus('offline', message);
+        return;
+    }
+    Swal.fire({ icon: 'error', title: t('devctl.error_title', 'Device controller'), text: message });
+}
+
+// ── active channels ─────────────────────────────────────────────────────────
+
+function deviceSupportsChannels(state) {
+    return (state.caps || []).indexOf('channels') !== -1 && (state.maxchan || 0) > 1;
+}
+
+function renderDeviceChannels(state) {
+    const panel = document.getElementById('devctl-channels');
+    const boxes = document.getElementById('devctl-channel-boxes');
+    const apply = document.getElementById('devctl-channels-apply');
+    if (!panel || !boxes || !apply) return;
+    if (!deviceSupportsChannels(state)) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+
+    // A half-made selection is the user's, not the device's. Leave the boxes
+    // alone until it is applied or a press resets it, or the poll would tick the
+    // checkboxes back every 1.5 s while they are being used.
+    if (devicePendingChannels) {
+        apply.disabled = !devicePendingChannels.length;
+        return;
+    }
+
+    const gains = state.gains || [];
+    const itimes = state.itimes || [];
+    const deviceChannels = state.chans || [];
+    boxes.innerHTML = '';
+    for (let channel = 0; channel < state.maxchan; channel++) {
+        const onDevice = deviceChannels.indexOf(channel);
+        const label = document.createElement('label');
+        label.className = 'devctl-channel';
+
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.value = String(channel);
+        box.checked = onDevice !== -1;
+        box.addEventListener('change', onDeviceChannelToggle);
+
+        const id = document.createElement('span');
+        id.className = 'devctl-channel-id';
+        id.textContent = `@${channel}`;
+
+        // Gain and integration time are only known for channels the device has a
+        // sensor open on; an unticked channel has no settings to show yet. Set as
+        // text, not markup — it is device output, and this panel is the one place
+        // a garbled serial line reaches the DOM.
+        const detail = document.createElement('span');
+        detail.className = 'devctl-channel-detail';
+        // The gain / integration-time buttons act on this one: say so here as
+        // well, since this panel is where those two values are read.
+        const isTarget = onDevice !== -1 && onDevice === state.sel;
+        detail.textContent = onDevice === -1 ? '' :
+            `${gains[onDevice] || '?'} · ${itimes[onDevice] || '?'}${isTarget ? '  ◀' : ''}`;
+        label.classList.toggle('devctl-channel--target', isTarget);
+
+        label.append(box, id, detail);
+        boxes.appendChild(label);
+    }
+    apply.disabled = true;
+}
+
+function readDeviceChannelBoxes() {
+    return Array.from(document.querySelectorAll('#devctl-channel-boxes input:checked'))
+        .map(input => parseInt(input.value, 10));
+}
+
+function onDeviceChannelToggle() {
+    devicePendingChannels = readDeviceChannelBoxes();
+    const apply = document.getElementById('devctl-channels-apply');
+    if (apply) apply.disabled = !devicePendingChannels.length;
+}
+
+async function applyDeviceChannels() {
+    const channels = readDeviceChannelBoxes();
+    if (!channels.length) return;
+    const apply = document.getElementById('devctl-channels-apply');
+    if (apply) apply.disabled = true;
+    try {
+        const res = await fetch('/device/channels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channels: channels }),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            devicePendingChannels = null;
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        showDeviceControlError(data.message || t('devctl.channels_failed', 'The device refused that channel set'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        if (apply) apply.disabled = false;
+    }
+}
+
+// ── wiring ──────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+    const section = document.getElementById('device-control-section');
+    if (!section) return;
+    if (!deviceControlEnabled()) section.classList.add('hidden');
+    // Nothing else to wire: the panel starts collapsed, and expanding it is what
+    // starts the poll. A run beginning or ending is picked up by that same poll
+    // (the route answers 409 for the duration), so the panel needs no hook into
+    // the reading lifecycle to stay honest.
+});
+
+// Stop touching the port when the tab goes away — a hidden tab polling a serial
+// device is the kind of thing that keeps a port busy for no one's benefit.
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopDevicePolling();
+    } else if (deviceControlExpanded() && deviceControlEnabled()) {
+        startDevicePolling();
+    }
+});

@@ -542,6 +542,73 @@
                     <div id="log-display" tabindex="-1" class="scrollbar-style display"></div>
                 </div>
             </div>
+            <!-- Virtual controller: the device's own keypad, worked from here.
+                 Collapsed on load and polled only while expanded, because opening
+                 it opens the serial port (src/device_link.py) — and the port has
+                 exactly one owner, so the whole panel is unavailable while a
+                 reading session is running. Every button is labelled with what it
+                 does *in the device's current screen*, which is the thing the
+                 keypad itself cannot tell you. See Rule.md 2.35. -->
+            <div class="section" id="device-control-section">
+                <h2 class="folder-section-toggle" onclick="toggleDeviceController()">
+                    <span data-i18n="devctl.title">Device Controller</span>
+                    <span id="device-control-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                </h2>
+                <div id="device-control-collapse" class="section-collapse collapsed">
+                    <div id="device-control-status" class="devctl-status" role="status" aria-live="polite">
+                        <span class="devctl-status-dot" aria-hidden="true"></span>
+                        <span id="device-control-status-text" data-i18n="devctl.connecting">Reaching the device…</span>
+                    </div>
+                    <div id="device-control-body" class="devctl-body hidden">
+                        <div class="devctl-readout">
+                            <div class="devctl-readout-row">
+                                <span class="devctl-label" data-i18n="devctl.screen">Screen</span>
+                                <span id="devctl-mode" class="devctl-value">—</span>
+                            </div>
+                            <div class="devctl-readout-row">
+                                <span class="devctl-label" data-i18n="devctl.measurement">Measurement</span>
+                                <span id="devctl-meas" class="devctl-value">—</span>
+                            </div>
+                            <div class="devctl-readout-row">
+                                <span class="devctl-label" data-i18n="devctl.reading">Reading</span>
+                                <span id="devctl-vals" class="devctl-value devctl-value--num">—</span>
+                            </div>
+                            <div class="devctl-readout-row">
+                                <span class="devctl-label" data-i18n="devctl.settings">Gain · time</span>
+                                <span id="devctl-settings" class="devctl-value devctl-value--num">—</span>
+                            </div>
+                            <div class="devctl-readout-row">
+                                <span class="devctl-label" data-i18n="devctl.blank">Blank</span>
+                                <span id="devctl-blank" class="devctl-value">—</span>
+                            </div>
+                            <div class="devctl-readout-row">
+                                <span class="devctl-label" data-i18n="devctl.battery">Battery</span>
+                                <span id="devctl-bat" class="devctl-value devctl-value--num">—</span>
+                            </div>
+                        </div>
+                        <!-- Two clusters, laid out as the PyBadge is: the d-pad on
+                             the left, the four face buttons on the right. Filled by
+                             renderDeviceKeypad() so the per-screen function labels
+                             and the disabled states come from one table. -->
+                        <div class="devctl-keypad">
+                            <div id="devctl-dpad" class="devctl-cluster devctl-cluster--dpad"></div>
+                            <div id="devctl-face" class="devctl-cluster devctl-cluster--face"></div>
+                        </div>
+                        <!-- Only mounted when the device reports the "channels"
+                             capability and more than one multiplexer channel. -->
+                        <div id="devctl-channels" class="devctl-channels hidden">
+                            <div class="devctl-channels-head">
+                                <span class="devctl-label" data-i18n="devctl.channels">Active channels</span>
+                                <span class="devctl-note" data-i18n="devctl.channels_note">Runtime only — the device returns to its configured channels when powered off.</span>
+                            </div>
+                            <div id="devctl-channel-boxes" class="devctl-channel-boxes"></div>
+                            <button type="button" id="devctl-channels-apply" onclick="applyDeviceChannels()" disabled
+                                data-i18n="devctl.apply_channels" data-i18n-hint="hint.devctl_channels"
+                                data-hint="Re-point the device at these multiplexer channels. Clears the blank — the device must be blanked again.">Apply channels</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Manual-run transport: the same bar as #reading-control-fab below,
                  for a manual point-mode run. Appears when the inline button line
                  scrolls out of view, so the next Turn can be recorded (and the run
@@ -1090,6 +1157,7 @@
         <script src="{{ url_for('static', filename='script/init.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/cdc-logging.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/live-stream.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/device-control.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/index.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/navigation.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/generate-chart.js') }}?v={{ STATIC_VERSION }}"></script>
