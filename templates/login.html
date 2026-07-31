@@ -406,7 +406,7 @@
         <strong>Download token generated.</strong> Your installer will use it automatically.<br>
         If installing manually, copy the token below:
         <code id="token-display"></code>
-        <a id="go-to-app-btn" href="/" class="go-btn" title="Open the Easy OKAPI web app">Go to App →</a>
+        <a id="go-to-app-btn" href="/webapp" class="go-btn" title="Open the Easy OKAPI web app">Go to App →</a>
       </div>
 
       <hr class="divider">
@@ -452,7 +452,7 @@
         });
         const data = await res.json();
         if (res.ok) {
-          window.location.href = '/';
+          window.location.href = '/webapp';
         } else {
           msg.style.display = 'block';
           msg.className = 'msg error';

@@ -80,12 +80,13 @@ delimiter = "/"
 # ── Account inactivity auto-logout ───────────────────────────────────────────
 # Logs an account out once the EasyOKAPI tab has been left unopened (hidden or
 # closed) for longer than Config.ACCOUNT_IDLE_TIMEOUT. The web app
-# (templates/index.html) sends a heartbeat to /api/account/heartbeat only while
-# its tab is visible, and opening the main page counts as activity; those are the
-# only paths that refresh `last_activity`. Every other request merely checks the
-# stamp, so a backgrounded tab's polling (e.g. /ping every few seconds) cannot
-# keep the session alive.
-_ACTIVITY_REFRESH_PATHS = {'/', '/api/account/heartbeat'}
+# (templates/index.html, served at /webapp) sends a heartbeat to
+# /api/account/heartbeat only while its tab is visible, and opening the app page
+# counts as activity; those are the only paths that refresh `last_activity`. The
+# landing page at / does not — a visitor reading it is not using the app. Every
+# other request merely checks the stamp, so a backgrounded tab's polling
+# (e.g. /ping every few seconds) cannot keep the session alive.
+_ACTIVITY_REFRESH_PATHS = {'/webapp', '/api/account/heartbeat'}
 
 
 @app.before_request
@@ -156,6 +157,31 @@ def clear_cache():
         return jsonify({'status': 'failure', 'message': str(e)}), 500
 
 @app.route('/')
+def landing():
+    """Product landing page.
+
+    Purely informational: it opens no user session storage and refreshes no
+    activity stamp, so a visitor who never enters the app costs nothing. The app
+    itself lives at /webapp (see `index` below).
+    """
+    account_user = None
+    if session.get('account_user_id'):
+        account_user = {
+            'id': session['account_user_id'],
+            'name': session.get('account_user_name', ''),
+            'email': session.get('account_user_email', '')
+        }
+
+    return render_template('landing.html',
+                           title="Easy OKAPI — Open-colorimeter Kinetics Analysis Platform",
+                           testimonials=community.get_testimonials(),
+                           publication_ref=community.get_publications(),
+                           download_available=DOWNLOAD_AVAILABLE,
+                           year=datetime.utcnow().year,
+                           account_user=account_user)
+
+
+@app.route('/webapp')
 def index():
     # Initialize user data storage
     range_input = get_range_input()

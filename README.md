@@ -3,6 +3,18 @@
 ## Setup and Usage
 The web-based software is available at [https://www.easysensorkit.cbbiotec.vn/](https://www.easysensorkit.cbbiotec.vn/)
 
+### Pages
+
+| Path | Page | Template |
+|---|---|---|
+| `/` | Product landing page — what Easy OKAPI is, how to get it, how to cite it | `templates/landing.html` + `static/landing.css` |
+| `/webapp` | The application itself (all four modes, files, charts, reports) | `templates/index.html` |
+
+The landing page opens no session storage and does not refresh the account
+idle-timeout stamp, so a visitor who never enters the app costs nothing.
+Reviews and the citation block on it are read from the same curated files the
+app uses (`testimonials.json`, `publications.json`).
+
 ### Run it locally 
 	- Install `pyenv` with `Python 3.12.11` using `setup-install-pyenv.command`
 	- Set local python version as `3.12.11` using `pyenv local 3.12.11`

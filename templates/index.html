@@ -95,13 +95,17 @@
                     data-hint="Scroll back to the top of the page"
                     onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
 
-                <div id="title" class="title-place">
-                    <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
-                    <h1 class="okapi-line" style="font-size: 20px;">
-                        <span style="color: #3498db;">Easy</span> OKAPI
-                        <img src="{{ url_for('static', filename='okapi.png') }}" alt="Okapi Logo" class="okapi-img">
-                    </h1>
-                </div>
+                {# The wordmark links back to the landing page (main.py `landing`).
+                   The logo image beside it keeps its scroll-to-top behaviour. #}
+                <a href="/" class="title-home" data-hint="Back to the Easy OKAPI home page">
+                    <div id="title" class="title-place">
+                        <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
+                        <h1 class="okapi-line" style="font-size: 20px;">
+                            <span style="color: #3498db;">Easy</span> OKAPI
+                            <img src="{{ url_for('static', filename='okapi.png') }}" alt="Okapi Logo" class="okapi-img">
+                        </h1>
+                    </div>
+                </a>
 
                 <div class="toggle-container" id="toggleContainer" data-hint="Switch between light and dark theme">
                     <div class="toggle-button" id="toggleButton"></div>

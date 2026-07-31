@@ -584,6 +584,31 @@ body.dark .top-right {
     border-radius: 8px;
 }
 
+/* The wordmark doubles as the way back to the landing page at `/`; the app
+   itself is served from /webapp. Colour comes from .title-place below, so the
+   link must not introduce one of its own. */
+.title-home {
+    text-decoration: none;
+    color: inherit;
+    flex: none;
+    border-radius: 8px;
+    transition: opacity 0.15s ease;
+}
+
+.title-home:hover {
+    opacity: 0.72;
+}
+
+.title-home:hover .okapi-line {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.title-home:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 3px;
+}
+
 .title-place {
     position: static;
     display: flex;

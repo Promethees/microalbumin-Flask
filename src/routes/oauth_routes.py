@@ -148,7 +148,7 @@ def oauth_google_callback():
         return redirect('/account/login?oauth_error=Sign-in+failed.+Please+try+again.')
 
     _login_user(user)
-    return redirect('/')
+    return redirect('/webapp')
 
 
 # ── GitHub ───────────────────────────────────────────────────────────────────
@@ -225,4 +225,4 @@ def oauth_github_callback():
         return redirect('/account/login?oauth_error=Sign-in+failed.+Please+try+again.')
 
     _login_user(user)
-    return redirect('/')
+    return redirect('/webapp')
