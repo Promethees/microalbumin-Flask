@@ -131,14 +131,16 @@ svg {
     text-transform: uppercase;
     color: var(--ink-3);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
 }
 
+/* Sits on the first line rather than centring against a wrapped label. */
 .eyebrow::before {
     content: '';
     width: 18px;
     height: 2px;
+    margin-top: 0.62em;
     background: var(--band);
     flex: none;
 }
@@ -176,6 +178,7 @@ h3 {
 
 .btn {
     display: inline-flex;
+    white-space: nowrap;
     align-items: center;
     justify-content: center;
     gap: 10px;
@@ -248,7 +251,7 @@ html.dark ::selection {
     display: flex;
     align-items: center;
     gap: 28px;
-    height: 66px;
+    min-height: 66px;
 }
 
 .brand {
@@ -265,6 +268,7 @@ html.dark ::selection {
 }
 
 .brand-name {
+    white-space: nowrap;
     font-family: var(--font-display);
     font-size: 1.06rem;
     font-weight: 700;
@@ -1196,6 +1200,45 @@ html.dark ::selection {
     .nav-actions .btn-ghost,
     .nav-account {
         display: none;
+    }
+
+    /* Four items have to share a phone-width bar: wordmark, theme toggle,
+       primary button, menu. Tighten the gaps and drop the byline rather than
+       let the brand wrap. */
+    .nav-inner {
+        gap: 12px;
+        min-height: 60px;
+    }
+
+    .brand {
+        gap: 8px;
+    }
+
+    .brand img {
+        height: 28px;
+    }
+
+    .brand-sub {
+        display: none;
+    }
+
+    .nav-actions {
+        gap: 8px;
+    }
+
+    .nav-actions .btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+
+    .nav-links.open {
+        top: 60px;
+    }
+
+    /* Stacked CTAs read as a ragged column at different widths. */
+    .hero-cta .btn,
+    .closing-cta .btn {
+        flex: 1 1 100%;
     }
 }
 

@@ -1499,6 +1499,13 @@ body.dark .swal2-container.swal2-backdrop-show {
         margin-left: 0px;
     }
 
+    /* #user-guide-btn is fixed in the top-right corner; keep the header row —
+       and the theme toggle that ends it — clear of it. */
+    .top-left .flex-group {
+        flex-wrap: wrap;
+        padding-right: 118px;
+    }
+
     .top-right {
         display: block;
         position: relative;
@@ -1526,8 +1533,12 @@ body.dark .swal2-container.swal2-backdrop-show {
         order: 2;
     }
 
-    footer {
+    .community-strip {
         order: 3;
+    }
+
+    footer {
+        order: 4;
     }
 }
 
@@ -3227,5 +3238,15 @@ body.dark .account-nav-hint {
 @media (max-width: 768px) {
     .community-strip {
         max-width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Three clean rows — question, button, links — instead of one item at a
+       time falling off the end. */
+    .community-strip__text,
+    .community-strip .utility-btn {
+        flex-basis: 100%;
+        margin-right: 0;
     }
 }
