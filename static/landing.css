@@ -10,6 +10,11 @@
    in the hero, so every accent on the page is the colour of the light the
    sample is read at. Type: Space Grotesk (display), Inter (body),
    IBM Plex Mono (readouts, labels, anything numeric).
+
+   The page is meant to read as instrumentation, not as a brochure: a ruled
+   graph-paper substrate under everything, section plates numbered like a
+   method (§01, §02…), quantities carried with their units and uncertainty,
+   and hairlines rather than soft shadows wherever two surfaces meet.
    ========================================================================== */
 
 *,
@@ -50,8 +55,14 @@
     --band-ink: #0d7a45;
     --band-soft: rgba(23, 163, 95, 0.12);
 
-    --radius: 4px;
-    --radius-lg: 10px;
+    /* Ruled substrate. Minor squares are the ones you read the page against;
+       the major every fourth line is what stops it turning into texture. */
+    --rule-minor: rgba(12, 30, 38, 0.035);
+    --rule-major: rgba(12, 30, 38, 0.07);
+
+    /* Panels are machined, not soft: 2px corners, hairlines, shallow shadow. */
+    --radius: 2px;
+    --radius-lg: 4px;
     --shell: 1200px;
     --gutter: 24px;
 
@@ -65,6 +76,9 @@ html.dark {
        one, and anything filled with it takes dark text. paintAccent() in
        templates/landing.html swaps --band-ink to match. */
     --band-ink: #3fd08a;
+
+    --rule-minor: rgba(232, 241, 239, 0.032);
+    --rule-major: rgba(232, 241, 239, 0.062);
 
     --paper: #071219;
     --paper-2: #0d1f27;
@@ -86,13 +100,36 @@ html {
 }
 
 body {
-    background: var(--paper);
+    /* Graph paper: 22px minor, 88px major. One painted element, so it costs
+       nothing to scroll, and every card sits on top of it opaquely. */
+    background-color: var(--paper);
+    background-image:
+        linear-gradient(var(--rule-major) 1px, transparent 1px),
+        linear-gradient(90deg, var(--rule-major) 1px, transparent 1px),
+        linear-gradient(var(--rule-minor) 1px, transparent 1px),
+        linear-gradient(90deg, var(--rule-minor) 1px, transparent 1px);
+    background-size: 88px 88px, 88px 88px, 22px 22px, 22px 22px;
+    background-position: 50% 0;
     color: var(--ink);
     font-family: var(--font-body);
     font-size: 16px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+}
+
+/* Anything numeric lines up in a column, as it would on an instrument. */
+.eyebrow,
+.hero-spec,
+.readout-bar,
+.readout-values,
+.readout-caption,
+.spectrum,
+.mode li,
+.step::before,
+.dl-version,
+.footer-base {
+    font-variant-numeric: tabular-nums;
 }
 
 a {
@@ -131,18 +168,45 @@ svg {
     text-transform: uppercase;
     color: var(--ink-3);
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
+    gap: 12px;
 }
 
-/* Sits on the first line rather than centring against a wrapped label. */
+/* Section plate: the sections are numbered like the steps of a method, and
+   the rule runs out to the edge of the column the way a figure caption does. */
 .eyebrow::before {
-    content: '';
-    width: 18px;
-    height: 2px;
-    margin-top: 0.62em;
-    background: var(--band);
+    content: '§' counter(sec, decimal-leading-zero);
     flex: none;
+    align-self: center;
+    padding: 2px 6px;
+    border: 1px solid var(--band);
+    border-radius: 1px;
+    color: var(--band-ink);
+    letter-spacing: 0.08em;
+}
+
+/* A ruled measure rather than a plain line: 1px marks at a 6px pitch, fading
+   out the way a scale runs off the edge of a plate. */
+.eyebrow::after {
+    content: '';
+    flex: 1 1 auto;
+    min-width: 24px;
+    height: 5px;
+    align-self: center;
+    background: repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 6px);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+}
+
+/* The hero is not a numbered step — it is the instrument itself, so its plate
+   carries the wavelength currently selected on the channel strip. selectChannel()
+   rewrites --plate. */
+.hero .eyebrow::before {
+    content: var(--plate, '520 NM');
+}
+
+main {
+    counter-reset: sec;
 }
 
 h1,
@@ -155,6 +219,7 @@ h3 {
 }
 
 .section {
+    counter-increment: sec;
     padding: 92px 0;
     border-top: 1px solid var(--line);
 }
@@ -245,6 +310,26 @@ html.dark ::selection {
     background: color-mix(in srgb, var(--paper) 88%, transparent);
     backdrop-filter: saturate(180%) blur(12px);
     border-bottom: 1px solid var(--line);
+}
+
+/* Reads as a sweep bar: how far through the page you have travelled, drawn in
+   whatever wavelength is currently selected. */
+.nav-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.nav-progress span {
+    display: block;
+    height: 100%;
+    background: var(--band);
+    transform: scaleX(0);
+    transform-origin: left center;
 }
 
 .nav-inner {
@@ -418,29 +503,63 @@ html.dark ::selection {
     margin: 32px 0 26px;
 }
 
-.hero-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 22px;
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    color: var(--ink-3);
-    letter-spacing: 0.03em;
+/* Spec strip: the same four-up block a datasheet puts under the photograph. */
+.hero-spec {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line);
 }
 
-.hero-meta strong {
-    color: var(--ink-2);
+.hero-spec > div {
+    background: var(--paper);
+    padding: 12px 14px;
+}
+
+.hero-spec > div:first-child {
+    padding-left: 0;
+}
+
+.hero-spec dt {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 4px;
+}
+
+.hero-spec dd {
+    font-family: var(--font-mono);
+    font-size: 0.94rem;
     font-weight: 500;
+    color: var(--ink);
+    line-height: 1.25;
+}
+
+.hero-spec dd small {
+    display: block;
+    font-size: 0.66rem;
+    font-weight: 400;
+    color: var(--ink-3);
+    letter-spacing: 0.04em;
 }
 
 /* ── Signature: the instrument readout panel ────────────────────────────── */
 
 .readout {
     background: var(--panel);
+    border: 1px solid var(--line-strong);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    box-shadow: 0 30px 70px -30px rgba(6, 25, 32, 0.6);
+    padding: 18px 18px 16px;
+    box-shadow: 0 16px 40px -28px rgba(6, 25, 32, 0.7);
     color: var(--on-panel);
+}
+
+html.dark .readout {
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .readout-bar {
@@ -518,11 +637,112 @@ html.dark ::selection {
     font-size: 0.95rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+}
+
+/* A quantity is the number *and* what it is in — the unit line carries the
+   uncertainty with it where the fit reports one. */
+.readout-values .unit {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--on-panel-2);
+    margin-top: 3px;
+    white-space: nowrap;
+}
+
+.readout-caption {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    line-height: 1.6;
+    color: var(--on-panel-2);
+}
+
+.readout-caption strong {
+    color: var(--on-panel);
+    font-weight: 500;
+    letter-spacing: 0.06em;
 }
 
 /* Channel strip — real control, retints the whole page accent. */
 .channels {
-    margin-top: 16px;
+    margin-top: 18px;
+}
+
+/* Spectral axis: the four channels are not swatches, they are positions on
+   the visible spectrum, so the strip is drawn against a real 380–700 nm
+   scale with the selected line marked on it. */
+.spectrum {
+    position: relative;
+    margin-bottom: 14px;
+}
+
+.spectrum-bar {
+    height: 9px;
+    border-radius: 1px;
+    /* Approximate sRGB rendering of the visible spectrum; stops are placed at
+       (λ − 380) / 320 so the scale is linear in nanometres. */
+    background: linear-gradient(90deg,
+            #4a0d6b 0%,
+            #3a00b0 12.5%,
+            #1330f0 21.9%,
+            #00a7ef 31.3%,
+            #00d94f 37.5%,
+            #3cdd18 43.8%,
+            #c3e600 53.1%,
+            #ffd400 62.5%,
+            #ff9500 68.8%,
+            #f4441c 75%,
+            #d81717 84.4%,
+            #5c0505 100%);
+    opacity: 0.9;
+}
+
+.spectrum-mark {
+    position: absolute;
+    top: -3px;
+    height: 15px;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.45);
+    transform: translateX(-0.5px);
+    transition: background-color 0.18s ease, box-shadow 0.18s ease, height 0.18s ease;
+}
+
+.spectrum-mark.is-active {
+    top: -6px;
+    height: 21px;
+    width: 2px;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+.spectrum-scale {
+    position: relative;
+    height: 14px;
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    color: var(--on-panel-2);
+}
+
+.spectrum-scale span {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+    transform: translateX(-50%);
+}
+
+.spectrum-scale span:first-child {
+    transform: none;
+}
+
+.spectrum-scale span:last-child {
+    transform: translateX(-100%);
 }
 
 .channels-label {
@@ -604,7 +824,8 @@ html.dark ::selection {
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: var(--panel);
-    box-shadow: 0 30px 70px -30px rgba(6, 25, 32, 0.6);
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 16px 40px -28px rgba(6, 25, 32, 0.7);
 }
 
 .watch-frame iframe {
@@ -1216,6 +1437,15 @@ html.dark ::selection {
 
     .readout-values {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Four spec columns are narrower than the values they carry on a phone. */
+    .hero-spec {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .hero-spec > div:nth-child(odd) {
+        padding-left: 0;
     }
 
     .closing {

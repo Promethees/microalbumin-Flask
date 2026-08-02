@@ -66,6 +66,7 @@
                     aria-controls="nav-links" aria-label="Show sections">☰</button>
             </div>
         </div>
+        <div class="nav-progress" aria-hidden="true"><span id="nav-progress"></span></div>
     </header>
 
     <main>
@@ -85,11 +86,24 @@
                         <a class="btn btn-ghost" href="#run">Get the desktop app</a>
                     </div>
 
-                    <p class="hero-meta">
-                        <span><strong>4 modes</strong> kinetics · point · calibrate · report</span>
-                        <span><strong>5 fits</strong> linear to Michaelis–Menten</span>
-                        <span><strong>6 languages</strong></span>
-                    </p>
+                    <dl class="hero-spec">
+                        <div>
+                            <dt>Modes</dt>
+                            <dd>4<small>kinetics · point · calibrate · report</small></dd>
+                        </div>
+                        <div>
+                            <dt>Regressions</dt>
+                            <dd>5<small>linear → Michaelis–Menten</small></dd>
+                        </div>
+                        <div>
+                            <dt>Read channels</dt>
+                            <dd>4<small>450 · 520 · 570 · 620 nm</small></dd>
+                        </div>
+                        <div>
+                            <dt>Interface</dt>
+                            <dd>6<small>en · vi · zh · fr · ja · ru</small></dd>
+                        </div>
+                    </dl>
                 </div>
 
                 <!-- Signature element: an instrument readout. The channel strip
@@ -97,13 +111,13 @@
                      the colour of the light the sample is read at. -->
                 <div>
                     <figure class="readout" id="readout">
-                        <figcaption class="readout-bar">
+                        <div class="readout-bar">
                             <span class="readout-dot" aria-hidden="true"></span>
                             <span class="readout-file" id="rd-file">520nm_20042026_HSA.csv</span>
                             <span class="readout-tag">Sample run</span>
-                        </figcaption>
+                        </div>
 
-                        <svg class="readout-plot" id="rd-plot" viewBox="0 0 520 250" role="img"
+                        <svg class="readout-plot" id="rd-plot" viewBox="0 0 520 256" role="img"
                             aria-label="Absorbance rising over twelve minutes and levelling off, with the maximum-rate window marked">
                         </svg>
 
@@ -117,17 +131,35 @@
                                 <dd id="rd-slope">—</dd>
                             </div>
                             <div>
-                                <dt>Sat</dt>
+                                <dt>Saturation</dt>
                                 <dd id="rd-sat">—</dd>
                             </div>
                             <div>
-                                <dt>Time to sat</dt>
+                                <dt>Time to sat.</dt>
                                 <dd id="rd-tts">—</dd>
                             </div>
                         </dl>
 
                         <div class="channels">
                             <p class="channels-label" id="channels-label">Read channel</p>
+
+                            <!-- The channels are positions on the visible spectrum, so the
+                                 strip is drawn against a real 380–700 nm scale. -->
+                            <div class="spectrum" aria-hidden="true">
+                                <div class="spectrum-bar"></div>
+                                <span class="spectrum-mark" data-band="450" style="left: 21.875%;"></span>
+                                <span class="spectrum-mark" data-band="520" style="left: 43.75%;"></span>
+                                <span class="spectrum-mark" data-band="570" style="left: 59.375%;"></span>
+                                <span class="spectrum-mark" data-band="620" style="left: 75%;"></span>
+                                <div class="spectrum-scale">
+                                    <span style="left: 0;">380</span>
+                                    <span style="left: 25%;">460</span>
+                                    <span style="left: 50%;">540</span>
+                                    <span style="left: 75%;">620</span>
+                                    <span style="left: 100%;">700 nm</span>
+                                </div>
+                            </div>
+
                             <div class="channel-strip" role="group" aria-labelledby="channels-label">
                                 <button class="channel" type="button" data-band="450" style="--swatch: #3a66e0;"
                                     aria-pressed="false">
@@ -147,6 +179,8 @@
                                 </button>
                             </div>
                         </div>
+
+                        <figcaption class="readout-caption" id="rd-caption"></figcaption>
                     </figure>
                 </div>
             </div>
@@ -592,17 +626,21 @@
             //   ink   — darkened; text and button fills on the light page.
             //   lift  — lightened; the same job on the dark page, where a
             //           filled control takes dark text instead of white.
+            //   sd    — standard error on the fitted max rate, reported with it.
+            //   r2    — coefficient of determination for that window's fit.
             var CHANNELS = {
-                '450': { color: '#3a66e0', ink: '#2c4fb8', lift: '#7ea1ff', soft: 'rgba(58,102,224,0.14)', sat: 0.812, k: 0.42, lag: 0.9, rate: 0.0142, slope: 0.0091, tts: 6.4, file: '450nm_11032026_bioSensor.csv' },
-                '520': { color: '#17a35f', ink: '#0d7a45', lift: '#3fd08a', soft: 'rgba(23,163,95,0.14)', sat: 0.964, k: 0.36, lag: 1.1, rate: 0.0186, slope: 0.0113, tts: 7.8, file: '520nm_20042026_HSA.csv' },
-                '570': { color: '#d19a00', ink: '#8a6300', lift: '#f0bb2e', soft: 'rgba(209,154,0,0.14)', sat: 0.585, k: 0.52, lag: 0.6, rate: 0.0098, slope: 0.0061, tts: 5.2, file: '570nm_08052026_beetroot.csv' },
-                '620': { color: '#dd4b2a', ink: '#b03518', lift: '#ff8a68', soft: 'rgba(221,75,42,0.14)', sat: 1.124, k: 0.29, lag: 1.4, rate: 0.0221, slope: 0.0140, tts: 9.1, file: '620nm_30072026_lactamase.csv' }
+                '450': { color: '#3a66e0', ink: '#2c4fb8', lift: '#7ea1ff', soft: 'rgba(58,102,224,0.14)', sat: 0.812, k: 0.42, lag: 0.9, rate: 0.0142, sd: 0.0003, r2: 0.9991, slope: 0.0091, tts: 6.4, file: '450nm_11032026_bioSensor.csv', assay: 'NADH-coupled dehydrogenase' },
+                '520': { color: '#17a35f', ink: '#0d7a45', lift: '#3fd08a', soft: 'rgba(23,163,95,0.14)', sat: 0.964, k: 0.36, lag: 1.1, rate: 0.0186, sd: 0.0004, r2: 0.9987, slope: 0.0113, tts: 7.8, file: '520nm_20042026_HSA.csv', assay: 'albumin–dye binding' },
+                '570': { color: '#d19a00', ink: '#8a6300', lift: '#f0bb2e', soft: 'rgba(209,154,0,0.14)', sat: 0.585, k: 0.52, lag: 0.6, rate: 0.0098, sd: 0.0002, r2: 0.9994, slope: 0.0061, tts: 5.2, file: '570nm_08052026_beetroot.csv', assay: 'betalain extraction' },
+                '620': { color: '#dd4b2a', ink: '#b03518', lift: '#ff8a68', soft: 'rgba(221,75,42,0.14)', sat: 1.124, k: 0.29, lag: 1.4, rate: 0.0221, sd: 0.0006, r2: 0.9979, slope: 0.0140, tts: 9.1, file: '620nm_30072026_lactamase.csv', assay: 'nitrocefin hydrolysis' }
             };
             var activeBand = '520';
 
             var T_MAX = 12;                       // minutes on the x axis
-            var PAD = { l: 44, r: 14, t: 14, b: 30 };
-            var W = 520, H = 250;
+            var PAD = { l: 48, r: 16, t: 16, b: 40 };
+            var W = 520, H = 256;
+            var AXIS = 'rgba(255,255,255,0.3)';   // spines and ticks
+            var LABEL = '#9db3b6';
             var PW = W - PAD.l - PAD.r, PH = H - PAD.t - PAD.b;
 
             var svg = document.getElementById('rd-plot');
@@ -629,38 +667,71 @@
 
                 while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-                // Horizontal gridlines + absorbance ticks.
-                for (var i = 0; i <= 4; i++) {
-                    var a = (yMax / 4) * i;
+                var mono = { fill: LABEL, 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace' };
+                function text(attrs, str) {
+                    var a = {};
+                    for (var m in mono) a[m] = mono[m];
+                    for (var n in attrs) a[n] = attrs[n];
+                    return el('text', a, str);
+                }
+
+                // Absorbance axis: major gridline + label every quarter,
+                // minor tick every eighth, as on a ruled instrument scale.
+                for (var i = 0; i <= 8; i++) {
+                    var a = (yMax / 8) * i;
+                    var major = i % 2 === 0;
+                    if (major) {
+                        svg.appendChild(el('line', {
+                            x1: PAD.l, x2: W - PAD.r, y1: y(a), y2: y(a),
+                            stroke: 'rgba(255,255,255,0.07)', 'stroke-width': 1
+                        }));
+                        svg.appendChild(text({ x: PAD.l - 10, y: y(a) + 3.5, 'text-anchor': 'end' }, a.toFixed(2)));
+                    }
                     svg.appendChild(el('line', {
-                        x1: PAD.l, x2: W - PAD.r, y1: y(a), y2: y(a),
-                        stroke: 'rgba(255,255,255,0.08)', 'stroke-width': 1
+                        x1: PAD.l - (major ? 6 : 3), x2: PAD.l, y1: y(a), y2: y(a),
+                        stroke: AXIS, 'stroke-width': 1
                     }));
-                    svg.appendChild(el('text', {
-                        x: PAD.l - 9, y: y(a) + 3.5, 'text-anchor': 'end',
-                        fill: '#9db3b6', 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace'
-                    }, a.toFixed(2)));
                 }
 
-                // Time ticks.
-                for (var t = 0; t <= T_MAX; t += 3) {
-                    svg.appendChild(el('text', {
-                        x: x(t), y: H - 10, 'text-anchor': 'middle',
-                        fill: '#9db3b6', 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace'
-                    }, t + (t === T_MAX ? ' min' : '')));
+                // Time axis: labelled every 3 min, minor tick every minute.
+                for (var t = 0; t <= T_MAX; t += 1) {
+                    var majorT = t % 3 === 0;
+                    svg.appendChild(el('line', {
+                        x1: x(t), x2: x(t), y1: PAD.t + PH, y2: PAD.t + PH + (majorT ? 6 : 3),
+                        stroke: AXIS, 'stroke-width': 1
+                    }));
+                    if (majorT) {
+                        svg.appendChild(text({ x: x(t), y: PAD.t + PH + 17, 'text-anchor': 'middle' }, t));
+                    }
                 }
 
-                // Axis titles.
-                svg.appendChild(el('text', {
-                    x: PAD.l, y: 10, fill: '#9db3b6', 'font-size': 9,
-                    'font-family': 'IBM Plex Mono, monospace'
-                }, 'Abs'));
+                // Spines.
+                svg.appendChild(el('line', {
+                    x1: PAD.l, x2: PAD.l, y1: PAD.t, y2: PAD.t + PH,
+                    stroke: AXIS, 'stroke-width': 1
+                }));
+                svg.appendChild(el('line', {
+                    x1: PAD.l, x2: W - PAD.r, y1: PAD.t + PH, y2: PAD.t + PH,
+                    stroke: AXIS, 'stroke-width': 1
+                }));
 
-                // Saturation plateau.
+                // Axis titles, with the quantity and its unit.
+                svg.appendChild(text({
+                    x: 12, y: PAD.t + PH / 2, 'text-anchor': 'middle',
+                    transform: 'rotate(-90 12 ' + (PAD.t + PH / 2) + ')'
+                }, 'A (AU)'));
+                svg.appendChild(text({
+                    x: PAD.l + PW / 2, y: H - 6, 'text-anchor': 'middle'
+                }, 't (min)'));
+
+                // Saturation plateau, labelled where it leaves the chart.
                 svg.appendChild(el('line', {
                     x1: PAD.l, x2: W - PAD.r, y1: y(cfg.sat), y2: y(cfg.sat),
                     stroke: cfg.color, 'stroke-width': 1, 'stroke-dasharray': '3 4', opacity: 0.55
                 }));
+                svg.appendChild(text({
+                    x: W - PAD.r, y: y(cfg.sat) - 6, 'text-anchor': 'end', fill: cfg.lift
+                }, 'A sat ' + cfg.sat.toFixed(3)));
 
                 // Max-rate window: the steepest stretch the sliding-window
                 // regression lands on, just after the lag.
@@ -679,10 +750,14 @@
                     x2: x(w0 + span), y2: y(absorbance(cfg, w0) + mr * span),
                     stroke: cfg.color, 'stroke-width': 1.5, 'stroke-dasharray': '5 3', opacity: 0.8
                 }));
-                svg.appendChild(el('text', {
-                    x: x(w0) + 5, y: PAD.t + 12, fill: cfg.color, 'font-size': 9,
-                    'font-family': 'IBM Plex Mono, monospace'
-                }, 'max rate'));
+                // Annotation text takes the lifted tone: the vivid wavelength is
+                // right for a 2px stroke but too dim for 9px type on the panel.
+                svg.appendChild(text({
+                    x: x(w0) + 5, y: PAD.t + 11, fill: cfg.lift
+                }, 'v(max)'));
+                svg.appendChild(text({
+                    x: x(w0) + 5, y: PAD.t + 22, fill: cfg.lift, opacity: 0.8
+                }, 'R² ' + cfg.r2.toFixed(4)));
 
                 // The trace itself.
                 var pts = [];
@@ -706,11 +781,17 @@
                     });
                 }
 
-                // Sampled points, thinned so the trace stays readable.
-                for (var p = 0; p <= T_MAX; p += 1.5) {
+                // Sampled points, thinned so the trace stays readable. Open
+                // markers, so the measurements sit *on* the fitted curve rather
+                // than hiding it — and scattered off it by a deterministic
+                // fraction of the plateau, because a reading that lands exactly
+                // on the model every time is not a reading.
+                for (var p = 0, j = 0; p <= T_MAX; p += 1.5, j++) {
+                    var noise = Math.sin(j * 12.9898 + cfg.k * 78.233);
+                    noise = (noise - Math.floor(noise) - 0.5) * cfg.sat * 0.03;
                     svg.appendChild(el('circle', {
-                        cx: x(p), cy: y(absorbance(cfg, p)), r: 2.4,
-                        fill: cfg.color, opacity: 0.85
+                        cx: x(p), cy: y(Math.max(0, absorbance(cfg, p) + noise)), r: 2.7,
+                        style: 'fill: var(--panel)', stroke: cfg.color, 'stroke-width': 1.3
                     }));
                 }
             }
@@ -723,6 +804,19 @@
                 document.documentElement.style.setProperty('--band', cfg.color);
                 document.documentElement.style.setProperty('--band-ink', dark ? cfg.lift : cfg.ink);
                 document.documentElement.style.setProperty('--band-soft', cfg.soft);
+                // The hero's plate reads the wavelength the page is tinted by.
+                document.documentElement.style.setProperty('--plate', '"' + activeBand + ' NM"');
+            }
+
+            var caption = document.getElementById('rd-caption');
+
+            function value(id, num, unit) {
+                var dd = document.getElementById(id);
+                dd.textContent = num;
+                var u = document.createElement('span');
+                u.className = 'unit';
+                u.textContent = unit;
+                dd.appendChild(u);
             }
 
             function selectChannel(band) {
@@ -733,15 +827,28 @@
                 paintAccent();
 
                 document.getElementById('rd-file').textContent = cfg.file;
-                document.getElementById('rd-rate').textContent = cfg.rate.toFixed(4);
-                document.getElementById('rd-slope').textContent = cfg.slope.toFixed(4);
-                document.getElementById('rd-sat').textContent = cfg.sat.toFixed(3);
-                document.getElementById('rd-tts').textContent = cfg.tts.toFixed(1) + ' min';
+
+                // Every quantity carries its unit, and the fitted rate carries
+                // the standard error the regression reports with it.
+                value('rd-rate', cfg.rate.toFixed(4), '± ' + cfg.sd.toFixed(4) + ' ΔA·s⁻¹');
+                value('rd-slope', cfg.slope.toFixed(4), 'ΔA·s⁻¹');
+                value('rd-sat', cfg.sat.toFixed(3), 'AU');
+                value('rd-tts', cfg.tts.toFixed(1), 'min');
 
                 var buttons = document.querySelectorAll('.channel');
                 for (var i = 0; i < buttons.length; i++) {
                     buttons[i].setAttribute('aria-pressed', String(buttons[i].dataset.band === band));
                 }
+
+                var marks = document.querySelectorAll('.spectrum-mark');
+                for (var m = 0; m < marks.length; m++) {
+                    marks[m].classList.toggle('is-active', marks[m].dataset.band === band);
+                }
+
+                caption.innerHTML = '<strong>Fig. 1</strong> — Absorbance at ' + band +
+                    ' nm over ' + T_MAX + ' min, ' + cfg.assay + '. Shaded: sliding-window ' +
+                    'interval of maximum rate; dashed: fitted tangent, R² = ' + cfg.r2.toFixed(4) +
+                    '; dotted: saturation plateau A(sat) = ' + cfg.sat.toFixed(3) + ' AU.';
 
                 drawPlot(cfg);
             }
@@ -776,6 +883,25 @@
                     navToggle.setAttribute('aria-expanded', 'false');
                 }
             });
+
+            // ── Sweep bar under the nav ──────────────────────────────────
+            var progress = document.getElementById('nav-progress');
+            var ticking = false;
+
+            function drawProgress() {
+                var doc = document.documentElement;
+                var span = doc.scrollHeight - doc.clientHeight;
+                var done = span > 0 ? Math.min(1, doc.scrollTop / span) : 0;
+                progress.style.transform = 'scaleX(' + done.toFixed(4) + ')';
+                ticking = false;
+            }
+
+            window.addEventListener('scroll', function () {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(drawProgress);
+            }, { passive: true });
+            drawProgress();
 
             // ── Citation tabs ────────────────────────────────────────────
             var citeText = document.getElementById('cite-text');
