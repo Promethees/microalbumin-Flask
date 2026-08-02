@@ -114,7 +114,13 @@
                         <div class="readout-bar">
                             <span class="readout-dot" aria-hidden="true"></span>
                             <span class="readout-file" id="rd-file">520nm_20042026_HSA.csv</span>
-                            <span class="readout-tag">Sample run</span>
+                            <button class="readout-tag" id="rd-run" type="button"
+                                aria-label="Replay the sample run">
+                                <svg viewBox="0 0 8 10" aria-hidden="true">
+                                    <path d="M0 0l8 5-8 5z" />
+                                </svg>
+                                <span id="rd-run-label">Run</span>
+                            </button>
                         </div>
 
                         <svg class="readout-plot" id="rd-plot" viewBox="0 0 520 256" role="img"
@@ -658,7 +664,7 @@
                 return cfg.sat * (1 - Math.exp(-cfg.k * (t - cfg.lag)));
             }
 
-            function drawPlot(cfg) {
+            function drawPlot(cfg, animate) {
                 // Scale to the trace, so a low-absorbance channel still fills
                 // the plot rather than hugging the axis.
                 var yMax = cfg.sat * 1.25;
@@ -724,40 +730,65 @@
                     x: PAD.l + PW / 2, y: H - 6, 'text-anchor': 'middle'
                 }, 't (min)'));
 
+                // Findings — the plateau and the fitted window. During a run
+                // these stay hidden until the run has actually produced them,
+                // so the panel never shows a result before its data exists.
+                var found = { sat: [], fit: [] };
+                function finding(group, node, opacity) {
+                    node.style.opacity = animate ? 0 : opacity;
+                    node.style.transition = 'opacity 0.25s ease';
+                    found[group].push([node, opacity]);
+                    svg.appendChild(node);
+                }
+
                 // Saturation plateau, labelled where it leaves the chart.
-                svg.appendChild(el('line', {
+                finding('sat', el('line', {
                     x1: PAD.l, x2: W - PAD.r, y1: y(cfg.sat), y2: y(cfg.sat),
-                    stroke: cfg.color, 'stroke-width': 1, 'stroke-dasharray': '3 4', opacity: 0.55
-                }));
-                svg.appendChild(text({
+                    stroke: cfg.color, 'stroke-width': 1, 'stroke-dasharray': '3 4'
+                }), 0.55);
+                finding('sat', text({
                     x: W - PAD.r, y: y(cfg.sat) - 6, 'text-anchor': 'end', fill: cfg.lift
-                }, 'A sat ' + cfg.sat.toFixed(3)));
+                }, 'A sat ' + cfg.sat.toFixed(3)), 1);
 
                 // Max-rate window: the steepest stretch the sliding-window
                 // regression lands on, just after the lag.
                 var w0 = cfg.lag, w1 = cfg.lag + 2.2;
-                svg.appendChild(el('rect', {
+                finding('fit', el('rect', {
                     x: x(w0), y: PAD.t, width: x(w1) - x(w0), height: PH,
-                    fill: cfg.color, opacity: 0.12
-                }));
+                    fill: cfg.color
+                }), 0.12);
                 // Tangent at the start of that window — the fitted max rate,
                 // drawn at its true slope (sat × k per minute) until it runs
                 // out of chart.
                 var mr = cfg.sat * cfg.k;
                 var span = Math.min(4, (yMax * 0.9 - absorbance(cfg, w0)) / mr);
-                svg.appendChild(el('line', {
+                finding('fit', el('line', {
                     x1: x(w0), y1: y(absorbance(cfg, w0)),
                     x2: x(w0 + span), y2: y(absorbance(cfg, w0) + mr * span),
-                    stroke: cfg.color, 'stroke-width': 1.5, 'stroke-dasharray': '5 3', opacity: 0.8
-                }));
+                    stroke: cfg.color, 'stroke-width': 1.5, 'stroke-dasharray': '5 3'
+                }), 0.8);
                 // Annotation text takes the lifted tone: the vivid wavelength is
                 // right for a 2px stroke but too dim for 9px type on the panel.
-                svg.appendChild(text({
+                finding('fit', text({
                     x: x(w0) + 5, y: PAD.t + 11, fill: cfg.lift
-                }, 'v(max)'));
-                svg.appendChild(text({
-                    x: x(w0) + 5, y: PAD.t + 22, fill: cfg.lift, opacity: 0.8
-                }, 'R² ' + cfg.r2.toFixed(4)));
+                }, 'v(max)'), 1);
+                finding('fit', text({
+                    x: x(w0) + 5, y: PAD.t + 22, fill: cfg.lift
+                }, 'R² ' + cfg.r2.toFixed(4)), 0.8);
+
+                // Trace and markers live behind a clip that the run widens, so
+                // the plot fills in at the speed the readings would arrive.
+                var defs = el('defs', {});
+                var clip = el('clipPath', { id: 'rd-clip' });
+                var clipRect = el('rect', {
+                    x: PAD.l, y: PAD.t - 6, width: animate ? 0 : PW, height: PH + 12
+                });
+                clip.appendChild(clipRect);
+                defs.appendChild(clip);
+                svg.appendChild(defs);
+
+                var live = el('g', { 'clip-path': 'url(#rd-clip)' });
+                svg.appendChild(live);
 
                 // The trace itself.
                 var pts = [];
@@ -765,21 +796,10 @@
                     var tt = (s / 160) * T_MAX;
                     pts.push(x(tt).toFixed(2) + ',' + y(absorbance(cfg, tt)).toFixed(2));
                 }
-                var path = el('polyline', {
+                live.appendChild(el('polyline', {
                     points: pts.join(' '), fill: 'none', stroke: cfg.color,
                     'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'
-                });
-                svg.appendChild(path);
-
-                if (!reduceMotion) {
-                    var len = path.getTotalLength ? path.getTotalLength() : 900;
-                    path.style.strokeDasharray = len;
-                    path.style.strokeDashoffset = len;
-                    path.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(.3,.7,.3,1)';
-                    requestAnimationFrame(function () {
-                        requestAnimationFrame(function () { path.style.strokeDashoffset = 0; });
-                    });
-                }
+                }));
 
                 // Sampled points, thinned so the trace stays readable. Open
                 // markers, so the measurements sit *on* the fitted curve rather
@@ -789,11 +809,46 @@
                 for (var p = 0, j = 0; p <= T_MAX; p += 1.5, j++) {
                     var noise = Math.sin(j * 12.9898 + cfg.k * 78.233);
                     noise = (noise - Math.floor(noise) - 0.5) * cfg.sat * 0.03;
-                    svg.appendChild(el('circle', {
+                    live.appendChild(el('circle', {
                         cx: x(p), cy: y(Math.max(0, absorbance(cfg, p) + noise)), r: 2.7,
                         style: 'fill: var(--panel)', stroke: cfg.color, 'stroke-width': 1.3
                     }));
                 }
+
+                // The cursor rides the leading edge of the sweep and carries the
+                // current time and absorbance with it.
+                var cursor = el('line', {
+                    x1: PAD.l, x2: PAD.l, y1: PAD.t, y2: PAD.t + PH,
+                    stroke: cfg.lift, 'stroke-width': 1, opacity: animate ? 0.7 : 0
+                });
+                var cursorLabel = text({
+                    x: W - PAD.r, y: PAD.t + 11, 'text-anchor': 'end', fill: cfg.lift,
+                    opacity: animate ? 1 : 0
+                }, '');
+                svg.appendChild(cursor);
+                svg.appendChild(cursorLabel);
+
+                return {
+                    cfg: cfg,
+                    windowEnd: w1,
+                    reveal: function (group) {
+                        for (var g = 0; g < found[group].length; g++) {
+                            found[group][g][0].style.opacity = found[group][g][1];
+                        }
+                    },
+                    seek: function (t) {
+                        clipRect.setAttribute('width', ((t / T_MAX) * PW).toFixed(2));
+                        cursor.setAttribute('x1', x(t).toFixed(2));
+                        cursor.setAttribute('x2', x(t).toFixed(2));
+                        cursorLabel.textContent = 't ' + t.toFixed(1) + ' min · A ' +
+                            absorbance(cfg, t).toFixed(3);
+                    },
+                    end: function () {
+                        clipRect.setAttribute('width', PW);
+                        cursor.setAttribute('opacity', 0);
+                        cursorLabel.setAttribute('opacity', 0);
+                    }
+                };
             }
 
             // The darkened accent is only needed on the light page; on dark the
@@ -819,6 +874,96 @@
                 dd.appendChild(u);
             }
 
+            // ── Running a sample ─────────────────────────────────────────
+            // The panel replays the run rather than presenting it finished:
+            // the trace fills in at the rate the readings would arrive, and
+            // each result appears only once the run has produced it.
+            var RUN_MS = 2800;
+            var readout = document.getElementById('readout');
+            var runBtn = document.getElementById('rd-run');
+            var runLabel = document.getElementById('rd-run-label');
+            var frameId = null;
+
+            // Every quantity carries its unit, and the fitted rate carries the
+            // standard error the regression reports with it.
+            function finalValues(cfg) {
+                value('rd-rate', cfg.rate.toFixed(4), '± ' + cfg.sd.toFixed(4) + ' ΔA·s⁻¹');
+                value('rd-slope', cfg.slope.toFixed(4), 'ΔA·s⁻¹');
+                value('rd-sat', cfg.sat.toFixed(3), 'AU');
+                value('rd-tts', cfg.tts.toFixed(1), 'min');
+            }
+
+            // Mid-run: the plateau climbs with the trace, the window fit lands
+            // when its window has passed, and the full-run slope waits for the
+            // full run — a fit needs its data first.
+            function liveValues(cfg, t, windowEnd) {
+                var fitted = t >= windowEnd;
+                value('rd-rate', fitted ? cfg.rate.toFixed(4) : '—',
+                    fitted ? '± ' + cfg.sd.toFixed(4) + ' ΔA·s⁻¹' : 'fitting');
+                value('rd-slope', '—', 'pending');
+                value('rd-sat', absorbance(cfg, t).toFixed(3), 'AU');
+                value('rd-tts', t >= cfg.tts ? cfg.tts.toFixed(1) : '—',
+                    t >= cfg.tts ? 'min' : 'not yet');
+            }
+
+            function idleControls() {
+                if (frameId) {
+                    cancelAnimationFrame(frameId);
+                    frameId = null;
+                }
+                readout.classList.remove('is-running');
+                runBtn.removeAttribute('disabled');
+                runBtn.removeAttribute('aria-busy');
+                runLabel.textContent = 'Replay';
+            }
+
+            function runPlot(cfg) {
+                idleControls();
+
+                if (reduceMotion) {
+                    drawPlot(cfg, false);
+                    finalValues(cfg);
+                    return;
+                }
+
+                var plot = drawPlot(cfg, true);
+                readout.classList.add('is-running');
+                runBtn.setAttribute('disabled', '');
+                runBtn.setAttribute('aria-busy', 'true');
+                runLabel.textContent = 'Running';
+
+                var start = null, fitShown = false, satShown = false;
+
+                function frame(now) {
+                    if (start === null) start = now;
+                    var p = Math.min(1, (now - start) / RUN_MS);
+                    var t = p * T_MAX;
+
+                    plot.seek(t);
+                    liveValues(cfg, t, plot.windowEnd);
+
+                    if (!fitShown && t >= plot.windowEnd) { plot.reveal('fit'); fitShown = true; }
+                    if (!satShown && t >= cfg.tts) { plot.reveal('sat'); satShown = true; }
+
+                    if (p < 1) {
+                        frameId = requestAnimationFrame(frame);
+                        return;
+                    }
+
+                    plot.end();
+                    plot.reveal('fit');
+                    plot.reveal('sat');
+                    finalValues(cfg);
+                    idleControls();
+                }
+
+                frameId = requestAnimationFrame(frame);
+            }
+
+            runBtn.addEventListener('click', function () {
+                runPlot(CHANNELS[activeBand]);
+            });
+
             function selectChannel(band) {
                 var cfg = CHANNELS[band];
                 if (!cfg) return;
@@ -827,13 +972,6 @@
                 paintAccent();
 
                 document.getElementById('rd-file').textContent = cfg.file;
-
-                // Every quantity carries its unit, and the fitted rate carries
-                // the standard error the regression reports with it.
-                value('rd-rate', cfg.rate.toFixed(4), '± ' + cfg.sd.toFixed(4) + ' ΔA·s⁻¹');
-                value('rd-slope', cfg.slope.toFixed(4), 'ΔA·s⁻¹');
-                value('rd-sat', cfg.sat.toFixed(3), 'AU');
-                value('rd-tts', cfg.tts.toFixed(1), 'min');
 
                 var buttons = document.querySelectorAll('.channel');
                 for (var i = 0; i < buttons.length; i++) {
@@ -850,7 +988,7 @@
                     'interval of maximum rate; dashed: fitted tangent, R² = ' + cfg.r2.toFixed(4) +
                     '; dotted: saturation plateau A(sat) = ' + cfg.sat.toFixed(3) + ' AU.';
 
-                drawPlot(cfg);
+                runPlot(cfg);
             }
 
             var channelButtons = document.querySelectorAll('.channel');
