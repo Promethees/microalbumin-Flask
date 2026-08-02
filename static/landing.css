@@ -695,8 +695,10 @@ html.dark ::selection {
 
 .flow {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 28px;
+    /* Six steps read better as two rows of three than as a five-wide row with
+       one orphan, which is what auto-fit gives at this shell width. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px 32px;
     counter-reset: step;
 }
 
@@ -728,6 +730,17 @@ html.dark ::selection {
 .step p {
     color: var(--ink-2);
     font-size: 0.9rem;
+}
+
+/* Trailing qualifier under a section's grid — which steps need which build,
+   what the capability grid did not have room for. */
+.section-note {
+    margin-top: 34px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    max-width: 62ch;
+    font-size: 0.88rem;
+    color: var(--ink-3);
 }
 
 /* ── Capability grid ────────────────────────────────────────────────────── */
@@ -1143,6 +1156,18 @@ html.dark ::selection {
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    .flow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 540px) {
+    .flow {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
 
 @media (max-width: 940px) {
     .hero-grid,
