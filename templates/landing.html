@@ -222,10 +222,16 @@
                         {% if org.url %}<a href="{{ org.url }}" target="_blank" rel="noopener"
                             title="{{ org.name }}" {% if track %}tabindex="-1"{% endif %}>{% endif %}
                             {% if org.logo %}
+                            {# These logos carry their own wordmark, so the mark stands alone and
+                               the name goes to screen readers only — printing it twice is what a
+                               separate visible label would do. --ratio sizes the masked span,
+                               which has no intrinsic dimensions of its own. #}
                             <span class="org-mark" aria-hidden="true"
-                                style="--mark: url('{{ url_for('static', filename=org.logo) }}')"></span>
-                            {% endif %}
+                                style="--mark: url('{{ url_for('static', filename=org.logo) }}'); --ratio: {{ org.aspect }}"></span>
+                            <span class="org-name is-sr">{{ org.short }}</span>
+                            {% else %}
                             <span class="org-name">{{ org.short }}</span>
+                            {% endif %}
                             {% if org.url %}</a>{% endif %}
                     </li>
                     {% endfor %}

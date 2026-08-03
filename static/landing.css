@@ -1426,10 +1426,16 @@ html.dark .readout {
    the colour comes from the page, so a row of institutions reads as one system
    instead of a row of clashing brand palettes. Any transparent PNG or SVG
    works, and the file is never recoloured on disk. */
+/* Sized from the file's own aspect ratio (--ratio, set server-side): a masked
+   span has no intrinsic dimensions, so a fixed square box would squeeze a wide
+   lockup and strand a tall emblem in dead space. Institutional emblems carry
+   circular text, which is illegible at the ~40px a plain wordmark row can get
+   away with — hence the taller measure. */
 .org-mark {
     flex: none;
-    width: 40px;
-    height: 40px;
+    --mark-h: 62px;
+    height: var(--mark-h);
+    width: calc(var(--mark-h) * var(--ratio, 1));
     background-color: var(--ink-3);
     -webkit-mask-image: var(--mark);
     mask-image: var(--mark);
@@ -1449,6 +1455,19 @@ html.dark .readout {
     letter-spacing: -0.01em;
     color: var(--ink-3);
     transition: color 0.2s ease;
+}
+
+/* An organisation whose logo already contains its own wordmark keeps the name
+   for assistive tech only — the mark says it once, on screen. */
+.org-name.is-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
 
 .marquee-item:hover .org-mark {
@@ -1613,9 +1632,10 @@ html.dark .readout {
         padding-right: 42px;
     }
 
+    /* Only the height moves — width follows --ratio, so the mark keeps its
+       proportions instead of being squashed into a square. */
     .org-mark {
-        width: 32px;
-        height: 32px;
+        --mark-h: 46px;
     }
 
     .org-name {

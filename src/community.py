@@ -11,6 +11,7 @@ Files are read once and cached in-process; they only change on deploy.
 import json
 import os
 import re
+import struct
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -106,6 +107,36 @@ def get_publications():
     return {'citation': citation, 'publications': pubs}
 
 
+_SVG_VIEWBOX_RE = re.compile(
+    r'viewBox\s*=\s*["\']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)', re.I)
+
+
+def _logo_aspect(path):
+    """Width/height of a logo file, or None when it cannot be read.
+
+    The marquee draws each mark as a CSS mask on an empty span, which has no
+    intrinsic size — so without the file's real aspect ratio a tall emblem and a
+    wide lockup would both be squeezed into the same box and one of them would
+    float in a field of dead space. Only PNG and SVG are parsed, which is what
+    the asset contract asks for; anything else falls back to square.
+    """
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(4096)
+        # PNG: IHDR is always the first chunk, width/height at a fixed offset.
+        if head[:8] == b'\x89PNG\r\n\x1a\n' and head[12:16] == b'IHDR':
+            w, h = struct.unpack('>II', head[16:24])
+            return round(w / h, 4) if w and h else None
+        if b'<svg' in head:
+            m = _SVG_VIEWBOX_RE.search(head.decode('utf-8', 'ignore'))
+            if m:
+                w, h = float(m.group(1)), float(m.group(2))
+                return round(w / h, 4) if w and h else None
+    except (OSError, ValueError, struct.error):
+        pass
+    return None
+
+
 def get_organizations():
     """`{heading, organizations}` for the landing page's 'trusted by' marquee.
 
@@ -131,9 +162,12 @@ def get_organizations():
         # url_for('static', ...) and interpolated into a CSS url(), so a path
         # that escapes the directory has no legitimate use here.
         logo = _clean(entry.get('logo'), 200).lstrip('/')
+        aspect = None
         if logo:
             candidate = os.path.normpath(os.path.join(_STATIC_DIR, logo))
-            if not candidate.startswith(_STATIC_DIR + os.sep) or not os.path.isfile(candidate):
+            if candidate.startswith(_STATIC_DIR + os.sep) and os.path.isfile(candidate):
+                aspect = _logo_aspect(candidate)
+            else:
                 logo = ''
 
         # http(s) only. The value lands in an href, and the file is hand-edited,
@@ -146,6 +180,7 @@ def get_organizations():
             'name': name,
             'short': _clean(entry.get('short'), MAX_NAME_LEN) or name,
             'logo': logo,
+            'aspect': aspect or 1,
             'url': url,
         })
 
