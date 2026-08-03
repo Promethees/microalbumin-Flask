@@ -46,3 +46,5 @@ generate_heavy_csv.py
 /static/dist/
 
 *.pem
+
+.claude/
