@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <!-- Type is self-hosted for both styles (Rule.md §2.4 / §2.34): a licence you
+         can only read with a network is not shipped with the product. The style is
+         chosen server-side from `ui_style`, so only the family in use is linked. -->
+    {% if ui_style == 'classic' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/classic.css') }}">
+    {% else %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='fonts/plex.css') }}">
+    {% endif %}
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ht.ico') }}">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --paper: #f7f8f7;
+            --card: #ffffff;
+            --line: #dde3e1;
+            --ink: #16232a;
+            --ink-2: #4a5c64;
+            --ink-3: #7b8c93;
+            --accent: #17a35f;
+            {% if ui_style == 'classic' %}
+            --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Inter', system-ui, -apple-system, sans-serif;
+            {% else %}
+            --font-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+            {% endif %}
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --paper: #0d1a20;
+                --card: #12242c;
+                --line: #233a43;
+                --ink: #e6efec;
+                --ink-2: #a9bfc3;
+                --ink-3: #7d949a;
+                --accent: #3fd08a;
+            }
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--paper);
+            color: var(--ink-2);
+            line-height: 1.6;
+            padding: 28px 20px 64px;
+        }
+
+        .wrap {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 10px 18px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        h1 {
+            font-size: 1.35rem;
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        .docnav {
+            margin-left: auto;
+            display: flex;
+            gap: 14px;
+            font-family: var(--font-mono);
+            font-size: 0.76rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .docnav a {
+            color: var(--ink-3);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 2px;
+        }
+
+        .docnav a:hover {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .docnav a[aria-current="page"] {
+            color: var(--ink);
+            border-bottom-color: var(--accent);
+        }
+
+        .notice {
+            margin-top: 18px;
+            border: 1px solid var(--accent);
+            border-left-width: 3px;
+            border-radius: 2px;
+            padding: 12px 14px;
+            font-size: 0.84rem;
+            color: var(--ink);
+            background: color-mix(in srgb, var(--accent) 10%, transparent);
+        }
+
+        /* The documents are written to read as plain text, so they are served as
+           plain text — no Markdown dependency for two files. */
+        pre.doc {
+            margin-top: 22px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 3px;
+            padding: 24px 26px;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            line-height: 1.72;
+            color: var(--ink-2);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }
+
+        footer {
+            margin-top: 22px;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--ink-3);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+        }
+
+        footer a {
+            color: var(--ink-3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header>
+            <h1>{{ heading }}</h1>
+            <nav class="docnav">
+                <a href="/legal/eula" {% if doc=='eula' %}aria-current="page" {% endif %}>Licence</a>
+                <a href="/legal/privacy" {% if doc=='privacy' %}aria-current="page" {% endif %}>Privacy</a>
+                <a href="/">Back to the app</a>
+            </nav>
+        </header>
+
+        <p class="notice">Easy OKAPI is for research and education only. It is not a medical device and must not be
+            used for diagnostic purposes.</p>
+
+        <pre class="doc">{{ body }}</pre>
+
+        <footer>
+            <span>© 2025–2026 CBBiotec · HCMUS–VNU</span>
+            <span>Latest version: <a href="https://www.easysensorkit.cbbiotec.vn/terms"
+                    rel="noopener">easysensorkit.cbbiotec.vn</a></span>
+        </footer>
+    </div>
+</body>
+
+</html>

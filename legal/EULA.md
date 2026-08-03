@@ -1,0 +1,315 @@
+# Easy OKAPI — End User License Agreement
+
+**Product:** Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), desktop application for Windows, macOS and Linux\
+**Licensor:** Center for Bioscience and Biotechnology (CBBiotec), University of Science, Vietnam National University Ho Chi Minh City (HCMUS–VNU), 227 Nguyen Van Cu, District 5, Ho Chi Minh City, Vietnam\
+**Contact:** tqmthong@gmail.com\
+**Version:** 1.0\
+**Effective:** 3 August 2026
+
+> `legal/EULA.txt` and `legal/EULA.rtf` are generated from this file by
+> `legal/render_license.py` and are what the installers actually display. Edit
+> **this** file and regenerate; never edit the `.txt` or `.rtf` by hand.
+
+---
+
+## 0. Read this first
+
+READ THIS AGREEMENT BEFORE INSTALLING OR USING EASY OKAPI. BY INSTALLING,
+ACTIVATING, COPYING OR USING THE SOFTWARE YOU AGREE TO BE BOUND BY IT. IF YOU DO
+NOT AGREE, DO NOT INSTALL THE SOFTWARE, AND CANCEL THE INSTALLER NOW.
+
+If you are accepting on behalf of a laboratory, department, university or
+company, you confirm that you are authorised to bind it, and "you" means that
+organisation.
+
+---
+
+## 1. RESEARCH USE ONLY — NOT A MEDICAL DEVICE
+
+**Easy OKAPI is a research and education tool. It is not a medical device. It is
+not registered, cleared, certified or approved as a medical device by any
+regulator in any country. It must not be used to diagnose, treat, cure, mitigate
+or prevent any disease or condition in humans or animals.**
+
+1.1 Do not use the Software, or any value it produces, as the basis for a
+clinical, diagnostic, therapeutic or other patient-care decision.
+
+1.2 Do not use the Software to produce results that will be reported to a
+patient, to a clinician acting for a patient, to an insurer, or to a regulator as
+a clinical finding.
+
+1.3 The regression fits, standard curves, derived concentrations, rate constants,
+saturation values and reports the Software computes are the output of
+general-purpose numerical methods applied to numbers you supplied. They carry no
+guarantee of analytical accuracy, precision, linearity, limit of detection, or
+fitness for any particular assay.
+
+1.4 Validating the Software for your own assay, instrument, reagent lot and
+sample matrix — and confirming every result against your own controls before you
+rely on it — is entirely your responsibility.
+
+1.5 If your work falls under a quality system (ISO 15189, ISO/IEC 17025, GLP,
+GMP, or an institutional review board), determining whether and how this Software
+may be used within it is your responsibility, not ours.
+
+---
+
+## 2. What this agreement covers
+
+2.1 "Software" means the Easy OKAPI desktop application as distributed by us —
+the installers, the packaged application, its bundled assets and documentation,
+and any update we supply.
+
+2.2 "Services" means the servers we operate that the Software contacts:
+activation, licence checking, update distribution, and the hosted AI assistant
+proxy, currently at `www.easyokapi.cbbiotec.vn`.
+
+2.3 Your use of the **Services**, and of the Easy OKAPI website and hosted web
+application, is additionally governed by the Terms of Service at
+<https://www.easysensorkit.cbbiotec.vn/terms>.
+
+2.4 Our handling of data is described in `legal/PRIVACY.md`, shipped with the
+Software, and at <https://www.easysensorkit.cbbiotec.vn/privacy>.
+
+---
+
+## 3. Licence grant, and how it relates to the MIT License
+
+3.1 **Source code.** The Easy OKAPI source code is published under the MIT
+License (see `LICENSE`). That licence governs the source code, and nothing in
+this agreement removes a right the MIT License grants you over source code you
+have obtained.
+
+3.2 **This agreement** governs the binary distributions we build and sign, and
+your use of the Services. Operating our activation, licensing, update and
+assistant servers is a service we provide to you; it is not part of the code
+grant.
+
+3.3 Subject to this agreement, we grant you a personal, non-exclusive,
+non-transferable, revocable licence to install and use one copy of the Software
+on one machine per activated seat, for research, teaching and internal
+evaluation.
+
+3.4 You may use the Software for commercial research inside your own
+organisation. You may not resell it, offer it to third parties as a hosted
+service, or redistribute our signed installers as your own product.
+
+3.5 We may distribute the Software in obfuscated or compiled form.
+
+---
+
+## 4. Activation, hardware binding and seats
+
+4.1 The Software requires activation with a licence token issued to your Easy
+OKAPI account. Accounts are created at
+<https://www.easysensorkit.cbbiotec.vn/account/signup>.
+
+4.2 On activation the Software computes a **hardware fingerprint** of the
+machine — a SHA-256 digest of a stable operating-system machine identifier
+combined with a fixed salt — and the token is cryptographically bound to that
+fingerprint.
+
+4.3 A token is valid on **one machine**. Copying an activated installation, or
+the `activation.json` file inside it, to a second machine will not work: the
+fingerprint will not match and the Software will refuse to start.
+
+4.4 The Software contacts the Services at start-up and periodically thereafter to
+confirm the licence is still valid. When the machine is offline, the Software
+continues to run on its last known good state until the next successful check.
+
+4.5 If you replace or reinstall a machine and need the seat moved, email
+tqmthong@gmail.com; we will revoke the old seat and issue a replacement.
+
+4.6 Attempting to defeat, patch out, spoof or otherwise circumvent activation,
+the hardware binding, the seat limit or the revocation check is a material breach
+of this agreement, regardless of any right the MIT License gives you to modify
+the source code. The breach lies in your use of **our Services**, not in your
+editing of the code.
+
+---
+
+## 5. Restrictions
+
+You will not:
+
+- use the Software for any clinical or diagnostic purpose, contrary to §1;
+- use it for anything unlawful, or to develop, produce or handle biological,
+  chemical or other agents in violation of applicable law or treaty;
+- remove, obscure or alter any copyright, licence or "research use only" notice
+  in the Software or its interface;
+- use our names, logos or the Easy OKAPI mark in a way that suggests we endorse,
+  certify or support your product, service or results;
+- mint, forge or share licence or download tokens;
+- automate the Services beyond ordinary interactive use, or evade their rate
+  limits;
+- represent the Software's output as validated, certified or regulator-approved.
+
+---
+
+## 6. Your data
+
+6.1 Easy OKAPI is **local-first**. Your measurement files, calibration curves,
+analysis snapshots, reports and interaction logs are written to your own machine
+and are not uploaded to us in normal operation.
+
+6.2 Your data is yours. We claim no ownership over it, we do not use it for our
+own research, and we do not use it to train any machine-learning model.
+
+6.3 What the Software does send to us — the licence token and hardware
+fingerprint, update checks, assistant messages when you use the hosted assistant,
+and bug reports you choose to send — is itemised in `legal/PRIVACY.md`.
+
+6.4 Do not put patient identifiers or other personal data into file names, source
+labels, report subjects or assistant prompts. The Software is not designed to
+hold personal health information.
+
+6.5 You are responsible for backing up your data. Uninstalling the Software, or
+letting an update fail, may remove files in the application directory.
+
+---
+
+## 7. Third-party components and services
+
+7.1 The Software includes open-source components licensed by their own authors
+under their own terms, which continue to apply to those components.
+
+7.2 The AI assistant sends your prompt, the recent conversation, and a structured
+description of the current screen to a third-party language-model provider
+(currently Groq). **The assistant can be wrong.** Treat every answer as a
+suggestion to verify, never as a result, and never as a scientific, regulatory or
+medical conclusion.
+
+7.3 If you configure your own provider API key, your assistant requests go from
+your machine directly to that provider under your own agreement with them, and we
+neither see nor route them.
+
+7.4 Easy OKAPI is inspired by, but not affiliated with, endorsed by or supported
+by IORodeo or their Open Colorimeter product. Colorimeter hardware is covered by
+its own manufacturer's terms and warranty, not ours.
+
+---
+
+## 8. Updates
+
+8.1 The Software can check for and install updates. An update may be required for
+continued operation, particularly when it carries a security fix or a licensing
+change.
+
+8.2 An update is licensed under this agreement unless it is accompanied by its
+own terms, in which case those terms govern that update.
+
+8.3 We may change, degrade, suspend or discontinue any feature — including the
+assistant, the update channel and the Services themselves — at any time.
+
+---
+
+## 9. Term, termination, revocation
+
+9.1 This agreement runs from the moment you install the Software until it is
+terminated.
+
+9.2 You may terminate at any time by uninstalling the Software and deleting your
+account.
+
+9.3 We may revoke an individual machine seat or ban an account if we reasonably
+believe this agreement has been breached, that the account has been compromised,
+that your use threatens the security or availability of the Services, or that we
+are required to do so by law. A revoked seat or banned account stops the Software
+from running; the reason is shown in the application.
+
+9.4 If you believe a revocation or ban is a mistake, email tqmthong@gmail.com and
+we will review it.
+
+9.5 On termination you must stop using the Software and remove it from your
+machines. Sections 1, 6.2, 10, 11, 12 and 13 survive.
+
+---
+
+## 10. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, TITLE AND
+NON-INFRINGEMENT.
+
+Without limiting that: we do not warrant that the Software will be
+uninterrupted, secure or error-free; that defects will be corrected; that any
+computed value, fit, curve, concentration or report is correct or fit for your
+purpose; that the Software is compatible with any particular instrument,
+operating system version or hardware; or that the assistant's answers are
+accurate. Where a jurisdiction does not allow the exclusion of certain
+warranties, this section applies to the fullest extent permitted there.
+
+---
+
+## 11. LIMITATION OF LIABILITY
+
+11.1 To the fullest extent permitted by law, CBBiotec, HCMUS–VNU and their staff,
+students and contributors will not be liable for any indirect, incidental,
+special, consequential, exemplary or punitive damages; nor for lost profits, lost
+data, lost samples, lost reagents, lost instrument time, wasted experiments,
+invalidated results, retracted publications, regulatory findings, or reputational
+harm — however caused, and even if we were told such damage was possible.
+
+11.2 Our total aggregate liability arising out of or relating to the Software and
+the Services is limited to the greater of (a) the amount you paid us for them in
+the twelve months before the claim, which for freely distributed software is
+**zero**, and (b) 1,000,000 VND.
+
+11.3 Nothing here limits liability that cannot be limited by law, including
+liability for death or personal injury caused by negligence, or for fraud.
+
+11.4 These limits reflect the allocation of risk in a free, research-purpose,
+no-warranty tool, and are a basis on which we make the Software available at all.
+
+---
+
+## 12. Indemnity, export and compliance
+
+12.1 You will indemnify and hold harmless CBBiotec, HCMUS–VNU and their staff and
+contributors against any claim, loss, liability, cost or expense (including
+reasonable legal fees) arising from your use of the Software in breach of this
+agreement, from your use of it for a clinical or diagnostic purpose contrary to
+§1, or from your infringement of a third party's rights.
+
+12.2 You are responsible for complying with export control and sanctions laws
+that apply to you. You may not use or re-export the Software where doing so is
+prohibited.
+
+12.3 The Software uses cryptography for signature verification (RS256) and
+transport security (HTTPS/TLS), using standard, publicly available libraries. It
+implements no proprietary cryptography and provides no encryption service to the
+user.
+
+---
+
+## 13. Governing law
+
+13.1 This agreement is governed by the laws of the Socialist Republic of Vietnam,
+without regard to conflict-of-laws rules.
+
+13.2 The competent courts of Ho Chi Minh City, Vietnam have exclusive
+jurisdiction, and you and we submit to that jurisdiction.
+
+13.3 Where a mandatory consumer-protection rule where you live gives you a right
+this clause would remove, that rule prevails to the extent of the conflict.
+
+13.4 If any provision is held unenforceable it is severed and the rest remains in
+force. Our failure to enforce a provision is not a waiver of it.
+
+13.5 This agreement, with the Privacy Notice and (for the Services) the Terms of
+Service, is the entire agreement between you and us about the Software.
+
+---
+
+## 14. Contact
+
+Center for Bioscience and Biotechnology (CBBiotec)\
+University of Science, Vietnam National University Ho Chi Minh City\
+227 Nguyen Van Cu, District 5, Ho Chi Minh City, Vietnam
+
+Email: tqmthong@gmail.com\
+Web: <https://www.easysensorkit.cbbiotec.vn>
+
+Copyright © 2025–2026 Trà Quang Minh Thông and CBBiotec, HCMUS–VNU.\
+Source code released under the MIT License; see `LICENSE`.

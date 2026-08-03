@@ -78,6 +78,21 @@ Name "${APP_NAME} ${APP_VERSION}"
 OutFile "EasyOKAPI_Setup_${APP_VERSION}.exe"
 InstallDir "${INSTALL_DIR}"
 BrandingText "EasyOKAPI ${APP_VERSION}"
+
+; ── Version resource ──────────────────────────────────────────────────────────
+; Windows reads this for the file Properties tab, for the UAC prompt's publisher
+; line, and for the SmartScreen reputation record. CompanyName MUST match the
+; Subject CN of the Authenticode certificate the .exe is signed with, or the
+; signed binary and its metadata disagree about who published it.
+; VIProductVersion needs four components; APP_VERSION carries three.
+VIProductVersion "${APP_VERSION}.0"
+VIAddVersionKey "ProductName"     "Easy OKAPI"
+VIAddVersionKey "ProductVersion"  "${APP_VERSION}"
+VIAddVersionKey "FileVersion"     "${APP_VERSION}.0"
+VIAddVersionKey "FileDescription" "Easy OKAPI Setup - Open-colorimeter Kinetics Analysis Platform"
+VIAddVersionKey "CompanyName"     "Center for Bioscience and Biotechnology (CBBiotec), HCMUS-VNU"
+VIAddVersionKey "LegalCopyright"  "Copyright (C) 2025-2026 CBBiotec, HCMUS-VNU. MIT-licensed source."
+VIAddVersionKey "LegalTrademarks" "Easy OKAPI"
 ShowInstDetails show
 ShowUninstDetails show
 
@@ -95,10 +110,26 @@ Var BgBitmapHandle
 Var ImportSampleData   ; "1" = import bundled sample_data into data\, else remove it
 
 ; ── Page order ─────────────────────────────────────────────────────────────────
-; Welcome → Token → Directory → Install → Finish
+; Welcome → License → Token → Directory → Install → Finish
 ; Each built-in MUI page gets a SHOW callback that recolours all inner controls.
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
 !insertmacro MUI_PAGE_WELCOME
+
+; EULA, before the Token page: acceptance precedes activation — the token is the
+; licence *key*, this page is the licence *agreement*.
+;
+; The licence is RTF, not plain text, on purpose: MUI's licence control is a
+; RichEdit, and LicenseBkColor (via MUI_LICENSEPAGE_BGCOLOR) sets only its
+; background. Plain text would render black-on-indigo. The RTF carries its own
+; colour table, so the text comes out in CLR_FG. It is ASCII-only (non-ASCII is
+; escaped as \uNNNN?), so it is safe in this ANSI build. Regenerate it from
+; legal/EULA.md with `python3 legal/render_license.py` — never edit it by hand.
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
+!define MUI_LICENSEPAGE_BGCOLOR "${CLR_INPUT}"
+!define MUI_LICENSEPAGE_TEXT_TOP "Please read the End User License Agreement before installing EasyOKAPI."
+!define MUI_LICENSEPAGE_CHECKBOX
+!define MUI_LICENSEPAGE_CHECKBOX_TEXT "I have read and accept the agreement, including that EasyOKAPI is for research use only and is not a medical device."
+!insertmacro MUI_PAGE_LICENSE "${__FILEDIR__}\..\legal\EULA.rtf"
 
 Page custom TokenPage TokenPageLeave
 
@@ -513,6 +544,16 @@ Section "Install" SEC01
   File "launcher.ps1"
   File "EasyOKAPI.exe"
   File "ht.ico"
+
+  ; ── Legal documents ─────────────────────────────────────────────────────────
+  ; A visible copy next to the app, so the agreement is readable without
+  ; launching anything — which is what someone checking what they installed, or
+  ; an auditor, actually does. The app also serves them at /legal/<doc>.
+  SetOutPath "$INSTDIR\legal"
+  File "${__FILEDIR__}\..\legal\EULA.txt"
+  File "${__FILEDIR__}\..\legal\PRIVACY.md"
+  File "${__FILEDIR__}\..\LICENSE"
+  SetOutPath "$INSTDIR"
 
   ; nsExec::ExecToLog streams each child-process stdout/stderr directly to the
   ; NSIS detail log — no intermediate bat wrapper needed for Step 1.

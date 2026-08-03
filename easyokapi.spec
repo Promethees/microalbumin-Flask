@@ -33,6 +33,12 @@ _candidate_datas = [
     _data('guide_translations', 'guide_translations'),
     _data('guide_training.json', '.'),
     _data('sample_data', 'sample_data'),
+    # EULA + privacy notice, served offline by /legal/<doc> (core_routes.py).
+    # Only the two documents — not the whole legal/ dir, which also holds the
+    # generator script and the installer-only .txt/.rtf renderings.
+    _data('legal/EULA.md', 'legal'),
+    _data('legal/PRIVACY.md', 'legal'),
+    _data('LICENSE', '.'),
 ]
 datas = [d for d in _candidate_datas if d is not None]
 

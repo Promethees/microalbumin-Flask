@@ -76,6 +76,17 @@
             <a href="{{ ai_service_url }}" target="_blank" rel="noopener">easyokapi.cbbiotec.vn</a>.
             <br>An internet connection is required to validate it.
         </p>
+
+        <!-- Activation is the moment the licence binds to this machine, so the
+             agreement has to be reachable from this page — not only from the
+             installer the user already clicked through. Both links resolve
+             offline (see /legal/<doc> in src/routes/core_routes.py). -->
+        <p class="foot">
+            Activating accepts the
+            <a href="/legal/eula">End User License Agreement</a> and the
+            <a href="/legal/privacy">Privacy Notice</a>.
+            <br>EasyOKAPI is for research use only — it is not a medical device.
+        </p>
     </main>
 
     <script>

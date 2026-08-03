@@ -49,6 +49,48 @@ def clear_cache():
     except Exception as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 500
 
+# ── Legal documents ───────────────────────────────────────────────────────────
+# The EULA and privacy notice ship with the app (easyokapi.spec bundles legal/)
+# so they are readable with no network — the desktop build is used on benches
+# that are offline, and a licence you can only read online is not shipped with
+# the product. Served as preformatted text rather than rendered Markdown: adding
+# a Markdown dependency to read two files is not worth it, and the source is
+# written to be legible as plain text.
+_LEGAL_DOCS = {
+    'eula': ('EULA.md', 'End User License Agreement'),
+    'privacy': ('PRIVACY.md', 'Privacy Notice'),
+}
+
+
+@core_bp.route('/legal/<doc>')
+def legal(doc):
+    entry = _LEGAL_DOCS.get(doc)
+    if entry is None:
+        return jsonify({'status': 'failure', 'message': 'Unknown document'}), 404
+
+    filename, heading = entry
+    path = os.path.join(state.bundle_dir, 'legal', filename)
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            body = f.read()
+    except OSError:
+        return jsonify({'status': 'failure',
+                        'message': 'Document not found in this install'}), 404
+
+    # Follows `ui_style` like every other full-page template (Rule.md §2.34); the
+    # template tests for 'classic' only, so an unexpected stored value falls
+    # through to the instrument style rather than reaching the markup.
+    ui_style = _user_settings.load().get('ui_style', 'instrument')
+    response = make_response(render_template('legal.html',
+                                             title=f'Easy OKAPI — {heading}',
+                                             heading=heading,
+                                             doc=doc,
+                                             body=body,
+                                             ui_style=ui_style))
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @core_bp.route('/')
 def index():
     range_input = get_range_input()

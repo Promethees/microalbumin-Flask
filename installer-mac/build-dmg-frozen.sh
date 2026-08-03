@@ -37,6 +37,15 @@ mkdir -p "$TMP_DIR"
 cp "$SOURCE_DIR/uninstall.command" "$TMP_DIR/" 2>/dev/null || true
 cp "$PROJECT_ROOT/static/okapi.png" "$TMP_DIR/okapi.png" 2>/dev/null || true
 
+# ── Legal documents, visible on the mounted DMG ──────────────────────────────
+# macOS has no licence page in a drag-to-install DMG, so the agreement has to be
+# sitting in the window the user drags from. The app also serves both at
+# /legal/<doc> once installed (the frozen bundle carries them; see easyokapi.spec).
+mkdir -p "$TMP_DIR/Legal"
+cp "$PROJECT_ROOT/legal/EULA.txt"   "$TMP_DIR/Legal/License Agreement.txt"
+cp "$PROJECT_ROOT/legal/PRIVACY.md" "$TMP_DIR/Legal/Privacy Notice.txt"
+cp "$PROJECT_ROOT/LICENSE"          "$TMP_DIR/Legal/MIT License (source code).txt"
+
 # ── Plain background (drag-to-install) ────────────────────────────────────────
 mkdir -p "$TMP_DIR/.background"
 python3 -c "

@@ -104,6 +104,21 @@ BrandingText "EasyOKAPI ${APP_VERSION}"
 ShowInstDetails show
 ShowUninstDetails show
 
+; ── Version resource ──────────────────────────────────────────────────────────
+; Windows reads this for the file Properties tab, for the UAC prompt's publisher
+; line, and for the SmartScreen reputation record. CompanyName MUST match the
+; Subject CN of the Authenticode certificate the .exe is signed with, or the
+; signed binary and its metadata disagree about who published it.
+; VIProductVersion needs four components; APP_VERSION carries three.
+VIProductVersion "${APP_VERSION}.0"
+VIAddVersionKey "ProductName"     "Easy OKAPI"
+VIAddVersionKey "ProductVersion"  "${APP_VERSION}"
+VIAddVersionKey "FileVersion"     "${APP_VERSION}.0"
+VIAddVersionKey "FileDescription" "Easy OKAPI Setup - Open-colorimeter Kinetics Analysis Platform"
+VIAddVersionKey "CompanyName"     "Center for Bioscience and Biotechnology (CBBiotec), HCMUS-VNU"
+VIAddVersionKey "LegalCopyright"  "Copyright (C) 2025-2026 CBBiotec, HCMUS-VNU. MIT-licensed source."
+VIAddVersionKey "LegalTrademarks" "Easy OKAPI"
+
 !include "MUI2.nsh"
 !include "WinMessages.nsh"
 !include "LogicLib.nsh"
@@ -135,6 +150,23 @@ Var DataBrowseBtn   ; Browse button handle on the Data Folder page
 !ifndef UNINSTALLER_ONLY
   !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkWelcomePage
   !insertmacro MUI_PAGE_WELCOME
+
+  ; EULA. Placed before the Token page so acceptance precedes activation — the
+  ; token is the licence *key*, this page is the licence *agreement*.
+  ;
+  ; The licence is RTF, not plain text, on purpose: MUI's licence control is a
+  ; RichEdit, and LicenseBkColor (via MUI_LICENSEPAGE_BGCOLOR) sets only its
+  ; background. Plain text would render black-on-indigo. The RTF carries its own
+  ; colour table, so the text comes out in CLR_FG. Regenerate both the .rtf and
+  ; the .txt from legal/EULA.md with `python3 legal/render_license.py` — never
+  ; edit them by hand. __FILEDIR__ so the path holds wherever makensis is run
+  ; from.
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW _DarkPage
+  !define MUI_LICENSEPAGE_BGCOLOR "${CLR_INPUT}"
+  !define MUI_LICENSEPAGE_TEXT_TOP "Please read the End User License Agreement before installing EasyOKAPI."
+  !define MUI_LICENSEPAGE_CHECKBOX
+  !define MUI_LICENSEPAGE_CHECKBOX_TEXT "I have read and accept the agreement, including that EasyOKAPI is for research use only and is not a medical device."
+  !insertmacro MUI_PAGE_LICENSE "${__FILEDIR__}\..\legal\EULA.rtf"
 
   ; Required activation token (see TokenPage). The token is the license gate for
   ; the whole product: it is validated against the activation server on Leave, and
@@ -657,6 +689,17 @@ Click Cancel to exit without making any changes." \
   SetOutPath "$INSTDIR"
   File /r "..\dist\EasyOKAPI\*"
 
+  ; ── Legal documents ─────────────────────────────────────────────────────────
+  ; The app serves these from the bundle (easyokapi.spec ships legal/ into
+  ; _internal\legal), but a visible copy next to the exe means the agreement is
+  ; readable without launching anything — which is what someone checking what
+  ; they installed, or an auditor, actually does.
+  SetOutPath "$INSTDIR\legal"
+  File "${__FILEDIR__}\..\legal\EULA.txt"
+  File "${__FILEDIR__}\..\legal\PRIVACY.md"
+  File "${__FILEDIR__}\..\LICENSE"
+  SetOutPath "$INSTDIR"
+
   ; ── Map easyokapi.com -> 127.0.0.1 so the app opens at a friendly address ────
   ; The app runs un-elevated and cannot edit the hosts file itself; do it here
   ; (Setup is elevated). Skipped if the mapping already exists.
@@ -699,7 +742,7 @@ Click Cancel to exit without making any changes." \
   WriteRegStr   HKCU "${UNINST_KEY}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
   WriteRegStr   HKCU "${UNINST_KEY}" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
   WriteRegStr   HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
-  WriteRegStr   HKCU "${UNINST_KEY}" "Publisher"       "HTBiotec"
+  WriteRegStr   HKCU "${UNINST_KEY}" "Publisher"       "Center for Bioscience and Biotechnology (CBBiotec), HCMUS-VNU"
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify"        1
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair"        1
 

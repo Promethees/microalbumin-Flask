@@ -42,6 +42,15 @@ mkdir -p "$APP_STAGE"
 cp "$SOURCE_DIR/uninstall.command" "$TMP_DIR/"
 cp "$PROJECT_ROOT/static/okapi.png" "$TMP_DIR/okapi.png"
 
+# ── Legal documents, visible on the mounted DMG ──────────────────────────────
+# macOS has no licence page in a drag-to-install DMG, so the agreement has to be
+# sitting in the window the user drags from. The app also serves both at
+# /legal/<doc> once installed.
+mkdir -p "$TMP_DIR/Legal"
+cp "$PROJECT_ROOT/legal/EULA.txt"   "$TMP_DIR/Legal/License Agreement.txt"
+cp "$PROJECT_ROOT/legal/PRIVACY.md" "$TMP_DIR/Legal/Privacy Notice.txt"
+cp "$PROJECT_ROOT/LICENSE"          "$TMP_DIR/Legal/MIT License (source code).txt"
+
 # ── DMG background (drag-to-install style: 800 × 430 px) ─────────────────────
 mkdir -p "$TMP_DIR/.background"
 LOGO_SRC="$PROJECT_ROOT/static/ht-logo.jpeg"

@@ -36,6 +36,14 @@ cp "$SCRIPT_DIR/install-frozen.sh" "$STAGE/"
 cp "$SCRIPT_DIR/run-frozen.sh"     "$STAGE/"
 cp "$SCRIPT_DIR/uninstall.sh"      "$STAGE/"   # installed to /opt/EasyOKAPI by install-frozen.sh
 [ -f "$PROJECT_ROOT/static/okapi.png" ] && cp "$PROJECT_ROOT/static/okapi.png" "$STAGE/"
+
+# Legal documents, at the top of the extracted tarball — install-frozen.sh runs
+# unattended, so this is the only place the agreement can be read before the app
+# starts. The app also serves both at /legal/<doc> (bundled via easyokapi.spec).
+mkdir -p "$STAGE/legal"
+cp "$PROJECT_ROOT/legal/EULA.txt"   "$STAGE/legal/"
+cp "$PROJECT_ROOT/legal/PRIVACY.md" "$STAGE/legal/"
+cp "$PROJECT_ROOT/LICENSE"          "$STAGE/legal/"
 chmod +x "$STAGE/install-frozen.sh" "$STAGE/run-frozen.sh" "$STAGE/EasyOKAPI/EasyOKAPI"
 
 echo "📦 Creating tarball: $TARBALL_NAME…"

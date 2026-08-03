@@ -10,6 +10,10 @@ venv
 *.zip
 *.txt
 !requirements-dev.txt
+# Generated from legal/EULA.md by legal/render_license.py, but tracked: the DMG
+# and tarball builders copy it out of a fresh checkout, so an untracked copy
+# breaks the release build rather than the local one.
+!legal/EULA.txt
 *.json
 /log
 vercel

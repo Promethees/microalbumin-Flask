@@ -30,6 +30,18 @@ if [ -f "$OKAPI_SRC" ]; then
     echo "   ✔  okapi.png copied to $SOURCE_DIR/"
 fi
 
+# ── Legal documents ─────────────────────────────────────────────────────────
+# The tarball is built from installer-linux/, so the agreement has to be staged
+# inside it. install.sh runs unattended, so this is the only place a user can
+# read the licence before the app starts. Removed again below to keep the repo
+# clean, exactly like okapi.png.
+LEGAL_DST="$SCRIPT_DIR/legal"
+mkdir -p "$LEGAL_DST"
+cp "$PROJECT_ROOT/legal/EULA.txt"   "$LEGAL_DST/"
+cp "$PROJECT_ROOT/legal/PRIVACY.md" "$LEGAL_DST/"
+cp "$PROJECT_ROOT/LICENSE"          "$LEGAL_DST/"
+echo "   ✔  legal/ staged in $SOURCE_DIR/"
+
 # ── Create tarball from installer-linux/ (excluding the build script itself) ──
 echo "📦 Creating tarball: $TARBALL_NAME..."
 tar -czf "$TARBALL_NAME" \
@@ -42,10 +54,12 @@ if [ $? -eq 0 ]; then
 else
     echo "❌ Error: Failed to create tarball."
     rm -f "$OKAPI_DST"
+    rm -rf "$LEGAL_DST"
     exit 1
 fi
 
-# Remove the temp copy from the source tree (keep repo clean)
+# Remove the temp copies from the source tree (keep repo clean)
 rm -f "$OKAPI_DST"
+rm -rf "$LEGAL_DST"
 
 echo "Done."
