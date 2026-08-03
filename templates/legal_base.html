@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <meta name="description" content="{{ meta_description }}">
+    <meta name="robots" content="index, follow">
+
+    <!-- Theme is applied before first paint so the page never flashes light. -->
+    <script>
+        (function () {
+            var saved = localStorage.getItem('theme');
+            var dark = saved !== null ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (dark) document.documentElement.classList.add('dark');
+        })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+    {% if config.PRODUCTION_MODE %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/landing.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/legal.min.css') }}">
+    {% else %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='legal.css') }}">
+    {% endif %}
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='cbb.ico') }}">
+</head>
+
+<body>
+    <!-- ── Nav ─────────────────────────────────────────────────────────── -->
+    <header class="nav">
+        <div class="shell nav-inner">
+            <a class="brand" href="/">
+                <img src="{{ url_for('static', filename='cbb.png') }}" alt="CBBiotec">
+                <span>
+                    <span class="brand-name"><span>Easy</span> OKAPI</span><br>
+                    <span class="brand-sub">by CBBiotec</span>
+                </span>
+            </a>
+
+            <nav class="nav-links" id="nav-links" aria-label="Legal documents">
+                <a href="/terms">Terms</a>
+                <a href="/privacy">Privacy</a>
+                <a href="/#run">Get it</a>
+                <a href="/#cite">Cite</a>
+            </nav>
+
+            <div class="nav-actions">
+                <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch colour theme">◐</button>
+                <a class="btn btn-primary" href="/webapp">Open the web app</a>
+                <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false"
+                    aria-controls="nav-links" aria-label="Show sections">☰</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- ── Document head ───────────────────────────────────────────── -->
+        <section class="legal-hero">
+            <div class="shell">
+                <p class="eyebrow">{{ eyebrow }}</p>
+                <h1>{% block doc_title %}{% endblock %}</h1>
+                <p class="legal-lede">{% block doc_lede %}{% endblock %}</p>
+
+                <dl class="legal-meta">
+                    <div>
+                        <dt>Effective</dt>
+                        <dd>{{ effective_date }}</dd>
+                    </div>
+                    <div>
+                        <dt>Version</dt>
+                        <dd>{{ doc_version }}</dd>
+                    </div>
+                    <div>
+                        <dt>Applies to</dt>
+                        <dd>{{ applies_to }}</dd>
+                    </div>
+                    <div>
+                        <dt>Provider</dt>
+                        <dd>CBBiotec · HCMUS–VNU</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <!-- ── Body ────────────────────────────────────────────────────── -->
+        <div class="shell legal-body">
+            <aside class="legal-index">
+                <h2>Sections</h2>
+                <ol>{% block doc_index %}{% endblock %}</ol>
+            </aside>
+
+            <article class="legal-prose" id="legal-prose">
+                {% block doc_body %}{% endblock %}
+            </article>
+        </div>
+    </main>
+
+    <!-- ── Footer ──────────────────────────────────────────────────────── -->
+    <footer class="footer">
+        <div class="shell">
+            <div class="footer-grid">
+                <div class="footer-about">
+                    <a class="brand" href="/">
+                        <img src="{{ url_for('static', filename='cbb.png') }}" alt="CBBiotec">
+                        <span>
+                            <span class="brand-name"><span>Easy</span> OKAPI</span><br>
+                            <span class="brand-sub">Open-colorimeter kinetics analysis platform</span>
+                        </span>
+                    </a>
+                    <p>Developed at the Center for Bioscience and Biotechnology, HCMUS–VNU. Inspired by the IORodeo
+                        Open Colorimeter.</p>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/webapp">Web app</a></li>
+                        <li><a href="/#run">Desktop app</a></li>
+                        <li><a href="/#modes">Modes</a></li>
+                        <li><a href="/#capabilities">Capabilities</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Account</h4>
+                    <ul>
+                        <li><a href="/account/login">Sign in</a></li>
+                        <li><a href="/account/signup">Create an account</a></li>
+                        <li><a href="/account/forgot-password">Reset password</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="mailto:tqmthong@gmail.com">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-base">
+                <span>© {{ year }} CBBiotec · HCMUS–VNU</span>
+                <span>Easy OKAPI — Open-colorimeter Kinetics Analysis Platform</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            'use strict';
+
+            // ── Theme toggle (same contract as the landing page) ─────────
+            document.getElementById('theme-toggle').addEventListener('click', function () {
+                var root = document.documentElement;
+                var dark = root.classList.toggle('dark');
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+            });
+
+            // ── Mobile nav ───────────────────────────────────────────────
+            var navToggle = document.getElementById('nav-toggle');
+            var navLinks = document.getElementById('nav-links');
+            if (navToggle && navLinks) {
+                navToggle.addEventListener('click', function () {
+                    var open = navLinks.classList.toggle('is-open');
+                    navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                });
+            }
+
+            // ── Section index: mark the clause currently being read ──────
+            // Cheap and dependency-free: one IntersectionObserver over the
+            // <h2>s, the topmost intersecting one wins.
+            var headings = Array.prototype.slice.call(
+                document.querySelectorAll('#legal-prose h2[id]'));
+            var links = {};
+            Array.prototype.forEach.call(
+                document.querySelectorAll('.legal-index a'), function (a) {
+                    links[a.getAttribute('href').slice(1)] = a;
+                });
+
+            if (headings.length && 'IntersectionObserver' in window) {
+                var visible = {};
+                var observer = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        visible[e.target.id] = e.isIntersecting;
+                    });
+                    var current = null;
+                    for (var i = 0; i < headings.length; i++) {
+                        if (visible[headings[i].id]) { current = headings[i].id; break; }
+                    }
+                    if (!current) return;
+                    for (var id in links) {
+                        links[id].classList.toggle('is-active', id === current);
+                    }
+                }, { rootMargin: '-88px 0px -70% 0px' });
+                headings.forEach(function (h) { observer.observe(h); });
+            }
+        })();
+    </script>
+</body>
+
+</html>

@@ -181,6 +181,42 @@ def landing():
                            account_user=account_user)
 
 
+# ── Legal pages ───────────────────────────────────────────────────────────────
+# Terms and Privacy are static prose, so they take no session and refresh no
+# activity stamp — same contract as the landing page. Bump LEGAL_VERSION and
+# LEGAL_EFFECTIVE together whenever the text of either document changes; the two
+# values are what a user (or a store reviewer) cites when identifying a version.
+LEGAL_VERSION = '1.0'
+LEGAL_EFFECTIVE = '3 August 2026'
+
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html',
+                           title="Terms of Service — Easy OKAPI",
+                           meta_description=("Terms of Service for the Easy OKAPI web application, desktop "
+                                             "application and licensing services, operated by CBBiotec, "
+                                             "HCMUS-VNU."),
+                           eyebrow="Legal · Easy OKAPI",
+                           effective_date=LEGAL_EFFECTIVE,
+                           doc_version=LEGAL_VERSION,
+                           applies_to="Web app + desktop app",
+                           year=datetime.utcnow().year)
+
+
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html',
+                           title="Privacy Policy — Easy OKAPI",
+                           meta_description=("What Easy OKAPI collects, why, who processes it and how to have it "
+                                             "deleted. Operated by CBBiotec, HCMUS-VNU."),
+                           eyebrow="Legal · Easy OKAPI",
+                           effective_date=LEGAL_EFFECTIVE,
+                           doc_version=LEGAL_VERSION,
+                           applies_to="Web app + desktop app",
+                           year=datetime.utcnow().year)
+
+
 @app.route('/webapp')
 def index():
     # Initialize user data storage

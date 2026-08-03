@@ -1,0 +1,436 @@
+/* ==========================================================================
+   Easy OKAPI — legal pages (templates/terms.html, templates/privacy.html)
+
+   Loaded *after* landing.css, which it depends on: the design tokens, the nav,
+   the footer, `.shell` and `.btn` all come from there. This file adds only what
+   a long prose document needs and nothing the landing page already provides.
+
+   The document is set as a method, not as an article: a fixed section index in
+   the margin, clauses numbered §01 / 1.1 like a protocol, and a mono rule above
+   every heading so a reader can cite a clause number back at us.
+   ========================================================================== */
+
+/* ── Page frame ──────────────────────────────────────────────────────────── */
+
+.legal-hero {
+    padding: 88px 0 40px;
+    border-bottom: 1px solid var(--line);
+    background:
+        linear-gradient(180deg, var(--band-soft), transparent 70%);
+}
+
+.legal-hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.4vw, 3rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 14px;
+}
+
+.legal-hero .eyebrow {
+    margin-bottom: 12px;
+}
+
+.legal-lede {
+    max-width: 62ch;
+    color: var(--ink-2);
+    font-size: 1.05rem;
+    line-height: 1.65;
+}
+
+/* Effective date / version / scope, carried as a readout the way the landing
+   page carries a measured quantity. */
+.legal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+}
+
+.legal-meta div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.legal-meta dt,
+.legal-meta .k {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.legal-meta dd,
+.legal-meta .v {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--ink);
+}
+
+/* ── Two-column body: sticky index + prose ───────────────────────────────── */
+
+.legal-body {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 56px;
+    padding: 48px 0 96px;
+    align-items: start;
+}
+
+.legal-index {
+    position: sticky;
+    top: 96px;
+    border-left: 1px solid var(--line);
+    padding-left: 18px;
+}
+
+.legal-index h2 {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.legal-index ol {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    counter-reset: idx;
+}
+
+.legal-index a {
+    display: flex;
+    gap: 9px;
+    font-size: 0.86rem;
+    line-height: 1.35;
+    color: var(--ink-2);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    margin-left: -20px;
+    padding-left: 18px;
+}
+
+.legal-index a::before {
+    counter-increment: idx;
+    content: counter(idx, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+    padding-top: 2px;
+}
+
+.legal-index a:hover,
+.legal-index a.is-active {
+    color: var(--band-ink);
+    border-left-color: var(--band);
+}
+
+.legal-index a.is-active::before {
+    color: var(--band-ink);
+}
+
+/* ── Prose ───────────────────────────────────────────────────────────────── */
+
+.legal-prose {
+    max-width: 74ch;
+    counter-reset: clause;
+}
+
+.legal-prose section {
+    padding-top: 34px;
+    margin-top: 34px;
+    border-top: 1px solid var(--line);
+}
+
+.legal-prose section:first-child {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: 0;
+}
+
+.legal-prose h2 {
+    counter-increment: clause;
+    font-family: var(--font-display);
+    font-size: 1.32rem;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-bottom: 16px;
+    scroll-margin-top: 92px;
+}
+
+.legal-prose h2::before {
+    content: '§' counter(clause, decimal-leading-zero);
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--band-ink);
+    margin-bottom: 7px;
+}
+
+.legal-prose h3 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--ink);
+    margin: 24px 0 10px;
+}
+
+.legal-prose p,
+.legal-prose li {
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    line-height: 1.72;
+}
+
+.legal-prose p+p {
+    margin-top: 13px;
+}
+
+.legal-prose a {
+    color: var(--band-ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.legal-prose strong {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.legal-prose code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--band-soft);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--ink);
+}
+
+/* Numbered clauses (1.1, 1.2 …) so a reader can cite one back at us. */
+.legal-prose ol.clauses {
+    list-style: none;
+    counter-reset: sub;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.legal-prose ol.clauses>li {
+    counter-increment: sub;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 10px;
+}
+
+.legal-prose ol.clauses>li::before {
+    content: counter(clause) '.' counter(sub);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-3);
+    padding-top: 4px;
+}
+
+.legal-prose ul.bullets {
+    list-style: none;
+    margin: 12px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.legal-prose ul.bullets li {
+    position: relative;
+    padding-left: 18px;
+}
+
+.legal-prose ul.bullets li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0.72em;
+    width: 6px;
+    height: 1px;
+    background: var(--band);
+}
+
+/* ── Callout: the research-use-only notice, and anything else load-bearing ── */
+
+.legal-callout {
+    border: 1px solid var(--band);
+    border-left-width: 3px;
+    background: var(--band-soft);
+    padding: 18px 20px;
+    margin: 20px 0;
+    border-radius: 2px;
+}
+
+.legal-callout p {
+    color: var(--ink);
+}
+
+.legal-callout .k {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--band-ink);
+    margin-bottom: 8px;
+}
+
+/* ── Data tables (what we collect, who processes it) ─────────────────────── */
+
+.legal-table-wrap {
+    overflow-x: auto;
+    margin-top: 16px;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+}
+
+.legal-table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    font-size: 0.87rem;
+}
+
+.legal-table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--ink-3);
+    padding: 11px 14px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line-strong);
+    white-space: nowrap;
+}
+
+.legal-table td {
+    padding: 12px 14px;
+    color: var(--ink-2);
+    line-height: 1.55;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+.legal-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.legal-table td:first-child {
+    color: var(--ink);
+    font-weight: 500;
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+
+html.dark .legal-hero {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .legal-hero h1,
+html.dark .legal-prose h2,
+html.dark .legal-prose h3,
+html.dark .legal-prose strong,
+html.dark .legal-meta dd,
+html.dark .legal-meta .v,
+html.dark .legal-table td:first-child,
+html.dark .legal-callout p {
+    color: var(--on-panel);
+}
+
+html.dark .legal-lede,
+html.dark .legal-prose p,
+html.dark .legal-prose li,
+html.dark .legal-table td,
+html.dark .legal-index a {
+    color: var(--on-panel-2);
+}
+
+html.dark .legal-meta,
+html.dark .legal-index,
+html.dark .legal-prose section,
+html.dark .legal-table-wrap,
+html.dark .legal-table td,
+html.dark .legal-prose code {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .legal-table th {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom-color: rgba(255, 255, 255, 0.16);
+}
+
+/* On the dark page the darkened `--band-ink` is unreadable; the vivid tone is
+   the legible one, exactly as on the landing page's dark panels. */
+html.dark .legal-prose h2::before,
+html.dark .legal-prose a,
+html.dark .legal-callout .k,
+html.dark .legal-index a:hover,
+html.dark .legal-index a.is-active {
+    color: var(--band);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    .legal-body {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 32px;
+    }
+
+    .legal-index {
+        position: static;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        padding-left: 0;
+        padding-top: 20px;
+    }
+
+    .legal-index ol {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 8px 20px;
+    }
+
+    .legal-index a {
+        margin-left: 0;
+        padding-left: 0;
+        border-left: 0;
+    }
+
+    .legal-index a:hover,
+    .legal-index a.is-active {
+        border-left: 0;
+    }
+
+    html.dark .legal-index {
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+}
+
+@media (max-width: 640px) {
+    .legal-hero {
+        padding: 72px 0 32px;
+    }
+
+    .legal-prose ol.clauses>li {
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 8px;
+    }
+}
