@@ -73,3 +73,5 @@ log/script_logs.txt
 /.git.nosync/
 
 /static/dist/
+
+.claude/
