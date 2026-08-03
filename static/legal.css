@@ -349,7 +349,156 @@
     font-weight: 500;
 }
 
+/* ── Contact form (templates/contact.html) ───────────────────────────────── */
+
+/* The contact page borrows the legal frame but carries no section index, so it
+   drops the sticky margin column and runs the form full width. */
+.legal-body-single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.contact-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.contact-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Field names are set as readouts, like the meta strip and the table heads —
+   the form should look like part of the instrument, not a web form. */
+.contact-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.contact-label em {
+    font-style: normal;
+    color: var(--band-ink);
+}
+
+.contact-form input,
+.contact-form select,
+.contact-form textarea {
+    width: 100%;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--ink);
+    background: var(--paper-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    padding: 10px 12px;
+}
+
+.contact-form textarea {
+    resize: vertical;
+    min-height: 180px;
+}
+
+.contact-form input:focus,
+.contact-form select:focus,
+.contact-form textarea:focus {
+    outline: none;
+    border-color: var(--band);
+    box-shadow: 0 0 0 3px var(--band-soft);
+}
+
+.contact-form ::placeholder {
+    color: var(--ink-3);
+}
+
+/* Character budget, parked in the textarea's bottom-right corner. */
+.contact-count {
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-3);
+    pointer-events: none;
+}
+
+/* Honeypot: off-screen rather than display:none, which some bots skip. */
+.contact-hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.contact-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.contact-form button[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.contact-status {
+    font-size: 0.9rem;
+    color: var(--ink-2);
+    margin: 0;
+}
+
+.contact-status.is-ok {
+    color: var(--band-ink);
+}
+
+.contact-status.is-error {
+    color: #c0392b;
+}
+
+.legal-prose .contact-fineprint {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--ink-3);
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
 /* ── Dark theme ──────────────────────────────────────────────────────────── */
+
+html.dark .contact-form input,
+html.dark .contact-form select,
+html.dark .contact-form textarea {
+    color: var(--on-panel);
+    background: var(--paper-2);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+html.dark .contact-status.is-error {
+    color: #ff8a68;
+}
+
+html.dark .contact-status.is-ok,
+html.dark .contact-label em {
+    color: var(--band);
+}
+
+html.dark .legal-prose .contact-fineprint {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
 
 html.dark .legal-hero {
     border-bottom-color: rgba(255, 255, 255, 0.1);
@@ -439,6 +588,11 @@ html.dark .legal-index a.is-active {
 @media (max-width: 640px) {
     .legal-hero {
         padding: 72px 0 32px;
+    }
+
+    /* Two fields side by side stop being readable well before this width. */
+    .contact-row {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     /* Narrower hanging indent — 52px of the ~300px available is a lot to give

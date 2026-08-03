@@ -46,6 +46,7 @@
             <nav class="nav-links" id="nav-links" aria-label="Legal documents">
                 <a href="/terms">Terms</a>
                 <a href="/privacy">Privacy</a>
+                <a href="/contact">Contact</a>
                 <a href="/#run">Get it</a>
                 <a href="/#cite">Cite</a>
             </nav>
@@ -67,6 +68,9 @@
                 <h1>{% block doc_title %}{% endblock %}</h1>
                 <p class="legal-lede">{% block doc_lede %}{% endblock %}</p>
 
+                <!-- Documents carry a version readout; a page that is not a
+                     document (the contact form) overrides this block away. -->
+                {% block doc_meta %}
                 <dl class="legal-meta">
                     <div>
                         <dt>Effective</dt>
@@ -85,15 +89,18 @@
                         <dd>CBBiotec · HCMUS–VNU</dd>
                     </div>
                 </dl>
+                {% endblock %}
             </div>
         </section>
 
         <!-- ── Body ────────────────────────────────────────────────────── -->
-        <div class="shell legal-body">
+        <div class="shell legal-body{% block body_modifier %}{% endblock %}">
+            {% block doc_aside %}
             <aside class="legal-index">
                 <h2>Sections</h2>
                 <ol>{% block doc_index %}{% endblock %}</ol>
             </aside>
+            {% endblock %}
 
             <article class="legal-prose" id="legal-prose">
                 {% block doc_body %}{% endblock %}
@@ -141,7 +148,7 @@
                     <ul>
                         <li><a href="/terms">Terms of Service</a></li>
                         <li><a href="/privacy">Privacy Policy</a></li>
-                        <li><a href="mailto:tqmthong@gmail.com">Contact</a></li>
+                        <li><a href="/contact">Contact</a></li>
                     </ul>
                 </div>
             </div>
@@ -204,6 +211,8 @@
             }
         })();
     </script>
+
+    {% block page_scripts %}{% endblock %}
 </body>
 
 </html>

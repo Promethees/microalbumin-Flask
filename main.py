@@ -25,7 +25,9 @@ from routes.account_routes import account_bp
 from download_service import get_release, get_release_asset, _RELEASE_ASSET_SUFFIX, resolve_asset_location
 from routes.oauth_routes import oauth_bp
 from routes.community_routes import community_bp
+from routes.contact_routes import contact_bp
 import community
+import contact as contact_form
 from account import db, run_migrations
 
 app = Flask(__name__, static_folder='static')
@@ -74,6 +76,7 @@ app.register_blueprint(ai_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(oauth_bp)
 app.register_blueprint(community_bp)
+app.register_blueprint(contact_bp)
 
 delimiter = "/"
 
@@ -215,6 +218,27 @@ def privacy():
                            effective_date=LEGAL_EFFECTIVE,
                            doc_version=LEGAL_VERSION,
                            applies_to="Web app + desktop app",
+                           year=datetime.utcnow().year)
+
+
+@app.route('/contact')
+def contact():
+    """The contact form.
+
+    Same no-session contract as the landing and legal pages. The form posts to
+    `/api/contact` (see `src/routes/contact_routes.py`), which mails the message
+    to the team inbox — this page replaced a `mailto:` link, which was unusable
+    for a visitor with no desktop mail client configured.
+    """
+    return render_template('contact.html',
+                           title="Contact — Easy OKAPI",
+                           meta_description=("Send a question about Easy OKAPI — support, licensing, bug "
+                                             "reports or privacy requests — to CBBiotec, HCMUS-VNU."),
+                           eyebrow="Contact · Easy OKAPI",
+                           topics=contact_form.TOPICS,
+                           max_message_len=contact_form.MAX_MESSAGE_LEN,
+                           min_message_len=contact_form.MIN_MESSAGE_LEN,
+                           contact_email='tqmthong@gmail.com',
                            year=datetime.utcnow().year)
 
 

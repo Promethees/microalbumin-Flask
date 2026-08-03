@@ -30,6 +30,10 @@ REGISTER_LIMIT = "5 per hour"          # account signup (/api/account/register)
 # A review submission sends real mail to the admin inbox, and needs no account —
 # so it is the easiest endpoint to flood. A human writes one review, not five.
 REVIEW_SUBMIT_LIMIT = "3 per hour"     # review submission (/api/testimonials/submit)
+# The contact form also mails the admin inbox and needs no account. A little
+# looser than a review because a real person may legitimately send a follow-up
+# after their first message, or retry after a typo'd address.
+CONTACT_LIMIT = "5 per hour"           # contact form (/api/contact)
 
 
 def _storage_uri():
