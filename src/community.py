@@ -21,6 +21,10 @@ _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 TESTIMONIALS_FILE = os.path.join(_ROOT, 'testimonials.json')
 PUBLICATIONS_FILE = os.path.join(_ROOT, 'publications.json')
+ORGANIZATIONS_FILE = os.path.join(_ROOT, 'organizations.json')
+_STATIC_DIR = os.path.join(_ROOT, 'static')
+
+DEFAULT_ORG_HEADING = 'Trusted by students, researchers and enthusiasts from'
 
 # Submission limits — a review is a short blurb, not an essay. Enforced before
 # anything is put in an email so an oversized body can never be composed.
@@ -100,6 +104,52 @@ def get_publications():
     # Newest first; a missing year sorts last.
     pubs.sort(key=lambda p: (p.get('year') or 0), reverse=True)
     return {'citation': citation, 'publications': pubs}
+
+
+def get_organizations():
+    """`{heading, organizations}` for the landing page's 'trusted by' marquee.
+
+    A logo path is kept only when the file is actually present under `static/`.
+    The marquee tints its marks with `mask-image`, and a mask that fails to load
+    renders inconsistently across engines — a solid coloured rectangle in some,
+    nothing at all in others. Dropping the path here means a typo'd or
+    not-yet-added logo degrades to the organisation's wordmark instead.
+    """
+    data = _load(ORGANIZATIONS_FILE, 'organizations')
+    heading = _clean(data.get('heading'), 200) or DEFAULT_ORG_HEADING
+    raw = data.get('organizations') or []
+
+    orgs = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name = _clean(entry.get('name'), MAX_AFFILIATION_LEN)
+        if not name:
+            continue
+
+        # Relative paths only, and only below static/ — the value is fed to
+        # url_for('static', ...) and interpolated into a CSS url(), so a path
+        # that escapes the directory has no legitimate use here.
+        logo = _clean(entry.get('logo'), 200).lstrip('/')
+        if logo:
+            candidate = os.path.normpath(os.path.join(_STATIC_DIR, logo))
+            if not candidate.startswith(_STATIC_DIR + os.sep) or not os.path.isfile(candidate):
+                logo = ''
+
+        # http(s) only. The value lands in an href, and the file is hand-edited,
+        # so keep the one scheme that makes sense rather than trusting the editor.
+        url = _clean(entry.get('url'), 500)
+        if not url.lower().startswith(('http://', 'https://')):
+            url = ''
+
+        orgs.append({
+            'name': name,
+            'short': _clean(entry.get('short'), MAX_NAME_LEN) or name,
+            'logo': logo,
+            'url': url,
+        })
+
+    return {'heading': heading, 'organizations': orgs}
 
 
 _EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')

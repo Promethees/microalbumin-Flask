@@ -192,6 +192,50 @@
             </div>
         </section>
 
+        <!-- ── Trusted by ──────────────────────────────────────────────────
+             A strip, not a numbered section: it carries no §NN plate and no
+             top rule, so it reads as a caption under the instrument rather
+             than as the first step of the method.
+
+             The marks are tinted to one ink with `mask-image`, so a logo is a
+             silhouette in the page's own colour rather than a row of clashing
+             brand palettes. `--mark` carries the file; see static/logos/.
+
+             The track is repeated until it overflows the viewport, then the
+             whole run is duplicated so the -50% translate loops seamlessly.
+             The duplicate is aria-hidden — it is the same list twice, and a
+             screen reader should hear it once. -->
+        {% if org_ref.organizations %}
+        {% set orgs = org_ref.organizations %}
+        {% set reps = [1, (10 // orgs|length) + 1] | max %}
+        <section class="trusted" aria-labelledby="trusted-heading">
+            <div class="shell">
+                <h2 class="trusted-heading" id="trusted-heading">{{ org_ref.heading }}</h2>
+            </div>
+
+            <div class="marquee" data-marquee>
+                {% for track in range(2) %}
+                <ul class="marquee-track" {% if track %}aria-hidden="true"{% endif %}>
+                    {% for rep in range(reps) %}
+                    {% for org in orgs %}
+                    <li class="marquee-item{% if rep or track %} is-repeat{% endif %}">
+                        {% if org.url %}<a href="{{ org.url }}" target="_blank" rel="noopener"
+                            title="{{ org.name }}" {% if track %}tabindex="-1"{% endif %}>{% endif %}
+                            {% if org.logo %}
+                            <span class="org-mark" aria-hidden="true"
+                                style="--mark: url('{{ url_for('static', filename=org.logo) }}')"></span>
+                            {% endif %}
+                            <span class="org-name">{{ org.short }}</span>
+                            {% if org.url %}</a>{% endif %}
+                    </li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
         <!-- ── Intro video ─────────────────────────────────────────────── -->
         <section class="section" id="watch">
             <div class="shell">

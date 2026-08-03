@@ -176,6 +176,7 @@ def landing():
                            title="Easy OKAPI — Open-colorimeter Kinetics Analysis Platform",
                            testimonials=community.get_testimonials(),
                            publication_ref=community.get_publications(),
+                           org_ref=community.get_organizations(),
                            download_available=DOWNLOAD_AVAILABLE,
                            year=datetime.utcnow().year,
                            account_user=account_user)

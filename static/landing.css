@@ -1353,6 +1353,118 @@ html.dark .readout {
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 
+/* ── Trusted-by strip ───────────────────────────────────────────────────── */
+/* Not a `.section`: no §NN plate, tighter padding, and it sits directly under
+   the hero as a caption to the instrument rather than as the first step of the
+   method. */
+
+.trusted {
+    padding: 46px 0 54px;
+    border-top: 1px solid var(--line);
+    overflow: hidden;
+}
+
+.trusted-heading {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.55;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-align: center;
+}
+
+/* Viewport. The edge mask fades the run out the way `.eyebrow::after` fades its
+   scale off the plate — and unlike a gradient overlay it paints nothing over
+   the graph-paper background, so the ruling stays continuous underneath. */
+.marquee {
+    --marquee-duration: 46s;
+    margin-top: 30px;
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 11%, #000 89%, transparent);
+}
+
+/* Two identical tracks, each translating by its own full width: when the first
+   has cleared the viewport the second is exactly where it started, so the loop
+   has no seam and needs no measurement in JS. */
+.marquee-track {
+    list-style: none;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 68px;
+    padding-right: 68px;
+    /* the seam gets the same gap as the items */
+    animation: marquee-scroll var(--marquee-duration) linear infinite;
+}
+
+@keyframes marquee-scroll {
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+/* Pause on hover so a name can actually be read. */
+.marquee:hover .marquee-track {
+    animation-play-state: paused;
+}
+
+.marquee-item,
+.marquee-item>a {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+/* The mark is a silhouette, not an image: the logo file is used as a mask and
+   the colour comes from the page, so a row of institutions reads as one system
+   instead of a row of clashing brand palettes. Any transparent PNG or SVG
+   works, and the file is never recoloured on disk. */
+.org-mark {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    background-color: var(--ink-3);
+    -webkit-mask-image: var(--mark);
+    mask-image: var(--mark);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    transition: background-color 0.2s ease;
+}
+
+.org-name {
+    font-family: var(--font-display);
+    font-size: 0.94rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink-3);
+    transition: color 0.2s ease;
+}
+
+.marquee-item:hover .org-mark {
+    background-color: var(--band-ink);
+}
+
+.marquee-item:hover .org-name {
+    color: var(--band-ink);
+}
+
+.marquee-item>a:focus-visible {
+    outline: 2px solid var(--band);
+    outline-offset: 6px;
+    border-radius: 2px;
+}
+
 .footer {
     border-top: 1px solid var(--line);
     padding: 44px 0 56px;
@@ -1486,6 +1598,30 @@ html.dark .readout {
         padding: 52px 0 60px;
     }
 
+    /* Tighter run and a faster cycle: the same gaps that read as calm on a
+       desktop leave a phone looking at one logo and two empty screens. */
+    .trusted {
+        padding: 36px 0 42px;
+    }
+
+    .marquee {
+        --marquee-duration: 30s;
+    }
+
+    .marquee-track {
+        gap: 42px;
+        padding-right: 42px;
+    }
+
+    .org-mark {
+        width: 32px;
+        height: 32px;
+    }
+
+    .org-name {
+        font-size: 0.86rem;
+    }
+
     .readout-values {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1569,5 +1705,32 @@ html.dark .readout {
     .reveal {
         opacity: 1;
         transform: none;
+    }
+
+    /* A stopped marquee would freeze mid-run and clip the logos against the
+       edge mask. Collapse it to a static, centred, wrapping row instead, and
+       drop the padding repeats so each organisation appears exactly once. */
+    .marquee {
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    .marquee-track {
+        animation: none;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 24px 48px;
+        padding-right: 0;
+        width: 100%;
+    }
+
+    /* The second track exists only to make the loop seamless; with the loop
+       gone it is an empty flex child eating half the row. */
+    .marquee-track[aria-hidden="true"] {
+        display: none;
+    }
+
+    .marquee-item.is-repeat {
+        display: none;
     }
 }

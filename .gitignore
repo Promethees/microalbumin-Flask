@@ -26,6 +26,7 @@ npm-debug.log
 !guide_translations/*.json
 !testimonials.json
 !publications.json
+!organizations.json
 
 # Google Drive API credentials (DO NOT COMMIT)
 credentials.json
@@ -48,3 +49,5 @@ generate_heavy_csv.py
 *.pem
 
 .claude/
+# Local Flask instance folder — dev SQLite DB, never deploy or commit.
+instance/
