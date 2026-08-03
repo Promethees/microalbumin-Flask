@@ -227,19 +227,31 @@
     gap: 12px;
 }
 
+/* Hanging indent, NOT a two-column grid. A grid container blockifies every
+   in-flow child, so `display: grid` here turned each <strong>, <a> and <code>
+   inside a clause into its own grid item — and dropped a nested <ul class=
+   "bullets"> into the 42px counter column, where it wrapped one word per line.
+   Absolute-positioning the counter keeps the clause a normal block, so inline
+   markup and nested lists flow the way they read. */
 .legal-prose ol.clauses>li {
     counter-increment: sub;
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 10px;
+    position: relative;
+    padding-left: 52px;
 }
 
 .legal-prose ol.clauses>li::before {
     content: counter(clause) '.' counter(sub);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 42px;
     font-family: var(--font-mono);
     font-size: 0.78rem;
+    /* Give the counter the same line box as the clause's first line (body text
+       is 0.95rem × 1.72) so it centres on that line. Inheriting the unitless
+       1.72 would scale it against 0.78rem instead and sit the number high. */
+    line-height: 1.634rem;
     color: var(--ink-3);
-    padding-top: 4px;
 }
 
 .legal-prose ul.bullets {
@@ -429,8 +441,13 @@ html.dark .legal-index a.is-active {
         padding: 72px 0 32px;
     }
 
+    /* Narrower hanging indent — 52px of the ~300px available is a lot to give
+       to a clause number. */
     .legal-prose ol.clauses>li {
-        grid-template-columns: 34px minmax(0, 1fr);
-        gap: 8px;
+        padding-left: 38px;
+    }
+
+    .legal-prose ol.clauses>li::before {
+        width: 32px;
     }
 }
