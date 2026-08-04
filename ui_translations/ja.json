@@ -408,6 +408,7 @@
   "devctl.calib_step4": "<strong>配列を CIRCUITPY ドライブの configuration.json にコピーします。</strong>デバイス自身はこのファイルを書けないため、コピーしないと次の電源オフで係数は失われます。",
   "devctl.calib_step5": "<strong>再実行してください</strong>:装置を移動した後、光源を交換した後、または長期間使わなかった後 — LED の出力は経年で低下します。",
   "devctl.calib_caveat": "これは Absorbance と Transmittance を変えません — 各チャンネルはすでに自分のブランクで割られており、定数の係数は打ち消されます。変わるのは Raw Count、Irradiance、そしてホルダー間の比較です。校正後もホルダー間で absorbance が一致しない場合、原因は別にあります:光路長、キュベットの向き、散乱、または異なる内容で取ったブランクです。",
+  "devctl.calib_need_channels": "このデバイスは有効なチャンネルが 1 つだけです。校正はチャンネル同士を揃える操作なので、最低 2 つ必要です — 上の有効チャンネルで追加するか、configuration.json で追加してください。",
   "devctl.calib_run": "今すぐ校正",
   "devctl.calib_clear": "クリア",
   "devctl.calib_for_file": "configuration.json 用",

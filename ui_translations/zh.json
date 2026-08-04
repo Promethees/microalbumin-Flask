@@ -408,6 +408,7 @@
   "devctl.calib_step4": "<strong>把数组复制到 CIRCUITPY 盘上的 configuration.json。</strong>设备无法自行写入该文件,不复制的话系数会在下次断电后丢失。",
   "devctl.calib_step5": "<strong>重新校准</strong>:仪器搬动、更换光源,或长期闲置之后 — LED 输出会随使用时间下降。",
   "devctl.calib_caveat": "这不会改变 Absorbance 或 Transmittance — 每个通道本就除以自身的空白,常数系数被抵消。它改变的是 Raw Count、Irradiance,以及各槽之间的任何比较。若校准后各槽的 absorbance 仍不一致,原因在别处:光程、比色皿方向、散射,或空白是透过不同内容测得的。",
+  "devctl.calib_need_channels": "本设备只有一个启用通道。校准是把各通道相互归一,因此至少需要两个 — 请在上方的启用通道中添加,或在 configuration.json 中添加。",
   "devctl.calib_run": "立即校准",
   "devctl.calib_clear": "清除",
   "devctl.calib_for_file": "用于 configuration.json",

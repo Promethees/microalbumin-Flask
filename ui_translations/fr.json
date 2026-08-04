@@ -408,6 +408,7 @@
   "devctl.calib_step4": "<strong>Copiez le tableau dans configuration.json</strong> sur le lecteur CIRCUITPY. L'appareil ne peut pas écrire ce fichier lui-même : sans cela les facteurs sont perdus à la prochaine mise hors tension.",
   "devctl.calib_step5": "<strong>Relancez l'étalonnage</strong> après un déplacement ou un changement de lampe, ou après une longue inutilisation : la sortie des LED baisse avec l'âge.",
   "devctl.calib_caveat": "Ceci ne change ni l'Absorbance ni la Transmittance — chaque canal est déjà divisé par son propre blanc, ce qui annule le facteur. Cela change le Raw Count, l'Irradiance, et toute comparaison entre porte-cuves. Si l'absorbance diverge encore entre porte-cuves après coup, la cause est ailleurs : trajet optique, orientation de la cuve, diffusion, ou un blanc mesuré à travers un autre contenu.",
+  "devctl.calib_need_channels": "Cet appareil n'a qu'un seul canal actif. L'étalonnage ramène les canaux les uns sur les autres : il en faut au moins deux — ajoutez-en un dans Canaux actifs ci-dessus, ou dans configuration.json.",
   "devctl.calib_run": "Étalonner",
   "devctl.calib_clear": "Effacer",
   "devctl.calib_for_file": "Pour configuration.json",

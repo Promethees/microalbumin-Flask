@@ -408,6 +408,7 @@
   "devctl.calib_step4": "<strong>Copy the array into configuration.json</strong> on the CIRCUITPY drive. The device cannot write that file itself, so the factors are lost on the next power cycle until you do.",
   "devctl.calib_step5": "<strong>Run it again</strong> after the instrument is moved or re-lamped, or if it has sat unused: LED output falls with age.",
   "devctl.calib_caveat": "This does not change Absorbance or Transmittance — each channel is already divided by its own blank, which cancels the factor. It changes Raw Count, Irradiance, and any comparison between holders. If absorbance still disagrees between holders afterwards, the cause is elsewhere: pathlength, cuvette orientation, scattering, or a blank taken through different contents.",
+  "devctl.calib_need_channels": "This device has only one active channel. Calibration scales the channels onto each other, so it needs at least two — add one in Active channels above, or in configuration.json.",
   "devctl.calib_run": "Calibrate now",
   "devctl.calib_clear": "Clear",
   "devctl.calib_for_file": "For configuration.json",

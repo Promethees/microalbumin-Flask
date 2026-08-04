@@ -408,6 +408,7 @@
   "devctl.calib_step4": "<strong>Chép mảng vào configuration.json</strong> trên ổ CIRCUITPY. Thiết bị không tự ghi được tệp đó, nên hệ số sẽ mất khi tắt nguồn nếu bạn chưa chép.",
   "devctl.calib_step5": "<strong>Chạy lại</strong> sau khi di chuyển hoặc thay đèn thiết bị, hoặc khi máy để lâu không dùng: công suất LED giảm theo thời gian.",
   "devctl.calib_caveat": "Việc này không thay đổi Absorbance hay Transmittance — mỗi kênh vốn đã được chia cho blank của chính nó, nên hệ số bị triệt tiêu. Nó thay đổi Raw Count, Irradiance, và mọi so sánh giữa các khay. Nếu absorbance vẫn lệch giữa các khay sau khi hiệu chuẩn, nguyên nhân nằm ở chỗ khác: quang trình, hướng đặt cuvette, tán xạ, hoặc blank đo qua nội dung khác.",
+  "devctl.calib_need_channels": "Thiết bị này chỉ có một kênh đang hoạt động. Hiệu chuẩn quy các kênh về nhau nên cần ít nhất hai — thêm kênh ở mục Kênh hoạt động phía trên, hoặc trong configuration.json.",
   "devctl.calib_run": "Hiệu chuẩn ngay",
   "devctl.calib_clear": "Xoá",
   "devctl.calib_for_file": "Cho configuration.json",

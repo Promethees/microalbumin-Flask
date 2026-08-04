@@ -1087,7 +1087,17 @@ function drawDeviceCalibration(state) {
             : '—';
     }
 
-    $disabled('devctl-calib-run', deviceCalibPending);
+    // Fewer than two channels and there is nothing to scale against — the
+    // device refuses the pass ("only channel 0 active: need 2 to compare").
+    // Say so before the press rather than after it, and take the button away:
+    // an enabled Calibrate that always fails reads as a broken device.
+    const tooFew = channels.length < 2;
+    const warning = document.getElementById('devctl-calib-warn');
+    if (warning) warning.classList.toggle('hidden', !tooFew);
+    $disabled('devctl-calib-run', deviceCalibPending || tooFew);
+    // Clear stays live. Factors set earlier (or loaded from configuration.json)
+    // are still in force on the channel that is active, and resetting them is
+    // exactly what an operator narrowing down to one channel may want.
     $disabled('devctl-calib-clear', deviceCalibPending);
 }
 
