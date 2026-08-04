@@ -737,7 +737,13 @@
                                 <button type="button" id="devctl-calib-clear" onclick="clearDeviceCalibration()"
                                     data-i18n="devctl.calib_clear" data-i18n-hint="hint.devctl_calib_clear"
                                     data-hint="Set every factor back to 1.0 — the channels report what their sensors report.">Clear</button>
+                                <button type="button" id="devctl-calib-save" onclick="saveDeviceCalibration()" disabled
+                                    data-i18n="devctl.calib_save" data-i18n-hint="hint.devctl_calib_save"
+                                    data-hint="Write these factors into configuration.json on the device's drive. The device restarts and comes back running them.">Save to device</button>
                             </div>
+                            <!-- Filled by drawDeviceCalibration(): whether what is
+                                 running is also what the drive would restore. -->
+                            <p id="devctl-calib-saved" class="devctl-caveat">—</p>
                             <div class="devctl-conc-row">
                                 <span class="devctl-label" data-i18n="devctl.calib_for_file">For configuration.json</span>
                                 <code id="devctl-calib-array" class="devctl-value">—</code>

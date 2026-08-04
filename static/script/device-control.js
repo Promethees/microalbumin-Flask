@@ -255,6 +255,9 @@ function setDeviceControlStatus(kind, text) {
         // Same reasoning for the factors: the device that comes back may be a
         // different one, or the same one rebooted back to its configuration.json.
         deviceCalibFactors = null;
+        deviceCalibSaved = null;
+        deviceCalibDrive = null;
+        deviceCalibRevision = null;
     }
 }
 
@@ -1079,6 +1082,15 @@ async function sendDeviceTiming(noTimeout) {
 
 let deviceCalibPending = false;
 let deviceCalibFactors = null;
+// What configuration.json on the drive holds, and where that drive is. Null
+// means "not looked yet"; a null `saved` with a known drive means the file has
+// no factors in it.
+let deviceCalibSaved = null;
+let deviceCalibDrive = null;
+// The device's factor revision as of the last array we fetched. The device
+// bumps rcfrev on every accepted change, so this is how a calibration run from
+// the keypad — which the panel never sees the reply to — gets picked up.
+let deviceCalibRevision = null;
 
 function deviceSupportsCalibration(state) {
     return (state.caps || []).indexOf('calib') !== -1;
@@ -1090,14 +1102,20 @@ function renderDeviceCalibration(state) {
     const onScreen = state.mode === 'CALIBRATION' && deviceSupportsCalibration(state);
     panel.classList.toggle('hidden', !onScreen);
     if (!onScreen) return;
-    if (deviceCalibFactors === null) {
-        loadDeviceCalibration();
+    // Re-read whenever the device says its factors moved. Without this the
+    // panel keeps showing the array it fetched when the screen opened, and an
+    // operator who calibrated on the keypad — or pressed Clear — sees stale
+    // numbers and would save them over the good ones.
+    const revision = state.rcfrev;
+    const changed = revision !== undefined && revision !== null && revision !== deviceCalibRevision;
+    if (deviceCalibFactors === null || changed) {
+        loadDeviceCalibration(revision);
         return;
     }
     drawDeviceCalibration(state);
 }
 
-async function loadDeviceCalibration() {
+async function loadDeviceCalibration(revision) {
     if (deviceCalibPending) return;
     deviceCalibPending = true;
     try {
@@ -1105,6 +1123,11 @@ async function loadDeviceCalibration() {
         const data = await res.json();
         if (data.status === 'success' && Array.isArray(data.factors)) {
             deviceCalibFactors = data.factors;
+            deviceCalibSaved = Array.isArray(data.saved) ? data.saved : null;
+            deviceCalibDrive = data.drive || null;
+            // Only once the read succeeded: a failed fetch must leave the
+            // revision alone so the next poll tries again.
+            if (revision !== undefined) deviceCalibRevision = revision;
             if (deviceState) drawDeviceCalibration(deviceState);
         }
     } catch (err) {
@@ -1112,6 +1135,17 @@ async function loadDeviceCalibration() {
     } finally {
         deviceCalibPending = false;
     }
+}
+
+// True when the running factors are not what the drive would restore on the
+// next power cycle — including the case where the file has none at all.
+function deviceCalibrationUnsaved() {
+    if (!deviceCalibFactors) return false;
+    if (!deviceCalibSaved) return deviceCalibFactors.some(factor => Math.abs(factor - 1) > 0.0005);
+    if (deviceCalibSaved.length !== deviceCalibFactors.length) return true;
+    // 1e-4 is the precision the array is written with, so anything finer is a
+    // rounding artefact of the round trip rather than a real difference.
+    return deviceCalibFactors.some((factor, i) => Math.abs(factor - deviceCalibSaved[i]) > 0.0001);
 }
 
 function drawDeviceCalibration(state) {
@@ -1134,6 +1168,27 @@ function drawDeviceCalibration(state) {
             : '—';
     }
 
+    // Saved / unsaved, and where. The device cannot write its own
+    // configuration.json, so every pass is runtime-only until this says
+    // otherwise — and "the numbers look right" gives the operator no clue
+    // which of the two states they are in.
+    const unsaved = deviceCalibrationUnsaved();
+    const savedNote = document.getElementById('devctl-calib-saved');
+    if (savedNote) {
+        savedNote.classList.toggle('devctl-caveat--warn', unsaved);
+        if (!deviceCalibDrive) {
+            savedNote.textContent = t('devctl.calib_no_drive',
+                'No CIRCUITPY drive mounted — the factors cannot be saved and will be lost at the next power cycle.');
+        } else if (unsaved) {
+            savedNote.textContent = `${t('devctl.calib_unsaved',
+                'Not saved — the device will lose these at the next power cycle.')} ${deviceCalibDrive}`;
+        } else {
+            savedNote.textContent = `${t('devctl.calib_saved',
+                'Saved to the device.')} ${deviceCalibDrive}`;
+        }
+    }
+    $disabled('devctl-calib-save', deviceCalibPending || !deviceCalibDrive || !unsaved);
+
     // Fewer than two channels and there is nothing to scale against — the
     // device refuses the pass ("only channel 0 active: need 2 to compare").
     // Say so before the press rather than after it, and take the button away:
@@ -1155,6 +1210,44 @@ function runDeviceCalibration() {
 function clearDeviceCalibration() {
     // An empty body is "clear them", not "send nothing" — see the route.
     sendDeviceCalibration({});
+}
+
+// Write the running factors into the device's own configuration.json.
+//
+// The board reloads when its filesystem changes, so this restarts it — which is
+// what makes the calibration survive a power cycle, and is also why the link is
+// re-established afterwards rather than reused. The poll picks the device back
+// up on its own once it has booted.
+async function saveDeviceCalibration() {
+    if (deviceCalibPending) return;
+    deviceCalibPending = true;
+    if (deviceState) drawDeviceCalibration(deviceState);
+    try {
+        const res = await fetch('/device/calibration/save', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+            deviceCalibSaved = data.saved || null;
+            deviceCalibDrive = data.drive || null;
+            // The device is rebooting, so its revision counter restarts from
+            // zero and the cached array must be re-read once it answers again.
+            deviceCalibRevision = null;
+            setDeviceControlStatus('offline', t('devctl.calib_saved_reloading',
+                'Saved — the device is restarting'));
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        showDeviceControlError(data.message || t('devctl.calib_save_failed',
+            'The factors could not be saved to the device'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        deviceCalibPending = false;
+        if (deviceState) drawDeviceCalibration(deviceState);
+    }
 }
 
 async function sendDeviceCalibration(payload) {

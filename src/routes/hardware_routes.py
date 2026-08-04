@@ -7,6 +7,7 @@ import signal
 import state
 import live_stream
 import device_link
+import device_config
 from script_monitor import check_log_for_errors, check_log_for_session_start, check_log_for_end_reason
 from file_path import is_reserved_data_folder_name, RESERVED_ARCHIVE_FOLDER
 from validators import validate_json
@@ -487,6 +488,30 @@ def device_timing_set(validated_data):
         return jsonify({'status': 'success', 'state': None})
 
 
+def _saved_calibration():
+    """What configuration.json on the drive currently holds, if it is reachable.
+
+    Reported beside the running factors so the panel can say whether a
+    calibration will survive a power cycle. Never raises: the drive being
+    absent is an ordinary state (the device can be plugged in for serial only,
+    or the volume not mounted), not a failure of the request.
+    """
+    root = device_config.find_device_root()
+    if root is None:
+        return None, None
+    try:
+        data = device_config.read_configuration(root)
+    except device_config.DeviceConfigError:
+        return root, None
+    saved = data.get(device_config.FACTOR_KEY)
+    if not isinstance(saved, list):
+        return root, None
+    try:
+        return root, [float(factor) for factor in saved]
+    except (TypeError, ValueError):
+        return root, None
+
+
 @hardware_bp.route('/device/calibration', methods=['GET'])
 def device_calibration():
     """The device's raw count factors, one per multiplexer channel (CALIB?).
@@ -496,13 +521,64 @@ def device_calibration():
     order, for display beside the gains, while this is the whole array indexed by
     channel number — the shape configuration.json holds and the shape a write
     back to the device has to take.
+
+    Answers with what is *saved* as well as what is running, so the panel can
+    tell the operator whether the calibration in force will survive the next
+    power cycle. They differ constantly and the difference matters: the device
+    cannot write that file, so every pass is runtime-only until it is saved.
     """
     if _session_is_running():
         return _controller_busy_response()
     try:
-        return jsonify({'status': 'success', 'factors': device_link.link.calibration_factors()})
+        factors = device_link.link.calibration_factors()
     except device_link.DeviceLinkError as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 502
+    drive, saved = _saved_calibration()
+    return jsonify({'status': 'success', 'factors': factors,
+                    'saved': saved, 'drive': drive})
+
+
+@hardware_bp.route('/device/calibration/save', methods=['POST'])
+def device_calibration_save():
+    """Write the device's current factors into its own configuration.json.
+
+    The factors come from the device (CALIB?), not from the browser: what gets
+    saved must be what is actually in force, including a calibration the
+    operator just ran on the keypad. A cached array would save a snapshot of
+    whatever the panel last happened to see.
+
+    Writing the file makes CircuitPython reload, so the device restarts and
+    comes back running these factors — which is exactly what "save" should mean
+    here, and also why this is refused mid-session like every other control.
+    The serial link is dropped afterwards so the next command reconnects to the
+    rebooted device rather than through a handle to the one that went away.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+
+    root = device_config.find_device_root()
+    if root is None:
+        return jsonify({
+            'status': 'failure',
+            'message': ('No CIRCUITPY drive found. Connect the colorimeter by USB and let '
+                        'the drive mount, then try again.'),
+        }), 404
+
+    try:
+        factors = device_link.link.calibration_factors()
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+
+    try:
+        path = device_config.write_raw_count_factor(root, factors)
+    except device_config.DeviceConfigError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 500
+
+    # The board is rebooting on account of that write; the open port is about to
+    # become a handle to a device that is not there.
+    device_link.link.close()
+    return jsonify({'status': 'success', 'factors': factors, 'saved': factors,
+                    'drive': root, 'path': path})
 
 
 @hardware_bp.route('/device/calibration', methods=['POST'])

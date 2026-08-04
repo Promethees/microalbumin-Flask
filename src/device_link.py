@@ -55,7 +55,13 @@ SETTLE_AFTER_QUEUED = 0.4
 
 # Fields of a STATE line that are integers, lists of integers, or lists of text.
 # Kept in lockstep with the firmware's SerialManager._state_line().
-_STATE_INTS = ("blanked", "needsblank", "talking", "paused", "maxchan", "menupos", "sel")
+_STATE_INTS = ("blanked", "needsblank", "talking", "paused", "maxchan", "menupos", "sel",
+               # Bumped by the device on every accepted factor change. The panel
+               # caches the whole multiplexer-indexed array and rcf below only
+               # carries the active channels, so this counter is how a
+               # keypad-side calibration — or a Clear that reset a channel the
+               # panel is not showing — reaches the host at all.
+               "rcfrev")
 _STATE_INT_LISTS = ("chans",)
 _STATE_TEXT_LISTS = ("caps", "gains", "itimes", "vals")
 # rcf: the raw count factor of each ACTIVE channel, in the same order as

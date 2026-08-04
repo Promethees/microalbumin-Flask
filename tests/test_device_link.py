@@ -5,6 +5,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 import device_link
+import device_config
 import state
 
 
@@ -231,6 +232,129 @@ def test_parse_state_types_the_raw_count_factors():
 
 def test_parse_state_without_rcf_on_older_firmware():
     assert 'rcf' not in device_link.parse_state(SAMPLE_STATE)
+
+
+def test_parse_state_types_the_factor_revision():
+    """rcfrev is how a keypad-side calibration reaches the host: rcf shows only
+    the active channels, so a change elsewhere in the array is invisible."""
+    parsed = device_link.parse_state(SAMPLE_STATE + ";rcfrev=7")
+    assert parsed['rcfrev'] == 7
+
+
+# ── configuration.json on the device's drive ─────────────────────────────────
+
+BOOT_OUT = "Adafruit CircuitPython 9.2.7 on 2025-04-01; Adafruit Pybadge with samd51j19"
+
+CONFIG_WITH_FACTORS = """{
+  "active_channels" : [0, 2, 3],
+  "raw_count_factor" : [1.0000, 1.0000, 1.0000, 1.0000],
+  "gain_sensor_0"     : "med",
+  "precision" : 3
+}
+"""
+
+CONFIG_WITHOUT_FACTORS = """{
+  "active_channels" : [0, 2, 3],
+  "gain_sensor_0"     : "med",
+  "precision" : 3
+}
+"""
+
+
+@pytest.fixture
+def drive(tmp_path):
+    (tmp_path / device_config.BOOT_OUT_FILE).write_text(BOOT_OUT)
+    (tmp_path / device_config.CONFIGURATION_FILE).write_text(CONFIG_WITH_FACTORS)
+    return tmp_path
+
+
+def test_drive_is_identified_by_boot_out(drive, tmp_path_factory):
+    assert device_config.is_device_root(str(drive))
+    # A directory that merely exists is not a colorimeter. This is the check
+    # standing between "save a calibration" and "overwrite a stranger's file".
+    stranger = tmp_path_factory.mktemp('stranger')
+    assert not device_config.is_device_root(str(stranger))
+
+
+def test_write_replaces_only_the_factor_line(drive):
+    device_config.write_raw_count_factor(str(drive), [1.0, 1.0, 0.9834, 1.0217])
+    text = (drive / device_config.CONFIGURATION_FILE).read_text()
+    assert '"raw_count_factor" : [1.0000, 1.0000, 0.9834, 1.0217]' in text
+    # Everything else byte-for-byte: this file is hand-edited, and a round trip
+    # through json.dumps would reformat all of it to change one line.
+    before = [l for l in CONFIG_WITH_FACTORS.splitlines() if 'raw_count_factor' not in l]
+    after = [l for l in text.splitlines() if 'raw_count_factor' not in l]
+    assert before == after
+
+
+def test_write_inserts_the_key_when_absent(drive):
+    (drive / device_config.CONFIGURATION_FILE).write_text(CONFIG_WITHOUT_FACTORS)
+    device_config.write_raw_count_factor(str(drive), [1.0, 1.0, 0.5, 1.0])
+    data = device_config.read_configuration(str(drive))
+    assert data['raw_count_factor'] == [1.0, 1.0, 0.5, 1.0]
+    assert data['precision'] == 3
+
+
+def test_write_refuses_a_directory_that_is_not_a_board(tmp_path):
+    (tmp_path / device_config.CONFIGURATION_FILE).write_text(CONFIG_WITH_FACTORS)
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_raw_count_factor(str(tmp_path), [1.0])
+
+
+def test_write_leaves_the_file_alone_when_the_result_would_not_parse(drive):
+    """The device reloads the instant this file changes, so invalid JSON is a
+    device sitting on an error screen — checked before the write, not after."""
+    broken = '{ "active_channels" : [0, 3],\n  "raw_count_factor" : [1.0],\n'
+    (drive / device_config.CONFIGURATION_FILE).write_text(broken)
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_raw_count_factor(str(drive), [1.0, 1.0, 1.0, 1.0])
+    assert (drive / device_config.CONFIGURATION_FILE).read_text() == broken
+
+
+def test_save_route_writes_what_the_device_reports(client, drive):
+    """Not what the browser cached: a calibration run on the keypad must be
+    what gets saved."""
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'calibration_factors',
+                      return_value=[1.0, 1.0, 0.9834, 1.0217]), \
+         patch.object(device_link.link, 'close') as close:
+        rv = client.post('/device/calibration/save')
+    assert rv.status_code == 200
+    assert rv.get_json()['saved'] == [1.0, 1.0, 0.9834, 1.0217]
+    assert device_config.read_configuration(str(drive))['raw_count_factor'] == \
+        [1.0, 1.0, 0.9834, 1.0217]
+    # The write reboots the board, so the open handle is to a device that is
+    # about to disappear.
+    close.assert_called_once()
+
+
+def test_save_route_404_when_no_drive(client):
+    with patch.object(device_config, 'find_device_root', return_value=None):
+        rv = client.post('/device/calibration/save')
+    assert rv.status_code == 404
+    assert 'CIRCUITPY' in rv.get_json()['message']
+
+
+def test_calibration_route_reports_saved_alongside_running(client, drive):
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'calibration_factors',
+                      return_value=[1.0, 1.0, 0.9834, 1.0]):
+        rv = client.get('/device/calibration')
+    body = rv.get_json()
+    assert body['factors'] == [1.0, 1.0, 0.9834, 1.0]
+    assert body['saved'] == [1.0, 1.0, 1.0, 1.0]      # the file still has the old ones
+    assert body['drive'] == str(drive)
+
+
+def test_calibration_route_survives_an_absent_drive(client):
+    """Plugged in for serial with no volume mounted is an ordinary state, not a
+    failed request."""
+    with patch.object(device_config, 'find_device_root', return_value=None), \
+         patch.object(device_link.link, 'calibration_factors', return_value=[1.0] * 4):
+        rv = client.get('/device/calibration')
+    assert rv.status_code == 200
+    assert rv.get_json()['saved'] is None
+    assert rv.get_json()['drive'] is None
 
 
 def test_concentration_on_firmware_without_the_command_says_so():
