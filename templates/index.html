@@ -702,8 +702,9 @@
                             </div>
                             <ol class="devctl-steps">
                                 <li data-i18n-html="devctl.calib_step1"><strong>Load every holder the same way.</strong> All empty, or the same blank cuvette moved into each slot — whatever is left different between the holders is what gets divided out.</li>
-                                <li data-i18n-html="devctl.calib_step2"><strong>Check the light first.</strong> The same LED in every holder, and on the device's Raw Count screen set gain and integration time until no channel reads OVFL.</li>
-                                <li data-i18n-html="devctl.calib_step3"><strong>Press Calibrate now.</strong> Takes a few seconds. If a holder is refused by name, that slot is the problem — a dark LED, an empty holder, or a cuvette left behind — fix it and run again.</li>
+                                <li data-i18n-html="devctl.calib_step2"><strong>One LED colour per pass.</strong> The sensor's response depends on wavelength, so channels under different LEDs read orders of magnitude apart and cannot be scaled onto each other. If this instrument mixes colours, untick the others in Active channels and do one group at a time — factors of unticked channels are kept.</li>
+                                <li data-i18n-html="devctl.calib_step3"><strong>Check the light level.</strong> On the device's Raw Count screen, set gain and integration time until no channel reads OVFL.</li>
+                                <li data-i18n-html="devctl.calib_step_press"><strong>Press Calibrate now.</strong> Takes a few seconds. A refusal names the channel: <em>different LED</em> means it belongs to another group, anything else means that slot needs attention — a dark LED, an empty holder, or a cuvette left behind.</li>
                                 <li data-i18n-html="devctl.calib_step4"><strong>Copy the array into configuration.json</strong> on the CIRCUITPY drive. The device cannot write that file itself, so the factors are lost on the next power cycle until you do.</li>
                                 <li data-i18n-html="devctl.calib_step5"><strong>Run it again</strong> after the instrument is moved or re-lamped, or if it has sat unused: LED output falls with age.</li>
                             </ol>
