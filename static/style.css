@@ -6036,6 +6036,41 @@ body.dark #run-script-btn:enabled {
     color: var(--ink-dim);
 }
 
+/* Numbered instructions inside a panel. Only the calibration panel has these:
+   its button is the one control here whose result depends on what the operator
+   physically did to the instrument BEFORE pressing it, so the steps have to be
+   readable at the moment of pressing rather than filed in a manual. */
+.devctl-steps {
+    margin: 4px 0 10px 0;
+    padding-left: 20px;
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--ink-dim);
+}
+
+.devctl-steps li {
+    margin-bottom: 3px;
+}
+
+.devctl-steps strong {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+/* The one thing that is not a step: what the calibration does NOT affect.
+   Operators reach for it expecting better absorbance agreement, and absorbance
+   is exactly what it cannot change — each channel is already divided by its own
+   blank, which cancels a constant multiplier. */
+.devctl-caveat {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    border-left: 2px solid var(--ink-dim);
+    padding-left: 8px;
+    margin: 0 0 10px 0;
+    opacity: 0.9;
+}
+
 /* One row of chips that scrolls sideways rather than wrapping: the channel set
    and the device's menu are both *ordered* lists the operator reads across, and
    a wrapped second row reads as a second group. Narrow panels stack instead —
