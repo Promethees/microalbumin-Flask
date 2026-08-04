@@ -487,6 +487,76 @@ def device_timing_set(validated_data):
         return jsonify({'status': 'success', 'state': None})
 
 
+@hardware_bp.route('/device/calibration', methods=['GET'])
+def device_calibration():
+    """The device's raw count factors, one per multiplexer channel (CALIB?).
+
+    A separate route from /device/state even though the state carries `rcf`,
+    because the two are different views: `rcf` is the active channels in stream
+    order, for display beside the gains, while this is the whole array indexed by
+    channel number — the shape configuration.json holds and the shape a write
+    back to the device has to take.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        return jsonify({'status': 'success', 'factors': device_link.link.calibration_factors()})
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+
+
+@hardware_bp.route('/device/calibration', methods=['POST'])
+@validate_json({'factors': (list, None, False), 'run': (bool, None, False)})
+def device_calibration_set(validated_data):
+    """Run a calibration pass, or write factors outright (CALIBRATE / CALIB:).
+
+    Three requests through one route, because they are three ways of setting the
+    same array:
+
+      {"run": true}        measure the channels now and apply what comes out
+      {"factors": [...]}   write these factors
+      {}                   clear every factor back to 1.0
+
+    Runtime only. The device cannot write its own configuration.json (see
+    /device/channels), so a calibration the operator wants to keep has to be
+    copied into the file on the CIRCUITPY drive — the response carries the
+    factors in exactly the order that file wants them.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+
+    factors = validated_data['factors']
+    if validated_data['run']:
+        try:
+            factors = device_link.link.run_calibration()
+        except device_link.DeviceLinkError as e:
+            # The device's refusals name the channel and the cause ("channel 2
+            # reading zero: LED off?"), which is the whole value of showing them.
+            return jsonify({'status': 'failure', 'message': str(e)}), 502
+    else:
+        if factors is not None:
+            try:
+                factors = [float(factor) for factor in factors]
+            except (TypeError, ValueError):
+                return jsonify({'status': 'failure', 'message': 'Factors must be numbers'}), 400
+            if not factors:
+                return jsonify({'status': 'failure', 'message': 'Send at least one factor'}), 400
+        try:
+            device_link.link.set_calibration_factors(factors)
+        except device_link.DeviceLinkError as e:
+            return jsonify({'status': 'failure', 'message': str(e)}), 502
+        try:
+            factors = device_link.link.calibration_factors()
+        except device_link.DeviceLinkError:
+            factors = None
+
+    try:
+        return jsonify({'status': 'success', 'factors': factors,
+                        'state': device_link.link.state()})
+    except device_link.DeviceLinkError:
+        return jsonify({'status': 'success', 'factors': factors, 'state': None})
+
+
 @hardware_bp.route('/stream_session', methods=['GET'])
 def stream_session():
     """SSE tail of the running session: new CSV rows + new log text, pushed.

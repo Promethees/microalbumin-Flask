@@ -173,6 +173,66 @@ def test_set_concentration_surfaces_the_device_reason():
     assert 'unknown unit' in str(excinfo.value)
 
 
+# ── raw count calibration ────────────────────────────────────────────────────
+
+def test_calibration_factors_parses_the_array():
+    link = FakeLink(["CALFACTORS 1.0000,1.0217,0.9834,1.0000"])
+    assert link.calibration_factors() == [1.0, 1.0217, 0.9834, 1.0]
+    assert link.sent == ['CALIB?']
+
+
+def test_run_calibration_answers_with_what_it_derived():
+    """One round trip: the device measures, applies and reports, so there is no
+    window where the host shows factors the device is not using."""
+    link = FakeLink(["CALFACTORS 1.2500,1.0000,1.0000,0.8333"])
+    assert link.run_calibration() == [1.25, 1.0, 1.0, 0.8333]
+    assert link.sent == ['CALIBRATE']
+
+
+def test_run_calibration_surfaces_the_device_reason():
+    """The reason names the holder to look at — the actionable part."""
+    link = FakeLink(["ERR_CALIB channel 2 reading zero: LED off?"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.run_calibration()
+    assert 'channel 2' in str(excinfo.value)
+
+
+def test_calibration_on_firmware_without_the_command_says_so():
+    link = FakeLink(["ERR_UNKNOWN"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.calibration_factors()
+    assert 'firmware' in str(excinfo.value)
+
+
+def test_set_calibration_factors_formats_the_payload():
+    link = FakeLink(["ACK_CALIB"])
+    assert link.set_calibration_factors([1.0, 1.0217, 0.9834, 1.0]) is True
+    assert link.sent == ['CALIB:1,1.0217,0.9834,1']
+
+
+def test_set_calibration_factors_none_clears_them():
+    link = FakeLink(["ACK_CALIB"])
+    link.set_calibration_factors(None)
+    assert link.sent == ['CALIB:reset']
+
+
+def test_set_calibration_factors_surfaces_the_device_reason():
+    link = FakeLink(["ERR_CALIB factor 50 outside 0.1..10.0"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.set_calibration_factors([1.0, 50.0])
+    assert 'outside' in str(excinfo.value)
+
+
+def test_parse_state_types_the_raw_count_factors():
+    """rcf rides beside gains/itimes: one entry per ACTIVE channel, in order."""
+    parsed = device_link.parse_state(SAMPLE_STATE + ";rcf=1.000,0.983")
+    assert parsed['rcf'] == [1.0, 0.983]
+
+
+def test_parse_state_without_rcf_on_older_firmware():
+    assert 'rcf' not in device_link.parse_state(SAMPLE_STATE)
+
+
 def test_concentration_on_firmware_without_the_command_says_so():
     link = FakeLink(["ERR_UNKNOWN"])
     with pytest.raises(device_link.DeviceLinkError) as excinfo:
@@ -299,7 +359,9 @@ def test_controller_is_unavailable_during_a_session(client):
                  lambda: client.post('/device/concentration', json={'value': 1}),
                  lambda: client.get('/device/timing'),
                  lambda: client.post('/device/timing',
-                                     json={'interval_value': 1, 'interval_unit': 'min'})):
+                                     json={'interval_value': 1, 'interval_unit': 'min'}),
+                 lambda: client.get('/device/calibration'),
+                 lambda: client.post('/device/calibration', json={'run': True})):
         rv = call()
         assert rv.status_code == 409
         assert rv.get_json()['status'] == 'busy'
@@ -450,6 +512,72 @@ def test_timing_route_rejects_a_zero_interval(client):
 def test_timing_route_needs_a_unit_for_a_timeout(client):
     rv = client.post('/device/timing', json={
         'timeout_value': 5, 'interval_value': 1, 'interval_unit': 'min'})
+    assert rv.status_code == 400
+
+
+def test_calibration_route_returns_the_factors(client):
+    with patch.object(device_link.link, 'calibration_factors',
+                      return_value=[1.0, 1.02, 0.98, 1.0]):
+        rv = client.get('/device/calibration')
+    assert rv.status_code == 200
+    assert rv.get_json()['factors'] == [1.0, 1.02, 0.98, 1.0]
+
+
+def test_calibration_route_502_when_the_device_cannot_report_them(client):
+    with patch.object(device_link.link, 'calibration_factors',
+                      side_effect=device_link.DeviceLinkError('no calibration')):
+        rv = client.get('/device/calibration')
+    assert rv.status_code == 502
+
+
+def test_calibration_route_runs_a_pass_and_returns_the_result(client):
+    with patch.object(device_link.link, 'run_calibration',
+                      return_value=[1.25, 1.0, 1.0, 0.8333]) as run, \
+         patch.object(device_link.link, 'state', return_value={'rcf': [1.25, 0.8333]}):
+        rv = client.post('/device/calibration', json={'run': True})
+    run.assert_called_once_with()
+    body = rv.get_json()
+    assert body['factors'] == [1.25, 1.0, 1.0, 0.8333]
+    assert body['state']['rcf'] == [1.25, 0.8333]
+
+
+def test_calibration_route_shows_why_a_pass_was_refused(client):
+    """The device names the holder; a bare failure would send the operator
+    looking at the wrong slot."""
+    with patch.object(device_link.link, 'run_calibration',
+                      side_effect=device_link.DeviceLinkError('channel 2 reading zero: LED off?')):
+        rv = client.post('/device/calibration', json={'run': True})
+    assert rv.status_code == 502
+    assert 'channel 2' in rv.get_json()['message']
+
+
+def test_calibration_route_writes_explicit_factors(client):
+    with patch.object(device_link.link, 'set_calibration_factors', return_value=True) as write, \
+         patch.object(device_link.link, 'calibration_factors', return_value=[1.0, 1.02, 1.0, 1.0]), \
+         patch.object(device_link.link, 'state', return_value={}):
+        rv = client.post('/device/calibration', json={'factors': [1, 1.02, 1, 1]})
+    write.assert_called_once_with([1.0, 1.02, 1.0, 1.0])
+    assert rv.get_json()['factors'] == [1.0, 1.02, 1.0, 1.0]
+
+
+def test_calibration_route_empty_body_clears_the_factors(client):
+    with patch.object(device_link.link, 'set_calibration_factors', return_value=True) as write, \
+         patch.object(device_link.link, 'calibration_factors', return_value=[1.0] * 4), \
+         patch.object(device_link.link, 'state', return_value={}):
+        rv = client.post('/device/calibration', json={})
+    write.assert_called_once_with(None)
+    assert rv.get_json()['factors'] == [1.0] * 4
+
+
+def test_calibration_route_rejects_non_numbers(client):
+    rv = client.post('/device/calibration', json={'factors': ['a']})
+    assert rv.status_code == 400
+
+
+def test_calibration_route_rejects_an_empty_factor_list(client):
+    """An empty list is not "clear them" — that is the empty body — and sending
+    it on would be a no-op the operator read as a change."""
+    rv = client.post('/device/calibration', json={'factors': []})
     assert rv.status_code == 400
 
 

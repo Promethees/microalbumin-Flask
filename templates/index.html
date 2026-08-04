@@ -685,6 +685,33 @@
                                     data-hint="Save with no timeout: the run goes until it is stopped.">No timeout</button>
                             </div>
                         </div>
+                        <!-- Raw count calibration. Mounted only while the device is
+                             on its Sensor Cal screen, the same rule the Concentration
+                             and Settings forms follow. The array it produces is the
+                             one configuration.json wants, so it is shown verbatim to
+                             be copied — the device cannot write that file itself. -->
+                        <div id="devctl-calib" class="devctl-conc hidden">
+                            <div class="devctl-channels-head">
+                                <span class="devctl-label" data-i18n="devctl.calib">Sensor calibration</span>
+                                <span class="devctl-note" data-i18n="devctl.calib_note">Put the same contents in every holder under the same LED, then calibrate. Runtime only — copy the array into configuration.json to keep it.</span>
+                            </div>
+                            <div class="devctl-conc-row">
+                                <span class="devctl-conc-current">
+                                    <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>
+                                    <span id="devctl-calib-current" class="devctl-value devctl-value--num">—</span>
+                                </span>
+                                <button type="button" id="devctl-calib-run" onclick="runDeviceCalibration()"
+                                    data-i18n="devctl.calib_run" data-i18n-hint="hint.devctl_calib_run"
+                                    data-hint="Measure every active channel now and scale them onto a common reference. Takes a few seconds.">Calibrate now</button>
+                                <button type="button" id="devctl-calib-clear" onclick="clearDeviceCalibration()"
+                                    data-i18n="devctl.calib_clear" data-i18n-hint="hint.devctl_calib_clear"
+                                    data-hint="Set every factor back to 1.0 — the channels report what their sensors report.">Clear</button>
+                            </div>
+                            <div class="devctl-conc-row">
+                                <span class="devctl-label" data-i18n="devctl.calib_for_file">For configuration.json</span>
+                                <code id="devctl-calib-array" class="devctl-value">—</code>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

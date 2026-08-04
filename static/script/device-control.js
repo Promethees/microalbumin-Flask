@@ -100,6 +100,7 @@ const DEVICE_MODE_LABELS = {
     MENU: ['devctl.mode.menu', 'Menu'],
     SETTINGS: ['devctl.mode.settings', 'Settings'],
     CONCENTRATION: ['devctl.mode.concentration', 'Concentration'],
+    CALIBRATION: ['devctl.mode.calibration', 'Sensor Cal'],
     MESSAGE: ['devctl.mode.message', 'Message'],
     ABORT: ['devctl.mode.abort', 'Halted'],
 };
@@ -237,6 +238,9 @@ function setDeviceControlStatus(kind, text) {
         deviceMenuItems = null;
         deviceConcUnits = null;
         deviceTimingUnits = null;
+        // Same reasoning for the factors: the device that comes back may be a
+        // different one, or the same one rebooted back to its configuration.json.
+        deviceCalibFactors = null;
     }
 }
 
@@ -249,6 +253,7 @@ function applyDeviceState(state) {
     renderDeviceMenu(state);
     renderDeviceConcentration(state);
     renderDeviceTiming(state);
+    renderDeviceCalibration(state);
 }
 
 function renderDeviceReadout(state) {
@@ -1011,6 +1016,121 @@ async function sendDeviceTiming(noTimeout) {
     } finally {
         deviceTimingPending = false;
         if (deviceState) drawDeviceTiming(deviceState);
+    }
+}
+
+// ── raw count calibration ───────────────────────────────────────────────────
+// Equalising what the channels count when every holder shows them the same LED
+// (the firmware's raw_count_calibration.md). Mounted only while the device is on
+// its Sensor Cal screen, for the same reason the Concentration and Settings
+// forms are: that is the screen the operator set the conditions up on.
+//
+// Deliberately not an editable form. The numbers come from a measurement, not
+// from a preference, and the one thing a human should be typing is the array
+// into configuration.json — which is why the array is shown to be copied rather
+// than offered as four inputs to nudge.
+
+let deviceCalibPending = false;
+let deviceCalibFactors = null;
+
+function deviceSupportsCalibration(state) {
+    return (state.caps || []).indexOf('calib') !== -1;
+}
+
+function renderDeviceCalibration(state) {
+    const panel = document.getElementById('devctl-calib');
+    if (!panel) return;
+    const onScreen = state.mode === 'CALIBRATION' && deviceSupportsCalibration(state);
+    panel.classList.toggle('hidden', !onScreen);
+    if (!onScreen) return;
+    if (deviceCalibFactors === null) {
+        loadDeviceCalibration();
+        return;
+    }
+    drawDeviceCalibration(state);
+}
+
+async function loadDeviceCalibration() {
+    if (deviceCalibPending) return;
+    deviceCalibPending = true;
+    try {
+        const res = await fetch('/device/calibration');
+        const data = await res.json();
+        if (data.status === 'success' && Array.isArray(data.factors)) {
+            deviceCalibFactors = data.factors;
+            if (deviceState) drawDeviceCalibration(deviceState);
+        }
+    } catch (err) {
+        /* retried by the next poll */
+    } finally {
+        deviceCalibPending = false;
+    }
+}
+
+function drawDeviceCalibration(state) {
+    // The live line reads from STATE's rcf — the ACTIVE channels, tagged with
+    // the channel they belong to, exactly as the values and gains above are.
+    const factors = state.rcf || [];
+    const channels = state.chans || [];
+    $text('devctl-calib-current', factors.length
+        ? factors.map((factor, i) => `×${Number(factor).toFixed(3)}${channels[i] != null ? ' @' + channels[i] : ''}`).join('   ')
+        : '—');
+
+    // The copyable line is the WHOLE multiplexer-indexed array from
+    // /device/calibration, because that is the shape configuration.json holds:
+    // writing back only the active channels would blank the factors of every
+    // holder not currently in use.
+    const array = document.getElementById('devctl-calib-array');
+    if (array) {
+        array.textContent = deviceCalibFactors
+            ? `"raw_count_factor": [${deviceCalibFactors.map(f => Number(f).toFixed(4)).join(', ')}]`
+            : '—';
+    }
+
+    $disabled('devctl-calib-run', deviceCalibPending);
+    $disabled('devctl-calib-clear', deviceCalibPending);
+}
+
+function runDeviceCalibration() {
+    sendDeviceCalibration({ run: true });
+}
+
+function clearDeviceCalibration() {
+    // An empty body is "clear them", not "send nothing" — see the route.
+    sendDeviceCalibration({});
+}
+
+async function sendDeviceCalibration(payload) {
+    if (deviceCalibPending) return;
+    deviceCalibPending = true;
+    if (deviceState) drawDeviceCalibration(deviceState);
+    try {
+        const res = await fetch('/device/calibration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            if (Array.isArray(data.factors)) deviceCalibFactors = data.factors;
+            deviceCalibPending = false;
+            if (data.state) applyDeviceState(data.state);
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+            return;
+        }
+        // The device's refusal names the holder to look at ("channel 2 reading
+        // zero: LED off?"), which is the whole point of showing it.
+        showDeviceControlError(data.message || t('devctl.calib_failed',
+            'The device refused the calibration'));
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    } finally {
+        deviceCalibPending = false;
+        if (deviceState) drawDeviceCalibration(deviceState);
     }
 }
 

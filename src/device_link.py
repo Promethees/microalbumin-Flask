@@ -58,6 +58,12 @@ SETTLE_AFTER_QUEUED = 0.4
 _STATE_INTS = ("blanked", "needsblank", "talking", "paused", "maxchan", "menupos", "sel")
 _STATE_INT_LISTS = ("chans",)
 _STATE_TEXT_LISTS = ("caps", "gains", "itimes", "vals")
+# rcf: the raw count factor of each ACTIVE channel, in the same order as
+# `chans`, `gains` and `itimes` — the display view. The full per-multiplexer-
+# channel array, which is what configuration.json stores, comes from
+# calibration_factors() instead. Typed here rather than left as text because the
+# controller compares them against 1.0 to show which holders are corrected.
+_STATE_FLOAT_LISTS = ("rcf",)
 
 
 class DeviceLinkError(Exception):
@@ -98,6 +104,11 @@ def parse_state(line):
         elif key in _STATE_INT_LISTS:
             try:
                 state[key] = [int(v) for v in value.split(",") if v]
+            except ValueError:
+                state[key] = []
+        elif key in _STATE_FLOAT_LISTS:
+            try:
+                state[key] = [float(v) for v in value.split(",") if v]
             except ValueError:
                 state[key] = []
         elif key in _STATE_TEXT_LISTS:
@@ -347,6 +358,80 @@ class DeviceLink:
             raise DeviceLinkError(detail or "The device refused those timing values")
         time.sleep(SETTLE_AFTER_QUEUED)
         return True
+
+
+    # ── raw count calibration ───────────────────────────────────────────
+    # Equalising what the channels count when every cuvette holder is showing
+    # them the same LED. See the firmware's raw_count_calibration.md: the factor
+    # is one multiplier per MULTIPLEXER channel, so the array is always
+    # `maxchan` long and indexed by channel number, not by position in `chans`.
+    #
+    # None of this survives a power cycle on the device — CircuitPython cannot
+    # write its own filesystem — so keeping a calibration means writing the array
+    # into configuration.json on the CIRCUITPY drive.
+
+    def _factors_reply(self, command):
+        """Send a command that answers CALFACTORS, and parse the array out."""
+        reply = self.command(
+            command,
+            lambda line: line.startswith("CALFACTORS")
+            or line.startswith("ERR_CALIB")
+            or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware has no sensor calibration")
+        if reply.startswith("ERR_CALIB"):
+            # The firmware appends the reason ("channel 2 reading zero: LED
+            # off?"), which is the only thing that tells the operator what to
+            # fix in the holder.
+            detail = reply[len("ERR_CALIB"):].strip()
+            raise DeviceLinkError(detail or "The device refused the calibration")
+        body = reply[len("CALFACTORS"):].strip()
+        try:
+            return [float(part) for part in body.split(",") if part]
+        except ValueError:
+            raise DeviceLinkError("The device sent a calibration it could not be read from")
+
+    def calibration_factors(self):
+        """The per-multiplexer-channel raw count factors (CALIB?)."""
+        return self._factors_reply("CALIB?")
+
+    def set_calibration_factors(self, factors):
+        """Write the factors outright (CALIB:). Pass None to clear them to 1.0.
+
+        Send the whole array, not just the active channels: a short list is
+        padded with 1.0 on the device, which would blank the factor of every
+        holder not currently in use.
+        """
+        if factors is None:
+            spec = "reset"
+        else:
+            spec = ",".join(_number_text(factor) for factor in factors)
+        reply = self.command(
+            f"CALIB:{spec}",
+            lambda line: line == "ACK_CALIB" or line.startswith("ERR_CALIB") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware has no sensor calibration")
+        if reply != "ACK_CALIB":
+            detail = reply[len("ERR_CALIB"):].strip()
+            raise DeviceLinkError(detail or "The device refused those factors")
+        time.sleep(SETTLE_AFTER_QUEUED)
+        return True
+
+    def run_calibration(self):
+        """Have the device measure and apply new factors now (CALIBRATE).
+
+        The operator has to have arranged the preconditions first — the same
+        contents in every holder, the same LED across them — because the device
+        cannot tell a genuinely dimmer holder from a cuvette someone left in it.
+        It refuses factors beyond 0.1..10x for that reason, and the refusal names
+        the channel.
+
+        Answers with the factors it derived and applied, so there is no follow-up
+        read. This is the one device command that takes seconds of sampling
+        before it replies; it stays inside REPLY_TIMEOUT because the firmware
+        uses its short sample count on this path.
+        """
+        return self._factors_reply("CALIBRATE")
 
 
 # One link per process: the port has one owner, so the object that owns it is a
