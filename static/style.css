@@ -6036,6 +6036,31 @@ body.dark #run-script-btn:enabled {
     color: var(--ink-dim);
 }
 
+/* The calibration instructions, folded. Read once, then in the way — and the
+   controls below them are what a returning operator came for. */
+.devctl-steps-fold {
+    margin: 2px 0 10px 0;
+}
+
+.devctl-steps-fold > summary {
+    font-size: 11px;
+    color: var(--ink-dim);
+    cursor: pointer;
+    padding: 2px 0;
+    /* The marker is the only affordance saying this opens, so it stays. */
+    list-style-position: inside;
+    user-select: none;
+}
+
+.devctl-steps-fold > summary:hover {
+    color: var(--ink);
+}
+
+.devctl-steps-fold[open] > summary {
+    color: var(--ink);
+    margin-bottom: 4px;
+}
+
 /* Numbered instructions inside a panel. Only the calibration panel has these:
    its button is the one control here whose result depends on what the operator
    physically did to the instrument BEFORE pressing it, so the steps have to be

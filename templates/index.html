@@ -700,6 +700,17 @@
                                 <span class="devctl-label" data-i18n="devctl.calib">Sensor calibration</span>
                                 <span class="devctl-note" data-i18n="devctl.calib_note">Makes every cuvette holder report the same count from the same LED.</span>
                             </div>
+                            <!-- Folded away by default. Six steps and a caveat is
+                                 the right amount to read once and the wrong
+                                 amount to scroll past on every visit, and the
+                                 controls below are what a returning operator
+                                 came for. A native disclosure element rather
+                                 than a JS toggle: it opens without a script, so
+                                 the instructions cannot end up sealed shut by a
+                                 broken one, and it is keyboard- and
+                                 find-in-page-reachable for free. -->
+                            <details class="devctl-steps-fold">
+                            <summary data-i18n="devctl.calib_how">How to calibrate</summary>
                             <ol class="devctl-steps">
                                 <li data-i18n-html="devctl.calib_step1"><strong>Load every holder the same way.</strong> All empty, or the same blank cuvette moved into each slot — whatever is left different between the holders is what gets divided out.</li>
                                 <li data-i18n-html="devctl.calib_step2"><strong>One LED colour per pass.</strong> The sensor's response depends on wavelength, so channels under different LEDs read orders of magnitude apart and cannot be scaled onto each other. If this instrument mixes colours, untick the others in Active channels and do one group at a time — factors of unticked channels are kept.</li>
@@ -708,11 +719,13 @@
                                 <li data-i18n-html="devctl.calib_step4"><strong>Copy the array into configuration.json</strong> on the CIRCUITPY drive. The device cannot write that file itself, so the factors are lost on the next power cycle until you do.</li>
                                 <li data-i18n-html="devctl.calib_step5"><strong>Run it again</strong> after the instrument is moved or re-lamped, or if it has sat unused: LED output falls with age.</li>
                             </ol>
-                            <!-- Shown instead of the steps when the device has
-                                 fewer than two active channels: the factors are
-                                 relative, so there is nothing to scale against. -->
-                            <p id="devctl-calib-warn" class="devctl-caveat hidden" data-i18n="devctl.calib_need_channels">This device has only one active channel. Calibration scales the channels onto each other, so it needs at least two — add one in Active channels above, or in configuration.json.</p>
                             <p class="devctl-caveat" data-i18n="devctl.calib_caveat">This does not change Absorbance or Transmittance — each channel is already divided by its own blank, which cancels the factor. It changes Raw Count, Irradiance, and any comparison between holders. If absorbance still disagrees between holders afterwards, the cause is elsewhere: pathlength, cuvette orientation, scattering, or a blank taken through different contents.</p>
+                            </details>
+                            <!-- OUTSIDE the fold, deliberately: fewer than two
+                                 active channels stops the pass outright, and a
+                                 blocker folded behind a summary is a blocker
+                                 nobody reads. -->
+                            <p id="devctl-calib-warn" class="devctl-caveat devctl-caveat--warn hidden" data-i18n="devctl.calib_need_channels">This device has only one active channel. Calibration scales the channels onto each other, so it needs at least two — add one in Active channels above, or in configuration.json.</p>
                             <div class="devctl-conc-row">
                                 <span class="devctl-conc-current">
                                     <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>

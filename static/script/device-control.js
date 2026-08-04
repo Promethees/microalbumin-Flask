@@ -90,6 +90,20 @@ const DEVICE_BUTTON_FUNCTIONS = {
         itime: ['devctl.fn.plus_100', '+100'],
         gain:  ['devctl.fn.minus_100', '−100'],
     },
+    // Sensor Cal (ButtonHandler._handle_calibration_mode). Only three keys do
+    // anything, and that is deliberate on the device: gain and integration time
+    // change what a channel counts, so pressing one here would make the factors
+    // on screen describe a state the sensors are no longer in.
+    //
+    // A mode missing from this table renders EVERY key as "No effect" and dims
+    // the whole pad, which is what happened to Sensor Cal before this entry
+    // existed — the screen was live and taking presses, and the panel said the
+    // keypad was dead.
+    CALIBRATION: {
+        menu:  ['devctl.fn.run_calibration', 'Calibrate'],
+        blank: ['devctl.fn.clear_factors', 'Clear factors'],
+        left:  ['devctl.fn.back_to_menu', 'Back to menu'],
+    },
     MESSAGE: { _any: ['devctl.fn.dismiss', 'Dismiss'] },
     ABORT:   { _any: ['devctl.fn.dismiss', 'Dismiss'] },
 };
