@@ -511,6 +511,9 @@ function renderDeviceChannels(state) {
     }
     panel.classList.remove('hidden');
 
+    const deviceChannels = state.chans || [];
+    renderDeviceChannelsPending(deviceChannels);
+
     // A half-made selection is the user's, not the device's. Leave the boxes
     // alone until it is applied or a press resets it, or the poll would tick the
     // checkboxes back every 1.5 s while they are being used.
@@ -521,7 +524,6 @@ function renderDeviceChannels(state) {
 
     const gains = state.gains || [];
     const itimes = state.itimes || [];
-    const deviceChannels = state.chans || [];
     boxes.innerHTML = '';
     for (let channel = 0; channel < state.maxchan; channel++) {
         const onDevice = deviceChannels.indexOf(channel);
@@ -557,6 +559,34 @@ function renderDeviceChannels(state) {
     apply.disabled = true;
 }
 
+// Say when the boxes no longer describe the device.
+//
+// Unticking a channel stops the poll redrawing the boxes (devicePendingChannels
+// above) so a half-made selection is not clobbered mid-edit — but that leaves
+// the panel showing a channel set the device is not using, with nothing to
+// distinguish "off" from "about to be turned off". An operator who unticked @2
+// then went to calibrate got refused for a channel they believed was already
+// out, and the only clue was the Apply button they had not pressed.
+//
+// Built in JS rather than a data-i18n element: it names the device's channels,
+// which change, and the i18n pass sets textContent from a fixed catalog string.
+function renderDeviceChannelsPending(deviceChannels) {
+    const note = document.getElementById('devctl-channels-pending');
+    if (!note) return;
+    const staged = devicePendingChannels;
+    const differs = !!staged && (
+        staged.length !== deviceChannels.length ||
+        staged.some((channel, i) => channel !== deviceChannels[i]));
+    note.classList.toggle('hidden', !differs);
+    if (!differs) return;
+    const inUse = deviceChannels.length
+        ? deviceChannels.map(channel => `@${channel}`).join(' ')
+        : t('devctl.channels_pending_none', 'none');
+    note.textContent = `${t('devctl.channels_pending',
+        'Not sent yet — the device is still using')} ${inUse}. ${t('devctl.channels_pending_apply',
+        'Press Apply channels to change it.')}`;
+}
+
 function readDeviceChannelBoxes() {
     return Array.from(document.querySelectorAll('#devctl-channel-boxes input:checked'))
         .map(input => parseInt(input.value, 10));
@@ -566,6 +596,9 @@ function onDeviceChannelToggle() {
     devicePendingChannels = readDeviceChannelBoxes();
     const apply = document.getElementById('devctl-channels-apply');
     if (apply) apply.disabled = !devicePendingChannels.length;
+    // On the tick, not on the next poll: 1.5 s is long enough to untick a box,
+    // read the panel, and conclude the change already took.
+    renderDeviceChannelsPending((deviceState && deviceState.chans) || []);
 }
 
 async function applyDeviceChannels() {

@@ -6071,6 +6071,17 @@ body.dark #run-script-btn:enabled {
     opacity: 0.9;
 }
 
+/* The panel is showing something the device is NOT doing — an edit that has not
+   been sent. Dim grey reads as a footnote, and a footnote is exactly what this
+   must not be mistaken for. */
+.devctl-caveat--warn {
+    color: var(--warn);
+    border-left-color: var(--warn);
+    background-color: var(--warn-wash);
+    padding: 6px 8px;
+    opacity: 1;
+}
+
 /* One row of chips that scrolls sideways rather than wrapping: the channel set
    and the device's menu are both *ordered* lists the operator reads across, and
    a wrapped second row reads as a second group. Narrow panels stack instead —

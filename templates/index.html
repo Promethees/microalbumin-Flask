@@ -616,6 +616,11 @@
                                 <span class="devctl-note" data-i18n="devctl.channels_note">Runtime only — the device returns to its configured channels when powered off.</span>
                             </div>
                             <div id="devctl-channel-boxes" class="devctl-channel-boxes devctl-strip"></div>
+                            <!-- Filled by renderDeviceChannelsPending(): the boxes
+                                 stop tracking the device while an edit is in
+                                 progress, and without this the panel shows a
+                                 channel set the device is not using. -->
+                            <p id="devctl-channels-pending" class="devctl-caveat devctl-caveat--warn hidden"></p>
                             <button type="button" id="devctl-channels-apply" onclick="applyDeviceChannels()" disabled
                                 data-i18n="devctl.apply_channels" data-i18n-hint="hint.devctl_channels"
                                 data-hint="Re-point the device at these multiplexer channels. Clears the blank — the device must be blanked again.">Apply channels</button>
