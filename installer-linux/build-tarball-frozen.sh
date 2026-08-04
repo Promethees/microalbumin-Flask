@@ -5,7 +5,7 @@
 # `sudo ./EasyOKAPI/install-frozen.sh`.
 #
 # Prereq: `python tools/package.py --encode` has produced dist/EasyOKAPI/.
-# Env:    APP_VERSION (bare, e.g. 1.4.2).
+# Env:    APP_VERSION (bare, e.g. 1.4.3).
 
 set -euo pipefail
 

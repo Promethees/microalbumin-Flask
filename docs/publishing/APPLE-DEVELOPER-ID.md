@@ -104,7 +104,7 @@ Signing must happen inside-out: the frozen binary, then the `.app`, then the DMG
 Signing the DMG does not sign what is inside it.
 
 ```bash
-export APP_VERSION=1.4.2
+export APP_VERSION=1.4.3
 export SIGNING_IDENTITY="Developer ID Application: ‹entity› (‹TEAMID›)"
 ```
 
