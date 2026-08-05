@@ -367,10 +367,17 @@ class DeviceLink:
 
 
     # ── raw count calibration ───────────────────────────────────────────
-    # Equalising what the channels count when every cuvette holder is showing
-    # them the same LED. See the firmware's raw_count_calibration.md: the factor
-    # is one multiplier per MULTIPLEXER channel, so the array is always
-    # `maxchan` long and indexed by channel number, not by position in `chans`.
+    # One multiplier per sensing element, in the order configuration.json holds
+    # them — multiplexer channels on the multi-channel colorimeter (where the
+    # array is `maxchan` long and indexed by channel number, not by position in
+    # `chans`), the three spectral channels on the UV build, the two sensor
+    # positions on the two-sensor one. CALIBTAGS? is what says which.
+    #
+    # Only the multi-channel build can derive the numbers itself (capability
+    # "calauto"): a factor is one element measured against the others, and the
+    # other builds have nothing to compare — their elements are looking at
+    # different wavelengths or different angles on purpose. There the operator
+    # types the numbers, and CALIB: is the only way they are set.
     #
     # None of this survives a power cycle on the device — CircuitPython cannot
     # write its own filesystem — so keeping a calibration means writing the array
@@ -401,6 +408,27 @@ class DeviceLink:
         """The per-multiplexer-channel raw count factors (CALIB?)."""
         return self._factors_reply("CALIB?")
 
+    def calibration_tags(self):
+        """What the device calls each entry of that array (CALIBTAGS?).
+
+        The panel draws one field per factor and has to label them. What an
+        entry means differs by build — a multiplexer channel here, a spectral
+        channel on the UV build, a sensor position on the two-sensor one — so
+        the names come from the device rather than from a table here that would
+        go stale the first time a build changed shape.
+
+        None when the firmware predates the command; the caller falls back to
+        numbering the fields, which is worse but never wrong.
+        """
+        reply = self.command(
+            "CALIBTAGS?",
+            lambda line: line.startswith("CALTAGS") or line == "ERR_UNKNOWN")
+        if reply == "ERR_UNKNOWN":
+            return None
+        body = reply[len("CALTAGS"):].strip()
+        tags = [part.strip() for part in body.split(",") if part.strip()]
+        return tags or None
+
     def set_calibration_factors(self, factors):
         """Write the factors outright (CALIB:). Pass None to clear them to 1.0.
 
@@ -425,6 +453,12 @@ class DeviceLink:
 
     def run_calibration(self):
         """Have the device measure and apply new factors now (CALIBRATE).
+
+        Only builds announcing "calauto" can do this; the rest answer
+        ERR_UNKNOWN, which _factors_reply turns into "this device's firmware has
+        no sensor calibration". The panel hides the button on those builds and
+        offers the fields instead, so this is a backstop rather than a path an
+        operator can reach.
 
         The operator has to have arranged the preconditions first — the same
         contents in every holder, the same LED across them — because the device

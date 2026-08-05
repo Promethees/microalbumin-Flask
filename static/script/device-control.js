@@ -1075,10 +1075,19 @@ async function sendDeviceTiming(noTimeout) {
 // its Sensor Cal screen, for the same reason the Concentration and Settings
 // forms are: that is the screen the operator set the conditions up on.
 //
-// Deliberately not an editable form. The numbers come from a measurement, not
+// On a device that can derive the factors ("calauto" in caps) this is
+// deliberately not an editable form: the numbers come from a measurement, not
 // from a preference, and the one thing a human should be typing is the array
 // into configuration.json — which is why the array is shown to be copied rather
 // than offered as four inputs to nudge.
+//
+// The single-measurement builds cannot derive anything — a factor is one
+// element measured against the others, and their elements look at different
+// wavelengths or different angles on purpose — so there the operator IS the
+// source of the number, and the same panel grows one field per factor and drops
+// the Calibrate button. Which one is decided by caps, not by counting entries:
+// a build with several channels that still cannot compare them exists (the UV
+// one), and guessing from the array length would offer it a pass it refuses.
 
 let deviceCalibPending = false;
 let deviceCalibFactors = null;
@@ -1091,9 +1100,21 @@ let deviceCalibDrive = null;
 // bumps rcfrev on every accepted change, so this is how a calibration run from
 // the keypad — which the panel never sees the reply to — gets picked up.
 let deviceCalibRevision = null;
+// What the device calls each entry of the array (CALIBTAGS?), or null on a
+// firmware too old to say — the fields are then numbered.
+let deviceCalibTags = null;
+// Set once the operator types in a factor field, and cleared when the array is
+// sent or re-read. Keeps the poll's redraw from overwriting a half-typed value,
+// the same rule the concentration field follows.
+let deviceCalibDirty = false;
 
 function deviceSupportsCalibration(state) {
     return (state.caps || []).indexOf('calib') !== -1;
+}
+
+// Can the device measure its own factors, or does the operator supply them?
+function deviceSupportsAutoCalibration(state) {
+    return (state.caps || []).indexOf('calauto') !== -1;
 }
 
 function renderDeviceCalibration(state) {
@@ -1123,8 +1144,12 @@ async function loadDeviceCalibration(revision) {
         const data = await res.json();
         if (data.status === 'success' && Array.isArray(data.factors)) {
             deviceCalibFactors = data.factors;
+            deviceCalibTags = Array.isArray(data.tags) && data.tags.length ? data.tags : null;
             deviceCalibSaved = Array.isArray(data.saved) ? data.saved : null;
             deviceCalibDrive = data.drive || null;
+            // The array just came from the device, so whatever was half-typed
+            // is answered rather than clobbered.
+            deviceCalibDirty = false;
             // Only once the read succeeded: a failed fetch must leave the
             // revision alone so the next poll tries again.
             if (revision !== undefined) deviceCalibRevision = revision;
@@ -1154,13 +1179,19 @@ function drawDeviceCalibration(state) {
     const factors = state.rcf || [];
     const channels = state.chans || [];
     $text('devctl-calib-current', factors.length
-        ? factors.map((factor, i) => `×${Number(factor).toFixed(3)}${channels[i] != null ? ' @' + channels[i] : ''}`).join('   ')
+        ? factors.map((factor, i) => {
+            // `chans` is empty on a build with no multiplexer; there the entry
+            // is named by the device (CALIBTAGS?) instead of by channel number.
+            const tag = channels[i] != null ? '@' + channels[i]
+                : (deviceCalibTags && deviceCalibTags[i]) || '';
+            return `×${Number(factor).toFixed(3)}${tag ? ' ' + tag : ''}`;
+        }).join('   ')
         : '—');
 
-    // The copyable line is the WHOLE multiplexer-indexed array from
-    // /device/calibration, because that is the shape configuration.json holds:
-    // writing back only the active channels would blank the factors of every
-    // holder not currently in use.
+    // The copyable line is the WHOLE array from /device/calibration, because
+    // that is the shape configuration.json holds. On the multi-channel build it
+    // is indexed by multiplexer channel, and writing back only the active ones
+    // would blank the factor of every holder not currently in use.
     const array = document.getElementById('devctl-calib-array');
     if (array) {
         array.textContent = deviceCalibFactors
@@ -1189,18 +1220,113 @@ function drawDeviceCalibration(state) {
     }
     $disabled('devctl-calib-save', deviceCalibPending || !deviceCalibDrive || !unsaved);
 
+    // A pass, or fields to type in? Everything below hangs off this: the two
+    // are alternatives, not a form with a button beside it.
+    const auto = deviceSupportsAutoCalibration(state);
+    const run = document.getElementById('devctl-calib-run');
+    if (run) run.classList.toggle('hidden', !auto);
+    const autoHow = document.getElementById('devctl-calib-auto-how');
+    if (autoHow) autoHow.classList.toggle('hidden', !auto);
+    const manualHow = document.getElementById('devctl-calib-manual-how');
+    if (manualHow) manualHow.classList.toggle('hidden', auto);
+    const editor = document.getElementById('devctl-calib-edit');
+    if (editor) editor.classList.toggle('hidden', auto);
+    if (!auto) drawDeviceCalibrationFields();
+    // The heading describes a pass across holders, which is not what this is on
+    // a device that has one sensing element per thing it measures.
+    const note = document.getElementById('devctl-calib-note');
+    if (note) {
+        note.textContent = auto
+            ? t('devctl.calib_note',
+                'Makes every cuvette holder report the same count from the same LED.')
+            : t('devctl.calib_note_manual',
+                'Scales what this instrument counts, so it agrees with the one you calibrated against.');
+    }
+
     // Fewer than two channels and there is nothing to scale against — the
     // device refuses the pass ("only channel 0 active: need 2 to compare").
     // Say so before the press rather than after it, and take the button away:
-    // an enabled Calibrate that always fails reads as a broken device.
-    const tooFew = channels.length < 2;
+    // an enabled Calibrate that always fails reads as a broken device. Only
+    // ever about the pass, so it stays down on a device that has none.
+    const tooFew = auto && channels.length < 2;
     const warning = document.getElementById('devctl-calib-warn');
     if (warning) warning.classList.toggle('hidden', !tooFew);
     $disabled('devctl-calib-run', deviceCalibPending || tooFew);
+    $disabled('devctl-calib-apply', deviceCalibPending || !deviceCalibFactors);
     // Clear stays live. Factors set earlier (or loaded from configuration.json)
     // are still in force on the channel that is active, and resetting them is
     // exactly what an operator narrowing down to one channel may want.
     $disabled('devctl-calib-clear', deviceCalibPending);
+}
+
+// One number field per factor, named the way the device names them.
+//
+// Rebuilt only when the shape changes (a different device, a firmware that
+// answers CALIBTAGS? where the last one did not); a rebuild on every poll would
+// take the caret out of the field being typed in and drop the value with it.
+// The values themselves follow the device until the operator touches one —
+// deviceCalibDirty, the rule the concentration field already follows.
+function drawDeviceCalibrationFields() {
+    const host = document.getElementById('devctl-calib-fields');
+    if (!host) return;
+    const factors = deviceCalibFactors || [];
+    const label = i => (deviceCalibTags && deviceCalibTags[i]) || `#${i}`;
+    const shape = factors.map((factor, i) => label(i)).join('|');
+    if (host.dataset.shape !== shape) {
+        host.dataset.shape = shape;
+        host.textContent = '';
+        factors.forEach((factor, i) => {
+            const wrap = document.createElement('label');
+            wrap.className = 'devctl-calib-field';
+            const name = document.createElement('span');
+            name.className = 'devctl-label';
+            name.textContent = label(i);
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'devctl-value--num';
+            // The bounds the firmware enforces, so the browser refuses what the
+            // device would have refused — and the step is the keypad's fine
+            // step, so the arrows here and the buttons there agree.
+            input.min = '0.1';
+            input.max = '10';
+            input.step = '0.01';
+            input.id = `devctl-calib-factor-${i}`;
+            input.addEventListener('input', () => { deviceCalibDirty = true; });
+            wrap.appendChild(name);
+            wrap.appendChild(input);
+            host.appendChild(wrap);
+        });
+    }
+    if (deviceCalibDirty) return;
+    factors.forEach((factor, i) => {
+        const input = document.getElementById(`devctl-calib-factor-${i}`);
+        if (input) input.value = Number(factor).toFixed(3);
+    });
+}
+
+// Send what is in the fields (CALIB: through /device/calibration).
+//
+// The whole array goes, not just the fields that changed: a short list is
+// padded with 1.0 on the device, which would clear every entry the operator did
+// not touch.
+function applyDeviceCalibrationEdits() {
+    if (!deviceCalibFactors) return;
+    const factors = [];
+    for (let i = 0; i < deviceCalibFactors.length; i++) {
+        const input = document.getElementById(`devctl-calib-factor-${i}`);
+        const value = Number(input ? input.value : deviceCalibFactors[i]);
+        if (!isFinite(value) || value < 0.1 || value > 10) {
+            // Named, because with four fields on screen "a factor is out of
+            // range" leaves the operator hunting for which one.
+            const label = (deviceCalibTags && deviceCalibTags[i]) || `#${i}`;
+            showDeviceControlError(`${label}: ${t('devctl.calib_range',
+                'a factor must be between 0.1 and 10')}`);
+            return;
+        }
+        factors.push(value);
+    }
+    deviceCalibDirty = false;
+    sendDeviceCalibration({ factors: factors });
 }
 
 function runDeviceCalibration() {
@@ -1209,6 +1335,7 @@ function runDeviceCalibration() {
 
 function clearDeviceCalibration() {
     // An empty body is "clear them", not "send nothing" — see the route.
+    deviceCalibDirty = false;
     sendDeviceCalibration({});
 }
 
@@ -1263,6 +1390,8 @@ async function sendDeviceCalibration(payload) {
         const data = await res.json();
         if (data.status === 'success') {
             if (Array.isArray(data.factors)) deviceCalibFactors = data.factors;
+            // What the device now holds is what the fields should show.
+            deviceCalibDirty = false;
             deviceCalibPending = false;
             if (data.state) applyDeviceState(data.state);
             return;

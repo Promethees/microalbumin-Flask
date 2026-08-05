@@ -475,5 +475,16 @@
   "settings.device_control": "Show the Device Controller panel",
   "settings.device_link": "Connect to the device when the panel is open",
   "settings.device_poll": "Device Controller refresh",
-  "devctl.fn.next_uv_channel": "Next spectral channel"
+  "devctl.fn.next_uv_channel": "Next spectral channel",
+  "devctl.calib_note_manual": "Scales what this instrument counts, so it agrees with the one you calibrated against.",
+  "devctl.calib_how_manual": "How to set the factor",
+  "devctl.calib_m_step1": "<strong>Measure a reference on an instrument you trust</strong> — the same sample, the same cuvette, the same light.",
+  "devctl.calib_m_step2": "<strong>Read the same sample here</strong> on the device's Raw Count screen, with gain and integration time set so nothing reads OVFL.",
+  "devctl.calib_m_step3": "<strong>Divide.</strong> factor = reference counts ÷ counts read here. Type it below and press Apply — the range is 0.1 to 10.",
+  "devctl.calib_m_step4": "<strong>Save to device</strong> to keep it. The device cannot write its own configuration.json, so the factor is lost on the next power cycle until you do.",
+  "devctl.calib_caveat_manual": "This does not change Absorbance or Transmittance — each reading is divided by a blank taken through the same factor, which cancels it, and the blank in memory is rescaled when the factor changes so that stays true mid-run. It changes counts: Raw Count, Irradiance, and any comparison against another instrument.",
+  "devctl.calib_factors": "Factors",
+  "devctl.calib_apply": "Apply factors",
+  "devctl.calib_range": "a factor must be between 0.1 and 10",
+  "hint.devctl_calib_apply": "Send these factors to the device. They take effect immediately and last until the next power cycle, or until you save them."
 }

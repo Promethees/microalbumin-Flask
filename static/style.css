@@ -6205,6 +6205,36 @@ body.dark #run-script-btn:enabled {
     border-radius: var(--r-flat);
 }
 
+/* The factor fields on a device that cannot derive them: one labelled box per
+   sensing element, wrapping as a group so a name never separates from its box.
+   Same shape as the timing pair below, and scoped past the sheet's
+   `input[type="number"] { width: 100% }` for the same reason the value box is. */
+.devctl-calib-fields {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.devctl-calib-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.devctl-body .devctl-conc .devctl-calib-field input[type="number"] {
+    flex: none;
+    width: 92px;
+    padding: 6px 10px;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-flat);
+}
+
 /* A labelled pair (Timeout / Interval): the name, the box and its unit read as
    one control, so they travel together when the row wraps. */
 .devctl-timing-field {

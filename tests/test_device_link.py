@@ -224,6 +224,21 @@ def test_set_calibration_factors_surfaces_the_device_reason():
     assert 'outside' in str(excinfo.value)
 
 
+def test_calibration_tags_names_the_entries():
+    """The panel labels one field per factor from the device's own names, so a
+    build the host has never heard of still comes up labelled."""
+    link = FakeLink(["CALTAGS Sen 90,Sen 180"])
+    assert link.calibration_tags() == ['Sen 90', 'Sen 180']
+    assert link.sent == ['CALIBTAGS?']
+
+
+def test_calibration_tags_on_firmware_without_the_command_are_none():
+    """Not an error: that firmware still has factors, and the fields fall back
+    to being numbered."""
+    link = FakeLink(["ERR_UNKNOWN"])
+    assert link.calibration_tags() is None
+
+
 def test_parse_state_types_the_raw_count_factors():
     """rcf rides beside gains/itimes: one entry per ACTIVE channel, in order."""
     parsed = device_link.parse_state(SAMPLE_STATE + ";rcf=1.000,0.983")

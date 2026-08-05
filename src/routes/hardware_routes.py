@@ -514,13 +514,15 @@ def _saved_calibration():
 
 @hardware_bp.route('/device/calibration', methods=['GET'])
 def device_calibration():
-    """The device's raw count factors, one per multiplexer channel (CALIB?).
+    """The device's raw count factors, one per sensing element (CALIB?).
 
     A separate route from /device/state even though the state carries `rcf`,
     because the two are different views: `rcf` is the active channels in stream
-    order, for display beside the gains, while this is the whole array indexed by
-    channel number — the shape configuration.json holds and the shape a write
-    back to the device has to take.
+    order, for display beside the gains, while this is the whole array — the
+    shape configuration.json holds and the shape a write back to the device has
+    to take. On the multi-channel build that array is indexed by multiplexer
+    channel; on the single-measurement builds it is one entry per spectral
+    channel or per sensor. `tags` names them either way.
 
     Answers with what is *saved* as well as what is running, so the panel can
     tell the operator whether the calibration in force will survive the next
@@ -533,8 +535,15 @@ def device_calibration():
         factors = device_link.link.calibration_factors()
     except device_link.DeviceLinkError as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 502
+    # What the device calls each entry, so the panel can label one field per
+    # factor. Never fatal: a firmware without the command still has factors, and
+    # numbered fields are worse than named ones but not wrong.
+    try:
+        tags = device_link.link.calibration_tags()
+    except device_link.DeviceLinkError:
+        tags = None
     drive, saved = _saved_calibration()
-    return jsonify({'status': 'success', 'factors': factors,
+    return jsonify({'status': 'success', 'factors': factors, 'tags': tags,
                     'saved': saved, 'drive': drive})
 
 

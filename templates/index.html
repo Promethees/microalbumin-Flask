@@ -698,7 +698,7 @@
                         <div id="devctl-calib" class="devctl-conc hidden">
                             <div class="devctl-channels-head">
                                 <span class="devctl-label" data-i18n="devctl.calib">Sensor calibration</span>
-                                <span class="devctl-note" data-i18n="devctl.calib_note">Makes every cuvette holder report the same count from the same LED.</span>
+                                <span id="devctl-calib-note" class="devctl-note" data-i18n="devctl.calib_note">Makes every cuvette holder report the same count from the same LED.</span>
                             </div>
                             <!-- Folded away by default. Six steps and a caveat is
                                  the right amount to read once and the wrong
@@ -709,7 +709,7 @@
                                  the instructions cannot end up sealed shut by a
                                  broken one, and it is keyboard- and
                                  find-in-page-reachable for free. -->
-                            <details class="devctl-steps-fold">
+                            <details id="devctl-calib-auto-how" class="devctl-steps-fold">
                             <summary data-i18n="devctl.calib_how">How to calibrate</summary>
                             <ol class="devctl-steps">
                                 <li data-i18n-html="devctl.calib_step1"><strong>Load every holder the same way.</strong> All empty, or the same blank cuvette moved into each slot — whatever is left different between the holders is what gets divided out.</li>
@@ -725,6 +725,31 @@
                                  active channels stops the pass outright, and a
                                  blocker folded behind a summary is a blocker
                                  nobody reads. -->
+                            <!-- Builds that cannot derive the factors (no "calauto"
+                                 in caps): one sensing element has nothing to be
+                                 measured against, so the number is the operator's.
+                                 Shown INSTEAD of the fold above and the Calibrate
+                                 button, both of which describe a pass this device
+                                 does not have. -->
+                            <details id="devctl-calib-manual-how" class="devctl-steps-fold hidden">
+                            <summary data-i18n="devctl.calib_how_manual">How to set the factor</summary>
+                            <ol class="devctl-steps">
+                                <li data-i18n-html="devctl.calib_m_step1"><strong>Measure a reference on an instrument you trust</strong> — the same sample, the same cuvette, the same light.</li>
+                                <li data-i18n-html="devctl.calib_m_step2"><strong>Read the same sample here</strong> on the device's Raw Count screen, with gain and integration time set so nothing reads OVFL.</li>
+                                <li data-i18n-html="devctl.calib_m_step3"><strong>Divide.</strong> factor = reference counts ÷ counts read here. Type it below and press Apply — the range is 0.1 to 10.</li>
+                                <li data-i18n-html="devctl.calib_m_step4"><strong>Save to device</strong> to keep it. The device cannot write its own configuration.json, so the factor is lost on the next power cycle until you do.</li>
+                            </ol>
+                            <p class="devctl-caveat" data-i18n="devctl.calib_caveat_manual">This does not change Absorbance or Transmittance — each reading is divided by a blank taken through the same factor, which cancels it, and the blank in memory is rescaled when the factor changes so that stays true mid-run. It changes counts: Raw Count, Irradiance, and any comparison against another instrument.</p>
+                            </details>
+                            <!-- One field per factor, built by drawDeviceCalibration()
+                                 from the device's own names for them (CALIBTAGS?). -->
+                            <div id="devctl-calib-edit" class="devctl-conc-row hidden">
+                                <span class="devctl-label" data-i18n="devctl.calib_factors">Factors</span>
+                                <span id="devctl-calib-fields" class="devctl-calib-fields"></span>
+                                <button type="button" id="devctl-calib-apply" onclick="applyDeviceCalibrationEdits()"
+                                    data-i18n="devctl.calib_apply" data-i18n-hint="hint.devctl_calib_apply"
+                                    data-hint="Send these factors to the device. They take effect immediately and last until the next power cycle, or until you save them.">Apply factors</button>
+                            </div>
                             <p id="devctl-calib-warn" class="devctl-caveat devctl-caveat--warn hidden" data-i18n="devctl.calib_need_channels">This device has only one active channel. Calibration scales the channels onto each other, so it needs at least two — add one in Active channels above, or in configuration.json.</p>
                             <div class="devctl-conc-row">
                                 <span class="devctl-conc-current">
