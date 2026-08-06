@@ -316,7 +316,9 @@ def device_channels(validated_data):
 
     Runtime only — the device reverts to its configuration.json on a power cycle,
     because CircuitPython cannot write its own filesystem (see the firmware's
-    Colorimeter.set_active_channels).
+    Colorimeter.set_active_channels). /device/channels/save is what makes a
+    channel set outlive the power cycle, and it is a separate press because
+    writing that file reboots the board.
     """
     if _session_is_running():
         return _controller_busy_response()
@@ -336,6 +338,120 @@ def device_channels(validated_data):
         return jsonify({'status': 'success', 'state': device_link.link.state()})
     except device_link.DeviceLinkError:
         return jsonify({'status': 'success', 'state': None})
+
+
+def _saved_setting(key):
+    """What configuration.json on the drive holds for one key, if it is reachable.
+
+    Same contract as _saved_calibration: never raises. The drive being absent is
+    an ordinary state — the device can be connected for serial only, or the
+    volume not mounted yet — and the panel says so rather than showing an error.
+    """
+    root = device_config.find_device_root()
+    if root is None:
+        return None, None
+    try:
+        data = device_config.read_configuration(root)
+    except device_config.DeviceConfigError:
+        return root, None
+    return root, data.get(key)
+
+
+def _save_setting_response(write, value):
+    """Write one setting to the drive and answer with what is now saved.
+
+    The board reloads the instant its filesystem changes, so this restarts the
+    device — which is what makes the setting outlive the power cycle, and also
+    why the open port is dropped afterwards: it is a handle to a device that is
+    about to go away.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+
+    root = device_config.find_device_root()
+    if root is None:
+        return jsonify({
+            'status': 'failure',
+            'message': ('No CIRCUITPY drive found. Connect the colorimeter by USB and let '
+                        'the drive mount, then try again.'),
+        }), 404
+
+    try:
+        path = write(root, value)
+    except device_config.DeviceConfigError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 500
+
+    device_link.link.close()
+    return jsonify({'status': 'success', 'saved': value, 'drive': root, 'path': path})
+
+
+@hardware_bp.route('/device/channels/save', methods=['POST'])
+def device_channels_save():
+    """Write the channels the device is running on into its configuration.json.
+
+    The set comes from the device (STATE), not from the browser: what gets saved
+    must be what is actually in force. A cached array would save a selection the
+    operator ticked but never applied — and the panel deliberately keeps those
+    two apart, because unticking a box and having the board reboot for it is not
+    what anyone meant by ticking a box.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        state = device_link.link.state()
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    channels = state.get('chans') or []
+    if not channels:
+        return jsonify({'status': 'failure',
+                        'message': 'The device did not report any active channels'}), 502
+    return _save_setting_response(device_config.write_active_channels, channels)
+
+
+@hardware_bp.route('/device/uvchannel/save', methods=['POST'])
+def device_uv_channel_save():
+    """Write the spectral channel the UV build is measuring into its config.
+
+    Same rule as the channel set above: the value is the device's, read back
+    from STATE. There is no host command to change it — it is cycled on the
+    keypad (or by the panel pressing that key) — so the browser has no version
+    of it to send even if it wanted to.
+    """
+    if _session_is_running():
+        return _controller_busy_response()
+    try:
+        state = device_link.link.state()
+    except device_link.DeviceLinkError as e:
+        return jsonify({'status': 'failure', 'message': str(e)}), 502
+    channel = state.get('uvchan') or ''
+    if not channel:
+        return jsonify({'status': 'failure',
+                        'message': 'The device did not report a spectral channel'}), 502
+    return _save_setting_response(device_config.write_uv_channel, channel)
+
+
+@hardware_bp.route('/device/config/saved', methods=['GET'])
+def device_config_saved():
+    """What the drive's configuration.json holds for the settings the panel saves.
+
+    One request for both, because the panel needs them to answer the same
+    question — "will this survive the next power cycle?" — and the drive is a
+    USB volume worth reading once rather than twice. Answers with a null drive
+    rather than a failure when none is mounted: that is a state to show, not an
+    error to raise.
+    """
+    root = device_config.find_device_root()
+    if root is None:
+        return jsonify({'status': 'success', 'drive': None, 'saved': {}})
+    try:
+        data = device_config.read_configuration(root)
+    except device_config.DeviceConfigError as e:
+        return jsonify({'status': 'success', 'drive': root, 'saved': {}, 'message': str(e)})
+    saved = {
+        device_config.CHANNELS_KEY: data.get(device_config.CHANNELS_KEY),
+        device_config.UV_CHANNEL_KEY: data.get(device_config.UV_CHANNEL_KEY),
+    }
+    return jsonify({'status': 'success', 'drive': root, 'saved': saved})
 
 
 @hardware_bp.route('/device/menu', methods=['GET'])
@@ -489,21 +605,13 @@ def device_timing_set(validated_data):
 
 
 def _saved_calibration():
-    """What configuration.json on the drive currently holds, if it is reachable.
+    """The factors configuration.json holds, typed, if the drive is reachable.
 
     Reported beside the running factors so the panel can say whether a
-    calibration will survive a power cycle. Never raises: the drive being
-    absent is an ordinary state (the device can be plugged in for serial only,
-    or the volume not mounted), not a failure of the request.
+    calibration will survive a power cycle. Never raises, for the reason
+    _saved_setting gives.
     """
-    root = device_config.find_device_root()
-    if root is None:
-        return None, None
-    try:
-        data = device_config.read_configuration(root)
-    except device_config.DeviceConfigError:
-        return root, None
-    saved = data.get(device_config.FACTOR_KEY)
+    root, saved = _saved_setting(device_config.FACTOR_KEY)
     if not isinstance(saved, list):
         return root, None
     try:

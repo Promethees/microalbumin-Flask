@@ -267,6 +267,7 @@ function applyDeviceState(state) {
     renderDeviceReadout(state);
     renderDeviceKeypad(state);
     renderDeviceChannels(state);
+    renderDeviceUvChannel(state);
     renderDeviceMenu(state);
     renderDeviceConcentration(state);
     renderDeviceTiming(state);
@@ -511,6 +512,94 @@ function showDeviceControlError(message) {
     Swal.fire({ icon: 'error', title: t('devctl.error_title', 'Device controller'), text: message });
 }
 
+// ── what the drive would restore ────────────────────────────────────────────
+// The device cannot write its own configuration.json, so every setting the
+// panel changes is runtime-only until the host writes it. These two say whether
+// what is running is also what the next power cycle brings back — the one thing
+// the numbers themselves cannot tell an operator.
+//
+// Read once and then only after a write: it is a file on a USB volume, and the
+// 1.5 s poll has no business touching it. `null` means "not looked yet".
+let deviceSavedConfig = null;
+let deviceSavedDrive = null;
+let deviceSavedPending = false;
+
+async function loadDeviceSavedConfig() {
+    if (deviceSavedPending) return;
+    deviceSavedPending = true;
+    try {
+        const res = await fetch('/device/config/saved');
+        const data = await res.json();
+        if (data.status === 'success') {
+            deviceSavedConfig = data.saved || {};
+            deviceSavedDrive = data.drive || null;
+            if (deviceState) {
+                renderDeviceChannels(deviceState);
+                renderDeviceUvChannel(deviceState);
+            }
+        }
+    } catch (err) {
+        /* retried the next time a panel needs it */
+    } finally {
+        deviceSavedPending = false;
+    }
+}
+
+// Forget it after a write, and after a reboot: the device that comes back may be
+// a different one, or the same one with a file someone edited on the drive.
+function forgetDeviceSavedConfig() {
+    deviceSavedConfig = null;
+    deviceSavedDrive = null;
+}
+
+// The note under a Save button. `unsaved` decides the wording and the warning
+// colour; the drive is named because an operator with two boards plugged in has
+// no other way to tell which one was written.
+function drawSavedNote(id, unsaved, savedText) {
+    const note = document.getElementById(id);
+    if (!note) return;
+    note.classList.toggle('devctl-caveat--warn', unsaved && !!deviceSavedDrive);
+    if (!deviceSavedDrive) {
+        note.textContent = t('devctl.saved_no_drive',
+            'No CIRCUITPY drive mounted — this cannot be saved and will be lost at the next power cycle.');
+    } else if (unsaved) {
+        note.textContent = `${t('devctl.saved_not_yet',
+            'Not saved — the device will lose this at the next power cycle.')} ${deviceSavedDrive}`;
+    } else {
+        note.textContent = `${savedText} ${deviceSavedDrive}`;
+    }
+}
+
+// One shape for both Saves: write, then let go of the port. The board reloads on
+// the write and reboots, so the handle the app holds is about to be a handle to
+// a device that is not there; the poll picks the new one up on its own.
+async function saveDeviceSetting(url, button, failureText) {
+    $disabled(button, true);
+    try {
+        const res = await fetch(url, { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'success') {
+            forgetDeviceSavedConfig();
+            setDeviceControlStatus('offline', t('devctl.saved_reloading',
+                'Saved — the device is restarting'));
+            // Left disabled: the board is rebooting, and a second press in that
+            // window is a write to a drive that is going away. The next poll
+            // re-enables it if there is still something to save.
+            return;
+        }
+        if (res.status === 409) {
+            setDeviceControlStatus('busy', t('devctl.busy',
+                'Unavailable while a reading session is running'));
+        } else {
+            showDeviceControlError(data.message || failureText);
+        }
+    } catch (err) {
+        showDeviceControlError(t('devctl.offline', 'No colorimeter found'));
+    }
+    // Only on the paths that changed nothing.
+    $disabled(button, false);
+}
+
 // ── active channels ─────────────────────────────────────────────────────────
 
 function deviceSupportsChannels(state) {
@@ -528,8 +617,13 @@ function renderDeviceChannels(state) {
     }
     panel.classList.remove('hidden');
 
+    // First sight of the panel is what asks the drive what it holds; after that
+    // only a write changes the answer.
+    if (deviceSavedConfig === null) loadDeviceSavedConfig();
+
     const deviceChannels = state.chans || [];
     renderDeviceChannelsPending(deviceChannels);
+    renderDeviceChannelsSaved(deviceChannels);
 
     // A half-made selection is the user's, not the device's. Leave the boxes
     // alone until it is applied or a press resets it, or the poll would tick the
@@ -602,6 +696,65 @@ function renderDeviceChannelsPending(deviceChannels) {
     note.textContent = `${t('devctl.channels_pending',
         'Not sent yet — the device is still using')} ${inUse}. ${t('devctl.channels_pending_apply',
         'Press Apply channels to change it.')}`;
+}
+
+// Whether the channels the device is RUNNING (not the ticked boxes) are the ones
+// the drive would restore.
+//
+// Deliberately the device's set: Save writes what is in force, so a note that
+// tracked the boxes would promise to save a selection nobody applied.
+function renderDeviceChannelsSaved(deviceChannels) {
+    const saved = deviceSavedConfig ? deviceSavedConfig.active_channels : undefined;
+    const known = Array.isArray(saved);
+    const unsaved = !known
+        ? deviceChannels.length > 0
+        : (saved.length !== deviceChannels.length
+            || saved.some((channel, i) => channel !== deviceChannels[i]));
+    drawSavedNote('devctl-channels-saved', unsaved,
+        t('devctl.channels_saved', 'These are the channels the device starts on.'));
+    // Nothing to write when there is no drive, nothing to write when the file
+    // already says this, and nothing to write when the device reported no
+    // channels at all.
+    $disabled('devctl-channels-save',
+        !deviceSavedDrive || !unsaved || !deviceChannels.length);
+}
+
+function saveDeviceChannels() {
+    saveDeviceSetting('/device/channels/save', 'devctl-channels-save',
+        t('devctl.channels_save_failed', 'The channels could not be saved to the device'));
+}
+
+// ── the UV build's spectral channel ─────────────────────────────────────────
+// No host command sets it — Right cycles it on the keypad, and the panel's
+// button strip presses that key — so this is a readout with a Save beside it.
+
+function deviceSupportsUvChannel(state) {
+    return (state.caps || []).indexOf('uvchannel') !== -1;
+}
+
+function renderDeviceUvChannel(state) {
+    const panel = document.getElementById('devctl-uvchannel');
+    if (!panel) return;
+    if (!deviceSupportsUvChannel(state)) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+    if (deviceSavedConfig === null) loadDeviceSavedConfig();
+
+    const channel = state.uvchan || '';
+    $text('devctl-uvchannel-current', channel || '—');
+
+    const saved = deviceSavedConfig ? deviceSavedConfig.channel : undefined;
+    const unsaved = !!channel && saved !== channel;
+    drawSavedNote('devctl-uvchannel-saved', unsaved,
+        t('devctl.uvchannel_saved', 'This is the channel the device starts on.'));
+    $disabled('devctl-uvchannel-save', !deviceSavedDrive || !unsaved || !channel);
+}
+
+function saveDeviceUvChannel() {
+    saveDeviceSetting('/device/uvchannel/save', 'devctl-uvchannel-save',
+        t('devctl.uvchannel_save_failed', 'The channel could not be saved to the device'));
 }
 
 function readDeviceChannelBoxes() {

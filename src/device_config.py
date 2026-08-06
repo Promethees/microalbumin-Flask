@@ -27,17 +27,32 @@ CONFIGURATION_FILE = "configuration.json"
 BOOT_OUT_FILE = "boot_out.txt"
 VOLUME_NAME = "CIRCUITPY"
 
-# The key this module owns. Everything else in the file is the operator's.
+# The keys this module owns. Everything else in the file is the operator's.
+#
+# All three are settings the device can change at runtime and cannot persist:
+# CircuitPython cannot write its own filesystem, so a channel set, a spectral
+# channel or a calibration lives only until the next power cycle unless the host
+# writes it here.
 FACTOR_KEY = "raw_count_factor"
+CHANNELS_KEY = "active_channels"          # multi-channel build: which mux channels carry a sensor
+UV_CHANNEL_KEY = "channel"                # UV build: which spectral channel is measured
 
-# Matches the key and its array, keeping whatever spacing the file already uses
-# around the colon so a hand-aligned file stays aligned.
-_FACTOR_LINE = re.compile(
-    r'^([ \t]*"' + FACTOR_KEY + r'"[ \t]*:[ \t]*)\[[^\]]*\]', re.MULTILINE)
+# A JSON value on one line: an array, a string, a number, or a literal. Enough
+# for every key here, and deliberately not a parser — see _replace_value.
+_VALUE = r'(?:\[[^\]]*\]|"[^"]*"|-?\d+(?:\.\d+)?|true|false|null)'
 
-# Where a new key is inserted when the file has none: after active_channels,
-# which is the setting it belongs beside.
-_ANCHOR_LINE = re.compile(r'^([ \t]*)"active_channels"[ \t]*:.*$', re.MULTILINE)
+
+def _key_line(key):
+    """Matches `"key" : <value>`, keeping whatever spacing the file already uses
+    around the colon so a hand-aligned file stays aligned."""
+    return re.compile(
+        r'^([ \t]*"' + re.escape(key) + r'"[ \t]*:[ \t]*)' + _VALUE, re.MULTILINE)
+
+
+def _anchor_line(key):
+    return re.compile(r'^([ \t]*)"' + re.escape(key) + r'"[ \t]*:.*$', re.MULTILINE)
+
+
 _OPEN_BRACE = re.compile(r'^\s*\{[ \t]*$', re.MULTILINE)
 
 
@@ -107,50 +122,80 @@ def read_configuration(root):
     return data
 
 
+def _format_scalar(value):
+    """One JSON scalar, written the way this file writes them.
+
+    Floats keep four decimals because that is the precision a factor is compared
+    at on both sides; an int stays an int, because a channel number written as
+    0.0000 would be a channel number nobody could read.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        return f"{value:.4f}"
+    if isinstance(value, int):
+        return str(value)
+    return json.dumps(str(value))
+
+
+def _format_value(value):
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(_format_scalar(item) for item in value) + "]"
+    return _format_scalar(value)
+
+
 def _format_array(factors):
-    return "[" + ", ".join(f"{float(factor):.4f}" for factor in factors) + "]"
+    return _format_value([float(factor) for factor in factors])
 
 
-def _replace_factor(text, factors):
-    """Return `text` with raw_count_factor set, and nothing else touched.
+def _replace_value(text, key, value, anchor_key=None):
+    """Return `text` with `key` set to `value`, and nothing else touched.
 
     A targeted edit rather than json.dumps of a parsed object: this file is
     written and read by hand — aligned colons, a comment-free but deliberate
     key order — and a round trip through the parser would reformat all of it to
     save one line. It also cannot corrupt a setting it never looked at.
-    """
-    array = _format_array(factors)
 
-    replaced, count = _FACTOR_LINE.subn(lambda m: m.group(1) + array, text, count=1)
+    `anchor_key` is where a missing key is inserted: beside the setting it
+    belongs with, so a file the operator opens afterwards still reads in the
+    order it was written in.
+    """
+    formatted = _format_value(value)
+
+    replaced, count = _key_line(key).subn(lambda m: m.group(1) + formatted, text, count=1)
     if count:
         return replaced
 
-    # No key yet: put it beside active_channels, matching that line's indent.
-    anchor = _ANCHOR_LINE.search(text)
-    if anchor:
-        indent = anchor.group(1)
-        line = f'{indent}"{FACTOR_KEY}" : {array},'
-        return text[:anchor.end()] + "\n" + line + text[anchor.end():]
+    if anchor_key:
+        anchor = _anchor_line(anchor_key).search(text)
+        if anchor:
+            indent = anchor.group(1)
+            line = f'{indent}"{key}" : {formatted},'
+            return text[:anchor.end()] + "\n" + line + text[anchor.end():]
 
     # Not even that: first line after the opening brace.
     brace = _OPEN_BRACE.search(text)
     if brace:
-        line = f'  "{FACTOR_KEY}" : {array},'
+        line = f'  "{key}" : {formatted},'
         return text[:brace.end()] + "\n" + line + text[brace.end():]
 
-    raise DeviceConfigError(f"Could not find where to put {FACTOR_KEY} in {CONFIGURATION_FILE}")
+    raise DeviceConfigError(f"Could not find where to put {key} in {CONFIGURATION_FILE}")
 
 
-def write_raw_count_factor(root, factors):
-    """Save the factors into the device's configuration.json.
+def _replace_factor(text, factors):
+    """raw_count_factor, beside active_channels when the file has no key yet."""
+    return _replace_value(text, FACTOR_KEY, [float(factor) for factor in factors],
+                          anchor_key=CHANNELS_KEY)
+
+
+def _write(root, edit):
+    """Apply one targeted edit to the device's configuration.json.
 
     Returns the path written. Raises DeviceConfigError and leaves the file as it
     was if anything about the result would not parse.
     """
     if not is_device_root(root):
         raise DeviceConfigError(f"{root} does not look like a CircuitPython drive")
-    if not factors:
-        raise DeviceConfigError("No factors to save")
 
     path = configuration_path(root)
     try:
@@ -159,7 +204,7 @@ def write_raw_count_factor(root, factors):
     except OSError as error:
         raise DeviceConfigError(f"Could not read {CONFIGURATION_FILE}: {error}")
 
-    updated = _replace_factor(original, factors)
+    updated = edit(original)
 
     # Parse before writing, not after. The device reloads the moment this file
     # changes, so a file that does not parse is a device sitting on an error
@@ -171,6 +216,55 @@ def write_raw_count_factor(root, factors):
 
     _atomic_write(path, updated)
     return path
+
+
+def write_raw_count_factor(root, factors):
+    """Save the raw count factors into the device's configuration.json."""
+    if not factors:
+        raise DeviceConfigError("No factors to save")
+    return _write(root, lambda text: _replace_factor(text, factors))
+
+
+def write_active_channels(root, channels):
+    """Save the multiplexer channels the device is running on.
+
+    Written first in the file when the key is missing, because it is the setting
+    every per-channel key below it is indexed by — a reader who cannot see which
+    channels are active cannot read the rest.
+
+    The values are validated here as well as in the route: this is the function
+    that touches the file, and a channel list the firmware would reject at boot
+    leaves the device on an error screen with no drive-side way back except
+    editing the file by hand.
+    """
+    try:
+        channels = [int(channel) for channel in channels]
+    except (TypeError, ValueError):
+        raise DeviceConfigError("Channels must be whole numbers")
+    if not channels:
+        raise DeviceConfigError("No channels to save")
+    if len(set(channels)) != len(channels):
+        raise DeviceConfigError("Duplicate channels")
+    if any(channel < 0 for channel in channels):
+        raise DeviceConfigError("Channels must not be negative")
+    return _write(root, lambda text: _replace_value(text, CHANNELS_KEY, channels))
+
+
+def write_uv_channel(root, channel):
+    """Save the spectral channel the UV build is measuring ("UVA"/"UVB"/"UVC").
+
+    The names are the device's own (its STATE says which one is in force), not a
+    list kept here: a build that grew a fourth would otherwise be unable to save
+    the channel it is actually using.
+    """
+    channel = (channel or "").strip()
+    if not channel:
+        raise DeviceConfigError("No channel to save")
+    if not channel.replace("_", "").isalnum():
+        # It goes into a JSON string on a device that reloads on the write; keep
+        # it to what a channel name can be rather than trusting the wire.
+        raise DeviceConfigError(f"{channel} is not a channel name")
+    return _write(root, lambda text: _replace_value(text, UV_CHANNEL_KEY, channel))
 
 
 def _atomic_write(path, text):

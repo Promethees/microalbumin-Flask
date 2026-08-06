@@ -720,6 +720,98 @@ def test_calibration_route_rejects_an_empty_factor_list(client):
     assert rv.status_code == 400
 
 
+# ── saving a runtime setting to the drive ────────────────────────────────────
+
+def test_write_active_channels_keeps_the_rest_of_the_file(drive):
+    device_config.write_active_channels(str(drive), [0, 3])
+    text = (drive / device_config.CONFIGURATION_FILE).read_text()
+    assert '"active_channels" : [0, 3]' in text
+    # Channel numbers stay whole: [0.0000, 3.0000] is a file nobody can read,
+    # and the firmware's checker rejects a non-integer channel outright.
+    before = [l for l in CONFIG_WITH_FACTORS.splitlines() if 'active_channels' not in l]
+    after = [l for l in text.splitlines() if 'active_channels' not in l]
+    assert before == after
+
+
+def test_write_active_channels_refuses_a_set_the_device_would_reject(drive):
+    """Checked here as well as in the route: this is the function that touches
+    the file, and a bad set leaves the device on an error screen at boot with no
+    way back except editing the drive by hand."""
+    for bad in ([], [0, 0], [-1], ['a']):
+        with pytest.raises(device_config.DeviceConfigError):
+            device_config.write_active_channels(str(drive), bad)
+
+
+def test_write_uv_channel_replaces_the_string(drive):
+    (drive / device_config.CONFIGURATION_FILE).write_text(
+        '{\n  "gain": "1024x",\n  "channel": "UVC"\n}\n')
+    device_config.write_uv_channel(str(drive), 'UVA')
+    data = device_config.read_configuration(str(drive))
+    assert data['channel'] == 'UVA'
+    assert data['gain'] == '1024x'
+
+
+def test_write_uv_channel_inserts_the_key_when_absent(drive):
+    (drive / device_config.CONFIGURATION_FILE).write_text('{\n  "gain": "1024x"\n}\n')
+    device_config.write_uv_channel(str(drive), 'UVB')
+    assert device_config.read_configuration(str(drive))['channel'] == 'UVB'
+
+
+def test_write_uv_channel_refuses_a_name_that_is_not_one(drive):
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_uv_channel(str(drive), 'UV"C')
+
+
+def test_channels_save_route_writes_what_the_device_reports(client, drive):
+    """Not the ticked boxes: Save writes the set in force, so it can never
+    persist a selection the operator never applied."""
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'state', return_value={'chans': [0, 3]}), \
+         patch.object(device_link.link, 'close') as close:
+        rv = client.post('/device/channels/save')
+    assert rv.status_code == 200
+    assert rv.get_json()['saved'] == [0, 3]
+    assert device_config.read_configuration(str(drive))['active_channels'] == [0, 3]
+    # The write reboots the board, so the open port is a handle to a device that
+    # is going away.
+    close.assert_called_once()
+
+
+def test_channels_save_route_without_a_drive_says_so(client):
+    with patch.object(device_config, 'find_device_root', return_value=None), \
+         patch.object(device_link.link, 'state', return_value={'chans': [0, 3]}):
+        rv = client.post('/device/channels/save')
+    assert rv.status_code == 404
+
+
+def test_uvchannel_save_route_writes_the_running_channel(client, drive):
+    (drive / device_config.CONFIGURATION_FILE).write_text(
+        '{\n  "gain": "1024x",\n  "channel": "UVC"\n}\n')
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)), \
+         patch.object(device_link.link, 'state', return_value={'uvchan': 'UVA'}), \
+         patch.object(device_link.link, 'close'):
+        rv = client.post('/device/uvchannel/save')
+    assert rv.status_code == 200
+    assert device_config.read_configuration(str(drive))['channel'] == 'UVA'
+
+
+def test_saved_config_route_reports_the_file_and_the_drive(client, drive):
+    with patch.object(device_config, 'find_device_root', return_value=str(drive)):
+        rv = client.get('/device/config/saved')
+    body = rv.get_json()
+    assert body['drive'] == str(drive)
+    assert body['saved']['active_channels'] == [0, 2, 3]
+
+
+def test_saved_config_route_with_no_drive_is_not_an_error(client):
+    """A device connected for serial only is an ordinary state — the panel says
+    "no drive", it does not raise."""
+    with patch.object(device_config, 'find_device_root', return_value=None):
+        rv = client.get('/device/config/saved')
+    assert rv.status_code == 200
+    assert rv.get_json()['drive'] is None
+
+
 def test_disconnect_route_releases_the_port(client):
     """The connection switch: releasing now rather than waiting out the 30 s idle
     reaper, because the user is usually handing the port to something else."""

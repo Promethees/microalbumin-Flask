@@ -486,5 +486,18 @@
   "devctl.calib_factors": "Factors",
   "devctl.calib_apply": "Apply factors",
   "devctl.calib_range": "a factor must be between 0.1 and 10",
-  "hint.devctl_calib_apply": "Send these factors to the device. They take effect immediately and last until the next power cycle, or until you save them."
+  "hint.devctl_calib_apply": "Send these factors to the device. They take effect immediately and last until the next power cycle, or until you save them.",
+  "devctl.channels_save": "Save to device",
+  "devctl.channels_saved": "These are the channels the device starts on.",
+  "devctl.channels_save_failed": "The channels could not be saved to the device",
+  "devctl.uvchannel": "Spectral channel",
+  "devctl.uvchannel_note": "Cycled on the device with Right. Runtime only until it is saved.",
+  "devctl.uvchannel_save": "Save to device",
+  "devctl.uvchannel_saved": "This is the channel the device starts on.",
+  "devctl.uvchannel_save_failed": "The channel could not be saved to the device",
+  "devctl.saved_no_drive": "No CIRCUITPY drive mounted — this cannot be saved and will be lost at the next power cycle.",
+  "devctl.saved_not_yet": "Not saved — the device will lose this at the next power cycle.",
+  "devctl.saved_reloading": "Saved — the device is restarting",
+  "hint.devctl_channels_save": "Write the channels the device is running on into configuration.json on its drive. The device restarts and comes back on them.",
+  "hint.devctl_uvchannel_save": "Write the channel the device is measuring into configuration.json on its drive. The device restarts and comes back on it."
 }
