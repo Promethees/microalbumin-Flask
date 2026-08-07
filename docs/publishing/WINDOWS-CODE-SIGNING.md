@@ -88,7 +88,7 @@ applying — a half-answered application stalls for weeks.
 |---|---|
 | Organisation name | ‹exact registered legal name — becomes the certificate Subject CN› |
 | Department | Center for Bioscience and Biotechnology (CBBiotec) |
-| Address | 227 Nguyen Van Cu, Ward 4, District 5, Ho Chi Minh City, Vietnam |
+| Address | 227 Nguyen Van Cu, Ward 4, Cho Quan ward, Ho Chi Minh City, Vietnam |
 | Country | VN |
 | Phone | ‹verifiable landline› |
 | Applicant email | ‹address on the entity's domain — see README §Open items› |

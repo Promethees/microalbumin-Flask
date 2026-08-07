@@ -46,7 +46,7 @@ most common cause of a rejected identity check.
 | Entity type | ‹public university unit / centre — confirm whether CBBiotec has its own legal personality, see §Open items› |
 | Registration or decision number | ‹…› |
 | Tax code (mã số thuế) | ‹…› |
-| Registered address | 227 Nguyen Van Cu, Ward 4, District 5, Ho Chi Minh City, Vietnam |
+| Registered address | 227 Nguyen Van Cu, Ward 4, Cho Quan ward, Ho Chi Minh City, Vietnam |
 | Public phone (must be independently verifiable) | ‹…› |
 | Website | https://www.easysensorkit.cbbiotec.vn |
 | Authorised signatory (name, title) | ‹…› |

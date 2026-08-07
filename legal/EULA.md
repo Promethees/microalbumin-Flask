@@ -1,7 +1,7 @@
 # Easy OKAPI — End User License Agreement
 
 **Product:** Easy OKAPI (Open-colorimeter Kinetics Analysis Platform), desktop application for Windows, macOS and Linux\
-**Licensor:** Center for Bioscience and Biotechnology (CBBiotec), University of Science, Vietnam National University Ho Chi Minh City (HCMUS–VNU), 227 Nguyen Van Cu, District 5, Ho Chi Minh City, Vietnam\
+**Licensor:** Center for Bioscience and Biotechnology (CBBiotec), University of Science, Vietnam National University Ho Chi Minh City (HCMUS–VNU), 227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam\
 **Contact:** tqmthong@gmail.com\
 **Version:** 1.0\
 **Effective:** 3 August 2026
@@ -306,7 +306,7 @@ Service, is the entire agreement between you and us about the Software.
 
 Center for Bioscience and Biotechnology (CBBiotec)\
 University of Science, Vietnam National University Ho Chi Minh City\
-227 Nguyen Van Cu, District 5, Ho Chi Minh City, Vietnam
+227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam
 
 Email: tqmthong@gmail.com\
 Web: <https://www.easysensorkit.cbbiotec.vn>
