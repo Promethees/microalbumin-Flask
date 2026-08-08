@@ -1,6 +1,6 @@
 {
-  "_comment": "Organisations shown in the 'trusted by' marquee on the landing page. Curated by hand — nothing here is user-writable. Fields: name (required, the full institution name), short (what the marquee prints under the mark; falls back to name), logo (path under static/, omit or leave empty for a wordmark-only entry), url (optional link). A logo whose file is missing from static/ is dropped server-side and the entry degrades to its wordmark, so a broken path never renders an empty box. See static/logos/README.md for what a usable logo file looks like.",
-  "heading": "Trusted by students, researchers and enthusiasts from",
+  "_comment": "Organisations shown in the logo row on the landing page. Curated by hand — nothing here is user-writable. Fields: name (required, the full institution name), short (what the row prints under the mark; falls back to name), logo (path under static/, omit or leave empty for a wordmark-only entry), url (optional link). A logo whose file is missing from static/ is dropped server-side and the entry degrades to its wordmark, so a broken path never renders an empty box. See static/logos/README.md for what a usable logo file looks like.",
+  "heading": "Developed and used at",
   "organizations": [
     {
       "name": "University of Science, Vietnam National University Ho Chi Minh City",

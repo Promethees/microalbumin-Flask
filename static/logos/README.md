@@ -1,6 +1,6 @@
 # Organisation logos — `static/logos/`
 
-Marks for the "trusted by" marquee on the landing page. Listed in
+Marks for the organisation row on the landing page. Listed in
 `organizations.json`, read by `get_organizations()` in `src/community.py`,
 rendered by the `.trusted` section of `templates/landing.html`.
 
@@ -60,8 +60,8 @@ hue) will flatten into an unreadable blob — crop or simplify it first.
    }
    ```
 
-3. That is all — the marquee repeats the set until it fills the viewport, so the
-   number of entries does not need any layout change.
+3. That is all — the row is a centred flex line that wraps, so the number of
+   entries does not need any layout change.
 
 **A missing file is safe.** `get_organizations()` checks that the path resolves
 to a real file under `static/` and blanks it otherwise, so a typo or a
@@ -71,8 +71,8 @@ engines — a solid coloured rectangle in some, nothing at all in others.
 
 ## Before you add someone else's logo
 
-Using an institution's mark under a "trusted by" heading is an endorsement
-claim. Get written permission from anyone outside HCMUS–VNU before their logo
+Using an institution's mark under a "developed and used at" heading is an
+endorsement claim. Get written permission from anyone outside HCMUS–VNU before their logo
 ships, and keep the note with the entry. Some institutions also publish brand
 guidelines that restrict recolouring — which is exactly what this section does.
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <meta name="description"
-        content="Easy OKAPI reads Open Colorimeter runs, fits the kinetics, builds the standard curve and writes the report — in the browser or offline on your bench machine.">
+        content="Easy OKAPI reads Open Colorimeter runs, fits the kinetics, builds the standard curve and writes the report, in the browser or offline on your bench machine.">
     <meta property="og:title" content="Easy OKAPI — Open-colorimeter Kinetics Analysis Platform">
     <meta property="og:description"
         content="Kinetics, endpoint, calibration and reporting for colorimetric assays. Run it in the browser or install it next to the instrument.">
@@ -75,7 +75,7 @@
             <div class="shell hero-grid">
                 <div>
                     <p class="eyebrow">Open-colorimeter kinetics analysis platform</p>
-                    <h1>From cuvette to <em>standard curve</em> without a spreadsheet.</h1>
+                    <h1>From cuvette to <em>standard curve</em> in one app.</h1>
                     <p class="hero-lede">Easy OKAPI reads your colorimeter runs, fits the kinetics, builds the
                         calibration and writes the report. Open it in a browser, or install it next to the
                         instrument and work offline.</p>
@@ -86,22 +86,24 @@
                         <a class="btn btn-ghost" href="#run">Get the desktop app</a>
                     </div>
 
+                    <!-- Label first, list second: the list is the spec, so a count
+                         of it says nothing the row does not already show. -->
                     <dl class="hero-spec">
                         <div>
                             <dt>Modes</dt>
-                            <dd>4<small>kinetics · point · calibrate · report</small></dd>
+                            <dd>kinetics, point, calibrate, report</dd>
                         </div>
                         <div>
                             <dt>Regressions</dt>
-                            <dd>5<small>linear → Michaelis–Menten</small></dd>
+                            <dd>linear, polynomial, log, exponential, Michaelis–Menten</dd>
                         </div>
                         <div>
-                            <dt>Read channels</dt>
-                            <dd>4<small>Higher throughput · Calibratable</small></dd>
+                            <dt>Channels</dt>
+                            <dd>as many as you fit filters for</dd>
                         </div>
                         <div>
                             <dt>Interface</dt>
-                            <dd>6<small>en · vi · zh · fr · ja · ru</small></dd>
+                            <dd>EN, VI, 中文, FR, 日本語, RU</dd>
                         </div>
                     </dl>
                 </div>
@@ -127,27 +129,36 @@
                             aria-label="Absorbance rising over twelve minutes and levelling off, with the maximum-rate window marked">
                         </svg>
 
+                        <!-- Seeded with the finished 520 nm run, the same numbers the
+                             script writes when the replay ends. The panel therefore
+                             opens on a result rather than on four empty fields, and
+                             it never shows a dash before the script has loaded. -->
                         <dl class="readout-values">
                             <div>
                                 <dt>Max rate</dt>
-                                <dd id="rd-rate">—</dd>
+                                <dd id="rd-rate">0.0186<span class="unit">± 0.0004 ΔA·s⁻¹</span></dd>
                             </div>
                             <div>
                                 <dt>Slope</dt>
-                                <dd id="rd-slope">—</dd>
+                                <dd id="rd-slope">0.0113<span class="unit">ΔA·s⁻¹</span></dd>
                             </div>
                             <div>
                                 <dt>Saturation</dt>
-                                <dd id="rd-sat">—</dd>
+                                <dd id="rd-sat">0.964<span class="unit">AU</span></dd>
                             </div>
                             <div>
-                                <dt>Time to sat.</dt>
-                                <dd id="rd-tts">—</dd>
+                                <dt>Time to saturation</dt>
+                                <dd id="rd-tts">7.8<span class="unit">min</span></dd>
                             </div>
                         </dl>
 
                         <div class="channels">
-                            <p class="channels-label" id="channels-label">Read channel</p>
+                            <!-- These buttons re-tint the page; they are not a device
+                                 setting, and under "Read channel" they read as one —
+                                 as if the instrument only saw four fixed wavelengths.
+                                 The label names what they change, and each button
+                                 names its colour for anyone hovering or listening. -->
+                            <p class="channels-label" id="channels-label">Theme</p>
 
                             <!-- The channels are positions on the visible spectrum, so the
                                  strip is drawn against a real 380–700 nm scale. -->
@@ -168,19 +179,19 @@
 
                             <div class="channel-strip" role="group" aria-labelledby="channels-label">
                                 <button class="channel" type="button" data-band="450" style="--swatch: #3a66e0;"
-                                    aria-pressed="false">
+                                    aria-pressed="false" title="450 nm — blue" aria-label="450 nm, blue">
                                     <span class="channel-swatch" aria-hidden="true"></span>450 nm
                                 </button>
                                 <button class="channel" type="button" data-band="520" style="--swatch: #17a35f;"
-                                    aria-pressed="true">
+                                    aria-pressed="true" title="520 nm — green" aria-label="520 nm, green">
                                     <span class="channel-swatch" aria-hidden="true"></span>520 nm
                                 </button>
                                 <button class="channel" type="button" data-band="570" style="--swatch: #d19a00;"
-                                    aria-pressed="false">
+                                    aria-pressed="false" title="570 nm — amber" aria-label="570 nm, amber">
                                     <span class="channel-swatch" aria-hidden="true"></span>570 nm
                                 </button>
                                 <button class="channel" type="button" data-band="620" style="--swatch: #dd4b2a;"
-                                    aria-pressed="false">
+                                    aria-pressed="false" title="620 nm — red" aria-label="620 nm, red">
                                     <span class="channel-swatch" aria-hidden="true"></span>620 nm
                                 </button>
                             </div>
@@ -192,7 +203,7 @@
             </div>
         </section>
 
-        <!-- ── Trusted by ──────────────────────────────────────────────────
+        <!-- ── Where it runs ───────────────────────────────────────────────
              A strip, not a numbered section: it carries no §NN plate and no
              top rule, so it reads as a caption under the instrument rather
              than as the first step of the method.
@@ -201,26 +212,19 @@
              silhouette in the page's own colour rather than a row of clashing
              brand palettes. `--mark` carries the file; see static/logos/.
 
-             The track is repeated until it overflows the viewport, then the
-             whole run is duplicated so the -50% translate loops seamlessly.
-             The duplicate is aria-hidden — it is the same list twice, and a
-             screen reader should hear it once. -->
+             One static centred row, each organisation once. Looping a short
+             list to fill the width reads as padding: the eye counts repeats,
+             not institutions. -->
         {% if org_ref.organizations %}
-        {% set orgs = org_ref.organizations %}
-        {% set reps = [1, (10 // orgs|length) + 1] | max %}
         <section class="trusted" aria-labelledby="trusted-heading">
             <div class="shell">
                 <h2 class="trusted-heading" id="trusted-heading">{{ org_ref.heading }}</h2>
-            </div>
 
-            <div class="marquee" data-marquee>
-                {% for track in range(2) %}
-                <ul class="marquee-track" {% if track %}aria-hidden="true"{% endif %}>
-                    {% for rep in range(reps) %}
-                    {% for org in orgs %}
-                    <li class="marquee-item{% if rep or track %} is-repeat{% endif %}">
+                <ul class="org-row">
+                    {% for org in org_ref.organizations %}
+                    <li class="org-item">
                         {% if org.url %}<a href="{{ org.url }}" target="_blank" rel="noopener"
-                            title="{{ org.name }}" {% if track %}tabindex="-1"{% endif %}>{% endif %}
+                            title="{{ org.name }}">{% endif %}
                             {% if org.logo %}
                             {# These logos carry their own wordmark, so the mark stands alone and
                                the name goes to screen readers only — printing it twice is what a
@@ -235,9 +239,7 @@
                             {% if org.url %}</a>{% endif %}
                     </li>
                     {% endfor %}
-                    {% endfor %}
                 </ul>
-                {% endfor %}
             </div>
         </section>
         {% endif %}
@@ -247,7 +249,6 @@
             <div class="shell">
                 <div class="watch-grid reveal">
                     <div class="watch-copy">
-                        <p class="eyebrow">See it run</p>
                         <h2>Detecting beta-lactamase, start to finish.</h2>
                         <p>Six minutes on a real assay: capture on the colorimeter, the kinetics fit, the standard
                             curve, and the report that comes out the other end.</p>
@@ -267,7 +268,7 @@
             <div class="shell">
                 <div class="section-head reveal">
                     <p class="eyebrow">Four modes, one dataset</p>
-                    <h2>Pick the mode, not the formula.</h2>
+                    <h2>Pick the mode and the fit follows.</h2>
                     <p>The same files carry through every mode. Switch from a raw trace to a fitted standard curve
                         to a printable report without exporting anything in between.</p>
                 </div>
@@ -368,8 +369,9 @@
                     </div>
                 </div>
 
-                <p class="section-note reveal">Connect and Record need the desktop build — a browser tab cannot reach a
-                    USB device. From Analyse onwards the web app does the same work on files you already have.</p>
+                <p class="section-note reveal">Connect and Record need the desktop build, because a browser tab cannot
+                    reach a USB device. From Analyse onwards the web app does the same work on files you already have.
+                </p>
             </div>
         </section>
 
@@ -377,7 +379,6 @@
         <section class="section" id="capabilities">
             <div class="shell">
                 <div class="section-head reveal">
-                    <p class="eyebrow">What comes with it</p>
                     <h2>Built around how a bench actually runs.</h2>
                 </div>
 
@@ -388,7 +389,7 @@
                             external drive from App Settings. Nothing is uploaded anywhere.</p>
                     </div>
                     <div class="cap">
-                        <h3>Files handled in place</h3>
+                        <h3>CSV and folder housekeeping</h3>
                         <p>Create, rename, copy, move, merge and edit CSVs and their folders without leaving the
                             app or opening a file manager.</p>
                     </div>
@@ -403,14 +404,15 @@
                             to drop poor windows.</p>
                     </div>
                     <div class="cap">
-                        <h3>Excel that keeps the maths</h3>
-                        <p>Exported workbooks carry the fitted curve as a live formula, so a value typed into the
-                            sheet returns a concentration — not a frozen number.</p>
+                        <h3>Live formulas, not frozen numbers</h3>
+                        <p>Exported workbooks carry the fitted curve as a real Excel formula, so a value typed into
+                            the sheet returns its concentration.</p>
                     </div>
                     <div class="cap">
                         <h3>OKAPI Assistant</h3>
                         <p>Ask about your data, your coefficients or the interface. It answers, or walks you through
-                            the app step by step. The one part that wants a connection.</p>
+                            the app step by step. This is the one feature that needs an internet connection;
+                            everything else works without one.</p>
                     </div>
                 </div>
 
@@ -466,6 +468,15 @@
                         </ul>
                         <div class="way-foot">
                             <p class="dl-version" id="dl-version"></p>
+                            {# A build that cannot be downloaded is not a button. The
+                               platforms still in the oven are named once, in prose,
+                               below the ones you can actually click. #}
+                            {% set pending = [] %}
+                            {% if not download_available.mac %}{% set _ = pending.append('macOS') %}{% endif %}
+                            {% if not download_available.win %}{% set _ = pending.append('Windows') %}{% endif %}
+                            {% if not download_available.linux %}{% set _ = pending.append('Linux') %}{% endif %}
+
+                            {% if download_available.mac or download_available.win or download_available.linux %}
                             <div class="dl-group">
                                 {% if download_available.mac %}
                                 <a class="dl-btn" href="/download/mac">
@@ -475,15 +486,6 @@
                                     </svg>
                                     <span><strong>macOS</strong><small>.dmg installer</small></span>
                                 </a>
-                                {% else %}
-                                <span class="dl-btn dl-btn--off" aria-disabled="true">
-                                    <svg viewBox="0 0 384 512" fill="currentColor" aria-hidden="true">
-                                        <path
-                                            d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM262.1 104.5c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-                                    </svg>
-                                    <span><strong>macOS</strong><small>.dmg installer</small></span>
-                                    <span class="dl-wip">In progress</span>
-                                </span>
                                 {% endif %}
 
                                 {% if download_available.win %}
@@ -493,14 +495,6 @@
                                     </svg>
                                     <span><strong>Windows</strong><small>.exe installer</small></span>
                                 </a>
-                                {% else %}
-                                <span class="dl-btn dl-btn--off" aria-disabled="true">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                        <path d="M1 1h10v10H1z M13 1h10v10H13z M1 13h10v10H1z M13 13h10v10H13z" />
-                                    </svg>
-                                    <span><strong>Windows</strong><small>.exe installer</small></span>
-                                    <span class="dl-wip">In progress</span>
-                                </span>
                                 {% endif %}
 
                                 {% if download_available.linux %}
@@ -511,17 +505,14 @@
                                     </svg>
                                     <span><strong>Linux</strong><small>.tar.gz installer</small></span>
                                 </a>
-                                {% else %}
-                                <span class="dl-btn dl-btn--off" aria-disabled="true">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                        <path
-                                            d="M12 2a5 5 0 0 0-5 5c0 2-1 3.5-2 5s-1 3 0 4 3 1 5 2 2 2 2 2h4s0-1 2-2 4-1 5-2 1-2.5 0-4-2-3-2-5a5 5 0 0 0-5-5z" />
-                                    </svg>
-                                    <span><strong>Linux</strong><small>.tar.gz installer</small></span>
-                                    <span class="dl-wip">In progress</span>
-                                </span>
                                 {% endif %}
                             </div>
+                            {% endif %}
+                            {% if pending %}
+                            <p class="way-note">{{ pending[:-1] | join(', ') }}{% if pending | length > 1 %} and {%
+                                endif %}{{ pending[-1] }} build{{ 's' if pending | length > 1 else '' }} in progress.
+                            </p>
+                            {% endif %}
                             {% if account_user %}
                             <p class="way-note">Signed in as {{ account_user.name }}. Your download token is in the
                                 web app, under Get Offline Version.</p>
@@ -535,15 +526,18 @@
             </div>
         </section>
 
-        <!-- ── Reviews (curated in testimonials.json) ──────────────────── -->
+        <!-- ── Reviews (curated in testimonials.json) ────────────────────
+             With no published reviews the whole section goes: a heading over
+             an apology announces the absence louder than the silence does.
+             How a review gets published is explained where one is written —
+             the submission form in the web app. -->
+        {% if testimonials %}
         <section class="section" id="reviews">
             <div class="shell">
                 <div class="section-head reveal">
-                    <p class="eyebrow">From the bench</p>
                     <h2>What researchers say.</h2>
                 </div>
 
-                {% if testimonials %}
                 <div class="reviews reveal">
                     {% for t in testimonials %}
                     <figure class="review">
@@ -558,12 +552,9 @@
                     </figure>
                     {% endfor %}
                 </div>
-                {% else %}
-                <p class="reviews-empty reveal">No reviews published yet. If Easy OKAPI helped your work, tell us in
-                    the web app — reviews go up only after we confirm them with the author.</p>
-                {% endif %}
             </div>
         </section>
+        {% endif %}
 
         <!-- ── Citation (curated in publications.json) ─────────────────── -->
         {% if publication_ref.citation %}
@@ -605,9 +596,9 @@
         <section class="section" style="border-top: 0;">
             <div class="shell">
                 <div class="closing reveal">
-                    <h2>Load a run and see what it gives you.</h2>
-                    <p>Nothing to install, no sample data to invent — bring one of your own CSV files and the
-                        analysis is on screen in a few clicks.</p>
+                    <h2>Your data stays where you put it.</h2>
+                    <p>Install the desktop build and the whole analysis runs offline, on the machine beside the
+                        instrument, in a folder you choose.</p>
                     <div class="closing-cta">
                         <a class="btn btn-primary" href="/webapp">Open the web app <span class="btn-arrow"
                                 aria-hidden="true">→</span></a>

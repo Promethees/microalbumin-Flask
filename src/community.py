@@ -25,7 +25,7 @@ PUBLICATIONS_FILE = os.path.join(_ROOT, 'publications.json')
 ORGANIZATIONS_FILE = os.path.join(_ROOT, 'organizations.json')
 _STATIC_DIR = os.path.join(_ROOT, 'static')
 
-DEFAULT_ORG_HEADING = 'Trusted by students, researchers and enthusiasts from'
+DEFAULT_ORG_HEADING = 'Developed and used at'
 
 # Submission limits — a review is a short blurb, not an essay. Enforced before
 # anything is put in an email so an oversized body can never be composed.
@@ -114,7 +114,7 @@ _SVG_VIEWBOX_RE = re.compile(
 def _logo_aspect(path):
     """Width/height of a logo file, or None when it cannot be read.
 
-    The marquee draws each mark as a CSS mask on an empty span, which has no
+    The logo row draws each mark as a CSS mask on an empty span, which has no
     intrinsic size — so without the file's real aspect ratio a tall emblem and a
     wide lockup would both be squeezed into the same box and one of them would
     float in a field of dead space. Only PNG and SVG are parsed, which is what
@@ -138,10 +138,10 @@ def _logo_aspect(path):
 
 
 def get_organizations():
-    """`{heading, organizations}` for the landing page's 'trusted by' marquee.
+    """`{heading, organizations}` for the landing page's organisation row.
 
     A logo path is kept only when the file is actually present under `static/`.
-    The marquee tints its marks with `mask-image`, and a mask that fails to load
+    The row tints its marks with `mask-image`, and a mask that fails to load
     renders inconsistently across engines — a solid coloured rectangle in some,
     nothing at all in others. Dropping the path here means a typo'd or
     not-yet-added logo degrades to the organisation's wordmark instead.
