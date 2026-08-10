@@ -221,8 +221,7 @@
     }
 
     /* Collapsed: a thin strip keeping the mark and the re-open control, still
-       in the flow, so nothing on either page has to be overlapped by a
-       floating re-open button. */
+       frozen at the top, so the bar can be brought back from where it was. */
     .react-banner-collapsed .react-banner-inner {
         padding: 3px 18px;
         gap: 10px;
@@ -246,14 +245,50 @@
         display: none;
     }
 
-    /* Closed for good. */
+    /* Closed: the bar goes, and a handle takes its place so the choice can be
+       undone. Bottom-left is the one corner neither page pins anything to —
+       the app's chat bubble is bottom-right, both headers are up top. */
     .react-banner-closed .react-banner {
         display: none;
     }
 
+    .react-banner-reopen {
+        display: none;
+    }
+
+    .react-banner-closed .react-banner-reopen {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        z-index: 10000;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 10px 5px 6px !important;
+        border: 1px solid #c9cde8 !important;
+        border-radius: 2px !important;
+        background: #fff !important;
+        color: #1b2470 !important;
+        box-shadow: 0 2px 8px rgba(12, 18, 60, 0.25) !important;
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .react-banner-reopen img {
+        height: 13px;
+        width: auto;
+        display: block;
+    }
+
     /* Never let the notice land in a printed report. */
     @media print {
-        .react-banner {
+
+        .react-banner,
+        .react-banner-reopen,
+        .react-banner-closed .react-banner-reopen {
             display: none !important;
         }
     }
@@ -351,13 +386,20 @@
     </div>
 </aside>
 
+<button class="react-banner-reopen" id="react-banner-reopen" type="button" aria-label="Bring back the RE:ACT notice"
+    title="Bring back the RE:ACT notice">
+    <img src="{{ url_for('static', filename='logos/react/react.png') }}" alt="">
+    <span>Show</span>
+</button>
+
 <script>
     (function () {
         var root = document.documentElement;
         var banner = document.getElementById('react-banner');
         var toggle = document.getElementById('react-banner-toggle');
         var close = document.getElementById('react-banner-close');
-        if (!banner || !toggle || !close) return;
+        var reopen = document.getElementById('react-banner-reopen');
+        if (!banner || !toggle || !close || !reopen) return;
 
         function remember(state) {
             try {
@@ -397,6 +439,18 @@
             root.classList.add('react-banner-closed');
             remember('closed');
             measure();
+            reopen.focus();
+        });
+
+        // Dismissing is undoable: the handle brings the bar back, collapsed,
+        // which is the least disruptive thing to reappear on a page the reader
+        // is already using.
+        reopen.addEventListener('click', function () {
+            root.classList.remove('react-banner-closed');
+            root.classList.add('react-banner-collapsed');
+            remember('collapsed');
+            paint();
+            toggle.focus();
         });
 
         window.addEventListener('resize', measure);
