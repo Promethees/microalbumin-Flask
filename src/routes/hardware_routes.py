@@ -699,7 +699,8 @@ def device_calibration_save():
 
 
 @hardware_bp.route('/device/calibration', methods=['POST'])
-@validate_json({'factors': (list, None, False), 'run': (bool, None, False)})
+@validate_json({'factors': (list, None, False), 'run': (bool, None, False),
+                'clear': (bool, None, False)})
 def device_calibration_set(validated_data):
     """Run a calibration pass, or write factors outright (CALIBRATE / CALIB:).
 
@@ -708,7 +709,12 @@ def device_calibration_set(validated_data):
 
       {"run": true}        measure the channels now and apply what comes out
       {"factors": [...]}   write these factors
-      {}                   clear every factor back to 1.0
+      {"clear": true}      clear every factor back to 1.0
+
+    The clear is spelled out rather than being what an empty body happens to do.
+    It throws away a calibration the operator may have spent a bench session on,
+    and a request that says nothing should do nothing — an empty body is what a
+    dropped field or a malformed client sends, not a decision to discard.
 
     Runtime only. The device cannot write its own configuration.json (see
     /device/channels), so a calibration the operator wants to keep has to be
@@ -734,6 +740,13 @@ def device_calibration_set(validated_data):
                 return jsonify({'status': 'failure', 'message': 'Factors must be numbers'}), 400
             if not factors:
                 return jsonify({'status': 'failure', 'message': 'Send at least one factor'}), 400
+        elif not validated_data['clear']:
+            # No factors, no run, no clear: nothing was asked for. Falling through
+            # here would send CALIB:reset and discard the calibration.
+            return jsonify({
+                'status': 'failure',
+                'message': 'Send factors, run:true, or clear:true',
+            }), 400
         try:
             device_link.link.set_calibration_factors(factors)
         except device_link.DeviceLinkError as e:

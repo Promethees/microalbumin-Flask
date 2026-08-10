@@ -1487,9 +1487,11 @@ function runDeviceCalibration() {
 }
 
 function clearDeviceCalibration() {
-    // An empty body is "clear them", not "send nothing" — see the route.
+    // Spelled out: the route refuses an empty body rather than treating it as a
+    // discard, because throwing away a bench session's calibration should be
+    // something a request asked for.
     deviceCalibDirty = false;
-    sendDeviceCalibration({});
+    sendDeviceCalibration({ clear: true });
 }
 
 // Write the running factors into the device's own configuration.json.

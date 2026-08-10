@@ -845,13 +845,28 @@ def test_calibration_route_writes_explicit_factors(client):
     assert rv.get_json()['factors'] == [1.0, 1.02, 1.0, 1.0]
 
 
-def test_calibration_route_empty_body_clears_the_factors(client):
+def test_calibration_route_clears_the_factors_when_asked(client):
     with patch.object(device_link.link, 'set_calibration_factors', return_value=True) as write, \
          patch.object(device_link.link, 'calibration_factors', return_value=[1.0] * 4), \
          patch.object(device_link.link, 'state', return_value={}):
-        rv = client.post('/device/calibration', json={})
+        rv = client.post('/device/calibration', json={'clear': True})
     write.assert_called_once_with(None)
     assert rv.get_json()['factors'] == [1.0] * 4
+
+
+def test_calibration_route_refuses_a_body_that_asks_for_nothing(client):
+    """An empty body used to mean "discard the calibration".
+
+    It is what a dropped field or a malformed client sends, and the cost of
+    reading it as a decision is a bench session's work gone with no way back —
+    the device cannot recover the factors it was running. The discard says so
+    now, and a request that asks for nothing does nothing.
+    """
+    with patch.object(device_link.link, 'set_calibration_factors') as write:
+        for body in ({}, {'run': False}, {'factors': None}):
+            rv = client.post('/device/calibration', json=body)
+            assert rv.status_code == 400, body
+    write.assert_not_called()
 
 
 def test_calibration_route_rejects_non_numbers(client):
@@ -860,8 +875,8 @@ def test_calibration_route_rejects_non_numbers(client):
 
 
 def test_calibration_route_rejects_an_empty_factor_list(client):
-    """An empty list is not "clear them" — that is the empty body — and sending
-    it on would be a no-op the operator read as a change."""
+    """An empty list is not "clear them" — clear:true is — and sending it on
+    would be a no-op the operator read as a change."""
     rv = client.post('/device/calibration', json={'factors': []})
     assert rv.status_code == 400
 
