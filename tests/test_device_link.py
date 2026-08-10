@@ -482,6 +482,33 @@ def test_select_menu_surfaces_the_device_reason():
     with pytest.raises(device_link.DeviceLinkError) as excinfo:
         link.select_menu(99)
     assert 'out of range' in str(excinfo.value)
+def test_state_on_firmware_without_the_controller_says_so():
+    """STATE? gets ERR_UNKNOWN from firmware predating the controller, same as
+    every other new token."""
+    link = FakeLink(["ERR_UNKNOWN"])
+    with pytest.raises(device_link.DeviceLinkError) as excinfo:
+        link.state()
+    assert 'firmware' in str(excinfo.value)
+
+
+def test_state_matcher_recognises_the_refusals():
+    """FakeLink answers whatever the predicate says, so the predicate is checked
+    directly here — it is the part that decides between a prompt error and a
+    stall. An unmatched ERR_UNKNOWN costs REPLY_TIMEOUT, then the reconnect, then
+    REPLY_TIMEOUT again, on a command polled every 1.5 s."""
+    link = device_link.DeviceLink()
+    captured = []
+
+    def fake_command(command, matches):
+        captured.append(matches)
+        return "STATE mode=MENU"
+
+    with patch.object(link, 'command', side_effect=fake_command):
+        link.state()
+    matches = captured[0]
+    assert matches("STATE mode=MENU")
+    assert matches("ERR_STATE")
+    assert matches("ERR_UNKNOWN")
 
 
 def test_exchange_ignores_lines_that_are_not_the_reply():

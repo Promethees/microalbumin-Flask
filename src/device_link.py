@@ -237,8 +237,19 @@ class DeviceLink:
 
     # ── operations ──────────────────────────────────────────────────────
     def state(self):
-        """Snapshot of the device (mode, measurement, channels, values, …)."""
-        reply = self.command("STATE?", lambda line: line.startswith("STATE ") or line == "ERR_STATE")
+        """Snapshot of the device (mode, measurement, channels, values, …).
+
+        ERR_UNKNOWN is matched here like it is everywhere else, and for a sharper
+        reason: this is the polled command. A predicate that does not recognise
+        the refusal leaves it unmatched, so the exchange waits out REPLY_TIMEOUT,
+        reconnects and waits it out again — six seconds against firmware that
+        answered in one loop period, on a poll that comes round every 1.5 s.
+        """
+        reply = self.command(
+            "STATE?",
+            lambda line: line.startswith("STATE ") or line in ("ERR_STATE", "ERR_UNKNOWN"))
+        if reply == "ERR_UNKNOWN":
+            raise DeviceLinkError("This device's firmware has no virtual controller")
         if reply == "ERR_STATE":
             raise DeviceLinkError("The device could not report its state")
         return parse_state(reply)
