@@ -353,6 +353,18 @@ def test_write_is_not_fooled_by_a_bracket_inside_a_string(drive):
     assert data['precision'] == 3
 
 
+def test_write_refuses_a_factor_that_would_round_away(drive):
+    """Four decimals is the file's precision, so 0.00004 lands as 0.0000 — a
+    channel silenced rather than corrected, with nothing on screen saying so."""
+    with pytest.raises(device_config.DeviceConfigError):
+        device_config.write_raw_count_factor(str(drive), [1.0, 0.00004])
+    # Unchanged: the refusal happens before anything is written.
+    assert device_config.read_configuration(str(drive))['raw_count_factor'] == [1.0] * 4
+    # The precision the device actually works in still goes through.
+    device_config.write_raw_count_factor(str(drive), [1.0, 0.1234, 1.0, 1.0])
+    assert device_config.read_configuration(str(drive))['raw_count_factor'][1] == 0.1234
+
+
 def test_write_refuses_a_directory_that_is_not_a_board(tmp_path):
     (tmp_path / device_config.CONFIGURATION_FILE).write_text(CONFIG_WITH_FACTORS)
     with pytest.raises(device_config.DeviceConfigError):
@@ -803,6 +815,19 @@ def test_write_uv_channel_inserts_the_key_when_absent(drive):
 def test_write_uv_channel_refuses_a_name_that_is_not_one(drive):
     with pytest.raises(device_config.DeviceConfigError):
         device_config.write_uv_channel(str(drive), 'UV"C')
+
+
+def test_write_uv_channel_refuses_a_name_outside_ascii(drive):
+    """str.isalnum() is true of any unicode letter or numeral, so the old check
+    passed names the firmware could never match against its own. The value is
+    written to a device that reloads on the write and comes back looking for a
+    channel by that name."""
+    for name in ('UVÅ', 'ⅣⅤ', 'UV A', 'UV-A', 'UV\nA'):
+        with pytest.raises(device_config.DeviceConfigError):
+            device_config.write_uv_channel(str(drive), name)
+    # The names the device actually sends still go through.
+    device_config.write_uv_channel(str(drive), 'UVA')
+    assert device_config.read_configuration(str(drive))['channel'] == 'UVA'
 
 
 def test_channels_save_route_writes_what_the_device_reports(client, drive):

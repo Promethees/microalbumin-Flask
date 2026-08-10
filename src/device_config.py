@@ -297,6 +297,17 @@ def write_raw_count_factor(root, factors):
     """Save the raw count factors into the device's configuration.json."""
     if not factors:
         raise DeviceConfigError("No factors to save")
+    try:
+        factors = [float(factor) for factor in factors]
+    except (TypeError, ValueError):
+        raise DeviceConfigError("Factors must be numbers")
+    # The file is written with four decimals, so anything under half of the last
+    # place lands as 0.0000 — a factor that silences its channel instead of
+    # correcting it, saved without anything on screen having said so. The
+    # device's own range is 0.1..10x, so a number this small is already wrong;
+    # refusing it beats writing a zero the operator cannot see.
+    if any(0 < abs(factor) < 0.00005 for factor in factors):
+        raise DeviceConfigError("A factor is too small to save")
     return _write(root, lambda text: _replace_factor(text, factors))
 
 
@@ -335,9 +346,12 @@ def write_uv_channel(root, channel):
     channel = (channel or "").strip()
     if not channel:
         raise DeviceConfigError("No channel to save")
-    if not channel.replace("_", "").isalnum():
+    if not _CHANNEL_NAME.fullmatch(channel):
         # It goes into a JSON string on a device that reloads on the write; keep
-        # it to what a channel name can be rather than trusting the wire.
+        # it to what a channel name can be rather than trusting the wire. Spelled
+        # as an explicit character set because str.isalnum() is true of any
+        # unicode letter or numeral — "UVÅ" and "ⅣⅤ" passed it — and the firmware
+        # matches these names against ASCII identifiers of its own.
         raise DeviceConfigError(f"{channel} is not a channel name")
     return _write(root, lambda text: _replace_value(text, UV_CHANNEL_KEY, channel))
 
