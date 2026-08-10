@@ -1,6 +1,8 @@
 """Virtual controller: STATE parsing, the link's command handling, and the
 routes' one-owner rule (src/device_link.py, routes/hardware_routes.py)."""
 
+import time
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -482,6 +484,53 @@ def test_select_menu_surfaces_the_device_reason():
     with pytest.raises(device_link.DeviceLinkError) as excinfo:
         link.select_menu(99)
     assert 'out of range' in str(excinfo.value)
+
+
+def test_reaper_frees_its_slot_when_it_exits(monkeypatch):
+    """The reaper drops the port after IDLE_TIMEOUT so a firmware update or a
+    serial monitor can claim it. It ends itself when it does, and the next
+    _open_locked() starts a fresh one — which only works if the slot is empty.
+
+    _start_reaper used to ask is_alive(), which stays True for the moment a
+    returning thread takes to unwind: an open landing in that window saw a live
+    reaper that would never loop again and declined to replace it, leaving the
+    new connection unwatched until something called close().
+    """
+    monkeypatch.setattr(device_link, 'REAP_INTERVAL', 0.01)
+    link = device_link.DeviceLink()
+    port = MagicMock()
+    port.is_open = True
+    link._serial = port
+    link._last_used = 0.0  # monotonic() is far past this, so already idle
+
+    link._start_reaper()
+    reaper = link._reaper
+    reaper.join(timeout=5)
+
+    assert not reaper.is_alive()
+    port.close.assert_called_once()
+    assert link._reaper is None, "a finished reaper must not hold the slot"
+
+    # And the slot being free is what lets the next connection get a reaper.
+    link._serial = MagicMock()
+    link._start_reaper()
+    assert link._reaper is not None and link._reaper is not reaper
+    link._serial = None  # let it exit
+
+
+def test_reaper_is_not_started_twice_for_one_connection(monkeypatch):
+    """The guard still has to hold for a reaper that is genuinely running,
+    or every command would spawn another thread onto the same port."""
+    monkeypatch.setattr(device_link, 'REAP_INTERVAL', 30)
+    link = device_link.DeviceLink()
+    link._serial = MagicMock()
+    link._last_used = time.monotonic()
+    link._start_reaper()
+    first = link._reaper
+    link._start_reaper()
+    assert link._reaper is first
+
+
 def test_state_on_firmware_without_the_controller_says_so():
     """STATE? gets ERR_UNKNOWN from firmware predating the controller, same as
     every other new token."""

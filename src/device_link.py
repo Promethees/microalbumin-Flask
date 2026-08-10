@@ -137,18 +137,33 @@ class DeviceLink:
 
     # ── connection ──────────────────────────────────────────────────────
     def _start_reaper(self):
-        if self._reaper is not None and self._reaper.is_alive():
+        # Whether a reaper is running is the thread's own to report, not
+        # something to read off is_alive(): reap() returns from inside the lock
+        # and stays alive for the moment it takes to unwind. An _open_locked()
+        # landing in that window used to see a live thread that would never loop
+        # again, decline to start a replacement, and leave the fresh port with
+        # nothing watching it — held until close(), which is exactly the case
+        # IDLE_TIMEOUT exists for. The slot is cleared under the lock instead, so
+        # the thread is either in it and looping, or out of it.
+        if self._reaper is not None:
             return
 
         def reap():
-            while True:
-                time.sleep(REAP_INTERVAL)
+            try:
+                while True:
+                    time.sleep(REAP_INTERVAL)
+                    with self._lock:
+                        if (self._serial is None
+                                or time.monotonic() - self._last_used >= IDLE_TIMEOUT):
+                            self._close_locked()
+                            return
+            finally:
                 with self._lock:
-                    if self._serial is None:
-                        return
-                    if time.monotonic() - self._last_used >= IDLE_TIMEOUT:
-                        self._close_locked()
-                        return
+                    # Only if a newer reaper has not already claimed the slot.
+                    # Also the one thing standing between an unexpected exception
+                    # in here and a dead thread holding the slot for good.
+                    if self._reaper is threading.current_thread():
+                        self._reaper = None
 
         self._reaper = threading.Thread(target=reap, daemon=True)
         self._reaper.start()
