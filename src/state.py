@@ -405,7 +405,7 @@ else:
 
 # Configuration
 PRODUCTION_MODE = True
-APP_VERSION = "1.4.5"
+APP_VERSION = "1.4.6"
 
 # True for an installed PyInstaller build (downloaded via the installer), False
 # when run from source (`python main.py` / setup-3-run.command). Gates dev-only
