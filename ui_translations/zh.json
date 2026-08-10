@@ -703,7 +703,7 @@
   "landing.caps.formulas_p": "导出的工作簿会把拟合曲线写成真正的 Excel 公式，因此在表中输入一个数值就能得到对应浓度。",
   "landing.caps.assistant_h": "OKAPI 助手",
   "landing.caps.assistant_p": "询问你的数据、系数或界面。它会作答，或一步步带你操作应用。这是唯一需要联网的功能；其余一切都可离线使用。",
-  "landing.caps.note": "界面支持 English、Tiếng Việt、中文 (简体)、Français、日本語 和 Русский。主题、默认模式、时间与浓度单位以及排序方式会在多次启动之间保留，更新会覆盖安装且不会动你的数据、报告或设置。",
+  "landing.caps.note": "界面支持 English、Tiếng Việt、中文 (简体)、Français、日本語、Русский 和 한국어。主题、默认模式、时间与浓度单位以及排序方式会在多次启动之间保留，更新会覆盖安装且不会动你的数据、报告或设置。",
   "landing.run.eyebrow": "两种运行方式",
   "landing.run.h": "在浏览器里，或在仪器旁边。",
   "landing.run.p": "两个版本运行相同的分析。桌面版额外提供直接的设备控制，这是浏览器标签页做不到的。",

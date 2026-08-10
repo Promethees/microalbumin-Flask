@@ -6,7 +6,7 @@ web site needs that a single-user desktop app does not:
 
   * **The URL carries the language, not a setting.** English lives at the bare
     path (``/terms``) and is the canonical URL; every other language lives under
-    a prefix (``/vi/terms``). A crawler therefore sees six real, separately
+    a prefix (``/vi/terms``). A crawler therefore sees seven real, separately
     indexable documents instead of one page that changes under a cookie.
   * **A cookie only remembers a preference.** It never changes what a given URL
     renders — that would make the canonical English URL non-deterministic for
@@ -32,7 +32,7 @@ DEFAULT_UI_LANG = "en"
 
 # Single source of truth for the supported language codes + native names. Mirrors
 # ai_settings.SUPPORTED_LANGUAGES so the interface language and the assistant's
-# own language offer the same six options and never drift.
+# own language offer the same seven options and never drift.
 SUPPORTED_UI_LANGUAGES = {
     "en": "English",
     "vi": "Tiếng Việt",
@@ -40,6 +40,7 @@ SUPPORTED_UI_LANGUAGES = {
     "fr": "Français",
     "ja": "日本語",
     "ru": "Русский",
+    "ko": "한국어",
 }
 
 # The codes that appear as a URL prefix — everything except the default, which
@@ -54,6 +55,7 @@ HTML_LANG_TAGS = {
     "fr": "fr",
     "ja": "ja",
     "ru": "ru",
+    "ko": "ko",
 }
 
 # Languages whose legal text is a translation of an English original. Rendered

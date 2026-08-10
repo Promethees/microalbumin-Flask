@@ -157,13 +157,13 @@
 
 ---
 
-### 2.14 UI Localization (i18n) — six languages, language in the URL
+### 2.14 UI Localization (i18n) — seven languages, language in the URL
 
 - **The URL carries the language.** English lives at the bare path (`/terms`) and
-  is the canonical URL; the other five live under a prefix (`/vi/terms`). Never
+  is the canonical URL; the other six live under a prefix (`/vi/terms`). Never
   make a bare URL render something other than English — a crawler or a cache
   would then see a page that changes under it. `src/i18n.py:init_app` mirrors the
-  page rules under `/<any(vi,zh,fr,ja,ru):lang>` after every blueprint is
+  page rules under `/<any(vi,zh,fr,ja,ru,ko):lang>` after every blueprint is
   registered; a new indexable page must be added to `LOCALIZED_ENDPOINTS`.
 - **The `ui_lang` cookie only remembers a preference.** It is read on `/` alone,
   to redirect a returning visitor, and written by `/set-language/<code>`, which
@@ -177,7 +177,7 @@
   from `static/script/i18n.js`; keep the English literal as the fallback there,
   and call it as `window.t` because `t` is a common local variable name.
 - **Catalogs are `ui_translations/<lang>.json`**, flat key → string, English as
-  the baseline. Adding a string means adding its key to **all six** files in the
+  the baseline. Adding a string means adding its key to **all seven** files in the
   same commit — `tests/test_i18n.py` fails on drift, on a lost `{placeholder}`,
   and on an empty value.
 - **Technical terms stay English** in every catalog: mode names (kinetics, point,

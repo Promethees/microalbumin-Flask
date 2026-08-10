@@ -703,7 +703,7 @@
   "landing.caps.formulas_p": "Les classeurs exportés portent la courbe ajustée sous forme de véritable formule Excel : une valeur saisie dans la feuille renvoie sa concentration.",
   "landing.caps.assistant_h": "Assistant OKAPI",
   "landing.caps.assistant_p": "Posez des questions sur vos données, vos coefficients ou l'interface. Il répond, ou vous guide pas à pas dans l'application. C'est la seule fonction qui nécessite une connexion internet ; tout le reste fonctionne sans.",
-  "landing.caps.note": "L'interface parle English, Tiếng Việt, 中文 (简体), Français, 日本語 et Русский. Le thème, le mode par défaut, les unités de temps et de concentration et l'ordre de tri sont mémorisés d'un lancement à l'autre, et une mise à jour s'installe par-dessus sans toucher à vos données, rapports ou réglages.",
+  "landing.caps.note": "L'interface parle English, Tiếng Việt, 中文 (简体), Français, 日本語, Русский et 한국어. Le thème, le mode par défaut, les unités de temps et de concentration et l'ordre de tri sont mémorisés d'un lancement à l'autre, et une mise à jour s'installe par-dessus sans toucher à vos données, rapports ou réglages.",
   "landing.run.eyebrow": "Deux façons de l'exécuter",
   "landing.run.h": "Dans le navigateur, ou à côté de l'instrument.",
   "landing.run.p": "Les deux versions font la même analyse. La version de bureau ajoute le pilotage direct de l'appareil, ce qu'un onglet de navigateur ne peut pas faire.",

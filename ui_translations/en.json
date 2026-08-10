@@ -901,7 +901,7 @@
   "landing.caps.formulas_p": "Exported workbooks carry the fitted curve as a real Excel formula, so a value typed into the sheet returns its concentration.",
   "landing.caps.assistant_h": "OKAPI Assistant",
   "landing.caps.assistant_p": "Ask about your data, your coefficients or the interface. It answers, or walks you through the app step by step. This is the one feature that needs an internet connection; everything else works without one.",
-  "landing.caps.note": "The interface speaks English, Tiếng Việt, 中文 (简体), Français, 日本語 and Русский. Theme, default mode, time and concentration units and sort order are remembered between launches, and an update installs over the top without touching your data, reports or settings.",
+  "landing.caps.note": "The interface speaks English, Tiếng Việt, 中文 (简体), Français, 日本語, Русский and 한국어. Theme, default mode, time and concentration units and sort order are remembered between launches, and an update installs over the top without touching your data, reports or settings.",
   "landing.run.eyebrow": "Two ways to run it",
   "landing.run.h": "In the browser, or beside the instrument.",
   "landing.run.p": "Both builds run the same analysis. The desktop build adds direct device control, which a browser tab cannot do.",

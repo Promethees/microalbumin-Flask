@@ -48,6 +48,7 @@
             fr: 'Aucun fichier de données n\'est chargé. Cliquez ici pour sélectionner un fichier CSV avant de continuer.',
             ja: 'データファイルがまだ読み込まれていません。続行する前にここをクリックして CSV ファイルを選択してください。',
             ru: 'Файл данных ещё не загружен. Нажмите здесь, чтобы выбрать CSV-файл перед продолжением.',
+            ko: '데이터 파일이 아직 로드되지 않았습니다. 계속하기 전에 여기를 클릭하여 CSV 데이터 파일을 선택하세요.',
         },
         position: 'left',
         skipInteraction: false,
@@ -60,6 +61,7 @@
         fr: 'Guide lancé — suivez les étapes mises en surbrillance.',
         ja: 'ガイドを起動しました — ハイライトされた手順に従ってください。',
         ru: 'Руководство запущено — следуйте выделенным шагам.',
+        ko: '가이드를 시작했습니다 — 강조 표시된 단계를 따르세요.',
     };
 
     const _EMPTY_REPLY = {
@@ -69,6 +71,7 @@
         fr: "Je n'ai pas pu générer de réponse. Essayez de reformuler votre question.",
         ja: '回答を生成できませんでした。質問を言い換えてみてください。',
         ru: 'Не удалось сформировать ответ. Попробуйте перефразировать вопрос.',
+        ko: '응답을 생성하지 못했습니다. 질문을 다시 표현해 보세요.',
     };
 
     const _NOTHING_TO_REDO = {
@@ -78,6 +81,7 @@
         fr: 'Rien à refaire pour l\'instant — envoyez d\'abord un message ou exécutez une commande.',
         ja: 'やり直せるものがまだありません — まずメッセージを送るかコマンドを実行してください。',
         ru: 'Нечего повторять — сначала отправьте сообщение или выполните команду.',
+        ko: '아직 다시 실행할 항목이 없습니다 — 먼저 메시지를 보내거나 명령을 실행하세요.',
     };
 
     const _REDO_NOTE = {
@@ -87,6 +91,7 @@
         fr: '↺ Nouvel essai pour la dernière question…',
         ja: '↺ 最後の質問を再試行中…',
         ru: '↺ Повтор последнего вопроса…',
+        ko: '↺ 마지막 질문을 다시 시도하는 중…',
     };
 
     const _GUIDE_NOT_FOUND = {
@@ -96,6 +101,7 @@
         fr: (id) => `Guide **${id}** introuvable. Réessayez après le chargement de l'application.`,
         ja: (id) => `ガイド **${id}** が見つかりません。アプリの読み込み後に再試行してください。`,
         ru: (id) => `Руководство **${id}** не найдено. Повторите попытку после загрузки приложения.`,
+        ko: (id) => `가이드 **${id}** 을(를) 찾을 수 없습니다. 앱이 로드된 후 다시 시도하세요.`,
     };
 
     const _REPORT_CHOICE_PROMPT = {
@@ -105,16 +111,19 @@
         fr: 'Quel type de rapport souhaitez-vous créer ?',
         ja: 'どのタイプのレポートを作成しますか？',
         ru: 'Какой тип отчёта вы хотите создать?',
+        ko: '어떤 유형의 보고서를 만드시겠습니까?',
     };
 
     const _REPORT_BTN_QUICK = {
         en: '⚡ Quick Report', vi: '⚡ Báo cáo nhanh', zh: '⚡ 快速报告',
         fr: '⚡ Rapport rapide', ja: '⚡ クイックレポート', ru: '⚡ Быстрый отчёт',
+        ko: '⚡ 빠른 보고서',
     };
 
     const _REPORT_BTN_FULL = {
         en: '📄 Full Report', vi: '📄 Báo cáo đầy đủ', zh: '📄 完整报告',
         fr: '📄 Rapport complet', ja: '📄 フルレポート', ru: '📄 Полный отчёт',
+        ko: '📄 전체 보고서',
     };
 
     const _AI_UNAVAILABLE_MSG = {
@@ -124,16 +133,19 @@
         fr: '⚠ L\'assistant IA n\'est pas configuré sur ce serveur.',
         ja: '⚠ AIアシスタントはこのサーバーで設定されていません。',
         ru: '⚠ Помощник ИИ не настроен на этом сервере.',
+        ko: '⚠ 이 서버에는 AI 어시스턴트가 구성되어 있지 않습니다.',
     };
 
     const _HELP_HEADER = {
         en: '**Available commands**', vi: '**Các lệnh có sẵn**', zh: '**可用命令**',
         fr: '**Commandes disponibles**', ja: '**使用可能なコマンド**', ru: '**Доступные команды**',
+        ko: '**사용 가능한 명령**',
     };
 
     const _STATUS_HEADER = {
         en: '**App status**', vi: '**Trạng thái ứng dụng**', zh: '**应用状态**',
         fr: '**État de l\'application**', ja: '**アプリの状態**', ru: '**Состояние приложения**',
+        ko: '**앱 상태**',
     };
 
     const _STATUS_LABELS = {
@@ -143,6 +155,7 @@
         fr: { mode: 'mode', app_started: 'démarré', data_loaded: 'données chargées', cal_mode: 'mode cal' },
         ja: { mode: 'モード', app_started: 'アプリ起動', data_loaded: 'データ読込', cal_mode: '校正モード' },
         ru: { mode: 'режим', app_started: 'запущено', data_loaded: 'данные загружены', cal_mode: 'режим кал' },
+        ko: { mode: '모드', app_started: '앱 시작됨', data_loaded: '데이터 로드됨', cal_mode: 'cal 모드' },
     };
 
     // Natural-language phrases that mean "redo the last thing"
@@ -209,15 +222,15 @@
         currentAbort: null,
         lastAction: null,
         LANG_LABELS: {
-            en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU'
+            en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU', ko: '한'
         },
         LANG_NAMES: {
             en: 'English', vi: 'Tiếng Việt', zh: '中文',
-            fr: 'Français', ja: '日本語', ru: 'Русский'
+            fr: 'Français', ja: '日本語', ru: 'Русский', ko: '한국어'
         },
         LANG_DISPLAY: {
             en: 'English', vi: 'Tiếng Việt', zh: '中文 (简体)',
-            fr: 'Français', ja: '日本語', ru: 'Русский'
+            fr: 'Français', ja: '日本語', ru: 'Русский', ko: '한국어'
         },
     };
 
@@ -257,6 +270,7 @@
         <button class="okapi-ai-lang-opt" data-lang="fr">Fran&#231;ais</button>
         <button class="okapi-ai-lang-opt" data-lang="ja">&#26085;&#26412;&#35486;</button>
         <button class="okapi-ai-lang-opt" data-lang="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</button>
+        <button class="okapi-ai-lang-opt" data-lang="ko">&#54620;&#44397;&#50612;</button>
       </div>
     </div>
     <button id="okapi-ai-close-btn" data-hint="Close" onclick="OkapiAI.close()">&#10005;</button>
@@ -370,6 +384,7 @@
             fr: '👋 Bonjour ! Je suis votre assistant OKAPI. Posez-moi des questions sur vos données, la calibration ou votre flux de travail.',
             ja: '👋 こんにちは！OKAPIアシスタントです。データ、キャリブレーション、ワークフローについてお気軽にご質問ください。',
             ru: '👋 Привет! Я OKAPI Assistant. Задавайте вопросы о данных, калибровке или рабочем процессе.',
+            ko: '👋 안녕하세요! 저는 OKAPI Assistant입니다. 데이터, 캘리브레이션, 앱 워크플로에 대해 물어보세요.',
         };
         return msgs[AI.activeLang] || msgs.en;
     }
@@ -595,8 +610,8 @@
             const ctx = _getUiContext();
             const lbl = _STATUS_LABELS[lang] || _STATUS_LABELS.en;
             const yesNo = (v) => v
-                ? (lang === 'vi' ? 'có' : lang === 'zh' ? '是' : lang === 'fr' ? 'oui' : lang === 'ja' ? 'はい' : lang === 'ru' ? 'да' : 'yes')
-                : (lang === 'vi' ? 'không' : lang === 'zh' ? '否' : lang === 'fr' ? 'non' : lang === 'ja' ? 'いいえ' : lang === 'ru' ? 'нет' : 'no');
+                ? (lang === 'vi' ? 'có' : lang === 'zh' ? '是' : lang === 'fr' ? 'oui' : lang === 'ja' ? 'はい' : lang === 'ru' ? 'да' : lang === 'ko' ? '예' : 'yes')
+                : (lang === 'vi' ? 'không' : lang === 'zh' ? '否' : lang === 'fr' ? 'non' : lang === 'ja' ? 'いいえ' : lang === 'ru' ? 'нет' : lang === 'ko' ? '아니오' : 'no');
             const lines = [
                 `\`${lbl.mode}\` ${ctx.mode || '—'}`,
                 `\`${lbl.app_started}\` ${yesNo(ctx.app_started)}`,

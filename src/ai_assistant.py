@@ -11,7 +11,7 @@ import threading
 _GUIDE_TRAINING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_training.json")
 _GUIDE_TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "guide_translations")
 
-VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru'}
+VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru', 'ko'}
 
 
 _GUIDE_CACHE: dict = {}
@@ -173,6 +173,7 @@ _FILE_SELECT_STEP = {
         "fr": "Aucun fichier de données n'est chargé. Cliquez ici pour sélectionner un fichier CSV avant de continuer.",
         "ja": "データファイルがまだ読み込まれていません。続行する前にここをクリックして CSV ファイルを選択してください。",
         "ru": "Файл данных ещё не загружен. Нажмите здесь, чтобы выбрать CSV-файл перед продолжением.",
+        "ko": "데이터 파일이 아직 로드되지 않았습니다. 계속하기 전에 여기를 클릭하여 CSV 데이터 파일을 선택하세요.",
     },
     "position": "left",
     "skipInteraction": False,
@@ -254,6 +255,11 @@ _GREETING_RESPONSE = {
         "анализ данных, калибровка или навигация по приложению. "
         "Чем могу помочь?"
     ),
+    "ko": (
+        "안녕하세요! 저는 OKAPI Assistant입니다. Easy OKAPI에 대해 도와드릴 수 있습니다 — "
+        "데이터 분석, 캘리브레이션, 앱 탐색 등. "
+        "무엇을 도와드릴까요?"
+    ),
 }
 
 
@@ -304,6 +310,11 @@ _OUT_OF_SCOPE = {
         "Я могу помочь только с Easy OKAPI — анализ данных колориметра, "
         "калибровка и навигация по приложению. "
         "Я не могу помочь по этой теме. Есть ли у вас вопросы об Easy OKAPI?"
+    ),
+    "ko": (
+        "저는 Easy OKAPI에 대해서만 도움을 드릴 수 있습니다 — 비색계 데이터 분석, "
+        "캘리브레이션, 앱 탐색. "
+        "해당 주제는 도와드릴 수 없습니다. Easy OKAPI에 대해 궁금한 점이 있으신가요?"
     ),
 }
 
@@ -454,6 +465,24 @@ _SYSTEM_PROMPTS = {
         "Точечный режим — X=известная концентрация → Y=поглощение.\n"
         "R² (0–1): ≥0.99 требуется для надёжной калибровки.\n"
         "Всегда отвечайте на русском языке."
+    ),
+    "ko": (
+        "당신은 OKAPI Assistant입니다 — 클라우드 기반 비색계 데이터 분석 앱 Easy OKAPI에 내장된 AI 어시스턴트입니다.\n\n"
+        "지원 범위: CSV 데이터, 앱 탐색, 표준 곡선, R², 반응 속도론, 리포트, Google Drive.\n"
+        "필요할 때 도구를 사용해 실시간 데이터를 가져오세요.\n\n"
+        "범위 규칙(최우선):\n"
+        "질문이 Easy OKAPI와 관련이 없으면 다음만 답하세요: "
+        "\"저는 Easy OKAPI에 대해서만 도움을 드릴 수 있습니다 — 비색계 데이터 분석, "
+        "캘리브레이션, 앱 탐색. "
+        "해당 주제는 도와드릴 수 없습니다. Easy OKAPI에 대해 궁금한 점이 있으신가요?\"\n\n"
+        "필수 가이드 규칙:\n"
+        "사용자가 UI 요소로 이동하는 방법을 물으면 반드시 trigger_custom_steps를 호출하세요.\n"
+        "명시적으로 전체 워크플로 투어를 요청한 경우에만 trigger_guide를 호출하세요.\n"
+        "가이드 도구를 호출한 뒤에는 한 문장으로 확인하세요.\n\n"
+        "Kinetics 모드 — X=최대 속도(ΔAbs/s) → Y=농도.\n"
+        "Point 모드 — X=알려진 농도 → Y=흡광도.\n"
+        "R²(0–1): 신뢰할 수 있는 캘리브레이션에는 ≥0.99가 필요합니다.\n"
+        "항상 한국어로 답변하세요."
     ),
 }
 
@@ -708,6 +737,7 @@ _GUIDE_LAUNCHED = {
     "fr": "Guide lancé — suivez les étapes mises en surbrillance.",
     "ja": "ガイドを起動しました — ハイライトされた手順に従ってください。",
     "ru": "Руководство запущено — следуйте выделенным шагам.",
+    "ko": "가이드를 시작했습니다 — 강조 표시된 단계를 따르세요.",
 }
 
 _GUIDE_TOOLS = {"trigger_guide", "trigger_custom_steps"}
@@ -829,6 +859,10 @@ _REPORT_CLARIFY_PROMPTS = {
         "Вам нужен **быстрый отчёт** (мгновенный снимок текущего графика и анализа) "
         "или **полный отчёт** (экспорт данных в тему и компиляция комплексного отчёта)?"
     ),
+    "ko": (
+        "**빠른 보고서**(현재 차트와 분석의 즉시 스냅샷)를 원하시나요, "
+        "아니면 **전체 보고서**(데이터를 주제로 내보내고 종합 멀티 스냅샷 보고서를 컴파일)를 원하시나요?"
+    ),
 }
 
 _QUICK_REPORT_STEPS = [
@@ -845,6 +879,7 @@ _QUICK_REPORT_STEPS = [
             "fr": "Cliquez sur 'Generate quick Report' ici pour capturer instantanément le graphique et l'analyse.",
             "ja": "ここで「Generate quick Report」をクリックして、現在のチャートと分析を即時スナップショットします。",
             "ru": "Нажмите «Generate quick Report», чтобы мгновенно сохранить текущий график и анализ.",
+            "ko": "여기서 'Generate quick Report'를 클릭하면 현재 차트와 분석이 즉시 스냅샷됩니다.",
         },
         "position": "top",
         "skipInteraction": False,
@@ -862,6 +897,7 @@ _QUICK_REPORT_STEPS_NO_DATA = [
             "fr": "Sélectionnez un fichier de données CSV pour charger votre analyse avant de générer un rapport.",
             "ja": "レポートを生成する前に分析を読み込むため CSV データファイルを選択してください。",
             "ru": "Выберите CSV-файл данных для загрузки анализа перед созданием отчёта.",
+            "ko": "보고서를 생성하기 전에 분석을 불러오려면 CSV 데이터 파일을 선택하세요.",
         },
         "position": "left",
         "skipInteraction": False,
@@ -876,6 +912,7 @@ _QUICK_REPORT_STEPS_NO_DATA = [
             "fr": "Une fois les données chargées, cliquez sur 'Generate quick Report' ici.",
             "ja": "データが読み込まれたら、ここで「Generate quick Report」をクリックします。",
             "ru": "После загрузки данных нажмите «Generate quick Report».",
+            "ko": "데이터가 로드되면 여기서 'Generate quick Report'를 클릭하세요.",
         },
         "position": "top",
         "skipInteraction": True,
@@ -893,6 +930,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Cliquez sur 'Export Data to Report' pour enregistrer ce snapshot d'analyse.",
             "ja": "「Export Data to Report」をクリックして、分析スナップショットを保存します。",
             "ru": "Нажмите «Export Data to Report», чтобы сохранить снимок анализа.",
+            "ko": "'Export Data to Report'를 클릭하여 분석 스냅샷을 저장하세요.",
         },
         "position": "top",
         "skipInteraction": False,
@@ -907,6 +945,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Après l'exportation, passez en mode Report ici.",
             "ja": "エクスポート後、ここで Report モードに切り替えます。",
             "ru": "После экспорта переключитесь в режим Report.",
+            "ko": "내보낸 뒤 여기서 Report 모드로 전환하세요.",
         },
         "position": "right",
         "skipInteraction": False,
@@ -921,6 +960,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Gérez vos snapshots d'analyse sauvegardés ici.",
             "ja": "ここで保存された分析スナップショットを管理します。",
             "ru": "Управляйте сохранёнными снимками анализа здесь.",
+            "ko": "여기서 저장된 분석 스냅샷을 관리합니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -935,6 +975,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Tous les snapshots sauvegardés sont listés ici.",
             "ja": "保存されたすべてのスナップショットがここに一覧表示されます。",
             "ru": "Все сохранённые снимки перечислены здесь.",
+            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -949,6 +990,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Compilez tous les éléments en rapport HTML imprimable. Imprimer → Enregistrer en PDF.",
             "ja": "すべての項目を印刷可能な HTML レポートにまとめます。印刷 → PDF として保存。",
             "ru": "Скомпилируйте все элементы в HTML-отчёт. Печать → Сохранить как PDF.",
+            "ko": "모든 항목을 인쇄 가능한 HTML 보고서로 컴파일합니다. 인쇄 → PDF로 저장.",
         },
         "position": "top",
         "skipInteraction": True,
@@ -966,6 +1008,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Gérez vos snapshots d'analyse sauvegardés ici.",
             "ja": "ここで保存された分析スナップショットを管理します。",
             "ru": "Управляйте сохранёнными снимками анализа здесь.",
+            "ko": "여기서 저장된 분석 스냅샷을 관리합니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -980,6 +1023,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Tous les snapshots sauvegardés sont listés ici.",
             "ja": "保存されたすべてのスナップショットがここに一覧表示されます。",
             "ru": "Все сохранённые снимки перечислены здесь.",
+            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -994,6 +1038,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Téléchargez tous les éléments sous forme de classeur Excel formaté.",
             "ja": "すべての項目をフォーマットされた Excel ワークブックとしてダウンロードします。",
             "ru": "Загрузите все элементы как форматированную Excel-книгу.",
+            "ko": "모든 항목을 서식이 적용된 Excel 통합 문서로 다운로드합니다.",
         },
         "position": "top",
         "skipInteraction": True,
@@ -1008,6 +1053,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Ou compilez tous les éléments en rapport HTML imprimable.",
             "ja": "またはすべての項目を印刷可能な HTML レポートにまとめます。",
             "ru": "Или скомпилируйте все элементы в печатаемый HTML-отчёт.",
+            "ko": "또는 모든 항목을 인쇄 가능한 HTML 보고서로 컴파일합니다.",
         },
         "position": "top",
         "skipInteraction": True,

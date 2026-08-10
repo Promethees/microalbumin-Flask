@@ -703,7 +703,7 @@
   "landing.caps.formulas_p": "Bảng tính xuất ra mang đường cong đã khớp dưới dạng công thức Excel thật, nên một giá trị gõ vào bảng sẽ trả về nồng độ tương ứng.",
   "landing.caps.assistant_h": "Trợ lý OKAPI",
   "landing.caps.assistant_p": "Hỏi về dữ liệu, hệ số hay giao diện của bạn. Trợ lý sẽ trả lời, hoặc dẫn bạn qua từng bước trong ứng dụng. Đây là tính năng duy nhất cần kết nối internet; mọi thứ khác đều chạy được khi ngoại tuyến.",
-  "landing.caps.note": "Giao diện có English, Tiếng Việt, 中文 (简体), Français, 日本語 và Русский. Giao diện, chế độ mặc định, đơn vị thời gian và nồng độ cùng thứ tự sắp xếp được ghi nhớ giữa các lần khởi động, và bản cập nhật cài đè lên mà không đụng tới dữ liệu, báo cáo hay cài đặt của bạn.",
+  "landing.caps.note": "Giao diện có English, Tiếng Việt, 中文 (简体), Français, 日本語, Русский và 한국어. Giao diện, chế độ mặc định, đơn vị thời gian và nồng độ cùng thứ tự sắp xếp được ghi nhớ giữa các lần khởi động, và bản cập nhật cài đè lên mà không đụng tới dữ liệu, báo cáo hay cài đặt của bạn.",
   "landing.run.eyebrow": "Hai cách để chạy",
   "landing.run.h": "Trên trình duyệt, hoặc ngay cạnh thiết bị.",
   "landing.run.p": "Cả hai bản chạy cùng một phép phân tích. Bản máy tính có thêm điều khiển thiết bị trực tiếp, điều mà một tab trình duyệt không làm được.",

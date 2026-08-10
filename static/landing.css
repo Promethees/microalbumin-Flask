@@ -1717,7 +1717,10 @@ html.dark .readout {
     margin: 0;
     padding: 6px;
     list-style: none;
-    background: var(--card, #fff);
+    /* --paper-2, not a --card token: no such token exists, so the old
+       `var(--card, #fff)` always fell back to white while the labels below
+       followed --ink-2 into the dark palette — light text on a white card. */
+    background: var(--paper-2);
     border: 1px solid var(--line);
     border-radius: 10px;
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);

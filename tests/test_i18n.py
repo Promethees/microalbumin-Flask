@@ -1,6 +1,6 @@
 """Guards for the UI localization catalogs and the language-aware URL layer.
 
-The catalogs are six files that have to be edited in lockstep, and nothing in
+The catalogs are seven files that have to be edited in lockstep, and nothing in
 the app fails loudly when they drift — a missing key silently falls back to
 English, which is exactly the failure mode a test has to catch. The drift guard
 below is the main thing here; the rest checks that the catalog loader and the
@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 import i18n  # noqa: E402
 
 CATALOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ui_translations')
-LANGS = ('en', 'vi', 'zh', 'fr', 'ja', 'ru')
+LANGS = ('en', 'vi', 'zh', 'fr', 'ja', 'ru', 'ko')
 
 
 def _load(lang):

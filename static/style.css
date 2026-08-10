@@ -3311,3 +3311,23 @@ body.dark .account-nav-hint {
     color: #2980b9;
     font-weight: 600;
 }
+
+/* Dark twin. Without it the card stays white while the app around it is dark,
+   the same mismatch the landing picker had. */
+body.dark .lang-switch .lang-menu {
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+body.dark .lang-switch .lang-menu a {
+    color: #d1d5db;
+}
+
+body.dark .lang-switch .lang-menu a:hover {
+    background: #374151;
+}
+
+body.dark .lang-switch .lang-menu a[aria-current="true"] {
+    color: #60a5fa;
+}

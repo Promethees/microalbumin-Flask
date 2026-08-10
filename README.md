@@ -235,7 +235,7 @@ Connect your Google account to sync all session files (CSV + JSON) to a Drive fo
 
 A floating chat widget powered by [Groq](https://groq.com). Ask questions about your data, calibration coefficients, or app navigation. The assistant responds with text explanations or launches an interactive step-by-step spotlight guide directly in the UI.
 
-Supported languages: English, Tiếng Việt, 中文 (简体), Français, 日本語, Русский.
+Supported languages: English, Tiếng Việt, 中文 (简体), Français, 日本語, Русский, 한국어.
 
 <div align="center">
 	<img src="/images/blank.png" width="600">

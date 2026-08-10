@@ -296,7 +296,8 @@ microalbumin-Flask/
 │   ├── zh.json
 │   ├── fr.json
 │   ├── ja.json
-│   └── ru.json
+│   ├── ru.json
+│   └── ko.json
 ├── easyokapi-knowledge/        # AI agent knowledge base
 │   └── EASY OKAPI.md
 ├── src/
