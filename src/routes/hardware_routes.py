@@ -398,10 +398,13 @@ def device_channels_save():
     if _session_is_running():
         return _controller_busy_response()
     try:
-        state = device_link.link.state()
+        # Not `state`: that is the module this blueprint reads state.process from,
+        # and shadowing it here leaves a function whose next use of it raises
+        # UnboundLocalError.
+        device_state = device_link.link.state()
     except device_link.DeviceLinkError as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 502
-    channels = state.get('chans') or []
+    channels = device_state.get('chans') or []
     if not channels:
         return jsonify({'status': 'failure',
                         'message': 'The device did not report any active channels'}), 502
@@ -420,10 +423,10 @@ def device_uv_channel_save():
     if _session_is_running():
         return _controller_busy_response()
     try:
-        state = device_link.link.state()
+        device_state = device_link.link.state()
     except device_link.DeviceLinkError as e:
         return jsonify({'status': 'failure', 'message': str(e)}), 502
-    channel = state.get('uvchan') or ''
+    channel = device_state.get('uvchan') or ''
     if not channel:
         return jsonify({'status': 'failure',
                         'message': 'The device did not report a spectral channel'}), 502
