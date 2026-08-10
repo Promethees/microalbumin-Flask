@@ -1,0 +1,240 @@
+{# ── RE:ACT competition banner (temporary) ────────────────────────────────
+   Shown at the top of both the landing page (templates/landing.html) and the
+   web app (templates/index.html).
+
+   Everything the banner needs — markup, styles, behaviour — lives in this one
+   file, for two reasons:
+
+   * Taking the banner down is deleting this file and its two {% include %}
+     lines. Nothing is left behind in landing.css or style.css.
+   * Both pages load *minified* stylesheets from static/dist when
+     PRODUCTION_MODE is on, so a rule added to landing.css or style.css would
+     not reach production until the next `npm run build`. Inline styles ship
+     with the template.
+
+   The two pages have unrelated design systems (landing = petrol/spectral,
+   web app = indigo/glass) and different dark-mode hooks (`html.dark` vs
+   `body.dark`), so the banner carries its own dark palette and matches on
+   both selectors rather than borrowing either page's tokens.
+   ───────────────────────────────────────────────────────────────────────── #}
+
+<script>
+    // Restore the collapsed state before the banner paints, so a visitor who
+    // already dismissed it never sees it flash open and then snap shut.
+    (function () {
+        try {
+            if (localStorage.getItem('react-banner') === 'collapsed') {
+                document.documentElement.classList.add('react-banner-collapsed');
+            }
+        } catch (e) {
+            /* Storage blocked (private mode): the banner just stays open. */
+        }
+    })();
+</script>
+
+<style>
+    .react-banner {
+        --rb-bg: #0c1e26;
+        --rb-bg-2: #123039;
+        --rb-ink: #e8f1ef;
+        --rb-ink-2: #9db3b6;
+        --rb-accent: #17a35f;
+
+        position: relative;
+        z-index: 60;
+        /* Above the landing page's sticky nav (z-index 50). */
+        background: var(--rb-bg);
+        background: linear-gradient(100deg, var(--rb-bg) 0%, var(--rb-bg-2) 100%);
+        color: var(--rb-ink);
+        border-bottom: 1px solid rgba(232, 241, 239, 0.14);
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .react-banner-inner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 10px 20px;
+    }
+
+    .react-banner-pill {
+        flex: none;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: var(--rb-accent);
+        color: #05130c;
+        font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .react-banner-text {
+        min-width: 0;
+        margin-right: auto;
+    }
+
+    .react-banner-text strong {
+        font-weight: 600;
+    }
+
+    .react-banner-note {
+        color: var(--rb-ink-2);
+    }
+
+    .react-banner-link {
+        flex: none;
+        color: var(--rb-ink);
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+        border-bottom: 1px solid rgba(232, 241, 239, 0.4);
+        padding-bottom: 1px;
+    }
+
+    .react-banner-link:hover,
+    .react-banner-link:focus-visible {
+        color: #fff;
+        border-bottom-color: #fff;
+    }
+
+    .react-banner-toggle {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 1px solid rgba(232, 241, 239, 0.25);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--rb-ink);
+        font-size: 13px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .react-banner-toggle:hover {
+        background: rgba(232, 241, 239, 0.12);
+    }
+
+    .react-banner :focus-visible {
+        outline: 2px solid var(--rb-accent);
+        outline-offset: 2px;
+    }
+
+    /* Collapsed: the bar stays in the flow as a thin strip carrying just the
+       tag and the re-open control, so nothing on either page has to shift or
+       be overlapped by a floating re-open button. */
+    .react-banner-collapsed .react-banner-inner {
+        padding: 4px 20px;
+        gap: 8px;
+    }
+
+    .react-banner-collapsed .react-banner-pill {
+        font-size: 10px;
+        padding: 2px 8px;
+        margin-right: auto;
+    }
+
+    .react-banner-collapsed .react-banner-text,
+    .react-banner-collapsed .react-banner-link {
+        display: none;
+    }
+
+    .react-banner-collapsed .react-banner-toggle {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+    }
+
+    /* The banner is dark on both pages, so dark mode only needs to soften it
+       against the darker page ground. Landing sets `html.dark`; the web app
+       sets `body.dark`. */
+    .dark .react-banner {
+        --rb-bg: #08161c;
+        --rb-bg-2: #0e2831;
+    }
+
+    /* Never let the notice land in a printed report. */
+    @media print {
+        .react-banner {
+            display: none !important;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .react-banner-inner {
+            flex-wrap: wrap;
+            padding: 8px 14px;
+            gap: 8px;
+        }
+
+        .react-banner-text {
+            order: 3;
+            flex-basis: 100%;
+            margin-right: 0;
+            font-size: 13px;
+        }
+
+        .react-banner-link {
+            order: 4;
+            font-size: 13px;
+        }
+
+        .react-banner-pill {
+            margin-right: auto;
+        }
+    }
+</style>
+
+<aside class="react-banner" id="react-banner" aria-label="RE:ACT competition">
+    <div class="react-banner-inner">
+        <span class="react-banner-pill">RE:ACT</span>
+        <span class="react-banner-text" id="react-banner-text">
+            <strong>Easy OKAPI is competing in RE:ACT.</strong>
+            <span class="react-banner-note">Follow the entry and the judging on the announcement post.</span>
+        </span>
+        <a class="react-banner-link" href="https://www.facebook.com/share/p/1EZme4uk9a/" target="_blank"
+            rel="noopener noreferrer">See the announcement</a>
+        <button class="react-banner-toggle" id="react-banner-toggle" type="button" aria-expanded="true"
+            aria-controls="react-banner-text" aria-label="Collapse the RE:ACT notice">&#10005;</button>
+    </div>
+</aside>
+
+<script>
+    (function () {
+        var root = document.documentElement;
+        var toggle = document.getElementById('react-banner-toggle');
+        if (!toggle) return;
+
+        function paint() {
+            var collapsed = root.classList.contains('react-banner-collapsed');
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggle.setAttribute('aria-label', collapsed
+                ? 'Show the RE:ACT notice'
+                : 'Collapse the RE:ACT notice');
+            // ✕ closes, ⌄ re-opens.
+            toggle.innerHTML = collapsed ? '&#8964;' : '&#10005;';
+        }
+
+        toggle.addEventListener('click', function () {
+            var collapsed = root.classList.toggle('react-banner-collapsed');
+            try {
+                localStorage.setItem('react-banner', collapsed ? 'collapsed' : 'open');
+            } catch (e) {
+                /* Storage blocked: the choice just does not survive the reload. */
+            }
+            paint();
+        });
+
+        paint();
+    })();
+</script>
