@@ -129,7 +129,12 @@ def candidate_roots():
     if system == "windows":
         # No volume-label lookup: checking each letter for the board's own
         # boot_out.txt identifies it without a ctypes call into kernel32.
-        return [f"{letter}:\\" for letter in string.ascii_uppercase]
+        #
+        # From C: on. A and B are the floppy letters, and a machine that still
+        # has one mapped — or a disconnected network drive parked there — makes
+        # the probe block on a device that was never going to be a PyBadge.
+        # Windows has not assigned either to removable USB storage.
+        return [f"{letter}:\\" for letter in string.ascii_uppercase[2:]]
     # Linux and the rest. The user-owned mount points first, since that is
     # where a desktop session puts removable media.
     user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
@@ -359,9 +364,14 @@ def write_uv_channel(root, channel):
 def _atomic_write(path, text):
     """Write `text` to `path` via a temporary file in the same directory.
 
-    The rename is what the device sees, so it never reads a half-written file —
-    it watches for changes and reloads on them, and the window between "opened
-    for writing" and "finished" is exactly when it would look.
+    What the rename buys is that configuration.json is never a truncated file:
+    the board reads it at boot, and a write that died halfway through an
+    in-place truncate-and-write would leave it holding nothing to boot from.
+
+    It does not defer the board's reload — CircuitPython restarts on any change
+    to its filesystem, and creating the temporary file here is already one. The
+    device therefore reloads around this write, possibly more than once; that is
+    expected, and is why the callers drop the serial link afterwards.
     """
     directory = os.path.dirname(path) or "."
     handle = None

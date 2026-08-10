@@ -365,6 +365,21 @@ def test_write_refuses_a_factor_that_would_round_away(drive):
     assert device_config.read_configuration(str(drive))['raw_count_factor'][1] == 0.1234
 
 
+def test_windows_drive_probe_skips_the_floppy_letters():
+    """A and B are never assigned to removable USB storage, and probing them
+    blocks on a mapped floppy or a dead network drive parked there."""
+    with patch.object(device_config.platform, 'system', return_value='Windows'):
+        roots = device_config.candidate_roots()
+    assert roots[0] == 'C:\\'
+    assert not any(root.startswith(('A:', 'B:')) for root in roots)
+    assert len(roots) == 24
+
+
+def test_darwin_drive_probe_is_the_one_volume_path():
+    with patch.object(device_config.platform, 'system', return_value='Darwin'):
+        assert device_config.candidate_roots() == ['/Volumes/CIRCUITPY']
+
+
 def test_write_refuses_a_directory_that_is_not_a_board(tmp_path):
     (tmp_path / device_config.CONFIGURATION_FILE).write_text(CONFIG_WITH_FACTORS)
     with pytest.raises(device_config.DeviceConfigError):
