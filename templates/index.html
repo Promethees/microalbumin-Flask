@@ -26,8 +26,8 @@
 </head>
 
 <body>
-    {# style.css makes <body> a flex row, so the banner has to be taken out of
-       the flow here — see the partial's "Fixed mode" note. #}
+    {# The flag picks the web app's host offsets: this page keeps its own 20px
+       body padding and pins two panels that have to clear the bar. #}
     {% with banner_fixed = true %}{% include '_react_banner.html' %}{% endwith %}
 
     <div id="print-report-container" class="hidden"></div>

@@ -23,9 +23,11 @@
    line to travel with its mark; it is in the copy below and must stay there
    for as long as the logo does.
 
-   Include with `banner_fixed = true` on pages whose <body> is a flex container
-   (the web app), where an in-flow bar would be laid out as a flex *column*
-   instead of a full-width strip. See the "Fixed mode" block below.
+   The bar is frozen to the top of the viewport on both pages, so each host has
+   to be told to start below it. Include with `banner_fixed = true` on the web
+   app, which keeps its own 20px body padding and pins two panels of its own;
+   omit it on the landing page, whose sticky nav parks under the bar instead.
+   See the two "Host offsets" blocks below.
    ───────────────────────────────────────────────────────────────────────── #}
 
 <script>
@@ -66,9 +68,18 @@
         --rb-ink: #1b2470;
         --rb-ink-2: #555f96;
 
-        position: relative;
-        z-index: 60;
-        /* Above the landing page's sticky nav (z-index 50). */
+        /* Frozen at the top of the viewport on both pages. Fixed rather than
+           sticky: landing.css puts `overflow-x: hidden` on <body>, which makes
+           body the scrollport and stops sticky children from ever sticking.
+           The height the bar no longer occupies is handed back through --rb-h,
+           which the script keeps equal to its measured height. */
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        /* Above everything either page pins to the viewport: the landing nav
+           sticks at 50, the web app's User Guide button at 9999. */
+        z-index: 10000;
         background: var(--rb-blue);
         font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
         font-size: 14px;
@@ -277,23 +288,11 @@
     }
 
     {% if banner_fixed %}
-    /* ── Fixed mode (web app) ─────────────────────────────────────────────
-       style.css makes <body> a centring flex row, so an in-flow banner is
-       laid out as one narrow column beside the app instead of a strip across
-       the top. Taking it out of the flow avoids that; the space it would have
-       taken is given back through --rb-h, which the script below keeps equal
-       to the bar's measured height.
-
-       The two panels the app pins to the viewport have to clear the bar as
-       well, but only while they are actually pinned — under 768px style.css
-       returns .top-left to the flow, where a `top` would displace it. */
-    .react-banner {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-    }
-
+    /* ── Host offsets: web app ────────────────────────────────────────────
+       The app's own 20px body padding is kept, with the bar's height added on
+       top. The two panels the app pins to the viewport have to clear the bar
+       as well, but .top-left only while it is actually pinned — under 768px
+       style.css returns it to the flow, where a `top` would displace it. */
     body {
         padding-top: calc(20px + var(--rb-h, 0px));
     }
@@ -306,6 +305,19 @@
         .top-left {
             top: calc(20px + var(--rb-h, 0px));
         }
+    }
+    {% else %}
+    /* ── Host offsets: landing page ───────────────────────────────────────
+       <body> starts flush against the nav here, so the bar's height is the
+       whole of the padding. The nav is itself sticky at top: 0 and would
+       otherwise freeze into the same strip and be covered, so it parks
+       directly below the bar instead. */
+    body {
+        padding-top: var(--rb-h, 0px);
+    }
+
+    .nav {
+        top: var(--rb-h, 0px);
     }
     {% endif %}
 </style>
@@ -347,8 +359,6 @@
         var close = document.getElementById('react-banner-close');
         if (!banner || !toggle || !close) return;
 
-        var fixed = {{ 'true' if banner_fixed else 'false' }};
-
         function remember(state) {
             try {
                 localStorage.setItem('react-banner', state);
@@ -357,11 +367,11 @@
             }
         }
 
-        // In fixed mode the bar is out of the flow, so the page is given back
-        // exactly the height the bar occupies. Measured rather than hard-coded
-        // because the copy wraps at narrow widths.
+        // Both modes need the bar's height as a number: fixed mode gives the
+        // page back the space the bar no longer takes, pinned mode pushes the
+        // landing nav below it. Measured rather than hard-coded because the
+        // copy wraps at narrow widths.
         function measure() {
-            if (!fixed) return;
             var h = root.classList.contains('react-banner-closed') ? 0 : banner.offsetHeight;
             root.style.setProperty('--rb-h', h + 'px');
         }
