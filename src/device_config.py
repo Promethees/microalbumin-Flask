@@ -37,23 +37,84 @@ FACTOR_KEY = "raw_count_factor"
 CHANNELS_KEY = "active_channels"          # multi-channel build: which mux channels carry a sensor
 UV_CHANNEL_KEY = "channel"                # UV build: which spectral channel is measured
 
-# A JSON value on one line: an array, a string, a number, or a literal. Enough
-# for every key here, and deliberately not a parser — see _replace_value.
-_VALUE = r'(?:\[[^\]]*\]|"[^"]*"|-?\d+(?:\.\d+)?|true|false|null)'
+def _key_prefix(key):
+    """Matches the `"key" :` in front of a value, keeping whatever spacing the
+    file already uses around the colon so a hand-aligned file stays aligned.
 
-
-def _key_line(key):
-    """Matches `"key" : <value>`, keeping whatever spacing the file already uses
-    around the colon so a hand-aligned file stays aligned."""
+    Group 1 is the indent, which is what an inserted key lines itself up with.
+    """
     return re.compile(
-        r'^([ \t]*"' + re.escape(key) + r'"[ \t]*:[ \t]*)' + _VALUE, re.MULTILINE)
+        r'^([ \t]*)"' + re.escape(key) + r'"[ \t]*:[ \t]*', re.MULTILINE)
 
 
-def _anchor_line(key):
-    return re.compile(r'^([ \t]*)"' + re.escape(key) + r'"[ \t]*:.*$', re.MULTILINE)
+def _value_end(text, start):
+    """Offset just past the JSON value beginning at `start`, or None.
+
+    A scanner rather than a pattern. The pattern this replaces described a value
+    as one line — `\\[[^\\]]*\\]` for an array — so it stopped at the first `]`
+    and a nested array came out half-replaced, which the write guard then caught
+    as invalid JSON: a Save that failed with a parse error on a file that was
+    perfectly good. Depth is counted and strings are tracked, so a bracket, a
+    comma or a newline inside either does not end the value early.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+                if depth == 0:
+                    return index + 1
+        elif char == '"':
+            in_string = True
+        elif char in "[{":
+            depth += 1
+        elif char in "]}":
+            if depth == 0:
+                # The bracket closing the object this key lives in, reached
+                # without one of our own: the value was a bare scalar and ended
+                # before it.
+                return index
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        elif depth == 0 and char in ",\r\n":
+            return index
+    return None
+
+
+def _find_value(text, key):
+    """`(prefix match, offset just past the value)` for `key`, or None."""
+    match = _key_prefix(key).search(text)
+    if match is None:
+        return None
+    end = _value_end(text, match.end())
+    if end is None or end <= match.end():
+        return None
+    # A bare scalar ends at its terminator, so trailing spaces before a comma or
+    # a newline would otherwise be swallowed into the replacement.
+    while end > match.end() and text[end - 1] in " \t":
+        end -= 1
+    return match, end
 
 
 _OPEN_BRACE = re.compile(r'^\s*\{[ \t]*$', re.MULTILINE)
+
+# A comma after a key's value, wherever the file puts it — same line, or the next
+# one on a file that leads its lines with it. Its absence is what says the key is
+# the last of its object.
+_FOLLOWING_COMMA = re.compile(r'[ \t]*\r?\n?[ \t]*,')
+
+# What a spectral channel may be called. ASCII only, because the firmware's own
+# names are ("UVA", "UVB", …) and the value is written to a device that reloads
+# on the write.
+_CHANNEL_NAME = re.compile(r'[A-Za-z0-9_]+')
 
 
 class DeviceConfigError(Exception):
@@ -162,16 +223,30 @@ def _replace_value(text, key, value, anchor_key=None):
     """
     formatted = _format_value(value)
 
-    replaced, count = _key_line(key).subn(lambda m: m.group(1) + formatted, text, count=1)
-    if count:
-        return replaced
+    found = _find_value(text, key)
+    if found:
+        match, end = found
+        return text[:match.end()] + formatted + text[end:]
 
     if anchor_key:
-        anchor = _anchor_line(anchor_key).search(text)
-        if anchor:
+        # The anchor's whole `"key" : value` span, not just its line: the value
+        # is what the new key goes after, and a comma may sit past the end of it.
+        found = _find_value(text, anchor_key)
+        if found:
+            anchor, anchor_end = found
             indent = anchor.group(1)
-            line = f'{indent}"{key}" : {formatted},'
-            return text[:anchor.end()] + "\n" + line + text[anchor.end():]
+            line = f'{indent}"{key}" : {formatted}'
+            separator = _FOLLOWING_COMMA.match(text, anchor_end)
+            if separator:
+                # A comma already follows the anchor, so more keys come after it:
+                # slot in behind that comma and carry one of our own for them.
+                return text[:separator.end()] + "\n" + line + "," + text[separator.end():]
+            # No comma: the anchor is the last key of its object, and the new key
+            # takes that place. It gets no trailing comma — the anchor gets the
+            # one it never needed — because a comma before `}` is not JSON, and
+            # the device reloads on the write and would come back on an error
+            # screen.
+            return text[:anchor_end] + ",\n" + line + text[anchor_end:]
 
     # Not even that: first line after the opening brace.
     brace = _OPEN_BRACE.search(text)

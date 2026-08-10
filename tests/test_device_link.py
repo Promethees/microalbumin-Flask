@@ -310,6 +310,49 @@ def test_write_inserts_the_key_when_absent(drive):
     assert data['precision'] == 3
 
 
+def test_write_inserts_the_key_after_an_anchor_that_ends_its_object(drive):
+    """The anchor carries no comma when it is the last key of its object.
+
+    Inserting after it used to emit the anchor's missing comma as a trailing one
+    on the new key, so the file came out unparseable and the write was refused —
+    a Save that could never succeed on a configuration.json whose last key is
+    active_channels, which is where a board with no calibration yet puts it.
+    """
+    (drive / device_config.CONFIGURATION_FILE).write_text(
+        '{\n  "precision" : 3,\n  "active_channels" : [0, 2, 3]\n}\n')
+    device_config.write_raw_count_factor(str(drive), [1.0, 0.5, 1.0])
+    data = device_config.read_configuration(str(drive))
+    assert data['raw_count_factor'] == [1.0, 0.5, 1.0]
+    assert data['active_channels'] == [0, 2, 3]
+    assert data['precision'] == 3
+
+
+def test_write_replaces_a_value_that_spans_more_than_its_line(drive):
+    """The value was described by a pattern that stopped at the first `]`, so a
+    nested or wrapped array came out half-replaced and the write guard rejected
+    the result — a Save that failed with a parse error on a good file."""
+    for original in (
+            '{\n  "raw_count_factor" : [[1, 2], [3, 4]],\n  "precision" : 3\n}\n',
+            '{\n  "raw_count_factor" : [\n    1.0,\n    2.0\n  ],\n  "precision" : 3\n}\n',
+    ):
+        (drive / device_config.CONFIGURATION_FILE).write_text(original)
+        device_config.write_raw_count_factor(str(drive), [0.5, 1.0])
+        data = device_config.read_configuration(str(drive))
+        assert data['raw_count_factor'] == [0.5, 1.0]
+        assert data['precision'] == 3
+
+
+def test_write_is_not_fooled_by_a_bracket_inside_a_string(drive):
+    """Brackets, commas and escaped quotes inside a string must not end the
+    value: the key after it would be swallowed into the replacement."""
+    (drive / device_config.CONFIGURATION_FILE).write_text(
+        '{\n  "channel" : "A],B",\n  "precision" : 3\n}\n')
+    device_config.write_uv_channel(str(drive), 'UVB')
+    data = device_config.read_configuration(str(drive))
+    assert data['channel'] == 'UVB'
+    assert data['precision'] == 3
+
+
 def test_write_refuses_a_directory_that_is_not_a_board(tmp_path):
     (tmp_path / device_config.CONFIGURATION_FILE).write_text(CONFIG_WITH_FACTORS)
     with pytest.raises(device_config.DeviceConfigError):
