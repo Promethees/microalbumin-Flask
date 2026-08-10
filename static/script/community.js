@@ -10,7 +10,7 @@
 // the admin, who confirms with the author before adding it to testimonials.json.
 async function openReviewForm() {
     const result = await Swal.fire({
-        title: 'Share your experience',
+        title: window.t('dlg.share_experience', 'Share your experience'),
         html: `
             <div style="text-align:left; font-size:0.92rem;">
                 <p style="margin:0 0 12px; color:#666;">
@@ -49,8 +49,8 @@ async function openReviewForm() {
                 </label>
             </div>`,
         showCancelButton: true,
-        confirmButtonText: 'Send for review',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: window.t('dlg.send_for_review', 'Send for review'),
+        cancelButtonText: window.t('dlg.cancel', 'Cancel'),
         focusConfirm: false,
         width: '32rem',
         preConfirm: () => {
@@ -93,9 +93,9 @@ async function openReviewForm() {
                     : 'Could not send your review. Please try again later.');
             throw new Error(msg);
         }
-        Swal.fire({ icon: 'success', title: 'Thank you!', text: data.message });
+        Swal.fire({ icon: 'success', title: window.t('dlg.thank_you', 'Thank you!'), text: data.message });
     } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Not sent', text: e.message });
+        Swal.fire({ icon: 'error', title: window.t('dlg.not_sent', 'Not sent'), text: e.message });
     } finally {
         if (typeof window.hideSpinner === 'function') window.hideSpinner();
     }

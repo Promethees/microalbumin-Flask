@@ -1,0 +1,18 @@
+{# Language metadata for the document head.
+
+   `hreflang` tells a crawler that these six URLs are the same document in
+   different languages, so it indexes each one instead of treating five of them
+   as thin duplicates of the English original. `x-default` points at English,
+   which is also every page's canonical URL — a translation is `alternate`,
+   never canonical, or the translated pages would deindex themselves.
+
+   Renders nothing on a page that has no language-prefixed twin (see
+   `lang_alternates()` in src/i18n.py). #}
+{% set alternates = lang_alternates(external=True) %}
+{%- if alternates %}
+<link rel="canonical" href="{{ url_for_lang(ui_lang(), external=True) }}">
+{%- for code, tag, href in alternates %}
+<link rel="alternate" hreflang="{{ tag }}" href="{{ href }}">
+{%- endfor %}
+<link rel="alternate" hreflang="x-default" href="{{ url_for_lang(default_ui_lang, external=True) }}">
+{%- endif %}

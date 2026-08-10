@@ -40,8 +40,8 @@ function setupOAuthMessageListener() {
                 if (!getBtnChecked("no-swal-checkbox")) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Connected!',
-                        text: 'Successfully connected to Google Drive',
+                        title: window.t('dlg.connected', 'Connected!'),
+                        text: window.t('dlg.drive_connected_body', 'Successfully connected to Google Drive'),
                         timer: 2000,
                         showConfirmButton: false
                     });
@@ -104,7 +104,7 @@ function connectGoogleDrive() {
             } else {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Connection Failed',
+                    title: window.t('dlg.connection_failed', 'Connection Failed'),
                     text: response.message || 'Failed to initiate Google Drive connection'
                 });
             }
@@ -112,7 +112,7 @@ function connectGoogleDrive() {
         .catch(error => {
             Swal.fire({
                 icon: 'error',
-                title: 'Error',
+                title: window.t('dlg.error', 'Error'),
                 text: error.message || 'Failed to connect to Google Drive'
             });
         });
@@ -145,12 +145,12 @@ function handleOAuthCallback() {
  */
 function disconnectGoogleDrive() {
     Swal.fire({
-        title: 'Disconnect Google Drive?',
-        text: 'Your session data will remain, but will no longer sync to Drive.',
+        title: window.t('dlg.disconnect_drive', 'Disconnect Google Drive?'),
+        text: window.t('dlg.disconnect_drive_body', 'Your session data will remain, but will no longer sync to Drive.'),
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Disconnect',
-        cancelButtonText: 'Cancel'
+        confirmButtonText: window.t('dlg.disconnect', 'Disconnect'),
+        cancelButtonText: window.t('dlg.cancel', 'Cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             fetchJSON('/auth/google/logout', { method: 'POST' })
@@ -223,10 +223,10 @@ function refreshFolderList(selectedId = null) {
         })
         .catch(error => {
             Swal.fire({
-                title: 'Error',
+                title: window.t('dlg.error', 'Error'),
                 html: `Failed to load folders<br><br><small>${error.message}</small>`,
                 icon: 'error',
-                confirmButtonText: 'OK'
+                confirmButtonText: window.t('dlg.ok', 'OK')
             });
         });
 }
@@ -288,7 +288,7 @@ function selectDriveFolder() {
                 showFolderPullHint();
                 if (!getBtnChecked("no-swal-checkbox")) {
                     Swal.fire({
-                        title: 'Success',
+                        title: window.t('dlg.success', 'Success'),
                         text: `Using folder: ${folderName}`,
                         icon: 'success',
                         timer: 1800,
@@ -303,7 +303,7 @@ function selectDriveFolder() {
         })
         .catch(error => {
             Swal.fire({
-                title: 'Error',
+                title: window.t('dlg.error', 'Error'),
                 html: `Failed to select folder<br><small>${error.message}</small>`,
                 icon: 'error'
             });
@@ -369,7 +369,7 @@ function syncToDrive() {
                 if (!getBtnChecked("no-swal-checkbox")) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Sync Complete',
+                        title: window.t('dlg.sync_complete', 'Sync Complete'),
                         text: response.message,
                         timer: 2000
                     });
@@ -379,14 +379,14 @@ function syncToDrive() {
             } else if (response.status === 'partial') {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Partial Sync',
+                    title: window.t('dlg.partial_sync', 'Partial Sync'),
                     text: response.message,
                     footer: `Errors: ${response.errors.join(', ')}`
                 });
             } else {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Sync Failed',
+                    title: window.t('dlg.sync_failed', 'Sync Failed'),
                     text: response.message
                 });
             }
@@ -402,12 +402,12 @@ function syncToDrive() {
  */
 function loadFromDrive() {
     Swal.fire({
-        title: 'Load from Drive?',
-        text: 'This will replace your current session data',
+        title: window.t('dlg.load_from_drive', 'Load from Drive?'),
+        text: window.t('dlg.replace_session_body', 'This will replace your current session data'),
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Load',
-        cancelButtonText: 'Cancel'
+        confirmButtonText: window.t('dlg.load', 'Load'),
+        cancelButtonText: window.t('dlg.cancel', 'Cancel')
     }).then((result) => {
         if (result.isConfirmed) {
             if (typeof window.showSpinner === 'function') window.showSpinner();
@@ -420,7 +420,7 @@ function loadFromDrive() {
                         if (!getBtnChecked("no-swal-checkbox")) {
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Load Complete',
+                                title: window.t('dlg.load_complete', 'Load Complete'),
                                 text: response.message,
                                 timer: 2000,
                                 showConfirmButton: false
@@ -432,7 +432,7 @@ function loadFromDrive() {
                     } else {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Load Failed',
+                            title: window.t('dlg.load_failed', 'Load Failed'),
                             text: response.message
                         });
                     }

@@ -1,457 +1,335 @@
 {% extends "legal_base.html" %}
 
-{% block doc_title %}Terms of Service{% endblock %}
+{# Every clause is a catalog key (ui_translations/<lang>.json). Strings that
+   carry inline markup — a <strong>, a <code>, a link into another clause — are
+   rendered with `t_html`, because the emphasis is part of the sentence and
+   cannot be split out of it without breaking the grammar of a translation.
 
-{% block doc_lede %}These terms are the agreement between you and CBBiotec for the Easy OKAPI web
-application, the Easy OKAPI desktop application, and the account, activation, update and assistant services behind
-them. Read §02 first — it is the one clause that constrains what you may use this software for.{% endblock %}
+   §-numbers are produced by the stylesheet's counters, not by the text, so a
+   translation never has to keep a hand-written number in step. Cross-references
+   inside a clause ("see §11") do name the number, and those live in the string. #}
+
+{% block doc_title %}{{ t('terms.title') }}{% endblock %}
+
+{% block doc_lede %}{{ t('terms.lede') }}{% endblock %}
 
 {% block doc_index %}
-<li><a href="#scope">Who we are, what this covers</a></li>
-<li><a href="#research-use">Research use only</a></li>
-<li><a href="#accounts">Accounts</a></li>
-<li><a href="#licence">Licence to use Easy OKAPI</a></li>
-<li><a href="#activation">Activation and seats</a></li>
-<li><a href="#acceptable-use">Acceptable use</a></li>
-<li><a href="#your-data">Your data and content</a></li>
-<li><a href="#assistant">The AI assistant</a></li>
-<li><a href="#third-party">Third-party services</a></li>
-<li><a href="#availability">Availability and updates</a></li>
-<li><a href="#suspension">Suspension and termination</a></li>
-<li><a href="#ip">Intellectual property</a></li>
-<li><a href="#warranty">No warranty</a></li>
-<li><a href="#liability">Limitation of liability</a></li>
-<li><a href="#indemnity">Indemnity</a></li>
-<li><a href="#changes">Changes to these terms</a></li>
-<li><a href="#law">Governing law</a></li>
-<li><a href="#contact">Contact</a></li>
+<li><a href="#scope">{{ t('terms.idx.scope') }}</a></li>
+<li><a href="#research-use">{{ t('terms.idx.research_use') }}</a></li>
+<li><a href="#accounts">{{ t('terms.idx.accounts') }}</a></li>
+<li><a href="#licence">{{ t('terms.idx.licence') }}</a></li>
+<li><a href="#activation">{{ t('terms.idx.activation') }}</a></li>
+<li><a href="#acceptable-use">{{ t('terms.idx.acceptable_use') }}</a></li>
+<li><a href="#your-data">{{ t('terms.idx.your_data') }}</a></li>
+<li><a href="#assistant">{{ t('terms.idx.assistant') }}</a></li>
+<li><a href="#third-party">{{ t('terms.idx.third_party') }}</a></li>
+<li><a href="#availability">{{ t('terms.idx.availability') }}</a></li>
+<li><a href="#suspension">{{ t('terms.idx.suspension') }}</a></li>
+<li><a href="#ip">{{ t('terms.idx.ip') }}</a></li>
+<li><a href="#warranty">{{ t('terms.idx.warranty') }}</a></li>
+<li><a href="#liability">{{ t('terms.idx.liability') }}</a></li>
+<li><a href="#indemnity">{{ t('terms.idx.indemnity') }}</a></li>
+<li><a href="#changes">{{ t('terms.idx.changes') }}</a></li>
+<li><a href="#law">{{ t('terms.idx.law') }}</a></li>
+<li><a href="#contact">{{ t('terms.idx.contact') }}</a></li>
 {% endblock %}
 
 {% block doc_body %}
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="scope">Who we are, and what these terms cover</h2>
+    <h2 id="scope">{{ t('terms.scope.h') }}</h2>
 
-    <p>Easy OKAPI (<em>Open-colorimeter Kinetics Analysis Platform</em>) is developed and operated by the
-        <strong>Center for Bioscience and Biotechnology (CBBiotec)</strong>, University of Science, Vietnam National
-        University Ho Chi Minh City (HCMUS–VNU), Vietnam. In these terms, "we", "us" and "CBBiotec" mean that
-        centre; "you" means the person or institution using the software.
-    </p>
+    <p>{{ t_html('terms.scope.p1') }}</p>
 
     <ol class="clauses">
-        <li>These terms cover, together the <strong>Service</strong>:
+        <li>{{ t_html('terms.scope.c1') }}
             <ul class="bullets">
-                <li>the website at <code>www.easysensorkit.cbbiotec.vn</code>, including this page;</li>
-                <li>the hosted web application at <code>/webapp</code>;</li>
-                <li>the Easy OKAPI desktop application for Windows, macOS and Linux;</li>
-                <li>the account, download, activation, licence-check, update and AI assistant endpoints that the
-                    website and the desktop application call, including those served from
-                    <code>www.easyokapi.cbbiotec.vn</code>.
-                </li>
+                <li>{{ t_html('terms.scope.c1a') }}</li>
+                <li>{{ t_html('terms.scope.c1b') }}</li>
+                <li>{{ t_html('terms.scope.c1c') }}</li>
+                <li>{{ t_html('terms.scope.c1d') }}</li>
             </ul>
         </li>
-        <li>By creating an account, installing the desktop application, or using the web application, you accept
-            these terms. If you are accepting on behalf of a laboratory, department or company, you confirm you are
-            authorised to bind it, and "you" means that organisation.</li>
-        <li>If you do not accept these terms, do not use the Service. The desktop application can be uninstalled at
-            any time, and your account can be deleted from the account settings panel.</li>
-        <li>Our <a href="/privacy">Privacy Policy</a> is part of these terms and describes what we collect and why.
-        </li>
-        <li>The Service is provided free of charge. Nothing here creates an employment, agency, partnership or joint
-            venture relationship between us.</li>
+        <li>{{ t_html('terms.scope.c2') }}</li>
+        <li>{{ t_html('terms.scope.c3') }}</li>
+        <li>{{ t_html('terms.scope.c4_before') }}
+            <a href="{{ url_for('privacy') }}">{{ t('nav.privacy_policy') }}</a>{{ t('terms.scope.c4_after') }}</li>
+        <li>{{ t_html('terms.scope.c5') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="research-use">Research use only — not a medical device</h2>
+    <h2 id="research-use">{{ t('terms.research_use.h') }}</h2>
 
     <div class="legal-callout">
-        <span class="k">Load-bearing clause</span>
-        <p><strong>Easy OKAPI is a research and education tool. It is not a medical device, it is not registered,
-                cleared or approved as one by any regulator, and it must not be used to diagnose, treat, cure,
-                mitigate or prevent any disease or condition in humans or animals.</strong></p>
+        <span class="k">{{ t('terms.research_use.callout_kicker') }}</span>
+        <p><strong>{{ t('terms.research_use.callout') }}</strong></p>
     </div>
 
     <ol class="clauses">
-        <li>Do not use the Service, or any number it produces, as a basis for a clinical, diagnostic, therapeutic or
-            other patient-care decision.</li>
-        <li>Do not use the Service to produce results that will be reported to a patient, a clinician acting for a
-            patient, an insurer, or a regulator as a clinical finding.</li>
-        <li>The regression fits, standard curves, derived concentrations, saturation values and rate constants the
-            software computes are the output of general-purpose numerical methods applied to numbers you supplied.
-            They carry no guarantee of analytical accuracy, precision, linearity, limit of detection, or fitness for
-            any particular assay.</li>
-        <li>Validating the software for your own assay, instrument, reagent lot and sample matrix — and confirming
-            each result against your own controls before you rely on it — is entirely your responsibility.</li>
-        <li>If your work is subject to a quality system (ISO 15189, ISO/IEC 17025, GLP, GMP, or an institutional
-            review board), you are responsible for determining whether and how this software may be used within it.
-        </li>
-        <li>Where you publish results obtained with Easy OKAPI, please cite it as described on the
-            <a href="/#cite">citation section</a> of the home page.
-        </li>
+        <li>{{ t_html('terms.research_use.c1') }}</li>
+        <li>{{ t_html('terms.research_use.c2') }}</li>
+        <li>{{ t_html('terms.research_use.c3') }}</li>
+        <li>{{ t_html('terms.research_use.c4') }}</li>
+        <li>{{ t_html('terms.research_use.c5') }}</li>
+        <li>{{ t_html('terms.research_use.c6_before') }}
+            <a href="{{ url_for('landing') }}#cite">{{ t('terms.research_use.c6_link') }}</a>{{
+            t('terms.research_use.c6_after') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="accounts">Accounts</h2>
+    <h2 id="accounts">{{ t('terms.accounts.h') }}</h2>
 
     <ol class="clauses">
-        <li>Downloading the desktop application, and using the hosted assistant, requires an account. You may create
-            one with an email address and password, or by signing in with Google or GitHub.</li>
-        <li>You must give a real name and a real email address that you control, and you must verify that address
-            from the link we email you before you can sign in. Verification links expire after 24 hours; password
-            reset links expire after 1 hour.</li>
-        <li>Passwords must be at least 8 characters. We store only a bcrypt hash — we never see or store your
-            password, and we can never send it back to you.</li>
-        <li>You are responsible for everything done through your account. Keep your credentials confidential, and
-            tell us promptly at <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> if you believe your
-            account has been used without your permission.</li>
-        <li>One account is for one person. Do not share an account across a group; if colleagues need access, each
-            should register.</li>
-        <li>The Service is not directed at children. You must be at least 16 years old, or the minimum age of
-            digital consent where you live, whichever is higher, to hold an account.</li>
-        <li>You may delete your account at any time from the account settings panel, with password confirmation.
-            Deletion removes your account record, your linked social sign-in connections, and your activated machine
-            seats.</li>
+        <li>{{ t_html('terms.accounts.c1') }}</li>
+        <li>{{ t_html('terms.accounts.c2') }}</li>
+        <li>{{ t_html('terms.accounts.c3') }}</li>
+        <li>{{ t_html('terms.accounts.c4_before') }}
+            <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t('terms.accounts.c4_after') }}</li>
+        <li>{{ t_html('terms.accounts.c5') }}</li>
+        <li>{{ t_html('terms.accounts.c6') }}</li>
+        <li>{{ t_html('terms.accounts.c7') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="licence">Licence to use Easy OKAPI</h2>
+    <h2 id="licence">{{ t('terms.licence.h') }}</h2>
 
     <ol class="clauses">
-        <li><strong>Source code.</strong> The Easy OKAPI source code is published under the MIT License, and that
-            licence governs the source. Nothing in these terms takes away a right the MIT License grants you over
-            the source code you have obtained.</li>
-        <li><strong>The Service.</strong> These terms — not the MIT License — govern your use of the hosted
-            application and of the account, activation, licence-check, update and assistant endpoints we operate.
-            Running our servers is a service we provide to you; it is not part of the code grant.</li>
-        <li>Subject to these terms, we grant you a personal, non-exclusive, non-transferable, revocable licence to
-            install and use the Easy OKAPI desktop builds we distribute, and to use the hosted web application, for
-            research, teaching and internal evaluation.</li>
-        <li>You may use the Service for commercial research inside your own organisation. You may not resell it,
-            offer it to third parties as a hosted service, or redistribute our signed installers as your own
-            product.</li>
-        <li>We may distribute the desktop application in obfuscated or compiled form. That form is distributed for
-            convenience, and the licence in §04.3 covers its use.</li>
+        <li>{{ t_html('terms.licence.c1') }}</li>
+        <li>{{ t_html('terms.licence.c2') }}</li>
+        <li>{{ t_html('terms.licence.c3') }}</li>
+        <li>{{ t_html('terms.licence.c4') }}</li>
+        <li>{{ t_html('terms.licence.c5') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="activation">Activation, seats and hardware binding</h2>
+    <h2 id="activation">{{ t('terms.activation.h') }}</h2>
 
     <ol class="clauses">
-        <li>The desktop application is activated with a licence token issued to your account. On activation the
-            application computes a <strong>hardware fingerprint</strong> of the machine — a SHA-256 digest of a
-            stable operating-system machine identifier — and the token is cryptographically bound to it.</li>
-        <li>A token is valid on <strong>one machine</strong>. Copying an activated installation, or the
-            <code>activation.json</code> file inside it, to a second machine will not work: the fingerprint will not
-            match and the application will refuse to start.
-        </li>
-        <li>The application contacts our server on start-up and periodically thereafter to confirm that its licence
-            is still valid. If the machine is offline, the application continues to run on its last known good
-            state until the next successful check.</li>
-        <li>If you change or reinstall a machine and need the seat moved, contact us at
-            <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> and we will revoke the old seat and issue a
-            replacement.
-        </li>
-        <li>We may revoke an individual seat, or ban an account entirely, if these terms are breached — see §11.
-            When that happens the desktop application stops working and shows the reason.</li>
-        <li>Attempting to defeat, patch out, spoof or otherwise circumvent activation, the hardware binding, the
-            seat limit or the revocation check is a breach of these terms, regardless of any right the MIT License
-            gives you to modify the source code. The breach is in your use of <em>our service</em>, not in your
-            editing of the code.</li>
+        <li>{{ t_html('terms.activation.c1') }}</li>
+        <li>{{ t_html('terms.activation.c2') }}</li>
+        <li>{{ t_html('terms.activation.c3') }}</li>
+        <li>{{ t_html('terms.activation.c4_before') }}
+            <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t('terms.activation.c4_after') }}</li>
+        <li>{{ t_html('terms.activation.c5') }}</li>
+        <li>{{ t_html('terms.activation.c6') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="acceptable-use">Acceptable use</h2>
+    <h2 id="acceptable-use">{{ t('terms.acceptable_use.h') }}</h2>
 
-    <p>You agree not to:</p>
+    <p>{{ t('terms.acceptable_use.intro') }}</p>
 
     <ul class="bullets">
-        <li>use the Service for any clinical or diagnostic purpose, contrary to §02;</li>
-        <li>use it for anything unlawful, or to develop, produce or handle biological, chemical or other agents in
-            violation of applicable law or treaty;</li>
-        <li>upload malware, or content you have no right to upload;</li>
-        <li>attempt to gain access to another user's account, files, session or reports;</li>
-        <li>probe, scan or test the vulnerability of our infrastructure without our prior written permission — if
-            you are a security researcher, write to us first and we will work with you;</li>
-        <li>circumvent rate limits, mint or forge licence or download tokens, or automate the account, download,
-            activation or assistant endpoints beyond ordinary interactive use;</li>
-        <li>use the assistant to generate abusive, deceptive or illegal content, or to extract the underlying model
-            or its system prompt for a competing service;</li>
-        <li>impose an unreasonable load on the Service, including bulk or scripted uploads that are not part of
-            ordinary laboratory use;</li>
-        <li>submit a review or citation through the community form that impersonates another person or institution.
-        </li>
+        <li>{{ t_html('terms.acceptable_use.b1') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b2') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b3') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b4') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b5') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b6') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b7') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b8') }}</li>
+        <li>{{ t_html('terms.acceptable_use.b9') }}</li>
     </ul>
 
-    <p>Community reviews you submit are emailed to us and reviewed by a person before anything is published. We may
-        decline to publish any submission, edit it for length, or remove it later, at our discretion.</p>
+    <p>{{ t('terms.acceptable_use.outro') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="your-data">Your data and content</h2>
+    <h2 id="your-data">{{ t('terms.your_data.h') }}</h2>
 
     <ol class="clauses">
-        <li>Your measurement data, calibration files, analysis snapshots and reports remain <strong>yours</strong>.
-            We claim no ownership over them and no right to use them for our own research.</li>
-        <li>You grant us only the limited licence needed to operate the Service for you: to store your files for
-            the life of your session, process them to compute the results you requested, render your charts, build
-            your reports, and — where you asked for it — synchronise them to your Google Drive.</li>
-        <li>We do not sell your data, and we do not use your measurement data to train any machine-learning model.
-        </li>
-        <li>You are responsible for having the right to upload what you upload, and for not uploading personal or
-            patient-identifying data. Easy OKAPI is not designed to hold personal health information; do not put
-            patient identifiers into file names, source labels, report subjects or assistant prompts.</li>
-        <li>Files in the hosted web application live in your server-side session. They are not a backup. Export
-            what you need, or connect Google Drive, before you finish a session.</li>
-        <li>In the desktop application, your data stays on your own machine. We never receive it unless you
-            explicitly send it — for example by attaching event logs to a bug report, or by asking the assistant a
-            question that includes it.</li>
+        <li>{{ t_html('terms.your_data.c1') }}</li>
+        <li>{{ t_html('terms.your_data.c2') }}</li>
+        <li>{{ t_html('terms.your_data.c3') }}</li>
+        <li>{{ t_html('terms.your_data.c4') }}</li>
+        <li>{{ t_html('terms.your_data.c5') }}</li>
+        <li>{{ t_html('terms.your_data.c6') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="assistant">The AI assistant</h2>
+    <h2 id="assistant">{{ t('terms.assistant.h') }}</h2>
 
     <ol class="clauses">
-        <li>The OKAPI Assistant is a chat interface backed by a third-party large-language-model provider
-            (currently <a href="https://groq.com" rel="noopener">Groq</a>). Your prompt, the recent conversation,
-            and a small structured description of what is on screen are sent to that provider to produce a reply.
-        </li>
-        <li><strong>The assistant can be wrong.</strong> It may state something false with complete confidence,
-            misread your data, or give a navigation instruction that no longer matches the interface. Treat every
-            answer as a suggestion to verify, never as a result.</li>
-        <li>Do not rely on the assistant for scientific, analytical, regulatory, legal or medical conclusions. §02
-            applies to the assistant in full.</li>
-        <li>Do not paste personal data, patient identifiers, credentials or confidential third-party information
-            into the assistant.</li>
-        <li>Assistant use is rate-limited because each request costs us money upstream. Limits may change without
-            notice.</li>
-        <li>In the desktop application you may supply your own provider API key instead of using our proxy. If you
-            do, your requests go from your machine directly to that provider under your own agreement with them, and
-            we neither see nor route them.</li>
+        <li>{{ t_html('terms.assistant.c1_before') }}
+            <a href="https://groq.com" rel="noopener">Groq</a>{{ t_html('terms.assistant.c1_after') }}</li>
+        <li>{{ t_html('terms.assistant.c2') }}</li>
+        <li>{{ t_html('terms.assistant.c3') }}</li>
+        <li>{{ t_html('terms.assistant.c4') }}</li>
+        <li>{{ t_html('terms.assistant.c5') }}</li>
+        <li>{{ t_html('terms.assistant.c6') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="third-party">Third-party services</h2>
+    <h2 id="third-party">{{ t('terms.third_party.h') }}</h2>
 
-    <p>The Service depends on providers we do not control. Your use of the corresponding feature is also subject to
-        their terms.</p>
+    <p>{{ t('terms.third_party.intro') }}</p>
 
     <div class="legal-table-wrap">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>Provider</th>
-                    <th>Used for</th>
-                    <th>When it applies</th>
+                    <th>{{ t('terms.third_party.col_provider') }}</th>
+                    <th>{{ t('terms.third_party.col_used_for') }}</th>
+                    <th>{{ t('terms.third_party.col_when') }}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>Heroku (Salesforce)</td>
-                    <td>Application hosting, PostgreSQL database, Redis session store</td>
-                    <td>Always</td>
+                    <td>{{ t('terms.third_party.heroku_use') }}</td>
+                    <td>{{ t('terms.third_party.always') }}</td>
                 </tr>
                 <tr>
                     <td>Google</td>
-                    <td>Google sign-in, Google Drive synchronisation, Firestore persistence, outbound email</td>
-                    <td>Always for email; only if you connect it for sign-in and Drive</td>
+                    <td>{{ t('terms.third_party.google_use') }}</td>
+                    <td>{{ t('terms.third_party.google_when') }}</td>
                 </tr>
                 <tr>
                     <td>GitHub</td>
-                    <td>GitHub sign-in, and serving the source release archive</td>
-                    <td>Only if you use GitHub sign-in or download the source</td>
+                    <td>{{ t('terms.third_party.github_use') }}</td>
+                    <td>{{ t('terms.third_party.github_when') }}</td>
                 </tr>
                 <tr>
                     <td>Groq</td>
-                    <td>Large-language-model inference for the assistant</td>
-                    <td>Only when you use the assistant</td>
+                    <td>{{ t('terms.third_party.groq_use') }}</td>
+                    <td>{{ t('terms.third_party.groq_when') }}</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <p>If you connect Google Drive, you authorise us to read from and write to the Drive folder you select on your
-        behalf. You may disconnect at any time from the Drive panel, or revoke access from your Google account
-        security settings. Doing so does not delete files already synchronised to your Drive.</p>
+    <p>{{ t('terms.third_party.drive') }}</p>
 
-    <p>Easy OKAPI is inspired by, but not affiliated with, endorsed by or supported by IORodeo or their Open
-        Colorimeter product. Hardware you use with Easy OKAPI is covered by its own manufacturer's terms and
-        warranty, not ours.</p>
+    <p>{{ t('terms.third_party.iorodeo') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="availability">Availability, changes and updates</h2>
+    <h2 id="availability">{{ t('terms.availability.h') }}</h2>
 
     <ol class="clauses">
-        <li>The Service is provided on a best-effort basis with <strong>no service-level agreement</strong>, no
-            guaranteed uptime and no guaranteed response time. It is an academic project, not a commercial platform.
-        </li>
-        <li>We may add, change, degrade, suspend or discontinue any feature — including the assistant, Drive
-            synchronisation, and the hosted web application itself — at any time, with or without notice.</li>
-        <li>We may impose or change rate limits, storage limits, session lifetimes and seat counts at any time.</li>
-        <li>The desktop application checks for updates and can install them. Updates may be required for continued
-            operation, particularly when a security fix or a licensing change ships. If you decline updates
-            indefinitely, features that depend on our servers may stop working.</li>
-        <li>We are not obliged to preserve, migrate or return session data, reports or uploaded files, and we are
-            not liable for their loss. Keep your own copies.</li>
+        <li>{{ t_html('terms.availability.c1') }}</li>
+        <li>{{ t_html('terms.availability.c2') }}</li>
+        <li>{{ t_html('terms.availability.c3') }}</li>
+        <li>{{ t_html('terms.availability.c4') }}</li>
+        <li>{{ t_html('terms.availability.c5') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="suspension">Suspension, revocation and termination</h2>
+    <h2 id="suspension">{{ t('terms.suspension.h') }}</h2>
 
     <ol class="clauses">
-        <li>We may suspend or terminate your access, revoke an individual machine seat, or ban your account, if we
-            reasonably believe that you have breached these terms, that your account has been compromised, that
-            your use threatens the security or availability of the Service, or that we are required to do so by law.
-        </li>
-        <li>Where circumstances allow, we will tell you why. Where they do not — for instance an active abuse
-            incident — we may act first and explain afterwards.</li>
-        <li>A revoked seat or banned account causes the desktop application to stop working. Ban and revocation take
-            effect the next time the application reaches our server.</li>
-        <li>If you believe a revocation or ban is a mistake, write to
-            <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> and we will review it.
-        </li>
-        <li>You may terminate at any time by deleting your account and uninstalling the application.</li>
-        <li>Sections §02, §07.1, §12, §13, §14, §15 and §17 survive termination.</li>
+        <li>{{ t_html('terms.suspension.c1') }}</li>
+        <li>{{ t_html('terms.suspension.c2') }}</li>
+        <li>{{ t_html('terms.suspension.c3') }}</li>
+        <li>{{ t_html('terms.suspension.c4_before') }}
+            <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t('terms.suspension.c4_after') }}</li>
+        <li>{{ t_html('terms.suspension.c5') }}</li>
+        <li>{{ t_html('terms.suspension.c6') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="ip">Intellectual property</h2>
+    <h2 id="ip">{{ t('terms.ip.h') }}</h2>
 
     <ol class="clauses">
-        <li>Except for the source code released under the MIT License, the Service, its interface, its
-            documentation, the "Easy OKAPI" and "CBBiotec" names and logos, and the content of this website are
-            owned by CBBiotec and its licensors.</li>
-        <li>You may use the Easy OKAPI name to refer accurately to the software — in a paper, a method section, a
-            talk or a course. You may not use our names or logos in a way that suggests we endorse, certify or
-            support your product, service or results.</li>
-        <li>Third-party components are used under their own licences. Feedback you send us about the Service may be
-            used freely and without obligation to you.</li>
-        <li>If you believe something on the Service infringes your rights, write to
-            <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> with enough detail to identify the material
-            and your claim.
-        </li>
+        <li>{{ t_html('terms.ip.c1') }}</li>
+        <li>{{ t_html('terms.ip.c2') }}</li>
+        <li>{{ t_html('terms.ip.c3') }}</li>
+        <li>{{ t_html('terms.ip.c4_before') }}
+            <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t('terms.ip.c4_after') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="warranty">No warranty</h2>
+    <h2 id="warranty">{{ t('terms.warranty.h') }}</h2>
 
     <div class="legal-callout">
-        <span class="k">Disclaimer</span>
-        <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-            INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
-            ACCURACY AND NON-INFRINGEMENT.</p>
+        <span class="k">{{ t('terms.warranty.callout_kicker') }}</span>
+        <p>{{ t('terms.warranty.callout') }}</p>
     </div>
 
-    <p>Without limiting that: we do not warrant that the Service will be uninterrupted, secure or error-free; that
-        defects will be corrected; that any computed value, fit, curve, concentration or report is correct or fit
-        for your purpose; or that the assistant's answers are accurate. Some jurisdictions do not allow the
-        exclusion of certain warranties, in which case this section applies to the fullest extent permitted there.
-    </p>
+    <p>{{ t('terms.warranty.p1') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="liability">Limitation of liability</h2>
+    <h2 id="liability">{{ t('terms.liability.h') }}</h2>
 
     <ol class="clauses">
-        <li>To the fullest extent permitted by law, CBBiotec, HCMUS–VNU and their staff, students and contributors
-            will not be liable for any indirect, incidental, special, consequential, exemplary or punitive damages;
-            nor for lost profits, lost data, lost samples, lost reagents, lost instrument time, wasted experiments,
-            invalidated results, retracted publications, regulatory findings, or reputational harm — however
-            caused, and even if we were told such damage was possible.</li>
-        <li>Our total aggregate liability arising out of or relating to the Service is limited to the greater of
-            (a) the amount you paid us for the Service in the twelve months before the claim, which for a free
-            service is <strong>zero</strong>, and (b) 1,000,000 VND.</li>
-        <li>Nothing in these terms limits liability that cannot be limited by law, including liability for death or
-            personal injury caused by negligence, or for fraud.</li>
-        <li>These limits reflect the allocation of risk in a free, research-purpose, no-warranty tool, and are a
-            basis on which we make the Service available at all.</li>
+        <li>{{ t_html('terms.liability.c1') }}</li>
+        <li>{{ t_html('terms.liability.c2') }}</li>
+        <li>{{ t_html('terms.liability.c3') }}</li>
+        <li>{{ t_html('terms.liability.c4') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="indemnity">Indemnity</h2>
+    <h2 id="indemnity">{{ t('terms.indemnity.h') }}</h2>
 
-    <p>You will indemnify and hold harmless CBBiotec, HCMUS–VNU and their staff and contributors against any claim,
-        demand, loss, liability, cost or expense (including reasonable legal fees) arising from your use of the
-        Service in breach of these terms, from your use of the Service for a clinical or diagnostic purpose contrary
-        to §02, from data you uploaded that you had no right to upload, or from your infringement of a third party's
-        rights.</p>
+    <p>{{ t('terms.indemnity.p1') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="changes">Changes to these terms</h2>
+    <h2 id="changes">{{ t('terms.changes.h') }}</h2>
 
-    <p>We may update these terms. The version number and effective date at the top of this page always identify the
-        current text. For a change that materially reduces your rights or materially increases your obligations, we
-        will give notice — by email to the address on your account, or by a notice in the application — at least 14
-        days before it takes effect, unless the change is required sooner by law or to address a security issue.</p>
+    <p>{{ t('terms.changes.p1') }}</p>
 
-    <p>Continuing to use the Service after a change takes effect means you accept the new terms. If you do not
-        accept them, stop using the Service and delete your account.</p>
+    <p>{{ t('terms.changes.p2') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="law">Governing law and disputes</h2>
+    <h2 id="law">{{ t('terms.law.h') }}</h2>
 
     <ol class="clauses">
-        <li>These terms and any dispute arising from them or from the Service are governed by the laws of the
-            <strong>Socialist Republic of Vietnam</strong>, without regard to conflict-of-laws rules.
-        </li>
-        <li>The competent courts of <strong>Ho Chi Minh City, Vietnam</strong> have exclusive jurisdiction, and you
-            and we submit to that jurisdiction.</li>
-        <li>Before starting proceedings, please contact us — most issues are resolved by email within a few days.
-        </li>
-        <li>If a mandatory consumer-protection rule where you live gives you a right to bring proceedings locally,
-            or applies a protection this clause would remove, that rule prevails to the extent of the conflict.</li>
-        <li>If any provision of these terms is held unenforceable, it is severed and the rest remains in force. Our
-            failure to enforce a provision is not a waiver of it.</li>
-        <li>These terms, together with the <a href="/privacy">Privacy Policy</a>, are the entire agreement between
-            you and us about the Service. You may not assign them; we may assign them to a successor operator of
-            Easy OKAPI within HCMUS–VNU.</li>
+        <li>{{ t_html('terms.law.c1') }}</li>
+        <li>{{ t_html('terms.law.c2') }}</li>
+        <li>{{ t_html('terms.law.c3') }}</li>
+        <li>{{ t_html('terms.law.c4') }}</li>
+        <li>{{ t_html('terms.law.c5') }}</li>
+        <li>{{ t_html('terms.law.c6_before') }}
+            <a href="{{ url_for('privacy') }}">{{ t('nav.privacy_policy') }}</a>{{ t_html('terms.law.c6_after') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="contact">Contact</h2>
+    <h2 id="contact">{{ t('terms.contact.h') }}</h2>
 
-    <p>Center for Bioscience and Biotechnology (CBBiotec)<br>
-        University of Science, Vietnam National University Ho Chi Minh City<br>
-        227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam</p>
+    <p>{{ t('terms.contact.org') }}<br>
+        {{ t('terms.contact.university') }}<br>
+        {{ t('terms.contact.address') }}</p>
 
-    <p>Email: <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a><br>
-        Web: <a href="https://www.easysensorkit.cbbiotec.vn">www.easysensorkit.cbbiotec.vn</a></p>
+    <p>{{ t('terms.contact.email_label') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a><br>
+        {{ t('terms.contact.web_label') }} <a
+            href="https://www.easysensorkit.cbbiotec.vn">www.easysensorkit.cbbiotec.vn</a></p>
 
-    <p>For privacy requests, use the same address and put "Privacy request" in the subject line — see the
-        <a href="/privacy">Privacy Policy</a> for what we can do and how long it takes.
-    </p>
+    <p>{{ t_html('terms.contact.privacy_requests_before') }}
+        <a href="{{ url_for('privacy') }}">{{ t('nav.privacy_policy') }}</a>{{
+        t('terms.contact.privacy_requests_after') }}</p>
 </section>
 
 {% endblock %}

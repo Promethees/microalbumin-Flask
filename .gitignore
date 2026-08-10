@@ -24,6 +24,7 @@ npm-debug.log
 !package-lock.json
 !guide_training.json
 !guide_translations/*.json
+!ui_translations/*.json
 !testimonials.json
 !publications.json
 !organizations.json

@@ -212,11 +212,11 @@ def verify_email(token):
 
     if not user:
         return render_template('verify_email.html', success=False,
-                               message='Verification link is invalid or has already been used.')
+                               message_key='auth.verify.invalid')
 
     if not user.is_verification_token_valid(token):
         return render_template('verify_email.html', success=False,
-                               message='Verification link has expired. Please register again or contact support.')
+                               message_key='auth.verify.expired')
 
     user.is_verified = True
     user.verification_token = None
@@ -224,7 +224,7 @@ def verify_email(token):
     db.session.commit()
 
     return render_template('verify_email.html', success=True,
-                           message='Your email has been verified. You can now log in and download Easy OKAPI.')
+                           message_key='auth.verify.ok')
 
 
 @account_bp.route('/api/account/forgot-password', methods=['POST'])

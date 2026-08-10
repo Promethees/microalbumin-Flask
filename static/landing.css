@@ -1671,3 +1671,73 @@ html.dark .readout {
         transform: none;
     }
 }
+
+/* ── Language picker ──────────────────────────────────────────────────────────
+   Built on <details>, so it opens and closes with no JavaScript (see
+   templates/_lang_switch.html). The summary marker is removed because the
+   globe already says what the control is. */
+.lang-switch {
+    position: relative;
+    font-size: 0.82rem;
+}
+
+.lang-switch>summary {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--ink-2);
+    user-select: none;
+}
+
+.lang-switch>summary::-webkit-details-marker {
+    display: none;
+}
+
+.lang-switch>summary:hover {
+    color: var(--ink);
+    border-color: var(--accent);
+}
+
+.lang-switch .lang-current {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    letter-spacing: 0.04em;
+}
+
+.lang-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 60;
+    min-width: 168px;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: var(--card, #fff);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.lang-menu a {
+    display: block;
+    padding: 7px 10px;
+    border-radius: 6px;
+    color: var(--ink-2);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.lang-menu a:hover {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--ink);
+}
+
+.lang-menu a[aria-current="true"] {
+    color: var(--accent);
+    font-weight: 600;
+}

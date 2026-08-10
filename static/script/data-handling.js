@@ -30,7 +30,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                         Swal.fire({
                             title: `${identityMismatchLabel(m.reason)} mismatch`,
                             text: identityClashText(csvId, jsonId, m.reason),
-                            icon: 'error', confirmButtonText: 'OK'
+                            icon: 'error', confirmButtonText: window.t('dlg.ok', 'OK')
                         });
                         return;
                     }
@@ -70,7 +70,7 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
                     Swal.fire({
                         title: `${identityMismatchLabel(m.reason)} mismatch`,
                         text: identityClashText(csvId, jsonId, m.reason),
-                        icon: 'error', confirmButtonText: 'OK'
+                        icon: 'error', confirmButtonText: window.t('dlg.ok', 'OK')
                     });
                     return;
                 }
@@ -252,10 +252,10 @@ function copyFile(tableSelector = "#file-table") {
 
     if (!currentFile) {
         Swal.fire({
-            title: 'Error!',
-            text: 'No file selected to copy.',
+            title: window.t('dlg.error_bang', 'Error!'),
+            text: window.t('dlg.no_file_to_copy', 'No file selected to copy.'),
             icon: 'error',
-            confirmButtonText: 'OK'
+            confirmButtonText: window.t('dlg.ok', 'OK')
         });
         return;
     }
@@ -289,7 +289,7 @@ function copyFile(tableSelector = "#file-table") {
                 }
                 // Show success message using SweetAlert2
                 Swal.fire({
-                    title: 'Success!',
+                    title: window.t('dlg.success_bang', 'Success!'),
                     text: response.message,
                     icon: 'success',
                     timer: 2000,
@@ -298,10 +298,10 @@ function copyFile(tableSelector = "#file-table") {
             } else {
                 // Handle expected error responses from backend
                 Swal.fire({
-                    title: 'Error!',
+                    title: window.t('dlg.error_bang', 'Error!'),
                     text: response.message || 'An unknown error occurred while copying the file.',
                     icon: 'error',
-                    confirmButtonText: 'OK'
+                    confirmButtonText: window.t('dlg.ok', 'OK')
                 });
             }
         })
@@ -314,10 +314,10 @@ function copyFile(tableSelector = "#file-table") {
             console.error("Copy file error:", error);
 
             Swal.fire({
-                title: 'Error!',
+                title: window.t('dlg.error_bang', 'Error!'),
                 text: message,
                 icon: 'error',
-                confirmButtonText: 'OK'
+                confirmButtonText: window.t('dlg.ok', 'OK')
             });
         });
 }
@@ -386,10 +386,10 @@ function downloadFile(tableSelector = "#file-table") {
 
     if (!currentFile) {
         Swal.fire({
-            title: 'Error!',
-            text: 'No file selected to download.',
+            title: window.t('dlg.error_bang', 'Error!'),
+            text: window.t('dlg.no_file_to_download', 'No file selected to download.'),
             icon: 'error',
-            confirmButtonText: 'OK'
+            confirmButtonText: window.t('dlg.ok', 'OK')
         });
         return;
     }
@@ -422,7 +422,7 @@ function downloadFile(tableSelector = "#file-table") {
                 window.URL.revokeObjectURL(url);
 
                 Swal.fire({
-                    title: 'Success!',
+                    title: window.t('dlg.success_bang', 'Success!'),
                     text: `${currentFile} fetched successfully. Preparing for download`,
                     icon: 'success',
                     timer: 1500,
@@ -430,20 +430,20 @@ function downloadFile(tableSelector = "#file-table") {
                 });
             } else {
                 Swal.fire({
-                    title: 'Error!',
+                    title: window.t('dlg.error_bang', 'Error!'),
                     text: response.message || 'Failed to retrieve file content.',
                     icon: 'error',
-                    confirmButtonText: 'OK'
+                    confirmButtonText: window.t('dlg.ok', 'OK')
                 });
             }
         })
         .catch(error => {
             if (typeof window.hideSpinner === 'function') window.hideSpinner();
             Swal.fire({
-                title: 'Error!',
+                title: window.t('dlg.error_bang', 'Error!'),
                 text: error.message || 'Unexpected error occurred while fetching the file.',
                 icon: 'error',
-                confirmButtonText: 'OK'
+                confirmButtonText: window.t('dlg.ok', 'OK')
             });
         });
 }
@@ -564,7 +564,7 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
                 return; // Exit if no popup is needed   
             }
             Swal.fire({
-                title: 'Deleted!',
+                title: window.t('dlg.deleted', 'Deleted!'),
                 text: response.message,
                 icon: 'success',
                 timer: 2000,
@@ -572,10 +572,10 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
             });
         } else {
             Swal.fire({
-                title: 'Error!',
+                title: window.t('dlg.error_bang', 'Error!'),
                 text: response.message,
                 icon: 'error',
-                confirmButtonText: 'OK'
+                confirmButtonText: window.t('dlg.ok', 'OK')
             }).then(() => {
                 blinkingItem('terminate-script-btn', 5000);
             });
@@ -585,10 +585,10 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
     const handleError = (error) => {
         console.error("Delete file error:", error);
         Swal.fire({
-            title: 'Error!',
+            title: window.t('dlg.error_bang', 'Error!'),
             text: error.message || 'An unexpected error occurred while deleting the file',
             icon: 'error',
-            confirmButtonText: 'OK'
+            confirmButtonText: window.t('dlg.ok', 'OK')
         }).then(() => {
             blinkingItem('terminate-script-btn', 5000);
         });
@@ -599,13 +599,13 @@ function deleteFile(fileName, button, tableSelector = "#file-table") {
     } else {
         // Show confirmation dialog using SweetAlert2
         Swal.fire({
-            title: 'Are you sure?',
+            title: window.t('dlg.are_you_sure', 'Are you sure?'),
             text: `Do you want to delete ${fileName}? This action cannot be undone.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
+            confirmButtonText: window.t('dlg.yes_delete_it', 'Yes, delete it!')
         }).then((result) => {
             if (result.isConfirmed) {
                 proceedDelete();
@@ -1091,8 +1091,8 @@ async function editReportSubject(subjectName, button) {
         `,
         width: '680px',
         showCancelButton: true,
-        confirmButtonText: 'Save',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: window.t('dlg.save', 'Save'),
+        cancelButtonText: window.t('dlg.cancel', 'Cancel'),
         focusConfirm: false,
         didOpen: async () => {
             const container = document.getElementById('swal-items-container');
@@ -1246,12 +1246,12 @@ async function confirmSwalItemDelete(btn) {
 
 function deleteReportSubject(subjectName, button) {
     Swal.fire({
-        title: 'Delete subject?',
+        title: window.t('dlg.delete_subject', 'Delete subject?'),
         text: `This will permanently delete '${subjectName}' and all its items.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete'
+        confirmButtonText: window.t('dlg.yes_delete', 'Yes, delete')
     }).then(async (result) => {
         if (!result.isConfirmed) return;
         try {
@@ -1312,7 +1312,7 @@ function showMergeModal() {
         </div>`;
 
     Swal.fire({
-        title: 'Merge CSV Files',
+        title: window.t('dlg.merge_csv', 'Merge CSV Files'),
         width: 520,
         html: `
             <div style="text-align:left; display:flex; flex-direction:column; gap:6px;">
@@ -1327,7 +1327,7 @@ function showMergeModal() {
         `,
         focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: 'Merge',
+        confirmButtonText: window.t('dlg.merge', 'Merge'),
         didOpen: async () => {
             const list = document.getElementById('merge-file-list');
             const outputInput = document.getElementById('swal-output');
@@ -1502,7 +1502,7 @@ function showMergeModal() {
                         return;
                     }
                     Swal.fire({
-                        title: 'Success!',
+                        title: window.t('dlg.success_bang', 'Success!'),
                         text: response.message,
                         icon: 'success',
                         timer: 2000,
@@ -1511,11 +1511,11 @@ function showMergeModal() {
                         updateDirectory(output_path);
                     });
                 } else {
-                    Swal.fire({ title: 'Error!', text: response.message, icon: 'error' });
+                    Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: response.message, icon: 'error' });
                 }
             },
             error: function (xhr) {
-                Swal.fire({ title: 'Error!', text: xhr.responseJSON?.message || 'Failed to merge files', icon: 'error' });
+                Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: xhr.responseJSON?.message || 'Failed to merge files', icon: 'error' });
             }
         });
     });
@@ -1539,7 +1539,7 @@ function showMergeSubjectsModal() {
 
     const options = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
     Swal.fire({
-        title: 'Merge Report Subjects',
+        title: window.t('dlg.merge_subjects', 'Merge Report Subjects'),
         html: `
             <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
                 <label>First Subject:</label>
@@ -1554,7 +1554,7 @@ function showMergeSubjectsModal() {
             </div>
         `,
         showCancelButton: true,
-        confirmButtonText: 'Merge',
+        confirmButtonText: window.t('dlg.merge', 'Merge'),
         didOpen: () => {
             const s1 = document.getElementById('swal-sub1');
             const s2 = document.getElementById('swal-sub2');
@@ -2052,8 +2052,8 @@ function showMergeModal() {
 
     if (files.length < 2) {
         Swal.fire({
-            title: 'Not enough files',
-            text: 'You need at least two CSV files to merge.',
+            title: window.t('dlg.not_enough_files', 'Not enough files'),
+            text: window.t('dlg.need_two_csv', 'You need at least two CSV files to merge.'),
             icon: 'info'
         });
         return;
@@ -2075,7 +2075,7 @@ function showMergeModal() {
         </div>`;
 
     Swal.fire({
-        title: 'Merge CSV Files',
+        title: window.t('dlg.merge_csv', 'Merge CSV Files'),
         width: 480,
         html: `
             <div style="text-align:left; display:flex; flex-direction:column; gap:6px;">
@@ -2088,7 +2088,7 @@ function showMergeModal() {
         `,
         focusConfirm: false,
         showCancelButton: true,
-        confirmButtonText: 'Merge',
+        confirmButtonText: window.t('dlg.merge', 'Merge'),
         didOpen: () => {
             const list = document.getElementById('merge-file-list');
             const outputInput = document.getElementById('swal-output');
@@ -2190,18 +2190,18 @@ function showMergeModal() {
             .then(response => {
                 if (response.status === 'success') {
                     Swal.fire({
-                        title: 'Success!',
+                        title: window.t('dlg.success_bang', 'Success!'),
                         text: response.message,
                         icon: 'success',
                         timer: 2000,
                         showConfirmButton: false
                     });
                 } else {
-                    Swal.fire({ title: 'Error!', text: response.message, icon: 'error' });
+                    Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: response.message, icon: 'error' });
                 }
             })
             .catch(error => {
-                Swal.fire({ title: 'Error!', text: error.message || 'Failed to merge files', icon: 'error' });
+                Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: error.message || 'Failed to merge files', icon: 'error' });
             });
     });
 }
@@ -2237,8 +2237,8 @@ async function editReportSubject(subjectName, button) {
         `,
         width: '680px',
         showCancelButton: true,
-        confirmButtonText: 'Save',
-        cancelButtonText: 'Cancel',
+        confirmButtonText: window.t('dlg.save', 'Save'),
+        cancelButtonText: window.t('dlg.cancel', 'Cancel'),
         focusConfirm: false,
         didOpen: async () => {
             const container = document.getElementById('swal-items-container');
@@ -2425,12 +2425,12 @@ async function confirmSwalItemDelete(btn) {
 
 function deleteReportSubject(subjectName, button) {
     Swal.fire({
-        title: 'Delete subject?',
+        title: window.t('dlg.delete_subject', 'Delete subject?'),
         text: `This will permanently delete '${subjectName}' and all its items.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete'
+        confirmButtonText: window.t('dlg.yes_delete', 'Yes, delete')
     }).then(async (result) => {
         if (!result.isConfirmed) return;
         try {
@@ -2485,7 +2485,7 @@ function showMergeSubjectsModal() {
 
     const options = subjects.map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
     Swal.fire({
-        title: 'Merge Report Subjects',
+        title: window.t('dlg.merge_subjects', 'Merge Report Subjects'),
         html: `
             <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
                 <label>First Subject:</label>
@@ -2498,7 +2498,7 @@ function showMergeSubjectsModal() {
             </div>
         `,
         showCancelButton: true,
-        confirmButtonText: 'Merge',
+        confirmButtonText: window.t('dlg.merge', 'Merge'),
         didOpen: () => {
             const s1 = document.getElementById('swal-sub1');
             const s2 = document.getElementById('swal-sub2');
@@ -2536,7 +2536,7 @@ function showMergeSubjectsModal() {
 
 async function saveRangeCsv() {
     if (!AppState.currentFile) {
-        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        Swal.fire({ icon: 'warning', title: window.t('dlg.no_file_selected', 'No file selected'), text: window.t('dlg.select_data_file_first', 'Select a data file first.') });
         return;
     }
 
@@ -2546,7 +2546,7 @@ async function saveRangeCsv() {
     const unitLabel = unit.slice(0, -1);
 
     const { value: saveName } = await Swal.fire({
-        title: 'Save Range to CSV',
+        title: window.t('dlg.save_range_csv', 'Save Range to CSV'),
         input: 'text',
         inputLabel: `Rows from ${rangeStart} to ${rangeEnd} ${unitLabel} — save as:`,
         inputPlaceholder: 'filename (without .csv)',
@@ -2571,24 +2571,24 @@ async function saveRangeCsv() {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved as ${data.save_name}` });
+            Swal.fire({ icon: 'success', title: window.t('dlg.saved', 'Saved'), text: `${data.count} rows saved as ${data.save_name}` });
         } else {
-            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+            Swal.fire({ icon: 'error', title: window.t('dlg.save_failed', 'Save failed'), text: data.message });
         }
     } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+        Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
     }
 }
 
 async function saveNormalizedCsv() {
     if (!AppState.currentFile) {
-        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        Swal.fire({ icon: 'warning', title: window.t('dlg.no_file_selected', 'No file selected'), text: window.t('dlg.select_data_file_first', 'Select a data file first.') });
         return;
     }
 
     const stem = AppState.currentFile.replace(/\.csv$/i, '');
     const { value: saveName } = await Swal.fire({
-        title: 'Save Normalized Data',
+        title: window.t('dlg.save_normalized', 'Save Normalized Data'),
         input: 'text',
         inputLabel: 'Every column minus its own minimum (blank removed) — save as:',
         inputPlaceholder: 'filename (without .csv)',
@@ -2611,18 +2611,18 @@ async function saveNormalizedCsv() {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved as ${data.save_name}` });
+            Swal.fire({ icon: 'success', title: window.t('dlg.saved', 'Saved'), text: `${data.count} rows saved as ${data.save_name}` });
         } else {
-            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+            Swal.fire({ icon: 'error', title: window.t('dlg.save_failed', 'Save failed'), text: data.message });
         }
     } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+        Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
     }
 }
 
 async function saveNormalizedCsvForSource(sourceIndex) {
     if (!AppState.currentFile) {
-        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        Swal.fire({ icon: 'warning', title: window.t('dlg.no_file_selected', 'No file selected'), text: window.t('dlg.select_data_file_first', 'Select a data file first.') });
         return;
     }
 
@@ -2651,18 +2651,18 @@ async function saveNormalizedCsvForSource(sourceIndex) {
         });
         const data = await res.json();
         if (data.status === 'success') {
-            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved as ${data.save_name}` });
+            Swal.fire({ icon: 'success', title: window.t('dlg.saved', 'Saved'), text: `${data.count} rows saved as ${data.save_name}` });
         } else {
-            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+            Swal.fire({ icon: 'error', title: window.t('dlg.save_failed', 'Save failed'), text: data.message });
         }
     } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+        Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
     }
 }
 
 async function saveLinearityRangeCsvForSource(sourceIndex, linearXMin, linearXMax) {
     if (!AppState.currentFile) {
-        Swal.fire({ icon: 'warning', title: 'No file selected', text: 'Select a data file first.' });
+        Swal.fire({ icon: 'warning', title: window.t('dlg.no_file_selected', 'No file selected'), text: window.t('dlg.select_data_file_first', 'Select a data file first.') });
         return;
     }
 
@@ -2699,11 +2699,11 @@ async function saveLinearityRangeCsvForSource(sourceIndex, linearXMin, linearXMa
         });
         const data = await res.json();
         if (data.status === 'success') {
-            Swal.fire({ icon: 'success', title: 'Saved', text: `${data.count} rows saved as ${data.save_name}` });
+            Swal.fire({ icon: 'success', title: window.t('dlg.saved', 'Saved'), text: `${data.count} rows saved as ${data.save_name}` });
         } else {
-            Swal.fire({ icon: 'error', title: 'Save failed', text: data.message });
+            Swal.fire({ icon: 'error', title: window.t('dlg.save_failed', 'Save failed'), text: data.message });
         }
     } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Request failed.' });
+        Swal.fire({ icon: 'error', title: window.t('dlg.error', 'Error'), text: window.t('dlg.request_failed', 'Request failed.') });
     }
 }

@@ -1,0 +1,26 @@
+{# Language picker. Shared by the landing page, the legal pages and the web app.
+
+   Built from <details>, so it opens, closes and is keyboard-operable with no
+   JavaScript at all — a visitor whose scripts failed can still change language.
+   Every entry is a real <a>, so a crawler follows them; they point at
+   /set-language/<code>, which records the choice before redirecting to the
+   translated URL (see `set_language` in src/i18n.py for why the indirection).
+
+   Renders nothing on a page with no localized twin. #}
+{% set alternates = lang_alternates() %}
+{%- if alternates %}
+<details class="lang-switch">
+    <summary aria-label="{{ t('nav.language') }}" title="{{ t('nav.language') }}">
+        <span class="lang-globe" aria-hidden="true">🌐</span>
+        <span class="lang-current">{{ ui_lang()|upper }}</span>
+    </summary>
+    <ul class="lang-menu">
+        {%- for code, tag, href in alternates %}
+        <li>
+            <a href="{{ picker_url(code) }}" hreflang="{{ tag }}" lang="{{ tag }}"
+               {% if code == ui_lang() %}aria-current="true"{% endif %}>{{ ui_languages[code] }}</a>
+        </li>
+        {%- endfor %}
+    </ul>
+</details>
+{%- endif %}

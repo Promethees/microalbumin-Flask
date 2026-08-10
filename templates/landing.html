@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ ui_lang_tag() }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <meta name="description"
-        content="Easy OKAPI reads Open Colorimeter runs, fits the kinetics, builds the standard curve and writes the report, in the browser or offline on your bench machine.">
-    <meta property="og:title" content="Easy OKAPI — Open-colorimeter Kinetics Analysis Platform">
-    <meta property="og:description"
-        content="Kinetics, endpoint, calibration and reporting for colorimetric assays. Run it in the browser or install it next to the instrument.">
+    <title>{{ t('landing.page_title') }}</title>
+    <meta name="description" content="{{ t('landing.meta_description') }}">
+    <meta property="og:title" content="{{ t('landing.og_title') }}">
+    <meta property="og:description" content="{{ t('landing.og_description') }}">
     <meta property="og:type" content="website">
+    <meta property="og:locale" content="{{ ui_lang_tag() }}">
+    {% include "_lang_head.html" %}
 
     <!-- Theme is applied before first paint so the page never flashes light. -->
     <script>
@@ -39,33 +39,35 @@
     <!-- ── Nav ─────────────────────────────────────────────────────────── -->
     <header class="nav">
         <div class="shell nav-inner">
-            <a class="brand" href="/">
+            <a class="brand" href="{{ url_for('landing') }}">
                 <img src="{{ url_for('static', filename='cbb.png') }}" alt="CBBiotec">
                 <span>
                     <span class="brand-name"><span>Easy</span> OKAPI</span><br>
-                    <span class="brand-sub">by CBBiotec</span>
+                    <span class="brand-sub">{{ t('nav.by_cbbiotec') }}</span>
                 </span>
             </a>
 
-            <nav class="nav-links" id="nav-links" aria-label="Sections">
-                <a href="#modes">Modes</a>
-                <a href="#workflow">Workflow</a>
-                <a href="#capabilities">Capabilities</a>
-                <a href="#run">Get it</a>
-                <a href="#cite">Cite</a>
+            <nav class="nav-links" id="nav-links" aria-label="{{ t('nav.sections') }}">
+                <a href="#modes">{{ t('nav.modes') }}</a>
+                <a href="#workflow">{{ t('nav.workflow') }}</a>
+                <a href="#capabilities">{{ t('nav.capabilities') }}</a>
+                <a href="#run">{{ t('nav.get_it') }}</a>
+                <a href="#cite">{{ t('nav.cite') }}</a>
             </nav>
 
             <div class="nav-actions">
-                <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch colour theme">◐</button>
+                {% include "_lang_switch.html" %}
+                <button class="theme-toggle" id="theme-toggle" type="button"
+                    aria-label="{{ t('nav.switch_theme') }}">◐</button>
                 {% if account_user %}
-                <span class="nav-account" title="{{ account_user.email }}">Signed in as <strong>{{ account_user.name
-                        }}</strong></span>
+                <span class="nav-account" title="{{ account_user.email }}">{{ t('nav.signed_in_as') }} <strong>{{
+                        account_user.name }}</strong></span>
                 {% else %}
-                <a class="btn btn-ghost" href="/account/login">Sign in</a>
+                <a class="btn btn-ghost" href="{{ url_for('account.login_page') }}">{{ t('nav.sign_in') }}</a>
                 {% endif %}
-                <a class="btn btn-primary" href="/webapp">Open the web app</a>
+                <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('nav.open_webapp') }}</a>
                 <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false"
-                    aria-controls="nav-links" aria-label="Show sections">☰</button>
+                    aria-controls="nav-links" aria-label="{{ t('nav.show_sections') }}">☰</button>
             </div>
         </div>
         <div class="nav-progress" aria-hidden="true"><span id="nav-progress"></span></div>
@@ -76,28 +78,26 @@
         <section class="hero">
             <div class="shell hero-grid">
                 <div>
-                    <p class="eyebrow">Open-colorimeter kinetics analysis platform</p>
-                    <h1>From cuvette to <em>standard curve</em> in one app.</h1>
-                    <p class="hero-lede">Easy OKAPI reads your colorimeter runs, fits the kinetics, builds the
-                        calibration and writes the report. Open it in a browser, or install it next to the
-                        instrument and work offline.</p>
+                    <p class="eyebrow">{{ t('footer.tagline') }}</p>
+                    <h1>{{ t_html('landing.hero.h1') }}</h1>
+                    <p class="hero-lede">{{ t('landing.hero.lede') }}</p>
 
                     <div class="hero-cta">
-                        <a class="btn btn-primary" href="/webapp">Open the web app <span class="btn-arrow"
-                                aria-hidden="true">→</span></a>
-                        <a class="btn btn-ghost" href="#run">Get the desktop app</a>
+                        <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('nav.open_webapp') }} <span
+                                class="btn-arrow" aria-hidden="true">→</span></a>
+                        <a class="btn btn-ghost" href="#run">{{ t('landing.hero.get_desktop') }}</a>
                     </div>
 
                     <!-- Label first, list second: the list is the spec, so a count
                          of it says nothing the row does not already show. -->
                     <dl class="hero-spec">
                         <div>
-                            <dt>Modes</dt>
+                            <dt>{{ t('landing.spec.modes') }}</dt>
                             <dd>kinetics, point, calibrate, report</dd>
                         </div>
                         <div>
-                            <dt>Regressions</dt>
-                            <dd>linear, polynomial, log, exponential, Michaelis–Menten</dd>
+                            <dt>{{ t('landing.spec.regressions') }}</dt>
+                            <dd>{{ t('landing.spec.regressions_v') }}</dd>
                         </div>
                         <!-- The app counts Value: columns and has no ceiling of its
                              own; the instrument sets the number. Four is where the
@@ -105,11 +105,11 @@
                              detection angles on open-plus, three UV bands on
                              open-uv, four multiplexed cuvettes on open-extra. -->
                         <div>
-                            <dt>Channels</dt>
-                            <dd>up to 4, set by the instrument</dd>
+                            <dt>{{ t('landing.spec.channels') }}</dt>
+                            <dd>{{ t('landing.spec.channels_v') }}</dd>
                         </div>
                         <div>
-                            <dt>Interface</dt>
+                            <dt>{{ t('landing.spec.interface') }}</dt>
                             <dd>EN, VI, 中文, FR, 日本語, RU</dd>
                         </div>
                     </dl>
@@ -124,16 +124,16 @@
                             <span class="readout-dot" aria-hidden="true"></span>
                             <span class="readout-file" id="rd-file">520nm_20042026_HSA.csv</span>
                             <button class="readout-tag" id="rd-run" type="button"
-                                aria-label="Replay the sample run">
+                                aria-label="{{ t('landing.readout.replay_aria') }}">
                                 <svg viewBox="0 0 8 10" aria-hidden="true">
                                     <path d="M0 0l8 5-8 5z" />
                                 </svg>
-                                <span id="rd-run-label">Run</span>
+                                <span id="rd-run-label">{{ t('landing.readout.run') }}</span>
                             </button>
                         </div>
 
                         <svg class="readout-plot" id="rd-plot" viewBox="0 0 520 256" role="img"
-                            aria-label="Absorbance rising over twelve minutes and levelling off, with the maximum-rate window marked">
+                            aria-label="{{ t('landing.readout.plot_aria') }}">
                         </svg>
 
                         <!-- Seeded with the finished 520 nm run, the same numbers the
@@ -142,19 +142,19 @@
                              it never shows a dash before the script has loaded. -->
                         <dl class="readout-values">
                             <div>
-                                <dt>Max rate</dt>
+                                <dt>{{ t('landing.readout.max_rate') }}</dt>
                                 <dd id="rd-rate">0.0186<span class="unit">± 0.0004 ΔA·s⁻¹</span></dd>
                             </div>
                             <div>
-                                <dt>Slope</dt>
+                                <dt>{{ t('landing.readout.slope') }}</dt>
                                 <dd id="rd-slope">0.0113<span class="unit">ΔA·s⁻¹</span></dd>
                             </div>
                             <div>
-                                <dt>Saturation</dt>
+                                <dt>{{ t('landing.readout.saturation') }}</dt>
                                 <dd id="rd-sat">0.964<span class="unit">AU</span></dd>
                             </div>
                             <div>
-                                <dt>Time to saturation</dt>
+                                <dt>{{ t('landing.readout.tts') }}</dt>
                                 <dd id="rd-tts">7.8<span class="unit">min</span></dd>
                             </div>
                         </dl>
@@ -165,7 +165,7 @@
                                  as if the instrument only saw four fixed wavelengths.
                                  The label names what they change, and each button
                                  names its colour for anyone hovering or listening. -->
-                            <p class="channels-label" id="channels-label">Theme</p>
+                            <p class="channels-label" id="channels-label">{{ t('landing.readout.theme') }}</p>
 
                             <!-- The channels are positions on the visible spectrum, so the
                                  strip is drawn against a real 380–700 nm scale. -->
@@ -186,19 +186,19 @@
 
                             <div class="channel-strip" role="group" aria-labelledby="channels-label">
                                 <button class="channel" type="button" data-band="450" style="--swatch: #3a66e0;"
-                                    aria-pressed="false" title="450 nm — blue" aria-label="450 nm, blue">
+                                    aria-pressed="false" title="{{ t('landing.band.450') }}" aria-label="{{ t('landing.band.450_aria') }}">
                                     <span class="channel-swatch" aria-hidden="true"></span>450 nm
                                 </button>
                                 <button class="channel" type="button" data-band="520" style="--swatch: #17a35f;"
-                                    aria-pressed="true" title="520 nm — green" aria-label="520 nm, green">
+                                    aria-pressed="true" title="{{ t('landing.band.520') }}" aria-label="{{ t('landing.band.520_aria') }}">
                                     <span class="channel-swatch" aria-hidden="true"></span>520 nm
                                 </button>
                                 <button class="channel" type="button" data-band="570" style="--swatch: #d19a00;"
-                                    aria-pressed="false" title="570 nm — amber" aria-label="570 nm, amber">
+                                    aria-pressed="false" title="{{ t('landing.band.570') }}" aria-label="{{ t('landing.band.570_aria') }}">
                                     <span class="channel-swatch" aria-hidden="true"></span>570 nm
                                 </button>
                                 <button class="channel" type="button" data-band="620" style="--swatch: #dd4b2a;"
-                                    aria-pressed="false" title="620 nm — red" aria-label="620 nm, red">
+                                    aria-pressed="false" title="{{ t('landing.band.620') }}" aria-label="{{ t('landing.band.620_aria') }}">
                                     <span class="channel-swatch" aria-hidden="true"></span>620 nm
                                 </button>
                             </div>
@@ -256,13 +256,12 @@
             <div class="shell">
                 <div class="watch-grid reveal">
                     <div class="watch-copy">
-                        <h2>Detecting beta-lactamase, start to finish.</h2>
-                        <p>Six minutes on a real assay: capture on the colorimeter, the kinetics fit, the standard
-                            curve, and the report that comes out the other end.</p>
+                        <h2>{{ t('landing.watch.h') }}</h2>
+                        <p>{{ t('landing.watch.p') }}</p>
                     </div>
                     <div class="watch-frame">
                         <iframe src="https://www.youtube-nocookie.com/embed/auOhoa2AaQo?rel=0"
-                            title="Easy OKAPI introduction" loading="lazy" frameborder="0"
+                            title="{{ t('landing.watch.iframe_title') }}" loading="lazy" frameborder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             allowfullscreen></iframe>
                     </div>
@@ -274,59 +273,54 @@
         <section class="section" id="modes">
             <div class="shell">
                 <div class="section-head reveal">
-                    <p class="eyebrow">Four modes, one dataset</p>
-                    <h2>Pick the mode and the fit follows.</h2>
-                    <p>The same files carry through every mode. Switch from a raw trace to a fitted standard curve
-                        to a printable report without exporting anything in between.</p>
+                    <p class="eyebrow">{{ t('landing.modes.eyebrow') }}</p>
+                    <h2>{{ t('landing.modes.h') }}</h2>
+                    <p>{{ t('landing.modes.p') }}</p>
                 </div>
 
                 <div class="mode-list reveal">
                     <article class="mode">
                         <p class="mode-name">kinetics</p>
-                        <h3>Time-series absorbance</h3>
-                        <p>Sliding-window regression across the whole trace, with the annotation lines drawn on the
-                            chart.</p>
+                        <h3>{{ t('landing.modes.kinetics_h') }}</h3>
+                        <p>{{ t('landing.modes.kinetics_p') }}</p>
                         <ul>
-                            <li>Max rate — highest ΔAbs/s</li>
-                            <li>Slope over the full run</li>
-                            <li>Saturation value</li>
-                            <li>Time to saturation</li>
+                            <li>{{ t('landing.modes.kinetics_b1') }}</li>
+                            <li>{{ t('landing.modes.kinetics_b2') }}</li>
+                            <li>{{ t('landing.modes.kinetics_b3') }}</li>
+                            <li>{{ t('landing.modes.kinetics_b4') }}</li>
                         </ul>
                     </article>
 
                     <article class="mode">
                         <p class="mode-name">point</p>
-                        <h3>Endpoint assays</h3>
-                        <p>Read a single time point across every source, with baseline subtraction when you need to
-                            compare channels directly.</p>
+                        <h3>{{ t('landing.modes.point_h') }}</h3>
+                        <p>{{ t('landing.modes.point_p') }}</p>
                         <ul>
-                            <li>Per-source time point</li>
-                            <li>Normalise to baseline</li>
-                            <li>Multi-source splitting</li>
+                            <li>{{ t('landing.modes.point_b1') }}</li>
+                            <li>{{ t('landing.modes.point_b2') }}</li>
+                            <li>{{ t('landing.modes.point_b3') }}</li>
                         </ul>
                     </article>
 
                     <article class="mode">
                         <p class="mode-name">calibrate</p>
-                        <h3>Standard curves</h3>
-                        <p>Fit known concentrations against any kinetics quantity or time point, then keep the
-                            coefficients as a reusable JSON file.</p>
+                        <h3>{{ t('landing.modes.calibrate_h') }}</h3>
+                        <p>{{ t('landing.modes.calibrate_p') }}</p>
                         <ul>
-                            <li>Linear · polynomial · logarithmic</li>
-                            <li>Exponential · Michaelis–Menten</li>
-                            <li>R² threshold filtering</li>
+                            <li>{{ t('landing.modes.calibrate_b1') }}</li>
+                            <li>{{ t('landing.modes.calibrate_b2') }}</li>
+                            <li>{{ t('landing.modes.calibrate_b3') }}</li>
                         </ul>
                     </article>
 
                     <article class="mode">
                         <p class="mode-name">report</p>
-                        <h3>Compiled results</h3>
-                        <p>Group saved analysis snapshots into subjects, reorder them, and publish the set in one
-                            pass.</p>
+                        <h3>{{ t('landing.modes.report_h') }}</h3>
+                        <p>{{ t('landing.modes.report_p') }}</p>
                         <ul>
-                            <li>Printable HTML, saves as PDF</li>
-                            <li>Excel workbook with charts</li>
-                            <li>Merge and rename subjects</li>
+                            <li>{{ t('landing.modes.report_b1') }}</li>
+                            <li>{{ t('landing.modes.report_b2') }}</li>
+                            <li>{{ t('landing.modes.report_b3') }}</li>
                         </ul>
                     </article>
                 </div>
@@ -337,48 +331,39 @@
         <section class="section" id="workflow">
             <div class="shell">
                 <div class="section-head reveal">
-                    <p class="eyebrow">One run, end to end</p>
-                    <h2>The path a measurement takes.</h2>
-                    <p>The desktop build drives the colorimeter itself, so a run goes from the cuvette to the
-                        finished report without leaving the app or re-typing a number.</p>
+                    <p class="eyebrow">{{ t('landing.workflow.eyebrow') }}</p>
+                    <h2>{{ t('landing.workflow.h') }}</h2>
+                    <p>{{ t('landing.workflow.p') }}</p>
                 </div>
 
                 <div class="flow reveal">
                     <div class="step">
-                        <h3>Connect</h3>
-                        <p>Plug the colorimeter in over USB. The app reads its mode, active channels, live value
-                            and battery, and gives you a keypad to drive the menu without touching the device.</p>
+                        <h3>{{ t('landing.workflow.connect_h') }}</h3>
+                        <p>{{ t('landing.workflow.connect_p') }}</p>
                     </div>
                     <div class="step">
-                        <h3>Record</h3>
-                        <p>Start a session with your own folder and filename. Readings land on the chart as they
-                            arrive — pause, resume, or take a manual point reading mid-run.</p>
+                        <h3>{{ t('landing.workflow.record_h') }}</h3>
+                        <p>{{ t('landing.workflow.record_p') }}</p>
                     </div>
                     <div class="step">
-                        <h3>Analyse</h3>
-                        <p>Chart absorbance against time, zoom to a window, set the sliding-window size, and read
-                            the kinetics for each source.</p>
+                        <h3>{{ t('landing.workflow.analyse_h') }}</h3>
+                        <p>{{ t('landing.workflow.analyse_p') }}</p>
                     </div>
                     <div class="step">
-                        <h3>Calibrate</h3>
-                        <p>Fit your standards with the regression that suits the chemistry, check R², and export the
-                            coefficients.</p>
+                        <h3>{{ t('landing.workflow.calibrate_h') }}</h3>
+                        <p>{{ t('landing.workflow.calibrate_p') }}</p>
                     </div>
                     <div class="step">
-                        <h3>Derive</h3>
-                        <p>Load a saved curve and every measured value is converted to concentration next to its own
-                            analysis panel.</p>
+                        <h3>{{ t('landing.workflow.derive_h') }}</h3>
+                        <p>{{ t('landing.workflow.derive_p') }}</p>
                     </div>
                     <div class="step">
-                        <h3>Report</h3>
-                        <p>Push snapshots into named subjects and publish the lot as HTML or an Excel workbook with
-                            charts.</p>
+                        <h3>{{ t('landing.workflow.report_h') }}</h3>
+                        <p>{{ t('landing.workflow.report_p') }}</p>
                     </div>
                 </div>
 
-                <p class="section-note reveal">Connect and Record need the desktop build, because a browser tab cannot
-                    reach a USB device. From Analyse onwards the web app does the same work on files you already have.
-                </p>
+                <p class="section-note reveal">{{ t('landing.workflow.note') }}</p>
             </div>
         </section>
 
@@ -386,47 +371,37 @@
         <section class="section" id="capabilities">
             <div class="shell">
                 <div class="section-head reveal">
-                    <h2>Built around how a bench actually runs.</h2>
+                    <h2>{{ t('landing.caps.h') }}</h2>
                 </div>
 
                 <div class="caps reveal">
                     <div class="cap">
-                        <h3>Your data, your disk</h3>
-                        <p>Everything lands in one folder — by default under your Documents, and movable to an
-                            external drive from App Settings. Nothing is uploaded anywhere.</p>
+                        <h3>{{ t('landing.caps.disk_h') }}</h3>
+                        <p>{{ t('landing.caps.disk_p') }}</p>
                     </div>
                     <div class="cap">
-                        <h3>CSV and folder housekeeping</h3>
-                        <p>Create, rename, copy, move, merge and edit CSVs and their folders without leaving the
-                            app or opening a file manager.</p>
+                        <h3>{{ t('landing.caps.csv_h') }}</h3>
+                        <p>{{ t('landing.caps.csv_p') }}</p>
                     </div>
                     <div class="cap">
-                        <h3>Multi-source runs</h3>
-                        <p>Each measurement channel gets its own chart. Split by source, filter by source count, or
-                            normalise them all to baseline.</p>
+                        <h3>{{ t('landing.caps.sources_h') }}</h3>
+                        <p>{{ t('landing.caps.sources_p') }}</p>
                     </div>
                     <div class="cap">
-                        <h3>Five regression models</h3>
-                        <p>Linear, polynomial, logarithmic, exponential and Michaelis–Menten, with an R² threshold
-                            to drop poor windows.</p>
+                        <h3>{{ t('landing.caps.models_h') }}</h3>
+                        <p>{{ t('landing.caps.models_p') }}</p>
                     </div>
                     <div class="cap">
-                        <h3>Live formulas, not frozen numbers</h3>
-                        <p>Exported workbooks carry the fitted curve as a real Excel formula, so a value typed into
-                            the sheet returns its concentration.</p>
+                        <h3>{{ t('landing.caps.formulas_h') }}</h3>
+                        <p>{{ t('landing.caps.formulas_p') }}</p>
                     </div>
                     <div class="cap">
-                        <h3>OKAPI Assistant</h3>
-                        <p>Ask about your data, your coefficients or the interface. It answers, or walks you through
-                            the app step by step. This is the one feature that needs an internet connection;
-                            everything else works without one.</p>
+                        <h3>{{ t('landing.caps.assistant_h') }}</h3>
+                        <p>{{ t('landing.caps.assistant_p') }}</p>
                     </div>
                 </div>
 
-                <p class="section-note reveal">The interface speaks English, Tiếng Việt, 中文 (简体), Français, 日本語
-                    and Русский. Theme, default mode, time and concentration units and sort order are remembered
-                    between launches, and an update installs over the top without touching your data, reports or
-                    settings.</p>
+                <p class="section-note reveal">{{ t('landing.caps.note') }}</p>
             </div>
         </section>
 
@@ -434,44 +409,42 @@
         <section class="section" id="run">
             <div class="shell">
                 <div class="section-head reveal">
-                    <p class="eyebrow">Two ways to run it</p>
-                    <h2>In the browser, or beside the instrument.</h2>
-                    <p>Both builds run the same analysis. The desktop build adds direct device control, which a
-                        browser tab cannot do.</p>
+                    <p class="eyebrow">{{ t('landing.run.eyebrow') }}</p>
+                    <h2>{{ t('landing.run.h') }}</h2>
+                    <p>{{ t('landing.run.p') }}</p>
                 </div>
 
                 <div class="ways reveal">
                     <article class="way way--featured">
-                        <p class="way-kicker">Web app</p>
-                        <h3>Start now, install nothing</h3>
-                        <p>Open a tab, drop your files in, and work. An account keeps your session files and lets
-                            you sync to Drive.</p>
+                        <p class="way-kicker">{{ t('footer.web_app') }}</p>
+                        <h3>{{ t('landing.run.web_h') }}</h3>
+                        <p>{{ t('landing.run.web_p') }}</p>
                         <ul class="way-list">
-                            <li>Full kinetics, point, calibrate and report modes</li>
-                            <li>Files persist for signed-in accounts</li>
-                            <li>Google Drive push and pull</li>
-                            <li>OKAPI Assistant included</li>
+                            <li>{{ t('landing.run.web_b1') }}</li>
+                            <li>{{ t('landing.run.web_b2') }}</li>
+                            <li>{{ t('landing.run.web_b3') }}</li>
+                            <li>{{ t('landing.run.web_b4') }}</li>
                         </ul>
                         <div class="way-foot">
-                            <a class="btn btn-primary" href="/webapp">Open the web app <span class="btn-arrow"
-                                    aria-hidden="true">→</span></a>
+                            <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('nav.open_webapp') }}
+                                <span class="btn-arrow" aria-hidden="true">→</span></a>
                             {% if not account_user %}
-                            <p class="way-note">No account yet? <a href="/account/signup">Create one</a> to keep
-                                your files between sessions.</p>
+                            <p class="way-note">{{ t('landing.run.no_account') }}
+                                <a href="{{ url_for('account.signup_page') }}">{{ t('landing.run.create_one') }}</a>{{
+                                t('landing.run.no_account_after') }}</p>
                             {% endif %}
                         </div>
                     </article>
 
                     <article class="way">
-                        <p class="way-kicker">Desktop app</p>
-                        <h3>Talk to the colorimeter directly</h3>
-                        <p>Install Easy OKAPI on the bench machine to drive the device and analyse the run in the
-                            same place, with no network in the loop.</p>
+                        <p class="way-kicker">{{ t('footer.desktop_app') }}</p>
+                        <h3>{{ t('landing.run.desktop_h') }}</h3>
+                        <p>{{ t('landing.run.desktop_p') }}</p>
                         <ul class="way-list">
-                            <li>Direct device control and live capture</li>
-                            <li>Works with no internet connection</li>
-                            <li>Same analysis and report engine</li>
-                            <li>Activated with a download token from your account</li>
+                            <li>{{ t('landing.run.desktop_b1') }}</li>
+                            <li>{{ t('landing.run.desktop_b2') }}</li>
+                            <li>{{ t('landing.run.desktop_b3') }}</li>
+                            <li>{{ t('landing.run.desktop_b4') }}</li>
                         </ul>
                         <div class="way-foot">
                             <p class="dl-version" id="dl-version"></p>
@@ -491,7 +464,7 @@
                                         <path
                                             d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM262.1 104.5c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
                                     </svg>
-                                    <span><strong>macOS</strong><small>.dmg installer</small></span>
+                                    <span><strong>macOS</strong><small>{{ t('landing.run.dmg') }}</small></span>
                                 </a>
                                 {% endif %}
 
@@ -500,7 +473,7 @@
                                     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                         <path d="M1 1h10v10H1z M13 1h10v10H13z M1 13h10v10H1z M13 13h10v10H13z" />
                                     </svg>
-                                    <span><strong>Windows</strong><small>.exe installer</small></span>
+                                    <span><strong>Windows</strong><small>{{ t('landing.run.exe') }}</small></span>
                                 </a>
                                 {% endif %}
 
@@ -510,22 +483,28 @@
                                         <path
                                             d="M12 2a5 5 0 0 0-5 5c0 2-1 3.5-2 5s-1 3 0 4 3 1 5 2 2 2 2 2h4s0-1 2-2 4-1 5-2 1-2.5 0-4-2-3-2-5a5 5 0 0 0-5-5z" />
                                     </svg>
-                                    <span><strong>Linux</strong><small>.tar.gz installer</small></span>
+                                    <span><strong>Linux</strong><small>{{ t('landing.run.targz') }}</small></span>
                                 </a>
                                 {% endif %}
                             </div>
                             {% endif %}
                             {% if pending %}
-                            <p class="way-note">{{ pending[:-1] | join(', ') }}{% if pending | length > 1 %} and {%
-                                endif %}{{ pending[-1] }} build{{ 's' if pending | length > 1 else '' }} in progress.
-                            </p>
+                            {# One list, one sentence, whatever the count: a translation
+                               that inflects the noun cannot be built from an English
+                               "build"/"builds" switch, so the whole sentence is one key
+                               with the joined platform list substituted in. #}
+                            <p class="way-note">{{ t('landing.run.pending_builds').replace('{platforms}',
+                                pending | join(t('landing.run.list_separator'))) }}</p>
                             {% endif %}
                             {% if account_user %}
-                            <p class="way-note">Signed in as {{ account_user.name }}. Your download token is in the
-                                web app, under Get Offline Version.</p>
+                            <p class="way-note">{{ t('landing.run.signed_in_note').replace('{name}',
+                                account_user.name) }}</p>
                             {% else %}
-                            <p class="way-note">Downloads need an account — <a href="/account/signup">sign up</a> or
-                                <a href="/account/login">sign in</a> first.</p>
+                            <p class="way-note">{{ t('landing.run.need_account') }}
+                                <a href="{{ url_for('account.signup_page') }}">{{ t('landing.run.sign_up') }}</a>{{
+                                t('landing.run.need_account_or') }}
+                                <a href="{{ url_for('account.login_page') }}">{{ t('landing.run.sign_in') }}</a>{{
+                                t('landing.run.need_account_after') }}</p>
                             {% endif %}
                         </div>
                     </article>
@@ -542,19 +521,23 @@
         <section class="section" id="reviews">
             <div class="shell">
                 <div class="section-head reveal">
-                    <h2>What researchers say.</h2>
+                    <h2>{{ t('landing.reviews.h') }}</h2>
                 </div>
 
                 <div class="reviews reveal">
-                    {% for t in testimonials %}
+                    {# The loop variable is `item`, not `t`: `t` is the catalog
+                       lookup registered as a Jinja global, and a loop variable of
+                       the same name would shadow it for the whole block. #}
+                    {% for item in testimonials %}
                     <figure class="review">
-                        <div class="review-stars" aria-label="{{ t.rating }} out of 5">{{ '★' * t.rating }}{{ '☆' * (5 -
-                            t.rating) }}</div>
-                        <blockquote>{{ t.quote }}</blockquote>
+                        <div class="review-stars"
+                            aria-label="{{ t('landing.reviews.rating_aria').replace('{n}', item.rating|string) }}">{{
+                            '★' * item.rating }}{{ '☆' * (5 - item.rating) }}</div>
+                        <blockquote>{{ item.quote }}</blockquote>
                         <figcaption>
-                            <strong>{{ t.name }}</strong>
-                            {% if t.role %}{{ t.role }}{% endif %}{% if t.role and t.affiliation %} · {% endif %}{% if
-                            t.affiliation %}{{ t.affiliation }}{% endif %}
+                            <strong>{{ item.name }}</strong>
+                            {% if item.role %}{{ item.role }}{% endif %}{% if item.role and item.affiliation %} · {%
+                            endif %}{% if item.affiliation %}{{ item.affiliation }}{% endif %}
                         </figcaption>
                     </figure>
                     {% endfor %}
@@ -569,8 +552,8 @@
             <div class="shell">
                 <div class="cite reveal">
                     <div>
-                        <p class="eyebrow">Using it in a paper</p>
-                        <h2 style="font-size: clamp(1.7rem, 3.2vw, 2.4rem); margin: 16px 0 14px;">Cite Easy OKAPI.</h2>
+                        <p class="eyebrow">{{ t('landing.cite.eyebrow') }}</p>
+                        <h2 style="font-size: clamp(1.7rem, 3.2vw, 2.4rem); margin: 16px 0 14px;">{{ t('landing.cite.h') }}</h2>
                         <p style="color: var(--ink-2);">{{ publication_ref.citation.title }}</p>
 
                         {% if publication_ref.publications %}
@@ -588,7 +571,8 @@
                             <button class="cite-tab" type="button" data-cite="apa" aria-pressed="true">APA</button>
                             <button class="cite-tab" type="button" data-cite="bibtex"
                                 aria-pressed="false">BibTeX</button>
-                            <button class="cite-tab cite-copy" type="button" id="cite-copy">Copy</button>
+                            <button class="cite-tab cite-copy" type="button"
+                                id="cite-copy">{{ t('landing.cite.copy') }}</button>
                         </div>
                         <pre id="cite-text">{{ publication_ref.citation.apa }}</pre>
                         <pre id="cite-apa" hidden>{{ publication_ref.citation.apa }}</pre>
@@ -603,13 +587,12 @@
         <section class="section" style="border-top: 0;">
             <div class="shell">
                 <div class="closing reveal">
-                    <h2>Your data stays where you put it.</h2>
-                    <p>Install the desktop build and the whole analysis runs offline, on the machine beside the
-                        instrument, in a folder you choose.</p>
+                    <h2>{{ t('landing.closing.h') }}</h2>
+                    <p>{{ t('landing.closing.p') }}</p>
                     <div class="closing-cta">
-                        <a class="btn btn-primary" href="/webapp">Open the web app <span class="btn-arrow"
-                                aria-hidden="true">→</span></a>
-                        <a class="btn btn-ghost" href="#run">Get the desktop app</a>
+                        <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('nav.open_webapp') }} <span
+                                class="btn-arrow" aria-hidden="true">→</span></a>
+                        <a class="btn btn-ghost" href="#run">{{ t('landing.hero.get_desktop') }}</a>
                     </div>
                 </div>
             </div>
@@ -621,58 +604,58 @@
         <div class="shell">
             <div class="footer-grid">
                 <div class="footer-about">
-                    <a class="brand" href="/">
+                    <a class="brand" href="{{ url_for('landing') }}">
                         <img src="{{ url_for('static', filename='cbb.png') }}" alt="CBBiotec">
                         <span>
                             <span class="brand-name"><span>Easy</span> OKAPI</span><br>
-                            <span class="brand-sub">Open-colorimeter kinetics analysis platform</span>
+                            <span class="brand-sub">{{ t('footer.tagline') }}</span>
                         </span>
                     </a>
-                    <p>Developed at the Center for Bioscience and Biotechnology, HCMUS–VNU. Inspired by the IORodeo
-                        Open Colorimeter.</p>
+                    <p>{{ t('footer.about') }}</p>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Product</h4>
+                    <h4>{{ t('footer.product') }}</h4>
                     <ul>
-                        <li><a href="/webapp">Web app</a></li>
-                        <li><a href="#run">Desktop app</a></li>
-                        <li><a href="#modes">Modes</a></li>
-                        <li><a href="#capabilities">Capabilities</a></li>
+                        <li><a href="{{ url_for('index') }}">{{ t('footer.web_app') }}</a></li>
+                        <li><a href="#run">{{ t('footer.desktop_app') }}</a></li>
+                        <li><a href="#modes">{{ t('footer.modes') }}</a></li>
+                        <li><a href="#capabilities">{{ t('footer.capabilities') }}</a></li>
                     </ul>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Account</h4>
+                    <h4>{{ t('footer.account') }}</h4>
                     <ul>
-                        <li><a href="/account/login">Sign in</a></li>
-                        <li><a href="/account/signup">Create an account</a></li>
-                        <li><a href="/account/forgot-password">Reset password</a></li>
+                        <li><a href="{{ url_for('account.login_page') }}">{{ t('footer.sign_in') }}</a></li>
+                        <li><a href="{{ url_for('account.signup_page') }}">{{ t('footer.create_account') }}</a></li>
+                        <li><a href="{{ url_for('account.forgot_password_page') }}">{{ t('footer.reset_password') }}</a>
+                        </li>
                     </ul>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Elsewhere</h4>
+                    <h4>{{ t('footer.elsewhere') }}</h4>
                     <ul>
                         <li><a href="https://iorodeo.com/products/open-colorimeter" rel="noopener">Open
                                 Colorimeter</a></li>
-                        <li><a href="#cite">Citation</a></li>
+                        <li><a href="#cite">{{ t('footer.citation') }}</a></li>
                     </ul>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Legal</h4>
+                    <h4>{{ t('footer.legal') }}</h4>
                     <ul>
-                        <li><a href="/terms">Terms of Service</a></li>
-                        <li><a href="/privacy">Privacy Policy</a></li>
-                        <li><a href="/contact">Contact</a></li>
+                        <li><a href="{{ url_for('terms') }}">{{ t('footer.terms') }}</a></li>
+                        <li><a href="{{ url_for('privacy') }}">{{ t('footer.privacy') }}</a></li>
+                        <li><a href="{{ url_for('contact') }}">{{ t('footer.contact') }}</a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="footer-base">
                 <span>© {{ year }} CBBiotec · HCMUS–VNU</span>
-                <span>Easy OKAPI — Open-colorimeter Kinetics Analysis Platform</span>
+                <span>{{ t('footer.full_name') }}</span>
             </div>
         </div>
     </footer>
@@ -680,6 +663,24 @@
     <script>
         (function () {
             'use strict';
+
+            // Strings this script writes into the page. Rendered from the same
+            // catalog as the markup around it; `tojson` quotes and escapes.
+            var STR = {
+                replay: {{ t('landing.readout.replay')|tojson }},
+                running: {{ t('landing.readout.running')|tojson }},
+                caption: {{ t('landing.readout.caption')|tojson }},
+                cursor: {{ t('landing.readout.cursor')|tojson }},
+                copied: {{ t('landing.cite.copied')|tojson }},
+                copy: {{ t('landing.cite.copy')|tojson }},
+                latest_build: {{ t('landing.run.latest_build')|tojson }},
+                assay: {
+                    '450': {{ t('landing.assay.450')|tojson }},
+                    '520': {{ t('landing.assay.520')|tojson }},
+                    '570': {{ t('landing.assay.570')|tojson }},
+                    '620': {{ t('landing.assay.620')|tojson }}
+                }
+            };
 
             // ── Channel strip ────────────────────────────────────────────
             // Each entry is one demo trace. Selecting a channel rewrites the
@@ -897,8 +898,9 @@
                         clipRect.setAttribute('width', ((t / T_MAX) * PW).toFixed(2));
                         cursor.setAttribute('x1', x(t).toFixed(2));
                         cursor.setAttribute('x2', x(t).toFixed(2));
-                        cursorLabel.textContent = 't ' + t.toFixed(1) + ' min · A ' +
-                            absorbance(cfg, t).toFixed(3);
+                        cursorLabel.textContent = STR.cursor
+                            .replace('{t}', t.toFixed(1))
+                            .replace('{a}', absorbance(cfg, t).toFixed(3));
                     },
                     end: function () {
                         clipRect.setAttribute('width', PW);
@@ -971,7 +973,7 @@
                 readout.classList.remove('is-running');
                 runBtn.removeAttribute('disabled');
                 runBtn.removeAttribute('aria-busy');
-                runLabel.textContent = 'Replay';
+                runLabel.textContent = STR.replay;
             }
 
             function runPlot(cfg) {
@@ -987,7 +989,7 @@
                 readout.classList.add('is-running');
                 runBtn.setAttribute('disabled', '');
                 runBtn.setAttribute('aria-busy', 'true');
-                runLabel.textContent = 'Running';
+                runLabel.textContent = STR.running;
 
                 var start = null, fitShown = false, satShown = false;
 
@@ -1040,10 +1042,12 @@
                     marks[m].classList.toggle('is-active', marks[m].dataset.band === band);
                 }
 
-                caption.innerHTML = '<strong>Fig. 1</strong> — Absorbance at ' + band +
-                    ' nm over ' + T_MAX + ' min, ' + cfg.assay + '. Shaded: sliding-window ' +
-                    'interval of maximum rate; dashed: fitted tangent, R² = ' + cfg.r2.toFixed(4) +
-                    '; dotted: saturation plateau A(sat) = ' + cfg.sat.toFixed(3) + ' AU.';
+                caption.innerHTML = STR.caption
+                    .replace('{band}', band)
+                    .replace('{tmax}', T_MAX)
+                    .replace('{assay}', STR.assay[band] || cfg.assay)
+                    .replace('{r2}', cfg.r2.toFixed(4))
+                    .replace('{sat}', cfg.sat.toFixed(3));
 
                 runPlot(cfg);
             }
@@ -1115,8 +1119,8 @@
                 document.getElementById('cite-copy').addEventListener('click', function () {
                     var btn = this;
                     navigator.clipboard.writeText(citeText.textContent).then(function () {
-                        btn.textContent = 'Copied';
-                        setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+                        btn.textContent = STR.copied;
+                        setTimeout(function () { btn.textContent = STR.copy; }, 1600);
                     });
                 });
             }
@@ -1126,7 +1130,8 @@
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     if (d && d.version && d.version !== 'unknown') {
-                        document.getElementById('dl-version').textContent = 'Latest build ' + d.version;
+                        document.getElementById('dl-version').textContent =
+                            STR.latest_build.replace('{version}', d.version);
                     }
                 })
                 .catch(function () { /* the buttons still work without a version */ });

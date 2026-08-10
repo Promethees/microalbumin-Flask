@@ -357,7 +357,7 @@
     {% endif %}
 </style>
 
-<aside class="react-banner" id="react-banner" aria-label="RE:ACT competition">
+<aside class="react-banner" id="react-banner" aria-label="{{ t('react.aria') }}">
     <div class="react-banner-blocks" aria-hidden="true"></div>
     <div class="react-banner-inner">
         <a class="react-banner-mark" href="https://www.facebook.com/share/p/1EZme4uk9a/" target="_blank"
@@ -365,9 +365,8 @@
             <img src="{{ url_for('static', filename='logos/react/react.png') }}" alt="RE:ACT">
         </a>
         <span class="react-banner-text" id="react-banner-text">
-            <strong>Easy OKAPI is competing in RE:ACT</strong> — Youth Innovation for Resilient Communities, co-led by
-            NIC and UNDP with support from Samsung.
-            <span class="react-banner-note">UNDP does not endorse any entity, brand, product, or service.</span>
+            <strong>{{ t('react.headline') }}</strong> {{ t('react.body') }}
+            <span class="react-banner-note">{{ t('react.disclaimer') }}</span>
         </span>
         <span class="react-banner-orgs">
             <img class="rb-samsung" src="{{ url_for('static', filename='logos/react/samsung.png') }}" alt="Samsung">
@@ -376,20 +375,20 @@
             <img class="rb-undp" src="{{ url_for('static', filename='logos/react/undp.png') }}" alt="UNDP">
         </span>
         <a class="react-banner-link" href="https://www.facebook.com/share/p/1EZme4uk9a/" target="_blank"
-            rel="noopener noreferrer">Learn more</a>
+            rel="noopener noreferrer">{{ t('react.learn_more') }}</a>
         <span class="react-banner-controls">
             <button id="react-banner-toggle" type="button" aria-expanded="true" aria-controls="react-banner-text"
-                aria-label="Collapse the RE:ACT notice" title="Collapse">&#8963;</button>
-            <button id="react-banner-close" type="button" aria-label="Dismiss the RE:ACT notice"
-                title="Dismiss">&#10005;</button>
+                aria-label="{{ t('react.collapse_aria') }}" title="{{ t('react.collapse') }}">&#8963;</button>
+            <button id="react-banner-close" type="button" aria-label="{{ t('react.dismiss_aria') }}"
+                title="{{ t('react.dismiss') }}">&#10005;</button>
         </span>
     </div>
 </aside>
 
-<button class="react-banner-reopen" id="react-banner-reopen" type="button" aria-label="Bring back the RE:ACT notice"
-    title="Bring back the RE:ACT notice">
+<button class="react-banner-reopen" id="react-banner-reopen" type="button" aria-label="{{ t('react.reopen_aria') }}"
+    title="{{ t('react.reopen_aria') }}">
     <img src="{{ url_for('static', filename='logos/react/react.png') }}" alt="">
-    <span>Show</span>
+    <span>{{ t('react.show') }}</span>
 </button>
 
 <script>
@@ -422,9 +421,11 @@
             var collapsed = root.classList.contains('react-banner-collapsed');
             toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
             toggle.setAttribute('aria-label', collapsed
-                ? 'Show the RE:ACT notice'
-                : 'Collapse the RE:ACT notice');
-            toggle.setAttribute('title', collapsed ? 'Show' : 'Collapse');
+                ? {{ t('react.show_aria')|tojson }}
+                : {{ t('react.collapse_aria')|tojson }});
+            toggle.setAttribute('title', collapsed
+                ? {{ t('react.show')|tojson }}
+                : {{ t('react.collapse')|tojson }});
             toggle.innerHTML = collapsed ? '&#8964;' : '&#8963;';
             measure();
         }

@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ ui_lang_tag() }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Verification — Easy OKAPI</title>
+  <title>{{ t('auth.verify.page_title') }}</title>
+  <meta name="robots" content="noindex">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -51,14 +52,19 @@
       <h1>Easy OKAPI</h1>
     </div>
     <div class="card-body">
+      {# The outcome sentence is a catalog key chosen by the route, not prose
+         passed in from Python: this page is reached from an email, so it renders
+         in the language the visitor last chose (see COOKIE_LANG_ENDPOINTS). #}
       {% if success %}
         <div class="icon">✅</div>
-        <p>{{ message }}</p>
-        <a href="/account/login" class="btn" title="Sign in to get your download token and installer">Log in &amp; download</a>
+        <p>{{ t(message_key) }}</p>
+        <a href="{{ url_for('account.login_page') }}" class="btn"
+           title="{{ t('auth.verify.login_hint') }}">{{ t('auth.verify.login') }}</a>
       {% else %}
         <div class="icon">❌</div>
-        <p>{{ message }}</p>
-        <a href="/account/signup" class="btn" title="Start a new sign-up if your verification link expired">Sign up again</a>
+        <p>{{ t(message_key) }}</p>
+        <a href="{{ url_for('account.signup_page') }}" class="btn"
+           title="{{ t('auth.verify.signup_hint') }}">{{ t('auth.verify.signup') }}</a>
       {% endif %}
     </div>
   </div>

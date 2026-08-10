@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ ui_lang_tag() }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <meta name="description" content="{{ meta_description }}">
+    <title>{{ t(title_key) }}</title>
+    <meta name="description" content="{{ t(meta_description_key) }}">
     <meta name="robots" content="index, follow">
+    {% include "_lang_head.html" %}
 
     <!-- Theme is applied before first paint so the page never flashes light. -->
     <script>
@@ -35,27 +36,29 @@
     <!-- ── Nav ─────────────────────────────────────────────────────────── -->
     <header class="nav">
         <div class="shell nav-inner">
-            <a class="brand" href="/">
+            <a class="brand" href="{{ url_for('landing') }}">
                 <img src="{{ url_for('static', filename='cbb.png') }}" alt="CBBiotec">
                 <span>
                     <span class="brand-name"><span>Easy</span> OKAPI</span><br>
-                    <span class="brand-sub">by CBBiotec</span>
+                    <span class="brand-sub">{{ t('nav.by_cbbiotec') }}</span>
                 </span>
             </a>
 
-            <nav class="nav-links" id="nav-links" aria-label="Legal documents">
-                <a href="/terms">Terms</a>
-                <a href="/privacy">Privacy</a>
-                <a href="/contact">Contact</a>
-                <a href="/#run">Get it</a>
-                <a href="/#cite">Cite</a>
+            <nav class="nav-links" id="nav-links" aria-label="{{ t('nav.legal_documents') }}">
+                <a href="{{ url_for('terms') }}">{{ t('nav.terms') }}</a>
+                <a href="{{ url_for('privacy') }}">{{ t('nav.privacy') }}</a>
+                <a href="{{ url_for('contact') }}">{{ t('nav.contact') }}</a>
+                <a href="{{ url_for('landing') }}#run">{{ t('nav.get_it') }}</a>
+                <a href="{{ url_for('landing') }}#cite">{{ t('nav.cite') }}</a>
             </nav>
 
             <div class="nav-actions">
-                <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch colour theme">◐</button>
-                <a class="btn btn-primary" href="/webapp">Open the web app</a>
+                {% include "_lang_switch.html" %}
+                <button class="theme-toggle" id="theme-toggle" type="button"
+                    aria-label="{{ t('nav.switch_theme') }}">◐</button>
+                <a class="btn btn-primary" href="{{ url_for('index') }}">{{ t('nav.open_webapp') }}</a>
                 <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false"
-                    aria-controls="nav-links" aria-label="Show sections">☰</button>
+                    aria-controls="nav-links" aria-label="{{ t('nav.show_sections') }}">☰</button>
             </div>
         </div>
     </header>
@@ -64,7 +67,7 @@
         <!-- ── Document head ───────────────────────────────────────────── -->
         <section class="legal-hero">
             <div class="shell">
-                <p class="eyebrow">{{ eyebrow }}</p>
+                <p class="eyebrow">{{ t(eyebrow_key) }}</p>
                 <h1>{% block doc_title %}{% endblock %}</h1>
                 <p class="legal-lede">{% block doc_lede %}{% endblock %}</p>
 
@@ -73,22 +76,35 @@
                 {% block doc_meta %}
                 <dl class="legal-meta">
                     <div>
-                        <dt>Effective</dt>
-                        <dd>{{ effective_date }}</dd>
+                        <dt>{{ t('legal.effective') }}</dt>
+                        <dd>{{ t('legal.effective_date', effective_date) }}</dd>
                     </div>
                     <div>
-                        <dt>Version</dt>
+                        <dt>{{ t('legal.version') }}</dt>
                         <dd>{{ doc_version }}</dd>
                     </div>
                     <div>
-                        <dt>Applies to</dt>
-                        <dd>{{ applies_to }}</dd>
+                        <dt>{{ t('legal.applies_to') }}</dt>
+                        <dd>{{ t('legal.applies_to_value') }}</dd>
                     </div>
                     <div>
-                        <dt>Provider</dt>
+                        <dt>{{ t('legal.provider') }}</dt>
                         <dd>CBBiotec · HCMUS–VNU</dd>
                     </div>
                 </dl>
+
+                <!-- A translated legal document is a convenience, not a second
+                     original. Saying so on the page — and linking the English
+                     text — is what keeps a mistranslated clause from being
+                     argued as the agreed wording. English renders nothing. -->
+                {% if ui_lang() != default_ui_lang %}
+                <p class="legal-governing">
+                    <strong>{{ t('legal.governing_label') }}</strong>
+                    {{ t('legal.governing_notice') }}
+                    <a href="{{ url_for_lang(default_ui_lang) }}" hreflang="en"
+                        lang="en">{{ t('legal.governing_link') }}</a>
+                </p>
+                {% endif %}
                 {% endblock %}
             </div>
         </section>
@@ -97,7 +113,7 @@
         <div class="shell legal-body{% block body_modifier %}{% endblock %}">
             {% block doc_aside %}
             <aside class="legal-index">
-                <h2>Sections</h2>
+                <h2>{{ t('legal.sections') }}</h2>
                 <ol>{% block doc_index %}{% endblock %}</ol>
             </aside>
             {% endblock %}
@@ -113,49 +129,49 @@
         <div class="shell">
             <div class="footer-grid">
                 <div class="footer-about">
-                    <a class="brand" href="/">
+                    <a class="brand" href="{{ url_for('landing') }}">
                         <img src="{{ url_for('static', filename='cbb.png') }}" alt="CBBiotec">
                         <span>
                             <span class="brand-name"><span>Easy</span> OKAPI</span><br>
-                            <span class="brand-sub">Open-colorimeter kinetics analysis platform</span>
+                            <span class="brand-sub">{{ t('footer.tagline') }}</span>
                         </span>
                     </a>
-                    <p>Developed at the Center for Bioscience and Biotechnology, HCMUS–VNU. Inspired by the IORodeo
-                        Open Colorimeter.</p>
+                    <p>{{ t('footer.about') }}</p>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Product</h4>
+                    <h4>{{ t('footer.product') }}</h4>
                     <ul>
-                        <li><a href="/webapp">Web app</a></li>
-                        <li><a href="/#run">Desktop app</a></li>
-                        <li><a href="/#modes">Modes</a></li>
-                        <li><a href="/#capabilities">Capabilities</a></li>
+                        <li><a href="{{ url_for('index') }}">{{ t('footer.web_app') }}</a></li>
+                        <li><a href="{{ url_for('landing') }}#run">{{ t('footer.desktop_app') }}</a></li>
+                        <li><a href="{{ url_for('landing') }}#modes">{{ t('footer.modes') }}</a></li>
+                        <li><a href="{{ url_for('landing') }}#capabilities">{{ t('footer.capabilities') }}</a></li>
                     </ul>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Account</h4>
+                    <h4>{{ t('footer.account') }}</h4>
                     <ul>
-                        <li><a href="/account/login">Sign in</a></li>
-                        <li><a href="/account/signup">Create an account</a></li>
-                        <li><a href="/account/forgot-password">Reset password</a></li>
+                        <li><a href="{{ url_for('account.login_page') }}">{{ t('footer.sign_in') }}</a></li>
+                        <li><a href="{{ url_for('account.signup_page') }}">{{ t('footer.create_account') }}</a></li>
+                        <li><a href="{{ url_for('account.forgot_password_page') }}">{{ t('footer.reset_password') }}</a>
+                        </li>
                     </ul>
                 </div>
 
                 <div class="footer-col">
-                    <h4>Legal</h4>
+                    <h4>{{ t('footer.legal') }}</h4>
                     <ul>
-                        <li><a href="/terms">Terms of Service</a></li>
-                        <li><a href="/privacy">Privacy Policy</a></li>
-                        <li><a href="/contact">Contact</a></li>
+                        <li><a href="{{ url_for('terms') }}">{{ t('footer.terms') }}</a></li>
+                        <li><a href="{{ url_for('privacy') }}">{{ t('footer.privacy') }}</a></li>
+                        <li><a href="{{ url_for('contact') }}">{{ t('footer.contact') }}</a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="footer-base">
                 <span>© {{ year }} CBBiotec · HCMUS–VNU</span>
-                <span>Easy OKAPI — Open-colorimeter Kinetics Analysis Platform</span>
+                <span>{{ t('footer.full_name') }}</span>
             </div>
         </div>
     </footer>

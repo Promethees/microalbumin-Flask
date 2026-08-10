@@ -157,6 +157,37 @@
 
 ---
 
+### 2.14 UI Localization (i18n) — six languages, language in the URL
+
+- **The URL carries the language.** English lives at the bare path (`/terms`) and
+  is the canonical URL; the other five live under a prefix (`/vi/terms`). Never
+  make a bare URL render something other than English — a crawler or a cache
+  would then see a page that changes under it. `src/i18n.py:init_app` mirrors the
+  page rules under `/<any(vi,zh,fr,ja,ru):lang>` after every blueprint is
+  registered; a new indexable page must be added to `LOCALIZED_ENDPOINTS`.
+- **The `ui_lang` cookie only remembers a preference.** It is read on `/` alone,
+  to redirect a returning visitor, and written by `/set-language/<code>`, which
+  the picker links to. Never key page content off it.
+- **Link with `url_for`, never with a hard-coded path.** `inject_lang` puts the
+  active language into every `url_for`, so `/terms` written by hand silently
+  drops the visitor back to English.
+- **Markup is translated server-side** with `{{ t('key') }}` / `{{ t_html('key') }}`
+  (the latter only for catalog strings that carry inline markup). Strings the
+  *browser* builds — Swal dialogs, chart labels — use `window.t('key', 'English')`
+  from `static/script/i18n.js`; keep the English literal as the fallback there,
+  and call it as `window.t` because `t` is a common local variable name.
+- **Catalogs are `ui_translations/<lang>.json`**, flat key → string, English as
+  the baseline. Adding a string means adding its key to **all six** files in the
+  same commit — `tests/test_i18n.py` fails on drift, on a lost `{placeholder}`,
+  and on an empty value.
+- **Technical terms stay English** in every catalog: mode names (kinetics, point,
+  calibrate, report), units, Absorbance, maxRate, rSquared, CSV/JSON/Excel,
+  regression names, and brand names.
+- **A translated legal document is not a second original.** `legal_base.html`
+  renders a governing-language notice on every non-English legal page, pointing
+  at the English text. Do not remove it, and keep `legal/` prose and the catalog
+  in step when either changes.
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.

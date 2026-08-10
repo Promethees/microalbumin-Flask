@@ -605,3 +605,19 @@ html.dark .legal-index a.is-active {
         width: 32px;
     }
 }
+
+/* Translated legal documents carry a governing-language notice; the English
+   original renders nothing (see templates/legal_base.html). */
+.legal-governing {
+    margin-top: 16px;
+    padding: 10px 14px;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    font-size: 0.86rem;
+    color: var(--ink-2);
+}
+
+.legal-governing strong {
+    color: var(--ink);
+}

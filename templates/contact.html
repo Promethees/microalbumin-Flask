@@ -4,11 +4,9 @@
    is not a document: it carries no version readout and no section index, so both
    of those blocks are overridden away and the body becomes single-column. #}
 
-{% block doc_title %}Contact us{% endblock %}
+{% block doc_title %}{{ t('contact.title') }}{% endblock %}
 
-{% block doc_lede %}Tell us what you need and the message goes straight to the Easy OKAPI team at CBBiotec,
-HCMUS–VNU. No account is required, nothing is stored, and we reply to the address you give us — usually within a few
-working days.{% endblock %}
+{% block doc_lede %}{{ t('contact.lede') }}{% endblock %}
 
 {% block doc_meta %}{% endblock %}
 {% block doc_aside %}{% endblock %}
@@ -16,47 +14,50 @@ working days.{% endblock %}
 
 {% block doc_body %}
 <section>
-    <h2 id="form">Send a message</h2>
+    <h2 id="form">{{ t('contact.send_heading') }}</h2>
 
     <form class="contact-form" id="contact-form" novalidate>
         <div class="contact-row">
             <label class="contact-field">
-                <span class="contact-label">Name <em aria-hidden="true">*</em></span>
+                <span class="contact-label">{{ t('contact.name') }} <em aria-hidden="true">*</em></span>
                 <input id="contact-name" name="name" type="text" maxlength="120" autocomplete="name" required>
             </label>
 
             <label class="contact-field">
-                <span class="contact-label">Email <em aria-hidden="true">*</em></span>
+                <span class="contact-label">{{ t('contact.email') }} <em aria-hidden="true">*</em></span>
                 <input id="contact-email" name="email" type="email" maxlength="200" autocomplete="email" required>
             </label>
         </div>
 
         <div class="contact-row">
             <label class="contact-field">
-                <span class="contact-label">Affiliation</span>
+                <span class="contact-label">{{ t('contact.affiliation') }}</span>
                 <input id="contact-affiliation" name="affiliation" type="text" maxlength="200"
-                    placeholder="Your lab, department or company">
+                    placeholder="{{ t('contact.affiliation_ph') }}">
             </label>
 
             <label class="contact-field">
-                <span class="contact-label">Topic</span>
+                <span class="contact-label">{{ t('contact.topic') }}</span>
                 <select id="contact-topic" name="topic">
+                    {# The value stays English — the server validates it against
+                       contact.TOPICS — while the label is translated. #}
                     {% for topic in topics %}
-                    <option value="{{ topic }}">{{ topic }}</option>
+                    <option value="{{ topic }}">{{ t(topic_keys[topic], topic) }}</option>
                     {% endfor %}
                 </select>
             </label>
         </div>
 
         <label class="contact-field">
-            <span class="contact-label">Message <em aria-hidden="true">*</em></span>
+            <span class="contact-label">{{ t('contact.message') }} <em aria-hidden="true">*</em></span>
             <textarea id="contact-message" name="message" rows="9" maxlength="{{ max_message_len }}" required
-                placeholder="What are you trying to do, and what happened instead? Version numbers, wavelength and a CSV description help us answer in one round."></textarea>
+                placeholder="{{ t('contact.message_ph') }}"></textarea>
             <span class="contact-count" id="contact-count" aria-hidden="true">0 / {{ max_message_len }}</span>
         </label>
 
         <!-- Honeypot: hidden from people, skipped by the tab order. Only a
-             form-filling bot ever populates it; the server drops those. -->
+             form-filling bot ever populates it; the server drops those. The
+             label stays English — no person ever reads it. -->
         <div class="contact-hp" aria-hidden="true">
             <label>Website
                 <input id="contact-website" name="website" type="text" tabindex="-1" autocomplete="off">
@@ -64,27 +65,25 @@ working days.{% endblock %}
         </div>
 
         <div class="contact-actions">
-            <button class="btn btn-primary" id="contact-submit" type="submit">Send message</button>
+            <button class="btn btn-primary" id="contact-submit" type="submit">{{ t('contact.submit') }}</button>
             <p class="contact-status" id="contact-status" role="status" aria-live="polite"></p>
         </div>
 
-        <p class="contact-fineprint">Your name, email and message are used only to answer you, and are sent to us by
-            email rather than stored in a database — see the <a href="/privacy">Privacy Policy</a>. Please do not send
-            patient-identifiable or otherwise regulated data: Easy OKAPI is for research use only, as set out in the
-            <a href="/terms">Terms of Service</a>.</p>
+        <p class="contact-fineprint">{{ t('contact.fineprint_1') }}
+            <a href="{{ url_for('privacy') }}">{{ t('nav.privacy_policy') }}</a>{{ t('contact.fineprint_2') }}
+            <a href="{{ url_for('terms') }}">{{ t('nav.terms_of_service') }}</a>{{ t('contact.fineprint_3') }}</p>
     </form>
 </section>
 
 <section>
-    <h2 id="elsewhere">Other ways to reach us</h2>
+    <h2 id="elsewhere">{{ t('contact.other_heading') }}</h2>
 
     <ul class="bullets">
-        <li><strong>Email.</strong> If you would rather write from your own mail client, the address is
+        <li><strong>{{ t('contact.by_email') }}</strong> {{ t('contact.by_email_body') }}
             <code>{{ contact_email }}</code>.</li>
-        <li><strong>Post.</strong> CBBiotec, University of Science (HCMUS–VNU), 227 Nguyen Van Cu, Cho Quan ward,
-            Ho Chi Minh City, Vietnam.</li>
-        <li><strong>Security reports.</strong> Please use the topic <em>Bug report</em> and tell us how to reproduce
-            the issue before disclosing it publicly.</li>
+        <li><strong>{{ t('contact.by_post') }}</strong> CBBiotec, University of Science (HCMUS–VNU),
+            227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam.</li>
+        <li><strong>{{ t('contact.security') }}</strong> {{ t_html('contact.security_body') }}</li>
     </ul>
 </section>
 {% endblock %}
@@ -104,6 +103,17 @@ working days.{% endblock %}
         var MAX = {{ max_message_len }};
         var MIN = {{ min_message_len }};
         var EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+        // The client-side validation copy is rendered from the same catalog as
+        // the page around it. `tojson` does the quoting and escaping.
+        var STR = {
+            need_name: {{ t('contact.err_name')|tojson }},
+            need_email: {{ t('contact.err_email')|tojson }},
+            too_short: {{ t('contact.err_short')|tojson }},
+            sending: {{ t('contact.sending')|tojson }},
+            rate_limited: {{ t('contact.err_rate_limited')|tojson }},
+            failed: {{ t('contact.err_failed')|tojson }}
+        };
 
         function val(id) {
             var el = document.getElementById(id);
@@ -127,12 +137,12 @@ working days.{% endblock %}
             e.preventDefault();
 
             // Mirror the server's rules so an obvious mistake costs no round trip.
-            if (!val('contact-name')) return say('Please enter your name.', 'error');
-            if (!EMAIL.test(val('contact-email'))) return say('Please enter a valid email address so we can reply.', 'error');
-            if (val('contact-message').length < MIN) return say('Please write at least ' + MIN + ' characters so we can help.', 'error');
+            if (!val('contact-name')) return say(STR.need_name, 'error');
+            if (!EMAIL.test(val('contact-email'))) return say(STR.need_email, 'error');
+            if (val('contact-message').length < MIN) return say(STR.too_short.replace('{n}', MIN), 'error');
 
             submit.disabled = true;
-            say('Sending…');
+            say(STR.sending);
 
             try {
                 var res = await fetch('/api/contact', {
@@ -151,8 +161,8 @@ working days.{% endblock %}
 
                 if (!res.ok || data.status !== 'success') {
                     throw new Error(data.message || (res.status === 429
-                        ? 'You have sent several messages already. Please try again later.'
-                        : 'Could not send your message. Please try again later.'));
+                        ? STR.rate_limited
+                        : STR.failed));
                 }
 
                 form.reset();

@@ -38,6 +38,19 @@ TOPICS = (
 )
 DEFAULT_TOPIC = TOPICS[0]
 
+# Catalog key per topic. The <option> *value* stays the English string above —
+# it is validated against TOPICS and lands in the subject line of a mail we
+# read — while the label the visitor sees is translated. Keeping the wire value
+# English means changing the interface language never breaks the form.
+TOPIC_KEYS = {
+    'General enquiry': 'contact.topic.general',
+    'Technical support': 'contact.topic.support',
+    'Licensing and activation': 'contact.topic.licensing',
+    'Bug report': 'contact.topic.bug',
+    'Privacy or data request': 'contact.topic.privacy',
+    'Partnership or collaboration': 'contact.topic.partnership',
+}
+
 _EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 

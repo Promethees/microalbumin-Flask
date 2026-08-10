@@ -3250,3 +3250,64 @@ body.dark .account-nav-hint {
         margin-right: 0;
     }
 }
+
+/* ── Language picker ──────────────────────────────────────────────────────────
+   Same control as the landing/legal pages (templates/_lang_switch.html), sized
+   down for the app's footer strip. Dependency-free: <details> does the toggle. */
+.lang-switch {
+    position: relative;
+    display: inline-block;
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.lang-switch>summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    list-style: none;
+    color: inherit;
+}
+
+.lang-switch>summary::-webkit-details-marker {
+    display: none;
+}
+
+.lang-switch>summary:hover {
+    text-decoration: underline;
+}
+
+.lang-switch .lang-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 6px);
+    z-index: 1200;
+    min-width: 160px;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: #ffffff;
+    border: 1px solid #d8dde1;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+    text-align: left;
+}
+
+.lang-switch .lang-menu a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: #2c3e50;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.lang-switch .lang-menu a:hover {
+    background: #eef4f8;
+}
+
+.lang-switch .lang-menu a[aria-current="true"] {
+    color: #2980b9;
+    font-weight: 600;
+}

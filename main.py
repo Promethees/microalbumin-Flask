@@ -28,6 +28,7 @@ from routes.community_routes import community_bp
 from routes.contact_routes import contact_bp
 import community
 import contact as contact_form
+import i18n
 from account import db, run_migrations
 
 app = Flask(__name__, static_folder='static')
@@ -167,6 +168,18 @@ def landing():
     activity stamp, so a visitor who never enters the app costs nothing. The app
     itself lives at /webapp (see `index` below).
     """
+    # A visitor who last read the site in another language is sent to that
+    # language's landing page. Keyed on the cookie alone — never on
+    # Accept-Language — so a crawler, which sends no cookie, always gets the
+    # canonical English page at `/`. Picking English in the switcher writes
+    # en to the cookie first, so it is still reachable.
+    remembered = request.cookies.get(i18n.LANG_COOKIE)
+    if i18n.current_lang() == i18n.DEFAULT_UI_LANG and \
+            remembered in i18n.PREFIXED_LANGUAGES:
+        response = redirect(i18n.url_for_lang(remembered))
+        response.headers['Vary'] = 'Cookie'
+        return response
+
     account_user = None
     if session.get('account_user_id'):
         account_user = {
@@ -193,31 +206,34 @@ def landing():
 LEGAL_VERSION = '1.0'
 LEGAL_EFFECTIVE = '3 August 2026'
 
+# The one address every legal page, the contact page and the footer point at.
+CONTACT_EMAIL = 'tqmthong@gmail.com'
+
 
 @app.route('/terms')
 def terms():
+    # Page copy is looked up from the catalog by key (see src/i18n.py), so the
+    # <title> and meta description are translated too — they are what a search
+    # result shows, and an English snippet under a Vietnamese URL helps nobody.
     return render_template('terms.html',
-                           title="Terms of Service — Easy OKAPI",
-                           meta_description=("Terms of Service for the Easy OKAPI web application, desktop "
-                                             "application and licensing services, operated by CBBiotec, "
-                                             "HCMUS-VNU."),
-                           eyebrow="Legal · Easy OKAPI",
+                           title_key='terms.page_title',
+                           meta_description_key='terms.meta_description',
+                           eyebrow_key='legal.eyebrow',
                            effective_date=LEGAL_EFFECTIVE,
                            doc_version=LEGAL_VERSION,
-                           applies_to="Web app + desktop app",
+                           contact_email=CONTACT_EMAIL,
                            year=datetime.utcnow().year)
 
 
 @app.route('/privacy')
 def privacy():
     return render_template('privacy.html',
-                           title="Privacy Policy — Easy OKAPI",
-                           meta_description=("What Easy OKAPI collects, why, who processes it and how to have it "
-                                             "deleted. Operated by CBBiotec, HCMUS-VNU."),
-                           eyebrow="Legal · Easy OKAPI",
+                           title_key='privacy.page_title',
+                           meta_description_key='privacy.meta_description',
+                           eyebrow_key='legal.eyebrow',
                            effective_date=LEGAL_EFFECTIVE,
                            doc_version=LEGAL_VERSION,
-                           applies_to="Web app + desktop app",
+                           contact_email=CONTACT_EMAIL,
                            year=datetime.utcnow().year)
 
 
@@ -231,14 +247,14 @@ def contact():
     for a visitor with no desktop mail client configured.
     """
     return render_template('contact.html',
-                           title="Contact — Easy OKAPI",
-                           meta_description=("Send a question about Easy OKAPI — support, licensing, bug "
-                                             "reports or privacy requests — to CBBiotec, HCMUS-VNU."),
-                           eyebrow="Contact · Easy OKAPI",
+                           title_key='contact.page_title',
+                           meta_description_key='contact.meta_description',
+                           eyebrow_key='contact.eyebrow',
                            topics=contact_form.TOPICS,
+                           topic_keys=contact_form.TOPIC_KEYS,
                            max_message_len=contact_form.MAX_MESSAGE_LEN,
                            min_message_len=contact_form.MIN_MESSAGE_LEN,
-                           contact_email='tqmthong@gmail.com',
+                           contact_email=CONTACT_EMAIL,
                            year=datetime.utcnow().year)
 
 
@@ -328,6 +344,12 @@ def download_offline(platform):
 @app.route("/api/current_output", methods=["GET"])
 def api_current_output():
     return jsonify({"exists": False, "message": "Not supported in multiuser mode"}), 404
+
+
+# ── UI localization ───────────────────────────────────────────────────────────
+# Installed last, because it mirrors the already-registered page rules under a
+# /<lang>/ prefix (English keeps the bare, canonical path). See src/i18n.py.
+i18n.init_app(app)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5003))

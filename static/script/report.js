@@ -342,7 +342,7 @@ function renderCalibrationChartImage({ xConc, yMetric, regLine, title, yLabel, a
                     legend: { display: true, position: 'bottom' }
                 },
                 scales: {
-                    x: { title: { display: true, text: 'Concentration', font: { size: 14, weight: 'bold' } } },
+                    x: { title: { display: true, text: window.t('chart.concentration', 'Concentration'), font: { size: 14, weight: 'bold' } } },
                     y: { title: { display: true, text: yLabel, font: { size: 14, weight: 'bold' } } }
                 }
             }
@@ -398,7 +398,7 @@ async function generateReport() {
         </div>`;
 
     const { value: formValues } = await Swal.fire({
-        title: 'Report Details',
+        title: window.t('dlg.report_details', 'Report Details'),
         html: `
             <div style="text-align: left;">
                 <label style="display:block; margin-bottom:5px;">Report Title</label>
@@ -669,7 +669,7 @@ async function generateReport() {
                         legend: { display: true, position: 'bottom' }
                     },
                     scales: {
-                        x: { title: { display: true, text: 'Concentration', font: { size: 14, weight: 'bold' } } },
+                        x: { title: { display: true, text: window.t('chart.concentration', 'Concentration'), font: { size: 14, weight: 'bold' } } },
                         y: { title: { display: true, text: dataPoint.metric, font: { size: 14, weight: 'bold' } } }
                     }
                 }
@@ -851,7 +851,7 @@ async function generateReport() {
     if (calibrationWarnings.length) {
         await Swal.fire({
             icon: 'warning',
-            title: 'Some calibration curves unavailable',
+            title: window.t('dlg.curves_unavailable', 'Some calibration curves unavailable'),
             html: calibrationWarnings.map(w => `• ${w}`).join('<br>') +
                   '<br><br>The report was generated with the available curves.'
         });
@@ -1007,7 +1007,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
                                 legend: { display: true, position: 'bottom' }
                             },
                             scales: {
-                                x: { title: { display: true, text: 'Concentration', font: { size: 14 } } },
+                                x: { title: { display: true, text: window.t('chart.concentration', 'Concentration'), font: { size: 14 } } },
                                 y: { title: { display: true, text: dataPoint.metric, font: { size: 14 } } }
                             }
                         }
@@ -1125,7 +1125,7 @@ async function generateReportExcelFromCurrent(reportTitle, options = {}) {
         if (calibrationWarnings.length) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Excel report downloaded with warnings',
+                title: window.t('dlg.excel_warnings', 'Excel report downloaded with warnings'),
                 html: 'Some calibration curves were not available:<br>' +
                       calibrationWarnings.map(w => `• ${w}`).join('<br>')
             });
@@ -1652,8 +1652,8 @@ async function initItemPreview(item, itemID, preloaded = null, calType = null) {
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     scales: {
-                        x: _darkScale({ type: 'linear', title: { display: true, text: 'Time (s)', font: { size: 10 } }, ticks: { font: { size: 8 } } }),
-                        y: _darkScale({ title: { display: true, text: 'Value', font: { size: 10 } }, ticks: { font: { size: 8 } } })
+                        x: _darkScale({ type: 'linear', title: { display: true, text: window.t('chart.time_s', 'Time (s)'), font: { size: 10 } }, ticks: { font: { size: 8 } } }),
+                        y: _darkScale({ title: { display: true, text: window.t('chart.value', 'Value'), font: { size: 10 } }, ticks: { font: { size: 8 } } })
                     },
                     plugins: { legend: { display: false } },
                     animation: false
@@ -1928,7 +1928,7 @@ async function finalizeReport() {
                                             legend: { display: true, position: 'bottom' }
                                         },
                                         scales: {
-                                            x: { title: { display: true, text: 'Concentration' } },
+                                            x: { title: { display: true, text: window.t('chart.concentration', 'Concentration') } },
                                             y: { title: { display: true, text: niceMetricName } }
                                         }
                                     }
@@ -2030,7 +2030,7 @@ async function finalizeReport() {
                                 legend: { display: true, position: 'bottom' }
                             },
                             scales: {
-                                x: { title: { display: true, text: 'Time (s)' } },
+                                x: { title: { display: true, text: window.t('chart.time_s', 'Time (s)') } },
                                 y: { title: { display: true, text: shouldNormalize ? 'Value (normalized)' : 'Value' } }
                             }
                         }
@@ -2125,7 +2125,7 @@ async function finalizeReport() {
         if (calibrationWarnings.length) {
             await Swal.fire({
                 icon: 'warning',
-                title: 'Some calibration curves unavailable',
+                title: window.t('dlg.curves_unavailable', 'Some calibration curves unavailable'),
                 html: calibrationWarnings.map(w => `• ${w}`).join('<br>') +
                       '<br><br>The report was generated with the available curves.'
             });
@@ -2402,11 +2402,11 @@ function clearReportSubject() {
 
 function clearReportItems() {
     Swal.fire({
-        title: 'Are you sure?',
+        title: window.t('dlg.are_you_sure', 'Are you sure?'),
         text: "This will clear the current report subject and all your item configurations.",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Yes, clear subject'
+        confirmButtonText: window.t('dlg.yes_clear_subject', 'Yes, clear subject')
     }).then((result) => {
         if (result.isConfirmed) {
             clearReportSubject();
@@ -2437,11 +2437,11 @@ async function deleteReportItem(btn) {
     const subject = card.dataset.subject;
 
     const result = await Swal.fire({
-        title: 'Remove item?',
+        title: window.t('dlg.remove_item', 'Remove item?'),
         text: `Remove "${filename}" from this subject? The file will be deleted from disk.`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Remove',
+        confirmButtonText: window.t('dlg.remove', 'Remove'),
         confirmButtonColor: '#ef4444'
     });
     if (!result.isConfirmed) return;
@@ -2681,7 +2681,7 @@ async function finalizeReportExcel() {
                                 options: {
                                     responsive: false, animation: false,
                                     plugins: { title: { display: true, text: fitLabel, font: { size: 18 } }, legend: { display: true, position: 'bottom' } },
-                                    scales: { x: { title: { display: true, text: 'Concentration' } }, y: { title: { display: true, text: niceMetric } } }
+                                    scales: { x: { title: { display: true, text: window.t('chart.concentration', 'Concentration') } }, y: { title: { display: true, text: niceMetric } } }
                                 }
                             });
                             setTimeout(() => { imgData = calCv.toDataURL('image/png'); tc.destroy(); resolve(); }, 250);
@@ -2781,7 +2781,7 @@ async function finalizeReportExcel() {
                         options: {
                             responsive: false, animation: false,
                             plugins: { title: { display: true, text: filename, font: { size: 18 } }, legend: { display: true, position: 'bottom' } },
-                            scales: { x: { title: { display: true, text: 'Time (s)' } }, y: { title: { display: true, text: shouldNormalize ? 'Value (normalized)' : 'Value' } } }
+                            scales: { x: { title: { display: true, text: window.t('chart.time_s', 'Time (s)') } }, y: { title: { display: true, text: shouldNormalize ? 'Value (normalized)' : 'Value' } } }
                         }
                     });
                     await new Promise(r => setTimeout(r, 250));

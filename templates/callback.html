@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ ui_lang_tag() }}">
 
 <head>
-    <title>Google Drive Authentication</title>
+    <title>{{ t('drive.callback.page_title') }}</title>
+    <meta name="robots" content="noindex">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -59,9 +60,10 @@
 <body>
     <div class="container">
         {% if status == 'success' %}
-        <h2>✓ Connected!</h2>
-        <p>Successfully connected to Google Drive.</p>
-        <button onclick="window.close()" title="Close this window and return to Easy OKAPI">Close Window</button>
+        <h2>{{ t('drive.callback.connected') }}</h2>
+        <p>{{ t('drive.callback.connected_body') }}</p>
+        <button onclick="window.close()"
+                title="{{ t('drive.callback.close_hint') }}">{{ t('drive.callback.close') }}</button>
         <script>
             // Notify parent window
             if (window.opener) {
@@ -73,10 +75,11 @@
             }, 3000);
         </script>
         {% else %}
-        <h2 class="error">Connection Failed</h2>
+        <h2 class="error">{{ t('drive.callback.failed') }}</h2>
         <p>{{ message }}</p>
 
-        <button onclick="window.close()" title="Close this window and return to Easy OKAPI">Close Window</button>
+        <button onclick="window.close()"
+                title="{{ t('drive.callback.close_hint') }}">{{ t('drive.callback.close') }}</button>
         {% endif %}
     </div>
 </body>

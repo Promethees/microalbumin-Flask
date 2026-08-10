@@ -1,551 +1,373 @@
 {% extends "legal_base.html" %}
 
-{% block doc_title %}Privacy Policy{% endblock %}
+{# Same contract as terms.html: every clause is a catalog key, and strings with
+   inline markup go through `t_html`. Table rows are individual keys so a
+   translation can size its own columns without touching the markup. #}
 
-{% block doc_lede %}What Easy OKAPI collects, why, who it is shared with, how long it is kept, and how to
-get it back or have it deleted. The short version: we collect what an account and a licence seat require, your
-measurement data stays yours, we sell nothing, and we train nothing on your data.{% endblock %}
+{% block doc_title %}{{ t('privacy.title') }}{% endblock %}
+
+{% block doc_lede %}{{ t('privacy.lede') }}{% endblock %}
 
 {% block doc_index %}
-<li><a href="#controller">Who is responsible</a></li>
-<li><a href="#collect">What we collect</a></li>
-<li><a href="#why">Why, and on what basis</a></li>
-<li><a href="#never">What we never do</a></li>
-<li><a href="#desktop">The desktop application</a></li>
-<li><a href="#assistant">The AI assistant</a></li>
-<li><a href="#drive">Google Drive</a></li>
-<li><a href="#cookies">Cookies and local storage</a></li>
-<li><a href="#processors">Who else processes it</a></li>
-<li><a href="#transfers">International transfers</a></li>
-<li><a href="#retention">How long we keep it</a></li>
-<li><a href="#security">Security</a></li>
-<li><a href="#rights">Your rights</a></li>
-<li><a href="#children">Children</a></li>
-<li><a href="#changes">Changes to this policy</a></li>
-<li><a href="#contact">Contact</a></li>
+<li><a href="#controller">{{ t('privacy.idx.controller') }}</a></li>
+<li><a href="#collect">{{ t('privacy.idx.collect') }}</a></li>
+<li><a href="#why">{{ t('privacy.idx.why') }}</a></li>
+<li><a href="#never">{{ t('privacy.idx.never') }}</a></li>
+<li><a href="#desktop">{{ t('privacy.idx.desktop') }}</a></li>
+<li><a href="#assistant">{{ t('privacy.idx.assistant') }}</a></li>
+<li><a href="#drive">{{ t('privacy.idx.drive') }}</a></li>
+<li><a href="#cookies">{{ t('privacy.idx.cookies') }}</a></li>
+<li><a href="#processors">{{ t('privacy.idx.processors') }}</a></li>
+<li><a href="#transfers">{{ t('privacy.idx.transfers') }}</a></li>
+<li><a href="#retention">{{ t('privacy.idx.retention') }}</a></li>
+<li><a href="#security">{{ t('privacy.idx.security') }}</a></li>
+<li><a href="#rights">{{ t('privacy.idx.rights') }}</a></li>
+<li><a href="#children">{{ t('privacy.idx.children') }}</a></li>
+<li><a href="#changes">{{ t('privacy.idx.changes') }}</a></li>
+<li><a href="#contact">{{ t('privacy.idx.contact') }}</a></li>
 {% endblock %}
 
 {% block doc_body %}
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="controller">Who is responsible for your data</h2>
+    <h2 id="controller">{{ t('privacy.controller.h') }}</h2>
 
-    <p>The controller of the personal data described here is the <strong>Center for Bioscience and Biotechnology
-            (CBBiotec)</strong>, University of Science, Vietnam National University Ho Chi Minh City (HCMUS–VNU),
-        227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam. Contact:
-        <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a>.
-    </p>
+    <p>{{ t_html('privacy.controller.p1_before') }}
+        <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>
 
-    <p>This policy covers the website at <code>www.easysensorkit.cbbiotec.vn</code>, the hosted web application at
-        <code>/webapp</code>, the Easy OKAPI desktop application, and the account, activation, licence-check, update
-        and assistant endpoints behind them — together, the <strong>Service</strong>. It sits alongside our
-        <a href="/terms">Terms of Service</a>.
-    </p>
+    <p>{{ t_html('privacy.controller.p2_before') }}
+        <a href="{{ url_for('terms') }}">{{ t('nav.terms_of_service') }}</a>{{ t('privacy.controller.p2_after') }}</p>
 
-    <p>Easy OKAPI is an academic research tool and is not intended to process personal health information. Please do
-        not put patient identifiers into file names, source labels, report subjects or assistant prompts.</p>
+    <p>{{ t('privacy.controller.p3') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="collect">What we collect</h2>
+    <h2 id="collect">{{ t('privacy.collect.h') }}</h2>
 
     <div class="legal-table-wrap">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>Category</th>
-                    <th>Specific data</th>
-                    <th>Source</th>
+                    <th>{{ t('privacy.collect.col_category') }}</th>
+                    <th>{{ t('privacy.collect.col_data') }}</th>
+                    <th>{{ t('privacy.collect.col_source') }}</th>
                 </tr>
             </thead>
             <tbody>
+                {% for row in ['account', 'tokens', 'social', 'seats', 'session', 'assistant', 'drive', 'community',
+                'technical'] %}
                 <tr>
-                    <td>Account</td>
-                    <td>Name, email address, a bcrypt hash of your password, whether the address is verified, the
-                        account creation time, the time of your last download, and — only if applied — a ban flag
-                        and its timestamp</td>
-                    <td>You, at sign-up</td>
+                    <td>{{ t('privacy.collect.' ~ row ~ '_cat') }}</td>
+                    <td>{{ t('privacy.collect.' ~ row ~ '_data') }}</td>
+                    <td>{{ t('privacy.collect.' ~ row ~ '_src') }}</td>
                 </tr>
-                <tr>
-                    <td>Email tokens</td>
-                    <td>Short-lived verification and password-reset tokens and their expiry times</td>
-                    <td>Generated by us</td>
-                </tr>
-                <tr>
-                    <td>Social sign-in</td>
-                    <td>The provider name (Google or GitHub), your stable user ID at that provider, and the email
-                        address and display name that provider returns</td>
-                    <td>Google / GitHub, if you use them</td>
-                </tr>
-                <tr>
-                    <td>Licence seats</td>
-                    <td>A hardware fingerprint of each activated machine (a SHA-256 digest — see §05), an optional
-                        label you give it, the activation time, the time it was last seen, and revocation state</td>
-                    <td>The desktop application</td>
-                </tr>
-                <tr>
-                    <td>Session and files</td>
-                    <td>Your uploaded CSV and JSON files, analysis snapshots, report subjects and the session
-                        identifier that ties them to your browser</td>
-                    <td>You, while using the web app</td>
-                </tr>
-                <tr>
-                    <td>Assistant conversations</td>
-                    <td>The messages you send, the recent conversation, and a structured description of the current
-                        screen state</td>
-                    <td>You, when you use the assistant</td>
-                </tr>
-                <tr>
-                    <td>Google Drive</td>
-                    <td>An OAuth access and refresh token, and the identifier of the Drive folder you selected</td>
-                    <td>Google, if you connect Drive</td>
-                </tr>
-                <tr>
-                    <td>Community submissions</td>
-                    <td>The name, affiliation and review text you type into the review form</td>
-                    <td>You, if you submit one</td>
-                </tr>
-                <tr>
-                    <td>Technical</td>
-                    <td>IP address, request time, requested path, HTTP status and user-agent string in server logs;
-                        IP-keyed counters used for rate limiting</td>
-                    <td>Automatic, on every request</td>
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <p>We do not run advertising trackers, third-party analytics scripts, social pixels, session replay or
-        fingerprinting on this website.</p>
+    <p>{{ t('privacy.collect.no_trackers') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="why">Why we process it, and on what basis</h2>
+    <h2 id="why">{{ t('privacy.why.h') }}</h2>
 
     <div class="legal-table-wrap">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>Purpose</th>
-                    <th>Data used</th>
-                    <th>Basis</th>
+                    <th>{{ t('privacy.why.col_purpose') }}</th>
+                    <th>{{ t('privacy.why.col_data') }}</th>
+                    <th>{{ t('privacy.why.col_basis') }}</th>
                 </tr>
             </thead>
             <tbody>
+                {% for row in ['account', 'analysis', 'seats', 'assistant', 'drive', 'reviews', 'uptime', 'legal'] %}
                 <tr>
-                    <td>Create and run your account; verify your address; let you reset a password</td>
-                    <td>Account, email tokens, social sign-in</td>
-                    <td>Performance of our agreement with you</td>
+                    <td>{{ t('privacy.why.' ~ row ~ '_purpose') }}</td>
+                    <td>{{ t('privacy.why.' ~ row ~ '_data') }}</td>
+                    <td>{{ t('privacy.why.' ~ row ~ '_basis') }}</td>
                 </tr>
-                <tr>
-                    <td>Run the analysis you asked for and hold your files for the session</td>
-                    <td>Session and files</td>
-                    <td>Performance of our agreement with you</td>
-                </tr>
-                <tr>
-                    <td>Issue, bind and check licence seats; enforce the one-machine limit; apply revocations</td>
-                    <td>Licence seats, account</td>
-                    <td>Performance of our agreement; our legitimate interest in protecting the Service from
-                        unlicensed use</td>
-                </tr>
-                <tr>
-                    <td>Answer your assistant questions</td>
-                    <td>Assistant conversations</td>
-                    <td>Performance of our agreement with you</td>
-                </tr>
-                <tr>
-                    <td>Synchronise your files to your own Drive folder</td>
-                    <td>Google Drive tokens and folder ID</td>
-                    <td>Your consent, given at the Google authorisation screen</td>
-                </tr>
-                <tr>
-                    <td>Consider a review for publication on the home page</td>
-                    <td>Community submissions</td>
-                    <td>Your consent, given by submitting the form</td>
-                </tr>
-                <tr>
-                    <td>Keep the Service up: debugging, abuse prevention, rate limiting, security investigation</td>
-                    <td>Technical</td>
-                    <td>Our legitimate interest in a secure, available service</td>
-                </tr>
-                <tr>
-                    <td>Comply with a legal obligation or respond to a lawful request</td>
-                    <td>Whatever is strictly required</td>
-                    <td>Legal obligation</td>
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <p>Where a purpose rests on consent, you can withdraw it at any time — disconnect Drive from the Drive panel or
-        from your Google account settings, or email us to have a published review taken down. Withdrawal does not
-        affect processing already carried out.</p>
+    <p>{{ t('privacy.why.withdraw') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="never">What we never do</h2>
+    <h2 id="never">{{ t('privacy.never.h') }}</h2>
 
     <ul class="bullets">
-        <li>We do not sell, rent or trade your personal data or your measurement data.</li>
-        <li>We do not use your measurement data, your files or your reports to train any machine-learning model,
-            ours or anyone else's.</li>
-        <li>We do not build advertising or marketing profiles, and we send no marketing email. The only email we
-            send is transactional: verification, password reset, and licensing notices.</li>
-        <li>We do not read your files for any purpose other than running the computation you requested — except
-            where we must access a specific record to investigate a support request you raised or a security
-            incident.</li>
-        <li>We do not store your password. We store only a bcrypt hash, which we cannot reverse.</li>
+        <li>{{ t_html('privacy.never.b1') }}</li>
+        <li>{{ t_html('privacy.never.b2') }}</li>
+        <li>{{ t_html('privacy.never.b3') }}</li>
+        <li>{{ t_html('privacy.never.b4') }}</li>
+        <li>{{ t_html('privacy.never.b5') }}</li>
     </ul>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="desktop">The desktop application</h2>
+    <h2 id="desktop">{{ t('privacy.desktop.h') }}</h2>
 
-    <p>The desktop build of Easy OKAPI is <strong>local-first</strong>. It runs a server on your own machine, reads
-        the folders you point it at, and talks to the colorimeter over a USB serial port. Your measurement data is
-        never uploaded to us as part of normal operation.</p>
+    <p>{{ t_html('privacy.desktop.p1') }}</p>
 
-    <h3>What stays on your machine</h3>
+    <h3>{{ t('privacy.desktop.stays_h') }}</h3>
     <ul class="bullets">
-        <li>Every CSV, calibration JSON, report and export you create.</li>
-        <li>An interaction event log under <code>log/events/</code>, written as one JSONL file per session. It
-            records which actions were taken and when, so that a bug can be reconstructed. It is stored locally and
-            is never transmitted automatically.</li>
-        <li>Your application settings and the activation file.</li>
+        <li>{{ t_html('privacy.desktop.stays_b1') }}</li>
+        <li>{{ t_html('privacy.desktop.stays_b2') }}</li>
+        <li>{{ t_html('privacy.desktop.stays_b3') }}</li>
     </ul>
 
-    <h3>What leaves your machine</h3>
+    <h3>{{ t('privacy.desktop.leaves_h') }}</h3>
     <ul class="bullets">
-        <li><strong>Activation and licence checks.</strong> The application sends your licence token and the
-            machine's hardware fingerprint to our server when you activate, and periodically thereafter so a
-            revoked seat or banned account takes effect. Nothing else about the machine is sent.</li>
-        <li><strong>The hardware fingerprint itself</strong> is a SHA-256 digest of a stable operating-system
-            machine identifier (the Windows <code>MachineGuid</code>, the macOS <code>IOPlatformUUID</code>, or the
-            Linux <code>machine-id</code>) combined with a fixed salt. We receive only the digest. It identifies a
-            machine to us, but it is not reversible and it carries no name, serial number, MAC address, location or
-            hardware inventory.</li>
-        <li><strong>Update checks and downloads</strong>, which send the licence token so we can confirm your seat
-            before serving a build.</li>
-        <li><strong>Assistant messages</strong>, only when you use the assistant — see §06.</li>
-        <li><strong>Bug reports</strong>, only when you send one. The application prepares a zip of the event log
-            files <em>you</em> select and opens a draft email; you decide whether to attach it and whether to send.
-        </li>
-        <li><strong>Background music</strong> lookups, if you use that feature, resolve stream metadata over the
-            network. No data about your work is included.</li>
+        <li>{{ t_html('privacy.desktop.leaves_b1') }}</li>
+        <li>{{ t_html('privacy.desktop.leaves_b2') }}</li>
+        <li>{{ t_html('privacy.desktop.leaves_b3') }}</li>
+        <li>{{ t_html('privacy.desktop.leaves_b4') }}</li>
+        <li>{{ t_html('privacy.desktop.leaves_b5') }}</li>
+        <li>{{ t_html('privacy.desktop.leaves_b6') }}</li>
     </ul>
 
-    <p>Uninstalling the application removes it from your machine. To also remove the machine's seat from our
-        records, delete your account or email us.</p>
+    <p>{{ t('privacy.desktop.uninstall') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="assistant">The AI assistant</h2>
+    <h2 id="assistant">{{ t('privacy.assistant.h') }}</h2>
 
     <ol class="clauses">
-        <li>When you use the assistant, your prompt, the recent conversation and a structured summary of the current
-            screen are sent to <a href="https://groq.com" rel="noopener">Groq</a>, which runs the language model and
-            returns the reply. This applies both to the web application and to the desktop application when it uses
-            our proxy.</li>
-        <li>Anything you type into the assistant leaves your machine. Do not paste personal data, patient
-            identifiers, credentials or confidential third-party information into it.</li>
-        <li>We do not use your conversations to train a model. Groq's own handling of the request is governed by
-            their terms and privacy policy.</li>
-        <li>In the desktop application you may configure your own provider API key. Requests then go from your
-            machine directly to that provider and never reach our servers.</li>
-        <li>If you rate an assistant answer, the rating and the exchange it refers to may be stored so we can find
-            and fix bad answers.</li>
+        <li>{{ t_html('privacy.assistant.c1_before') }}
+            <a href="https://groq.com" rel="noopener">Groq</a>{{ t_html('privacy.assistant.c1_after') }}</li>
+        <li>{{ t_html('privacy.assistant.c2') }}</li>
+        <li>{{ t_html('privacy.assistant.c3') }}</li>
+        <li>{{ t_html('privacy.assistant.c4') }}</li>
+        <li>{{ t_html('privacy.assistant.c5') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="drive">Google Drive</h2>
+    <h2 id="drive">{{ t('privacy.drive.h') }}</h2>
 
     <ol class="clauses">
-        <li>Connecting Google Drive is optional and off by default. The connection is made through Google's own
-            OAuth screen, which shows you exactly what you are granting before you agree.</li>
-        <li>The connection requests Drive access together with your basic profile and email address, so that files
-            can be written to and read back from the folder you choose and so we can show you which account is
-            connected.</li>
-        <li>We use the authorisation only to push your Easy OKAPI session files to the folder you select, and to
-            pull them back when you ask. We do not index, scan or copy the rest of your Drive.</li>
-        <li>We store the OAuth tokens and the selected folder ID so the connection survives a page reload. Tokens
-            are held encrypted at rest.</li>
-        <li>You can disconnect at any time from the Drive panel, or revoke our access entirely at
-            <a href="https://myaccount.google.com/permissions" rel="noopener">myaccount.google.com/permissions</a>.
-            Files already synchronised stay in your Drive, under your control — disconnecting does not delete them.
-        </li>
-        <li>Our use of information received from Google APIs adheres to the
-            <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API
-                Services User Data Policy</a>, including its Limited Use requirements.</li>
+        <li>{{ t_html('privacy.drive.c1') }}</li>
+        <li>{{ t_html('privacy.drive.c2') }}</li>
+        <li>{{ t_html('privacy.drive.c3') }}</li>
+        <li>{{ t_html('privacy.drive.c4') }}</li>
+        <li>{{ t_html('privacy.drive.c5_before') }}
+            <a href="https://myaccount.google.com/permissions"
+                rel="noopener">myaccount.google.com/permissions</a>{{ t_html('privacy.drive.c5_after') }}</li>
+        <li>{{ t_html('privacy.drive.c6_before') }}
+            <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">{{
+                t('privacy.drive.c6_link') }}</a>{{ t_html('privacy.drive.c6_after') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="cookies">Cookies and local storage</h2>
+    <h2 id="cookies">{{ t('privacy.cookies.h') }}</h2>
 
-    <p>We use no advertising or analytics cookies. What the site sets is limited to what it needs to work:</p>
+    <p>{{ t('privacy.cookies.intro') }}</p>
 
     <div class="legal-table-wrap">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Kind</th>
-                    <th>Purpose and lifetime</th>
+                    <th>{{ t('privacy.cookies.col_name') }}</th>
+                    <th>{{ t('privacy.cookies.col_kind') }}</th>
+                    <th>{{ t('privacy.cookies.col_purpose') }}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>session</td>
-                    <td>Cookie — strictly necessary</td>
-                    <td>A signed cookie holding your session identifier and sign-in state. Set with
-                        <code>Secure</code>, <code>HttpOnly</code> and <code>SameSite=Lax</code>. Lasts up to 30
-                        days, and is also subject to an idle timeout.
-                    </td>
+                    <td>{{ t('privacy.cookies.session_kind') }}</td>
+                    <td>{{ t_html('privacy.cookies.session_purpose') }}</td>
                 </tr>
                 <tr>
                     <td>theme</td>
-                    <td>Local storage</td>
-                    <td>Remembers whether you chose the light or dark interface. Stays in your browser, never sent
-                        to us. Clearing site data removes it.</td>
+                    <td>{{ t('privacy.cookies.theme_kind') }}</td>
+                    <td>{{ t('privacy.cookies.theme_purpose') }}</td>
+                </tr>
+                <tr>
+                    <td>ui_lang</td>
+                    <td>{{ t('privacy.cookies.lang_kind') }}</td>
+                    <td>{{ t('privacy.cookies.lang_purpose') }}</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <p>The landing page opens no session storage at all: a visitor who never enters the web application creates no
-        server-side record beyond an ordinary request log line.</p>
+    <p>{{ t('privacy.cookies.landing') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="processors">Who else processes your data</h2>
+    <h2 id="processors">{{ t('privacy.processors.h') }}</h2>
 
-    <p>We use the following providers to run the Service. Each processes data only as needed to provide its part.
-    </p>
+    <p>{{ t('privacy.processors.intro') }}</p>
 
     <div class="legal-table-wrap">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>Provider</th>
-                    <th>Role</th>
-                    <th>What it sees</th>
+                    <th>{{ t('privacy.processors.col_provider') }}</th>
+                    <th>{{ t('privacy.processors.col_role') }}</th>
+                    <th>{{ t('privacy.processors.col_sees') }}</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>Heroku (Salesforce)</td>
-                    <td>Hosting, PostgreSQL database, Redis session and rate-limit store</td>
-                    <td>Everything the Service stores server-side</td>
+                    <td>{{ t('privacy.processors.heroku_role') }}</td>
+                    <td>{{ t('privacy.processors.heroku_sees') }}</td>
                 </tr>
                 <tr>
                     <td>Google Cloud / Firebase</td>
-                    <td>Firestore persistence</td>
-                    <td>Persisted application records</td>
+                    <td>{{ t('privacy.processors.firebase_role') }}</td>
+                    <td>{{ t('privacy.processors.firebase_sees') }}</td>
                 </tr>
                 <tr>
                     <td>Google Drive</td>
-                    <td>File synchronisation, if you connect it</td>
-                    <td>The files you synchronise, in your own Drive</td>
+                    <td>{{ t('privacy.processors.drive_role') }}</td>
+                    <td>{{ t('privacy.processors.drive_sees') }}</td>
                 </tr>
                 <tr>
                     <td>Google (OAuth) / GitHub (OAuth)</td>
-                    <td>Social sign-in, if you use it</td>
-                    <td>That you signed in to Easy OKAPI</td>
+                    <td>{{ t('privacy.processors.oauth_role') }}</td>
+                    <td>{{ t('privacy.processors.oauth_sees') }}</td>
                 </tr>
                 <tr>
                     <td>Gmail SMTP (Google)</td>
-                    <td>Outbound transactional email</td>
-                    <td>Your email address and the message content</td>
+                    <td>{{ t('privacy.processors.smtp_role') }}</td>
+                    <td>{{ t('privacy.processors.smtp_sees') }}</td>
                 </tr>
                 <tr>
                     <td>GitHub</td>
-                    <td>Serving the source release archive</td>
-                    <td>The download request</td>
+                    <td>{{ t('privacy.processors.github_role') }}</td>
+                    <td>{{ t('privacy.processors.github_sees') }}</td>
                 </tr>
                 <tr>
                     <td>Groq</td>
-                    <td>Language-model inference for the assistant</td>
-                    <td>Your assistant messages and screen context</td>
+                    <td>{{ t('privacy.processors.groq_role') }}</td>
+                    <td>{{ t('privacy.processors.groq_sees') }}</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <p>Beyond these, we disclose personal data only where we must: to comply with a law or a valid legal request, to
-        enforce our <a href="/terms">Terms</a>, or to protect the rights and safety of users or the public. If the
-        Service is ever transferred to another operator within HCMUS–VNU, account records may transfer with it, and
-        we will tell you before that happens.</p>
+    <p>{{ t_html('privacy.processors.disclosure_before') }}
+        <a href="{{ url_for('terms') }}">{{ t('nav.terms') }}</a>{{ t('privacy.processors.disclosure_after') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="transfers">International transfers</h2>
+    <h2 id="transfers">{{ t('privacy.transfers.h') }}</h2>
 
-    <p>CBBiotec is in Vietnam, but the Service runs on infrastructure operated by providers based in the United
-        States and hosted in their regions. Using the Service therefore involves transferring your data outside
-        Vietnam and, if you are in the EU, EEA, UK or Switzerland, outside those areas.</p>
+    <p>{{ t('privacy.transfers.p1') }}</p>
 
-    <p>We rely on our providers' standard contractual clauses and equivalent transfer mechanisms for those
-        transfers, and we keep the data transferred to what the Service actually needs. If you would rather your
-        measurement data did not leave your own machine at all, use the desktop application rather than the hosted
-        web application (§05).</p>
+    <p>{{ t('privacy.transfers.p2') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="retention">How long we keep it</h2>
+    <h2 id="retention">{{ t('privacy.retention.h') }}</h2>
 
     <div class="legal-table-wrap">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Kept</th>
+                    <th>{{ t('privacy.retention.col_data') }}</th>
+                    <th>{{ t('privacy.retention.col_kept') }}</th>
                 </tr>
             </thead>
             <tbody>
+                {% for row in ['account', 'tokens', 'social', 'seats', 'session', 'assistant', 'ratelimit', 'logs',
+                'reviews'] %}
                 <tr>
-                    <td>Account record</td>
-                    <td>Until you delete your account, or until we delete it after a long period of inactivity or
-                        following a ban</td>
+                    <td>{{ t('privacy.retention.' ~ row ~ '_data') }}</td>
+                    <td>{{ t('privacy.retention.' ~ row ~ '_kept') }}</td>
                 </tr>
-                <tr>
-                    <td>Verification and reset tokens</td>
-                    <td>24 hours and 1 hour respectively; cleared once used</td>
-                </tr>
-                <tr>
-                    <td>Social sign-in connections</td>
-                    <td>Until you disconnect them or delete your account</td>
-                </tr>
-                <tr>
-                    <td>Licence seats</td>
-                    <td>Until the seat is revoked or the account is deleted</td>
-                </tr>
-                <tr>
-                    <td>Session files and analysis state</td>
-                    <td>For the life of the session, up to the 30-day session lifetime; cleared earlier when you
-                        sign out or clear the session</td>
-                </tr>
-                <tr>
-                    <td>Assistant conversations</td>
-                    <td>Held for the conversation; not retained as a durable transcript by us, except where you
-                        submitted feedback on an answer</td>
-                </tr>
-                <tr>
-                    <td>Rate-limit counters</td>
-                    <td>Minutes to hours — only as long as the limit window</td>
-                </tr>
-                <tr>
-                    <td>Server request logs</td>
-                    <td>A short rolling window kept by the hosting platform, then discarded</td>
-                </tr>
-                <tr>
-                    <td>Review submissions</td>
-                    <td>In our mailbox until handled; if published, until you ask us to remove it</td>
-                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <p>Where we must keep something longer to resolve a dispute, meet a legal obligation or prevent recurring abuse,
-        we keep only that, and only for as long as the reason lasts.</p>
+    <p>{{ t('privacy.retention.longer') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="security">Security</h2>
+    <h2 id="security">{{ t('privacy.security.h') }}</h2>
 
     <ul class="bullets">
-        <li>All traffic to the Service is over HTTPS.</li>
-        <li>Passwords are hashed with bcrypt. Plaintext passwords are never written to the database or to logs.</li>
-        <li>The session cookie is signed and set <code>Secure</code>, <code>HttpOnly</code> and
-            <code>SameSite=Lax</code>, so it cannot be read by page scripts or sent cross-site.
-        </li>
-        <li>Permanent activation tokens are RS256-signed and verified against a public key held in the client, so a
-            forged token fails verification offline.</li>
-        <li>Google credentials and OAuth tokens are stored encrypted at rest.</li>
-        <li>Account, download, activation and assistant endpoints are rate-limited to blunt credential stuffing,
-            mail flooding and cost-drain attacks.</li>
-        <li>Access to production data is limited to the maintainers who need it to run the Service.</li>
+        <li>{{ t_html('privacy.security.b1') }}</li>
+        <li>{{ t_html('privacy.security.b2') }}</li>
+        <li>{{ t_html('privacy.security.b3') }}</li>
+        <li>{{ t_html('privacy.security.b4') }}</li>
+        <li>{{ t_html('privacy.security.b5') }}</li>
+        <li>{{ t_html('privacy.security.b6') }}</li>
+        <li>{{ t_html('privacy.security.b7') }}</li>
     </ul>
 
-    <p>No system is perfectly secure, and we cannot guarantee absolute security. If we become aware of a breach
-        affecting your personal data, we will notify you and the relevant authority where the law requires it. If you
-        find a vulnerability, please report it to <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> before
-        disclosing it publicly — we will work with you.</p>
+    <p>{{ t_html('privacy.security.p1_before') }}
+        <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t('privacy.security.p1_after') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="rights">Your rights, and how to use them</h2>
+    <h2 id="rights">{{ t('privacy.rights.h') }}</h2>
 
-    <p>Depending on where you live, you may have the right to access a copy of your data, to correct it, to have it
-        deleted, to restrict or object to processing, to portability, and to withdraw a consent you gave. We apply
-        these to every user, wherever you are.</p>
+    <p>{{ t('privacy.rights.intro') }}</p>
 
     <ol class="clauses">
-        <li><strong>Do it yourself.</strong> Your name and email are editable from the account settings panel. You
-            can delete your account there too, with password confirmation — that removes your account record, your
-            social sign-in connections and your machine seats. You can disconnect Google Drive from the Drive panel.
-        </li>
-        <li><strong>Ask us.</strong> Email <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> with "Privacy
-            request" in the subject. We will confirm your identity through the email address on the account and
-            answer within 30 days.</li>
-        <li>Exercising these rights is free. If a request is manifestly unfounded or repetitive we may decline it,
-            and we will tell you why.</li>
-        <li>Deleting your account is irreversible and immediately disables every activated machine seat. Export the
-            files you want to keep first.</li>
-        <li>If you are unhappy with how we handled a request, tell us first so we can put it right. You also have
-            the right to complain to your local data protection authority, and in Vietnam to the competent
-            authority for personal data protection.</li>
+        <li>{{ t_html('privacy.rights.c1') }}</li>
+        <li>{{ t_html('privacy.rights.c2_before') }}
+            <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t_html('privacy.rights.c2_after') }}</li>
+        <li>{{ t_html('privacy.rights.c3') }}</li>
+        <li>{{ t_html('privacy.rights.c4') }}</li>
+        <li>{{ t_html('privacy.rights.c5') }}</li>
     </ol>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="children">Children</h2>
+    <h2 id="children">{{ t('privacy.children.h') }}</h2>
 
-    <p>The Service is not directed at children and we do not knowingly collect personal data from anyone under 16,
-        or under the minimum age of digital consent where they live, whichever is higher. If you believe a child has
-        given us personal data, write to <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a> and we will
-        delete it.</p>
+    <p>{{ t_html('privacy.children.p1_before') }}
+        <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{{ t('privacy.children.p1_after') }}</p>
 
-    <p>Where Easy OKAPI is used in undergraduate or secondary-school teaching, the supervising institution is
-        responsible for obtaining any consent its own rules require.</p>
+    <p>{{ t('privacy.children.p2') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="changes">Changes to this policy</h2>
+    <h2 id="changes">{{ t('privacy.changes.h') }}</h2>
 
-    <p>We will update this policy when the Service changes. The version number and effective date at the top of this
-        page always identify the current text. For a change that materially affects how we use data you have already
-        given us, we will notify you by email or in the application at least 14 days before it takes effect, unless
-        a shorter period is required by law or by a security issue.</p>
+    <p>{{ t('privacy.changes.p1') }}</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────────────── -->
 <section>
-    <h2 id="contact">Contact</h2>
+    <h2 id="contact">{{ t('privacy.contact.h') }}</h2>
 
-    <p>Center for Bioscience and Biotechnology (CBBiotec)<br>
-        University of Science, Vietnam National University Ho Chi Minh City<br>
-        227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam</p>
+    <p>{{ t('terms.contact.org') }}<br>
+        {{ t('terms.contact.university') }}<br>
+        {{ t('terms.contact.address') }}</p>
 
-    <p>Privacy contact: <a href="mailto:tqmthong@gmail.com">tqmthong@gmail.com</a><br>
-        Web: <a href="https://www.easysensorkit.cbbiotec.vn">www.easysensorkit.cbbiotec.vn</a></p>
+    <p>{{ t('privacy.contact.email_label') }} <a href="mailto:{{ contact_email }}">{{ contact_email }}</a><br>
+        {{ t('terms.contact.web_label') }} <a
+            href="https://www.easysensorkit.cbbiotec.vn">www.easysensorkit.cbbiotec.vn</a></p>
 
-    <p>See also our <a href="/terms">Terms of Service</a>.</p>
+    <p>{{ t('privacy.contact.see_also') }}
+        <a href="{{ url_for('terms') }}">{{ t('nav.terms_of_service') }}</a>.</p>
 </section>
 
 {% endblock %}

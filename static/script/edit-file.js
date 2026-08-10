@@ -300,12 +300,12 @@ function editFile(fileName, button, tableSelector = "#file-table") {
         if (convertBtn) {
             convertBtn.addEventListener('click', function () {
                 Swal.fire({
-                    title: 'Convert to Turns?',
-                    text: 'The Timestamp column will be replaced by a Turn index (1, 2, 3 …). Recorded times and any unsaved edits will be lost.',
+                    title: window.t('dlg.convert_to_turns', 'Convert to Turns?'),
+                    text: window.t('dlg.convert_turns_body', 'The Timestamp column will be replaced by a Turn index (1, 2, 3 …). Recorded times and any unsaved edits will be lost.'),
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'Convert',
-                    cancelButtonText: 'Cancel'
+                    confirmButtonText: window.t('dlg.convert', 'Convert'),
+                    cancelButtonText: window.t('dlg.cancel', 'Cancel')
                 }).then(function (res) {
                     if (!res.isConfirmed) {
                         editFile(fileName, button, tableSelector);  // restore editor
@@ -327,13 +327,13 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 }
                                 editFile(fileName, button, tableSelector);
                             } else {
-                                Swal.fire({ title: 'Error!', text: resp.message, icon: 'error', confirmButtonText: 'OK' })
+                                Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: resp.message, icon: 'error', confirmButtonText: window.t('dlg.ok', 'OK') })
                                     .then(function () { editFile(fileName, button, tableSelector); });
                             }
                         },
                         error: function (jqXHR) {
                             const msg = (jqXHR.responseJSON && jqXHR.responseJSON.message) || 'Conversion failed.';
-                            Swal.fire({ title: 'Error!', text: msg, icon: 'error', confirmButtonText: 'OK' })
+                            Swal.fire({ title: window.t('dlg.error_bang', 'Error!'), text: msg, icon: 'error', confirmButtonText: window.t('dlg.ok', 'OK') })
                                 .then(function () { editFile(fileName, button, tableSelector); });
                         }
                     });
@@ -813,8 +813,8 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 footer: '<button id="toggle-mode" class="swal2-confirm swal2-styled" style="margin-top: 10px; background-color: #3085d6">Switch to ' + (editMode === 'text' ? (tableSelector === '#file-table' ? 'Table' : 'Graphic') : 'Text') + ' Mode</button>',
                 focusConfirm: false,
                 showCancelButton: true,
-                confirmButtonText: 'Save Changes',
-                cancelButtonText: 'Cancel',
+                confirmButtonText: window.t('dlg.save_changes', 'Save Changes'),
+                cancelButtonText: window.t('dlg.cancel', 'Cancel'),
                 confirmButtonColor: '#50C878',
                 cancelButtonColor: '#d33',
                 didOpen: () => {
@@ -1126,7 +1126,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                     return; // Exit if no popup is needed
                                 }
                                 Swal.fire({
-                                    title: 'Updated!',
+                                    title: window.t('dlg.updated', 'Updated!'),
                                     text: textMsg,
                                     icon: 'success',
                                     timer: 2000,
@@ -1134,20 +1134,20 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 });
                             } else {
                                 Swal.fire({
-                                    title: 'Error!',
+                                    title: window.t('dlg.error_bang', 'Error!'),
                                     text: response.message,
                                     icon: 'error',
-                                    confirmButtonText: 'OK'
+                                    confirmButtonText: window.t('dlg.ok', 'OK')
                                 });
                             }
                         })
                         .catch(error => {
                             console.error("Edit file error:", error);
                             Swal.fire({
-                                title: 'Error!',
+                                title: window.t('dlg.error_bang', 'Error!'),
                                 text: error.message || 'An unexpected error occurred while saving the file',
                                 icon: 'error',
-                                confirmButtonText: 'OK'
+                                confirmButtonText: window.t('dlg.ok', 'OK')
                             });
                         });
                 }

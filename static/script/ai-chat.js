@@ -40,7 +40,7 @@
     // File-select prepend step
     const _FILE_SELECT_STEP = {
         target: '#file-selection',
-        title: 'Select a File First',
+        title: window.t('dlg.select_file_first', 'Select a File First'),
         description: 'No data file is loaded yet. Click here to select a CSV data file before proceeding.',
         descriptions: {
             vi: 'Chưa có tệp dữ liệu nào được tải. Nhấp vào đây để chọn tệp CSV trước khi tiếp tục.',

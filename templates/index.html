@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ ui_lang_tag() }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
+    <title>{{ t('web.page_title') }}</title>
+    {% include "_lang_head.html" %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap">
@@ -23,6 +24,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+
+    {# The active catalog, for the strings the app builds at runtime. The markup
+       around them is already translated server-side; this is only what Swal
+       dialogs, table renderers and chart labels need. Set as window properties
+       so the separate script files can see them. See static/script/i18n.js. #}
+    <script>
+        window.UI_LANG = {{ ui_lang()|tojson }};
+        window.UI_STRINGS = {{ ui_strings()|tojson }};
+    </script>
+    {% if config.PRODUCTION_MODE %}
+    <script src="{{ url_for('static', filename='dist/i18n.min.js') }}"></script>
+    {% else %}
+    <script src="{{ url_for('static', filename='script/i18n.js') }}"></script>
+    {% endif %}
 </head>
 
 <body>
@@ -35,26 +50,24 @@
     <div id="global-spinner" class="hidden">
         <div class="spinner-container">
             <div class="spinner"></div>
-            <div class="spinner-message">Process is ongoing, please wait...</div>
+            <div class="spinner-message">{{ t('spinner.processing') }}</div>
         </div>
     </div>
     <!-- User Guide Button -->
-    <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide"
-        data-hint="Start the interactive step-by-step walkthrough of the app">
-        User Guide
-    </button>
+    <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="{{ t('topbar.user_guide.aria') }}"
+        data-hint="{{ t('hint.user_guide') }}">{{ t('topbar.user_guide') }}</button>
 
     <div class="container">
         <div class="top-left">
             <div class="flex-group">
                 <img src="{{ url_for('static', filename='cbb.png') }}"
                     style="height: 70px; width: 60px; cursor: pointer;" id="logo"
-                    data-hint="Scroll back to the top of the page"
+                    data-hint="{{ t('hint.logo_scroll_top') }}"
                     onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
 
                 {# The wordmark links back to the landing page (main.py `landing`).
                    The logo image beside it keeps its scroll-to-top behaviour. #}
-                <a href="/" class="title-home" data-hint="Back to the Easy OKAPI home page">
+                <a href="{{ url_for('landing') }}" class="title-home" data-hint="{{ t('web.home_hint') }}">
                     <div id="title" class="title-place">
                         <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
                         <h1 class="okapi-line" style="font-size: 20px;">
@@ -64,7 +77,7 @@
                     </div>
                 </a>
 
-                <div class="toggle-container" id="toggleContainer" data-hint="Switch between light and dark theme">
+                <div class="toggle-container" id="toggleContainer" data-hint="{{ t('hint.theme_toggle') }}">
                     <div class="toggle-button" id="toggleButton"></div>
                 </div>
             </div>
@@ -78,28 +91,28 @@
                     </div>
                 </div>
                 <div class="section hidden" style="position: static;" id="cal-json-exp-section">
-                    <h3>Calibrating for:</h3>
+                    <h3>{{ t('caljson.calibrating_for') }}</h3>
                     <div id="cal-mode-select" class="button-group" data-value="">
                         <button data-mode="kinetics">kinetics</button>
                         <button data-mode="point">point</button>
                     </div>
                 </div>
                 <div class="section" style="position: static;" id="options-section">
-                    <h3>Options</h3>
+                    <h3>{{ t('options.title') }}</h3>
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="no-swal-checkbox">
-                            Disable popups
+                            {{ t('web.options.disable_popups') }}
                         </label>
 
                         <div id="source-options">
                             <label style="display: flex; align-items: center; gap: 6px;">
                                 <input type="checkbox" id="filter-source">
-                                Filter by number of sources
+                                {{ t('web.options.filter_sources') }}
                             </label>
 
                             <div id="num-sources-section" class="hidden">
-                                <label for="num-sources">Number of sources:</label>
+                                <label for="num-sources">{{ t('options.num_sources') }}</label>
                                 <select id="num-sources">
                                 </select>
                             </div>
@@ -107,53 +120,53 @@
                     </div>
                 </div>
                 <div class="section" style="position: static;" id="drive-section">
-                    <h3>☁️ Google Drive Storage</h3>
+                    <h3>☁️ {{ t('web.drive.h') }}</h3>
 
                     {% if account_user %}
                     <!-- Drive disabled for logged-in users — Firebase handles persistence -->
                     <div style="padding: 10px 12px; background: #f0fdf4; border: 1px solid #6ee7b7;
                             border-radius: 7px; font-size: 0.85em; color: #065f46; line-height: 1.5;">
-                        ✅ Your data is saved automatically to your account.<br>
-                        Google Drive sync is disabled while signed in.
+                        ✅ {{ t('web.drive.account_saved') }}<br>
+                        {{ t('web.drive.disabled_signed_in') }}
                     </div>
                     {% else %}
 
                     <!-- Mode Indicator -->
                     <div id="drive-mode-indicator" style="margin-bottom: 10px;">
                         <span id="drive-mode-badge" class="badge-guest"
-                            style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">Guest
-                            Mode</span>
+                            style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">{{
+                            t('web.drive.guest_mode') }}</span>
                         <span id="drive-mode-description"
-                            style="margin-left: 8px; font-size: 0.9em; color: #cccccc;">Data
-                            will not be saved</span>
+                            style="margin-left: 8px; font-size: 0.9em; color: #cccccc;">{{
+                            t('web.drive.not_saved') }}</span>
                     </div>
 
                     <!-- Connect/Disconnect Controls -->
                     <div id="drive-connection-controls" style="margin-bottom: 15px;">
                         <button id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
                             style="padding: 8px 16px;"
-                            data-hint="Link a Google Drive account so your data is saved to the cloud">
-                            🔗 Connect Google Drive
+                            data-hint="{{ t('web.drive.connect_hint') }}">
+                            🔗 {{ t('web.drive.connect') }}
                         </button>
                         <button id="drive-disconnect-btn" onclick="disconnectGoogleDrive()" class="hidden danger-btn"
                             style="padding: 8px 16px;"
-                            data-hint="Unlink Google Drive (your data stays on Drive but stops syncing)">
-                            🔌 Disconnect Drive
+                            data-hint="{{ t('web.drive.disconnect_hint') }}">
+                            🔌 {{ t('web.drive.disconnect') }}
                         </button>
                     </div>
 
                     <!-- Folder Selection (shown when connected) -->
                     <div id="drive-folder-section" class="hidden">
-                        <h4 style="margin-top: 15px;">Select Storage Folder</h4>
+                        <h4 style="margin-top: 15px;">{{ t('web.drive.select_folder') }}</h4>
                         <div class="folder-selection-group" style="margin-bottom: 10px;">
                             <label style="margin-right: 15px;">
                                 <input type="radio" name="folder-choice" value="existing" checked
                                     onchange="toggleFolderChoice()">
-                                Use existing folder
+                                {{ t('web.drive.use_existing') }}
                             </label>
                             <label>
                                 <input type="radio" name="folder-choice" value="new" onchange="toggleFolderChoice()">
-                                Create new folder
+                                {{ t('web.drive.create_new') }}
                             </label>
                         </div>
 
@@ -161,20 +174,20 @@
                         <div id="existing-folder-select" style="margin-bottom: 10px;">
                             <select id="drive-folder-dropdown" onchange="selectDriveFolder()"
                                 style="width: 70%; margin-right: 5px;">
-                                <option value="">Loading folders...</option>
+                                <option value="">{{ t('web.drive.loading_folders') }}</option>
                             </select>
                             <button onclick="refreshFolderList()" class="icon-btn"
-                                data-hint="Refresh the list of Google Drive folders"
+                                data-hint="{{ t('web.drive.refresh_hint') }}"
                                 style="padding: 6px 12px;">🔄</button>
                         </div>
 
                         <!-- New folder creation -->
                         <div id="new-folder-create" class="hidden" style="margin-bottom: 10px;">
-                            <input type="text" id="new-folder-name" placeholder="Easy OKAPI Data"
+                            <input type="text" id="new-folder-name" placeholder="{{ t('web.drive.new_folder_ph') }}"
                                 style="width: 60%; margin-right: 5px;" />
                             <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;"
-                                data-hint="Create a new folder on Google Drive to store your data">Create
-                                Folder</button>
+                                data-hint="{{ t('web.drive.create_folder_hint') }}">{{
+                                t('web.drive.create_folder') }}</button>
                         </div>
 
                         <div id="selected-folder-display" class="hidden"
@@ -182,67 +195,68 @@
                             📁 <strong id="current-folder-name" style="color: #111111"></strong>
                             <div id="folder-pull-hint" class="hidden">
                                 <span class="folder-pull-hint__arrow">⬇️</span>
-                                <span class="folder-pull-hint__text">Folder set — click <strong>Pull from Drive</strong> below to load its files.</span>
+                                <span class="folder-pull-hint__text">{{ t('web.drive.folder_set_before') }}
+                                    <strong>{{ t('web.drive.pull') }}</strong>{{ t('web.drive.folder_set_after') }}</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Sync Controls (shown when folder selected) -->
                     <div id="drive-sync-section" class="hidden">
-                        <h4 style="margin-top: 15px;">Sync Settings</h4>
+                        <h4 style="margin-top: 15px;">{{ t('web.drive.sync_settings') }}</h4>
                         <label class="checkbox-label" style="display: block; margin-bottom: 10px;">
                             <input type="checkbox" id="auto-sync-checkbox" onchange="updateAutoSyncPreference()"
-                                data-hint="Automatically push your data to Drive when you close the browser">
-                            Auto-sync when closing browser
+                                data-hint="{{ t('web.drive.autosync_hint') }}">
+                            {{ t('web.drive.autosync') }}
                         </label>
 
                         <div class="sync-buttons" style="margin-bottom: 10px;">
                             <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;"
-                                data-hint="Upload your current local data to the selected Drive folder">
-                                ⬆️ Push to Drive
+                                data-hint="{{ t('web.drive.push_hint') }}">
+                                ⬆️ {{ t('web.drive.push') }}
                             </button>
                             <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;"
-                                data-hint="Download the data from the selected Drive folder into the app">
-                                ⬇️ Pull from Drive
+                                data-hint="{{ t('web.drive.pull_hint') }}">
+                                ⬇️ {{ t('web.drive.pull') }}
                             </button>
                         </div>
 
                         <div id="last-sync-info" class="sync-info hidden" style="font-size: 0.85em; color: #7f8c8d;">
-                            Last synced: <span id="last-sync-time">Never</span>
+                            {{ t('web.drive.last_synced') }} <span id="last-sync-time">{{ t('web.drive.never') }}</span>
                         </div>
                     </div>
                     {% endif %}
                 </div>
                 <div class="section" style="position: static;" id="download-section">
-                    <h3>👤 Your Account</h3>
+                    <h3>👤 {{ t('web.account.h') }}</h3>
                     {% if account_user %}
                     <div class="account-nav">
-                        <span class="account-nav-label">Signed in as <strong>{{ account_user.name }}</strong></span>
+                        <span class="account-nav-label">{{ t('nav.signed_in_as') }}
+                            <strong>{{ account_user.name }}</strong></span>
                         <button class="account-nav-btn logout-btn" onclick="accountLogout()"
-                            data-hint="Sign out of your account on this browser">Log Out</button>
+                            data-hint="{{ t('web.account.logout_hint') }}">{{ t('web.account.logout') }}</button>
                     </div>
                     <div style="margin-bottom: 8px;">
                         <button class="account-nav-btn token-btn" onclick="revealDownloadToken()"
-                            data-hint="Show the token that activates the offline app on your machine">🔑 Get Download
-                            Token</button>
+                            data-hint="{{ t('web.account.token_hint') }}">🔑 {{ t('web.account.token') }}</button>
                     </div>
                     <div style="margin-bottom: 12px;">
                         <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()"
-                            data-hint="Permanently delete your account and its stored data">🗑 Delete
-                            Account</button>
+                            data-hint="{{ t('web.account.delete_hint') }}">🗑 {{ t('web.account.delete') }}</button>
                     </div>
                     {% else %}
                     <div class="account-nav">
-                        <span class="account-nav-label">Register to download a local version?</span>
-                        <a href="/account/signup" class="account-nav-btn signup-btn"
-                            data-hint="Create an account to download the offline app and sync your data">Sign Up</a>
-                        <a href="/account/login" class="account-nav-btn login-btn"
-                            data-hint="Sign in to your existing account">Log In</a>
+                        <span class="account-nav-label">{{ t('web.account.register_prompt') }}</span>
+                        <a href="{{ url_for('account.signup_page') }}" class="account-nav-btn signup-btn"
+                            data-hint="{{ t('web.account.signup_hint') }}">{{ t('web.account.signup') }}</a>
+                        <a href="{{ url_for('account.login_page') }}" class="account-nav-btn login-btn"
+                            data-hint="{{ t('web.account.login_hint') }}">{{ t('web.account.login') }}</a>
                     </div>
                     {% endif %}
                     <p class="account-nav-hint">
-                        Installers for macOS, Windows and Linux are on the
-                        <a href="/#run">home page</a>.
+                        {{ t('web.account.installers_before') }}
+                        <a href="{{ url_for('landing') }}#run">{{ t('web.account.home_page') }}</a>{{
+                        t('web.account.installers_after') }}
                     </p>
                 </div>
             </div><!-- #top-left-scrollable -->
@@ -252,7 +266,7 @@
             <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
                 class="hidden scrollbar-style"></div>
             <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
-                style="cursor: pointer;">Deselect</button>
+                style="cursor: pointer;">{{ t('btn.deselect') }}</button>
         </div>
         <script>
             // Global Loader Controls explicitly manually triggered
@@ -271,143 +285,146 @@
         <div id="main-content">
             <div class="section" id="cal-json-sel-section">
                 <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
-                    Select Coefficients for standard curve <span id="json-sel-chevron"
+                    Select Coefficients for {{ t('web.json.select_coefs') }} <span id="json-sel-chevron"
                         class="folder-chevron collapsed-chevron">▼</span>
                 </h2>
                 <div id="json-sel-collapse" class="section-collapse collapsed">
                     <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
-                        placeholder="Search Calibrated JSON..."
+                        placeholder="{{ t('web.search_json_ph') }}"
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
                         <table id="json-table" class="table">
                             <tr>
-                                <th>Calibrated JSON</th>
-                                <th colspan="3">Action</th>
+                                <th>{{ t('table.calibrated_json') }}</th>
+                                <th colspan="3">{{ t('table.action') }}</th>
                             </tr>
                             {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
                                 <td>{{ file }} <span class="file-identity">{{ cal_json_identity.get(file, {}).get('measurement') or '—' }}·{{ cal_json_identity.get(file, {}).get('unit') or '—' }}·{{ cal_json_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
-                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">✅ Select</button>
+                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">{{ t('btn.select') }}</button>
                                 </td>
-                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">❌ Delete</button>
+                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">{{ t('btn.delete') }}</button>
                                 </td>
-                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">✏️ Edit</button></td>
+                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">{{ t('btn.edit') }}</button></td>
                             </tr>
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="3">No Calibrated JSON is available.</td>
+                                <td colspan="3">{{ t('caljson.none_available') }}</td>
                             </tr>
                             {% endif %}
                         </table>
                     </div>
                     <button id="deselect-json-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Clear the currently selected coefficient file">Deselect</button>
+                        class="utility-btn" data-hint="{{ t('hint.deselect_coef') }}">{{ t('btn.deselect') }}</button>
                     <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="Make a duplicate of the selected coefficient file">Copy</button>
+                        class="utility-btn" data-hint="{{ t('hint.copy_coef') }}">{{ t('btn.copy') }}</button>
                     <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Upload a coefficient JSON file from your computer">Upload</button>
+                        class="utility-btn" data-hint="{{ t('web.json.upload_hint') }}">{{ t('web.upload') }}</button>
                     <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;"
-                        disabled class="utility-btn" data-hint="Download the selected coefficient file to your computer">Download</button>
+                        disabled class="utility-btn"
+                        data-hint="{{ t('web.json.download_hint') }}">{{ t('web.download') }}</button>
                 </div>
             </div>
             <div id="error-message"></div>
             <div class="section" id="file-selection" tabindex="-1">
                 <h2 id="file-selection-header" class="folder-section-toggle"
                     onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span
-                        id="file-selection-label">File Selection</span> <span id="file-sel-chevron"
+                        id="file-selection-label">{{ t('files.title') }}</span> <span id="file-sel-chevron"
                         class="folder-chevron">▼</span></h2>
                 <div id="file-sel-collapse" class="section-collapse">
                     <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
-                        placeholder="Search CSV files..."
+                        placeholder="{{ t('web.search_csv_ph') }}"
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
                         <table id="file-table" class="table">
                             <tr>
-                                <th id="file-table-header-name">File Name</th>
-                                <th colspan="3">Action</th>
+                                <th id="file-table-header-name">{{ t('table.file_name') }}</th>
+                                <th colspan="3">{{ t('table.action') }}</th>
                             </tr>
                             {% if file_list %}
                             {% for file in file_list %}
                             <tr>
                                 <td>{{ file }} <span class="file-identity">{{ file_identity.get(file, {}).get('measurement') or '—' }}·{{ file_identity.get(file, {}).get('unit') or '—' }}·{{ file_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
-                                <td><button onclick="selectFile('{{ file }}', this)">✅ Select</button></td>
-                                <td><button onclick="deleteFile('{{ file }}', this)">❌ Delete</button></td>
-                                <td><button onclick="editFile('{{ file }}', this)">✏️ Edit</button></td>
+                                <td><button onclick="selectFile('{{ file }}', this)">{{ t('btn.select') }}</button></td>
+                                <td><button onclick="deleteFile('{{ file }}', this)">{{ t('btn.delete') }}</button></td>
+                                <td><button onclick="editFile('{{ file }}', this)">{{ t('btn.edit') }}</button></td>
                             </tr>
                             {% endfor %}
                             {% else %}
                             <tr>
-                                <td colspan="3">No CSV files is available.</td>
+                                <td colspan="3">{{ t('web.csv.none') }}</td>
                             </tr>
                             {% endif %}
                         </table>
                     </div>
                     <button id="deselect-file-btn" onclick="deselectFile()" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Clear the currently selected CSV file">Deselect</button>
+                        class="utility-btn" data-hint="{{ t('hint.deselect_csv') }}">{{ t('btn.deselect') }}</button>
                     <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="Make a duplicate of the selected CSV file">Copy</button>
+                        class="utility-btn" data-hint="{{ t('hint.copy_csv') }}">{{ t('btn.copy') }}</button>
                     <button id="upload-file-btn" onclick="uploadFile()" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Upload a CSV file from your computer">Upload</button>
+                        class="utility-btn" data-hint="{{ t('web.csv.upload_hint') }}">{{ t('web.upload') }}</button>
                     <button id="download-file-btn" onclick="downloadFile()" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="Download the selected CSV file to your computer">Download</button>
+                        class="utility-btn" data-hint="{{ t('web.csv.download_hint') }}">{{ t('web.download') }}</button>
                     <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
-                        class="utility-btn" data-hint="Combine several CSV files into a single file">Merge Files</button>
+                        class="utility-btn" data-hint="{{ t('hint.merge_files') }}">{{ t('btn.merge_files') }}</button>
                 </div>
             </div>
             <div class="section hidden" id="report-console-section" tabindex="-1">
-                <h2>📊 Report Modification Console</h2>
+                <h2>{{ t('report.console_title') }}</h2>
                 <div id="report-subject-info" style="margin-bottom: 15px; font-weight: bold; color: #3498db;"></div>
                 <div class="report-layout-config"
                     style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
-                    <h3>Layout Configurations</h3>
+                    <h3>{{ t('report.layout_config') }}</h3>
                     <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
-                        <label><input type="checkbox" id="console-watermark" checked> Include Watermark</label>
-                        <label><input type="checkbox" id="console-logo" checked> Include CBB Logo</label>
-                        <label>Title: <input type="text" id="console-title" value="Colorimetric Analysis Report"
-                                style="width: 250px;"></label>
-                        <label><input type="checkbox" id="console-split-sheets" checked> Split sheets (one tab per
-                            CSV)</label>
+                        <label><input type="checkbox" id="console-watermark" checked>
+                            {{ t('web.report.watermark') }}</label>
+                        <label><input type="checkbox" id="console-logo" checked>
+                            {{ t('web.report.logo') }}</label>
+                        <label>{{ t('web.report.title_label') }} <input type="text" id="console-title"
+                                value="{{ t('web.report.title_default') }}" style="width: 250px;"></label>
+                        <label><input type="checkbox" id="console-split-sheets" checked>
+                            {{ t('web.report.split_sheets') }}</label>
                     </div>
                 </div>
-                <h3>Items in this Report Subject</h3>
+                <h3>{{ t('report.items_in_subject') }}</h3>
                 <div id="report-items-container" class="scrollbar-style"
                     style="max-height: 400px; overflow-y: auto; border: 1px solid #eee; padding: 10px; margin-bottom: 15px; background: white;">
-                    <p style="color: #666;">Select a report subject folder to view items.</p>
+                    <p style="color: #666;">{{ t('report.select_subject_hint') }}</p>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="utility-btn" onclick="clearReportItems()"
-                        data-hint="Remove all items from the selected report subject">🗑️ Clear Selected Subject</button>
+                        data-hint="{{ t('hint.clear_subject') }}">{{ t('report.clear_subject') }}</button>
                     <button class="utility-btn" onclick="finalizeReportExcel()"
-                        data-hint="Export this report subject as an Excel workbook"
-                        style="padding: 10px 20px; font-size: 1.1rem;">📊 Export as Excel</button>
+                        data-hint="{{ t('hint.export_excel') }}"
+                        style="padding: 10px 20px; font-size: 1.1rem;">{{ t('report.export_excel') }}</button>
                     <button class="primary-btn" onclick="finalizeReport()"
-                        data-hint="Generate the final printable HTML report"
-                        style="padding: 10px 20px; font-size: 1.1rem;">📄 Generate Final Report</button>
+                        data-hint="{{ t('hint.generate_final') }}"
+                        style="padding: 10px 20px; font-size: 1.1rem;">{{ t('report.generate_final') }}</button>
                 </div>
             </div>
 
             <div class="section hidden" id="data-display-section">
-                <h2>Data Display</h2>
+                <h2>{{ t('display.title') }}</h2>
                 <!-- Display selected file name -->
-                <div id="selected-file-display">No file selected</div>
+                <div id="selected-file-display">{{ t('display.no_file_selected') }}</div>
                 <div class="section" id="point-json-exp-section">
                     <span id="ref-point-line">
-                        Reference point is at <span type="number" id="cal-point"></span>
+                        {{ t('web.calibrate.ref_point_at') }} <span type="number" id="cal-point"></span>
                         <span id="cal-time-unit" style="font-weight: bold;">second</span>
                         <br />
                     </span>
                     <span id="add-json-section"></span>
                 </div>
                 <div class="section" id="window-size-section"
-                    data-hint="Number of consecutive data points used to compute each local slope for maxRate regression (minimum: 3). Larger windows smooth noise; smaller windows track fast changes.">
-                    Select window size for maxRate regression
+                    data-hint="{{ t('hint.window_size') }}">
+                    {{ t('web.select.window_size') }}
                     <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
                     <div id="wd-size-error"></div>
                 </div>
                 <div class="section" id="select-quantity-section">
-                    Select quantity to derive concentration from
+                    {{ t('web.select.quantity') }}
                     <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
                         {% set transformed = quantity.lower().replace(' ', '_') %}
@@ -416,13 +433,13 @@
                     </select>
                 </div>
                 <div id="select-time-point">
-                    Select time point to derive concentration from
+                    {{ t('web.select.time_point') }}
                     <select id="regressed-time-point" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
                 <div id="select-regress-algo">
-                    Select Regress Algo to export:
+                    {{ t('web.select.regress_algo') }}
                     <select id="exp-json-regress-algo" onchange="toggleMode()">
                         <option value="polynomial">polynomial</option>
                         <option value="linear">linear</option>
@@ -450,12 +467,12 @@
                             style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
                         <span id="range-value-error" class="error"></span>
                         <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
-                            data-hint="Save the rows in this time range to a new CSV file">💾 Save Range</button>
+                            data-hint="{{ t('hint.save_range') }}">{{ t('display.save_range') }}</button>
                         <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
-                            data-hint="Save a blank-removed copy (each column minus its own minimum) to a new CSV file">🧮 Normalize</button>
+                            data-hint="{{ t('hint.normalize_btn') }}">{{ t('display.normalize_btn') }}</button>
                     </div>
                     <div id="time-unit-row" style="margin-top:4px;">
-                        <span style="font-weight:600;">Time unit:</span>
+                        <span style="font-weight:600;">{{ t('display.time_unit_label') }}</span>
                         <select id="time-unit" onchange="toggleMode()">
                             {% for unit in range_input.units %}
                             <option value="{{ unit }}">{{ unit }}</option>
@@ -464,35 +481,36 @@
                     </div>
                 </div>
                 <div id="mode-toggle">
-                    <label id="split-source-section" data-hint="Plot each light source as its own separate curve">
-                        <input type="checkbox" id="split-source" onchange="toggleMode()"> Split by Sources
+                    <label id="split-source-section" data-hint="{{ t('hint.split_sources') }}">
+                        <input type="checkbox" id="split-source" onchange="toggleMode()">
+                        {{ t('web.mode.split_sources') }}
                     </label>
-                    <label id="normalize-mode-section" data-hint="Subtract the blank (each column minus its own minimum) before plotting">
-                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()"> Normalize Data (remove
-                        Blank)
+                    <label id="normalize-mode-section" data-hint="{{ t('hint.normalize_mode') }}">
+                        <input type="checkbox" id="normalize-mode" onchange="toggleMode()">
+                        {{ t('web.mode.normalize') }}
                     </label>
-                    <label id="open-all-analysis-section" data-hint="Expand or collapse every analysis panel at once">
-                        <input type="checkbox" id="open-all-analysis" onchange="toggleMode()"> Expand/Collapse all
-                        Analyses
+                    <label id="open-all-analysis-section" data-hint="{{ t('hint.expand_all') }}">
+                        <input type="checkbox" id="open-all-analysis" onchange="toggleMode()">
+                        {{ t('web.mode.expand_all') }}
                     </label>
                 </div>
                 <div id="chart-container" tabindex="-1" class="scrollbar-style">
                     <!-- Chart sections will be dynamically generated by updatePlot -->
                 </div>
                 <div id="select-source-to-export">
-                    Select Source to export:
+                    {{ t('web.select.source') }}
                     <select id="exp-json-source">
                         <option value="ALL">ALL</option>
                     </select>
                 </div>
                 <div id="export-analysis">
                     <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')">Export
-                        analysis for Calibration <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')">{{
+                        t('web.export.analysis_heading') }} <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span>
                     </h3>
                     <div id="export-analysis-collapse" class="section-collapse collapsed">
                         <div class="section" id="set-exp-point-section">
-                            Set reference point to export: <input type="number" id="exp-json-time-value"
+                            {{ t('web.export.set_ref_point') }} <input type="number" id="exp-json-time-value"
                                 style="width: 5em;"> <span id="exp-json-time-unit-label" style="font-weight: bold;"> second. </span>
                             <br />
                             <span id="est-val-error" class="error"></span>
@@ -505,8 +523,8 @@
                              No time reference applies. Shown only for a point-mode Turn
                              file; replaces #set-exp-point-section. -->
                         <div class="section hidden" id="turn-cal-section">
-                            <p style="margin:0 0 6px;">Assign a concentration to each recorded Turn — every Turn is one standard, and these points form the calibration curve.</p>
-                            <p style="margin:0 0 6px; font-size:0.9em; opacity:0.85;">For multiple sources, pick the source in "Select Source to export" below — each selected source is written as its own calibration curve.</p>
+                            <p style="margin:0 0 6px;">{{ t('export.turn_cal_intro') }}</p>
+                            <p style="margin:0 0 6px; font-size:0.9em; opacity:0.85;">{{ t('web.export.multi_source_note') }}</p>
                             <div style="overflow-x:auto;">
                                 <table id="turn-cal-table" class="turn-cal-table"></table>
                             </div>
@@ -514,37 +532,37 @@
                         </div>
                     </div>
                     <div class="export-row">
-                        <label for="save-file">File Name: </label>
+                        <label for="save-file">{{ t('export.file_name') }}</label>
                         <input type="text" id="save-file"
-                            placeholder="Enter calibrate file name to save analysis data to (e.g., results)"
+                            placeholder="{{ t('ph.calibrate_file_name') }}"
                             style="width: 70%">
                         <span id="save-file-error" class="error"></span>
                     </div>
                     <button id="export-btn" onclick="exportData()"
-                        data-hint="Save the derived analysis values to a calibration file">Export Data to Calibrate</button>
+                        data-hint="{{ t('hint.export_to_calibrate') }}">{{ t('export.export_to_calibrate') }}</button>
                     <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)"
-                        data-hint="Open the folder where the exported file will be saved">Browse Saving
-                        Location</button>
-                    <p id="export-data-warning" style="color: red;"><span style="font-weight: bold;">Warning!</span>
-                        Exporting data will automatically convert the kinetics quantities to per <span
-                            style="font-weight: bold;">"minutes"!</span></p>
+                        data-hint="{{ t('hint.browse_saving_location') }}">{{ t('export.browse_saving_location') }}</button>
+                    <p id="export-data-warning" style="color: red;"><span
+                            style="font-weight: bold;">{{ t('web.export.warning') }}</span>
+                        {{ t('web.export.per_minutes_before') }} <span
+                            style="font-weight: bold;">{{ t('web.export.per_minutes_unit') }}</span></p>
                 </div>
                 <div id="export-coef">
                     <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')">Export coefficients
-                        for standard curve <span id="export-coef-chevron"
+                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')">{{
+                        t('web.export.coef_heading') }} <span id="export-coef-chevron"
                             class="folder-chevron collapsed-chevron">▼</span></h3>
                     <div id="export-coef-collapse" class="section-collapse collapsed">
                         <div>
-                            <label for="save-json-file">File Name: </label>
+                            <label for="save-json-file">{{ t('export.file_name') }}</label>
                             <input type="text" id="save-json-file"
-                                placeholder="Enter json file name to save coefficients to" style="width: 50%">
+                                placeholder="{{ t('web.export.json_name_ph') }}" style="width: 50%">
                             <span id="save-json-file-error" class="error"></span>
                         </div>
                         <button id="export-json-btn" onclick="exportJSONCoef()"
-                            data-hint="Save the fitted standard-curve coefficients to a calibration JSON file">Export Calibrated Coefs</button>
+                            data-hint="{{ t('hint.export_calibrated_coefs') }}">{{ t('export.export_calibrated_coefs') }}</button>
                         <br />
-                        Enter the threshold value for rSquared <input type="number" id="threshold-value" value="0"
+                        {{ t('web.export.rsquared_threshold') }} <input type="number" id="threshold-value" value="0"
                             style="width:10%;">
                     </div>
                 </div>
@@ -553,31 +571,31 @@
                         Report <span id="report-chevron" class="folder-chevron">▼</span></h3>
                     <div id="report-collapse" class="section-collapse">
                         <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
-                            data-hint="Open a quick printable report of the current chart and data"
-                            style="margin-top: 5px;">📋 Generate quick Report</button>
+                            data-hint="{{ t('hint.generate_quick') }}"
+                            style="margin-top: 5px;">{{ t('report.generate_quick') }}</button>
                         <div style="margin-top: 10px;">
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                 <button id="export-to-report-btn" onclick="exportToReport()" class="utility-btn"
-                                    data-hint="Add this data to a report subject for inclusion in the final report"
-                                    style="background-color: #2ecc71; color: white;">🚀 Export Data to Report</button>
-                                <label style="font-weight:600;">Subject:</label>
+                                    data-hint="{{ t('hint.export_to_report') }}"
+                                    style="background-color: #2ecc71; color: white;">{{ t('report.export_to_report') }}</button>
+                                <label style="font-weight:600;">{{ t('report.subject_label') }}</label>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-existing"
                                         value="existing" checked onchange="onReportSaveModeChange()"> Existing
                                 </label>
                                 <div id="report-existing-row" style="display:flex; gap:5px; align-items:center;">
                                     <select id="report-subject-select" style="flex:1; max-width:250px;">
-                                        <option value="">— select subject —</option>
+                                        <option value="">{{ t('report.select_subject_option') }}</option>
                                     </select>
                                     <button type="button" onclick="loadReportSubjectsForPicker()"
-                                        data-hint="Refresh the report subject list" style="padding:3px 7px;">↻</button>
+                                        data-hint="{{ t('hint.refresh_subjects') }}" style="padding:3px 7px;">↻</button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
                                         onchange="onReportSaveModeChange()"> New
                                 </label>
                                 <div id="report-new-row" style="display:none; align-items:center; gap:4px;">
-                                    <input type="text" id="report-subject-name" placeholder="new subject name"
+                                    <input type="text" id="report-subject-name" placeholder="{{ t('ph.new_subject_name') }}"
                                         style="width: 150px;">
                                 </div>
                             </div>
@@ -592,22 +610,22 @@
              using the tool: a link to each, and the submission form (which emails
              the admin — nothing published from the browser). -->
         <div id="community-strip" class="community-strip">
-            <span class="community-strip__text">Using Easy OKAPI in your work?</span>
+            <span class="community-strip__text">{{ t('web.community.prompt') }}</span>
             <button type="button" class="utility-btn" onclick="openReviewForm()"
-                data-hint="Send your experience to our team — reviews are published only after we confirm with you">
-                ✍️ Share your experience
+                data-hint="{{ t('web.community.share_hint') }}">
+                ✍️ {{ t('web.community.share') }}
             </button>
-            <a href="/#reviews" class="community-strip__link"
-                data-hint="Read published reviews on the home page">Read reviews</a>
-            <a href="/#cite" class="community-strip__link"
-                data-hint="APA and BibTeX citations on the home page">How to cite</a>
+            <a href="{{ url_for('landing') }}#reviews" class="community-strip__link"
+                data-hint="{{ t('web.community.reviews_hint') }}">{{ t('web.community.reviews') }}</a>
+            <a href="{{ url_for('landing') }}#cite" class="community-strip__link"
+                data-hint="{{ t('web.community.cite_hint') }}">{{ t('web.community.cite') }}</a>
         </div>
         <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
-            © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
-            &nbsp;·&nbsp;<a href="/terms" style="color: inherit;">Terms</a>
-            &nbsp;·&nbsp;<a href="/privacy" style="color: inherit;">Privacy</a>
-            &nbsp;·&nbsp;<span title="Easy OKAPI is a research tool, not a medical device">Research use only — not
-                for diagnostic use</span>
+            © 2025 - <span id="year"></span> {{ t('web.footer.rights') }}
+            &nbsp;·&nbsp;<a href="{{ url_for('terms') }}" style="color: inherit;">{{ t('nav.terms') }}</a>
+            &nbsp;·&nbsp;<a href="{{ url_for('privacy') }}" style="color: inherit;">{{ t('nav.privacy') }}</a>
+            &nbsp;·&nbsp;<span title="{{ t('web.footer.research_hint') }}">{{ t('web.footer.research') }}</span>
+            &nbsp;·&nbsp;{% include "_lang_switch.html" %}
         </footer>
     </div>
     {% if config.PRODUCTION_MODE %}
