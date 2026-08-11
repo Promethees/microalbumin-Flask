@@ -45,9 +45,10 @@
     }
     a.btn:hover { background: #1b4332; }
   </style>
+  {% include "_a11y_head.html" %}
 </head>
 <body>
-  <div class="card">
+  <main class="card" id="main-content" tabindex="-1">
     <div class="card-header">
       <h1>Easy OKAPI</h1>
     </div>
@@ -56,17 +57,17 @@
          passed in from Python: this page is reached from an email, so it renders
          in the language the visitor last chose (see COOKIE_LANG_ENDPOINTS). #}
       {% if success %}
-        <div class="icon">✅</div>
+        <div class="icon" aria-hidden="true">✅</div>
         <p>{{ t(message_key) }}</p>
         <a href="{{ url_for('account.login_page') }}" class="btn"
            title="{{ t('auth.verify.login_hint') }}">{{ t('auth.verify.login') }}</a>
       {% else %}
-        <div class="icon">❌</div>
+        <div class="icon" aria-hidden="true">❌</div>
         <p>{{ t(message_key) }}</p>
         <a href="{{ url_for('account.signup_page') }}" class="btn"
            title="{{ t('auth.verify.signup_hint') }}">{{ t('auth.verify.signup') }}</a>
       {% endif %}
     </div>
-  </div>
+  </main>
 </body>
 </html>

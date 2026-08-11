@@ -66,6 +66,10 @@ const MANUAL_RESERVED_NAMES = [
 
   // Community (review submission dialog)
   'openReviewForm',
+
+  // Accessibility (short-hands.js + a11y.js — called across files and from
+  // inline handlers, so the names must survive minification)
+  'announce', 'announceAlert', 'toggleChartDataTable', 'buildChartDataTable',
 ];
 
 function getReservedNames() {

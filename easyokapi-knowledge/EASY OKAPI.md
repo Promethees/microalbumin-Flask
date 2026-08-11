@@ -89,13 +89,14 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `ai_settings.py`                                         | Per-session AI settings via Flask session (enabled, preferred_languages, first_run_shown) |
 | `download_service.py`                                    | JWT helpers: generate/validate download tokens (30 min) and activation tokens (permanent) |
 
-### 2.3 Frontend (`static/script/` — 14 JS files)
+### 2.3 Frontend (`static/script/` — 15 JS files)
 
 | File | Responsibility |
 |---|---|
 | `tooltip.js` | Styled hover-hint component. Any `[data-hint="…"]` element shows a single `#okapi-tooltip` bubble appended to `<body>` (so it escapes `overflow:hidden` collapsibles), positioned above/below the target on hover or keyboard focus. Replaces native `title=` tooltips; styling lives in `style.css` (`#okapi-tooltip`, light/dark themed); loaded first in the script block |
-| `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, `fetchJSON`, etc.) |
+| `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, `fetchJSON`, etc.) plus the screen-reader announcements: `announce()` (polite) and `announceAlert()` (assertive) write into the `#a11y-live-region` / `#a11y-alert-region` pair that ships in `index.html`; `$showText` announces every error it displays |
 | `skeleton.js` | Loading placeholders for regions waiting on the server: `showSkeleton(target, {kind:'rows'\|'cover'\|'cards'})` / `hideSkeleton(target)`, 200 ms delay before anything paints, `aria-busy` on the host. Loaded in `<head>` with `i18n.js`. Used by the file/JSON tables, the chart and the report item list — NOT by blocking operations, which keep `#global-spinner`. See Rule.md §2.7 |
+| `a11y.js` | Accessibility behaviours no single feature owns: names each chart `<canvas>` and builds the data table that carries the same numbers (`buildChartDataTable` / `toggleChartDataTable`, called from `generate-chart.js`, built only when opened); gives an overflowing panel a tab stop so it can be scrolled from the keyboard (`enhanceScrollableRegions`, re-run on DOM changes). Loaded in `<head>` with `i18n.js` and `skeleton.js`. See Rule.md §2.15 |
 | `init.js` | Page initialization, event listeners, mode/filter setup, socket.io connection |
 | `index.js` | `AppState` global state object, mode switching logic, directory updates, `checkServerStatus` |
 | [[static/script/navigation.js\|navigation.js]] | File table population (CSV and JSON), directory browsing, `browseSavingLocation` |
@@ -121,6 +122,8 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 | `reset_password.html` | Password reset form (receives `token` + `valid` from server) |
 | `verify_email.html` | Email verification result page (success/failure) |
 | `callback.html` | Google Drive OAuth callback result page |
+| `accessibility.html` | The published accessibility statement (WCAG 2.2 AA conformance claim, known limitations, installer clauses, feedback route). Extends `legal_base.html`, served by `main.py:accessibility`, versioned by `A11Y_VERSION` / `A11Y_EFFECTIVE`, localized like the other legal documents |
+| `_a11y_head.html` | Focus ring, `.sr-only` and the reduced-motion opt-out for the account pages, which carry their own inline CSS and load neither `style.css` nor `landing.css`. Included last in their `<head>` |
 
 ---
 

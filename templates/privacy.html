@@ -46,13 +46,13 @@
 <section>
     <h2 id="collect">{{ t('privacy.collect.h') }}</h2>
 
-    <div class="legal-table-wrap">
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-labelledby="collect">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>{{ t('privacy.collect.col_category') }}</th>
-                    <th>{{ t('privacy.collect.col_data') }}</th>
-                    <th>{{ t('privacy.collect.col_source') }}</th>
+                    <th scope="col">{{ t('privacy.collect.col_category') }}</th>
+                    <th scope="col">{{ t('privacy.collect.col_data') }}</th>
+                    <th scope="col">{{ t('privacy.collect.col_source') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -75,13 +75,13 @@
 <section>
     <h2 id="why">{{ t('privacy.why.h') }}</h2>
 
-    <div class="legal-table-wrap">
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-labelledby="why">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>{{ t('privacy.why.col_purpose') }}</th>
-                    <th>{{ t('privacy.why.col_data') }}</th>
-                    <th>{{ t('privacy.why.col_basis') }}</th>
+                    <th scope="col">{{ t('privacy.why.col_purpose') }}</th>
+                    <th scope="col">{{ t('privacy.why.col_data') }}</th>
+                    <th scope="col">{{ t('privacy.why.col_basis') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -176,13 +176,13 @@
 
     <p>{{ t('privacy.cookies.intro') }}</p>
 
-    <div class="legal-table-wrap">
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-labelledby="cookies">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>{{ t('privacy.cookies.col_name') }}</th>
-                    <th>{{ t('privacy.cookies.col_kind') }}</th>
-                    <th>{{ t('privacy.cookies.col_purpose') }}</th>
+                    <th scope="col">{{ t('privacy.cookies.col_name') }}</th>
+                    <th scope="col">{{ t('privacy.cookies.col_kind') }}</th>
+                    <th scope="col">{{ t('privacy.cookies.col_purpose') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -214,13 +214,13 @@
 
     <p>{{ t('privacy.processors.intro') }}</p>
 
-    <div class="legal-table-wrap">
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-labelledby="processors">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>{{ t('privacy.processors.col_provider') }}</th>
-                    <th>{{ t('privacy.processors.col_role') }}</th>
-                    <th>{{ t('privacy.processors.col_sees') }}</th>
+                    <th scope="col">{{ t('privacy.processors.col_provider') }}</th>
+                    <th scope="col">{{ t('privacy.processors.col_role') }}</th>
+                    <th scope="col">{{ t('privacy.processors.col_sees') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -280,12 +280,12 @@
 <section>
     <h2 id="retention">{{ t('privacy.retention.h') }}</h2>
 
-    <div class="legal-table-wrap">
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-labelledby="retention">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>{{ t('privacy.retention.col_data') }}</th>
-                    <th>{{ t('privacy.retention.col_kept') }}</th>
+                    <th scope="col">{{ t('privacy.retention.col_data') }}</th>
+                    <th scope="col">{{ t('privacy.retention.col_kept') }}</th>
                 </tr>
             </thead>
             <tbody>

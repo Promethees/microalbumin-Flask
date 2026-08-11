@@ -138,12 +138,20 @@ function _jsonCounterpartForFileTable() {
 
 // ── Data-folder collapse toggle ──────────────────────────────────────────────
 
-function toggleFolderList(collapseId, chevronId) {
+// `trigger` is the <button> inside the section heading (templates/index.html).
+// It carries `aria-expanded`, which is the only thing that tells a screen
+// reader whether the panel is open — the rotated chevron is decorative and is
+// hidden from assistive technology (4.1.2).
+function toggleFolderList(collapseId, chevronId, trigger) {
     const collapse = document.getElementById(collapseId);
     const chevron = document.getElementById(chevronId);
     if (!collapse) return;
     const isNowCollapsed = collapse.classList.toggle('collapsed');
     if (chevron) chevron.classList.toggle('collapsed-chevron', isNowCollapsed);
+
+    const btn = trigger || document.querySelector(
+        '.folder-section-toggle[aria-controls="' + collapseId + '"]');
+    if (btn) btn.setAttribute('aria-expanded', isNowCollapsed ? 'false' : 'true');
 }
 
 // ── Data-folder picker ──────────────────────────────────────────────────────
@@ -321,22 +329,49 @@ function arraysEqual(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
 }
 
+// ── Accessible table scaffolding ────────────────────────────────────────────
+// Every renderer below replaces a whole <table> with `innerHTML`, which throws
+// away the caption, the <thead> and the `scope` attributes the template shipped
+// with. They are rebuilt here so the semantics survive the first refresh
+// (WCAG 1.3.1), and each row button names its own row (2.4.4) — three columns
+// of identical "Select / Delete / Edit" say nothing out of context.
+const _a11yT = (key, fallback) => (window.t ? window.t(key, fallback) : fallback);
+
+function _tableHead(captionKey, captionFallback, nameHeader, nameId) {
+    const idAttr = nameId ? ` id="${nameId}"` : '';
+    return `<caption class="sr-only">${_escHtml(_a11yT(captionKey, captionFallback))}</caption>`
+        + `<thead><tr><th scope="col"${idAttr}>${_escHtml(nameHeader)}</th>`
+        + `<th scope="col" colspan="3">Action</th></tr></thead>`;
+}
+
+// `aria-label` for a row button: the action plus the row it acts on.
+function _rowBtnLabel(action, file) {
+    return _escAttr(`${action} ${file}`);
+}
+
 function updateJSONTable(files) {
     if (files) AppState.jsonNames = files.slice();
-    let html = '<tr><th>Calibrated JSON</th><th colspan="3">Action</th></tr>';
+    let html = _tableHead('a11y.caption_json_table',
+        'Calibration coefficient files, with select, delete and edit actions on each row',
+        'Calibrated JSON');
+    html += '<tbody>';
     if (files && files.length > 0) {
         const counterpart = _csvCounterpartForJsonTable();  // loaded CSV (kinetics/point)
         files.slice().sort((a, b) => a.localeCompare(b)).forEach(file => {
-            const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
-            const ef = _escAttr(file);
+            const selected = file === AppState.currentJSON;
+            const isSelected = selected ? ' class="selected"' : '';
             const et = _escHtml(file);
             const badge = _identityBadge(AppState.jsonIdentity && AppState.jsonIdentity[file]);
             const disableAttrs = _selectDisableAttrs(AppState.jsonIdentity && AppState.jsonIdentity[file], counterpart);
-            html += `<tr${isSelected}><td>${et}${badge}</td><td><button${disableAttrs} onclick="selectFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')">✏️ Edit</button></td></tr>`;
+            // The selected row is marked by a background colour alone, which
+            // 1.4.1 does not accept as the only cue — `aria-pressed` carries it.
+            const pressed = ` aria-pressed="${selected ? 'true' : 'false'}"`;
+            html += `<tr${isSelected}><td>${et}${badge}</td><td><button type="button"${disableAttrs}${pressed} aria-label="${_rowBtnLabel('Select', file)}" onclick="selectFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')"><span aria-hidden="true">✅</span> Select</button></td><td><button type="button" aria-label="${_rowBtnLabel('Delete', file)}" onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')"><span aria-hidden="true">❌</span> Delete</button></td><td><button type="button" aria-label="${_rowBtnLabel('Edit', file)}" onclick="editFile(${_escAttr(JSON.stringify(file))}, this, '#json-table')"><span aria-hidden="true">✏️</span> Edit</button></td></tr>`;
         })
     } else {
-        html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
+        html += '<tr><td colspan="4">No Calibrated JSON is available.</td></tr>';
     }
+    html += '</tbody>';
     // The rows land now, so any skeleton the fetch put up has done its job.
     window.hideSkeleton?.('json-table');
     document.getElementById("json-table").innerHTML = html;
@@ -347,17 +382,23 @@ function updateJSONTable(files) {
 }
 
 function updateReportTable(subjects) {
-    let html = '<tr><th id="file-table-header-name">Folder Name</th><th colspan="3">Action</th></tr>';
+    let html = _tableHead('a11y.caption_report_table',
+        'Report subject folders, with select, delete and edit actions on each row',
+        'Folder Name', 'file-table-header-name');
+    html += '<tbody>';
     document.getElementById("file-search").placeholder = "Search subject folders...";
     if (subjects && subjects.length > 0) {
         subjects.slice().sort((a, b) => a.localeCompare(b)).forEach(subject => {
-            const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
+            const selected = subject === AppState.currentReportSubject;
+            const isSelected = selected ? ' class="selected"' : '';
             const et = _escHtml(subject);
-            html += `<tr${isSelected}><td>${et}</td><td><button onclick="selectFile(${_escAttr(JSON.stringify(subject))}, this)">📁 Select Subject</button></td><td><button onclick="deleteReportSubject(${_escAttr(JSON.stringify(subject))}, this)">❌ Delete</button></td><td><button onclick="editReportSubject(${_escAttr(JSON.stringify(subject))}, this)">✏️ Edit</button></td></tr>`;
+            const pressed = ` aria-pressed="${selected ? 'true' : 'false'}"`;
+            html += `<tr${isSelected}><td>${et}</td><td><button type="button"${pressed} aria-label="${_rowBtnLabel('Select subject', subject)}" onclick="selectFile(${_escAttr(JSON.stringify(subject))}, this)"><span aria-hidden="true">📁</span> Select Subject</button></td><td><button type="button" aria-label="${_rowBtnLabel('Delete', subject)}" onclick="deleteReportSubject(${_escAttr(JSON.stringify(subject))}, this)"><span aria-hidden="true">❌</span> Delete</button></td><td><button type="button" aria-label="${_rowBtnLabel('Edit', subject)}" onclick="editReportSubject(${_escAttr(JSON.stringify(subject))}, this)"><span aria-hidden="true">✏️</span> Edit</button></td></tr>`;
         });
     } else {
         html += '<tr><td colspan="4">No report subjects found.</td></tr>';
     }
+    html += '</tbody>';
     // Report mode renders into the same table, so it clears the skeleton too.
     window.hideSkeleton?.('file-table');
     document.getElementById("file-table").innerHTML = html;
@@ -389,21 +430,27 @@ function updateFileTable(files, deselect = false) {
     // Nothing to render: drop any skeleton rather than leave it up forever.
     if (!files) window.hideSkeleton?.('file-table');
     if (files) AppState.fileNames = files.slice();
-    let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
+    let html = _tableHead('a11y.caption_file_table',
+        'Data files, with select, delete and edit actions on each row',
+        'File Name', 'file-table-header-name');
+    html += '<tbody>';
     if (files) {
         filterFiles(files).then((filteredFiles) => {
             const counterpart = _jsonCounterpartForFileTable();  // loaded JSON (kinetics/point)
             if (filteredFiles && filteredFiles.length > 0) {
                 filteredFiles.slice().sort((a, b) => a.localeCompare(b)).forEach(file => {
-                    const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
+                    const selected = file === AppState.currentFile;
+                    const isSelected = selected ? ' class="selected"' : '';
                     const et = _escHtml(file);
                     const badge = _identityBadge(AppState.fileIdentity && AppState.fileIdentity[file]);
                     const disableAttrs = _selectDisableAttrs(AppState.fileIdentity && AppState.fileIdentity[file], counterpart);
-                    html += `<tr${isSelected}><td>${et}${badge}</td><td><button${disableAttrs} onclick="selectFile(${_escAttr(JSON.stringify(file))}, this)">✅ Select</button></td><td><button onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this)">❌ Delete</button></td><td><button onclick="editFile(${_escAttr(JSON.stringify(file))}, this)">✏️ Edit</button></td></tr>`;
+                    const pressed = ` aria-pressed="${selected ? 'true' : 'false'}"`;
+                    html += `<tr${isSelected}><td>${et}${badge}</td><td><button type="button"${disableAttrs}${pressed} aria-label="${_rowBtnLabel('Select', file)}" onclick="selectFile(${_escAttr(JSON.stringify(file))}, this)"><span aria-hidden="true">✅</span> Select</button></td><td><button type="button" aria-label="${_rowBtnLabel('Delete', file)}" onclick="deleteFile(${_escAttr(JSON.stringify(file))}, this)"><span aria-hidden="true">❌</span> Delete</button></td><td><button type="button" aria-label="${_rowBtnLabel('Edit', file)}" onclick="editFile(${_escAttr(JSON.stringify(file))}, this)"><span aria-hidden="true">✏️</span> Edit</button></td></tr>`;
                 });
             } else {
-                html += '<tr><td colspan="3">No CSV files is available.</td></tr>';
+                html += '<tr><td colspan="4">No CSV files is available.</td></tr>';
             }
+            html += '</tbody>';
             // Cleared here, not when the fetch resolves: filterFiles() makes
             // its own round trips, so the real rows only exist at this line.
             window.hideSkeleton?.('file-table');
@@ -424,6 +471,9 @@ function updateFileTable(files, deselect = false) {
 function updateFileDisplay(curFile) {
     const displayElement = document.getElementById('selected-file-display');
     if (curFile) {
+        // The element is a polite live region (templates/index.html), so writing
+        // the name here is what tells a screen reader the selection took —
+        // nothing else on screen changes above the fold (4.1.3).
         displayElement.textContent = `Selected File: ${curFile}`;
         if (AppState.currentMeasurementMode === 'report') {
             if (typeof onReportFolderSelected === 'function') onReportFolderSelected(curFile);

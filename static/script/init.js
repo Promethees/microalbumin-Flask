@@ -31,13 +31,25 @@ function _applyTheme(isDark) {
 }
 
 // Update the toggle icon to reflect the current effective mode + whether it's auto.
+// The icon is an emoji drawn with `content:` and is hidden from assistive
+// technology, so the control's accessible name has to state the mode itself —
+// otherwise the button reads the same in all three states (4.1.2).
 function _syncToggleIcon(savedPref) {
     const btn = document.getElementById('toggleButton');
-    if (savedPref === null) {
-        btn.dataset.themeMode = 'auto';
-    } else {
-        btn.dataset.themeMode = savedPref;
-    }
+    const mode = savedPref === null ? 'auto' : savedPref;
+    btn.dataset.themeMode = mode;
+
+    const container = document.getElementById('toggleContainer');
+    if (!container) return;
+    const label = {
+        light: window.t ? window.t('a11y.theme_light', 'Theme: light. Activate to switch to dark.')
+            : 'Theme: light. Activate to switch to dark.',
+        dark: window.t ? window.t('a11y.theme_dark', 'Theme: dark. Activate to follow the system.')
+            : 'Theme: dark. Activate to follow the system.',
+        auto: window.t ? window.t('a11y.theme_auto', 'Theme: system. Activate to switch to light.')
+            : 'Theme: system. Activate to switch to light.'
+    }[mode];
+    if (label) container.setAttribute('aria-label', label);
 }
 
 // On startup: apply saved preference or fall back to system preference.
@@ -410,8 +422,13 @@ function selectButton(selectedButton, allButtons, div) {
     div.setAttribute('data-value', selectedButton.getAttribute('data-mode'));
     allButtons.forEach(button => {
         button.classList.remove('selected');
+        // The `selected` class is a colour change and nothing more; without
+        // `aria-pressed` a screen reader cannot tell which mode is active
+        // (WCAG 1.4.1 / 4.1.2).
+        button.setAttribute('aria-pressed', 'false');
     });
     selectedButton.classList.add('selected');
+    selectedButton.setAttribute('aria-pressed', 'true');
 }
 
 const calDiv = document.getElementById('cal-mode-select');

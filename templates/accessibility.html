@@ -1,0 +1,219 @@
+{% extends "legal_base.html" %}
+
+{# The published accessibility statement. It is a *claim*, not marketing: what
+   it says has to match what the software actually does, so every clause here
+   maps onto something in the code —
+
+     · the primitives:   the "Accessibility (WCAG 2.2 Level AA)" blocks in
+                         static/style.css, static/landing.css, static/legal.css
+                         and templates/_a11y_head.html
+     · the web app:      templates/index.html + static/script/a11y.js
+     · the installers:   installer-mac / installer-linux / installer-win on the
+                         desktop branch (see docs/accessibility/ there)
+     · the guarantees:   tests/test_accessibility.py
+
+   The known-limitations section is the part that keeps the claim honest. Do not
+   remove an entry from it because it reads badly — remove it when the defect is
+   fixed, and add one the moment a new one is found. See `Rule.md` §2.15. #}
+
+{% block doc_title %}{{ t('a11y.title') }}{% endblock %}
+
+{% block doc_lede %}{{ t('a11y.lede') }}{% endblock %}
+
+{% block doc_index %}
+<li><a href="#commitment">{{ t('a11y.idx.commitment') }}</a></li>
+<li><a href="#standard">{{ t('a11y.idx.standard') }}</a></li>
+<li><a href="#scope">{{ t('a11y.idx.scope') }}</a></li>
+<li><a href="#measures">{{ t('a11y.idx.measures') }}</a></li>
+<li><a href="#compatibility">{{ t('a11y.idx.compatibility') }}</a></li>
+<li><a href="#limitations">{{ t('a11y.idx.limitations') }}</a></li>
+<li><a href="#installers">{{ t('a11y.idx.installers') }}</a></li>
+<li><a href="#assessment">{{ t('a11y.idx.assessment') }}</a></li>
+<li><a href="#feedback">{{ t('a11y.idx.feedback') }}</a></li>
+<li><a href="#enforcement">{{ t('a11y.idx.enforcement') }}</a></li>
+{% endblock %}
+
+{% block doc_body %}
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="commitment">{{ t('a11y.commitment.h') }}</h2>
+
+    <div class="legal-callout">
+        <span class="k">{{ t('a11y.commitment.callout_kicker') }}</span>
+        <p><strong>{{ t('a11y.commitment.callout') }}</strong></p>
+    </div>
+
+    <p>{{ t_html('a11y.commitment.p1') }}</p>
+    <p>{{ t_html('a11y.commitment.p2') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="standard">{{ t('a11y.standard.h') }}</h2>
+
+    <p>{{ t_html('a11y.standard.p1') }}</p>
+
+    <ol class="clauses">
+        <li>{{ t_html('a11y.standard.c1') }}</li>
+        <li>{{ t_html('a11y.standard.c2') }}</li>
+        <li>{{ t_html('a11y.standard.c3') }}</li>
+    </ol>
+
+    <p>{{ t_html('a11y.standard.p2') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="scope">{{ t('a11y.scope.h') }}</h2>
+
+    <p>{{ t('a11y.scope.p1') }}</p>
+
+    <ul class="bullets">
+        <li>{{ t_html('a11y.scope.b1') }}</li>
+        <li>{{ t_html('a11y.scope.b2') }}</li>
+        <li>{{ t_html('a11y.scope.b3') }}</li>
+        <li>{{ t_html('a11y.scope.b4') }}</li>
+    </ul>
+
+    <p>{{ t_html('a11y.scope.p2') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="measures">{{ t('a11y.measures.h') }}</h2>
+
+    <p>{{ t('a11y.measures.p1') }}</p>
+
+    <ul class="bullets">
+        <li>{{ t_html('a11y.measures.b1') }}</li>
+        <li>{{ t_html('a11y.measures.b2') }}</li>
+        <li>{{ t_html('a11y.measures.b3') }}</li>
+        <li>{{ t_html('a11y.measures.b4') }}</li>
+        <li>{{ t_html('a11y.measures.b5') }}</li>
+        <li>{{ t_html('a11y.measures.b6') }}</li>
+        <li>{{ t_html('a11y.measures.b7') }}</li>
+    </ul>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="compatibility">{{ t('a11y.compat.h') }}</h2>
+
+    <p>{{ t('a11y.compat.p1') }}</p>
+
+    {# The wrapper scrolls sideways on a narrow screen, so it is focusable and
+       named — a keyboard-only user cannot scroll a region they cannot reach
+       (2.1.1). #}
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-label="{{ t('a11y.compat.caption') }}">
+        <table class="legal-table">
+            <caption class="sr-only">{{ t('a11y.compat.caption') }}</caption>
+            <thead>
+                <tr>
+                    <th scope="col">{{ t('a11y.compat.col_platform') }}</th>
+                    <th scope="col">{{ t('a11y.compat.col_combo') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th scope="row">Windows</th>
+                    <td>NVDA + Firefox, NVDA + Chrome, Narrator + Edge</td>
+                </tr>
+                <tr>
+                    <th scope="row">macOS</th>
+                    <td>VoiceOver + Safari, VoiceOver + Chrome</td>
+                </tr>
+                <tr>
+                    <th scope="row">Linux</th>
+                    <td>Orca + Firefox</td>
+                </tr>
+                <tr>
+                    <th scope="row">{{ t('a11y.compat.row_mobile') }}</th>
+                    <td>VoiceOver (iOS), TalkBack (Android)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p>{{ t_html('a11y.compat.p2') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="limitations">{{ t('a11y.limits.h') }}</h2>
+
+    <div class="legal-callout">
+        <span class="k">{{ t('a11y.limits.callout_kicker') }}</span>
+        <p><strong>{{ t('a11y.limits.callout') }}</strong></p>
+    </div>
+
+    <p>{{ t('a11y.limits.p1') }}</p>
+
+    <ol class="clauses">
+        <li>{{ t_html('a11y.limits.c1') }}</li>
+        <li>{{ t_html('a11y.limits.c2') }}</li>
+        <li>{{ t_html('a11y.limits.c3') }}</li>
+        <li>{{ t_html('a11y.limits.c4') }}</li>
+        <li>{{ t_html('a11y.limits.c5') }}</li>
+    </ol>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="installers">{{ t('a11y.installers.h') }}</h2>
+
+    <p>{{ t_html('a11y.installers.p1') }}</p>
+
+    <ul class="bullets">
+        <li>{{ t_html('a11y.installers.b1') }}</li>
+        <li>{{ t_html('a11y.installers.b2') }}</li>
+        <li>{{ t_html('a11y.installers.b3') }}</li>
+        <li>{{ t_html('a11y.installers.b4') }}</li>
+    </ul>
+
+    <p>{{ t_html('a11y.installers.p2') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="assessment">{{ t('a11y.assessment.h') }}</h2>
+
+    <p>{{ t_html('a11y.assessment.p1') }}</p>
+
+    <ul class="bullets">
+        <li>{{ t_html('a11y.assessment.b1') }}</li>
+        <li>{{ t_html('a11y.assessment.b2') }}</li>
+        <li>{{ t_html('a11y.assessment.b3') }}</li>
+    </ul>
+
+    <p>{{ t_html('a11y.assessment.p2') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="feedback">{{ t('a11y.feedback.h') }}</h2>
+
+    <p>{{ t_html('a11y.feedback.p1') }}</p>
+
+    <ul class="bullets">
+        <li>{{ t('a11y.feedback.b_email') }} <code>{{ contact_email }}</code></li>
+        <li>{{ t('a11y.feedback.b_form_before') }}
+            <a href="{{ url_for('contact') }}">{{ t('a11y.feedback.b_form_link') }}</a>{{
+            t('a11y.feedback.b_form_after') }}</li>
+        <li>{{ t('a11y.feedback.b_post') }} CBBiotec, University of Science (HCMUS–VNU),
+            227 Nguyen Van Cu, Cho Quan ward, Ho Chi Minh City, Vietnam.</li>
+    </ul>
+
+    <p>{{ t_html('a11y.feedback.p2') }}</p>
+    <p>{{ t_html('a11y.feedback.p3') }}</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+<section>
+    <h2 id="enforcement">{{ t('a11y.enforcement.h') }}</h2>
+
+    <p>{{ t_html('a11y.enforcement.p1') }}</p>
+    <p>{{ t_html('a11y.enforcement.p2') }}</p>
+</section>
+
+{% endblock %}

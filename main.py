@@ -209,6 +209,12 @@ LEGAL_EFFECTIVE = '3 August 2026'
 # The one address every legal page, the contact page and the footer point at.
 CONTACT_EMAIL = 'tqmthong@gmail.com'
 
+# The accessibility statement is versioned separately from the Terms: it is
+# revised when the conformance claim changes (a limitation fixed or found, a
+# fresh assessment), not when a commercial clause does.
+A11Y_VERSION = '1.0'
+A11Y_EFFECTIVE = '11 August 2026'
+
 
 @app.route('/terms')
 def terms():
@@ -233,6 +239,27 @@ def privacy():
                            eyebrow_key='legal.eyebrow',
                            effective_date=LEGAL_EFFECTIVE,
                            doc_version=LEGAL_VERSION,
+                           contact_email=CONTACT_EMAIL,
+                           year=datetime.utcnow().year)
+
+
+@app.route('/accessibility')
+def accessibility():
+    """The published accessibility statement (WCAG 2.2 AA conformance claim).
+
+    Rendered on the same legal frame as the Terms and the Privacy Policy, and
+    carries the same version/effective-date readout: a conformance claim is
+    dated, because it describes the software as it was assessed. Its own
+    version moves when the *claim* changes (a new limitation, a new assessment,
+    a different target), which is not the same event as a Terms revision —
+    hence the separate constants.
+    """
+    return render_template('accessibility.html',
+                           title_key='a11y.page_title',
+                           meta_description_key='a11y.meta_description',
+                           eyebrow_key='a11y.eyebrow',
+                           effective_date=A11Y_EFFECTIVE,
+                           doc_version=A11Y_VERSION,
                            contact_email=CONTACT_EMAIL,
                            year=datetime.utcnow().year)
 

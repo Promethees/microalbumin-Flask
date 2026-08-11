@@ -34,6 +34,9 @@
 </head>
 
 <body>
+    {# 2.4.1 Bypass Blocks — ahead of the banner and the sticky nav. #}
+    <a class="skip-link" href="#main-content">{{ t('a11y.skip_to_main') }}</a>
+
     {% include '_react_banner.html' %}
 
     <!-- ── Nav ─────────────────────────────────────────────────────────── -->
@@ -76,7 +79,7 @@
         <div class="nav-progress" aria-hidden="true"><span id="nav-progress"></span></div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
         <!-- ── Hero ────────────────────────────────────────────────────── -->
         <section class="hero">
             <div class="shell hero-grid">
@@ -651,6 +654,7 @@
                     <ul>
                         <li><a href="{{ url_for('terms') }}">{{ t('footer.terms') }}</a></li>
                         <li><a href="{{ url_for('privacy') }}">{{ t('footer.privacy') }}</a></li>
+                        <li><a href="{{ url_for('accessibility') }}">{{ t('footer.accessibility') }}</a></li>
                         <li><a href="{{ url_for('contact') }}">{{ t('footer.contact') }}</a></li>
                     </ul>
                 </div>

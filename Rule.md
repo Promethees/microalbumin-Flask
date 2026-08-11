@@ -200,6 +200,56 @@
   at the English text. Do not remove it, and keep `legal/` prose and the catalog
   in step when either changes.
 
+### 2.15 Accessibility — WCAG 2.2 Level AA is a published claim, not an aspiration
+
+- **The claim is public and dated.** `/accessibility` (`templates/accessibility.html`,
+  `main.py:accessibility`, versioned by `A11Y_VERSION` / `A11Y_EFFECTIVE`) states
+  that the web app and the public pages are **partially conformant with WCAG 2.2
+  Level AA** and lists, by name, everything that is not. Breaking a criterion
+  does not just degrade the UI — it makes a published statement false. If you
+  cannot fix a barrier, **add it to `a11y.limits.c*` with a workaround**; the
+  test suite rejects a limitation that has no way round it.
+- **Four files carry the primitives**, and they have to stay in step:
+  `static/style.css` (web app), `static/landing.css` (landing + legal),
+  `static/legal.css` (contact form), `templates/_a11y_head.html` (the account
+  pages, which load none of the above). Each has an
+  `Accessibility (WCAG 2.2 Level AA)` block. Skip link, `.sr-only`,
+  `:focus-visible`, reduced motion, forced colours, 24px targets.
+- **Never remove a focus indicator.** `outline: none` is allowed only where a
+  later `:focus-visible` rule replaces it. The rings are two-toned (dark core +
+  light halo) so they clear 3:1 on either theme and over any button fill.
+- **A click handler belongs on a control.** No `onclick` on a `<div>`, an
+  `<img>` or a heading — it is unreachable by keyboard and has no role. The
+  collapsible section headings are `<h2><button class="folder-section-toggle">`;
+  `toggleFolderList(collapseId, chevronId, trigger)` keeps `aria-expanded` in
+  step, and the chevron is `aria-hidden` decoration.
+- **A collapsed panel must leave the tab order.** `.section-collapse.collapsed`
+  carries `visibility: hidden` (delayed one transition) as well as
+  `max-height: 0`; without it the keyboard walks into invisible buttons.
+- **Announce, don't just render.** `announce()` (polite) and `announceAlert()`
+  (assertive) in `short-hands.js` write into the two live regions that ship in
+  `index.html`. They must exist from first paint and must never be
+  `display: none`. `$showText` announces every error it displays.
+- **A `<canvas>` is not content.** `generateChart` calls `buildChartDataTable`
+  (`static/script/a11y.js`), which names the canvas and publishes the same
+  numbers as a real table, built only when the reader opens it. Do not add a
+  chart without one.
+- **Table renderers rebuild their own semantics.** `updateFileTable`,
+  `updateJSONTable` and `updateReportTable` replace the whole `<table>` with
+  `innerHTML`, which discards the caption, `<thead>` and `scope` the template
+  shipped — `_tableHead()` puts them back, and `_rowBtnLabel()` gives each row
+  button a name that says which row it acts on.
+- **New user-facing string ⇒ seven catalogs** (§2.14 applies unchanged). The
+  accessibility statement is a legal document: it renders on `legal_base.html`,
+  appears in `LOCALIZED_ENDPOINTS`, and carries the governing-language notice.
+- **`tests/test_accessibility.py` is the guard.** It is static analysis over
+  the templates, stylesheets and scripts — it catches a deleted label, a lost
+  skip link, an unlabelled icon button, a table that lost its `scope`. It
+  cannot replace a screen reader, and the statement says as much: automated
+  checks are a floor, roughly a third of what matters.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.

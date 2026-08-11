@@ -180,13 +180,13 @@
 
     <p>{{ t('terms.third_party.intro') }}</p>
 
-    <div class="legal-table-wrap">
+    <div class="legal-table-wrap" role="region" tabindex="0" aria-labelledby="third-party">
         <table class="legal-table">
             <thead>
                 <tr>
-                    <th>{{ t('terms.third_party.col_provider') }}</th>
-                    <th>{{ t('terms.third_party.col_used_for') }}</th>
-                    <th>{{ t('terms.third_party.col_when') }}</th>
+                    <th scope="col">{{ t('terms.third_party.col_provider') }}</th>
+                    <th scope="col">{{ t('terms.third_party.col_used_for') }}</th>
+                    <th scope="col">{{ t('terms.third_party.col_when') }}</th>
                 </tr>
             </thead>
             <tbody>

@@ -32,10 +32,40 @@ function getTimeUnitValue(id = 'time-unit') {
     return null;
 }
 
+// ── Announcements to assistive technology (WCAG 4.1.3 Status Messages) ──────
+// Two live regions live in the page from first paint (see templates/index.html)
+// because a region inserted at the moment it has something to say is usually
+// missed: the screen reader has to be observing it beforehand.
+//
+//   announce()      polite  — progress, results, "chart updated". Waits for a
+//                             gap in speech and never interrupts.
+//   announceAlert() assertive — errors and anything the user must act on.
+//
+// The same text written twice in a row is not re-announced by most screen
+// readers, so a zero-width reset is written first.
+const _announceInto = (regionId, message) => {
+    const region = document.getElementById(regionId);
+    if (!region || !message) return;
+    region.textContent = '';
+    // A frame's gap is enough for the region to be seen as changed twice.
+    window.requestAnimationFrame(() => { region.textContent = String(message); });
+};
+
+const announce = message => _announceInto('a11y-live-region', message);
+const announceAlert = message => _announceInto('a11y-alert-region', message);
+
+window.announce = announce;
+window.announceAlert = announceAlert;
+
+// Writing an error into a corner of the page is not enough on its own: nothing
+// tells a screen reader user it appeared. Every caller of `$showText` is an
+// error path, so the text is announced as well as displayed (3.3.1).
 const $showText = (id, text) => {
     const el = document.getElementById(id);
+    if (!el) return;
     el.textContent = text;
     el.style.display = "";
+    if (text) announceAlert(text);
 };
 
 async function fetchJSON(url, options = {}) {

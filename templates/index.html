@@ -36,67 +36,101 @@
     {% if config.PRODUCTION_MODE %}
     <script src="{{ url_for('static', filename='dist/i18n.min.js') }}"></script>
     <script src="{{ url_for('static', filename='dist/skeleton.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/a11y.min.js') }}"></script>
     {% else %}
     <script src="{{ url_for('static', filename='script/i18n.js') }}"></script>
     <script src="{{ url_for('static', filename='script/skeleton.js') }}"></script>
+    {# a11y.js loads in <head> beside i18n and skeleton: it installs the
+       DOMContentLoaded hook that makes overflowing panels keyboard-reachable,
+       and generate-chart.js calls into it on the first plot. #}
+    <script src="{{ url_for('static', filename='script/a11y.js') }}"></script>
     {% endif %}
 </head>
 
 <body>
+    {# 2.4.1 Bypass Blocks — first tab stop on the page, ahead of the banner
+       and the whole left-hand settings rail. #}
+    <a class="skip-link" href="#main-content">{{ t('a11y.skip_to_main') }}</a>
+
+    {# 4.1.3 Status Messages — the two regions every script announces into.
+       They must exist in the initial DOM and must never be display:none, or a
+       screen reader will not pick up what is written into them. See
+       `announce()` / `announceAlert()` in static/script/short-hands.js. #}
+    <div id="a11y-live-region" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="a11y-alert-region" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
     {# The flag picks the web app's host offsets: this page keeps its own 20px
        body padding and pins two panels that have to clear the bar. #}
     {% with banner_fixed = true %}{% include '_react_banner.html' %}{% endwith %}
 
     <div id="print-report-container" class="hidden"></div>
     <!-- Global Loader Overlay -->
-    <div id="global-spinner" class="hidden">
+    <div id="global-spinner" class="hidden" role="status" aria-live="polite">
         <div class="spinner-container">
-            <div class="spinner"></div>
+            <div class="spinner" aria-hidden="true"></div>
             <div class="spinner-message">{{ t('spinner.processing') }}</div>
         </div>
     </div>
     <!-- User Guide Button -->
-    <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="{{ t('topbar.user_guide.aria') }}"
+    <button id="user-guide-btn" type="button" onclick="toggleUserGuide()"
+        aria-label="{{ t('topbar.user_guide.aria') }}" aria-expanded="false" aria-haspopup="dialog"
         data-hint="{{ t('hint.user_guide') }}">{{ t('topbar.user_guide') }}</button>
 
     <div class="container">
         <div class="top-left">
-            <div class="flex-group">
-                <img src="{{ url_for('static', filename='cbb.png') }}"
-                    style="height: 70px; width: 60px; cursor: pointer;" id="logo"
+            <header class="flex-group">
+                {# A click target has to be a control: as a bare <img onclick> this
+                   was unreachable by keyboard (2.1.1) and had no name (4.1.2). #}
+                <button type="button" id="logo" class="logo-btn"
                     data-hint="{{ t('hint.logo_scroll_top') }}"
                     onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+                    <img src="{{ url_for('static', filename='cbb.png') }}" alt="" aria-hidden="true"
+                        style="height: 70px; width: 60px;">
+                    <span class="sr-only">{{ t('a11y.scroll_to_top') }}</span>
+                </button>
 
                 {# The wordmark links back to the landing page (main.py `landing`).
-                   The logo image beside it keeps its scroll-to-top behaviour. #}
+                   The logo image beside it keeps its scroll-to-top behaviour.
+                   Only the first line is the page's <h1>; the second was a second
+                   h1 in the same block, which reads as two document titles. #}
                 <a href="{{ url_for('landing') }}" class="title-home" data-hint="{{ t('web.home_hint') }}">
                     <div id="title" class="title-place">
                         <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
-                        <h1 class="okapi-line" style="font-size: 20px;">
+                        <p class="okapi-line" style="font-size: 20px;">
                             <span style="color: #3498db;">Easy</span> OKAPI
-                            <img src="{{ url_for('static', filename='okapi.png') }}" alt="Okapi Logo" class="okapi-img">
-                        </h1>
+                            <img src="{{ url_for('static', filename='okapi.png') }}" alt="" aria-hidden="true"
+                                class="okapi-img">
+                        </p>
                     </div>
                 </a>
 
-                <div class="toggle-container" id="toggleContainer" data-hint="{{ t('hint.theme_toggle') }}">
-                    <div class="toggle-button" id="toggleButton"></div>
-                </div>
-            </div>
-            <div id="top-left-scrollable">
+                {# Cycles light → dark → system, so it is a button with a name that
+                   states the next step — not a switch (which has only two states).
+                   `_syncToggleIcon` in init.js keeps the name in step. #}
+                <button type="button" class="toggle-container" id="toggleContainer"
+                    aria-label="{{ t('a11y.theme_cycle') }}" data-hint="{{ t('hint.theme_toggle') }}">
+                    <span class="toggle-button" id="toggleButton" aria-hidden="true"></span>
+                </button>
+            </header>
+            <aside id="top-left-scrollable" aria-label="{{ t('a11y.settings_rail') }}">
                 <div class="section" style="position: static;" id="meas-mode-section">
-                    <h2>{{ mode_input.title }}</h2>
-                    <div id="measurement-mode" class="button-group" data-value="">
+                    <h2 id="meas-mode-heading">{{ mode_input.title }}</h2>
+                    {# A set of mutually-exclusive toggles: the group gets a name and
+                       each button reports its own state (`aria-pressed`, kept in step
+                       by `selectButton` in init.js) — 4.1.2. #}
+                    <div id="measurement-mode" class="button-group" data-value="" role="group"
+                        aria-labelledby="meas-mode-heading">
                         {% for mode in mode_input.modes %}
-                        <button data-mode="{{ mode }}">{{ mode }}</button>
+                        <button type="button" data-mode="{{ mode }}" aria-pressed="false">{{ mode }}</button>
                         {% endfor %}
                     </div>
                 </div>
                 <div class="section hidden" style="position: static;" id="cal-json-exp-section">
-                    <h3>{{ t('caljson.calibrating_for') }}</h3>
-                    <div id="cal-mode-select" class="button-group" data-value="">
-                        <button data-mode="kinetics">kinetics</button>
-                        <button data-mode="point">point</button>
+                    <h3 id="cal-mode-heading">{{ t('caljson.calibrating_for') }}</h3>
+                    <div id="cal-mode-select" class="button-group" data-value="" role="group"
+                        aria-labelledby="cal-mode-heading">
+                        <button type="button" data-mode="kinetics" aria-pressed="false">kinetics</button>
+                        <button type="button" data-mode="point" aria-pressed="false">point</button>
                     </div>
                 </div>
                 <div class="section" style="position: static;" id="options-section">
@@ -134,7 +168,9 @@
                     {% else %}
 
                     <!-- Mode Indicator -->
-                    <div id="drive-mode-indicator" style="margin-bottom: 10px;">
+                    {# Connecting/disconnecting rewrites this line with no other
+                       visible confirmation, so it announces itself — 4.1.3. #}
+                    <div id="drive-mode-indicator" role="status" aria-live="polite" style="margin-bottom: 10px;">
                         <span id="drive-mode-badge" class="badge-guest"
                             style="padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">{{
                             t('web.drive.guest_mode') }}</span>
@@ -145,12 +181,13 @@
 
                     <!-- Connect/Disconnect Controls -->
                     <div id="drive-connection-controls" style="margin-bottom: 15px;">
-                        <button id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
+                        <button type="button" id="drive-connect-btn" onclick="connectGoogleDrive()" class="primary-btn"
                             style="padding: 8px 16px;"
                             data-hint="{{ t('web.drive.connect_hint') }}">
                             🔗 {{ t('web.drive.connect') }}
                         </button>
-                        <button id="drive-disconnect-btn" onclick="disconnectGoogleDrive()" class="hidden danger-btn"
+                        <button type="button" id="drive-disconnect-btn" onclick="disconnectGoogleDrive()"
+                            class="hidden danger-btn"
                             style="padding: 8px 16px;"
                             data-hint="{{ t('web.drive.disconnect_hint') }}">
                             🔌 {{ t('web.drive.disconnect') }}
@@ -174,20 +211,26 @@
 
                         <!-- Existing folder dropdown -->
                         <div id="existing-folder-select" style="margin-bottom: 10px;">
+                            <label class="sr-only" for="drive-folder-dropdown">{{ t('web.drive.select_folder') }}</label>
                             <select id="drive-folder-dropdown" onchange="selectDriveFolder()"
                                 style="width: 70%; margin-right: 5px;">
                                 <option value="">{{ t('web.drive.loading_folders') }}</option>
                             </select>
-                            <button onclick="refreshFolderList()" class="icon-btn"
+                            {# An emoji is not an accessible name (4.1.2): it is hidden
+                               from assistive technology and the label carried in text. #}
+                            <button type="button" onclick="refreshFolderList()" class="icon-btn"
                                 data-hint="{{ t('web.drive.refresh_hint') }}"
-                                style="padding: 6px 12px;">🔄</button>
+                                style="padding: 6px 12px;"><span aria-hidden="true">🔄</span><span
+                                    class="sr-only">{{ t('web.drive.refresh_hint') }}</span></button>
                         </div>
 
                         <!-- New folder creation -->
                         <div id="new-folder-create" class="hidden" style="margin-bottom: 10px;">
+                            <label class="sr-only" for="new-folder-name">{{ t('web.drive.new_folder_ph') }}</label>
                             <input type="text" id="new-folder-name" placeholder="{{ t('web.drive.new_folder_ph') }}"
                                 style="width: 60%; margin-right: 5px;" />
-                            <button onclick="createDriveFolder()" class="primary-btn" style="padding: 6px 12px;"
+                            <button type="button" onclick="createDriveFolder()" class="primary-btn"
+                                style="padding: 6px 12px;"
                                 data-hint="{{ t('web.drive.create_folder_hint') }}">{{
                                 t('web.drive.create_folder') }}</button>
                         </div>
@@ -213,17 +256,18 @@
                         </label>
 
                         <div class="sync-buttons" style="margin-bottom: 10px;">
-                            <button onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;"
+                            <button type="button" onclick="syncToDrive()" class="sync-btn" style="padding: 8px 16px;"
                                 data-hint="{{ t('web.drive.push_hint') }}">
-                                ⬆️ {{ t('web.drive.push') }}
+                                <span aria-hidden="true">⬆️</span> {{ t('web.drive.push') }}
                             </button>
-                            <button onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;"
+                            <button type="button" onclick="loadFromDrive()" class="sync-btn" style="padding: 8px 16px;"
                                 data-hint="{{ t('web.drive.pull_hint') }}">
-                                ⬇️ {{ t('web.drive.pull') }}
+                                <span aria-hidden="true">⬇️</span> {{ t('web.drive.pull') }}
                             </button>
                         </div>
 
-                        <div id="last-sync-info" class="sync-info hidden" style="font-size: 0.85em; color: #7f8c8d;">
+                        <div id="last-sync-info" class="sync-info hidden" role="status" aria-live="polite"
+                            style="font-size: 0.85em; color: #6b7280;">
                             {{ t('web.drive.last_synced') }} <span id="last-sync-time">{{ t('web.drive.never') }}</span>
                         </div>
                     </div>
@@ -235,16 +279,18 @@
                     <div class="account-nav">
                         <span class="account-nav-label">{{ t('nav.signed_in_as') }}
                             <strong>{{ account_user.name }}</strong></span>
-                        <button class="account-nav-btn logout-btn" onclick="accountLogout()"
+                        <button type="button" class="account-nav-btn logout-btn" onclick="accountLogout()"
                             data-hint="{{ t('web.account.logout_hint') }}">{{ t('web.account.logout') }}</button>
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <button class="account-nav-btn token-btn" onclick="revealDownloadToken()"
-                            data-hint="{{ t('web.account.token_hint') }}">🔑 {{ t('web.account.token') }}</button>
+                        <button type="button" class="account-nav-btn token-btn" onclick="revealDownloadToken()"
+                            data-hint="{{ t('web.account.token_hint') }}"><span aria-hidden="true">🔑</span> {{
+                            t('web.account.token') }}</button>
                     </div>
                     <div style="margin-bottom: 12px;">
-                        <button class="account-nav-btn delete-account-btn" onclick="deleteAccount()"
-                            data-hint="{{ t('web.account.delete_hint') }}">🗑 {{ t('web.account.delete') }}</button>
+                        <button type="button" class="account-nav-btn delete-account-btn" onclick="deleteAccount()"
+                            data-hint="{{ t('web.account.delete_hint') }}"><span aria-hidden="true">🗑</span> {{
+                            t('web.account.delete') }}</button>
                     </div>
                     {% else %}
                     <div class="account-nav">
@@ -261,15 +307,15 @@
                         t('web.account.installers_after') }}
                     </p>
                 </div>
-            </div><!-- #top-left-scrollable -->
+            </aside><!-- #top-left-scrollable -->
 
         </div>
-        <div class="top-right hidden" id="top-right">
+        <aside class="top-right hidden" id="top-right" aria-label="{{ t('a11y.coefficients_panel') }}">
             <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
                 class="hidden scrollbar-style"></div>
-            <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
-                style="cursor: pointer;">{{ t('btn.deselect') }}</button>
-        </div>
+            <button type="button" id="right-deselect-btn" class="hidden utility-btn"
+                onclick="deselectFile('#json-table')" style="cursor: pointer;">{{ t('btn.deselect') }}</button>
+        </aside>
         <script>
             // Global Loader Controls explicitly manually triggered
             document.addEventListener("DOMContentLoaded", () => {
@@ -284,98 +330,136 @@
                 };
             });
         </script>
-        <div id="main-content">
+        <main id="main-content" tabindex="-1">
             <div class="section" id="cal-json-sel-section">
-                <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
-                    Select Coefficients for {{ t('web.json.select_coefs') }} <span id="json-sel-chevron"
-                        class="folder-chevron collapsed-chevron">▼</span>
+                {# A collapsible heading has to be a real control: as an <h2 onclick>
+                   this could not be reached or operated from the keyboard (2.1.1)
+                   and reported no expanded/collapsed state (4.1.2). The button
+                   carries the state; `toggleFolderList` keeps it in step. #}
+                <h2>
+                    <button type="button" class="folder-section-toggle" aria-expanded="false"
+                        aria-controls="json-sel-collapse"
+                        onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron', this)">
+                        <span>{{ t('web.json.select_coefs') }}</span> <span id="json-sel-chevron"
+                            class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span>
+                    </button>
                 </h2>
                 <div id="json-sel-collapse" class="section-collapse collapsed">
-                    <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
+                    <label class="sr-only" for="json-search">{{ t('web.search_json_ph') }}</label>
+                    <input type="search" id="json-search" oninput="filterTable('json-table', this.value)"
                         placeholder="{{ t('web.search_json_ph') }}"
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
                         <table id="json-table" class="table">
-                            <tr>
-                                <th>{{ t('table.calibrated_json') }}</th>
-                                <th colspan="3">{{ t('table.action') }}</th>
-                            </tr>
-                            {% if cal_json_list %}
-                            {% for file in cal_json_list %}
-                            <tr>
-                                <td>{{ file }} <span class="file-identity">{{ cal_json_identity.get(file, {}).get('measurement') or '—' }}·{{ cal_json_identity.get(file, {}).get('unit') or '—' }}·{{ cal_json_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
-                                <td><button onclick="selectFile('{{ file }}', this, '#json-table')">{{ t('btn.select') }}</button>
-                                </td>
-                                <td><button onclick="deleteFile('{{ file }}', this, '#json-table')">{{ t('btn.delete') }}</button>
-                                </td>
-                                <td><button onclick="editFile('{{ file }}', this, '#json-table')">{{ t('btn.edit') }}</button></td>
-                            </tr>
-                            {% endfor %}
-                            {% else %}
-                            <tr>
-                                <td colspan="3">{{ t('caljson.none_available') }}</td>
-                            </tr>
-                            {% endif %}
+                            <caption class="sr-only">{{ t('a11y.caption_json_table') }}</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">{{ t('table.calibrated_json') }}</th>
+                                    <th scope="col" colspan="3">{{ t('table.action') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if cal_json_list %}
+                                {% for file in cal_json_list %}
+                                <tr>
+                                    <td>{{ file }} <span class="file-identity">{{ cal_json_identity.get(file, {}).get('measurement') or '—' }}·{{ cal_json_identity.get(file, {}).get('unit') or '—' }}·{{ cal_json_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
+                                    {# "Select"/"Delete"/"Edit" repeated down a column says
+                                       nothing out of context, so each button names its row
+                                       (2.4.4 / 2.4.6). #}
+                                    <td><button type="button" aria-label="{{ t('btn.select') }} {{ file }}"
+                                            onclick="selectFile('{{ file }}', this, '#json-table')">{{ t('btn.select') }}</button>
+                                    </td>
+                                    <td><button type="button" aria-label="{{ t('btn.delete') }} {{ file }}"
+                                            onclick="deleteFile('{{ file }}', this, '#json-table')">{{ t('btn.delete') }}</button>
+                                    </td>
+                                    <td><button type="button" aria-label="{{ t('btn.edit') }} {{ file }}"
+                                            onclick="editFile('{{ file }}', this, '#json-table')">{{ t('btn.edit') }}</button></td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="4">{{ t('caljson.none_available') }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
                         </table>
                     </div>
-                    <button id="deselect-json-btn" onclick="deselectFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn" data-hint="{{ t('hint.deselect_coef') }}">{{ t('btn.deselect') }}</button>
-                    <button id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="{{ t('hint.copy_coef') }}">{{ t('btn.copy') }}</button>
-                    <button id="upload-json-btn" onclick="uploadFile('#json-table')" style="cursor: pointer;"
-                        class="utility-btn" data-hint="{{ t('web.json.upload_hint') }}">{{ t('web.upload') }}</button>
-                    <button id="download-json-btn" onclick="downloadFile('#json-table')" style="cursor: pointer;"
-                        disabled class="utility-btn"
+                    <button type="button" id="deselect-json-btn" onclick="deselectFile('#json-table')"
+                        style="cursor: pointer;" class="utility-btn"
+                        data-hint="{{ t('hint.deselect_coef') }}">{{ t('btn.deselect') }}</button>
+                    <button type="button" id="copy-json-btn" onclick="copyFile('#json-table')" style="cursor: pointer;"
+                        disabled class="utility-btn" data-hint="{{ t('hint.copy_coef') }}">{{ t('btn.copy') }}</button>
+                    <button type="button" id="upload-json-btn" onclick="uploadFile('#json-table')"
+                        style="cursor: pointer;" class="utility-btn"
+                        data-hint="{{ t('web.json.upload_hint') }}">{{ t('web.upload') }}</button>
+                    <button type="button" id="download-json-btn" onclick="downloadFile('#json-table')"
+                        style="cursor: pointer;" disabled class="utility-btn"
                         data-hint="{{ t('web.json.download_hint') }}">{{ t('web.download') }}</button>
                 </div>
             </div>
-            <div id="error-message"></div>
+            {# 3.3.1 Error Identification — every failure written here has to reach a
+               screen reader user, who is not looking at this corner of the page. #}
+            <div id="error-message" role="alert" aria-live="assertive"></div>
             <div class="section" id="file-selection" tabindex="-1">
-                <h2 id="file-selection-header" class="folder-section-toggle"
-                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span
-                        id="file-selection-label">{{ t('files.title') }}</span> <span id="file-sel-chevron"
-                        class="folder-chevron">▼</span></h2>
+                <h2 id="file-selection-header">
+                    <button type="button" class="folder-section-toggle" aria-expanded="true"
+                        aria-controls="file-sel-collapse"
+                        onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron', this)"><span
+                            id="file-selection-label">{{ t('files.title') }}</span> <span id="file-sel-chevron"
+                            class="folder-chevron" aria-hidden="true">▼</span></button>
+                </h2>
                 <div id="file-sel-collapse" class="section-collapse">
-                    <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
+                    <label class="sr-only" for="file-search">{{ t('web.search_csv_ph') }}</label>
+                    <input type="search" id="file-search" oninput="filterTable('file-table', this.value)"
                         placeholder="{{ t('web.search_csv_ph') }}"
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
                         <table id="file-table" class="table">
-                            <tr>
-                                <th id="file-table-header-name">{{ t('table.file_name') }}</th>
-                                <th colspan="3">{{ t('table.action') }}</th>
-                            </tr>
-                            {% if file_list %}
-                            {% for file in file_list %}
-                            <tr>
-                                <td>{{ file }} <span class="file-identity">{{ file_identity.get(file, {}).get('measurement') or '—' }}·{{ file_identity.get(file, {}).get('unit') or '—' }}·{{ file_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
-                                <td><button onclick="selectFile('{{ file }}', this)">{{ t('btn.select') }}</button></td>
-                                <td><button onclick="deleteFile('{{ file }}', this)">{{ t('btn.delete') }}</button></td>
-                                <td><button onclick="editFile('{{ file }}', this)">{{ t('btn.edit') }}</button></td>
-                            </tr>
-                            {% endfor %}
-                            {% else %}
-                            <tr>
-                                <td colspan="3">{{ t('web.csv.none') }}</td>
-                            </tr>
-                            {% endif %}
+                            <caption class="sr-only">{{ t('a11y.caption_file_table') }}</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" id="file-table-header-name">{{ t('table.file_name') }}</th>
+                                    <th scope="col" colspan="3">{{ t('table.action') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if file_list %}
+                                {% for file in file_list %}
+                                <tr>
+                                    <td>{{ file }} <span class="file-identity">{{ file_identity.get(file, {}).get('measurement') or '—' }}·{{ file_identity.get(file, {}).get('unit') or '—' }}·{{ file_identity.get(file, {}).get('concen_unit') or 'ng/µL' }}</span></td>
+                                    <td><button type="button" aria-label="{{ t('btn.select') }} {{ file }}"
+                                            onclick="selectFile('{{ file }}', this)">{{ t('btn.select') }}</button></td>
+                                    <td><button type="button" aria-label="{{ t('btn.delete') }} {{ file }}"
+                                            onclick="deleteFile('{{ file }}', this)">{{ t('btn.delete') }}</button></td>
+                                    <td><button type="button" aria-label="{{ t('btn.edit') }} {{ file }}"
+                                            onclick="editFile('{{ file }}', this)">{{ t('btn.edit') }}</button></td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="4">{{ t('web.csv.none') }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
                         </table>
                     </div>
-                    <button id="deselect-file-btn" onclick="deselectFile()" style="cursor: pointer;"
+                    <button type="button" id="deselect-file-btn" onclick="deselectFile()" style="cursor: pointer;"
                         class="utility-btn" data-hint="{{ t('hint.deselect_csv') }}">{{ t('btn.deselect') }}</button>
-                    <button id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
+                    <button type="button" id="copy-file-btn" onclick="copyFile()" style="cursor: pointer;" disabled
                         class="utility-btn" data-hint="{{ t('hint.copy_csv') }}">{{ t('btn.copy') }}</button>
-                    <button id="upload-file-btn" onclick="uploadFile()" style="cursor: pointer;"
+                    <button type="button" id="upload-file-btn" onclick="uploadFile()" style="cursor: pointer;"
                         class="utility-btn" data-hint="{{ t('web.csv.upload_hint') }}">{{ t('web.upload') }}</button>
-                    <button id="download-file-btn" onclick="downloadFile()" style="cursor: pointer;" disabled
-                        class="utility-btn" data-hint="{{ t('web.csv.download_hint') }}">{{ t('web.download') }}</button>
-                    <button id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
+                    <button type="button" id="download-file-btn" onclick="downloadFile()" style="cursor: pointer;"
+                        disabled class="utility-btn"
+                        data-hint="{{ t('web.csv.download_hint') }}">{{ t('web.download') }}</button>
+                    <button type="button" id="merge-file-btn" onclick="showMergeModal()" style="cursor: pointer;"
                         class="utility-btn" data-hint="{{ t('hint.merge_files') }}">{{ t('btn.merge_files') }}</button>
                 </div>
             </div>
             <div class="section hidden" id="report-console-section" tabindex="-1">
                 <h2>{{ t('report.console_title') }}</h2>
-                <div id="report-subject-info" style="margin-bottom: 15px; font-weight: bold; color: #3498db;"></div>
+                <div id="report-subject-info" role="status" aria-live="polite"
+                    style="margin-bottom: 15px; font-weight: bold; color: #1d6fa5;"></div>
                 <div class="report-layout-config"
                     style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
                     <h3>{{ t('report.layout_config') }}</h3>
@@ -396,12 +480,12 @@
                     <p style="color: #666;">{{ t('report.select_subject_hint') }}</p>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button class="utility-btn" onclick="clearReportItems()"
+                    <button type="button" class="utility-btn" onclick="clearReportItems()"
                         data-hint="{{ t('hint.clear_subject') }}">{{ t('report.clear_subject') }}</button>
-                    <button class="utility-btn" onclick="finalizeReportExcel()"
+                    <button type="button" class="utility-btn" onclick="finalizeReportExcel()"
                         data-hint="{{ t('hint.export_excel') }}"
                         style="padding: 10px 20px; font-size: 1.1rem;">{{ t('report.export_excel') }}</button>
-                    <button class="primary-btn" onclick="finalizeReport()"
+                    <button type="button" class="primary-btn" onclick="finalizeReport()"
                         data-hint="{{ t('hint.generate_final') }}"
                         style="padding: 10px 20px; font-size: 1.1rem;">{{ t('report.generate_final') }}</button>
                 </div>
@@ -410,23 +494,29 @@
             <div class="section hidden" id="data-display-section">
                 <h2>{{ t('display.title') }}</h2>
                 <!-- Display selected file name -->
-                <div id="selected-file-display">{{ t('display.no_file_selected') }}</div>
+                {# Selecting a file changes nothing else visibly above the fold. #}
+                <div id="selected-file-display" role="status" aria-live="polite">{{ t('display.no_file_selected') }}
+                </div>
                 <div class="section" id="point-json-exp-section">
                     <span id="ref-point-line">
-                        {{ t('web.calibrate.ref_point_at') }} <span type="number" id="cal-point"></span>
+                        {{ t('web.calibrate.ref_point_at') }} <span id="cal-point"></span>
                         <span id="cal-time-unit" style="font-weight: bold;">second</span>
                         <br />
                     </span>
                     <span id="add-json-section"></span>
                 </div>
+                {# Every control below had its label as a bare text node, which is a
+                   caption on screen and nothing at all to a screen reader (1.3.1 /
+                   3.3.2). Each is now a real <label for>. #}
                 <div class="section" id="window-size-section"
                     data-hint="{{ t('hint.window_size') }}">
-                    {{ t('web.select.window_size') }}
-                    <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
-                    <div id="wd-size-error"></div>
+                    <label for="window-size">{{ t('web.select.window_size') }}</label>
+                    <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()"
+                        aria-describedby="wd-size-error">
+                    <div id="wd-size-error" role="alert"></div>
                 </div>
                 <div class="section" id="select-quantity-section">
-                    {{ t('web.select.quantity') }}
+                    <label for="regressed-quantity">{{ t('web.select.quantity') }}</label>
                     <select id="regressed-quantity" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
                         {% set transformed = quantity.lower().replace(' ', '_') %}
@@ -435,13 +525,13 @@
                     </select>
                 </div>
                 <div id="select-time-point">
-                    {{ t('web.select.time_point') }}
+                    <label for="regressed-time-point">{{ t('web.select.time_point') }}</label>
                     <select id="regressed-time-point" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
                 <div id="select-regress-algo">
-                    {{ t('web.select.regress_algo') }}
+                    <label for="exp-json-regress-algo">{{ t('web.select.regress_algo') }}</label>
                     <select id="exp-json-regress-algo" onchange="toggleMode()">
                         <option value="polynomial">polynomial</option>
                         <option value="linear">linear</option>
@@ -455,26 +545,32 @@
                     <!-- Display range (From/To + Save Range/Normalize) is hidden in
                          point mode; the Time unit selector below is kept because the
                          point-mode chart axis / reference point still need it. -->
-                    <h3 id="range-display-header" class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')">{{
-                        range_input.title }} <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    <h3 id="range-display-header">
+                        <button type="button" class="folder-section-toggle" aria-expanded="false"
+                            aria-controls="range-collapse"
+                            onclick="toggleFolderList('range-collapse', 'range-chevron', this)"><span>{{
+                                range_input.title }}</span> <span id="range-chevron"
+                                class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span></button>
                     </h3>
                     <div id="range-collapse" class="section-collapse collapsed">
-                        From
+                        <label for="range-value-start">{{ t('a11y.range_from') }}</label>
                         <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
+                            aria-describedby="range-value-error"
                             style="width: {{ [6, range_input.value_start|string|length + 5]|max }}ch;">
-                        To
+                        <label for="range-value-end">{{ t('a11y.range_to') }}</label>
                         <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
+                            aria-describedby="range-value-error"
                             style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
-                        <span id="range-value-error" class="error"></span>
-                        <button onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
+                        <span id="range-value-error" class="error" role="alert"></span>
+                        <button type="button" onclick="saveRangeCsv()" class="utility-btn" id="save-range-btn"
                             data-hint="{{ t('hint.save_range') }}">{{ t('display.save_range') }}</button>
-                        <button onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
+                        <button type="button" onclick="saveNormalizedCsv()" class="utility-btn" id="save-normalized-btn"
                             data-hint="{{ t('hint.normalize_btn') }}">{{ t('display.normalize_btn') }}</button>
                     </div>
                     <div id="time-unit-row" style="margin-top:4px;">
-                        <span style="font-weight:600;">{{ t('display.time_unit_label') }}</span>
+                        <label for="time-unit" style="font-weight:600;">{{ t('display.time_unit_label') }}</label>
                         <select id="time-unit" onchange="toggleMode()">
                             {% for unit in range_input.units %}
                             <option value="{{ unit }}">{{ unit }}</option>
@@ -496,27 +592,37 @@
                         {{ t('web.mode.expand_all') }}
                     </label>
                 </div>
-                <div id="chart-container" tabindex="-1" class="scrollbar-style">
+                {# 1.1.1 — a <canvas> plot is invisible to assistive technology, so
+                   every chart `updatePlot` builds is paired with a data table
+                   (`buildChartDataTable` in generate-chart.js) that carries the same
+                   numbers. The region is named so it can be jumped to. #}
+                <div id="chart-container" tabindex="-1" class="scrollbar-style" role="region"
+                    aria-label="{{ t('a11y.charts_region') }}">
                     <!-- Chart sections will be dynamically generated by updatePlot -->
                 </div>
                 <div id="select-source-to-export">
-                    {{ t('web.select.source') }}
+                    <label for="exp-json-source">{{ t('web.select.source') }}</label>
                     <select id="exp-json-source">
                         <option value="ALL">ALL</option>
                     </select>
                 </div>
                 <div id="export-analysis">
-                    <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')">{{
-                        t('web.export.analysis_heading') }} <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    <h3>
+                        <button type="button" class="folder-section-toggle" aria-expanded="false"
+                            aria-controls="export-analysis-collapse"
+                            onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron', this)"><span>{{
+                                t('web.export.analysis_heading') }}</span> <span id="export-analysis-chevron"
+                                class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span></button>
                     </h3>
                     <div id="export-analysis-collapse" class="section-collapse collapsed">
                         <div class="section" id="set-exp-point-section">
-                            {{ t('web.export.set_ref_point') }} <input type="number" id="exp-json-time-value"
-                                style="width: 5em;"> <span id="exp-json-time-unit-label" style="font-weight: bold;"> second. </span>
+                            <label for="exp-json-time-value">{{ t('web.export.set_ref_point') }}</label>
+                            <input type="number" id="exp-json-time-value" style="width: 5em;"
+                                aria-describedby="exp-json-time-unit-label est-val-error"> <span
+                                id="exp-json-time-unit-label" style="font-weight: bold;"> second. </span>
                             <br />
-                            <span id="est-val-error" class="error"></span>
-                            <span id="est-val-exp"></span>
+                            <span id="est-val-error" class="error" role="alert"></span>
+                            <span id="est-val-exp" role="status" aria-live="polite"></span>
                         </div>
 
                         <!-- Turn-based point calibration: each recorded Turn is one
@@ -530,19 +636,20 @@
                             <div style="overflow-x:auto;">
                                 <table id="turn-cal-table" class="turn-cal-table"></table>
                             </div>
-                            <span id="turn-cal-error" class="error"></span>
+                            <span id="turn-cal-error" class="error" role="alert"></span>
                         </div>
                     </div>
                     <div class="export-row">
                         <label for="save-file">{{ t('export.file_name') }}</label>
                         <input type="text" id="save-file"
                             placeholder="{{ t('ph.calibrate_file_name') }}"
+                            aria-describedby="save-file-error"
                             style="width: 70%">
-                        <span id="save-file-error" class="error"></span>
+                        <span id="save-file-error" class="error" role="alert"></span>
                     </div>
-                    <button id="export-btn" onclick="exportData()"
+                    <button type="button" id="export-btn" onclick="exportData()"
                         data-hint="{{ t('hint.export_to_calibrate') }}">{{ t('export.export_to_calibrate') }}</button>
-                    <button id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)"
+                    <button type="button" id="go-to-exp-btn" onclick="browseSavingLocation(true, true, this)"
                         data-hint="{{ t('hint.browse_saving_location') }}">{{ t('export.browse_saving_location') }}</button>
                     <p id="export-data-warning" style="color: red;"><span
                             style="font-weight: bold;">{{ t('web.export.warning') }}</span>
@@ -550,62 +657,81 @@
                             style="font-weight: bold;">{{ t('web.export.per_minutes_unit') }}</span></p>
                 </div>
                 <div id="export-coef">
-                    <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')">{{
-                        t('web.export.coef_heading') }} <span id="export-coef-chevron"
-                            class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <h3>
+                        <button type="button" class="folder-section-toggle" aria-expanded="false"
+                            aria-controls="export-coef-collapse"
+                            onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron', this)"><span>{{
+                                t('web.export.coef_heading') }}</span> <span id="export-coef-chevron"
+                                class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span></button>
+                    </h3>
                     <div id="export-coef-collapse" class="section-collapse collapsed">
                         <div>
                             <label for="save-json-file">{{ t('export.file_name') }}</label>
-                            <input type="text" id="save-json-file"
+                            <input type="text" id="save-json-file" aria-describedby="save-json-file-error"
                                 placeholder="{{ t('web.export.json_name_ph') }}" style="width: 50%">
-                            <span id="save-json-file-error" class="error"></span>
+                            <span id="save-json-file-error" class="error" role="alert"></span>
                         </div>
-                        <button id="export-json-btn" onclick="exportJSONCoef()"
+                        <button type="button" id="export-json-btn" onclick="exportJSONCoef()"
                             data-hint="{{ t('hint.export_calibrated_coefs') }}">{{ t('export.export_calibrated_coefs') }}</button>
                         <br />
-                        {{ t('web.export.rsquared_threshold') }} <input type="number" id="threshold-value" value="0"
+                        <label for="threshold-value">{{ t('web.export.rsquared_threshold') }}</label>
+                        <input type="number" id="threshold-value" value="0" min="0" max="1" step="0.01"
                             style="width:10%;">
                     </div>
                 </div>
                 <div id="report-section">
-                    <h3 class="folder-section-toggle" onclick="toggleFolderList('report-collapse', 'report-chevron')">
-                        Report <span id="report-chevron" class="folder-chevron">▼</span></h3>
+                    <h3>
+                        <button type="button" class="folder-section-toggle" aria-expanded="true"
+                            aria-controls="report-collapse"
+                            onclick="toggleFolderList('report-collapse', 'report-chevron', this)"><span>{{
+                                t('report.section_heading') }}</span> <span id="report-chevron" class="folder-chevron"
+                                aria-hidden="true">▼</span></button>
+                    </h3>
                     <div id="report-collapse" class="section-collapse">
-                        <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
+                        <button type="button" id="generate-report-btn" onclick="generateReport()" class="utility-btn"
                             data-hint="{{ t('hint.generate_quick') }}"
                             style="margin-top: 5px;">{{ t('report.generate_quick') }}</button>
                         <div style="margin-top: 10px;">
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <button id="export-to-report-btn" onclick="exportToReport()" class="utility-btn"
-                                    data-hint="{{ t('hint.export_to_report') }}"
-                                    style="background-color: #2ecc71; color: white;">{{ t('report.export_to_report') }}</button>
-                                <label style="font-weight:600;">{{ t('report.subject_label') }}</label>
+                            {# The two radios choose between the picker and the name box
+                               beside them, so they are a named group — 1.3.1. #}
+                            <fieldset id="report-save-mode-group"
+                                style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; border:0; padding:0; margin:0;">
+                                <legend class="sr-only">{{ t('report.subject_label') }}</legend>
+                                <button type="button" id="export-to-report-btn" onclick="exportToReport()"
+                                    class="utility-btn" data-hint="{{ t('hint.export_to_report') }}"
+                                    style="background-color: #1e8449; color: white;">{{ t('report.export_to_report') }}</button>
+                                <span style="font-weight:600;" aria-hidden="true">{{ t('report.subject_label') }}</span>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-existing"
-                                        value="existing" checked onchange="onReportSaveModeChange()"> Existing
+                                        value="existing" checked onchange="onReportSaveModeChange()"> {{
+                                    t('report.subject_existing') }}
                                 </label>
                                 <div id="report-existing-row" style="display:flex; gap:5px; align-items:center;">
+                                    <label class="sr-only" for="report-subject-select">{{
+                                        t('report.select_subject_option') }}</label>
                                     <select id="report-subject-select" style="flex:1; max-width:250px;">
                                         <option value="">{{ t('report.select_subject_option') }}</option>
                                     </select>
                                     <button type="button" onclick="loadReportSubjectsForPicker()"
-                                        data-hint="{{ t('hint.refresh_subjects') }}" style="padding:3px 7px;">↻</button>
+                                        data-hint="{{ t('hint.refresh_subjects') }}"
+                                        style="padding:3px 7px;"><span aria-hidden="true">↻</span><span
+                                            class="sr-only">{{ t('hint.refresh_subjects') }}</span></button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
-                                        onchange="onReportSaveModeChange()"> New
+                                        onchange="onReportSaveModeChange()"> {{ t('report.subject_new') }}
                                 </label>
                                 <div id="report-new-row" style="display:none; align-items:center; gap:4px;">
-                                    <input type="text" id="report-subject-name" placeholder="{{ t('ph.new_subject_name') }}"
-                                        style="width: 150px;">
+                                    <label class="sr-only" for="report-subject-name">{{ t('ph.new_subject_name') }}</label>
+                                    <input type="text" id="report-subject-name"
+                                        placeholder="{{ t('ph.new_subject_name') }}" style="width: 150px;">
                                 </div>
-                            </div>
+                            </fieldset>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
         <!-- ── Community strip ──────────────────────────────────────────────
              The reviews carousel and the full citation block live on the landing
              page now; what stays here is the way in for someone who is actually
@@ -615,17 +741,20 @@
             <span class="community-strip__text">{{ t('web.community.prompt') }}</span>
             <button type="button" class="utility-btn" onclick="openReviewForm()"
                 data-hint="{{ t('web.community.share_hint') }}">
-                ✍️ {{ t('web.community.share') }}
+                <span aria-hidden="true">✍️</span> {{ t('web.community.share') }}
             </button>
             <a href="{{ url_for('landing') }}#reviews" class="community-strip__link"
                 data-hint="{{ t('web.community.reviews_hint') }}">{{ t('web.community.reviews') }}</a>
             <a href="{{ url_for('landing') }}#cite" class="community-strip__link"
                 data-hint="{{ t('web.community.cite_hint') }}">{{ t('web.community.cite') }}</a>
         </div>
-        <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center; flex-shrink: 0;">
+        {# #6b7280 rather than #95a5a6: the old grey was 2.4:1 on the light page
+           (1.4.3 wants 4.5:1 for this size). #}
+        <footer id="footer" style="font-size: 0.8rem; color: #6b7280; text-align: center; flex-shrink: 0;">
             © 2025 - <span id="year"></span> {{ t('web.footer.rights') }}
             &nbsp;·&nbsp;<a href="{{ url_for('terms') }}" style="color: inherit;">{{ t('nav.terms') }}</a>
             &nbsp;·&nbsp;<a href="{{ url_for('privacy') }}" style="color: inherit;">{{ t('nav.privacy') }}</a>
+            &nbsp;·&nbsp;<a href="{{ url_for('accessibility') }}" style="color: inherit;">{{ t('nav.accessibility') }}</a>
             &nbsp;·&nbsp;<span title="{{ t('web.footer.research_hint') }}">{{ t('web.footer.research') }}</span>
             &nbsp;·&nbsp;{% include "_lang_switch.html" %}
         </footer>

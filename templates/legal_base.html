@@ -33,6 +33,10 @@
 </head>
 
 <body>
+    {# 2.4.1 Bypass Blocks — the nav and the clause index repeat on every legal
+       page, so the first tab stop jumps straight to the document. #}
+    <a class="skip-link" href="#main-content">{{ t('a11y.skip_to_main') }}</a>
+
     <!-- ── Nav ─────────────────────────────────────────────────────────── -->
     <header class="nav">
         <div class="shell nav-inner">
@@ -66,7 +70,7 @@
         </div>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
         <!-- ── Document head ───────────────────────────────────────────── -->
         <section class="legal-hero">
             <div class="shell">
@@ -115,10 +119,10 @@
         <!-- ── Body ────────────────────────────────────────────────────── -->
         <div class="shell legal-body{% block body_modifier %}{% endblock %}">
             {% block doc_aside %}
-            <aside class="legal-index">
-                <h2>{{ t('legal.sections') }}</h2>
+            <nav class="legal-index" aria-labelledby="legal-index-heading">
+                <h2 id="legal-index-heading">{{ t('legal.sections') }}</h2>
                 <ol>{% block doc_index %}{% endblock %}</ol>
-            </aside>
+            </nav>
             {% endblock %}
 
             <article class="legal-prose" id="legal-prose">
@@ -167,6 +171,7 @@
                     <ul>
                         <li><a href="{{ url_for('terms') }}">{{ t('footer.terms') }}</a></li>
                         <li><a href="{{ url_for('privacy') }}">{{ t('footer.privacy') }}</a></li>
+                        <li><a href="{{ url_for('accessibility') }}">{{ t('footer.accessibility') }}</a></li>
                         <li><a href="{{ url_for('contact') }}">{{ t('footer.contact') }}</a></li>
                     </ul>
                 </div>

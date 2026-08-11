@@ -621,3 +621,44 @@ html.dark .legal-index a.is-active {
 .legal-governing strong {
     color: var(--ink);
 }
+
+/* ==========================================================================
+   Accessibility (WCAG 2.2 Level AA) — legal documents + contact form
+   The focus-ring and skip-link primitives live in landing.css, which every
+   legal page loads first. What is here is only what this file's own rules
+   would otherwise defeat. See `Rule.md` §2.15.
+   ========================================================================== */
+
+/* The base rule sets `outline: none` on these and leans on a border colour
+   change, which is not a reliable indicator on its own — 2.4.7. */
+.contact-form input:focus-visible,
+.contact-form select:focus-visible,
+.contact-form textarea:focus-visible {
+    outline: 3px solid var(--band);
+    outline-offset: 2px;
+}
+
+/* 3.3.1 Error Identification — the message is announced by its live region
+   and must also read as an error without relying on colour alone (1.4.1),
+   hence the leading glyph supplied here rather than in the markup. */
+.field-error {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #b3261e;
+}
+
+html.dark .field-error {
+    color: #ffb4ab;
+}
+
+.field-error:not(:empty)::before {
+    content: "\26A0\FE0E\00A0";
+}
+
+/* A field flagged by the server or by client validation. Colour is a second
+   cue only; the text above carries the message. */
+.contact-form [aria-invalid="true"] {
+    border-color: #b3261e;
+}

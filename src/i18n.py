@@ -191,6 +191,7 @@ LOCALIZED_ENDPOINTS = (
     "landing",
     "terms",
     "privacy",
+    "accessibility",
     "contact",
     "index",
     "account.signup_page",
