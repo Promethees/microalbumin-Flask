@@ -1546,7 +1546,9 @@ html.dark .readout {
         padding: 8px var(--gutter) 16px;
     }
 
-    .nav-links.open a {
+    /* Direct children only: the picker's own links live in here too on a
+       phone, and they are a dropdown, not menu rows. */
+    .nav-links.open > a {
         padding: 11px 0;
         border-bottom: 1px solid var(--line);
     }
@@ -1610,8 +1612,20 @@ html.dark .readout {
     }
 
     .nav-actions .btn-ghost,
-    .nav-account {
+    .nav-account,
+    .nav-actions .lang-switch {
         display: none;
+    }
+
+    /* …and the picker comes back at the foot of the open menu, where a full
+       row fits its label instead of squeezing the wordmark against it. */
+    .nav-links.open .nav-lang {
+        display: block;
+        padding-top: 12px;
+    }
+
+    .nav-links.open .lang-switch > summary {
+        justify-content: center;
     }
 
     /* Four items have to share a phone-width bar: wordmark, theme toggle,
@@ -1679,6 +1693,14 @@ html.dark .readout {
 .lang-switch {
     position: relative;
     font-size: 0.82rem;
+}
+
+/* The picker is a fifth item in a bar the phone layout sizes for four
+   (wordmark, theme toggle, primary button, menu), so below 620px it swaps
+   places with this twin inside the collapsible menu. Hidden everywhere else —
+   the bar has room for the real one. */
+.nav-lang {
+    display: none;
 }
 
 .lang-switch>summary {

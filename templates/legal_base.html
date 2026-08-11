@@ -50,6 +50,9 @@
                 <a href="{{ url_for('contact') }}">{{ t('nav.contact') }}</a>
                 <a href="{{ url_for('landing') }}#run">{{ t('nav.get_it') }}</a>
                 <a href="{{ url_for('landing') }}#cite">{{ t('nav.cite') }}</a>
+                {# Phone-only twin of the picker in .nav-actions — see the
+                   .nav-lang rules in landing.css for why it moves in here. #}
+                <div class="nav-lang">{% include "_lang_switch.html" %}</div>
             </nav>
 
             <div class="nav-actions">

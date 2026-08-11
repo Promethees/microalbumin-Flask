@@ -53,6 +53,9 @@
                 <a href="#capabilities">{{ t('nav.capabilities') }}</a>
                 <a href="#run">{{ t('nav.get_it') }}</a>
                 <a href="#cite">{{ t('nav.cite') }}</a>
+                {# Phone-only twin of the picker in .nav-actions — see the
+                   .nav-lang rules in landing.css for why it moves in here. #}
+                <div class="nav-lang">{% include "_lang_switch.html" %}</div>
             </nav>
 
             <div class="nav-actions">
