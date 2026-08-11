@@ -252,6 +252,11 @@
         display: none;
     }
 
+    /* Hidden until the bar is closed. The handle has to be excluded from the
+       web app's global `button:not(…)` rule in static/style.css: that selector
+       carries three-plus classes, so it outranks this one-class rule and its
+       `display: inline-flex` was winning — the handle sat in the corner while
+       the bar it reopens was already on screen. */
     .react-banner-reopen {
         display: none;
     }
@@ -387,7 +392,7 @@
 
 <button class="react-banner-reopen" id="react-banner-reopen" type="button" aria-label="{{ t('react.reopen_aria') }}"
     title="{{ t('react.reopen_aria') }}">
-    <img src="{{ url_for('static', filename='logos/react/react.png') }}" alt="">
+    <img src="{{ url_for('static', filename='logos/react/react.png') }}" alt="" aria-hidden="true">
     <span>{{ t('react.show') }}</span>
 </button>
 
