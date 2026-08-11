@@ -283,16 +283,6 @@ body.dark .section {
     white-space: nowrap;
 }
 
-/* The wordmark in the title block was a second <h1>, which reads as a second
-   document title; it is a <p> now, so the h1 block margin and weight are
-   restated to keep it exactly where it was. Scoped to #title on purpose: the
-   `.init-okapi-line` variant on the splash has always been a <div> with no
-   block margin, and must not gain one. */
-#title .okapi-line {
-    margin: 0.67em 0;
-    font-weight: bold;
-}
-
 .okapi-img {
     height: 30px;
     width: 30px;
@@ -700,11 +690,22 @@ body.dark .top-right {
     align-items: flex-start;
 }
 
-.title-place h1 {
+/* The three lines are one lockup, not three blocks: no space between the
+   company name, the wordmark and the version, so they read as a single mark
+   against the 30px logo beside them. `.title-place` is a flex column, so these
+   margins do not collapse — a block margin on any line here is that margin,
+   whole. The wordmark is `.okapi-line` rather than a second <h1> (one document
+   title per page), and it needs every one of these declarations, not just the
+   weight: as a <p> it stops matching the h1 selector and picks up the UA
+   `1em 0` plus the body's line-height instead. Scoped to `.title-place`: the
+   `.init-okapi-line` variant on the splash is its own mark at 2.6rem. */
+.title-place h1,
+.title-place .okapi-line {
     margin: 0;
     font-family: var(--font-ui);
     line-height: 1.2;
     font-size: 1.1rem;
+    font-weight: bold;
 }
 
 #htbio {
