@@ -58,25 +58,43 @@
         outline: 3px solid #1d4ed8;
         outline-offset: 2px;
         box-shadow: 0 0 0 5px #ffffff;
-        border-radius: 4px;
+        /* No `border-radius` — the outline follows the element's own radius,
+           and setting one here reshaped every pill and circle on these pages
+           the moment it took focus. The same note is on the ring in
+           `static/style.css`; the two rings must agree. */
     }
 
+    /* The dark list has to name the same elements as the light one above: a
+       `<select>` or `<textarea>` left off kept the light ring and a white halo
+       on a dark card, which is the pairing the halo exists to avoid. */
     body.dark a:focus-visible,
     body.dark button:focus-visible,
     body.dark input:focus-visible,
+    body.dark select:focus-visible,
+    body.dark textarea:focus-visible,
+    body.dark summary:focus-visible,
     body.dark [tabindex]:focus-visible {
         outline-color: #93c5fd;
         box-shadow: 0 0 0 5px #0b0f12;
     }
 
-    /* A region moved to programmatically should not draw a ring of its own. */
+    /* 2.4.3 — a region moved to programmatically is outlined so a keyboard user
+       can see where they were sent. This said `outline: none`, the opposite of
+       what `static/style.css` does for the same selector. */
     [tabindex="-1"]:focus {
-        outline: none;
+        outline: 2px dashed #1d4ed8;
+        outline-offset: 4px;
     }
 
-    /* 2.5.8 Target Size (Minimum). */
+    body.dark [tabindex="-1"]:focus {
+        outline-color: #93c5fd;
+    }
+
+    /* 2.5.8 Target Size (Minimum). Same list as `static/style.css`: `.btn` is
+       not on it there, and a floor that names a class the app styles by size is
+       how the select regression happened — `min-*` beats `width` at any
+       specificity. */
     button,
-    .btn,
     [role="button"] {
         min-height: 24px;
         min-width: 24px;

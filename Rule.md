@@ -799,6 +799,24 @@ Timestamp,Value:1,Value:2,...
 - **Never remove a focus indicator.** `outline: none` is allowed only where a
   later `:focus-visible` rule replaces it. The rings are two-toned (dark core +
   light halo) so they clear 3:1 on either theme and over any control fill.
+  There is **one** ring in the app: do not add a second that outranks it, or
+  ordinary buttons show one indicator and the promoted chrome buttons show
+  another side by side (that regression is why `5e58c3c` exists).
+- **The 2.5.8 floor is a blunt instrument — keep its selector list short.**
+  `min-width`/`min-height` beat `width`/`height` **at any specificity**, so
+  `button, [role="button"] { min-height: 24px; min-width: 24px }` cannot be
+  reasoned about as an ordinary declaration: it silently wins over whatever
+  size the design system set, from anywhere in the file. It has already broken
+  two things — the 18px checkboxes and radios (fixed in `5e58c3c`) and every
+  `<select>` in the app, which lost the `min-width: 150px` it is given at the
+  top of the sheet because both rules are `(0,0,1)` and the accessibility block
+  comes last. Before adding a selector to that rule, check whether the element
+  already declares a size; if it does, meet the criterion on the element itself
+  (`.okapi-ai-edit-btn` restates `min-*: 22px` and passes through the **spacing
+  exception** instead) rather than growing it from the bottom of the file. An
+  accessibility rule that outranks the design system is not accessible, it is
+  just louder — and a rule that changes nothing, like `.btn` on a set of pages
+  that have no `.btn`, is only there to bite the next person who adds one.
 - **A click handler belongs on a control.** No `onclick` on a `<div>`, an
   `<img>`, a `<span>` or a heading — it cannot be reached by keyboard and has
   no role. The section headings are `<h2><button class="folder-section-toggle">`;

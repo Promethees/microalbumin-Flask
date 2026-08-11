@@ -3904,6 +3904,14 @@ body.dark #okapi-ai-lang-menu button.okapi-ai-lang-opt.okapi-ai-lang-active {
     margin-right: 6px;
     width: 22px;
     height: 22px;
+    /* Restated so the 2.5.8 floor at the foot of this file cannot round the
+       circle up to 24 — `min-*` beats `width`/`height` at any specificity, and
+       a 22px circle drawn at 24 also throws its `translateY(-50%)` off by 1px.
+       It keeps 2.5.8 through the spacing exception instead: it hangs outside
+       the message bubble with 6px of clear space and no other target within a
+       24px circle of its centre. */
+    min-width: 22px;
+    min-height: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -8959,22 +8967,38 @@ th>.sort-btn {
     display: block;
 }
 
+/* The theme cycle was a <div>; as a <button> it needs its geometry restated,
+   but NOT its border removed. `.toggle-container` above draws the hairline that
+   every field and pressable on the page wears, and `.toggle-container:hover`
+   states it in `--accent` — a `border: none` here outranks both (0,1,1 beats
+   0,1,0), leaving the toggle as the one unbounded control on the page with no
+   hover feedback. Only the browser's own button chrome comes off, and
+   `content-box` keeps the div's box model: a <button> is border-box by default,
+   which would have taken 4px of padding and 2px of border out of the 56x28. */
 button.toggle-container {
-    border: none;
     font: inherit;
     box-sizing: content-box;
 }
 
-/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target.
-   Deliberately NOT applied to `input[type=checkbox]` / `input[type=radio]`:
-   `min-width` beats `width`, so it silently overrode the 18px those controls
-   are given above rather than growing anything. Each one sits inside its own
-   <label>, which already gives a target well past 24px. `.folder-chevron` is
-   out for a related reason — it is decoration inside the heading button, and
-   the whole heading is the target. */
+/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target. A floor
+   for outliers only: the global button rule already gives 0.9rem type and
+   7px/11px padding inside a border-box, which clears 24 on both axes.
+   The list is short on purpose, because `min-width`/`min-height` beat `width`
+   and `height` at any specificity — this rule cannot be reasoned about as an
+   ordinary declaration, it always wins over a size the design set:
+     · `input[type=checkbox]` / `input[type=radio]` — silently overrode the 18px
+       those controls are given above rather than growing anything. Each sits in
+       its own <label>, which already gives a target well past 24px.
+     · `.folder-chevron` — decoration inside the heading button, and the whole
+       heading is the target.
+     · `select` — the worst of them, and not a size clash but a specificity one:
+       `select { min-width: 150px }` above and this rule are BOTH (0,0,1), so
+       whichever comes last wins, and this block is last in the file. Every
+       select in the app lost its 150px floor and resized to its longest option.
+       A select is 24px in both axes on its own (6px/8px padding plus the 40px
+       chevron gutter), so it never needed to be here. */
 button,
-[role="button"],
-select {
+[role="button"] {
     min-height: 24px;
     min-width: 24px;
 }
