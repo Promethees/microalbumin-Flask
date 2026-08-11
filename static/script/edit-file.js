@@ -400,7 +400,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                 // ConcenUnit is constrained to the valid units — edit it via a
                 // dropdown rather than free text so an invalid unit can't be typed.
                 if (key === 'ConcenUnit') {
-                    const units = (typeof CONCEN_UNITS !== 'undefined') ? CONCEN_UNITS : ['ng/µL', 'nM', '%'];
+                    const units = (typeof CONCEN_UNITS !== 'undefined') ? CONCEN_UNITS : ['ng/µL', 'nM', '%', 'CFU', 'OD600'];
                     const opts = units.map(u =>
                         `<option value="${u}" ${u === value ? 'selected' : ''}>${u}</option>`).join('');
                     return `
@@ -910,7 +910,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             {
                                 // File pattern with metadata and headers
                                 header: /^\s*Concentration\s*,\s*maxRate\s*,\s*Slope\s*,\s*Sat\s*,\s*Time To Sat\s*$/,
-                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
+                                // Sat is signed: a curve fitted against a falling
+                                // signal saturates at a negative plateau.
+                                data: /^\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d+)\s*,\s*(NONE|-?\d+|-?\d+\.\d+)\s*,\s*(NONE|\d+|\d+\.\d*)\s*$/,
                                 error: 'Invalid format (Pattern 1). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat',
                                 meta: [/^#\s*Measurement\s*:\s*.+$/, /^#\s*MeasUnit\s*:\s*.+$/, /^#\s*TimeUnit\s*:\s*.+$/, /^#\s*MeasMode\s*:\s*.+$/]
                             },
@@ -922,7 +924,9 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                             },
                             {
                                 header: /^\s*Timestamp\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
+                                // Value cells: a number or a device token — OVFL / NONE /
+                                // INF (mirror of sentinels.TOKEN_PATTERN).
+                                data: /^\s*\d+(?:\.\d{1,2})?\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE|[+-]?[Ii][Nn][Ff])?\s*)*$/,
                                 error: 'Invalid format (Pattern 3). Header must be: Timestamp,Value:1,Value:2,...',
                                 meta: [
                                     /^#\s*Measurement\s*:\s*.+$/,
@@ -936,7 +940,7 @@ function editFile(fileName, button, tableSelector = "#file-table") {
                                 // index (no decimal). Mirrors the backend
                                 // CSV_SCHEMA_TIMESERIES_TURN validator.
                                 header: /^\s*Turn\s*,\s*Value:\d+(?:\s*,\s*Value:\d+)*\s*$/,
-                                data: /^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?\s*)*$/,
+                                data: /^\s*\d+\s*(?:(?:,\s*)?(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE|[+-]?[Ii][Nn][Ff])?\s*)*$/,
                                 error: 'Invalid format (Pattern 4). Header must be: Turn,Value:1,Value:2,...',
                                 meta: [
                                     /^#\s*Measurement\s*:\s*.+$/,

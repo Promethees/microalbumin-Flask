@@ -1,5 +1,7 @@
 import numpy as np
 
+import sentinels
+
 def compute_r_squared(actual, predicted):
     if len(actual) != len(predicted) or len(actual) < 1:
         return 0.0
@@ -37,25 +39,22 @@ def mm_func(x, vmax, km):
 def map_duplicates(x, y, keep_gaps=False):
     x_map = {}
     for xi, yi in zip(x, y):
-        is_none = yi in ("NONE", None, "OVFL")
-        if is_none:
+        # to_number rejects the device's sentinels (NONE / OVFL / INF) along with
+        # anything else that is not a finite number. float() alone would let
+        # "INF" through as an infinity and take the whole fit with it.
+        val = sentinels.to_number(yi)
+        if val is None:
             if not keep_gaps: continue
             if xi not in x_map:
                 x_map[xi] = {'sum': 0.0, 'count': 0, 'has_valid': False}
         else:
-            try:
-                val = float(yi)
-                if xi not in x_map:
-                    x_map[xi] = {'sum': val, 'count': 1, 'has_valid': True}
-                else:
-                    x_map[xi]['sum'] += val
-                    x_map[xi]['count'] += 1
-                    x_map[xi]['has_valid'] = True
-            except ValueError:
-                if keep_gaps:
-                    if xi not in x_map:
-                        x_map[xi] = {'sum': 0.0, 'count': 0, 'has_valid': False}
-    
+            if xi not in x_map:
+                x_map[xi] = {'sum': val, 'count': 1, 'has_valid': True}
+            else:
+                x_map[xi]['sum'] += val
+                x_map[xi]['count'] += 1
+                x_map[xi]['has_valid'] = True
+
     processed_x = []
     processed_y = []
     for k, v in x_map.items():
@@ -181,16 +180,23 @@ def _tail_is_flat(x_tail, y_tail, max_rate, window_size):
 
 
 def calculate_kinetics_quantities(x_col, y_col, window_size):
-    valid_pairs = [(x, y) for (x, y) in zip(x_col, y_col) if x not in (None, "NONE") and y not in (None, "NONE", "OVFL")]
-    
+    # Both columns must be finite numbers: a sentinel (NONE / OVFL / INF) or an
+    # infinity is not a kinetics point, and "INF" survives a bare float().
+    valid_pairs = [
+        (xn, yn)
+        for (x, y) in zip(x_col, y_col)
+        for xn, yn in ((sentinels.to_number(x), sentinels.to_number(y)),)
+        if xn is not None and yn is not None
+    ]
+
     if len(valid_pairs) < 2:
         return {
             "slope": 0, "intercept": 0, "saturationValue": "--", "timeToSaturation": "--",
             "maxRate": 0, "linearSlope": 0, "linearYMin": 0, "linearYMax": 0, "linearXMin": 0, "linearXMax": 0
         }
         
-    x_col_valid = [float(p[0]) for p in valid_pairs]
-    y_col_valid = [float(p[1]) for p in valid_pairs]
+    x_col_valid = [p[0] for p in valid_pairs]
+    y_col_valid = [p[1] for p in valid_pairs]
     
     window_size = int(window_size)
     if window_size < 2 or window_size > len(x_col_valid):

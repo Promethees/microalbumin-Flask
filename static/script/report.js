@@ -2301,10 +2301,8 @@ function _extractValidXYForTrace(renderData, traceIdx) {
         const xv = Number(row.Timestamp);
         const rawY = row[key];
         if (!Number.isFinite(xv)) continue;
-        if (rawY === null || rawY === undefined) continue;
-        if (rawY === 'NONE' || rawY === 'OVFL') continue;
-        const yv = Number(rawY);
-        if (!Number.isFinite(yv)) continue;
+        const yv = measNumber(rawY);   // null for NONE / OVFL / INF, and any non-finite
+        if (yv === null) continue;
         x.push(xv);
         y.push(yv);
     }
@@ -2321,15 +2319,14 @@ function _normalizeTraces(renderData, traceIndices) {
     for (const t of traceIndices) {
         const key = `Value:${t}`;
         const validVals = renderData
-            .map(row => row[key])
-            .filter(v => v !== null && v !== undefined && v !== 'NONE' && v !== 'OVFL' && Number.isFinite(Number(v)))
-            .map(Number);
+            .map(row => measNumber(row[key]))
+            .filter(v => v !== null);
         if (validVals.length === 0) continue;
         const min = Math.min(...validVals);
         normalized.forEach((row, i) => {
-            const raw = renderData[i][key];
-            if (raw !== null && raw !== undefined && raw !== 'NONE' && raw !== 'OVFL' && Number.isFinite(Number(raw))) {
-                row[key] = Number(raw) - min;
+            const raw = measNumber(renderData[i][key]);
+            if (raw !== null) {
+                row[key] = raw - min;
             }
         });
     }

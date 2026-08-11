@@ -198,7 +198,9 @@ def test_get_child_directories_non_dir_raises():
 # ---------------------------------------------------------------------------
 
 def test_concen_units_catalog():
-    assert CONCEN_UNITS == ['ng/µL', 'nM', '%']
+    # Mirrors the desktop app's catalog (main:src/file_path.py) — a file it
+    # tags CFU or OD600 has to keep its unit here.
+    assert CONCEN_UNITS == ['ng/µL', 'nM', '%', 'CFU', 'OD600']
     assert DEFAULT_CONCEN_UNIT == 'ng/µL'
 
 

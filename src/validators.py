@@ -2,6 +2,7 @@ import re
 import json
 from functools import wraps
 from flask import request, jsonify
+import sentinels
 from file_path import (parse_csv_metadata, detect_csv_schema,
                        CSV_SCHEMA_TIMESERIES, CSV_SCHEMA_TIMESERIES_TURN,
                        CSV_SCHEMA_KINETICS_CAL, CSV_SCHEMA_POINT_CAL,
@@ -86,7 +87,11 @@ def validate_json_content(content: str):
 
 _SCHEMA_VALIDATORS = {
     CSV_SCHEMA_KINETICS_CAL: {
-        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
+        # Sat is signed and may be a whole number: a saturating curve fitted
+        # against a falling signal records a negative plateau, and the desktop
+        # writer emits `-?\d+` there. Rejecting those made the web refuse
+        # calibration files the desktop app had just produced.
+        'data': r"^(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|\d+|\d+\.\d+),(NONE|-?\d+|-?\d+\.\d+),(NONE|\d+|\d+\.\d*)$",
         'meta': ["Measurement", "MeasUnit", "TimeUnit", "MeasMode"],
         'error': 'Invalid format (Kinetics calibration). Header must be: Concentration,maxRate,Slope,Sat,Time To Sat. Metadata must include Measurement, MeasUnit, TimeUnit, and MeasMode.'
     },
@@ -109,7 +114,10 @@ _SCHEMA_VALIDATORS = {
         # match empty in many ways over a long digit run, causing catastrophic
         # backtracking — a ~2KB row hung the worker for seconds (ReDoS). The
         # mandatory comma makes matching linear while accepting the same lines.
-        'data': r'^[ \t]*\d+(?:\.\d{1,2})?[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?[ \t]*)*$',
+        # Value cells: a number or one of the device's tokens — OVFL / NONE /
+        # INF (sentinels.TOKEN_PATTERN, mirrored client-side in edit-file.js).
+        'data': r'^[ \t]*\d+(?:\.\d{1,2})?[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|'
+                + sentinels.TOKEN_PATTERN + r')?[ \t]*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Pattern 4). Header must be: Timestamp,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
     },
@@ -118,7 +126,8 @@ _SCHEMA_VALIDATORS = {
     # Timestamp. The mandatory comma in the repeated group keeps matching linear
     # (same ReDoS fix as above).
     CSV_SCHEMA_TIMESERIES_TURN: {
-        'data': r'^[ \t]*\d+[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|OVFL|NONE)?[ \t]*)*$',
+        'data': r'^[ \t]*\d+[ \t]*(?:,[ \t]*(?:-?\d+(?:\.\d{1,3})?|'
+                + sentinels.TOKEN_PATTERN + r')?[ \t]*)*$',
         'meta': ["Measurement", "Unit", "Concentration"],
         'error': 'Invalid format (Turn series). Header must be: Turn,Value:1,Value:2,... Metadata must include Measurement, Unit, and Concentration.'
     },

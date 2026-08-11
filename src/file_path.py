@@ -135,10 +135,12 @@ def timeseries_x_column(header_line: str):
 # ---------------------------------------------------------------------------
 # The unit a Concentration value (the ``# Concentration:`` metadata of a raw
 # timeseries file, or the ``Concentration`` column of a calibration file) is
-# expressed in, recorded as a ``# ConcenUnit:`` line. One of three values; a
-# label only (switching units never converts the recorded numbers). Older files
-# predate the line — when absent the value is assumed ``ng/µL``.
-CONCEN_UNITS = ['ng/µL', 'nM', '%']
+# expressed in, recorded as a ``# ConcenUnit:`` line. A label only (switching
+# units never converts the recorded numbers). Older files predate the line —
+# when absent the value is assumed ``ng/µL``. The list mirrors the desktop
+# app's (``main:src/file_path.py``); a file it tags ``CFU`` or ``OD600`` has to
+# open here with its own unit rather than fall back to the default.
+CONCEN_UNITS = ['ng/µL', 'nM', '%', 'CFU', 'OD600']
 DEFAULT_CONCEN_UNIT = 'ng/µL'
 
 
