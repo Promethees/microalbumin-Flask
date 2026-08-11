@@ -721,6 +721,20 @@ body.dark .toggle-button {
     flex: 1 0 auto;
 }
 
+/* The footer is a flex child of .container with no width of its own, so it ran
+   the full width of the page while everything else was held to the centred
+   50vw band — and its left end disappeared under `.top-left`, which is
+   `position: fixed` and therefore out of flow. Same band as the content above
+   it, so it clears the rail and lines up with it. Released back to full width
+   at 768px, where the rail stops being fixed. */
+#footer {
+    max-width: 50vw;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+}
+
 /* Default Section Visibility */
 #window-size-section,
 #select-quantity-section,
@@ -1602,6 +1616,10 @@ body.dark .swal2-container.swal2-backdrop-show {
 
     footer {
         order: 4;
+    }
+
+    #footer {
+        max-width: 100%;
     }
 }
 
@@ -3303,6 +3321,12 @@ body.dark .community-strip__text {
     color: var(--link-ink);
     text-decoration: none;
     font-weight: 500;
+    /* The 24px min-height from the target-size rule grows the box but not the
+       line box inside it, so the label sat at the top of a 24px block and rode
+       ~4px above the button label next to it. Centring the label inside the box
+       keeps the target and fixes the alignment. */
+    display: inline-flex;
+    align-items: center;
 }
 
 .community-strip__link:hover {
