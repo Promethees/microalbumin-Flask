@@ -15,7 +15,7 @@ import ai_feedback
 _GUIDE_TRAINING_PATH = os.path.join(state.bundle_dir, "guide_training.json")
 _GUIDE_TRANSLATIONS_DIR = os.path.join(state.bundle_dir, "guide_translations")
 
-VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru'}
+VALID_LANGS = {'en', 'vi', 'zh', 'fr', 'ja', 'ru', 'ko'}
 
 
 def _apply_overlay(examples: list, lang: str) -> list:
@@ -246,6 +246,7 @@ _FILE_SELECT_STEP = {
         "fr": "Aucun fichier de données n'est chargé. Cliquez ici pour sélectionner un fichier CSV avant de continuer.",
         "ja": "データファイルがまだ読み込まれていません。続行する前にここをクリックして CSV ファイルを選択してください。",
         "ru": "Файл данных ещё не загружен. Нажмите здесь, чтобы выбрать CSV-файл перед продолжением.",
+        "ko": "데이터 파일이 아직 로드되지 않았습니다. 계속하기 전에 여기를 클릭하여 CSV 데이터 파일을 선택하세요.",
     },
     "position": "left",
     "skipInteraction": False,
@@ -261,6 +262,7 @@ _GET_STARTED_STEP = {
         "fr": "L'application n'a pas encore été initialisée. Cliquez sur \"Commencer\" pour charger l'interface principale avant de poursuivre ce guide.",
         "ja": 'アプリはまだ初期化されていません。このガイドを続ける前に「はじめる」をクリックしてメインインターフェイスを読み込んでください。',
         "ru": "Приложение ещё не инициализировано. Нажмите «Начать», чтобы загрузить главный интерфейс перед продолжением руководства.",
+        "ko": '앱이 아직 초기화되지 않았습니다. 이 가이드를 계속하기 전에 "시작하기"를 클릭하여 기본 화면을 불러오세요.',
     },
     "position": "right",
     "skipInteraction": False,
@@ -284,6 +286,7 @@ _MODE_SWITCH_STEP = {
         "fr": "Cette fonction n'est disponible qu'en mode {mode}. Cliquez ici pour passer d'abord en mode {mode}, puis rouvrez ce guide.",
         "ja": "この機能は {mode} モードでのみ利用できます。まずここをクリックして {mode} モードに切り替え、このガイドを開き直してください。",
         "ru": "Эта функция доступна только в режиме {mode}. Нажмите здесь, чтобы сначала переключиться в режим {mode}, затем снова откройте руководство.",
+        "ko": "이 기능은 {mode} 모드에서만 사용할 수 있습니다. 먼저 여기를 클릭해 {mode} 모드로 전환한 뒤 이 가이드를 다시 여세요.",
     },
     "position": "right",
     "skipInteraction": False,
@@ -377,6 +380,11 @@ _GREETING_RESPONSE = {
         "анализ данных, калибровка, настройка оборудования или навигация по приложению. "
         "Чем могу помочь?"
     ),
+    "ko": (
+        "안녕하세요! 저는 OKAPI Assistant입니다. Easy OKAPI에 대해 도와드릴 수 있습니다 — "
+        "데이터 분석, 캘리브레이션, 하드웨어 설정, 앱 탐색 등. "
+        "무엇을 도와드릴까요?"
+    ),
 }
 
 
@@ -429,6 +437,11 @@ _OUT_OF_SCOPE = {
         "Я могу помочь только с Easy OKAPI — анализ данных колориметра, "
         "калибровка, настройка оборудования и навигация по приложению. "
         "Я не могу помочь по этой теме. Есть ли у вас вопросы об Easy OKAPI?"
+    ),
+    "ko": (
+        "저는 Easy OKAPI에 대해서만 도움을 드릴 수 있습니다 — 비색계 데이터 분석, "
+        "캘리브레이션, 하드웨어 설정, 앱 탐색. "
+        "해당 주제는 도와드릴 수 없습니다. Easy OKAPI에 대해 궁금한 점이 있으신가요?"
     ),
 }
 
@@ -490,7 +503,7 @@ _SYSTEM_PROMPTS = {
         "• Time To Sat — time in minutes until the signal reaches the plateau; useful for reaction-speed comparisons.\n\n"
         "SOURCES: A 'source' is one measurement channel inside a CSV file — each distinct sample or sensor "
         "position recorded in the same run. A merged file can contain multiple sources.\n\n"
-        "APP SETTINGS — the gear button (#settingsBtn) opens App Settings: interface Language (6 languages), "
+        "APP SETTINGS — the gear button (#settingsBtn) opens App Settings: interface Language (7 languages), "
         "default mode & window size, concentration unit, table sort order, and (installed builds) the data-folder location.\n"
         "CONCENTRATION UNITS: a concentration is labelled ng/µL, nM, %, or CFU — a label only (switching the unit never "
         "converts the numbers). A measurement CSV pairs with a calibration JSON only when both share the same "
@@ -544,7 +557,7 @@ _SYSTEM_PROMPTS = {
         "• Hàm mũ  y=a·e^(b·x)+c  [a,b,c]: a=biên độ, "
         "b=tốc độ tăng/giảm (dương=tăng, âm=giảm), c=đường tiệm cận dưới.\n\n"
         "R² (0–1): độ khớp; ≥0.99 là tiêu chuẩn cho đường chuẩn đáng tin cậy.\n\n"
-        "CÀI ĐẶT ỨNG DỤNG — nút bánh răng (#settingsBtn) mở App Settings: Ngôn ngữ giao diện (6 ngôn ngữ), "
+        "CÀI ĐẶT ỨNG DỤNG — nút bánh răng (#settingsBtn) mở App Settings: Ngôn ngữ giao diện (7 ngôn ngữ), "
         "chế độ & kích thước cửa sổ mặc định, đơn vị nồng độ, thứ tự sắp xếp bảng, và (bản cài đặt) vị trí thư mục dữ liệu.\n"
         "ĐƠN VỊ NỒNG ĐỘ: nồng độ được gắn nhãn ng/µL, nM, % hoặc CFU — chỉ là nhãn (đổi đơn vị không chuyển đổi số liệu). "
         "Một tệp CSV đo lường chỉ ghép với JSON hiệu chuẩn khi cả hai có cùng Measurement, Unit và đơn vị nồng độ.\n"
@@ -587,7 +600,7 @@ _SYSTEM_PROMPTS = {
         "• 对数  y=a·ln(x+b)+c  [a,b,c]：a=动态范围缩放，b=X轴平移（保持ln参数为正），c=基线。\n"
         "• 指数  y=a·e^(b·x)+c  [a,b,c]：a=振幅，b=增长率（正=上升，负=下降），c=下渐近线。\n\n"
         "R²（0–1）：拟合优度；≥0.99 为可靠校准曲线的标准。\n\n"
-        "应用设置——齿轮按钮（#settingsBtn）打开 App Settings：界面语言（6 种）、默认模式与窗口大小、浓度单位、表格排序，"
+        "应用设置——齿轮按钮（#settingsBtn）打开 App Settings：界面语言（7 种）、默认模式与窗口大小、浓度单位、表格排序，"
         "以及（安装版）数据文件夹位置。\n"
         "浓度单位：浓度标注为 ng/µL、nM、% 或 CFU——仅为标签（切换单位不会换算数值）。"
         "测量 CSV 仅在与校准 JSON 的 Measurement、Unit 和浓度单位都相同时才能配对。\n"
@@ -638,7 +651,7 @@ _SYSTEM_PROMPTS = {
         "• Exponentielle  y=a·e^(b·x)+c  [a,b,c] : a=amplitude, "
         "b=taux de croissance (pos=courbe croissante, nég=décroissante), c=asymptote inférieure.\n\n"
         "R² (0–1) : qualité d'ajustement ; ≥0.99 est attendu pour une calibration fiable.\n\n"
-        "PARAMÈTRES — le bouton engrenage (#settingsBtn) ouvre App Settings : langue de l'interface (6 langues), "
+        "PARAMÈTRES — le bouton engrenage (#settingsBtn) ouvre App Settings : langue de l'interface (7 langues), "
         "mode et taille de fenêtre par défaut, unité de concentration, tri des tableaux, et (versions installées) l'emplacement du dossier de données.\n"
         "UNITÉS DE CONCENTRATION : une concentration est étiquetée ng/µL, nM, % ou CFU — une étiquette seulement "
         "(changer d'unité ne convertit jamais les valeurs). Un CSV de mesure ne s'associe à un JSON d'étalonnage "
@@ -688,7 +701,7 @@ _SYSTEM_PROMPTS = {
         "• 指数  y=a·e^(b·x)+c  [a,b,c]：a=振幅、"
         "b=増加率（正=上昇曲線、負=下降曲線）、c=下限漸近線。\n\n"
         "R²（0–1）：適合度；信頼できる校正には ≥0.99 が必要。\n\n"
-        "アプリ設定 — 歯車ボタン（#settingsBtn）で App Settings を開きます：インターフェース言語（6 言語）、"
+        "アプリ設定 — 歯車ボタン（#settingsBtn）で App Settings を開きます：インターフェース言語（7 言語）、"
         "既定モードとウィンドウサイズ、濃度単位、テーブルの並び順、（インストール版では）データフォルダの場所。\n"
         "濃度単位：濃度は ng/µL、nM、%、CFU のいずれかのラベル（ラベルのみで、切り替えても数値は変換されません）。"
         "測定 CSV は、Measurement・Unit・濃度単位がすべて一致する校正 JSON とのみ対応付けられます。\n"
@@ -739,7 +752,7 @@ _SYSTEM_PROMPTS = {
         "• Экспоненциальная  y=a·e^(b·x)+c  [a,b,c]: a=амплитуда, "
         "b=скорость роста (положит.=возрастающая, отрицат.=убывающая), c=нижняя асимптота.\n\n"
         "R² (0–1): качество подгонки; ≥0.99 требуется для надёжной калибровки.\n\n"
-        "НАСТРОЙКИ — кнопка-шестерёнка (#settingsBtn) открывает App Settings: язык интерфейса (6 языков), "
+        "НАСТРОЙКИ — кнопка-шестерёнка (#settingsBtn) открывает App Settings: язык интерфейса (7 языков), "
         "режим и размер окна по умолчанию, единица концентрации, порядок сортировки таблиц и (в установленных сборках) расположение папки данных.\n"
         "ЕДИНИЦЫ КОНЦЕНТРАЦИИ: концентрация обозначается ng/µL, nM, % или CFU — только метка (переключение единицы "
         "не пересчитывает значения). Измерительный CSV сопоставляется с калибровочным JSON только если у обоих "
@@ -747,6 +760,66 @@ _SYSTEM_PROMPTS = {
         "УПРАВЛЕНИЕ АССИСТЕНТОМ: введите / для команд, нажмите + для нового разговора, "
         "отредактируйте отправленное сообщение для повторной отправки и оцените ответы с помощью 👍/👎.\n"
         "Всегда отвечайте на русском языке."
+    ),
+    "ko": (
+        "당신은 OKAPI Assistant입니다 — 바이오센서 실험용 로컬 비색계 앱 Easy OKAPI에 내장된 AI 어시스턴트입니다.\n\n"
+        "지원 범위: CSV 데이터, 앱 탐색, 표준 곡선, R², 반응 속도론, 리포트, 하드웨어.\n"
+        "필요할 때 도구를 사용해 실시간 데이터를 가져오세요.\n\n"
+        "범위 규칙(최우선):\n"
+        "질문이 Easy OKAPI, 비색법, 바이오센서 데이터 또는 이 앱과 관련이 없으면 다음만 답하세요: "
+        "\"저는 Easy OKAPI에 대해서만 도움을 드릴 수 있습니다 — 비색계 데이터 분석, "
+        "캘리브레이션, 하드웨어 설정, 앱 탐색. 해당 주제는 도와드릴 수 없습니다. "
+        "Easy OKAPI에 대해 궁금한 점이 있으신가요?\"\n"
+        "주제를 벗어난 질문(코딩 도움, 일반 과학, 요리, 뉴스, 수학 등)에는 답하지 마세요.\n\n"
+        "직접 답변 규칙:\n"
+        "자신의 지식으로 답할 수 있으면 — Easy OKAPI가 무엇이고 무엇을 하는지, 용어·모드·계수의 의미, "
+        "동작 방식 — 텍스트로 답하고 도구를 호출하지 마세요. 도구는 실시간 데이터(파일, 캘리브레이션, "
+        "하드웨어)를 가져오거나 사용자가 요청한 탐색 가이드를 실행할 때만 호출하세요.\n\n"
+        "필수 가이드 규칙:\n"
+        "사용자가 UI 요소로 이동하는 방법을 물으면 반드시 trigger_custom_steps를 호출하세요 — 텍스트로만 답하지 마세요.\n"
+        "예:\n"
+        "• 'calibrate 모드로 가는 방법' → target #meas-mode-section 으로 trigger_custom_steps 호출\n"
+        "• '제한 시간 설정은 어디에 있나요?' → target #timeout-control 으로 trigger_custom_steps 호출\n"
+        "• '어떻게 내보내나요?' → target #export-analysis 으로 trigger_custom_steps 호출\n"
+        "• '장치를 어떻게 시작하나요?' → target #run-script-btn 으로 trigger_custom_steps 호출\n"
+        "• '앱 언어를 바꾸려면 / 설정을 열려면' → target #settingsBtn 으로 trigger_custom_steps 호출\n"
+        "사용자가 명시적으로 전체 워크플로 투어를 요청한 경우에만 trigger_guide를 호출하세요.\n"
+        "[App state]를 확인하여 모드가 이미 일치하면 모드 전환 단계를 건너뛰세요.\n"
+        "가이드 도구를 호출한 뒤에는 가이드가 시작되었음을 한 문장으로 확인하세요.\n\n"
+        "표준 곡선 도메인 지식:\n"
+        "항상 [App state]를 확인하고 활성 모드에 맞춰 계수 설명을 조정하세요.\n\n"
+        "KINETICS 모드 — 표준 곡선은 X=최대 속도(ΔAbs/s) → Y=농도를 대응시킵니다:\n"
+        "• Michaelis-Menten  y=(Km·x)/(Vmax−x)  [Vmax,Km]: "
+        "Vmax=효소 포화 속도(상한이며 측정된 모든 속도보다 반드시 커야 함), "
+        "Km=친화도 상수(속도에 따라 농도가 얼마나 가파르게 증가하는지를 나타냄).\n"
+        "• Linear  y=a·x+b  [a,b]: a=속도 단위당 증가하는 농도, b=속도가 0일 때 외삽된 농도.\n\n"
+        "POINT 모드 — 표준 곡선은 X=알려진 농도 → Y=흡광도를 대응시킵니다. 시계열 파일에서는 "
+        "선택한 시점의 Y 값을 읽고, Turn 파일(기록된 각 Turn이 하나의 표준이며 시간 축이 없음)에서는 "
+        "Turn 자체 값을 그대로 사용합니다. 사용자가 Turn마다 농도를 지정하며, 같은 농도의 반복 Turn은 "
+        "평균됩니다. Turn 데이터 파일은 Turn 캘리브레이션 곡선과만, 시계열 파일은 시간 기반 곡선과만 짝지어집니다:\n"
+        "• Linear  y=a·x+b  [a,b]: a=감도(농도 단위당 흡광도), b=농도 0에서의 배경 흡광도.\n"
+        "• Polynomial  y=a·x²+b·x+c  [a,b,c]: a=곡률(양수=위로 볼록, 음수=아래로 볼록), "
+        "b=선형 감도, c=y 절편.\n"
+        "• Logarithmic  y=a·ln(x+b)+c  [a,b,c]: a=동적 범위 스케일, "
+        "b=x 이동(ln 인수를 양수로 유지), c=기준선.\n"
+        "• Exponential  y=a·e^(b·x)+c  [a,b,c]: a=진폭, "
+        "b=증가율(양수=상승 곡선, 음수=하강 곡선), c=하한 점근선.\n\n"
+        "R²(0–1): 적합도이며, 신뢰할 수 있는 캘리브레이션 곡선에는 ≥0.99가 필요합니다.\n\n"
+        "KINETICS 값(kinetics 모드의 값 선택 드롭다운):\n"
+        "• maxRate — 곡선에서 가장 가파른 구간을 슬라이딩 윈도 선형 회귀로 찾은 최대 흡광도 변화율(ΔAbs/s). "
+        "효소 반응 속도 분석에서 가장 흔히 사용합니다.\n"
+        "• Slope — 전체 데이터셋에 대한 단순 선형 기울기. S자 곡선에서는 maxRate보다 정밀도가 낮습니다.\n"
+        "• Sat — 반응이 평탄해질 때의 포화 흡광도 값.\n"
+        "• Time To Sat — 신호가 평탄부에 도달할 때까지 걸린 시간(분). 반응 속도 비교에 유용합니다.\n\n"
+        "SOURCES: 'source'는 CSV 파일 안의 측정 채널 하나 — 같은 실행에서 기록된 개별 시료 또는 센서 위치입니다. "
+        "병합된 파일에는 여러 소스가 들어 있을 수 있습니다.\n\n"
+        "APP SETTINGS — 톱니바퀴 버튼(#settingsBtn)으로 App Settings를 엽니다: 인터페이스 언어(7개 언어), "
+        "기본 모드와 윈도 크기, 농도 단위, 표 정렬 순서, 그리고 (설치판에서는) 데이터 폴더 위치.\n"
+        "농도 단위: 농도에는 ng/µL, nM, %, CFU 라벨이 붙습니다 — 라벨일 뿐이며 단위를 바꿔도 숫자는 변환되지 않습니다. "
+        "측정 CSV는 Measurement, Unit, 농도 단위가 모두 같은 캘리브레이션 JSON과만 짝지어집니다.\n"
+        "어시스턴트 조작: / 를 입력하면 슬래시 명령이, + 를 누르면 새 대화가 시작되며, 보낸 메시지를 수정해 "
+        "다시 보낼 수 있고 👍/👎 로 답변을 평가할 수 있습니다.\n"
+        "항상 한국어로 답변하세요."
     ),
 }
 
@@ -1007,6 +1080,7 @@ _GUIDE_LAUNCHED = {
     "fr": "Guide lancé — suivez les étapes mises en surbrillance.",
     "ja": "ガイドを起動しました — ハイライトされた手順に従ってください。",
     "ru": "Руководство запущено — следуйте выделенным шагам.",
+    "ko": "가이드를 시작했습니다 — 강조 표시된 단계를 따르세요.",
 }
 
 # ── Tool execution ────────────────────────────────────────────────────────────
@@ -1138,6 +1212,7 @@ _TRUNCATION_NOTICE = {
     "fr": "\n\n…(réponse tronquée — demandez-moi de continuer pour la suite.)",
     "ja": "\n\n…(応答が途中で切れました — 続きを知りたい場合は「続けて」と入力してください。)",
     "ru": "\n\n…(ответ обрезан — попросите меня продолжить, чтобы увидеть остальное.)",
+    "ko": "\n\n…(응답이 잘렸습니다 — 나머지를 보려면 계속해 달라고 요청하세요.)",
 }
 
 
@@ -1264,6 +1339,10 @@ _REPORT_CLARIFY_PROMPTS = {
         "Вам нужен **быстрый отчёт** (мгновенный снимок текущего графика и анализа) "
         "или **полный отчёт** (экспорт данных в тему и компиляция комплексного отчёта)?"
     ),
+    "ko": (
+        "**빠른 보고서**(현재 차트와 분석의 즉시 스냅샷)를 원하시나요, "
+        "아니면 **전체 보고서**(데이터를 주제로 내보내고 종합 멀티 스냅샷 보고서를 컴파일)를 원하시나요?"
+    ),
 }
 
 # Quick report walks the generate_report_dialog guide (see the `pending_report ==
@@ -1285,6 +1364,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Cliquez sur 'Export Data to Report' pour enregistrer ce snapshot d'analyse dans un sujet de rapport nommé pour une compilation ultérieure.",
             "ja": "「Export Data to Report」をクリックして、後で使うためこの分析スナップショットを名前付きレポートテーマに保存します。",
             "ru": "Нажмите «Export Data to Report», чтобы сохранить снимок анализа в именованную тему отчёта для последующей компиляции.",
+            "ko": "'Export Data to Report'를 클릭하여 이 분석 스냅샷을 이름 붙인 report 주제에 저장하고 나중에 정리하세요.",
         },
         "position": "top",
         "skipInteraction": False,
@@ -1302,6 +1382,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Après l'exportation, passez en mode Report ici pour ouvrir l'interface complète de gestion des rapports.",
             "ja": "エクスポート後、ここで Report モードに切り替えてレポート管理インターフェイスを開きます。",
             "ru": "После экспорта переключитесь в режим Report, чтобы открыть полный интерфейс управления отчётами.",
+            "ko": "내보낸 뒤 여기서 Report 모드로 전환하여 전체 report 관리 화면을 여세요.",
         },
         "position": "right",
         "skipInteraction": False,
@@ -1319,6 +1400,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Gérez vos snapshots d'analyse sauvegardés ici. Configurez les options de mise en page et définissez un titre de rapport.",
             "ja": "ここで保存された分析スナップショットを管理します。レイアウトオプションを設定してレポートのタイトルを設定してください。",
             "ru": "Управляйте сохранёнными снимками анализа здесь. Настройте параметры макета и задайте название отчёта.",
+            "ko": "여기서 저장된 분석 스냅샷을 관리합니다. 레이아웃 옵션을 설정하고 report 제목을 정하세요.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -1336,6 +1418,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Tous les snapshots sauvegardés sont listés ici. Supprimez ceux que vous ne souhaitez pas avant de générer le rapport final.",
             "ja": "保存されたすべてのスナップショットがここに一覧表示されます。最終レポートを生成する前に不要なものを削除してください。",
             "ru": "Все сохранённые снимки перечислены здесь. Удалите ненужные перед созданием финального отчёта.",
+            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다. 최종 report를 만들기 전에 필요 없는 항목을 제거하세요.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -1353,6 +1436,7 @@ _FULL_REPORT_STEPS_FROM_DATA = [
             "fr": "Compilez tous les éléments en rapport HTML imprimable. Ouvrez dans votre navigateur, puis Imprimer → Enregistrer en PDF.",
             "ja": "すべての項目を印刷可能な HTML レポートにまとめます。ブラウザで開き、印刷 → PDF として保存を使用してください。",
             "ru": "Скомпилируйте все элементы в печатаемый HTML-отчёт. Откройте в браузере, затем Печать → Сохранить как PDF.",
+            "ko": "모든 항목을 인쇄 가능한 HTML report로 컴파일합니다. 브라우저에서 연 뒤 인쇄 → PDF로 저장을 사용하세요.",
         },
         "position": "top",
         "skipInteraction": True,
@@ -1374,6 +1458,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Voici la Report Modification Console. Nous allons définir le titre et les options de mise en page, vérifier les éléments, puis générer le rapport en Excel ou PDF.",
             "ja": "これは Report Modification Console です。タイトルとレイアウトオプションを設定し、項目を確認してから、Excel または PDF でレポートを生成します。",
             "ru": "Это Report Modification Console. Мы зададим заголовок и параметры оформления, проверим элементы, затем создадим отчёт в Excel или PDF.",
+            "ko": "여기는 Report Modification Console입니다. 제목과 레이아웃 옵션을 정하고 항목을 확인한 뒤 Excel 또는 PDF로 report를 만듭니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -1391,6 +1476,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Définissez le titre du rapport ici — c'est l'en-tête du rapport PDF/HTML et le nom du classeur Excel (par défaut 'Colorimetric Analysis Report').",
             "ja": "ここでレポートのタイトルを設定します — PDF/HTML レポートの見出しと Excel ワークブックの名前になります（既定は 'Colorimetric Analysis Report'）。",
             "ru": "Задайте здесь название отчёта — это заголовок PDF/HTML-отчёта и имя книги Excel (по умолчанию 'Colorimetric Analysis Report').",
+            "ko": "여기서 report 제목을 정하세요 — PDF/HTML report의 제목이자 Excel 통합 문서의 이름입니다(기본값 'Colorimetric Analysis Report').",
         },
         "position": "bottom",
         "skipInteraction": True,
@@ -1409,6 +1495,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Options PDF/HTML : cochez 'Include Watermark' pour un filigrane CBBiotec, et 'Include CBB Logo' (juste à côté) pour afficher le logo dans l'en-tête. Décochez les deux pour un rapport propre, sans marque.",
             "ja": "PDF/HTML オプション：CBBiotec の透かしを入れるには 'Include Watermark'、ヘッダーにロゴを表示するには（すぐ隣の）'Include CBB Logo' をチェックします。両方をオフにするとブランドなしのクリーンなレポートになります。",
             "ru": "Параметры PDF/HTML: отметьте 'Include Watermark' для водяного знака CBBiotec и 'Include CBB Logo' (рядом), чтобы показать логотип в шапке. Снимите обе отметки для чистого отчёта без брендинга.",
+            "ko": "PDF/HTML 옵션: CBBiotec 워터마크를 넣으려면 'Include Watermark'를, 머리말에 로고를 표시하려면 바로 옆의 'Include CBB Logo'를 체크하세요. 둘 다 해제하면 브랜딩 없는 깔끔한 report가 됩니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -1426,6 +1513,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Option Excel : cochez pour placer les données de chaque fichier CSV sur son propre onglet/feuille ; décochez pour tout combiner dans une seule feuille.",
             "ja": "Excel オプション：各 CSV ファイルのデータを個別のタブ/シートに配置するにはチェック、すべてを 1 つのシートにまとめるにはオフにします。",
             "ru": "Параметр Excel: отметьте, чтобы поместить данные каждого CSV-файла на отдельную вкладку/лист; снимите отметку, чтобы объединить всё на одном листе.",
+            "ko": "Excel 옵션: 체크하면 각 CSV 파일의 데이터가 별도의 탭/시트에 놓이고, 해제하면 모든 데이터가 한 시트에 합쳐집니다.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -1444,6 +1532,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Option Excel : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
             "ja": "Excel オプション：ネイティブ（編集可能）Excel グラフの X 軸・Y 軸ラベルを上書きします。X を空欄にすると各ファイルの濃度単位で、Y を空欄にするとその metric で自動ラベル付けされます。",
             "ru": "Параметр Excel: переопределите подписи осей X и Y для нативных (редактируемых) диаграмм Excel. Оставьте X пустым для автоподписи по единице концентрации файла, а Y пустым — по его metric.",
+            "ko": "Excel 옵션: 네이티브(편집 가능) Excel 차트의 X축과 Y축 레이블을 직접 지정합니다. X를 비우면 각 파일의 농도 단위로, Y를 비우면 해당 metric으로 자동 표기됩니다.",
         },
         "position": "bottom",
         "skipInteraction": True,
@@ -1458,6 +1547,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Tous les snapshots sauvegardés sont listés ici. Supprimez-en avant de générer.",
             "ja": "保存されたすべてのスナップショットがここに一覧表示されます。生成前に不要なものを削除してください。",
             "ru": "Все сохранённые снимки перечислены здесь. Удалите ненужные перед созданием.",
+            "ko": "저장된 모든 스냅샷이 여기에 나열됩니다. 생성 전에 필요 없는 항목을 제거하세요.",
         },
         "position": "right",
         "skipInteraction": True,
@@ -1472,6 +1562,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Téléchargez tous les éléments sous forme de classeur Excel formaté avec graphiques intégrés.",
             "ja": "すべての項目を埋め込みグラフ付きのフォーマットされた Excel ワークブックとしてダウンロードします。",
             "ru": "Загрузите все элементы как форматированную Excel-книгу со встроенными графиками.",
+            "ko": "모든 항목을 차트가 포함된 서식 있는 Excel 통합 문서로 내려받습니다.",
         },
         "position": "top",
         "skipInteraction": True,
@@ -1486,6 +1577,7 @@ _FULL_REPORT_STEPS_IN_REPORT = [
             "fr": "Ou compilez tous les éléments en rapport HTML imprimable.",
             "ja": "またはすべての項目を印刷可能な HTML レポートにまとめます。",
             "ru": "Или скомпилируйте все элементы в печатаемый HTML-отчёт.",
+            "ko": "또는 모든 항목을 인쇄 가능한 HTML report로 컴파일합니다.",
         },
         "position": "top",
         "skipInteraction": True,

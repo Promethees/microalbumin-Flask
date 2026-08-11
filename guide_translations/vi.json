@@ -830,7 +830,7 @@
     "id": "app_settings",
     "steps": [
       "Nhấp biểu tượng bánh răng ⚙️ để mở hộp thoại App Settings. Nó nhóm mọi tùy chọn thành các mục — chúng ta sẽ đi qua những mục chính.",
-      "Cài đặt chung. Đây là Ngôn ngữ giao diện (6 ngôn ngữ); ngay bên dưới là định dạng dấu thời gian dùng khi đặt tên tệp ghi.",
+      "Cài đặt chung. Đây là Ngôn ngữ giao diện (7 ngôn ngữ); ngay bên dưới là định dạng dấu thời gian dùng khi đặt tên tệp ghi.",
       "Giao diện — chuyển ứng dụng giữa chế độ Light, Dark, hoặc Auto (theo hệ thống).",
       "Mặc định đo lường: chế độ ứng dụng mở lên (kinetics / point / calibrate) và, bên cạnh, đơn vị nồng độ mặc định (ng/µL, nM, hoặc %).",
       "File Selection — cách sắp xếp danh sách tệp (theo ngày hoặc tên), cùng số hàng CSV / JSON hiển thị trước khi danh sách cuộn.",

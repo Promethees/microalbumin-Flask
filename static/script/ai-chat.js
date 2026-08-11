@@ -45,6 +45,7 @@
             fr: 'Aucun fichier de données n\'est chargé. Cliquez ici pour sélectionner un fichier CSV avant de continuer.',
             ja: 'データファイルがまだ読み込まれていません。続行する前にここをクリックして CSV ファイルを選択してください。',
             ru: 'Файл данных ещё не загружен. Нажмите здесь, чтобы выбрать CSV-файл перед продолжением.',
+            ko: '데이터 파일이 아직 로드되지 않았습니다. 계속하기 전에 여기를 클릭하여 CSV 데이터 파일을 선택하세요.',
         },
         position: 'left',
         skipInteraction: false,
@@ -61,6 +62,7 @@
             fr: 'L\'application n\'a pas encore été initialisée. Cliquez sur "Commencer" pour charger l\'interface principale avant de poursuivre ce guide.',
             ja: 'アプリはまだ初期化されていません。このガイドを続ける前に「はじめる」をクリックしてメインインターフェイスを読み込んでください。',
             ru: 'Приложение ещё не инициализировано. Нажмите «Начать», чтобы загрузить главный интерфейс перед продолжением руководства.',
+            ko: '앱이 아직 초기화되지 않았습니다. 이 가이드를 계속하기 전에 "시작하기"를 클릭하여 기본 화면을 불러오세요.',
         },
         position: 'right',
         skipInteraction: false,
@@ -83,6 +85,7 @@
                 fr: `Cette fonction n'est disponible qu'en mode ${m}. Cliquez ici pour passer d'abord en mode ${m}, puis rouvrez ce guide.`,
                 ja: `この機能は ${m} モードでのみ利用できます。まずここをクリックして ${m} モードに切り替え、このガイドを開き直してください。`,
                 ru: `Эта функция доступна только в режиме ${m}. Нажмите здесь, чтобы сначала переключиться в режим ${m}, затем снова откройте руководство.`,
+                ko: `이 기능은 ${m} 모드에서만 사용할 수 있습니다. 먼저 여기를 클릭해 ${m} 모드로 전환한 뒤 이 가이드를 다시 여세요.`,
             },
             position: 'right',
             skipInteraction: false,
@@ -97,6 +100,7 @@
         fr: 'Guide lancé — suivez les étapes mises en surbrillance.',
         ja: 'ガイドを起動しました — ハイライトされた手順に従ってください。',
         ru: 'Руководство запущено — следуйте выделенным шагам.',
+        ko: '가이드를 시작했습니다 — 강조 표시된 단계를 따르세요.',
     };
 
     // ── Save-range demo flow (button → SweetAlert2 dialog) ────────────────────
@@ -114,6 +118,7 @@
             fr: "Définissez votre plage d'affichage De/À ci-dessus, puis cliquez sur 'Save Display Range' ici. Une boîte de dialogue s'ouvre pour nommer le fichier CSV.",
             ja: "上で From/To の表示範囲を設定し、ここで「Save Display Range」をクリックします。CSV ファイルに名前を付けるダイアログが開きます。",
             ru: "Задайте диапазон отображения От/До выше, затем нажмите «Save Display Range» здесь. Откроется диалог для имени CSV-файла.",
+            ko: "위에서 From/To 표시 범위를 설정한 뒤 여기서 'Save Display Range'를 클릭하세요. CSV 파일 이름을 정하는 대화 상자가 열립니다.",
         },
         position: 'bottom',
         skipInteraction: false,
@@ -129,6 +134,7 @@
             fr: 'Saisissez un nom de fichier pour le sous-ensemble, puis cliquez sur Save (ou Cancel). Le guide continue automatiquement à la fermeture de la boîte de dialogue.',
             ja: '範囲の部分データにファイル名を入力し、Save（または Cancel）をクリックします。ダイアログが閉じるとガイドは自動的に続行します。',
             ru: 'Введите имя файла для подмножества диапазона, затем нажмите Save (или Cancel). Руководство продолжится автоматически после закрытия диалога.',
+            ko: '범위로 잘라낸 데이터의 파일 이름을 입력한 뒤 Save(또는 Cancel)를 클릭하세요. 대화 상자가 닫히면 가이드가 자동으로 이어집니다.',
         },
         position: 'top',
         skipInteraction: true,
@@ -141,6 +147,7 @@
         fr: "L'enregistrement d'une plage d'affichage fonctionne en mode kinetics ou point avec un fichier de données chargé. Passez d'abord dans l'un de ces modes et sélectionnez un fichier.",
         ja: '表示範囲の保存は、データファイルを読み込んだ kinetics または point モードで動作します。まずいずれかのモードに切り替えてファイルを選択してください。',
         ru: 'Сохранение диапазона отображения работает в режиме kinetics или point с загруженным файлом данных. Сначала переключитесь в один из этих режимов и выберите файл.',
+        ko: '표시 범위 저장은 데이터 파일이 로드된 kinetics 또는 point 모드에서 동작합니다. 먼저 두 모드 중 하나로 전환하고 파일을 선택하세요.',
     };
 
     // ── Swal-dialog demo flows: Edit file, Merge files, App Settings ──────────
@@ -156,6 +163,7 @@
         fr: "Je n'ai pas pu générer de réponse. Essayez de reformuler votre question.",
         ja: '回答を生成できませんでした。質問を言い換えてみてください。',
         ru: 'Не удалось сформировать ответ. Попробуйте перефразировать вопрос.',
+        ko: '응답을 생성하지 못했습니다. 질문을 다시 표현해 보세요.',
     };
 
     // Friendly stand-in for a raw Groq "tool_use_failed" / schema-mismatch error
@@ -169,6 +177,7 @@
         fr: "⚠ J'ai eu du mal à répondre. Veuillez reformuler votre question.",
         ja: '⚠ うまく回答できませんでした。質問を言い換えてみてください。',
         ru: '⚠ Не удалось ответить. Попробуйте перефразировать вопрос.',
+        ko: '⚠ 답변하는 데 문제가 있었습니다. 질문을 다시 표현해 보세요.',
     };
 
     // True for a raw upstream error string that means "the model emitted an
@@ -185,6 +194,7 @@
         fr: 'Rien à refaire pour l\'instant — envoyez d\'abord un message ou exécutez une commande.',
         ja: 'やり直せるものがまだありません — まずメッセージを送るかコマンドを実行してください。',
         ru: 'Нечего повторять — сначала отправьте сообщение или выполните команду.',
+        ko: '아직 다시 실행할 항목이 없습니다 — 먼저 메시지를 보내거나 명령을 실행하세요.',
     };
 
     const _GUIDE_NOT_FOUND = {
@@ -194,6 +204,7 @@
         fr: (id) => `Guide **${id}** introuvable. Réessayez après le chargement de l'application.`,
         ja: (id) => `ガイド **${id}** が見つかりません。アプリの読み込み後に再試行してください。`,
         ru: (id) => `Руководство **${id}** не найдено. Повторите попытку после загрузки приложения.`,
+        ko: (id) => `가이드 **${id}** 을(를) 찾을 수 없습니다. 앱이 로드된 후 다시 시도하세요.`,
     };
 
     const _REPORT_CHOICE_PROMPT = {
@@ -203,16 +214,19 @@
         fr: 'Quel type de rapport souhaitez-vous créer ?',
         ja: 'どのタイプのレポートを作成しますか？',
         ru: 'Какой тип отчёта вы хотите создать?',
+        ko: '어떤 유형의 보고서를 만드시겠습니까?',
     };
 
     const _REPORT_BTN_QUICK = {
         en: '⚡ Quick Report', vi: '⚡ Báo cáo nhanh', zh: '⚡ 快速报告',
         fr: '⚡ Rapport rapide', ja: '⚡ クイックレポート', ru: '⚡ Быстрый отчёт',
+        ko: '⚡ 빠른 보고서',
     };
 
     const _REPORT_BTN_FULL = {
         en: '📄 Full Report', vi: '📄 Báo cáo đầy đủ', zh: '📄 完整报告',
         fr: '📄 Rapport complet', ja: '📄 フルレポート', ru: '📄 Полный отчёт',
+        ko: '📄 전체 보고서',
     };
 
     const _AI_UNAVAILABLE_MSG = {
@@ -222,16 +236,19 @@
         fr: '⚠ IA non activée. Entrez votre jeton Easy OKAPI ci-dessous.',
         ja: '⚠ AI が有効化されていません。下の欄に Easy OKAPI トークンを入力してください。',
         ru: '⚠ ИИ не активирован. Введите ваш токен Easy OKAPI в поле ниже.',
+        ko: '⚠ AI가 활성화되지 않았습니다. 아래 칸에 Easy OKAPI 토큰을 입력하세요.',
     };
 
     const _HELP_HEADER = {
         en: '**Available commands**', vi: '**Các lệnh có sẵn**', zh: '**可用命令**',
         fr: '**Commandes disponibles**', ja: '**使用可能なコマンド**', ru: '**Доступные команды**',
+        ko: '**사용 가능한 명령**',
     };
 
     const _STATUS_HEADER = {
         en: '**App status**', vi: '**Trạng thái ứng dụng**', zh: '**应用状态**',
         fr: '**État de l\'application**', ja: '**アプリの状態**', ru: '**Состояние приложения**',
+        ko: '**앱 상태**',
     };
 
     const _STATUS_LABELS = {
@@ -241,28 +258,33 @@
         fr: { mode: 'mode', app_started: 'démarré', data_loaded: 'données chargées', cal_mode: 'mode cal' },
         ja: { mode: 'モード', app_started: 'アプリ起動', data_loaded: 'データ読込', cal_mode: '校正モード' },
         ru: { mode: 'режим', app_started: 'запущено', data_loaded: 'данные загружены', cal_mode: 'режим кал' },
+        ko: { mode: '모드', app_started: '앱 시작됨', data_loaded: '데이터 로드됨', cal_mode: 'cal 모드' },
     };
 
     // Edit-and-resend controls on user messages
     const _EDIT_HINT = {
         en: 'Edit and resend', vi: 'Sửa và gửi lại', zh: '编辑并重新发送',
         fr: 'Modifier et renvoyer', ja: '編集して再送信', ru: 'Изменить и отправить снова',
+        ko: '수정 후 다시 보내기',
     };
 
     const _EDIT_SAVE = {
         en: 'Save & resend', vi: 'Lưu & gửi lại', zh: '保存并重新发送',
         fr: 'Enregistrer et renvoyer', ja: '保存して再送信', ru: 'Сохранить и отправить',
+        ko: '저장 후 다시 보내기',
     };
 
     const _EDIT_CANCEL = {
         en: 'Cancel', vi: 'Hủy', zh: '取消',
         fr: 'Annuler', ja: 'キャンセル', ru: 'Отмена',
+        ko: '취소',
     };
 
     // New-conversation confirmation
     const _NEW_CHAT_CONFIRM_TITLE = {
         en: 'Start a new conversation?', vi: 'Bắt đầu cuộc trò chuyện mới?', zh: '开始新对话？',
         fr: 'Démarrer une nouvelle conversation ?', ja: '新しい会話を始めますか？', ru: 'Начать новый разговор?',
+        ko: '새 대화를 시작할까요?',
     };
 
     const _NEW_CHAT_CONFIRM_TEXT = {
@@ -272,27 +294,32 @@
         fr: 'Cela efface la conversation actuelle et est irréversible.',
         ja: '現在のチャットが消去され、元に戻せません。',
         ru: 'Это очистит текущий чат без возможности отмены.',
+        ko: '현재 대화가 지워지며 되돌릴 수 없습니다.',
     };
 
     const _NEW_CHAT_CONFIRM_OK = {
         en: 'Start new', vi: 'Bắt đầu mới', zh: '开始新对话',
         fr: 'Nouvelle conversation', ja: '新規開始', ru: 'Начать',
+        ko: '새로 시작',
     };
 
     // Answer-rating (feedback) controls
     const _FB_UP_HINT = {
         en: 'Helpful', vi: 'Hữu ích', zh: '有帮助',
         fr: 'Utile', ja: '役に立った', ru: 'Полезно',
+        ko: '도움이 됨',
     };
 
     const _FB_DOWN_HINT = {
         en: 'Not helpful', vi: 'Không hữu ích', zh: '没帮助',
         fr: 'Pas utile', ja: '役に立たない', ru: 'Бесполезно',
+        ko: '도움이 안 됨',
     };
 
     const _FB_THANKS = {
         en: 'Thanks for your feedback!', vi: 'Cảm ơn phản hồi của bạn!', zh: '感谢您的反馈！',
         fr: 'Merci pour votre retour !', ja: 'フィードバックありがとうございます！', ru: 'Спасибо за отзыв!',
+        ko: '피드백 감사합니다!',
     };
 
     const _FB_COMMENT_PH = {
@@ -302,16 +329,19 @@
         fr: 'Qu\'est-ce qui n\'allait pas ? (facultatif)',
         ja: '何が問題でしたか？（任意）',
         ru: 'Что было не так? (необязательно)',
+        ko: '무엇이 잘못되었나요? (선택 사항)',
     };
 
     const _FB_SEND = {
         en: 'Send', vi: 'Gửi', zh: '发送',
         fr: 'Envoyer', ja: '送信', ru: 'Отправить',
+        ko: '보내기',
     };
 
     const _FB_SKIP = {
         en: 'Skip', vi: 'Bỏ qua', zh: '跳过',
         fr: 'Ignorer', ja: 'スキップ', ru: 'Пропустить',
+        ko: '건너뛰기',
     };
 
     // Natural-language phrases that mean "redo the last thing"
@@ -360,6 +390,7 @@
         fr: (s) => `⏳ Trop rapide — attendez ${s}s avant le prochain message.`,
         ja: (s) => `⏳ 送信が速すぎます — ${s} 秒待ってから送信してください。`,
         ru: (s) => `⏳ Слишком быстро — подождите ${s} сек. перед следующим сообщением.`,
+        ko: (s) => `⏳ 너무 빠르게 보내고 있습니다 — 다음 메시지까지 ${s}초 기다려 주세요.`,
     };
 
     function _checkRateLimit() {
@@ -412,15 +443,15 @@
         currentAbort: null,
         lastAction: null,
         LANG_LABELS: {
-            en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU'
+            en: 'EN', vi: 'VI', zh: '中', fr: 'FR', ja: '日', ru: 'RU', ko: '한'
         },
         LANG_NAMES: {
             en: 'English', vi: 'Tiếng Việt', zh: '中文',
-            fr: 'Français', ja: '日本語', ru: 'Русский'
+            fr: 'Français', ja: '日本語', ru: 'Русский', ko: '한국어'
         },
         LANG_DISPLAY: {
             en: 'English', vi: 'Tiếng Việt', zh: '中文 (简体)',
-            fr: 'Français', ja: '日本語', ru: 'Русский'
+            fr: 'Français', ja: '日本語', ru: 'Русский', ko: '한국어'
         },
     };
 
@@ -461,6 +492,7 @@
         <button class="okapi-ai-lang-opt" data-lang="fr">Fran&#231;ais</button>
         <button class="okapi-ai-lang-opt" data-lang="ja">&#26085;&#26412;&#35486;</button>
         <button class="okapi-ai-lang-opt" data-lang="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</button>
+        <button class="okapi-ai-lang-opt" data-lang="ko">&#54620;&#44397;&#50612;</button>
       </div>
     </div>
     <button id="okapi-ai-close-btn" data-hint="Close" onclick="OkapiAI.close()">&#10005;</button>
@@ -563,6 +595,7 @@
             fr: '👋 Bonjour ! Je suis votre assistant OKAPI. Posez-moi des questions sur vos données, la calibration, le matériel ou votre flux de travail.',
             ja: '👋 こんにちは！OKAPIアシスタントです。データ、キャリブレーション、ハードウェア、ワークフローについてお気軽にご質問ください。',
             ru: '👋 Привет! Я OKAPI Assistant. Задавайте вопросы о данных, калибровке, оборудовании или рабочем процессе.',
+            ko: '👋 안녕하세요! 저는 OKAPI Assistant입니다. 데이터, 캘리브레이션, 하드웨어, 워크플로에 대해 물어보세요.',
         };
         return msgs[AI.activeLang] || msgs.en;
     }
@@ -1012,7 +1045,7 @@
             const lang = AI.activeLang || 'en';
             const ctx = _getUiContext();
             const lbl = _STATUS_LABELS[lang] || _STATUS_LABELS.en;
-            const yesNo = (v) => v ? (lang === 'vi' ? 'có' : lang === 'zh' ? '是' : lang === 'fr' ? 'oui' : lang === 'ja' ? 'はい' : lang === 'ru' ? 'да' : 'yes') : (lang === 'vi' ? 'không' : lang === 'zh' ? '否' : lang === 'fr' ? 'non' : lang === 'ja' ? 'いいえ' : lang === 'ru' ? 'нет' : 'no');
+            const yesNo = (v) => v ? (lang === 'vi' ? 'có' : lang === 'zh' ? '是' : lang === 'fr' ? 'oui' : lang === 'ja' ? 'はい' : lang === 'ru' ? 'да' : lang === 'ko' ? '예' : 'yes') : (lang === 'vi' ? 'không' : lang === 'zh' ? '否' : lang === 'fr' ? 'non' : lang === 'ja' ? 'いいえ' : lang === 'ru' ? 'нет' : lang === 'ko' ? '아니오' : 'no');
             const lines = [
                 `\`${lbl.mode}\` ${ctx.mode || '—'}`,
                 `\`${lbl.app_started}\` ${yesNo(ctx.app_started)}`,

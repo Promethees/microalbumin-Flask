@@ -26,7 +26,7 @@ class TestLoadCatalog:
 
     def test_every_language_has_same_keys_as_english(self):
         """No orphan keys and no missing translations in any language file —
-        keeps en.json and the 5 translated files in lockstep (Rule §2.22)."""
+        keeps en.json and the 6 translated files in lockstep (Rule §2.22)."""
         en_keys = set(i18n.load_catalog("en"))
         for lang in i18n.SUPPORTED_UI_LANGUAGES:
             if lang == "en":

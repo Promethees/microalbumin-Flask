@@ -12,6 +12,7 @@ SUPPORTED_LANGUAGES = {
     "fr": "Français",
     "ja": "日本語",
     "ru": "Русский",
+    "ko": "한국어",
 }
 
 _VALID_THEMES = {"light", "dark", "auto"}

@@ -2180,7 +2180,7 @@
         {
           "target": "#swal-ui-language",
           "title": "General",
-          "description": "General settings. This is the interface Language (6 languages); just below it is the timestamp format used when naming recorded files.",
+          "description": "General settings. This is the interface Language (7 languages); just below it is the timestamp format used when naming recorded files.",
           "position": "bottom",
           "skipInteraction": true
         },
