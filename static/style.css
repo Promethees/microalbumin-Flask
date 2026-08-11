@@ -244,9 +244,18 @@ body.dark .icon-btn {
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-/* Modern Input & Select Styling - Base */
+/* Modern Input & Select Styling - Base.
+   `input[type="search"]` is listed in every one of these groups, light and dark,
+   because a selector list that enumerates types silently drops anything it does
+   not name: the two table filters (`#file-search`, `#json-search`) are
+   `type="search"` and matched none of the nine groups below, so they fell all
+   the way through to UA default styling — a white box with system chrome and no
+   theme at all, which in dark mode is a white bar on a dark panel. Add the new
+   type to every group or to none; a half-styled input is worse than an
+   unstyled one. */
 input[type="text"],
 input[type="number"],
+input[type="search"],
 textarea {
     width: 100%;
     padding: 6px 8px;
@@ -257,6 +266,33 @@ textarea {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-sizing: border-box;
     outline: none;
+}
+
+/* Safari gives `type="search"` an `-webkit-appearance: searchfield`, which
+   reimposes its own border, radius and padding over everything above — so the
+   two filters would still have looked wrong on a Mac even after being added to
+   the groups. Kept out of the base rule on purpose: `appearance: none` there
+   would also strip the spinner off every `type="number"`. The cancel button is
+   tinted because it is drawn from the UA's own palette and stays dark on the
+   dark panel otherwise. */
+input[type="search"] {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 14px;
+    width: 14px;
+    cursor: pointer;
+    background: currentColor;
+    opacity: 0.45;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='black' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center / contain no-repeat;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='black' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+input[type="search"]::-webkit-search-cancel-button:hover {
+    opacity: 0.8;
 }
 
 select {
@@ -283,6 +319,7 @@ select {
 /* Light Theme Inputs */
 body.light input[type="text"],
 body.light input[type="number"],
+body.light input[type="search"],
 body.light select {
     background-color: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(8px);
@@ -294,6 +331,7 @@ body.light select {
 
 body.light input[type="text"]:hover:enabled,
 body.light input[type="number"]:hover:enabled,
+body.light input[type="search"]:hover:enabled,
 body.light select:hover:enabled {
     border-color: #d1d5db;
     background-color: rgba(255, 255, 255, 0.9);
@@ -301,6 +339,7 @@ body.light select:hover:enabled {
 
 body.light input[type="text"]:focus:enabled,
 body.light input[type="number"]:focus:enabled,
+body.light input[type="search"]:focus:enabled,
 body.light select:focus:enabled {
     border-color: var(--primary-color);
     background-color: #ffffff;
@@ -309,6 +348,7 @@ body.light select:focus:enabled {
 
 body.light input[type="text"]:disabled,
 body.light input[type="number"]:disabled,
+body.light input[type="search"]:disabled,
 body.light select:disabled {
     background-color: #f3f4f6;
     color: #9ca3af;
@@ -398,6 +438,7 @@ body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.fo
 /* Dark Theme Inputs */
 body.dark input[type="text"],
 body.dark input[type="number"],
+body.dark input[type="search"],
 body.dark select {
     background-color: rgba(31, 41, 55, 0.6);
     backdrop-filter: blur(8px);
@@ -409,6 +450,7 @@ body.dark select {
 
 body.dark input[type="text"]:hover:enabled,
 body.dark input[type="number"]:hover:enabled,
+body.dark input[type="search"]:hover:enabled,
 body.dark select:hover:enabled {
     border-color: rgba(255, 255, 255, 0.2);
     background-color: rgba(31, 41, 55, 0.8);
@@ -416,6 +458,7 @@ body.dark select:hover:enabled {
 
 body.dark input[type="text"]:focus:enabled,
 body.dark input[type="number"]:focus:enabled,
+body.dark input[type="search"]:focus:enabled,
 body.dark select:focus:enabled {
     border-color: var(--primary-color);
     background-color: rgba(17, 24, 39, 0.8);
@@ -424,6 +467,7 @@ body.dark select:focus:enabled {
 
 body.dark input[type="text"]:disabled,
 body.dark input[type="number"]:disabled,
+body.dark input[type="search"]:disabled,
 body.dark select:disabled {
     background-color: #374151;
     color: #6b7280;
@@ -2754,7 +2798,7 @@ body.dark .okapi-ai-msg-assistant { background: #1f2937; color: #f3f4f6; }
 .okapi-ai-msg-system {
     align-self: center;
     background: rgba(99,102,241,0.08);
-    color: #6366f1;
+    color: var(--link-ink);
     font-style: italic;
     font-size: 0.8rem;
     border-radius: 10px;
@@ -2762,7 +2806,7 @@ body.dark .okapi-ai-msg-assistant { background: #1f2937; color: #f3f4f6; }
     max-width: 96%;
     text-align: center;
 }
-body.dark .okapi-ai-msg-system { background: rgba(99,102,241,0.18); color: #a5b4fc; }
+body.dark .okapi-ai-msg-system { background: rgba(99,102,241,0.18); }
 
 /* Markdown helpers */
 .okapi-ai-msg code {
@@ -2878,7 +2922,7 @@ body.dark #okapi-ai-input:focus { border-color: #6366f1; }
 #okapi-ai-settings h4 {
     margin: 0 0 4px;
     font-size: 0.92rem;
-    color: #6366f1;
+    color: var(--link-ink);
 }
 #okapi-ai-settings label {
     display: flex;
@@ -2986,7 +3030,7 @@ body.dark #okapi-ai-settings-actions button:last-child {
     line-height: 1.5;
 }
 body.dark .okapi-ai-setup-box { color: #fbbf24; border-color: rgba(251,191,36,0.3); }
-.okapi-ai-setup-box a { color: #6366f1; }
+.okapi-ai-setup-box a { color: var(--link-ink); }
 .okapi-ai-setup-box button {
     margin-top: 8px;
     background: #6366f1;
@@ -3061,7 +3105,7 @@ body.dark .okapi-ai-uninstall-box { background: rgba(239,68,68,0.1); }
     font-size: 0.78em;
 }
 body.dark .okapi-ai-uninstall-box code { background: rgba(255,255,255,0.1); }
-.okapi-ai-uninstall-box a { color: #6366f1; }
+.okapi-ai-uninstall-box a { color: var(--link-ink); }
 .okapi-ai-uninstall-box button {
     background: #fee2e2;
     color: #b91c1c;
@@ -3088,7 +3132,7 @@ body.dark .okapi-ai-uninstall-box button { background: rgba(185,28,28,0.25); col
     border: 1px solid #6366f1;
     border-radius: 8px;
     background: transparent;
-    color: #6366f1;
+    color: var(--link-ink);
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
@@ -3104,8 +3148,9 @@ body.dark .okapi-ai-uninstall-box button { background: rgba(185,28,28,0.25); col
     cursor: default;
 }
 body.dark .okapi-ai-choice-btn {
+    /* Ink comes from --link-ink now; only the border is restated, because a
+       border is a UI component (3:1) rather than text and does not track it. */
     border-color: #a5b4fc;
-    color: #a5b4fc;
 }
 body.dark .okapi-ai-choice-btn:hover:not(:disabled) {
     background: #6366f1;
@@ -3148,12 +3193,11 @@ body.dark .okapi-ai-cmd-active {
     font-family: 'Courier New', monospace;
     font-size: 0.8rem;
     font-weight: 700;
-    color: #6366f1;
+    color: var(--link-ink);
     min-width: 108px;
     flex-shrink: 0;
     letter-spacing: -0.01em;
 }
-body.dark .okapi-ai-cmd-name { color: #a5b4fc; }
 .okapi-ai-cmd-desc {
     font-size: 0.775rem;
     color: #6b7280;
@@ -3267,7 +3311,7 @@ body.dark #okapi-tooltip {
 .file-identity {
     display: inline-block;
     font-size: 0.78em;
-    color: #6366f1;
+    color: var(--link-ink);
     background: #eef2ff;
     padding: 0 6px;
     border-radius: 8px;
@@ -3277,7 +3321,6 @@ body.dark #okapi-tooltip {
 }
 
 body.dark .file-identity {
-    color: #a5b4fc;
     background: #312e81;
 }
 
