@@ -95,6 +95,7 @@ The Flask app is refactored using **Blueprints** to ensure maintainability:
 |---|---|
 | `tooltip.js` | Styled hover-hint component. Any `[data-hint="…"]` element shows a single `#okapi-tooltip` bubble appended to `<body>` (so it escapes `overflow:hidden` collapsibles), positioned above/below the target on hover or keyboard focus. Replaces native `title=` tooltips; styling lives in `style.css` (`#okapi-tooltip`, light/dark themed); loaded first in the script block |
 | `short-hands.js` | DOM utility helpers (`$id`, `$text`, `$hidden`, `fetchJSON`, etc.) |
+| `skeleton.js` | Loading placeholders for regions waiting on the server: `showSkeleton(target, {kind:'rows'\|'cover'\|'cards'})` / `hideSkeleton(target)`, 200 ms delay before anything paints, `aria-busy` on the host. Loaded in `<head>` with `i18n.js`. Used by the file/JSON tables, the chart and the report item list — NOT by blocking operations, which keep `#global-spinner`. See Rule.md §2.7 |
 | `init.js` | Page initialization, event listeners, mode/filter setup, socket.io connection |
 | `index.js` | `AppState` global state object, mode switching logic, directory updates, `checkServerStatus` |
 | [[static/script/navigation.js\|navigation.js]] | File table population (CSV and JSON), directory browsing, `browseSavingLocation` |
@@ -331,8 +332,9 @@ microalbumin-Flask/
 │       └── account_routes.py   # Register/login/verify/reset/delete/download/activate
 ├── static/
 │   ├── style.css               # Source CSS
-│   ├── script/                 # Source JS (14 files)
+│   ├── script/                 # Source JS (15 files)
 │   │   ├── tooltip.js           # Styled [data-hint] hover tooltips
+│   │   ├── skeleton.js          # showSkeleton/hideSkeleton loading placeholders
 │   │   ├── short-hands.js
 │   │   ├── init.js
 │   │   ├── index.js            # AppState global singleton

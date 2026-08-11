@@ -493,8 +493,11 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
         calModeBehaviour();
     }
 
-    // Always fetch CSV files to update the table for the current mode
+    // Always fetch CSV files to update the table for the current mode.
+    // The rows on screen belong to the mode we just left, so they are cleared
+    // to a skeleton rather than left there to be clicked (see skeleton.js).
     try {
+        window.showSkeleton?.('file-table', { rows: 4, cols: 4 });
         const csvResponse = await fetchJSON('/get_csv?request=true');
         console.log("CSV files updated:", csvResponse.files);
         AppState.fileIdentity = csvResponse.files_identity || {};
@@ -502,17 +505,20 @@ async function updateDirectory(deselect, changeToCalibrate = false) {
     } catch (error) {
         console.error("Error fetching CSV files:", error);
         $showText("error-message", "Error fetching CSV files");
+        window.hideSkeleton?.('file-table');   // the renderer clears it on the happy path
     }
 
     // Always fetch relevant JSON calibration files for the current mode
     if (AppState.currentMeasurementMode !== "calibrate") {
         try {
+            window.showSkeleton?.('json-table', { rows: 3, cols: 4 });
             const jsonResponse = await fetchJSON(`/get_json_cal?mode=${encodeURIComponent(AppState.currentMeasurementMode)}&numSources=${encodeURIComponent(AppState.numSources)}`);
             AppState.jsonIdentity = jsonResponse.files_identity || {};
             updateJSONTable(jsonResponse.files);
         } catch (error) {
             console.error("Error fetching JSON files:", error);
             $showText("error-message", "Error fetching JSON files");
+            window.hideSkeleton?.('json-table');
         }
     }
 }

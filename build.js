@@ -58,6 +58,9 @@ const MANUAL_RESERVED_NAMES = [
   // External Libraries
   'Chart', 'Swal', 'MathJax', 'jQuery', '$',
 
+  // Loading placeholders (skeleton.js, called from the fetch call sites)
+  'showSkeleton', 'hideSkeleton',
+
   // AI Assistant
   'OkapiAI',
 

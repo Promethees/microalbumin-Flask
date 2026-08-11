@@ -35,8 +35,10 @@
     </script>
     {% if config.PRODUCTION_MODE %}
     <script src="{{ url_for('static', filename='dist/i18n.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='dist/skeleton.min.js') }}"></script>
     {% else %}
     <script src="{{ url_for('static', filename='script/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='script/skeleton.js') }}"></script>
     {% endif %}
 </head>
 

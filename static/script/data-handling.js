@@ -658,12 +658,17 @@ function populateDropdown(entries, dropdownId = 'regressed-time-point') {
 }
 
 const fetchData = async (filename, jsonFile) => {
+    // A cover, not a replacement: the chart on screen is a Chart.js canvas that
+    // cannot be thrown away and rebuilt just to show a placeholder.
     try {
+        window.showSkeleton?.('chart-container', { kind: 'cover' });
         const response = await fetchDataFromServer(filename);
         return processResponse(response, jsonFile);
     } catch (error) {
         handleFetchError(error, filename);
         return null;
+    } finally {
+        window.hideSkeleton?.('chart-container');
     }
 };
 

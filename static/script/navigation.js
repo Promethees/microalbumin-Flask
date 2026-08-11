@@ -337,6 +337,8 @@ function updateJSONTable(files) {
     } else {
         html += '<tr><td colspan="2">No Calibrated JSON is available.</td></tr>';
     }
+    // The rows land now, so any skeleton the fetch put up has done its job.
+    window.hideSkeleton?.('json-table');
     document.getElementById("json-table").innerHTML = html;
     const searchInput = document.getElementById('json-search');
     if (searchInput && searchInput.value) {
@@ -356,6 +358,8 @@ function updateReportTable(subjects) {
     } else {
         html += '<tr><td colspan="4">No report subjects found.</td></tr>';
     }
+    // Report mode renders into the same table, so it clears the skeleton too.
+    window.hideSkeleton?.('file-table');
     document.getElementById("file-table").innerHTML = html;
     const searchInput = document.getElementById('file-search');
     if (searchInput && searchInput.value) {
@@ -382,6 +386,8 @@ function filterTable(tableId, query) {
 }
 
 function updateFileTable(files, deselect = false) {
+    // Nothing to render: drop any skeleton rather than leave it up forever.
+    if (!files) window.hideSkeleton?.('file-table');
     if (files) AppState.fileNames = files.slice();
     let html = '<tr><th>File Name</th><th colspan="3">Action</th></tr>';
     if (files) {
@@ -398,6 +404,9 @@ function updateFileTable(files, deselect = false) {
             } else {
                 html += '<tr><td colspan="3">No CSV files is available.</td></tr>';
             }
+            // Cleared here, not when the fetch resolves: filterFiles() makes
+            // its own round trips, so the real rows only exist at this line.
+            window.hideSkeleton?.('file-table');
             document.getElementById("file-table").innerHTML = html;
             const searchInput = document.getElementById('file-search');
             if (searchInput && searchInput.value) {

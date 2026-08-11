@@ -1254,7 +1254,10 @@ function updateReportDerivedQuantity(filename, value) {
 
 async function loadReportItems(subject) {
     const container = document.getElementById('report-items-container');
-    container.innerHTML = '<p>Loading items...</p>';
+    // Card outlines instead of a "Loading items..." line: this waits on three
+    // requests plus a per-item preview fetch, so the list is gone a while.
+    container.innerHTML = '';
+    window.showSkeleton?.('report-items-container', { kind: 'cards', count: 3 });
     window.ReportItemConfig = {}; // reset
 
     try {
@@ -1473,6 +1476,8 @@ async function loadReportItems(subject) {
         }
     } catch (e) {
         container.innerHTML = `<p style="color: red;">Failed to load items: ${e.message}</p>`;
+    } finally {
+        window.hideSkeleton?.('report-items-container');
     }
 }
 

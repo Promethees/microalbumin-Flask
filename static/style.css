@@ -3331,3 +3331,84 @@ body.dark .lang-switch .lang-menu a:hover {
 body.dark .lang-switch .lang-menu a[aria-current="true"] {
     color: #60a5fa;
 }
+
+/* ==========================================================================
+   Skeleton placeholders
+   --------------------------------------------------------------------------
+   One primitive, not per-component art: `.skel` is a grey block that pulses,
+   and every skeleton is built from it. Shown only for content that is being
+   fetched — a list rebuilding, a chart reloading — never for a blocking
+   operation, which keeps #global-spinner (an overlay says "something is
+   running"; a skeleton says "content is arriving in this box").
+
+   The host region carries aria-busy="true" while it is up, because the bars
+   themselves say nothing to a screen reader. See static/script/skeleton.js.
+   ========================================================================== */
+.skel {
+    display: block;
+    height: 12px;
+    border-radius: 4px;
+    background: #e5e7eb;
+    animation: skel-pulse 1.4s ease-in-out infinite;
+}
+
+body.dark .skel {
+    background: #374151;
+}
+
+@keyframes skel-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.45; }
+}
+
+/* Table rows: the bar sits inside a real <td> so column widths — and the
+   container's height — stay exactly where the loaded table will put them. */
+.skel-row td {
+    padding: 8px 10px;
+}
+
+.skel-line-lg { width: 68%; }
+.skel-line-md { width: 46%; }
+.skel-line-sm { width: 24%; }
+
+/* Cover, for a region whose content must survive the wait (a Chart.js canvas
+   cannot be thrown away and rebuilt just to show a placeholder). The host is
+   already position: relative. */
+.skel-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    background: var(--surface-light);
+    backdrop-filter: blur(2px);
+}
+
+body.dark .skel-cover {
+    background: var(--surface-dark);
+}
+
+/* Cards, for the report items list. */
+.skel-card {
+    border: 1px solid var(--table-border-light);
+    border-radius: var(--border-radius);
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+body.dark .skel-card {
+    border-color: var(--table-border-dark);
+}
+
+.skel-card .skel + .skel {
+    margin-top: 9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skel {
+        animation: none;
+    }
+}
