@@ -3280,7 +3280,7 @@ body.dark .community-strip__text {
 }
 
 .community-strip__link {
-    color: var(--primary-color);
+    color: var(--link-ink);
     text-decoration: none;
     font-weight: 500;
 }
@@ -3302,7 +3302,7 @@ body.dark .account-nav-hint {
 }
 
 .account-nav-hint a {
-    color: var(--primary-color);
+    color: var(--link-ink);
 }
 
 @media (max-width: 768px) {
@@ -3500,6 +3500,17 @@ body.dark .skel-card {
     /* Error text that clears 4.5:1. Bare `red` is 4.0:1 on white — 1.4.3. */
     --error-color-light: #b91c1c;
     --error-color-dark: #fca5a5;
+    /* Link text inside the app panels. `--primary-color` (#6366f1) is a fill
+       colour, not a text colour: it measures 3.3:1 on the dark panel and 4.5:1
+       on the light one, so it failed 1.4.3 in dark mode and sat exactly on the
+       line in light. These are the same hue, moved far enough for body text —
+       7.9:1 light, 7.4:1 dark. Use them for link text; keep
+       `--primary-color` for fills and borders. */
+    --link-ink: #4338ca;
+}
+
+body.dark {
+    --link-ink: #a5b4fc;
 }
 
 /* 2.4.1 Bypass Blocks — first tab stop on every page. Off-screen until it
