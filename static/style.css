@@ -590,10 +590,6 @@ body.dark .top-right {
     text-underline-offset: 3px;
 }
 
-.title-home:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 3px;
-}
 
 .title-place {
     position: static;
@@ -3559,8 +3555,13 @@ summary:focus-visible,
 [contenteditable="true"]:focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 2px;
-    box-shadow: 0 0 0 5px var(--focus-ring-contrast);
-    border-radius: 6px;
+    /* The halo is added to whatever shadow the control already carries, not
+       swapped for it — a focused button used to lose its elevation and sit
+       visibly flatter than its neighbours. And no `border-radius` here: the
+       outline already follows the element's own radius, while setting one
+       reshaped every pill and circle on focus (the theme toggle is a 20px
+       pill and snapped to a rectangle). */
+    box-shadow: 0 0 0 5px var(--focus-ring-contrast), var(--shadow-sm);
 }
 
 body.dark a:focus-visible,
@@ -3613,15 +3614,16 @@ body.dark #turn-cal-error {
     color: var(--error-color-dark);
 }
 
-/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target. The
-   chevrons, refresh arrows and other single-glyph controls are well under
-   that on their own. */
+/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target.
+   Deliberately NOT applied to `input[type=checkbox]` / `input[type=radio]`:
+   `min-width` beats `width`, so it silently overrode their 18px size instead
+   of growing the target around them. Every one of them is wrapped in its own
+   <label>, which already gives a target far larger than 24px. `.folder-chevron`
+   is out for the same kind of reason — it is decoration inside the heading
+   button, not a target of its own. */
 button,
 [role="button"],
-input[type="checkbox"],
-input[type="radio"],
 select,
-.folder-chevron,
 .account-nav-btn,
 .community-strip__link {
     min-height: 24px;
@@ -3630,7 +3632,9 @@ select,
 
 input[type="checkbox"],
 input[type="radio"] {
-    /* The box itself stays small; the touch target grows around it. */
+    /* 18px, and nothing above may set a `min-width` on these — see the target
+       size note above. The <label> wrapping each one is what carries the
+       target; clicking its text toggles the box. */
     width: 18px;
     height: 18px;
     margin: 3px;
