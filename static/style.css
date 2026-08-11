@@ -351,11 +351,6 @@ button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-secti
     background: var(--panel);
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-}
-
 button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):active:enabled {
     transform: translateY(0);
 }
@@ -1994,12 +1989,6 @@ body.dark #measure-point-fab {
 #reading-control-fab .reading-fab-btn:active:enabled,
 #measure-point-fab .reading-fab-btn:active:enabled {
     transform: translateY(0);
-}
-
-#reading-control-fab .reading-fab-btn:focus-visible,
-#measure-point-fab .reading-fab-btn:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
 }
 
 #reading-control-fab .reading-fab-btn:disabled,
@@ -8847,6 +8836,19 @@ summary:focus-visible,
 [contenteditable="true"]:focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 2px;
+    /* The halo is the whole shadow here, and must stay that way. The web
+       branch appends `var(--shadow-sm)` because its buttons carry one; this
+       design system is explicitly flat ("chrome: flat, hairline-separated, no
+       blur, no lift" — see the token block at the top, and `box-shadow: none`
+       on the global button rule), so adding one back would break it.
+       No `border-radius` either: the outline follows the element's own radius,
+       and setting one reshapes every pill and circle on focus.
+       This is the only focus ring in the app. Two others used to outrank it —
+       the global button rule and the reading FAB — which meant ordinary
+       buttons showed a 2px ring while the promoted chrome buttons showed this
+       one. Do not add a third: raise a case here instead. The SweetAlert
+       popup keeps its own, deliberately — it is a third-party surface with its
+       own overflow, and a wider ring clips inside it. */
     box-shadow: 0 0 0 5px var(--focus-ring-contrast);
 }
 
@@ -8963,14 +8965,16 @@ button.toggle-container {
     box-sizing: content-box;
 }
 
-/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target. The
-   chevrons and single-glyph controls are well under that on their own. */
+/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target.
+   Deliberately NOT applied to `input[type=checkbox]` / `input[type=radio]`:
+   `min-width` beats `width`, so it silently overrode the 18px those controls
+   are given above rather than growing anything. Each one sits inside its own
+   <label>, which already gives a target well past 24px. `.folder-chevron` is
+   out for a related reason — it is decoration inside the heading button, and
+   the whole heading is the target. */
 button,
 [role="button"],
-input[type="checkbox"],
-input[type="radio"],
-select,
-.folder-chevron {
+select {
     min-height: 24px;
     min-width: 24px;
 }
