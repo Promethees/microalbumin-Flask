@@ -1,4 +1,5 @@
 // Utility short-hands
+
 const $id = id => document.getElementById(id);
 const $text = (id, text) => {
     const element = $id(id);
@@ -97,6 +98,11 @@ async function fetchJSON(url, options = {}) {
     }
 }
 
+/* The controls that only happen to be <button> for keyboard/AT reasons and keep
+   their surrounding typography. Mirrors the `:not(...)` chain the global button
+   styling in style.css uses. */
+const NON_BUTTON_CONTROLS = '.swal2-confirm, .swal2-deny, .swal2-styled, .folder-section-toggle, .logo-btn, .toggle-container, .react-banner-reopen';
+
 /**
  * Shrinks button text to fit within one line by reducing font size
  * @param {HTMLElement|string} button - Button element or selector
@@ -106,6 +112,10 @@ async function fetchJSON(url, options = {}) {
 function shrinkButtonTextToFit(button, minFontSize = 0.6, maxFontSize = 0.95) {
     const btn = typeof button === 'string' ? document.querySelector(button) : button;
     if (!btn) return;
+    // Buttons that are not styled as buttons — section headings, the logo, the
+    // theme cycle — take their size from the element they stand in. Shrinking
+    // them to the 0.95rem button scale flattens the type hierarchy.
+    if (btn.matches(NON_BUTTON_CONTROLS)) return;
 
     // Store original font size if not already stored
     if (!btn.dataset.originalFontSize) {
@@ -135,7 +145,7 @@ function shrinkButtonTextToFit(button, minFontSize = 0.6, maxFontSize = 0.95) {
  * Apply shrink-to-fit to all buttons or specific selector
  * @param {string} selector - CSS selector for buttons (default: 'button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled)')
  */
-function shrinkAllButtonsToFit(selector = 'button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled)') {
+function shrinkAllButtonsToFit(selector = `button:not(${NON_BUTTON_CONTROLS.split(', ').join('):not(')})`) {
     const buttons = document.querySelectorAll(selector);
     buttons.forEach(btn => shrinkButtonTextToFit(btn));
 }

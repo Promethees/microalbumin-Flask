@@ -930,6 +930,22 @@ body.dark  .folder-item.selected {
     font-weight: 600;
 }
 
+/* The panel headings are the only landmarks on a dense data page, so their size
+   is stated here rather than left to the UA default — `shrinkButtonTextToFit`
+   used to pull the collapsible ones down to the 0.95rem button scale, which read
+   as a button label rather than a section title. */
+.section h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.section h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
 /* The collapsible section headings are `<h2><button class="folder-section-toggle">`
    rather than a clickable heading, so the control is reachable and its state is
    announced. The button has to look like the heading it sits in, which means
