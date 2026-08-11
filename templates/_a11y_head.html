@@ -37,21 +37,37 @@
         outline: 3px solid #1d4ed8;
         outline-offset: 2px;
         box-shadow: 0 0 0 5px #ffffff;
-        border-radius: 6px;
+        /* No `border-radius` — the outline already follows the element's own
+           radius, and setting one reshaped every pill and circle on focus. The
+           ring in `static/style.css` says the same thing and names the case
+           that found it (a 20px pill snapping to a rectangle); these pages have
+           pills too, and the two rings must agree. */
     }
 
+    /* `summary` was named in the light list above but not here, so a focused
+       <summary> on a dark page kept the light ring and a white halo — the
+       pairing the two-toned ring exists to avoid. */
     html.dark a:focus-visible,
     html.dark button:focus-visible,
     html.dark input:focus-visible,
     html.dark select:focus-visible,
     html.dark textarea:focus-visible,
+    html.dark summary:focus-visible,
     html.dark [tabindex]:focus-visible {
         outline-color: #93c5fd;
         box-shadow: 0 0 0 5px #0b1220;
     }
 
+    /* 2.4.3 — a region moved to programmatically is outlined so a keyboard user
+       can see where they were sent. This said `outline: none`, the opposite of
+       what `static/style.css` does for the same selector. */
     [tabindex="-1"]:focus {
-        outline: none;
+        outline: 2px dashed #1d4ed8;
+        outline-offset: 4px;
+    }
+
+    html.dark [tabindex="-1"]:focus {
+        outline-color: #93c5fd;
     }
 
     /* 2.5.8 Target Size (Minimum). */

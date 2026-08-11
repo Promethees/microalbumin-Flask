@@ -115,16 +115,20 @@ body.dark .section {
     display: none !important;
 }
 
+/* The wordmark line. Layout only — everything about how it is *set* lives on
+   `.title-place h1, .title-place .okapi-line` below, with the company name, so
+   one rule says what a line of the lockup looks like. It carries no block
+   margin: it used to restate the UA `h1` margin here "to keep the wordmark
+   where it did", but `.title-place h1` had already zeroed that, and
+   `.title-place` is a flex column where margins do not collapse — so the
+   restated 0.67em was 13.4px of new space between "CBBiotec" and the wordmark,
+   not a no-op. */
 .okapi-line {
-    /* Was a second <h1>; now a <p>, so the h1 block margin is restated to keep
-       the wordmark sitting exactly where it did. */
-    margin: 0.67em 0;
-    font-weight: bold;
     /* Enables Flexbox on the wordmark line */
     display: flex;
-    /* Centers items vertically within the h1's line */
+    /* Centers items vertically within the line */
     align-items: center;
-    /* Ensures the image doesn't wrap to the next line if the h1 is narrow */
+    /* Ensures the image doesn't wrap to the next line if the line is narrow */
     white-space: nowrap;
 }
 
@@ -598,11 +602,21 @@ body.dark .top-right {
     align-items: flex-start;
 }
 
-.title-place h1 {
+/* The two lines are one lockup: no space between the company name and the
+   wordmark, so they read as a single mark inside the `.title-home` link.
+   `.title-place` is a flex column, so these margins do not collapse — a block
+   margin on either line is that margin, whole. The wordmark is `.okapi-line`
+   rather than a second <h1> (one document title per page), and it needs every
+   one of these declarations, not just the weight: as a <p> it stops matching
+   the h1 selector outright and picks up the UA `1em 0` and the body's
+   line-height and family instead. */
+.title-place h1,
+.title-place .okapi-line {
     margin: 0;
     font-family: Arial, sans-serif;
     line-height: 1.2;
     font-size: 1.1rem;
+    font-weight: bold;
 }
 
 #htbio {
@@ -3686,15 +3700,23 @@ body.dark #turn-cal-error {
 }
 
 /* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target.
-   Deliberately NOT applied to `input[type=checkbox]` / `input[type=radio]`:
-   `min-width` beats `width`, so it silently overrode their 18px size instead
-   of growing the target around them. Every one of them is wrapped in its own
-   <label>, which already gives a target far larger than 24px. `.folder-chevron`
-   is out for the same kind of reason — it is decoration inside the heading
-   button, not a target of its own. */
+   The list is short on purpose, because `min-width`/`min-height` beat `width`
+   and `height` at any specificity — this rule cannot be reasoned about as an
+   ordinary declaration, it always wins over a size the design set:
+     · `input[type=checkbox]` / `input[type=radio]` — silently overrode their
+       18px instead of growing the target around them. Every one is wrapped in
+       its own <label>, which already gives a target far larger than 24px.
+     · `.folder-chevron` — decoration inside the heading button, not a target.
+     · `select` — the worst of them, and not a size clash but a specificity one:
+       `select { min-width: 150px }` near the top of this sheet and this rule are
+       BOTH (0,0,1), so whichever comes last wins, and this block is last in the
+       file. Every select in the app lost its 150px floor and resized to its
+       longest option. A select is past 24px on both axes on its own, so it
+       never needed to be here.
+   `.account-nav-btn` and `.community-strip__link` stay: neither declares a
+   size, so for them this is a floor and nothing else. */
 button,
 [role="button"],
-select,
 .account-nav-btn,
 .community-strip__link {
     min-height: 24px;

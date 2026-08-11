@@ -218,6 +218,19 @@
 - **Never remove a focus indicator.** `outline: none` is allowed only where a
   later `:focus-visible` rule replaces it. The rings are two-toned (dark core +
   light halo) so they clear 3:1 on either theme and over any button fill.
+- **The 2.5.8 floor is a blunt instrument — keep its selector list short.**
+  `min-width`/`min-height` beat `width`/`height` **at any specificity**, so
+  `button, [role="button"], … { min-height: 24px; min-width: 24px }` cannot be
+  reasoned about as an ordinary declaration: it silently wins over whatever size
+  the design system set, from anywhere in the file. It has already broken two
+  things — the 18px checkboxes and radios (fixed in `6abcf6e`) and every
+  `<select>` in the app, which lost the `min-width: 150px` it is given near the
+  top of the sheet because both rules are `(0,0,1)` and the accessibility block
+  comes last. Before adding a selector to that rule, check whether the element
+  already declares a size; if it does, meet the criterion on the element itself
+  (or through the **spacing exception**) rather than growing it from the bottom
+  of the file. An accessibility rule that outranks the design system is not
+  accessible, it is just louder.
 - **A click handler belongs on a control.** No `onclick` on a `<div>`, an
   `<img>` or a heading — it is unreachable by keyboard and has no role. The
   collapsible section headings are `<h2><button class="folder-section-toggle">`;
