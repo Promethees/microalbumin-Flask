@@ -1,6 +1,7 @@
 # Measurement: ABSORBANCE
 # Unit: NONE
 # Concentration: 75
+# ConcenUnit: ng/µL
 Timestamp,Value:1
 0,0.159
 60,0.159
