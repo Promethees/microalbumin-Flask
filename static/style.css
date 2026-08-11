@@ -283,6 +283,16 @@ body.dark .section {
     white-space: nowrap;
 }
 
+/* The wordmark in the title block was a second <h1>, which reads as a second
+   document title; it is a <p> now, so the h1 block margin and weight are
+   restated to keep it exactly where it was. Scoped to #title on purpose: the
+   `.init-okapi-line` variant on the splash has always been a <div> with no
+   block margin, and must not gain one. */
+#title .okapi-line {
+    margin: 0.67em 0;
+    font-weight: bold;
+}
+
 .okapi-img {
     height: 30px;
     width: 30px;
@@ -309,7 +319,7 @@ body.light {
     color: var(--text-color-light);
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss) {
     padding: 7px 11px;
     font-family: var(--font-ui);
     font-weight: 500;
@@ -334,23 +344,23 @@ button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
 /* Hover states the border and the ink, and leaves the button where it is.
    Every control lifting off the page on hover made nothing feel clickable in
    particular; the one thing that should move on the page is the data. */
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):hover:enabled {
     box-shadow: none;
     border-color: var(--accent);
     color: var(--accent);
     background: var(--panel);
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):focus-visible {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):active:enabled {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):active:enabled {
     transform: translateY(0);
 }
 
-button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):disabled {
     background-color: #eef1f2;
     color: #8a959b;
     border: 1px solid #dce2e5;
@@ -531,19 +541,19 @@ body.dark {
     --scrollbar-track: var(--scrollbar-track-dark);
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss) {
     background-color: var(--panel);
     color: var(--ink);
     border: 1px solid var(--hairline);
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):hover:enabled {
     background-color: var(--panel);
     border-color: var(--accent);
     color: var(--accent-strong);
 }
 
-body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+body.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):disabled {
     background-color: #262c31;
     color: #6e777c;
     border: 1px solid #4a5257;
@@ -4982,6 +4992,12 @@ body.dark .ms-dropdown-panel .exp-source-option:hover {
 #okapi-tooltip.visible {
     opacity: 1;
     transform: translateY(0);
+    /* WCAG 1.4.13 "hoverable": someone using screen magnification often has to
+       move the pointer onto the hint to read it, which is impossible while the
+       bubble ignores the pointer. tooltip.js keeps it open while the pointer is
+       over it, and Escape dismisses it. Only the *visible* bubble accepts the
+       pointer — the hidden one is still laid out and must not swallow clicks. */
+    pointer-events: auto;
 }
 
 #okapi-tooltip::after {
@@ -6493,7 +6509,7 @@ body.ui-classic.light {
     background-color: #f3f4f6;
 }
 
-body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss) {
     padding: 8px 10px;
     font-family: 'Outfit', sans-serif;
     font-weight: 600;
@@ -6506,13 +6522,13 @@ body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
     color: var(--text-color-light);
 }
 
-body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):hover:enabled {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     background: #f9fafb;
 }
 
-body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):disabled {
     background-color: #f3f4f6;
     color: #9ca3af;
     border: 1px solid #e5e7eb;
@@ -6695,17 +6711,17 @@ body.ui-classic.dark {
     background-color: #111827;
 }
 
-body.ui-classic.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled) {
+body.ui-classic.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss) {
     background-color: #1f2937;
     color: var(--text-color-dark);
     border: 1px solid #374151;
 }
 
-body.ui-classic.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+body.ui-classic.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):hover:enabled {
     background-color: #374151;
 }
 
-body.ui-classic.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):disabled {
+body.ui-classic.dark button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):disabled {
     background-color: #3a3a3a;
     color: #777777;
     border: 1px solid #555555;
@@ -8646,7 +8662,7 @@ body.ui-classic .settings-btn {
 }
 
 /* Hover lifted every control, and the ring colours were the raw primaries. */
-body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):hover:enabled {
+body.ui-classic button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled):not(.folder-section-toggle):not(.logo-btn):not(.toggle-container):not(.sort-btn):not(.app-version-badge):not(.update-banner-label):not(.update-banner-dismiss):hover:enabled {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
@@ -8748,4 +8764,317 @@ body.ui-classic.strip-open #top-right-controls {
     outline: 1px solid var(--accent, #4a9eff);
     outline-offset: 2px;
     border-radius: 4px;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY (WCAG 2.2 Level AA)
+   --------------------------------------------------------------------------
+   The desktop app is covered by the same published conformance claim as the
+   web app — https://www.easyokapi.cbbiotec.vn/accessibility — and this block
+   is what most of it rests on. Read `Rule.md` §2.36 before changing anything
+   here: several rules exist to satisfy a named success criterion, and removing
+   one quietly makes a published statement false.
+
+   Tokens above already carry a light/dark pair for every surface, so this
+   block adds only what the design system has no opinion about: the bypass
+   link, the screen-reader-only helper, the focus ring, and the behaviours the
+   operating system asks for (reduced motion, forced colours, more contrast).
+   ========================================================================== */
+
+:root {
+    /* Two rings — a dark core with a light halo — so the indicator keeps 3:1
+       against both themes and against any control fill (1.4.11). */
+    --focus-ring: #1d4ed8;
+    --focus-ring-contrast: #ffffff;
+    /* Bare `red` is 4.0:1 on the light background: under the 4.5:1 that 1.4.3
+       requires, and error text is the last place to be economical about it. */
+    --error-ink: #b3261e;
+}
+
+body.dark {
+    --focus-ring: #93c5fd;
+    --focus-ring-contrast: #0b0f12;
+    --error-ink: #ffb4ab;
+}
+
+/* 2.4.1 Bypass Blocks — the first tab stop on the page, ahead of the whole
+   left-hand instrument rail. */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 8px;
+    z-index: 100000;
+    padding: 10px 16px;
+    border-radius: 0 0 4px 4px;
+    background: var(--ink);
+    color: var(--panel);
+    font-weight: 600;
+    text-decoration: none;
+    transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Text for assistive technology only. Never `display: none` — that hides it
+   from a screen reader too, which is the entire point of the class. */
+.sr-only,
+.sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 2.4.7 Focus Visible. Comes last in the file on purpose: it has to win over
+   the `outline: none` the input, select and `.swal2-input` rules set. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[contenteditable="true"]:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px var(--focus-ring-contrast);
+}
+
+/* A region moved to programmatically (`#chart-container`, `#file-selection`)
+   is outlined so a keyboard user can see where they were sent (2.4.3). */
+[tabindex="-1"]:focus {
+    outline: 2px dashed var(--focus-ring);
+    outline-offset: 4px;
+}
+
+/* 2.4.11 Focus Not Obscured — nothing focused may end up under the fixed
+   top-right control cluster. */
+:target,
+[tabindex="-1"]:focus,
+:focus-visible {
+    scroll-margin-top: 90px;
+    scroll-margin-bottom: 24px;
+}
+
+/* 1.4.3 Contrast (Minimum) for every error line in the app. */
+.error,
+#wd-size-error,
+#range-value-error,
+#save-file-error,
+#save-json-file-error,
+#est-val-error,
+#turn-cal-error {
+    color: var(--error-ink);
+}
+
+/* 1.4.1 Use of Colour — an error is announced by its text, and reads as an
+   error without relying on the colour alone. */
+.error:not(:empty)::before {
+    content: "\26A0\FE0E\00A0";
+}
+
+/* A collapsed panel is invisible but its controls stay in the tab order unless
+   it also leaves the layout — a keyboard user would otherwise tab into buttons
+   nobody can see (2.4.3). Visibility is delayed by one transition so the panel
+   does not vanish mid-slide, and restored immediately on open. */
+.section-collapse {
+    visibility: visible;
+    transition: max-height 0.5s ease, opacity 0.3s ease, visibility 0s;
+}
+
+.section-collapse.collapsed {
+    visibility: hidden;
+    transition: max-height 0.5s ease, opacity 0.3s ease, visibility 0s linear 0.5s;
+}
+
+/* The collapsible section headings are `<h2><button class="folder-section-toggle">`
+   rather than a clickable heading, so the control can be reached and its state
+   announced. The button then has to look like the heading it sits in. */
+h2>.folder-section-toggle,
+h3>.folder-section-toggle,
+h4>.folder-section-toggle {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    white-space: normal;
+}
+
+h2>.folder-section-toggle:hover,
+h3>.folder-section-toggle:hover,
+h4>.folder-section-toggle:hover {
+    background: none;
+    box-shadow: none;
+    transform: none;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* A sortable column header is a control, not a caption: it is a button inside
+   the <th> so it can be operated from the keyboard and report its sort state
+   through `aria-sort` on the header. */
+th>.sort-btn {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* The scroll-to-top logo and the theme cycle used to be a clickable <img> and
+   <div>; as buttons they keep their appearance but lose the browser chrome. */
+.logo-btn {
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    cursor: pointer;
+    line-height: 0;
+}
+
+.logo-btn img {
+    display: block;
+}
+
+button.toggle-container {
+    border: none;
+    font: inherit;
+    box-sizing: content-box;
+}
+
+/* 2.5.8 Target Size (Minimum) — 24x24 CSS px for every pointer target. The
+   chevrons and single-glyph controls are well under that on their own. */
+button,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+.folder-chevron {
+    min-height: 24px;
+    min-width: 24px;
+}
+
+/* 2.2.2 Pause, Stop, Hide + 2.3.3 Animation from Interactions. The file
+   already honours reduced motion in three places; this covers everything else,
+   including anything added later. */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Windows High Contrast / forced colours drops the app's palette, so the focus
+   ring has to be restated in system colours and glass borders need a real one. */
+@media (forced-colors: active) {
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex]:focus-visible {
+        outline: 3px solid Highlight;
+        box-shadow: none;
+    }
+
+    .section,
+    .table,
+    .table td,
+    .table th,
+    button {
+        border: 1px solid ButtonBorder;
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --hairline: var(--ink-muted);
+        --hairline-soft: var(--ink-muted);
+    }
+}
+
+/* 4.1.3 Status Messages — the two live regions every script announces into.
+   Visually absent, never `display: none`: a hidden live region is not read. */
+#a11y-live-region,
+#a11y-alert-region {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* 1.1.1 — the text alternative built beside every chart canvas (a11y.js). */
+.chart-data-table[hidden] {
+    display: none;
+}
+
+.chart-data-table {
+    width: 100%;
+    margin-top: 10px;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.chart-data-table caption {
+    text-align: left;
+    font-weight: 600;
+    padding: 4px 0;
+}
+
+.chart-data-table th,
+.chart-data-table td {
+    border: 1px solid var(--hairline);
+    padding: 3px 6px;
+    text-align: right;
+}
+
+.chart-data-table th:first-child,
+.chart-data-table td:first-child {
+    text-align: left;
+}
+
+/* Three more former <span onclick>s that are now buttons. They keep the look
+   they had as spans, so the browser's button chrome is removed rather than
+   restyled — a click target that is not a control cannot be reached by
+   keyboard and has no role (2.1.1 / 4.1.2). */
+button.app-version-badge,
+button.update-banner-label,
+button.update-banner-dismiss {
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
 }

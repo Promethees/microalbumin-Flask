@@ -64,6 +64,10 @@
         const t = ensureTip();
         t.textContent = text;
         current = el;
+        // WCAG 4.1.2 — the bubble is a visual affordance only unless the
+        // element it describes points at it. `aria-describedby` is what makes
+        // a screen reader read the hint after the control's own name.
+        el.setAttribute('aria-describedby', 'okapi-tooltip');
         place(el);
         // place() reads the bubble size before it is shown; reveal next frame.
         requestAnimationFrame(function () { t.classList.add('visible'); });
@@ -72,6 +76,7 @@
     function hide() {
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
+        if (current) current.removeAttribute('aria-describedby');
         current = null;
         if (tip) tip.classList.remove('visible');
     }
@@ -104,8 +109,38 @@
     document.addEventListener('mouseout', onOut);
     document.addEventListener('focusin', onFocus);
     document.addEventListener('focusout', hide);
-    // A press, scroll or resize invalidates the position → just hide.
+    // A press or resize invalidates the position → just hide.
     document.addEventListener('click', hide, true);
-    document.addEventListener('scroll', hide, true);
     window.addEventListener('resize', hide);
+
+    // WCAG 1.4.13 Content on Hover or Focus. The criterion has three parts and
+    // each needs something here:
+    //
+    //   dismissible — Escape closes the bubble without moving focus, so a hint
+    //                 can never end up covering the thing you were reading.
+    //   hoverable   — the bubble is appended to <body>, so moving the pointer
+    //                 onto it fires `mouseout` on the target; without this the
+    //                 hint would vanish as you reached for it. Someone using
+    //                 magnification often has to do exactly that.
+    //   persistent  — a hint stays until dismissed, focus moves, or the pointer
+    //                 leaves. It is no longer removed on scroll: scrolling to
+    //                 read a long hint used to close it.
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && current) {
+            e.stopPropagation();
+            hide();
+        }
+    }, true);
+
+    document.addEventListener('scroll', function () {
+        // Reposition rather than hide, so the hint follows its target.
+        if (current) place(current);
+    }, true);
+
+    document.addEventListener('mouseover', function (e) {
+        if (tip && e.target === tip) clearTimeout(hideTimer);
+    });
+    document.addEventListener('mouseout', function (e) {
+        if (tip && e.target === tip) hideTimer = setTimeout(hide, HIDE_DELAY);
+    });
 })();

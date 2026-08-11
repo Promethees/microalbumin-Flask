@@ -161,23 +161,40 @@ class UserGuide {
         this.spotlight.id = 'user-guide-spotlight';
         this.spotlight.className = 'user-guide-spotlight';
 
-        // Create tooltip element
+        // The backdrop and the spotlight are decoration; the panel below is
+        // what carries the content, so neither is exposed to assistive tech.
+        this.overlay.setAttribute('aria-hidden', 'true');
+        this.spotlight.setAttribute('aria-hidden', 'true');
+
+        // Create tooltip element.
+        // This panel is a modal dialogue in everything but name: it covers the
+        // app and takes over the keyboard. Declaring `role="dialog"` +
+        // `aria-modal` is what stops a screen reader wandering into the page
+        // underneath, and the title/description name and describe it (4.1.2).
         this.tooltip = document.createElement('div');
         this.tooltip.id = 'user-guide-tooltip';
         this.tooltip.className = 'user-guide-tooltip';
+        this.tooltip.setAttribute('role', 'dialog');
+        this.tooltip.setAttribute('aria-modal', 'true');
+        this.tooltip.setAttribute('aria-labelledby', 'user-guide-title');
+        this.tooltip.setAttribute('aria-describedby', 'user-guide-description');
+        this.tooltip.setAttribute('tabindex', '-1');
         this.tooltip.innerHTML = `
             <div class="tooltip-header">
-                <span class="tooltip-step-counter"></span>
-                <button class="tooltip-close-btn" aria-label="Close guide">×</button>
+                <span class="tooltip-step-counter" role="status" aria-live="polite"></span>
+                <button type="button" class="tooltip-close-btn" aria-label="Close guide">
+                    <span aria-hidden="true">×</span></button>
             </div>
             <div class="tooltip-content">
-                <h3 class="tooltip-title"></h3>
-                <p class="tooltip-description"></p>
+                <h3 class="tooltip-title" id="user-guide-title"></h3>
+                <p class="tooltip-description" id="user-guide-description"></p>
             </div>
             <div class="tooltip-footer">
-                <button class="tooltip-btn tooltip-prev-btn">← Previous</button>
-                <button class="tooltip-btn tooltip-next-btn">Next →</button>
-                <button class="tooltip-btn tooltip-finish-btn">Finish</button>
+                <button type="button" class="tooltip-btn tooltip-prev-btn">
+                    <span aria-hidden="true">←</span> Previous</button>
+                <button type="button" class="tooltip-btn tooltip-next-btn">
+                    Next <span aria-hidden="true">→</span></button>
+                <button type="button" class="tooltip-btn tooltip-finish-btn">Finish</button>
             </div>
         `;
 
@@ -205,6 +222,35 @@ class UserGuide {
         prevBtn.addEventListener('click', () => this.previousStep());
         nextBtn.addEventListener('click', () => this.nextStep());
         finishBtn.addEventListener('click', () => this.stop());
+
+        // ── Keyboard contract for the dialogue (2.1.1 / 2.1.2 / 2.4.3) ──────
+        // Escape leaves — the guide covers the app, so there has to be a way
+        // out that is not "find the × with a mouse". Tab is cycled inside the
+        // panel while it is up, otherwise focus walks off into a page the user
+        // cannot see and cannot get back from.
+        this.tooltip.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.stop();
+                return;
+            }
+            if (e.key !== 'Tab') return;
+
+            const focusable = this.tooltip.querySelectorAll(
+                'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            const visible = Array.prototype.filter.call(focusable, el => el.offsetParent !== null);
+            if (!visible.length) return;
+
+            const first = visible[0];
+            const last = visible[visible.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        });
 
         // Close on overlay click
         this.overlay.addEventListener('click', () => this.stop());
@@ -396,8 +442,21 @@ class UserGuide {
         this.currentStep = 0;
         this.isActive = true;
 
+        // 2.4.3 Focus Order — remember where the user was so `stop()` can put
+        // them back, then move focus into the dialogue. Without this the
+        // keyboard stays behind the overlay, on a page nobody can see.
+        this._returnFocusTo = document.activeElement;
+
         this.overlay.classList.add('active');
         this.showStep(this.currentStep);
+
+        const trigger = document.getElementById('user-guide-btn');
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+
+        window.requestAnimationFrame(() => {
+            const firstBtn = this.tooltip.querySelector('.tooltip-close-btn');
+            (firstBtn || this.tooltip).focus();
+        });
     }
 
     /**
@@ -420,6 +479,17 @@ class UserGuide {
         this.spotlight.style.pointerEvents = '';
         this.overlay.style.pointerEvents = '';
         document.body.style.overflow = '';
+
+        const trigger = document.getElementById('user-guide-btn');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+
+        // Hand the keyboard back to whatever opened the guide (2.4.3). Falling
+        // back to the trigger covers the case where the origin has since been
+        // re-rendered out of the DOM.
+        const back = (this._returnFocusTo && document.body.contains(this._returnFocusTo))
+            ? this._returnFocusTo : trigger;
+        this._returnFocusTo = null;
+        if (back && typeof back.focus === 'function') back.focus();
     }
 
     /**

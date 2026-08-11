@@ -26,12 +26,19 @@ on run
             set dlg to display dialog "Welcome to EasyOKAPI!" & return & return & "First-run setup is needed. EasyOKAPI will install its Python environment and download the application (5–10 minutes)." & return & return & "Make sure you are connected to the internet before continuing." buttons {"Cancel", "Set Up Now"} default button "Set Up Now" with title "EasyOKAPI Setup"
             if button returned of dlg is "Cancel" then return
 
-            -- Collect access token via native hidden-answer dialog
-            set tokenDlg to display dialog "Enter your EasyOKAPI access token:" default answer "" with hidden answer buttons {"Cancel", "Continue"} default button "Continue" with title "EasyOKAPI Setup"
+            -- Collect the access token.
+            --
+            -- Deliberately NOT `with hidden answer`. VoiceOver reads a masked
+            -- field as "bullet" once per character, so the token could be
+            -- neither heard back nor checked for a bad paste — in exchange for
+            -- hiding a single-use string that expires in 30 minutes. The
+            -- dialog says where the token comes from, because "access token"
+            -- on its own tells a first-time user nothing.
+            set tokenDlg to display dialog "Enter your EasyOKAPI access token." & return & return & "Generate it in your EasyOKAPI account (Account → Download token). It is valid for 30 minutes. Nothing here is timed — take as long as you need." default answer "" buttons {"Cancel", "Continue"} default button "Continue" with title "EasyOKAPI Setup"
             if button returned of tokenDlg is "Cancel" then return
             set accessToken to text returned of tokenDlg
             if accessToken is "" then
-                display dialog "An access token is required to download EasyOKAPI." buttons {"OK"} default button "OK" with title "EasyOKAPI Setup"
+                display dialog "An access token is required to download EasyOKAPI." & return & return & "Copy the token from your EasyOKAPI account, then launch EasyOKAPI again." buttons {"OK"} default button "OK" with title "EasyOKAPI Setup"
                 return
             end if
 

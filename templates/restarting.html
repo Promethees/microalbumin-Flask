@@ -174,15 +174,16 @@
             animation: fadeInUp 0.5s ease 0.4s both;
         }
     </style>
+    {% include "_a11y_head.html" %}
 </head>
 <body class="{{ mode }}">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
+    <div class="orb orb-1" aria-hidden="true"></div>
+    <div class="orb orb-2" aria-hidden="true"></div>
+    <div class="orb orb-3" aria-hidden="true"></div>
 
-    <div class="card">
+    <main class="card" id="main-content" tabindex="-1" role="status" aria-live="polite">
         <div class="spinner-wrap">
-            <svg class="spinner-svg" viewBox="0 0 50 50">
+            <svg class="spinner-svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
                 <circle class="spinner-track" cx="25" cy="25" r="22"/>
                 <circle class="spinner-head"  cx="25" cy="25" r="22"/>
             </svg>
@@ -197,7 +198,7 @@
         {% if new_path %}
         <div class="info-badge" id="info-badge">{{ new_path }}</div>
         {% endif %}
-    </div>
+    </main>
 
     <script>
         // The current server is about to exit and a fresh instance rebinds the same

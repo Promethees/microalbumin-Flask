@@ -149,13 +149,17 @@
             color: var(--ink-3);
         }
     </style>
+    {% include "_a11y_head.html" %}
 </head>
 
 <body>
+    {# 2.4.1 Bypass Blocks — the document nav repeats on both legal pages. #}
+    <a class="skip-link" href="#legal-doc">Skip to the document</a>
+
     <div class="wrap">
         <header>
             <h1>{{ heading }}</h1>
-            <nav class="docnav">
+            <nav class="docnav" aria-label="Legal documents">
                 <a href="/legal/eula" {% if doc=='eula' %}aria-current="page" {% endif %}>Licence</a>
                 <a href="/legal/privacy" {% if doc=='privacy' %}aria-current="page" {% endif %}>Privacy</a>
                 <a href="/">Back to the app</a>
@@ -165,7 +169,12 @@
         <p class="notice">Easy OKAPI is for research and education only. It is not a medical device and must not be
             used for diagnostic purposes.</p>
 
-        <pre class="doc">{{ body }}</pre>
+        <main id="legal-doc" tabindex="-1">
+            {# A long <pre> scrolls on a narrow window, so it is focusable and
+               named: a keyboard-only user cannot scroll a region they cannot
+               reach (2.1.1). #}
+            <pre class="doc" role="region" tabindex="0" aria-label="{{ heading }}">{{ body }}</pre>
+        </main>
 
         <footer>
             <span>© 2025–2026 CBBiotec · HCMUS–VNU</span>

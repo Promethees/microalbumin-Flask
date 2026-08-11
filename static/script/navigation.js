@@ -151,12 +151,21 @@ function _jsonCounterpartForFileTable() {
 
 // ── Data-folder collapse toggle ──────────────────────────────────────────────
 
-function toggleFolderList(collapseId, chevronId) {
+// `trigger` is the <button> inside the section heading (templates/index.html).
+// It carries `aria-expanded`, which is the only thing that tells a screen
+// reader whether the panel is open — the rotated chevron is decorative and is
+// hidden from assistive technology (4.1.2). Callers that do not pass a trigger
+// (toggleDeviceController, the settings panel) are found by aria-controls.
+function toggleFolderList(collapseId, chevronId, trigger) {
     const collapse = document.getElementById(collapseId);
     const chevron = document.getElementById(chevronId);
     if (!collapse) return;
     const isNowCollapsed = collapse.classList.toggle('collapsed');
     if (chevron) chevron.classList.toggle('collapsed-chevron', isNowCollapsed);
+
+    const btn = trigger || document.querySelector(
+        '.folder-section-toggle[aria-controls="' + collapseId + '"]');
+    if (btn) btn.setAttribute('aria-expanded', isNowCollapsed ? 'false' : 'true');
 }
 
 // ── Data-folder picker ──────────────────────────────────────────────────────
@@ -498,14 +507,54 @@ function checkMeasHeader(headers) {
     return valueHeaders.length > 0 && valueHeaders.every(h => /^\s*Value:\d+\s*$/.test(h));
 }
 
+// ── Accessible table scaffolding ────────────────────────────────────────────
+// The three renderers below replace a whole <table> with innerHTML, so anything
+// the template shipped — caption, <thead>, `scope` — is gone the first time a
+// fetch resolves and has to be rebuilt here (WCAG 1.3.1).
+//
+// A sortable column header is a control, not a caption: as a `<th onclick>` it
+// could not be reached or operated from the keyboard (2.1.1) and the arrow
+// glyph was the only indication of the sort (1.4.1). It is now a button inside
+// the <th>, and the <th> carries `aria-sort` so the current order is reported
+// rather than drawn.
+function _ariaSort(key) {
+    const order = AppState.fileSortOrder || 'date_desc';
+    if (!order.startsWith(key)) return 'none';
+    return order.endsWith('asc') ? 'ascending' : 'descending';
+}
+
+function _sortHeaderCell(key, label, hint, sortFn, id) {
+    const idAttr = id ? ` id="${id}"` : '';
+    return `<th scope="col"${idAttr} class="sortable-th" aria-sort="${_ariaSort(key)}">`
+        + `<button type="button" class="sort-btn" onclick="${sortFn}('${key}')" `
+        + `data-hint="${_attr(hint)}">${_escHtml(label)}`
+        + `<span class="sort-arrow" aria-hidden="true">${_fileSortArrow(key)}</span>`
+        + `</button></th>`;
+}
+
+// The table's own name, for a screen reader listing the page's tables.
+function _tableCaption(text) {
+    return `<caption class="sr-only">${_escHtml(text)}</caption>`;
+}
+
+// "Select"/"Delete"/"Edit" repeated down a column says nothing out of context,
+// so each row button names the row it acts on (2.4.4).
+function _rowBtnLabel(action, name) {
+    return _attr(`${action} ${name}`);
+}
+
 // Header row for the calibration-JSON table (name + modified-date columns are
 // click-to-sort). Matches the server-rendered markup in index.html.
 function _jsonTableHeaderHtml() {
-    return `<tr>
-        <th class="sortable-th" onclick="sortJsonTable('name')" data-hint="${_attr(t('hint.sort_by_name','Click to sort by name'))}">${_escHtml(t('table.calibrated_json','Calibrated JSON'))}<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
-        <th class="sortable-th" onclick="sortJsonTable('date')" data-hint="${_attr(t('hint.sort_by_date','Click to sort by last modified date'))}">${_escHtml(t('table.modified','Modified'))}<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
-        <th colspan="3">${_escHtml(t('table.action','Action'))}</th>
-    </tr>`;
+    return _tableCaption(t('a11y.caption_json_table',
+        'Calibration coefficient files, with select, delete and edit actions on each row'))
+        + `<thead><tr>`
+        + _sortHeaderCell('name', t('table.calibrated_json', 'Calibrated JSON'),
+            t('hint.sort_by_name', 'Click to sort by name'), 'sortJsonTable')
+        + _sortHeaderCell('date', t('table.modified', 'Modified'),
+            t('hint.sort_by_date', 'Click to sort by last modified date'), 'sortJsonTable')
+        + `<th scope="col" colspan="3">${_escHtml(t('table.action', 'Action'))}</th>`
+        + `</tr></thead>`;
 }
 
 // Render the calibration-JSON rows into #json-table, honouring the active sort
@@ -519,11 +568,15 @@ function renderJsonRows(files) {
         const shown = sorted.slice(0, limit);
         const counterpart = _csvCounterpartForJsonTable();  // loaded CSV (kinetics/point)
         shown.forEach(file => {
-            const isSelected = file === AppState.currentJSON ? ' class="selected"' : '';
+            // `selected` is the state; `isSelected` is the class attribute that
+            // draws it. Both are needed: the colour is for sighted users, the
+            // aria-pressed below is what a screen reader reads (1.4.1).
+            const selected = file === AppState.currentJSON;
+            const isSelected = selected ? ' class="selected"' : '';
             const display = (AppState.jsonMeta[file] && AppState.jsonMeta[file].display) || '';
             const badge = _identityBadge(AppState.jsonIdentity && AppState.jsonIdentity[file]);
             const disableAttrs = _selectDisableAttrs(AppState.jsonIdentity && AppState.jsonIdentity[file], counterpart);
-            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button${disableAttrs} onclick="selectFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.select','✅ Select'))}</button></td><td><button onclick="deleteFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button onclick="editFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
+            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button type="button"${disableAttrs} aria-pressed="${selected ? 'true' : 'false'}" aria-label="${_rowBtnLabel(t('btn.select_plain','Select'), file)}" onclick="selectFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.select','✅ Select'))}</button></td><td><button type="button" aria-label="${_rowBtnLabel(t('btn.delete_plain','Delete'), file)}" onclick="deleteFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button type="button" aria-label="${_rowBtnLabel(t('btn.edit_plain','Edit'), file)}" onclick="editFile('${_esc(file)}', this, '#json-table')">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
         });
         if (sorted.length > shown.length) {
             html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} ${_escHtml(t('table.more_adjust_limit','more — adjust limit in Settings ⚙️'))}</td></tr>`;
@@ -560,11 +613,16 @@ function updateJSONTable(files) {
 // Header row for the report-subject folder table (name + modified-date columns
 // are click-to-sort).
 function _reportTableHeaderHtml() {
-    return `<tr>
-        <th id="file-table-header-name" class="sortable-th" onclick="sortReportTable('name')" data-hint="${_attr(t('hint.sort_by_folder','Click to sort by folder name'))}">${_escHtml(t('table.folder_name','Folder Name'))}<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
-        <th class="sortable-th" onclick="sortReportTable('date')" data-hint="${_attr(t('hint.sort_by_date','Click to sort by last modified date'))}">${_escHtml(t('table.modified','Modified'))}<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
-        <th colspan="3">${_escHtml(t('table.action','Action'))}</th>
-    </tr>`;
+    return _tableCaption(t('a11y.caption_report_table',
+        'Report subject folders, with select, delete and edit actions on each row'))
+        + `<thead><tr>`
+        + _sortHeaderCell('name', t('table.folder_name', 'Folder Name'),
+            t('hint.sort_by_folder', 'Click to sort by folder name'),
+            'sortReportTable', 'file-table-header-name')
+        + _sortHeaderCell('date', t('table.modified', 'Modified'),
+            t('hint.sort_by_date', 'Click to sort by last modified date'), 'sortReportTable')
+        + `<th scope="col" colspan="3">${_escHtml(t('table.action', 'Action'))}</th>`
+        + `</tr></thead>`;
 }
 
 // Render the report-subject folder rows into #file-table, honouring the active
@@ -575,9 +633,10 @@ function renderReportRows(subjects) {
     if (subjects && subjects.length > 0) {
         const sorted = _sortNamesByMeta(subjects, AppState.reportMeta);
         sorted.forEach(subject => {
-            const isSelected = subject === AppState.currentReportSubject ? ' class="selected"' : '';
+            const selected = subject === AppState.currentReportSubject;
+            const isSelected = selected ? ' class="selected"' : '';
             const display = (AppState.reportMeta[subject] && AppState.reportMeta[subject].display) || '';
-            html += `<tr${isSelected}><td>${_escHtml(subject)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button onclick="selectFile('${_esc(subject)}', this)">${_escHtml(t('btn.select_subject','📁 Select Subject'))}</button></td><td><button onclick="deleteReportSubject('${_esc(subject)}', this)">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button onclick="editReportSubject('${_esc(subject)}', this)">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
+            html += `<tr${isSelected}><td>${_escHtml(subject)}</td><td class="file-mtime">${_escHtml(display)}</td><td><button type="button" aria-pressed="${selected ? 'true' : 'false'}" aria-label="${_rowBtnLabel(t('btn.select_subject_plain','Select subject'), subject)}" onclick="selectFile('${_esc(subject)}', this)">${_escHtml(t('btn.select_subject','📁 Select Subject'))}</button></td><td><button type="button" aria-label="${_rowBtnLabel(t('btn.delete_plain','Delete'), subject)}" onclick="deleteReportSubject('${_esc(subject)}', this)">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button type="button" aria-label="${_rowBtnLabel(t('btn.edit_plain','Edit'), subject)}" onclick="editReportSubject('${_esc(subject)}', this)">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
         });
     } else {
         html += `<tr><td colspan="5">${_escHtml(t('report.none_found','No report subjects found.'))}</td></tr>`;
@@ -605,11 +664,17 @@ function _fileSortArrow(key) {
 // Header row for the CSV File Selection table (name + modified-date columns are
 // click-to-sort). Kept here so JS re-renders match the server-rendered markup.
 function _fileTableHeaderHtml() {
-    return `<tr>
-        <th id="file-table-header-name" class="sortable-th" onclick="sortFileTable('name')" data-hint="${_attr(t('hint.sort_by_filename','Click to sort by file name'))}">${_escHtml(t('table.file_name','File Name'))}<span class="sort-arrow">${_fileSortArrow('name')}</span></th>
-        <th id="file-table-header-date" class="sortable-th" onclick="sortFileTable('date')" data-hint="${_attr(t('hint.sort_by_date','Click to sort by last modified date'))}">${_escHtml(t('table.modified','Modified'))}<span class="sort-arrow">${_fileSortArrow('date')}</span></th>
-        <th colspan="3">${_escHtml(t('table.action','Action'))}</th>
-    </tr>`;
+    return _tableCaption(t('a11y.caption_file_table',
+        'Data files, with select, delete and edit actions on each row'))
+        + `<thead><tr>`
+        + _sortHeaderCell('name', t('table.file_name', 'File Name'),
+            t('hint.sort_by_filename', 'Click to sort by file name'),
+            'sortFileTable', 'file-table-header-name')
+        + _sortHeaderCell('date', t('table.modified', 'Modified'),
+            t('hint.sort_by_date', 'Click to sort by last modified date'),
+            'sortFileTable', 'file-table-header-date')
+        + `<th scope="col" colspan="3">${_escHtml(t('table.action', 'Action'))}</th>`
+        + `</tr></thead>`;
 }
 
 // Order names by the active sort order (AppState.fileSortOrder, shared by all
@@ -664,11 +729,12 @@ function renderFileRows(names) {
         const shown = sorted.slice(0, limit);
         const counterpart = _jsonCounterpartForFileTable();  // loaded JSON (kinetics/point)
         shown.forEach(file => {
-            const isSelected = file === AppState.currentFile ? ' class="selected"' : '';
+            const selected = file === AppState.currentFile;
+            const isSelected = selected ? ' class="selected"' : '';
             const display = (AppState.fileMeta[file] && AppState.fileMeta[file].display) || '';
             const badge = _identityBadge(AppState.fileIdentity && AppState.fileIdentity[file]);
             const disableAttrs = _selectDisableAttrs(AppState.fileIdentity && AppState.fileIdentity[file], counterpart);
-            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button${disableAttrs} onclick="selectFile('${_esc(file)}', this)">${_escHtml(t('btn.select','✅ Select'))}</button></td><td><button onclick="deleteFile('${_esc(file)}', this)">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button onclick="editFile('${_esc(file)}', this)">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
+            html += `<tr${isSelected}><td>${_escHtml(file)}${badge}</td><td class="file-mtime">${_escHtml(display)}</td><td><button type="button"${disableAttrs} aria-pressed="${selected ? 'true' : 'false'}" aria-label="${_rowBtnLabel(t('btn.select_plain','Select'), file)}" onclick="selectFile('${_esc(file)}', this)">${_escHtml(t('btn.select','✅ Select'))}</button></td><td><button type="button" aria-label="${_rowBtnLabel(t('btn.delete_plain','Delete'), file)}" onclick="deleteFile('${_esc(file)}', this)">${_escHtml(t('btn.delete','❌ Delete'))}</button></td><td><button type="button" aria-label="${_rowBtnLabel(t('btn.edit_plain','Edit'), file)}" onclick="editFile('${_esc(file)}', this)">${_escHtml(t('btn.edit','✏️ Edit'))}</button></td></tr>`;
         });
         if (sorted.length > shown.length) {
             html += `<tr><td colspan="5" style="text-align:center;color:#888;font-style:italic;padding:4px;">+${sorted.length - shown.length} ${_escHtml(t('table.more_adjust_limit','more — adjust limit in Settings ⚙️'))}</td></tr>`;

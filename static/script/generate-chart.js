@@ -414,6 +414,16 @@ function generateChart(canvasId, allXColumn, allYColumnOrArray, labelOrLabels, u
     if (AppState.currentMeasurementMode !== "calibrate") {
         renderHtmlLegend(chart, canvasId, index);
     }
+
+    // 1.1.1 — the plot itself is unreadable to assistive technology. Name the
+    // canvas and publish the same numbers as a table beside it (a11y.js). The
+    // table is built only when someone opens it, so a long kinetics trace does
+    // not cost thousands of DOM nodes nobody looks at.
+    if (typeof buildChartDataTable === 'function') {
+        buildChartDataTable(canvasId, chart,
+            index !== null && index !== undefined ? `Source ${index + 1}` : null);
+    }
+
     return chart;
 }
 

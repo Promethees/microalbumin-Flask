@@ -71,7 +71,10 @@ ReserveFile "background.bmp"
 ReserveFile "page_bg.bmp"
 
 ; ── Install-log text / background on the InstFiles detail area ─────────────────
-InstallColors E2E8F0 312E81
+; Deliberately NOT set with `InstallColors`: that is a compile-time directive,
+; so the indigo pair would be burned into the binary and would override Windows
+; High Contrast with no way to back out at runtime. `_DarkInstPage` applies the
+; same colours with `SetCtlColors`, which the High Contrast guard can skip.
 
 ; Installer metadata
 Name "${APP_NAME} ${APP_VERSION}"
@@ -108,6 +111,48 @@ Var TokenInput
 Var EasyOKAPIToken
 Var BgBitmapHandle
 Var ImportSampleData   ; "1" = import bundled sample_data into data\, else remove it
+Var HighContrast       ; "1" = Windows High Contrast is on — leave the theme alone
+
+; ── High Contrast ─────────────────────────────────────────────────────────────
+; Windows High Contrast exists so that a user who cannot read ordinary
+; foreground/background pairs can pick their own. An application that paints
+; over it with hard-coded colours takes that away — which is exactly what the
+; indigo theme below does, and why every _Dark* function returns early when
+; this flag is set. Same for the background bitmaps: a decorative image behind
+; text is the first thing High Contrast is meant to remove.
+;
+; SPI_GETHIGHCONTRAST = 0x0042. HIGHCONTRAST is { cbSize, dwFlags, lpszDefault };
+; HCF_HIGHCONTRASTON = 0x00000001 in dwFlags.
+; WinMessages.nsh already carries SPI_GETHIGHCONTRAST, so both are guarded —
+; redefining one is a hard error in NSIS.
+!ifndef SPI_GETHIGHCONTRAST
+  !define SPI_GETHIGHCONTRAST 0x0042
+!endif
+!ifndef HCF_HIGHCONTRASTON
+  !define HCF_HIGHCONTRASTON  0x0001
+!endif
+
+Function DetectHighContrast
+  Push $0
+  Push $1
+  StrCpy $HighContrast "0"
+
+  System::Alloc 12
+  Pop $0
+  System::Call '*$0(i 12, i 0, i 0)'          ; cbSize = 12
+  System::Call 'user32::SystemParametersInfoW(i ${SPI_GETHIGHCONTRAST}, i 12, i $0, i 0) i .r1'
+  ${If} $1 != 0
+    System::Call '*$0(i, i .r1, i)'           ; read dwFlags
+    IntOp $1 $1 & ${HCF_HIGHCONTRASTON}
+    ${If} $1 != 0
+      StrCpy $HighContrast "1"
+    ${EndIf}
+  ${EndIf}
+  System::Free $0
+
+  Pop $1
+  Pop $0
+FunctionEnd
 
 ; ── Page order ─────────────────────────────────────────────────────────────────
 ; Welcome → License → Token → Directory → Install → Finish
@@ -176,10 +221,16 @@ Page custom TokenPage TokenPageLeave
 ; correct Z-order on Windows 10/11 and the background never appears.
 ; The actual BgImage::SetBg / Redraw calls live in _OnGUIInit below.
 Function _OnInit
+  ; Decided once, before any window exists, and read by every theming helper.
+  Call DetectHighContrast
+
   InitPluginsDir
   SetOutPath $PLUGINSDIR
-  File "background.bmp"
-  File "page_bg.bmp"
+  ; No point extracting the decorative bitmaps when they will not be drawn.
+  ${If} $HighContrast != "1"
+    File "background.bmp"
+    File "page_bg.bmp"
+  ${EndIf}
 FunctionEnd
 
 ; .onGUIEnd — runs after the installer GUI closes.  Destroys the BgImage window.
@@ -197,6 +248,11 @@ FunctionEnd
 ; fallback remains untouched.  SS_BITMAP controls (MUI2 sidebar with the okapi
 ; mascot) are skipped so they stay visible.
 Function _DarkWelcomePage
+  ; High Contrast: the system colours are the point. Do nothing at all.
+  ${If} $HighContrast == "1"
+    Return
+  ${EndIf}
+
   ; Reliable indigo fallback — run _DarkPage first so the page is never white.
   Call _DarkPage
 
@@ -269,6 +325,12 @@ FunctionEnd
 ; direct child of the MUI2 inner dialog, then repeats for each grandchild
 ; (e.g. the Browse button and path edit inside the Destination Folder groupbox).
 Function _DarkPage
+  ; High Contrast: the user has asked the system for colours they can
+  ; read. Painting over them is the failure this guard exists to avoid.
+  ${If} $HighContrast == "1"
+    Return
+  ${EndIf}
+
   Push $R6
   Push $R7
   Push $R8
@@ -320,6 +382,12 @@ FunctionEnd
 ; Removes the visual theme from the progress bar first (required on Vista+
 ; so that PBM_SETBARCOLOR is not silently ignored by the themed renderer).
 Function _DarkInstPage
+  ; High Contrast: the user has asked the system for colours they can
+  ; read. Painting over them is the failure this guard exists to avoid.
+  ${If} $HighContrast == "1"
+    Return
+  ${EndIf}
+
   Call _DarkPage
 
   Push $R7
@@ -363,6 +431,12 @@ FunctionEnd
 ; _DarkButtons — strips visual theme and applies indigo fill to every
 ; BUTTON-class direct child of the outer installer window (Next/Back/Cancel).
 Function _DarkButtons
+  ; High Contrast: the user has asked the system for colours they can
+  ; read. Painting over them is the failure this guard exists to avoid.
+  ${If} $HighContrast == "1"
+    Return
+  ${EndIf}
+
   Push $R0
   StrCpy $R0 0
   _dbtn_loop:
@@ -383,6 +457,20 @@ FunctionEnd
 ; already exists when BgImage creates its background window — this gives
 ; the correct Z-order on Windows 10/11 so the background is visible.
 Function _OnGUIInit
+  ; Detected here rather than in _OnInit: makensis reports _OnInit as
+  ; "not referenced - zeroing code out" (it does so for the committed script
+  ; too, so this is a pre-existing wiring problem with MUI_CUSTOMFUNCTION_INIT,
+  ; not a new one). _OnGUIInit *is* linked, and it runs before any page is
+  ; shown, which is all the flag needs.
+  Call DetectHighContrast
+
+  ; High Contrast: no decorative background behind the text, and no repainted
+  ; chrome or title bar. Everything below is skipped; the installer runs in the
+  ; colours the user chose.
+  ${If} $HighContrast == "1"
+    Return
+  ${EndIf}
+
   BgImage::SetBg /NOUNLOAD "$PLUGINSDIR\background.bmp"
   BgImage::Redraw /NOUNLOAD
 
@@ -422,24 +510,47 @@ Function TokenPage
     Abort
   ${EndIf}
 
-  ; Indigo fallback — same pattern as _DarkWelcomePage: stamp the dark theme
-  ; first so the page is never white even if NSD_SetStretchedImage returns 0.
-  SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
+  ${If} $HighContrast != "1"
+    ; Indigo fallback — same pattern as _DarkWelcomePage: stamp the dark theme
+    ; first so the page is never white even if NSD_SetStretchedImage returns 0.
+    SetCtlColors $Dialog "${CLR_FG}" "${CLR_BG}"
 
-  ; Background bitmap — created first so it sits at the back of the Z-order.
-  ; Use page_bg.bmp (432x314, pre-scaled) so NSD_SetStretchedImage only has to
-  ; scale a small source bitmap, which LoadImageW handles reliably.
-  ${NSD_CreateBitmap} 0 0 100% 100% ""
+    ; Background bitmap — created first so it sits at the back of the Z-order.
+    ; Use page_bg.bmp (432x314, pre-scaled) so NSD_SetStretchedImage only has to
+    ; scale a small source bitmap, which LoadImageW handles reliably.
+    ; Skipped entirely in High Contrast: a picture behind text is the first
+    ; thing that mode exists to remove.
+    ${NSD_CreateBitmap} 0 0 100% 100% ""
+    Pop $0
+    ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
+  ${EndIf}
+
+  ; The label is created immediately before the edit control, so it is the
+  ; static that precedes it in tab order — which is how Narrator and NVDA
+  ; derive an edit box's name on Win32. Do not reorder these two, and do not
+  ; put anything focusable between them.
+  ;
+  ; The text says where the token comes from and that it expires: "EasyOKAPI
+  ; Token" alone tells a first-time user nothing, and a field whose purpose is
+  ; only explained by the page header is unusable to anyone reading it one
+  ; control at a time.
+  ${NSD_CreateLabel} 0 0 100% 32u "Download token — paste the token from your EasyOKAPI account (Account, then Download token). It is valid for 30 minutes. Nothing on this page is timed."
   Pop $0
-  ${NSD_SetStretchedImage} $0 "$PLUGINSDIR\page_bg.bmp" $BgBitmapHandle
+  ${If} $HighContrast != "1"
+    SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
+  ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 24u "Please enter your Generated EasyOKAPI Token:"
-  Pop $0
-  SetCtlColors $0 "${CLR_FG}" "${CLR_BG}"
-
-  ${NSD_CreateText} 0 26u 100% 12u ""
+  ; Not a password field. A masked edit reads as "bullet" once per character to
+  ; a screen reader and makes a bad paste impossible to spot, in exchange for
+  ; hiding a single-use string that expires in half an hour.
+  ${NSD_CreateText} 0 34u 100% 12u ""
   Pop $TokenInput
-  SetCtlColors $TokenInput "${CLR_FG}" "${CLR_INPUT}"
+  ${If} $HighContrast != "1"
+    SetCtlColors $TokenInput "${CLR_FG}" "${CLR_INPUT}"
+  ${EndIf}
+
+  ; Focus starts in the field the page exists for (WCAG 2.4.3).
+  ${NSD_SetFocus} $TokenInput
 
   ; Re-style the outer navigation buttons — mirrors _DarkWelcomePage's call to
   ; _DarkButtons so the Next/Cancel buttons keep their indigo style on this page.
@@ -451,7 +562,12 @@ FunctionEnd
 Function TokenPageLeave
   ${NSD_GetText} $TokenInput $EasyOKAPIToken
   ${If} $EasyOKAPIToken == ""
-    MessageBox MB_OK|MB_ICONEXCLAMATION "Please enter a valid EasyOKAPI token."
+    ; 3.3.1 / 3.3.3 — name the field and say how to fix it, not just that it is
+    ; wrong. A MessageBox is used rather than an inline label because NSIS has
+    ; no live region: the box takes focus, so the message is always announced.
+    MessageBox MB_OK|MB_ICONEXCLAMATION "A download token is required.$\r$\n$\r$\nPaste the token from your EasyOKAPI account into the Download token field, then click Next."
+    ; Put the caret back where the mistake is, instead of leaving focus on Next.
+    ${NSD_SetFocus} $TokenInput
     Abort
   ${EndIf}
 FunctionEnd

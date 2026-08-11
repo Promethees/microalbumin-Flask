@@ -1,7 +1,60 @@
 #!/usr/bin/env python3
-"""EasyOKAPI GUI splash window — Mac/Linux launcher (tkinter)."""
+"""EasyOKAPI GUI splash window — Mac/Linux launcher (tkinter).
 
-import os, sys, time, threading, platform
+Accessibility
+-------------
+A borderless, always-on-top window that never takes focus is invisible to a
+screen reader and, worse, sits over whatever the user is actually reading. So:
+
+  * **It is skipped when a screen reader is running** (VoiceOver on macOS,
+    Orca on Linux) and whenever ``EASYOKAPI_NO_SPLASH=1`` is set. The launch
+    proceeds exactly as before — the splash reports progress, it does not
+    control it.
+  * **Progress is also written to stdout** as plain lines, so a user who
+    started the app from a terminal hears each stage from their screen reader
+    instead of watching a bar they cannot see.
+  * **It never takes focus and never blocks.** Nothing in it has to be
+    dismissed, and it closes itself when the server is ready — there is no
+    time limit to run out of, and no step that waits on the user.
+
+See docs/accessibility/INSTALLERS.md and the published statement at
+https://www.easyokapi.cbbiotec.vn/accessibility.
+"""
+
+import os, sys, time, threading, platform, subprocess
+
+
+def _screen_reader_running():
+    """True when VoiceOver (macOS) or Orca (Linux) is active.
+
+    Best-effort and deliberately silent: a probe that fails must not stop the
+    application from launching.
+    """
+    if os.environ.get("EASYOKAPI_NO_SPLASH") == "1":
+        return True
+    try:
+        name = "VoiceOver" if platform.system() == "Darwin" else "orca"
+        return subprocess.call(["pgrep", "-x", name],
+                               stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL) == 0
+    except Exception:
+        return False
+
+
+def _say(pct, label):
+    """Report a stage on stdout — the accessible half of the progress bar."""
+    try:
+        sys.stdout.write("EasyOKAPI: %3d%%  %s\n" % (pct, label))
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+
+# A window nobody can read is only in the way. Report on stdout and exit; the
+# launcher scripts do not wait on this process.
+if _screen_reader_running():
+    _say(0, "Launching EasyOKAPI, please wait…")
+    sys.exit(0)
 
 try:
     import tkinter as tk
@@ -46,6 +99,10 @@ class Splash:
         root.overrideredirect(True)
         root.resizable(False, False)
         root.attributes("-topmost", True)
+        # Borderless windows have no title bar to carry a name; set one anyway
+        # so the window manager, the dock and any assistive technology that
+        # does see it have something to call this.
+        root.title("EasyOKAPI — launching")
 
         # Center on screen
         root.update_idletasks()
@@ -132,10 +189,16 @@ class Splash:
 
     def _set(self, pct, label):
         pct = min(max(pct, self._pct), 100)  # never go backward, cap at 100
+        changed_label = (label and label != self._sv.get())
         self._pct = pct
         self._fill.config(width=int(self._tw * pct / 100))
         self._sv.set(label)
         self._pv.set(f"{pct}%")
+        # Tk does not expose this bar to assistive technology, so each real
+        # stage is also written to stdout. Only on a stage change: a line per
+        # percent would be unreadable.
+        if changed_label:
+            _say(pct, label)
         if pct >= 100 and not self._done:
             self._done = True
             self.root.after(700, self.root.destroy)

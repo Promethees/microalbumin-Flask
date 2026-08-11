@@ -180,10 +180,21 @@
 </head>
 
 <body class="{{ 'ui-classic' if user_settings.get('ui_style') == 'classic' else '' }}">
+    {# 2.4.1 Bypass Blocks — the first tab stop, ahead of the instrument rail
+       and the session strip. #}
+    <a class="skip-link" href="#main-content" data-i18n="a11y.skip_to_main">Skip to main content</a>
+
+    {# 4.1.3 Status Messages — the two regions every script announces into.
+       They must be in the DOM from first paint and must never be display:none,
+       or a screen reader will not pick up what is written into them. See
+       `announce()` / `announceAlert()` in static/script/short-hands.js. #}
+    <div id="a11y-live-region" role="status" aria-live="polite" aria-atomic="true"></div>
+    <div id="a11y-alert-region" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
     <div id="print-report-container" class="hidden"></div>
-    <div id="global-spinner" class="hidden">
+    <div id="global-spinner" class="hidden" role="status" aria-live="polite">
         <div class="spinner-container">
-            <div class="spinner"></div>
+            <div class="spinner" aria-hidden="true"></div>
             <div class="spinner-message" data-i18n="spinner.processing">Process is ongoing, please wait...</div>
         </div>
     </div>
@@ -243,7 +254,8 @@
             <div id="session-paused-badge" class="timer-row hidden" data-i18n="timer.paused">Paused</div>
         </div>
         <div id="top-right-btn-group">
-            <button id="user-guide-btn" onclick="toggleUserGuide()" aria-label="Open User Guide"
+            <button type="button" id="user-guide-btn" onclick="toggleUserGuide()"
+                aria-expanded="false" aria-haspopup="dialog" aria-label="Open User Guide"
                 data-i18n-aria="topbar.user_guide.aria"
                 data-i18n="topbar.user_guide" data-i18n-hint="hint.user_guide"
                 data-hint="Start the interactive step-by-step walkthrough of the app">
@@ -256,45 +268,72 @@
 
     <div class="container">
         <div class="top-left">
-            <div class="flex-group">
-                <img src="../static/cbb.png" style="height: 70px; width: 60px; cursor: pointer;" id="logo"
-                    class="hidden" data-i18n-hint="hint.logo_scroll_top" data-hint="Scroll back to the top of the page"
+            <header class="flex-group">
+                {# A click target has to be a control: as a bare <img onclick> this
+                   was unreachable by keyboard (2.1.1) and had no name (4.1.2). #}
+                <button type="button" id="logo" class="logo-btn hidden"
+                    data-i18n-hint="hint.logo_scroll_top" data-hint="Scroll back to the top of the page"
                     onclick="window.scrollTo({ top: 0, behavior: 'smooth' });">
+                    <img src="../static/cbb.png" alt="" aria-hidden="true" style="height: 70px; width: 60px;">
+                    <span class="sr-only" data-i18n="a11y.scroll_to_top">Scroll to top of page</span>
+                </button>
 
                 <div id="title" class="title-place hidden">
                     <h1 id="htbio" style="font-size: 35px;"><span style="color: #ff4444;">CB</span>Biotec</h1>
-                    <h1 class="okapi-line" style="font-size: 20px;">
+                    {# Was a second <h1> in the same block, which reads as two
+                       document titles; the wordmark is not a heading. #}
+                    <p class="okapi-line" style="font-size: 20px;">
                         <span style="color: #3498db;">Easy</span> OKAPI
-                        <img src="../static/okapi.png" alt="Okapi Logo" class="okapi-img">
-                    </h1>
-                    <span class="app-version-badge" id="app-version-badge" data-i18n-hint="hint.check_updates" data-hint="Check for updates" style="cursor:pointer;">v{{ app_version }}</span>
-                    <div id="update-banner" class="hidden" onclick="showUpdateModal()">
-                        <span class="update-banner-label"><span class="update-banner-icon">↓</span> <span data-i18n="update.available">Update available</span><span id="update-banner-version"></span></span>
-                        <span class="update-banner-dismiss" onclick="_dismissBanner(event)" data-i18n-hint="hint.dismiss" data-hint="Dismiss">×</span>
+                        <img src="../static/okapi.png" alt="" aria-hidden="true" class="okapi-img">
+                    </p>
+                    <button type="button" class="app-version-badge" id="app-version-badge"
+                        data-i18n-hint="hint.check_updates" data-hint="Check for updates">v{{ app_version }}</button>
+                    {# The banner is a live announcement and a control at once: it
+                       appears without the user asking, so it announces itself, and
+                       both of its actions are real buttons. #}
+                    <div id="update-banner" class="hidden" role="status" aria-live="polite">
+                        <button type="button" class="update-banner-label" onclick="showUpdateModal()"><span
+                                class="update-banner-icon" aria-hidden="true">↓</span> <span
+                                data-i18n="update.available">Update available</span><span
+                                id="update-banner-version"></span></button>
+                        <button type="button" class="update-banner-dismiss" onclick="_dismissBanner(event)"
+                            data-i18n-hint="hint.dismiss" data-hint="Dismiss"><span aria-hidden="true">×</span><span
+                                class="sr-only" data-i18n="hint.dismiss">Dismiss</span></button>
                     </div>
                 </div>
 
-                <div class="toggle-container" id="toggleContainer" data-i18n-hint="hint.theme_toggle" data-hint="Switch between light and dark theme">
-                    <div class="toggle-button" id="toggleButton"></div>
-                </div>
-                <button id="settingsBtn" class="settings-btn" data-i18n-hint="hint.app_settings" data-hint="App Settings">⚙️</button>
-            </div>
-            <div id="top-left-scrollable">
+                {# Cycles light → dark → system, so it is a button whose name states
+                   the next step — not a switch, which has only two states.
+                   `_syncToggleIcon` in init.js keeps the name in step. #}
+                <button type="button" class="toggle-container" id="toggleContainer"
+                    data-i18n-aria="a11y.theme_light" aria-label="Theme: light. Activate to switch to dark."
+                    data-i18n-hint="hint.theme_toggle" data-hint="Switch between light and dark theme">
+                    <span class="toggle-button" id="toggleButton" aria-hidden="true"></span>
+                </button>
+                <button type="button" id="settingsBtn" class="settings-btn" data-i18n-hint="hint.app_settings"
+                    data-hint="App Settings" aria-haspopup="dialog" aria-expanded="false"><span
+                        aria-hidden="true">⚙️</span><span class="sr-only" data-i18n="hint.app_settings">App
+                        Settings</span></button>
+            </header>
+            <aside id="top-left-scrollable" aria-label="Settings and data sources">
                 <div class="section hidden" style="position: static;" id="meas-mode-section">
                     <div class="section" id="top-left-dir-section">
-                        <h2 class="folder-section-toggle"
-                            onclick="toggleFolderList('top-folder-collapse', 'top-folder-chevron')">
+                        <h2>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="top-folder-collapse"
+                        onclick="toggleFolderList('top-folder-collapse', 'top-folder-chevron', this)">
                             <span data-i18n="nav.data_folder">Data Folder</span>
-                            <span id="top-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
-                        </h2>
+                            <span id="top-folder-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span>
+                        </button>
+                </h2>
 
                         <div id="top-folder-collapse" class="folder-list-collapse collapsed">
                             <div style="display:flex; gap:4px; margin-top:5px; align-items:center;">
-                                <input type="text" id="folder-search-top" data-i18n-ph="ph.search_folders" placeholder="Search folders…"
+                                <input type="text" id="folder-search-top" data-i18n-aria="a11y.field.folder_search" aria-label="Search data folders" data-i18n-ph="ph.search_folders" placeholder="Search folders…"
                                     oninput="filterDataFolderList('data-folder-list-top', this.value)"
                                     style="flex:1; padding:3px 5px;">
-                                <button onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
-                                <button onclick="createDataFolder()" data-i18n-hint="hint.new_folder" data-hint="Create a new empty data folder" style="padding:3px 7px;">＋</button>
+                                <button onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;" type="button" data-i18n-aria="a11y.action.refresh_folders" aria-label="Refresh the folder list"><span aria-hidden="true">↻</span></button>
+                                <button onclick="createDataFolder()" data-i18n-hint="hint.new_folder" data-hint="Create a new empty data folder" style="padding:3px 7px;" type="button" data-i18n-aria="a11y.action.new_folder" aria-label="Create a new empty data folder"><span aria-hidden="true">＋</span></button>
                             </div>
                             <div id="data-folder-list-top" class="dir-blocks scrollbar-style"></div>
                         </div>
@@ -351,7 +390,7 @@
                         <span data-i18n="bug.report">🐞 Report a Bug</span>
                     </button>
                 </div>
-            </div>
+            </aside><!-- #top-left-scrollable -->
         </div>
         <!-- Initial prompt shown on page load -->
         <div id="init-prompt">
@@ -392,17 +431,20 @@
                 </button>
             </div>
         </div>
-        <div id="main-content" class="hidden">
+        <main id="main-content" class="hidden" tabindex="-1">
             <div class="section" id="main-directory-section">
-                <h2 class="folder-section-toggle"
-                    onclick="toggleFolderList('main-folder-collapse', 'main-folder-chevron')">
+                <h2>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="main-folder-collapse"
+                        onclick="toggleFolderList('main-folder-collapse', 'main-folder-chevron', this)">
                     <span data-i18n="nav.data_folder">Data Folder</span>
-                    <span id="main-folder-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    <span id="main-folder-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span>
+                </button>
                 </h2>
 
                 <div id="main-folder-collapse" class="folder-list-collapse collapsed">
                     <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-                        <input type="text" id="folder-search-main" data-i18n-ph="ph.search_folders" placeholder="Search folders…"
+                        <input type="text" id="folder-search-main" data-i18n-aria="a11y.field.folder_search" aria-label="Search data folders" data-i18n-ph="ph.search_folders" placeholder="Search folders…"
                             oninput="filterDataFolderList('data-folder-list', this.value)"
                             style="flex:1; padding:4px 6px;">
                         <button onclick="loadDataFolders()" data-i18n="btn.refresh" data-i18n-hint="hint.refresh_folders" data-hint="Refresh folder list">↻ Refresh</button>
@@ -412,11 +454,15 @@
                         <div style="color:#999; padding:6px;" data-i18n="nav.loading_folders">Loading folders…</div>
                     </div>
                 </div>
-                <div id="error-message"></div>
+                <div id="error-message" role="alert" aria-live="assertive"></div>
             </div>
             <div class="section script-controls" id="log-cdc-data">
-                <h2 class="folder-section-toggle" onclick="toggleFolderList('cdc-collapse', 'cdc-chevron')"><span data-i18n="cdc.title">Reading
-                    Colorimetric Data</span> <span id="cdc-chevron" class="folder-chevron">▼</span></h2>
+                <h2>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="true" aria-controls="cdc-collapse"
+                        onclick="toggleFolderList('cdc-collapse', 'cdc-chevron', this)"><span data-i18n="cdc.title">Reading
+                    Colorimetric Data</span> <span id="cdc-chevron" class="folder-chevron" aria-hidden="true">▼</span></button>
+                </h2>
                 <div id="cdc-collapse" class="section-collapse">
                     <div id="cdc-save-section" style="margin-bottom:8px;">
                         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -426,19 +472,19 @@
                                     onchange="onCdcSaveModeChange()"> <span data-i18n="cdc.existing">Existing</span>
                             </label>
                             <div id="cdc-existing-row" style="display:flex; gap:5px; align-items:center;">
-                                <select id="cdc-subfolder-select" onchange="onCdcSubfolderChange(this)"
+                                <select id="cdc-subfolder-select" data-i18n-aria="a11y.field.cdc_subfolder" aria-label="Existing subfolder to save readings into" onchange="onCdcSubfolderChange(this)"
                                     style="max-width:280px;">
                                     <option value="" data-i18n="cdc.data_root_option">— data root —</option>
                                 </select>
                                 <button type="button" onclick="loadDataFolders()" data-i18n-hint="hint.refresh_list" data-hint="Refresh list"
-                                    style="padding:2px 6px;">↻</button>
+                                    style="padding:2px 6px;" data-i18n-aria="a11y.action.refresh_list" aria-label="Refresh list"><span aria-hidden="true">↻</span></button>
                             </div>
                             <label style="display:flex; align-items:center; gap:4px; white-space:nowrap;">
                                 <input type="radio" name="cdc-save-mode" id="cdc-mode-new" value="new"
                                     onchange="onCdcSaveModeChange()"> <span data-i18n="cdc.new">New</span>
                             </label>
                             <div id="cdc-new-row" style="display:none; align-items:center; gap:4px;">
-                                <input type="text" id="cdc-new-folder-name" data-i18n-ph="ph.new_subfolder" placeholder="New subfolder name"
+                                <input type="text" id="cdc-new-folder-name" data-i18n-aria="a11y.field.cdc_new_folder" aria-label="New subfolder name" data-i18n-ph="ph.new_subfolder" placeholder="New subfolder name"
                                     style="width:200px;" oninput="validateFileName('cdc-new-folder-name')">
                                 <span id="cdc-new-folder-name-error" class="error"></span>
                             </div>
@@ -454,8 +500,8 @@
                     <div id="timeout-control">
                         <label data-i18n="cdc.timeout">Timeout: </label>
                         <input type="checkbox" id="inf-timeout" data-i18n-hint="hint.inf_timeout" data-hint="Keep reading with no time limit until you press Stop"><span style="font-weight: bold;" data-i18n="cdc.infinite">Infinite</span></input>
-                        <input type="number" id="timeout" value="" min="0" style="width: 5em;"></input>
-                        <select id="timeout-unit">
+                        <input type="number" id="timeout" data-i18n-aria="a11y.field.timeout" aria-label="Timeout value" value="" min="0" style="width: 5em;"></input>
+                        <select id="timeout-unit" data-i18n-aria="a11y.field.timeout_unit" aria-label="Timeout unit">
                             {% for unit in range_input.units %}
                             <option value="{{ unit }}">{{ unit }}</option>
                             {% endfor %}
@@ -463,8 +509,8 @@
                     </div>
                     <div id="interval-control">
                         <label data-i18n="cdc.interval">Interval: </label>
-                        <input type="number" id="interval" value="" min="0" style="width: 5em;"></input>
-                        <select id="interval-unit">
+                        <input type="number" id="interval" data-i18n-aria="a11y.field.interval" aria-label="Interval value" value="" min="0" style="width: 5em;"></input>
+                        <select id="interval-unit" data-i18n-aria="a11y.field.interval_unit" aria-label="Interval unit">
                             {% for unit in range_input.units %}
                             <option value="{{ unit }}">{{ unit }}</option>
                             {% endfor %}
@@ -550,9 +596,13 @@
                  does *in the device's current screen*, which is the thing the
                  keypad itself cannot tell you. See Rule.md 2.35. -->
             <div class="section" id="device-control-section">
-                <h2 class="folder-section-toggle" onclick="toggleDeviceController()">
+                <h2>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="device-control-collapse"
+                        onclick="toggleDeviceController()">
                     <span data-i18n="devctl.title">Device Controller</span>
-                    <span id="device-control-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                    <span id="device-control-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span>
+                </button>
                 </h2>
                 <div id="device-control-collapse" class="section-collapse collapsed">
                     <!-- The status strip carries the connection switch: turning it
@@ -680,9 +730,9 @@
                                     <span class="devctl-label" data-i18n="devctl.conc_on_device">On device</span>
                                     <span id="devctl-conc-current" class="devctl-value devctl-value--num">—</span>
                                 </span>
-                                <input type="number" id="devctl-conc-value" class="devctl-conc-input" min="0" step="any"
+                                <input type="number" id="devctl-conc-value" data-i18n-aria="a11y.field.devctl_conc" aria-label="Concentration to write to the device" class="devctl-conc-input" min="0" step="any"
                                     data-i18n-ph="devctl.conc_placeholder" placeholder="Value">
-                                <select id="devctl-conc-unit" class="devctl-conc-unit"></select>
+                                <select id="devctl-conc-unit" data-i18n-aria="a11y.field.devctl_conc_unit" aria-label="Concentration unit" class="devctl-conc-unit"></select>
                                 <button type="button" id="devctl-conc-set" onclick="applyDeviceConcentration()"
                                     data-i18n="devctl.conc_set" data-i18n-hint="hint.devctl_conc_set"
                                     data-hint="Send this value to the device and save it as the session's concentration.">Set</button>
@@ -875,26 +925,31 @@
                 </button>
             </div>
             <div class="section" id="cal-json-sel-section">
-                <h2 class="folder-section-toggle" onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron')">
-                    <span data-i18n="caljson.select_coefficients">Select Coefficients for standard curve</span> <span id="json-sel-chevron" class="folder-chevron collapsed-chevron">▼</span>
+                <h2>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="json-sel-collapse"
+                        onclick="toggleFolderList('json-sel-collapse', 'json-sel-chevron', this)">
+                    <span data-i18n="caljson.select_coefficients">Select Coefficients for standard curve</span> <span id="json-sel-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span>
+                </button>
                 </h2>
                 <div id="json-sel-collapse" class="section-collapse collapsed">
-                    <input type="text" id="json-search" oninput="filterTable('json-table', this.value)"
+                    <input type="text" id="json-search" data-i18n-aria="a11y.field.json_search" aria-label="Search calibration coefficient files" oninput="filterTable('json-table', this.value)"
                         data-i18n-ph="ph.search_identity" placeholder="Search: name [meas] [unit] [concen]"
                         data-i18n-hint="hint.search_identity"
                         data-hint="Space-separated positional filters (all AND-ed): name, then measurement, unit, ConcenUnit. Use - to skip a position; quote values with spaces, e.g. std &quot;Total Protein&quot; AU nM."
                         style="width: 100%; margin-bottom: 10px; padding: 5px; box-sizing: border-box;">
                     <div class="scrollbar-style file-table-container">
                         <table id="json-table" class="table">
-                            <tr>
-                                <th class="sortable-th" onclick="sortJsonTable('name')"
+                            <caption class="sr-only" data-i18n="a11y.caption_json_table">Calibration coefficient files, with select, delete and edit actions on each row</caption>
+                            <thead><tr>
+                                <th scope="col" aria-sort="{{ 'ascending' if file_sort_order == 'name_asc' else ('descending' if file_sort_order == 'name_desc' else 'none') }}" class="sortable-th" data-sort-call="sortJsonTable('name')"
                                     data-i18n-hint="hint.sort_by_name" data-hint="Click to sort by name"><span data-i18n="table.calibrated_json">Calibrated JSON</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('name') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
-                                <th class="sortable-th" onclick="sortJsonTable('date')"
+                                <th scope="col" aria-sort="{{ 'ascending' if file_sort_order == 'date_asc' else ('descending' if file_sort_order == 'date_desc' else 'none') }}" class="sortable-th" data-sort-call="sortJsonTable('date')"
                                     data-i18n-hint="hint.sort_by_date" data-hint="Click to sort by last modified date"><span data-i18n="table.modified">Modified</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('date') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
-                                <th colspan="3" data-i18n="table.action">Action</th>
-                            </tr>
+                                <th scope="col" colspan="3" data-i18n="table.action">Action</th>
+                            </tr></thead>
                             {% if cal_json_list %}
                             {% for file in cal_json_list %}
                             <tr>
@@ -921,11 +976,14 @@
                 </div>
             </div>
             <div class="section" id="file-selection" tabindex="-1">
-                <h2 id="file-selection-header" class="folder-section-toggle"
-                    onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron')"><span id="file-selection-label" data-i18n="files.title">File Selection</span> <span
-                        id="file-sel-chevron" class="folder-chevron">▼</span></h2>
+                <h2 id="file-selection-header">
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="true" aria-controls="file-sel-collapse"
+                        onclick="toggleFolderList('file-sel-collapse', 'file-sel-chevron', this)"><span id="file-selection-label" data-i18n="files.title">File Selection</span> <span
+                        id="file-sel-chevron" class="folder-chevron" aria-hidden="true">▼</span></button>
+                </h2>
                 <div id="file-sel-collapse" class="section-collapse">
-                    <input type="text" id="file-search" oninput="filterTable('file-table', this.value)"
+                    <input type="text" id="file-search" data-i18n-aria="a11y.field.file_search" aria-label="Search data files" oninput="filterTable('file-table', this.value)"
                         data-i18n-ph="ph.search_identity" placeholder="Search: name [meas] [unit] [concen]"
                         data-i18n-hint="hint.search_identity"
                         data-hint="Space-separated positional filters (all AND-ed): name, then measurement, unit, ConcenUnit. Use - to skip a position; quote values with spaces, e.g. std &quot;Total Protein&quot; AU nM."
@@ -937,17 +995,16 @@
                     </div>
                     <div class="scrollbar-style file-table-container">
                         <table id="file-table" class="table">
-                            <tr>
-                                <th id="file-table-header-name" class="sortable-th"
-                                    onclick="sortFileTable('name')"
+                            <caption class="sr-only" data-i18n="a11y.caption_file_table">Data files, with select, delete and edit actions on each row</caption>
+                            <thead><tr>
+                                <th scope="col" aria-sort="{{ 'ascending' if file_sort_order == 'name_asc' else ('descending' if file_sort_order == 'name_desc' else 'none') }}" id="file-table-header-name" class="sortable-th" data-sort-call="sortFileTable('name')"
                                     data-i18n-hint="hint.sort_by_filename" data-hint="Click to sort by file name"><span data-i18n="table.file_name">File Name</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('name') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
-                                <th id="file-table-header-date" class="sortable-th"
-                                    onclick="sortFileTable('date')"
+                                <th scope="col" aria-sort="{{ 'ascending' if file_sort_order == 'date_asc' else ('descending' if file_sort_order == 'date_desc' else 'none') }}" id="file-table-header-date" class="sortable-th" data-sort-call="sortFileTable('date')"
                                     data-i18n-hint="hint.sort_by_date" data-hint="Click to sort by last modified date"><span data-i18n="table.modified">Modified</span> <span
                                         class="sort-arrow">{% if file_sort_order and file_sort_order.startswith('date') %}{{ '▲' if file_sort_order.endswith('asc') else '▼' }}{% endif %}</span></th>
-                                <th colspan="3" data-i18n="table.action">Action</th>
-                            </tr>
+                                <th scope="col" colspan="3" data-i18n="table.action">Action</th>
+                            </tr></thead>
                             {% if file_list %}
                             {% for file in file_list %}
                             <tr>
@@ -1036,12 +1093,12 @@
                     data-i18n-hint="hint.window_size"
                     data-hint="Number of consecutive data points used to compute each local slope for maxRate regression (minimum: 3). Larger windows smooth noise; smaller windows track fast changes.">
                     <span data-i18n="display.window_size">Select window size for maxRate regression</span>
-                    <input type="number" id="window-size" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
+                    <input type="number" id="window-size" data-i18n-aria="a11y.field.window_size" aria-label="Window size for the maxRate regression" value="4" min="3" style="width: 5em;" onchange="toggleMode()">
                     <div id="wd-size-error"></div>
                 </div>
                 <div class="section" id="select-quantity-section">
                     <span data-i18n="display.select_quantity">Select quantity to derive concentration from</span>
-                    <select id="regressed-quantity" onchange="toggleMode()">
+                    <select id="regressed-quantity" data-i18n-aria="a11y.field.quantity" aria-label="Quantity to regress" onchange="toggleMode()">
                         {% for quantity in quantity_input.quantities %}
                         {% set transformed = quantity.lower().replace(' ', '_') %}
                         <option value="{{ transformed }}" data-original="{{ quantity }}">{{ quantity }}</option>
@@ -1050,13 +1107,13 @@
                 </div>
                 <div id="select-time-point">
                     <span data-i18n="display.select_time_point">Select time point to derive concentration from</span>
-                    <select id="regressed-time-point" onchange="toggleMode()">
+                    <select id="regressed-time-point" data-i18n-aria="a11y.field.time_point" aria-label="Time point to regress" onchange="toggleMode()">
                         <option value="">ALL</option>
                     </select> <span style="font-weight: bold;"> minute</span>
                 </div>
                 <div id="select-regress-algo">
                     <span data-i18n="display.select_regress_algo">Select Regress Algo to export:</span>
-                    <select id="exp-json-regress-algo" onchange="toggleMode()">
+                    <select id="exp-json-regress-algo" data-i18n-aria="a11y.field.regress_algo" aria-label="Regression algorithm" onchange="toggleMode()">
                         <option value="polynomial">polynomial</option>
                         <option value="linear">linear</option>
                         <option value="logarithmic">logarithmic</option>
@@ -1069,15 +1126,19 @@
                     <!-- Display range (From/To + Save Range/Normalize) is hidden in
                          point mode; the Time unit selector below is kept because the
                          point-mode chart axis / reference point still need it. -->
-                    <h3 id="range-display-header" class="folder-section-toggle" onclick="toggleFolderList('range-collapse', 'range-chevron')"><span data-i18n="display.range_title">{{
-                        range_input.title }}</span> <span id="range-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <h3 id="range-display-header">
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="range-collapse"
+                        onclick="toggleFolderList('range-collapse', 'range-chevron', this)"><span data-i18n="display.range_title">{{
+                        range_input.title }}</span> <span id="range-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span></button>
+                </h3>
                     <div id="range-collapse" class="section-collapse collapsed">
                         <span data-i18n="display.range_from">From</span>
-                        <input type="number" id="range-value-start" value="{{ range_input.value_start }}" min="0"
+                        <input type="number" id="range-value-start" data-i18n-aria="a11y.field.range_from" aria-label="Display range, from" value="{{ range_input.value_start }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
                             style="width: {{ [6, range_input.value_start|string|length + 5]|max }}ch;">
                         <span data-i18n="display.range_to">To</span>
-                        <input type="number" id="range-value-end" value="{{ range_input.value_end }}" min="0"
+                        <input type="number" id="range-value-end" data-i18n-aria="a11y.field.range_to" aria-label="Display range, to" value="{{ range_input.value_end }}" min="0"
                             onchange="toggleMode()" oninput="adjustInputWidth(this)"
                             style="width: {{ [6, range_input.value_end|string|length + 5]|max }}ch;">
                         <span id="range-value-error" class="error"></span>
@@ -1088,7 +1149,7 @@
                     </div>
                     <div id="time-unit-row" style="margin-top:4px;">
                         <span data-i18n="display.time_unit_label" style="font-weight:600;">Time unit:</span>
-                        <select id="time-unit" onchange="toggleMode()">
+                        <select id="time-unit" data-i18n-aria="a11y.field.time_unit" aria-label="Time unit" onchange="toggleMode()">
                             {% for unit in range_input.units %}
                             <option value="{{ unit }}">{{ unit }}</option>
                             {% endfor %}
@@ -1108,7 +1169,8 @@
                         Analyses</span>
                     </label>
                 </div>
-                <div id="chart-container" tabindex="-1" class="scrollbar-style">
+                <div id="chart-container" tabindex="-1" class="scrollbar-style" role="region"
+                    aria-label="Charts and analyses">
                     <!-- Chart sections will be dynamically generated by updatePlot -->
                 </div>
                 <div id="select-source-to-export">
@@ -1124,12 +1186,15 @@
                     </div>
                 </div>
                 <div id="export-analysis">
-                    <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron')"><span data-i18n="export.analysis_title">Export
-                        analysis for Calibration</span> <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <h3>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="export-analysis-collapse"
+                        onclick="toggleFolderList('export-analysis-collapse', 'export-analysis-chevron', this)"><span data-i18n="export.analysis_title">Export
+                        analysis for Calibration</span> <span id="export-analysis-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span></button>
+                </h3>
                     <div id="export-analysis-collapse" class="section-collapse collapsed">
                         <div class="section" id="set-exp-point-section">
-                            <span data-i18n="export.set_reference_point">Set reference point to export:</span> <input type="number" id="exp-json-time-value"
+                            <span data-i18n="export.set_reference_point">Set reference point to export:</span> <input type="number" id="exp-json-time-value" data-i18n-aria="a11y.field.ref_point" aria-label="Reference point to export"
                                 style="width: 5em;"> <span id="exp-json-time-unit-label" style="font-weight: bold;"> second. </span>
                             <br />
                             <span id="est-val-error" class="error"></span>
@@ -1159,11 +1224,11 @@
                         <div id="exp-subfolder-row"
                             style="display:none; margin-bottom:6px; align-items:center; gap:6px;">
                             <label style="font-weight:600;" data-i18n="export.save_to_subfolder">Save to subfolder:</label>
-                            <select id="exp-subfolder-select" onchange="onExpSubfolderChange(this)"
+                            <select id="exp-subfolder-select" data-i18n-aria="a11y.field.exp_subfolder" aria-label="Subfolder to save the calibration file into" onchange="onExpSubfolderChange(this)"
                                 style="flex:1; max-width:280px;">
                                 <option value="" data-path="" data-i18n="cdc.data_root_option">— data root —</option>
                             </select>
-                            <button type="button" onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;">↻</button>
+                            <button type="button" onclick="loadDataFolders()" data-i18n-hint="hint.refresh_folders" data-hint="Refresh the folder list" style="padding:3px 7px;" data-i18n-aria="a11y.action.refresh_folders" aria-label="Refresh the folder list"><span aria-hidden="true">↻</span></button>
                         </div>
                         <div class="export-row">
                             <label for="save-file" data-i18n="export.file_name">File Name: </label>
@@ -1184,9 +1249,12 @@
                     </div>
                 </div>
                 <div id="export-coef">
-                    <h3 class="folder-section-toggle"
-                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron')"><span data-i18n="export.coef_title">Export coefficients
-                        for standard curve</span> <span id="export-coef-chevron" class="folder-chevron collapsed-chevron">▼</span></h3>
+                    <h3>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="false" aria-controls="export-coef-collapse"
+                        onclick="toggleFolderList('export-coef-collapse', 'export-coef-chevron', this)"><span data-i18n="export.coef_title">Export coefficients
+                        for standard curve</span> <span id="export-coef-chevron" class="folder-chevron collapsed-chevron" aria-hidden="true">▼</span></button>
+                </h3>
                     <div id="export-coef-collapse" class="section-collapse collapsed">
                         <div style="display:flex; gap:16px; margin-bottom:6px;">
                             <label style="display:flex; align-items:center; gap:4px;">
@@ -1207,10 +1275,10 @@
                         </div>
                         <div id="json-overwrite-row" style="display:none; align-items:center; gap:6px;">
                             <label style="font-weight:600;" data-i18n="export.existing_file">Existing file:</label>
-                            <select id="json-overwrite-select" style="flex:1; max-width:300px;">
+                            <select id="json-overwrite-select" data-i18n-aria="a11y.field.json_overwrite" aria-label="Existing calibration file to overwrite" style="flex:1; max-width:300px;">
                                 <option value="" data-i18n="export.select_calibrate_file">— select a calibrate file —</option>
                             </select>
-                            <button type="button" onclick="loadExistingJsonFiles()" data-i18n-hint="hint.refresh_cal_list" data-hint="Refresh the calibration file list" style="padding:3px 7px;">↻</button>
+                            <button type="button" onclick="loadExistingJsonFiles()" data-i18n-hint="hint.refresh_cal_list" data-hint="Refresh the calibration file list" style="padding:3px 7px;" data-i18n-aria="a11y.action.refresh_cal_list" aria-label="Refresh the calibration file list"><span aria-hidden="true">↻</span></button>
                         </div>
                         <br>
                         <button id="export-json-btn" onclick="exportJSONCoef()"
@@ -1218,13 +1286,17 @@
                         <button id="export-excel-formula-btn" onclick="exportExcelFormula()"
                             data-i18n="btn.excel_formula" data-i18n-hint="hint.excel_formula" data-hint="Build ready-to-paste Excel formulas from the fitted standard-curve coefficients">📐 Excel formula</button>
                         <br />
-                        <span data-i18n="export.threshold_rsquared">Enter the threshold value for rSquared</span> <input type="number" id="threshold-value" value="0"
+                        <span data-i18n="export.threshold_rsquared">Enter the threshold value for rSquared</span> <input type="number" id="threshold-value" data-i18n-aria="a11y.field.threshold" aria-label="Minimum R squared required to export" value="0"
                             style="width:10%;">
                     </div>
                 </div>
                 <div id="report-section">
-                    <h3 class="folder-section-toggle" onclick="toggleFolderList('report-collapse', 'report-chevron')">
-                        <span data-i18n="report.section_title">Report</span> <span id="report-chevron" class="folder-chevron">▼</span></h3>
+                    <h3>
+                    <button type="button" class="folder-section-toggle"
+                        aria-expanded="true" aria-controls="report-collapse"
+                        onclick="toggleFolderList('report-collapse', 'report-chevron', this)">
+                        <span data-i18n="report.section_title">Report</span> <span id="report-chevron" class="folder-chevron" aria-hidden="true">▼</span></button>
+                </h3>
                     <div id="report-collapse" class="section-collapse">
                         <button id="generate-report-btn" onclick="generateReport()" class="utility-btn"
                             data-i18n="report.generate_quick" data-i18n-hint="hint.generate_quick"
@@ -1242,18 +1314,18 @@
                                         value="existing" checked onchange="onReportSaveModeChange()"> <span data-i18n="cdc.existing">Existing</span>
                                 </label>
                                 <div id="report-existing-row" style="display:flex; gap:5px; align-items:center;">
-                                    <select id="report-subject-select" style="flex:1; max-width:250px;">
+                                    <select id="report-subject-select" data-i18n-aria="a11y.field.report_subject" aria-label="Report subject folder" style="flex:1; max-width:250px;">
                                         <option value="" data-i18n="report.select_subject_option">— select subject —</option>
                                     </select>
                                     <button type="button" onclick="loadReportSubjectsForPicker()"
-                                        data-i18n-hint="hint.refresh_subjects" data-hint="Refresh the report subject list" style="padding:3px 7px;">↻</button>
+                                        data-i18n-hint="hint.refresh_subjects" data-hint="Refresh the report subject list" style="padding:3px 7px;" data-i18n-aria="a11y.action.refresh_subjects" aria-label="Refresh the report subject list"><span aria-hidden="true">↻</span></button>
                                 </div>
                                 <label style="display:flex; align-items:center; gap:4px;">
                                     <input type="radio" name="report-save-mode" id="report-mode-new" value="new"
                                         onchange="onReportSaveModeChange()"> <span data-i18n="cdc.new">New</span>
                                 </label>
                                 <div id="report-new-row" style="display:none; align-items:center; gap:4px;">
-                                    <input type="text" id="report-subject-name" data-i18n-ph="ph.new_subject_name" placeholder="new subject name"
+                                    <input type="text" id="report-subject-name" data-i18n-aria="a11y.field.report_new" aria-label="New report subject name" data-i18n-ph="ph.new_subject_name" placeholder="new subject name"
                                         style="width: 150px;">
                                 </div>
                             </div>
@@ -1261,7 +1333,7 @@
                     </div>
                 </div>
             </div>
-            <footer id="footer" style="font-size: 0.8rem; color: #95a5a6; text-align: center;">
+            <footer id="footer" style="font-size: 0.8rem; color: #5c666c; text-align: center;">
                 © 2025 - <span id="year"></span> CBBiotec. All rights reserved.
                 <!-- Served from the bundled copies, so these open with no network. -->
                 &nbsp;·&nbsp;<a href="/legal/eula" style="color: inherit;">Licence</a>
@@ -1269,13 +1341,13 @@
                 &nbsp;·&nbsp;<span title="Easy OKAPI is a research tool, not a medical device">Research use only —
                     not for diagnostic use</span>
             </footer>
-        </div>
-        <div class="top-right hidden" id="top-right">
+        </main>
+        <aside class="top-right hidden" id="top-right" aria-label="Calibration coefficients">
             <div id="json-display" style="overflow-y: auto; max-height: 70vh; width: 100%;"
                 class="hidden scrollbar-style"></div>
             <button id="right-deselect-btn" class="hidden utility-btn" onclick="deselectFile('#json-table')"
                 style="cursor: pointer;" data-i18n="btn.deselect">Deselect</button>
-        </div>
+        </aside>
 
         <script>
             // Get top-left height as reference to reflect in top-right
@@ -1359,6 +1431,7 @@
         <script src="{{ url_for('static', filename='script/tooltip.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/short-hands.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/i18n.js') }}?v={{ STATIC_VERSION }}"></script>
+        <script src="{{ url_for('static', filename='script/a11y.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/init.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/cdc-logging.js') }}?v={{ STATIC_VERSION }}"></script>
         <script src="{{ url_for('static', filename='script/live-stream.js') }}?v={{ STATIC_VERSION }}"></script>

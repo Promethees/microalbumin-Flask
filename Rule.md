@@ -780,6 +780,70 @@ Timestamp,Value:1,Value:2,...
 
 ---
 
+### 2.36 Accessibility — WCAG 2.2 Level AA is a published claim, not an aspiration
+
+- **The claim is public and dated.** The statement at
+  <https://www.easyokapi.cbbiotec.vn/accessibility> (served from the `online`
+  branch) covers **this app and its installers too**, and says they are
+  *partially conformant* with WCAG 2.2 Level AA with the gaps named. Breaking a
+  criterion here does not merely degrade the UI — it makes a published
+  statement false. If you cannot fix a barrier, **add it to the limitations
+  list on that page with a workaround**, and to
+  `docs/accessibility/INSTALLERS.md` if it is an installer.
+- **Three files carry the primitives** and must stay in step:
+  `static/style.css` (the `ACCESSIBILITY (WCAG 2.2 Level AA)` block),
+  `templates/_a11y_head.html` (the standalone pages — legal viewer, activation,
+  licence, restart/goodbye — which load no stylesheet), and
+  `static/script/a11y.js`. Skip link, `.sr-only`, `:focus-visible`, reduced
+  motion, forced colours, 24px targets.
+- **Never remove a focus indicator.** `outline: none` is allowed only where a
+  later `:focus-visible` rule replaces it. The rings are two-toned (dark core +
+  light halo) so they clear 3:1 on either theme and over any control fill.
+- **A click handler belongs on a control.** No `onclick` on a `<div>`, an
+  `<img>`, a `<span>` or a heading — it cannot be reached by keyboard and has
+  no role. The section headings are `<h2><button class="folder-section-toggle">`;
+  `toggleFolderList(collapseId, chevronId, trigger)` keeps `aria-expanded` in
+  step, and the chevron is `aria-hidden` decoration. The scroll-to-top logo, the
+  theme cycle, the version badge and both update-banner actions are buttons for
+  the same reason — each is in the `:not(...)` list on the global button rule so
+  it keeps its own appearance.
+- **A sortable column header is a control.** The template marks it
+  `data-sort-call="sortFileTable('name')"` (never `onclick`) and
+  `upgradeSortableHeaders()` in `a11y.js` promotes it to the same
+  `<th aria-sort><button class="sort-btn">` the JS renderers build, so the
+  server's first paint and the first re-render agree.
+- **A collapsed panel must leave the tab order.** `.section-collapse.collapsed`
+  carries `visibility: hidden` (delayed one transition) as well as
+  `max-height: 0`; without it the keyboard walks into invisible buttons.
+- **Announce, don't just render.** `announce()` (polite) and `announceAlert()`
+  (assertive) in `short-hands.js` write into the two live regions that ship in
+  `index.html`. They must exist from first paint and must never be
+  `display: none`. `$showText` announces every error it displays.
+- **A `<canvas>` is not content.** `generateChart` calls `buildChartDataTable`
+  (`a11y.js`), which names the canvas and publishes the same numbers as a real
+  table, built only when the reader opens it. Do not add a chart without one.
+- **Table renderers rebuild their own semantics.** `renderFileRows`,
+  `renderJsonRows` and `renderReportRows` replace the whole `<table>` with
+  `innerHTML`, discarding the caption, `<thead>` and `scope` the template
+  shipped — `_tableCaption()` / `_sortHeaderCell()` put them back, and
+  `_rowBtnLabel()` gives each row button a name that says which row it acts on.
+- **Every new control needs a name in seven catalogs** (§2.22 applies
+  unchanged). Use `data-i18n-aria="key"` for a name that is not visible text;
+  `i18n.js` maps it to `aria-label`.
+- **The installers are in scope.** Keyboard-only completion, a labelled control
+  for every field, text progress, no timed step, and a documented non-graphical
+  route on every platform. Windows High Contrast must survive: `DetectHighContrast`
+  + the `$HighContrast` guard on every `_Dark*` helper in `installer-win/*.nsi`.
+  **If you add another theming helper, add the guard.** Never introduce a timed
+  dialogue — `giving up after` is banned in `osascript` for that reason.
+- **`tests/test_accessibility.py` is the guard.** Static analysis over the
+  templates, stylesheets and scripts: a deleted label, a lost skip link, an
+  unlabelled icon button, a table that lost its `scope`. It cannot replace a
+  screen reader, and the published statement says as much — automated checks
+  are a floor, roughly a third of what matters.
+
+---
+
 ## 3. Autonomous Documentation Updates
 
 - **Self-Reflection Request**: Upon completing any significant task, feature implementation, or architectural change before returning control to the user, you **MUST** evaluate if updates are required for `Rule.md` or `easyokapi-knowledge/EASY OKAPI.md`.
