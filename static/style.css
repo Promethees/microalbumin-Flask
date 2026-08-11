@@ -2385,12 +2385,27 @@ body.dark .account-nav-label { color: #9ca3af; }
     border-radius: 5px;
     text-decoration: none;
     transition: background 0.15s, color 0.15s;
+    /* The outlined variants (Log In, Log out, Delete) carry a 1.5px border and
+       the filled ones do not. There is no universal `box-sizing` in this file,
+       so the outlined buttons came out 3px taller and 3px wider than the
+       filled ones standing next to them. A transparent border of the same
+       width on the base, plus border-box, makes every variant the same box. */
+    box-sizing: border-box;
+    border: 1.5px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .signup-btn {
     background: #2d6a4f;
     color: #fff;
 }
 .signup-btn:hover { background: #1b4332; }
+body.dark .signup-btn {
+    background: #6ee7b7;
+    color: #052e16;
+}
+body.dark .signup-btn:hover { background: #34d399; }
 .login-btn {
     background: transparent;
     color: #2d6a4f;
@@ -2415,6 +2430,11 @@ body.dark .logout-btn:hover { background: #450a0a33; }
     cursor: pointer;
 }
 .token-btn:hover { background: #1e40af; }
+body.dark .token-btn {
+    background: #93c5fd;
+    color: #0b1220;
+}
+body.dark .token-btn:hover { background: #60a5fa; }
 .delete-account-btn {
     background: transparent;
     color: #b91c1c;
