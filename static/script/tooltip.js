@@ -23,6 +23,8 @@
     let current = null;
     let showTimer = null;
     let hideTimer = null;
+    let shownByFocus = false; // keyboard-shown hints own the Escape key; see below
+    let scrollRaf = 0;        // rAF handle so scroll repositioning runs once a frame
 
     function ensureTip() {
         if (tip) return tip;
@@ -33,9 +35,12 @@
         return tip;
     }
 
-    function place(el) {
+    // `rect` lets a caller that has already measured the target hand the
+    // measurement in, so repositioning during a scroll costs one forced layout
+    // a frame rather than two.
+    function place(el, rect) {
         const t = ensureTip();
-        const r = el.getBoundingClientRect();
+        const r = rect || el.getBoundingClientRect();
         const tr = t.getBoundingClientRect(); // measured at current (wrapped) size
 
         let placement = 'top';
@@ -58,12 +63,13 @@
         t.setAttribute('data-placement', placement);
     }
 
-    function show(el) {
+    function show(el, viaFocus) {
         const text = el.getAttribute('data-hint');
         if (!text) return;
         const t = ensureTip();
         t.textContent = text;
         current = el;
+        shownByFocus = !!viaFocus;
         // WCAG 4.1.2 — the bubble is a visual affordance only unless the
         // element it describes points at it. `aria-describedby` is what makes
         // a screen reader read the hint after the control's own name.
@@ -78,6 +84,7 @@
         clearTimeout(hideTimer);
         if (current) current.removeAttribute('aria-describedby');
         current = null;
+        shownByFocus = false;
         if (tip) tip.classList.remove('visible');
     }
 
@@ -102,7 +109,7 @@
         const el = e.target.closest ? e.target.closest('[data-hint]') : null;
         if (!el) return;
         clearTimeout(showTimer);
-        show(el); // keyboard focus → show immediately, no hover delay
+        show(el, true); // keyboard focus → show immediately, no hover delay
     }
 
     document.addEventListener('mouseover', onOver);
@@ -125,16 +132,49 @@
     //   persistent  — a hint stays until dismissed, focus moves, or the pointer
     //                 leaves. It is no longer removed on scroll: scrolling to
     //                 read a long hint used to close it.
+    // Escape dismisses the hint, but only a *keyboard-shown* hint swallows the
+    // key. The criterion asks for dismissal "without moving pointer hover or
+    // keyboard focus": a hover hint can already be dismissed by moving the
+    // pointer, so Escape is a convenience there, while a focus hint on a
+    // keyboard has no other way out — that is the case that needs the key.
+    //
+    // The distinction matters because this listener is on `document` at capture
+    // phase, ahead of everything: SweetAlert2 binds its own Escape on `window`
+    // at bubble phase, which is dead last, so an unconditional
+    // `stopPropagation()` here ate the key before any dialog saw it. Every
+    // control in a dialog carries `data-hint`, so resting the pointer on one
+    // was enough to make Escape stop closing the dialog with no sign why.
+    // Layered dismissal (hint first, dialog on the second press) is the APG
+    // pattern and is kept for the keyboard case, where the hint is genuinely a
+    // layer the user put there; for a hover hint the dialog wins.
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && current) {
-            e.stopPropagation();
-            hide();
-        }
+        if (e.key !== 'Escape' || !current) return;
+        if (shownByFocus) e.stopPropagation();
+        hide();
     }, true);
 
+    // Reposition rather than hide, so the hint follows its target — but at most
+    // once a frame. This listener is on `document` at capture phase because
+    // `scroll` does not bubble, which means it fires for every scroller in the
+    // app (`#top-left-scrollable`, `.file-table-container`, `.dir-blocks`, the
+    // chat log…). Calling place() straight from the event ran two forced
+    // layouts and four style writes per event, interleaved read-write — the
+    // scroll jank was the hint, not the list.
     document.addEventListener('scroll', function () {
-        // Reposition rather than hide, so the hint follows its target.
-        if (current) place(current);
+        if (!current || scrollRaf) return;
+        scrollRaf = requestAnimationFrame(function () {
+            scrollRaf = 0;
+            if (!current) return;
+            const r = current.getBoundingClientRect();
+            // Scrolled out of view entirely: the bubble would otherwise float
+            // over unrelated UI with its arrow pointing at nothing.
+            if (r.bottom < 0 || r.right < 0 ||
+                r.top > window.innerHeight || r.left > window.innerWidth) {
+                hide();
+                return;
+            }
+            place(current, r);
+        });
     }, true);
 
     document.addEventListener('mouseover', function (e) {
