@@ -5866,9 +5866,13 @@ body.dark #run-script-btn:enabled {
     justify-content: flex-start;
     gap: 2px;
     padding: 7px 9px;
-    /* Every key is the same box, whatever it happens to say on this screen. */
+    /* Every key is the same box, whatever it happens to say on this screen —
+       min-height rather than height, so the two lines can never be clipped by a
+       font, a zoom level or a translated glyph that measures a hair taller than
+       the nominal box. Every key carries the same shape (one glyph line, one
+       label line), so they still all come out the same height. */
     width: var(--devctl-key-w);
-    height: var(--devctl-key-h);
+    min-height: var(--devctl-key-h);
     background: var(--panel);
     color: var(--ink);
     border: 1px solid var(--hairline);
@@ -5905,9 +5909,14 @@ body.dark #run-script-btn:enabled {
    line — not the button's hardware name. One line, always: the key box is
    fixed, so a label longer than the box scrolls through it on a loop instead of
    re-flowing the keypad. The hover hint carries the whole string either way, so
-   nothing depends on catching the marquee at the right moment. */
+   nothing depends on catching the marquee at the right moment.
+
+   Flex, not block: the track is a flex row, and as an *inline*-flex on a line of
+   its own it picked up the strut's baseline leading — the line box came out
+   several px taller than the text it holds, which the key's overflow: hidden
+   then cut the descenders off. A flex container has no line box and no strut. */
 .devctl-btn-fn {
-    display: block;
+    display: flex;
     width: 100%;
     overflow: hidden;
     font-size: 11px;
@@ -5919,7 +5928,11 @@ body.dark #run-script-btn:enabled {
    blank sweep — the second is aria-hidden, and the shift is exactly one copy
    plus the gap, which is what makes the wrap invisible. */
 .devctl-btn-fn-track {
-    display: inline-flex;
+    display: flex;
+    /* Its width is its content's, so the marquee shift (one copy + the gap,
+       measured in JS) is the distance it actually has to travel — a shrunk
+       track would slide the wrong amount. */
+    flex: none;
     gap: 28px;
     white-space: nowrap;
 }
