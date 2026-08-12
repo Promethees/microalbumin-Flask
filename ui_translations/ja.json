@@ -1279,5 +1279,7 @@
   "a11y.theme_dark": "テーマ: ダーク。押すとシステム設定に従います。",
   "a11y.theme_auto": "テーマ: システム。押すとライトに切り替わります。",
   "a11y.points": "点",
-  "a11y.caption_report_table": "レポートの対象フォルダー。各行に選択・削除・編集の操作があります"
+  "a11y.caption_report_table": "レポートの対象フォルダー。各行に選択・削除・編集の操作があります",
+  "display.load_failed_title": "このファイルを開けません",
+  "display.load_failed": "選択したファイルを読み込めませんでした。"
 }

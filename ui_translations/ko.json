@@ -1279,5 +1279,7 @@
   "a11y.theme_dark": "테마: 어둡게. 누르면 시스템 설정을 따릅니다.",
   "a11y.theme_auto": "테마: 시스템. 누르면 밝게로 바뀝니다.",
   "a11y.points": "개 지점",
-  "a11y.caption_report_table": "보고서 주제 폴더 목록. 각 행에 선택·삭제·편집 동작이 있습니다"
+  "a11y.caption_report_table": "보고서 주제 폴더 목록. 각 행에 선택·삭제·편집 동작이 있습니다",
+  "display.load_failed_title": "이 파일을 열 수 없습니다",
+  "display.load_failed": "선택한 파일을 불러오지 못했습니다."
 }

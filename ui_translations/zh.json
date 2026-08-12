@@ -1279,5 +1279,7 @@
   "a11y.theme_dark": "主题：深色。按下可跟随系统。",
   "a11y.theme_auto": "主题：跟随系统。按下可切换为浅色。",
   "a11y.points": "个数据点",
-  "a11y.caption_report_table": "报告主题文件夹，每行含选择、删除和编辑操作"
+  "a11y.caption_report_table": "报告主题文件夹，每行含选择、删除和编辑操作",
+  "display.load_failed_title": "无法打开此文件",
+  "display.load_failed": "无法加载所选文件。"
 }

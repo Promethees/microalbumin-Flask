@@ -1279,5 +1279,7 @@
   "a11y.theme_dark": "Giao diện: tối. Kích hoạt để theo hệ thống.",
   "a11y.theme_auto": "Giao diện: theo hệ thống. Kích hoạt để chuyển sang sáng.",
   "a11y.points": "điểm",
-  "a11y.caption_report_table": "Các thư mục chủ đề báo cáo, mỗi dòng có thao tác chọn, xoá và sửa"
+  "a11y.caption_report_table": "Các thư mục chủ đề báo cáo, mỗi dòng có thao tác chọn, xoá và sửa",
+  "display.load_failed_title": "Không thể mở tệp này",
+  "display.load_failed": "Không thể tải tệp đã chọn."
 }

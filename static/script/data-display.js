@@ -1146,7 +1146,16 @@ function resetDataDisplayDefaults() {
     const subfolderRow = $id("exp-subfolder-row");
     if (subfolderRow) subfolderRow.style.display = "none";
     selectFirst("exp-subfolder-select");
-    AppState.exportPath = AppState.currentDirectory || DATA_ROOT;
+    // No `AppState.exportPath` here. The desktop branch sets it from `DATA_ROOT`
+    // — the user-selectable data folder that only a frozen desktop install has
+    // (`src/data_root.py`) — and reads it back in nine places when it writes a
+    // file to disk. This app writes nothing to disk: every file lives in the
+    // per-user session store, so `DATA_ROOT` is defined nowhere here and
+    // `exportPath` was never read. The line was pure carry-over, and its dead
+    // half threw `ReferenceError: DATA_ROOT is not defined` on an undeclared
+    // global, out of `resetDataDisplayDefaults()`, which `selectFile` calls two
+    // statements before it renders anything — so selecting a data file silently
+    // did nothing at all. Do not port it back with the next merge.
     setVal("save-file", "");
     $text("save-file-error", "");
 

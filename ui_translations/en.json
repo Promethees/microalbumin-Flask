@@ -1279,5 +1279,7 @@
   "a11y.theme_dark": "Theme: dark. Activate to follow the system.",
   "a11y.theme_auto": "Theme: system. Activate to switch to light.",
   "a11y.points": "points",
-  "a11y.caption_report_table": "Report subject folders, with select, delete and edit actions on each row"
+  "a11y.caption_report_table": "Report subject folders, with select, delete and edit actions on each row",
+  "display.load_failed_title": "Could not open this file",
+  "display.load_failed": "Could not load the selected file."
 }

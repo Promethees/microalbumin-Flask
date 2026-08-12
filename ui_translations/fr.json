@@ -1279,5 +1279,7 @@
   "a11y.theme_dark": "Thème : sombre. Activer pour suivre le système.",
   "a11y.theme_auto": "Thème : système. Activer pour passer au clair.",
   "a11y.points": "points",
-  "a11y.caption_report_table": "Dossiers de sujets de rapport, avec les actions sélectionner, supprimer et modifier sur chaque ligne"
+  "a11y.caption_report_table": "Dossiers de sujets de rapport, avec les actions sélectionner, supprimer et modifier sur chaque ligne",
+  "display.load_failed_title": "Impossible d'ouvrir ce fichier",
+  "display.load_failed": "Impossible de charger le fichier sélectionné."
 }

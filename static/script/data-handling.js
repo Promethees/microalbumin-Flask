@@ -242,6 +242,24 @@ async function selectFile(fileName, button, tableSelector = "#file-table") {
         // Smoothly scroll to section and blink
         scrollWhenVisible("data-display-section", 1000);
         blinkingItem("chart-container", 3000);
+    } catch (err) {
+        // This was `try … finally` with no catch, which is why the DATA_ROOT
+        // ReferenceError above cost a bug report to find: in an async function
+        // an uncaught throw is just a rejected promise nobody awaits, so the
+        // spinner cleared, the panel opened empty, and the only trace was a line
+        // in the console. A selection that fails half-way has to say so — the
+        // row is already highlighted and the panel already open, which reads as
+        // success.
+        console.error('selectFile failed for', fileName, err);
+        if (typeof announceAlert === 'function') {
+            announceAlert(window.t('display.load_failed', 'Could not load the selected file.'));
+        }
+        Swal.fire({
+            title: window.t('display.load_failed_title', 'Could not open this file'),
+            text: String((err && err.message) || err),
+            icon: 'error',
+            confirmButtonText: window.t('dlg.ok', 'OK')
+        });
     } finally {
         if (typeof window.hideSpinner === 'function') window.hideSpinner();
     }
