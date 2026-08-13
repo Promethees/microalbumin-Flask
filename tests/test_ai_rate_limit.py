@@ -27,7 +27,14 @@ def client(monkeypatch):
 
 
 def _post(client, messages, language='en'):
-    return client.post('/ai/chat', json={'messages': messages, 'language': language})
+    resp = client.post('/ai/chat', json={'messages': messages, 'language': language})
+    # Drain the body before returning. A 200 from /ai/chat is a
+    # stream_with_context SSE response; leaving its generator unconsumed leaves a
+    # request context pushed, and Flask >= 2.2 (contextvars, not the old
+    # _request_ctx_stack) then raises LookupError when the *next* request tries
+    # to pop it.
+    resp.get_data()
+    return resp
 
 
 def test_oversized_single_message_rejected(client):
