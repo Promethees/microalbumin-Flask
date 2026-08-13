@@ -1,45 +1,55 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Start Here
 
 Before writing any code, read these two files in order:
 
-1. **`Rule.md`** — Hard constraints, coding rules, and anti-patterns for this branch.
-2. **`easyokapi-knowledge/EASY OKAPI.md`** — Architecture, file map, route table, data formats.
+1. **`Rule.md`** — hard constraints, coding rules, anti-patterns. It is the source of
+   truth; this file is only an index into it.
+2. **`easyokapi-knowledge/EASY OKAPI.md`** — architecture, file map, route table, data formats.
+
+Every invariant below is a one-line reminder plus a `Rule.md §x` pointer. **Read the
+rule before acting on the reminder** — the rationale is what stops the anti-pattern
+recurring, and it lives in `Rule.md`, not here.
 
 ---
 
 ## Commands
 
 ```bash
-# Install dependencies (Python 3.12.11 via pyenv; single cross-platform requirements.txt; requirements-dev.txt adds test-only deps)
-pip install -r requirements.txt
+# Install (Python 3.12.11 via pyenv; requirements-dev.txt adds test-only deps)
+pip install -r requirements.txt -r requirements-dev.txt
 
-# Run the app (default port 5099, alias easyokapi.com)
+# Run (default port 5099, alias easyokapi.com)
 python main.py
 python main.py --port 5099 --alias easyokapi.com
-python main.py --verbose        # show HTTP logs + backend prints
-python main.py --mem-monitor    # enable tracemalloc memory growth tracking
+python main.py --verbose        # HTTP logs + backend prints
+python main.py --mem-monitor    # tracemalloc growth tracking
+python main.py --no-browser     # no startup tab (restart relaunches pass this — §2.20)
 
-# Run tests (exclude venv)
+# Test
 pytest tests/ --ignore=venv
-pytest tests/test_utils.py      # run a single test file
-pytest tests/ -k "test_ping"    # run a single test by name
+pytest tests/test_utils.py
+pytest tests/ -k "test_ping"
 ```
 
-**Runtime is Python 3.12.11 + Flask 3.0.3** (same pins as the `online` branch). Windows installs **3.12.10** instead — 3.12.11 is a security-only release with no Windows binary installer. Flask-3 rules that bite: `send_file(download_name=…)` (not `attachment_filename`), no route registration after the first request, and an unconsumed `stream_with_context` response corrupts the next request's context. See **Rule.md §2.37**.
+**Runtime: Python 3.12.11 + Flask 3.0.3** (same pins as `online`). Windows installs
+**3.12.10** — 3.12.11 is security-only with no Windows binary installer. Flask-3 rules
+that bite: `send_file(download_name=…)` (not `attachment_filename`), no route
+registration after the first request, and an unconsumed `stream_with_context` response
+corrupts the next request's context. **Rule.md §2.37**.
 
 ---
 
 ## Project in One Line
 
-Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and visualizes bio-sensor CSV data in a browser. Single-user, no sessions, no SocketIO, no cloud.
+Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and
+visualizes bio-sensor CSV data in a browser. Single-user, no sessions, no SocketIO,
+no cloud.
 
----
-
-## Current Version: 1.4.9
+**Current version: 1.4.9**
 
 ---
 
@@ -48,82 +58,150 @@ Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and 
 ```
 main.py (thin entry point)
   └── registers 8 Flask Blueprints from src/routes/
-        ├── core_routes.py    — ping, index, shutdown, browse, JSON cal, report subjects
-        ├── file_routes.py    — CSV/JSON CRUD, export, merge, edit locks, manual folder/CSV creation
-        ├── report_routes.py  — report subject/item CRUD + Excel report export
-        ├── hardware_routes.py — data-logger subprocess control (run/pause/resume/check/terminate/logs/stream_session); CDC serial by default, HID keyboard fallback via device Left button; virtual-controller routes (device/state, device/button, device/channels)
-        ├── math_routes.py    — server-side regression API
-        ├── ai_routes.py      — AI assistant: chat, settings, activation
-        ├── music_routes.py   — background music: radio catalogue, YouTube link resolve, play queue (metadata only)
-        └── update_routes.py  — auto-update: check, apply (SSE), finalize (shutdown for relaunch)
+        ├── core_routes.py     — ping, index, shutdown, browse, JSON cal, report subjects
+        ├── file_routes.py     — CSV/JSON CRUD, export, merge, edit locks, manual folder/CSV creation
+        ├── report_routes.py   — report subject/item CRUD + Excel report export
+        ├── hardware_routes.py — reading-session control + virtual-controller + CIRCUITPY config routes
+        ├── math_routes.py     — server-side regression API
+        ├── ai_routes.py       — AI assistant: chat, settings, activation, feedback
+        ├── music_routes.py    — background music: catalogue, link resolve, queue (metadata only)
+        └── update_routes.py   — auto-update: check, apply (SSE), finalize
 
-src/
-  ├── state.py          ← global state singleton (process, paths, delimiter, PRODUCTION_MODE)
-  ├── i18n.py           ← UI translation catalogs (ui_translations/<lang>.json, 7 languages)
-  ├── validators.py     ← @validate_json decorator for route input validation
-  ├── security.py       ← request-origin guard (CSRF + DNS-rebinding) on state-changing methods; init_request_guard(app)
-  ├── live_stream.py    ← SSE tail of a live reading session (log + active CSV, by byte offset)
-  ├── device_link.py    ← idle-time CDC control link (virtual controller: STATE?/BTN:/CHANNELS:)
-  ├── math_ops.py       ← scipy/numpy regression (linear, poly, log, exp, Michaelis-Menten)
-  ├── ai_assistant.py   ← Groq chat client, MCP tool engine, multilingual system prompts
-  ├── music.py          ← radio catalogue + cached TCP connectivity probe + YouTube link parsing/oEmbed naming
-  ├── music_queue.py    ← persisted YouTube play queue (music_queue.json)
-  ├── user_settings.py  ← user preferences + SUPPORTED_LANGUAGES registry (the 6 UI/AI-chat languages)
-  ├── ai_feedback.py    ← answer 👍/👎 log (ai_feedback.jsonl) + learned guide-matcher weights (ai_guide_weights.json)
-  ├── hwid.py           ← per-machine fingerprint (hardware-lock basis)
-  ├── activation_pubkey.py ← embedded RS256 public key (verify-only)
-  ├── activation.py     ← license gate: verify_token() = RS256 sig + hwid claim
-  └── routes/           ← blueprint modules (see above)
+src/                       (34 modules — full table in EASY OKAPI.md §2.2)
+  ├── state.py             ← global state singleton (process, paths, delimiter, PRODUCTION_MODE)
+  ├── data_root.py         ← relocatable data root (.easyokapi_dataroot pointer)
+  ├── validators.py        ← @validate_json decorator
+  ├── security.py          ← request-origin guard (CSRF + DNS-rebinding)
+  ├── i18n.py              ← UI translation catalogs (ui_translations/, 7 languages)
+  ├── event_logger.py      ← /event_log sink → log/events/
+  ├── live_stream.py       ← SSE tail of a live session (log + active CSV, by byte offset)
+  ├── device_link.py       ← idle-time CDC control link (STATE?/BTN:/CHANNELS:/MENU?/CONC?/TIMING?)
+  ├── device_config.py     ← read/write the device's configuration.json on its CIRCUITPY drive
+  ├── sentinels.py         ← non-numeric value tokens (OVFL / NONE / INF)
+  ├── math_ops.py          ← scipy/numpy regression (5 fit models)
+  ├── excel_formula.py     ← paste-ready Excel formulas from the same 5 models
+  ├── ai_assistant.py      ← Groq chat client, MCP tool engine, multilingual prompts
+  ├── ai_feedback.py       ← 👍/👎 log + learned guide-matcher weights
+  ├── music.py             ← radio catalogue + connectivity probe + YouTube link parsing
+  ├── music_queue.py       ← persisted YouTube play queue (music_queue.json)
+  ├── user_settings.py     ← preferences + SUPPORTED_LANGUAGES (the 7-language registry)
+  ├── update_service.py    ← auto-update: source overwrite or frozen binary swap
+  ├── hwid.py              ← per-machine fingerprint (hardware-lock basis)
+  ├── activation.py        ← license gate: RS256 verify + hwid claim + revocation poll
+  └── activation_pubkey.py ← embedded RS256 public key (verify-only)
 
-static/script/
-  ├── report.js         ← report generation + subject CRUD UI
-  ├── user-guide.js     ← interactive spotlight user guide
-  ├── tooltip.js        ← styled hover-hint component ([data-hint] → body-appended #okapi-tooltip; replaces native title=)
-  ├── live-stream.js    ← SSE live-session client (rows + log pushed; the old polls are the fallback)
-  ├── i18n.js           ← UI translation applier (t() + applyTranslations over [data-i18n*]; UI_STRINGS injected)
-  ├── ai-chat.js        ← floating AI chat widget (Groq-powered, 7 languages)
-  ├── music.js          ← floating music widget (bottom-left 🎧): radio stations + YouTube queue, online-only
-  ├── device-control.js ← virtual controller panel (device keypad + per-screen button labels)
-  └── cdc-logging.js    ← reading-session UI: run/pause/stop, session timer, start-up notice, and the
-                           session strip (#session-strip — the live chart-recorder trace, Rule §2.33)
+static/script/             (21 files — full table in EASY OKAPI.md §2.4)
+  ├── cdc-logging.js       ← reading session: run/pause/stop, timer, session strip (§2.33)
+  ├── live-stream.js       ← SSE live-session client (polls are the fallback)
+  ├── device-control.js    ← virtual controller panel
+  ├── report.js            ← report generation + subject CRUD UI
+  ├── i18n.js              ← t() + applyTranslations over [data-i18n*]
+  ├── a11y.js              ← chart data tables, sortable headers, scrollable regions
+  ├── ai-chat.js           ← floating AI chat widget
+  ├── music.js             ← floating music widget (radio + YouTube, online-only)
+  ├── user-guide.js        ← interactive spotlight user guide
+  └── tooltip.js           ← [data-hint] hover hints (replaces native title=)
 
-static/fonts/           ← self-hosted type: plex.css (instrument) + classic.css (classic); no Google Fonts request
-static/style.css        ← design tokens (:root + body.dark) then all UI styling — Rule §2.33
-
-ui_translations/        ← UI translation catalogs: en.json (baseline) + vi/zh/fr/ja/ru (key→string)
-
-report/                 ← saved HTML reports, organized by subject subdirectory
-user_settings.json      ← user preferences incl. AI prefs (ui_language, ai_feedback_enabled)
+static/fonts/              ← self-hosted IBM Plex + classic.css; no Google Fonts request
+static/style.css           ← design tokens (:root + body.dark), then all UI styling (§2.33)
+ui_translations/           ← en.json baseline + vi/zh/fr/ja/ru/ko
+guide_translations/        ← user-guide step text per language (en baseline = guide_training.json)
+report/                    ← saved HTML reports, by subject subdirectory
+user_settings.json         ← user preferences (ui_language, ui_style, ai_feedback_enabled, …)
 ```
 
 ---
 
 ## Key Invariants
 
-- **Global state lives in `src/state.py`**, not in `main.py` globals anymore.
-- **All routes are in blueprints** — do not add routes directly to `main.py`.
-- **`@validate_json`** from `validators.py` must be used on any POST route that accepts JSON.
-- **Regression math runs server-side** via `math_ops.py` + `/calculate_coef_and_rsquared` and `/calculate_kinetics_quantities` endpoints. JS `calculate.js` still handles client-side preview rendering. Two coefficient-driven helpers reuse the same 5 fit models: **`/calculate_concentration`** (`math_ops.evaluate_curve`) evaluates a curve at one measured `x` → concentration for the **Quick concentration** calculator (no CSV needed), and **`/export_cal_excel_formula`** (`src/excel_formula.py`) emits paste-ready Excel formulas from the coefficients. Keep all three model implementations (`math_ops` fit funcs, `evaluate_curve`, `excel_formula`) in lockstep.
-- **Point-mode Turn axis**: a raw series file's X column is `Timestamp` (elapsed seconds) **or** `Turn` (a 1,2,3… index for point mode); a Turn file has no Timestamp column. Schema `CSV_SCHEMA_TIMESERIES_TURN` in `file_path.py`. `file.get_dynamic_data()` renames the `Turn` key → `Timestamp` on read and returns `x_axis:'turn'` so the whole `"Timestamp"`-keyed pipeline is unchanged and the client relabels the chart axis / reference input. CDC capture picks the axis via the **Record as Turns** checkbox (persisted `cdc_axis` setting) → `/run_script` `axis` → `log_cdc_data.py --axis` → firmware `AXIS:turn|time` (`open_colorimeter_firmware/src/serial_manager.py`, in lockstep). Convert an existing Timestamp file in the CSV editor via **Timestamps → Turns** (`/convert_timestamp_to_turn`). In point mode with Turn on, a **Run mode** choice (persisted `cdc_run_mode` setting) offers **Automatic** (interval run) or **Manual** — device idles and records one Turn per **Measure now** press (`POST /measure_point` drops `log/measure_trigger.txt`, the logger sends firmware `MEASURE`; start chunk adds `MANUAL:1`). **Turn calibration**: because a Turn file has no time, each recorded Turn is treated as one concentration standard — a point-mode Turn file hides the time-point controls and shows a per-Turn concentration table (`applyTurnCalUI`/`exportTurnCal`), exporting a `Concentration,Value` calibration CSV (schema `CSV_SCHEMA_POINT_CAL_TURN`, no TimePoint); the resulting calibration JSON records `x_axis:'turn'` and omits `time`/`time-unit`, and deriving reads each Turn's value straight through the fit (`processTurnDerive`). See **Rule.md §2.27**.
-- **CDC port selection is by probe, not by first match**: a PyBadge booted with `console=True, data=True` exposes **two** serial ports that are byte-identical in USB metadata (vid/pid/description/hwid/serial/interface), so `send_command.connect_to_device()` sends `PING` to each vid/pid candidate and keeps the one answering `ACK_PING` or `ERR_UNKNOWN` (the latter for firmware predating `PING`). Taking the first match landed on the console/REPL port ~half the time — the "device not responding" bug. `boot_for_CDC.py` ships `console=False` on every firmware branch as the primary defence. The port timeout is `PORT_TIMEOUT = 0.15` s (so `/measure_point` triggers are picked up fast), which makes `readline()` unsafe — all reads go through `send_command.LineReader`. Firmware bounds every CDC write (`_write_cdc`, `CDC_WRITE_TIMEOUT`/`CDC_WRITE_DEADLINE`) so a stalled host can't freeze the device. Firmware loop period is a flat ~0.174 s regardless of channel count — it is not the bottleneck. See **Rule.md §2.28**.
-- **Pause/Resume a live reading**: an automatic capture (Timestamp or auto-Turn) can be held without ending it — `POST /pause_reading` / `POST /resume_reading` drop `log/control_trigger.txt` holding the desired state, the logger forwards `PAUSE`/`RESUME` to the device (`ACK_PAUSE`/`ACK_RESUME`), and the firmware freezes its session clock so timestamps stay continuous and the timeout doesn't burn. The logger also drops rows while paused, so the feature degrades gracefully against firmware predating the command (timestamps then gap). Two UI entry points: the inline **Pause reading** button on the reading-panel button line and the floating `#reading-control-fab` — a session transport that leads with a breathing dot + `RECORDING`/`PAUSED` readout, then Pause/Resume + Stop — which appears when that line scrolls out of view (at that scroll position the timer widget is off-screen too, so the bar is the only live-state indicator). Manual point-mode runs get **Measure now** instead. See **Rule.md §2.29**.
-- **A live session is pushed, not polled**: while a run is in progress the browser holds `GET /stream_session` open and the server pushes `meta` / `rows` / `log` / `end` events (`src/live_stream.py` tails the log and the active CSV — path from `log/current_output.txt` — by byte offset; `static/script/live-stream.js` consumes them). This replaced a 500 ms `/get_data` chart poll that reparsed and rebuilt the whole file twice a second and a 2 s `/get_logs` poll that re-read the whole log and counted `Received:` matches by regex; manual point mode's **Measure now** now re-arms when its row lands instead of up to 2 s later. Both polls survive as the automatic fallback, gated on `liveStreamCarrying()`. `/check_status` keeps sole ownership of *why* a run ended. Opt out with the `live_stream_enabled` setting. See **Rule.md §2.31**.
-- **Background music is metadata-only and online-only**: two sources in one bottom-left 🎧 widget (`static/script/music.js`), and **no audio passes through Flask** in either. *Radio* — the browser's `<audio>` connects straight to free listener-supported **https** streams from the `src/music.py` catalogue. *YouTube* — the user pastes links (there is deliberately **no search**: `search.list` burns 100 of 10,000 daily quota units, so one key shipped in the app would die instantly), `music.parse_youtube_ref()` validates them against an allow-listed host set and the keyless **oEmbed** endpoint names them, and playback belongs to YouTube's IFrame player in a **visible** ≥200 px video pane as its terms require. Never extract, download, proxy or cache the media (no `yt-dlp`-style path) — that is the anti-pattern the whole design exists to avoid. **Spotify is impossible for free** (Web Playback SDK needs Premium + OAuth) and should not be re-attempted. The queue lives in `music_queue.json` (`src/music_queue.py`) rather than `localStorage`, which a restart clears (§2.20). Widget mounts only when `music_enabled` is on *and* both `navigator.onLine` and the server probe say online; it unmounts on `offline`. Settings: `music_enabled` (default **off**), `music_source`, `music_station`, `music_volume`, `music_loop_mode` (`off`/`one`/`all`), `music_shuffle`. See **Rule.md §2.32 / §2.32.1**.
-- **One design system, tokens first**: every colour/font/radius/shadow comes from the token block at the top of `static/style.css` (`:root` light, `body.dark` re-stepped for graphite) — never a raw hex or a gradient in a rule. `--accent` is bromophenol blue, derived from the **assay**, because the device has **no selectable wavelength** (a TSL2591 per active mux channel; the host only ever learns Measurement / Unit / Concentration / ConcenUnit + `Value:N`) — so no UI names or colour-codes an nm value, and a "channel" is a **source**. Two materials: chrome is flat + hairline-bounded (`--r-flat` fields, `--r-press` pressables, no glass, no hover lift), data surfaces get the space. Type is self-hosted **IBM Plex** — Sans for prose, **Mono with tabular figures for every measured value / field / axis tick**, Condensed uppercase for panel labels. Multi-source series are ordered, so they wear the **sequential ramp** `--ramp-1..10` via `sourceRamp(n)` (`index.js`; `AppState.plotColors` is a getter over it), never a cycled rainbow. The signature is the **session strip** (`#session-strip`, `drawSessionStrip()` in `cdc-logging.js`): a fixed chart-recorder trace of the live run, one line per source, that *is* the recording indicator — it greys and freezes on pause and reads `AppState.responseData` rather than fetching anything. It carries state + elapsed + next + latest/rows, so the top-right `#session-timer` widget is now mounted **only** when the strip is off; `tickSessionTimer()` still computes the clocks once and writes both. Setting: `session_strip_enabled`. See **Rule.md §2.33**.
-- **The redesign is switchable**: `ui_style` (default `instrument`, App Settings → General) picks the visual language; **`classic`** restores the previous look through a `body.ui-classic` override layer in `style.css` — **generated** by `tools/gen_classic_style.py` as a declaration-level diff of v1.3.11's sheet (a token override alone cannot work: the redesign rewrote ~519 literals *inside* rules, and a custom property does not override a concrete declaration) (indigo/purple gradients, blurred cards, 12px radius, Inter/Outfit, the 16-colour series palette, pill toggle, orb splash) — not a second stylesheet. The class is stamped on `<body>` by the index render (no flash); `isClassicUI()` in `index.js` reads the class and gates the two JS differences (`sourceRamp()` → `CLASSIC_PLOT_COLORS`, `stripEnabled()` → false, so the timer widget returns). Bug fixes made during the redesign are shared by both styles, never flagged. Standalone pages can't use that layer (they don't load `style.css`), so they branch server-side on `ui_style` and hold two blocks: `templates/goodbye.html` (`/shutdown`) does — instrument draws a flat panel with a parked chart-recorder trace and a hairline countdown bar, classic keeps the orb/glass card. See **Rule.md §2.34**.
-- **Virtual controller — the device's keypad, on screen**: a collapsed-by-default panel (`static/script/device-control.js`, `#device-control-section`) that shows what the device is doing and works its eight buttons from the app. `src/device_link.py` opens the CDC port **only while no reading session is running**, so the one-owner rule of Rule §2.28/§2.29 still holds: every route (`GET /device/state`, `POST /device/button`, `POST /device/channels`) answers **409** while `state.process` is alive, and `/run_script` closes the link before spawning the logger. The firmware answers `STATE?` with a one-line `key=value;` snapshot — not JSON, because the board guards every screen allocation against MemoryError — with an identical field list on all four firmware branches (fields a build lacks are sent empty, never omitted). The panel is drawn as the board's own face — the readout is the **screen**, in the middle column, with SELECT (`menu`) and START (`blank`) in the top corners, the d-pad down the left and A (`itime`) / B (`gain`) staggered down the right — and each key wears its silkscreen mark, so the panel can be read against the instrument in hand. Keys are a fixed box with a one-line label; a label too long for it scrolls through on a loop (hover pauses it, and the tooltip always has the whole string). The panel's real job is **labelling**: `menu` saves in Settings, opens the menu in Measure, dismisses a message, and the keypad cannot say which, so `DEVICE_BUTTON_FUNCTIONS` mirrors the firmware's mode handlers and buttons with no effect stay visible but dimmed. Where builds genuinely differ the firmware says so in `caps` (`channels`, `selsensor`, `uvchannel`) and the client branches on that, never on a version. **`BTN:left` in MEASURE is refused** — it would start the HID keyboard fallback and type readings into whatever window has focus on the host. The **menu bar** below the keypad is the device's own menu: `GET /device/menu` → `MENU?` → one `MENUITEMS a,b,c` line (the entries include that device's calibration keys, so they cannot be guessed), and clicking one `POST`s an index → `MENU:<index>`, which runs the firmware's menu handler. Fetched once per connection, gated on the `menu` capability. A **Concentration** form (`GET`/`POST /device/concentration` → `CONC?` / `CONC:<value>[,<unit>]`) sets the device's concentration whole — the keypad can only step it — and is mounted **only while the device is on its Concentration screen**; `null` means Unknown, which is a value on that screen rather than a blank. A **Settings** form (`GET`/`POST /device/timing` → `TIMING?` / `TIMING:<timeout>,<unit>,<interval>,<unit>`) does the same for the timeout/interval pair, with `null` timeout meaning no timeout. All three screen-touching setters are queued by the firmware and applied from its main loop — running them in the serial handler drew screens with letters missing. **Active channels** (open-extra) are set with `CHANNELS:0,3` → `Colorimeter.set_active_channels()`, which rebuilds sensors, gain/itime cycles, blanks (dropping `is_blanked`) and the measure screen; refused mid-session because the channel count *is* the column count, and **runtime-only** because CircuitPython mounts its own filesystem read-only. Settings: `device_control_enabled` (default on), **`device_link_enabled`** (default on — the checkbox beside the status strip; off stops the poll and releases the port via `POST /device/disconnect`, for handing it to a firmware update or serial monitor), `device_state_poll_ms` (default 1500). See **Rule.md §2.35**.
-- **Report system**: Reports are HTML files saved to `report/<subject>/`. CRUD via `/save_report`, `/export_to_report`, `/get_report_subjects`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject`.
-- **Startup progress reporter**: `main.py` writes `pct label\n` to a FIFO (`/tmp/easyokapi_progress.pipe` on Mac) so launch scripts can show a progress bar.
-- **CLI flags**: `--port`, `--alias`, `--verbose` / `-v`, `--mem-monitor`, `--no-browser` (suppress the startup browser-open tab; passed automatically by restart relaunches so the one-shot reset-display marker isn't stolen by a second tab — see Rule.md §2.20).
-- **User-guide translations**: Step text for the interactive user guide lives in `guide_translations/<lang>.json` (one file per language: `en` is the baseline in `guide_training.json`; `vi`, `zh`, `fr`, `ja`, `ru` are in `guide_translations/`). Each file contains guide topics as objects with `id`, `steps` (array of strings), and `queries` (keyword list for AI matching). When adding or editing guide steps, update both `guide_training.json` (EN) and all language files in `guide_translations/`.
-- **UI localization (i18n)**: the interface is translatable into the same 7 languages as the AI chat (`en`/`vi`/`zh`/`fr`/`ja`/`ru`/`ko`), selected via the **`ui_language`** user setting (App Settings → General). Catalogs are flat key→string JSON in `ui_translations/<lang>.json` (`en.json` is the English baseline; missing keys fall back to English), resolved from `state.bundle_dir` by `src/i18n.py`. `core_routes.index()` injects `UI_LANG`/`UI_STRINGS`; `static/script/i18n.js` applies them to `[data-i18n*]` elements and exposes `t(key, fallback)` for dynamic strings. **Technical terms stay in English** (mode names, units, Absorbance, maxRate, rSquared, CSV/JSON/Excel, brand names). Adding a UI string means adding its key to **all seven** catalogs in lockstep. See **Rule.md §2.22**.
-- **AI answer feedback + learned matcher weights**: each assistant answer carries a 👍/👎 (`/ai/feedback` → `src/ai_feedback.py`). Ratings append to `ai_feedback.jsonl`; a rating on a **locally matched guide** also tunes that guide's coefficient in `ai_guide_weights.json`, which `ai_assistant._match_guide_example` folds into the score (👍 raises + reinforces query vocabulary, 👎 suppresses). LLM answers are logged only (Groq can't be retrained). Both files live in `state.script_dir`, are gitignored, and are preserved across updates. App Settings → **AI Assistant** adds an `ai_feedback_enabled` opt-out, **Export feedback** (`/ai/feedback/export`) and **Reset learning** (`/ai/feedback/reset`); when off, the row is hidden, the route no-ops, and learned weights are ignored. See **Rule.md §2.13**.
-- **Tests live in `tests/`** — `test_utils.py`, `test_core_logic.py`, `test_data_processing.py`, `test_app.py`, `test_hwid.py`, `test_activation.py`, `test_i18n.py`, `test_live_stream.py`, `test_music.py`, `test_ai_guide_matching.py`, `test_ai_feedback.py`, `test_ai_robustness.py` (deterministic dev/proxy parity, truncation notice, empty-reply retry), `test_device_link.py`. Run with `pytest tests/ --ignore=venv`.
-- **Hardware-locked activation** (frozen builds): a permanent license token is bound to one machine via an `hwid` claim (`src/hwid.py`) and RS256-signed by the server (`ACTIVATION_PRIVATE_KEY`), verified offline with the embedded public key (`src/activation_pubkey.py`). Copying `activation.json`/the install folder to another machine fails the check. The Windows installer PowerShell mirrors the `hwid` recipe byte-for-byte — keep them in lockstep. Server side lives on the `online` branch (`license_machines` seat table, `/api/activate` binding). See **Rule.md §2.17**.
-- **Uninstaller delivery across updates**: `Uninstall.exe` lives *inside* the directory the in-app update swaps, so the updater used to carry the old one across — meaning an updated install kept its original uninstaller forever and no uninstaller fix could reach existing users. The Windows bundle now ships an `Uninstall.exe` (CI compiles `setup-frozen.nsi` with **`/DUNINSTALLER_ONLY`** — a payload-free silent stub — and runs it *before* zipping the bundle), and `_WIN_SWAP_PS1` prefers the bundled copy, falling back to carrying the old one across. Note an updater's fixes always land **one cycle late** (the *old* `update_service.py` drives the swap that installs the new build). On posix the uninstaller sits one level *above* the swapped dir (`/opt/EasyOKAPI/uninstall.sh`, `…/Contents/Resources/uninstall.command`), so it survived the swap but was never *updated*: both bundles now ship their uninstaller inside the onedir and `_build_posix_swap_script` copies it up into the parent after swapping (best-effort — `/opt` is root-owned while the app runs as the user). See **Rule.md §2.25**.
-- **Update scratch files are swept on startup**: the binary swap writes helpers into the data root (`_update_swap.ps1`, `_update_coordinator.ps1`, `_update_swap_result.txt`, `_update_staging/`, posix `_update_*_swap.sh`) and then *exits* so the detached helper can run, so it can never clean up after itself — every update used to leave a growing pile in the user's `EasyOKAPI` folder. `update_service.cleanup_stale_artifacts()` runs from a `main.py` daemon thread on startup and no-ops while a swap is pending retry. See **Rule.md §2.26**.
-- **Seat release on uninstall**: a seat is held until explicitly released, so every uninstaller calls **`POST /api/license/release`** (online branch) before deleting anything — otherwise a removed install holds the license cap forever and the user's next machine is refused. There is no web session at uninstall time, so the machine's own permanent token authenticates the call and its `hwid` claim names the one seat it may free (`_release_license_seat` in `installer-mac/uninstall.command` + `installer-linux/uninstall.sh`, `release-seat.ps1` in `installer-win/setup-frozen.nsi`, `activation.release_machine()` in Python). Best-effort and idempotent — never blocks an uninstall. A **revoked** seat or **banned** account is refused, so freeing a seat can't escape the kill-switch. macOS frozen (drag-to-Trash) has no hook — those users deactivate from their account. See **Rule.md §2.17**.
-- **Admin license revocation + account ban** (frozen builds): an admin can deactivate a customer's license server-side even though the permanent token still verifies offline. Two strengths: **Revoke** disables a per-machine seat (`revoked` flag on `license_machines`); **Ban** disables a whole account (`banned` flag on `users`) — blocking web sign-in, download, activation, and app usage on every machine. Server (`online`): shared-secret `POST /api/admin/revoke` + `POST /api/admin/ban` (both by email, send a notification email) + `GET /api/admin/lookup` (+ `/api/admin/users`) + `POST /api/admin/machines/remove` (`{email, hwid|all}` — frees a seat the customer cannot free themselves, e.g. a dead machine or an uninstall by a build predating the seat release; refuses a **revoked** seat with 409 unless `force`, since deleting the row would let that machine re-activate unrevoked and escape the kill-switch), and `POST /api/license/check` (the client poll). A revoked seat or banned account fails the AI-proxy / auto-update machine check immediately; a banned account makes `/api/license/check` reply `revoked` + code `account_banned`. Client (`src/activation.py`): `check_revocation()` polls `/api/license/check` and caches the verdict in `license_status.json`; `license_state()` returns `active` / `revoked` (sticky) / `banned` (sticky; from the `account_banned` code) / `needs_recheck` (grace lapsed offline → reverify gate). `main.py` `_enforce_license` gate serves `license_blocked.html` (revoked) / `license_banned.html` (banned) / `license_reverify.html`. Grace window via `LICENSE_GRACE_SECONDS` (default 7d), poll interval via `LICENSE_CHECK_INTERVAL` (default 6h). The local admin console lives on the secret `offline` branch (`admin/`).
+**Structure**
+- Global state lives in `src/state.py`, never in `main.py` globals.
+- All routes go in blueprints under `src/routes/`. Never add one to `main.py`.
+- `@validate_json` (from `validators.py`) is mandatory on every POST route that accepts
+  JSON. Documented exemption: `/download_event_logs` (GET+POST, validates inline).
+- Tests live in `tests/` (37 files). CI runs the whole suite on 3.12 before any build.
+
+**Math — three implementations, one behaviour**
+- Regression runs **server-side** in `math_ops.py`. The same 5 fit models are also
+  implemented in `math_ops.evaluate_curve()` (`/calculate_concentration`, the Quick
+  concentration calculator) and `src/excel_formula.py` (`/export_cal_excel_formula`).
+  **Change one, change all three.** `calculate.js` only renders the preview.
+
+**Hardware — the serial port has exactly one owner**
+- **CDC port selection is by `PING` probe, not first match.** A PyBadge exposes two
+  byte-identical serial ports; taking the first landed on the REPL ~half the time.
+  `PORT_TIMEOUT = 0.15 s` makes `readline()` unsafe — use `send_command.LineReader`.
+  **§2.28**
+- **Turn axis:** a raw file's X column is `Timestamp` *or* `Turn`, never both. Turn files
+  drive point-mode calibration (each Turn is one concentration standard) and manual
+  **Measure now** capture. Firmware `AXIS:` is in lockstep. **§2.27**
+- **Pause/Resume** holds a run without ending it — the firmware freezes its session
+  clock, so timestamps stay continuous. **§2.29**
+- **A live session is pushed, not polled** — `GET /stream_session` (SSE). The old
+  `/get_data` + `/get_logs` polls survive as the fallback, gated on
+  `liveStreamCarrying()`. `/check_status` keeps sole ownership of *why* a run ended.
+  Setting: `live_stream_enabled`. **§2.31**
+- **Virtual controller** (`device_link.py` + `device-control.js`): opens the port **only
+  while no session runs** — every `/device/*` route answers **409** while
+  `state.process` is alive, and `/run_script` closes the link first. Branch on the
+  firmware's `caps` list, never on a version. `BTN:left` in MEASURE is refused (it would
+  start the HID fallback and type into the host). Screen-touching setters (`MENU:`,
+  `CONC:`, `TIMING:`) are queued and applied from the firmware's main loop. Channel
+  changes are runtime-only unless written to CIRCUITPY via `device_config.py`. **§2.35**
+
+**Design**
+- **Tokens first.** Every colour/font/radius/shadow comes from the token block at the
+  top of `static/style.css` — never a raw hex or a gradient in a rule. Multi-source
+  series use the sequential ramp `sourceRamp(n)`, never a cycled rainbow. The **session
+  strip** is the recording indicator and reads `AppState.responseData` rather than
+  fetching. Setting: `session_strip_enabled`. **§2.33**
+- **The redesign is switchable.** `ui_style` = `instrument` (default) or `classic`;
+  classic is a **generated** override layer in `style.css` (`tools/gen_classic_style.py`),
+  not a second stylesheet. `isClassicUI()` gates the two JS differences. Standalone
+  pages branch server-side instead. Bug fixes are shared by both styles. **§2.34**
+
+**Content**
+- **UI localization:** 7 languages (`en`/`vi`/`zh`/`fr`/`ja`/`ru`/`ko`), one registry —
+  `SUPPORTED_LANGUAGES` in `user_settings.py`. Catalogs are flat key→string JSON in
+  `ui_translations/<lang>.json`; missing keys fall back to English. Adding a UI string
+  means adding its key to **all seven** in lockstep. Technical terms stay in English.
+  **§2.22**
+- **User-guide translations:** `guide_training.json` (EN baseline) +
+  `guide_translations/<lang>.json` for the other six. Edit a step → edit all seven.
+- **AI answer feedback:** 👍/👎 → `ai_feedback.jsonl`; a rating on a **locally matched
+  guide** also tunes `ai_guide_weights.json`, which the matcher folds into its score.
+  LLM answers are logged only. Opt-out: `ai_feedback_enabled`. **§2.13**
+- **Background music is metadata-only and online-only** — no audio passes through Flask,
+  in either source. Never extract, download, proxy or cache the media; that
+  (`yt-dlp`-style) is the anti-pattern the whole design exists to avoid. There is
+  deliberately no YouTube search (quota), and Spotify is impossible for free — do not
+  re-attempt either. Default **off**. **§2.32**
+- **Report system:** HTML files under `report/<subject>/`, CRUD via `report_routes.py`.
+
+**Distribution & licensing**
+- **Hardware-locked activation:** an RS256-signed permanent token carries an `hwid`
+  claim, verified offline. Copying the install folder to another machine fails. The
+  Windows installer PowerShell mirrors the `hwid` recipe **byte-for-byte** — keep them
+  in lockstep. **§2.17**
+- **Revocation + ban:** `check_revocation()` polls `/api/license/check` and caches the
+  verdict; `license_state()` returns `active` / `revoked` / `banned` (both sticky) /
+  `needs_recheck`. `main.py` `_enforce_license` serves the matching page. Grace via
+  `LICENSE_GRACE_SECONDS` (7d), poll via `LICENSE_CHECK_INTERVAL` (6h). Server side is
+  on `online`; the admin console is on the secret `offline` branch.
+- **Seat release on uninstall:** every uninstaller calls `POST /api/license/release`
+  before deleting anything, authenticated by the machine's own token. Best-effort and
+  idempotent, never blocks an uninstall. A revoked seat or banned account is refused, so
+  freeing a seat cannot escape the kill-switch. **§2.17**
+- **Uninstaller delivery:** an updater's fixes always land **one cycle late** — the *old*
+  `update_service.py` drives the swap that installs the new build. Both bundles now ship
+  their own uninstaller inside the onedir. **§2.25**
+- **Update scratch files are swept on startup, not on exit** — the swapping process
+  exits so the detached helper can run, so it can never clean up after itself. **§2.26**
+- **Frozen builds:** see `ENCODE_BUILD_PLAN.md` (feature-complete, cutover not taken).
+
+**Misc**
+- **Startup progress reporter:** `main.py` writes `pct label\n` to a FIFO
+  (`/tmp/easyokapi_progress.pipe` on Mac) so launch scripts can show a progress bar.
 
 ---
 
@@ -133,6 +211,9 @@ After any significant change, update:
 - `Rule.md` if you introduce new behavioral constraints or anti-patterns.
 - `easyokapi-knowledge/EASY OKAPI.md` if you add files, routes, modules, or change architecture.
 - `CLAUDE.md` (this file) if the at-a-glance summary above becomes stale.
+- `README.md` if the change is visible to a user installing or running the app.
+
+Keep this file an **index**. New detail belongs in `Rule.md` with a one-line pointer here.
 
 ---
 
@@ -151,6 +232,6 @@ If any answer is yes, add the setting to `src/user_settings.py` (`DEFAULTS` + va
 
 **i18n coverage**: any new user-facing string (label, heading, button, tooltip, placeholder, or `Swal.fire` text) must get a translation key in **all seven** `ui_translations/<lang>.json` catalogs and be wired via `data-i18n*` (static HTML) or `t('key', 'English')` (dynamic JS) — keep technical terms in English. See **Rule.md §2.22**.
 
-**Exception — the data-root location**: the user-selectable data folder (frozen builds) is **not** a `user_settings.py` key, because `user_settings.json` lives *inside* the data root (chicken-and-egg). It is stored in a `.easyokapi_dataroot` pointer file beside the default location and managed by `src/data_root.py` + `/data_root` (GET/POST). The Windows installer (`setup-frozen.nsi`) also lets the user choose this folder at install time (writing the same pointer). Relocating **moves** a non-default folder (the default is kept as a fallback copy); the data folder may not be the EasyOKAPI program folder. The move is deferred-commit: `POST /data_root` only **previews** the change (validates, reports move-vs-copy) and the UI confirms, offering **Restart now** (`/data_root/restart` commits the move, then relaunches in place via `update_service.restart_after_delay()` and serves `restarting.html`, which auto-reloads the tab once the new instance is up) or **Cancel** (a no-op — nothing was moved). See **Rule.md §2.19**.
+**Exception — the data-root location**: the user-selectable data folder is **not** a `user_settings.py` key, because `user_settings.json` lives *inside* the data root (chicken-and-egg). It is stored in a `.easyokapi_dataroot` pointer file beside the default location and managed by `src/data_root.py` + `/data_root` (GET/POST). The Windows installer (`setup-frozen.nsi`) also lets the user choose this folder at install time. The move is **deferred-commit**: `POST /data_root` only previews (validates, reports move-vs-copy); **Restart now** (`/data_root/restart`) commits and relaunches, **Cancel** is a no-op. See **Rule.md §2.19**.
 
-**Default display on restart**: any restart (data-folder relocation or applied update) brings the app back up in the **default display** — kinetics mode, fresh per-view UI state — rather than restoring the previous tab's `localStorage` layout. The restart routes call `state.mark_reset_display_pending()` (a one-shot sentinel in `default_data_root` that survives the process restart); the next index render consumes it and passes `reset_display` → `const RESET_DISPLAY` to `index.html`, which clears per-view `localStorage` (keeping `theme`/AI prefs) before `init.js` forces kinetics mode. See **Rule.md §2.20**.
+**Default display on restart**: any restart (data-folder relocation or applied update) brings the app back up in the **default display** — kinetics mode, fresh per-view UI state — not the previous tab's `localStorage` layout. The restart routes set a one-shot sentinel in `default_data_root` that survives the process restart; the next index render consumes it and passes `reset_display` → `RESET_DISPLAY` to `index.html`, which clears per-view `localStorage` (keeping `theme`/AI prefs) before `init.js` forces kinetics mode. See **Rule.md §2.20**.

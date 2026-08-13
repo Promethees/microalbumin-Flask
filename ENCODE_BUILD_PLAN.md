@@ -1,99 +1,28 @@
 # Plan: Ship EasyOKAPI as a No-Source Frozen Binary (PyInstaller)
 
-Status: **FEATURE-COMPLETE** (pending cutover) — P1–P4 all implemented. P1 validated on
-CI; P2 unit-tested; P3a green on CI; P3b (mac/win/linux frozen installers) + P4 (online
-`/api/download?kind=bundle`) implemented, validated as far as possible without a real
-frozen build. Remaining: flip `ENCODE_SOURCE=true` to exercise the frozen pipeline
-end-to-end on CI, sign/notarize, and the source→frozen cutover.
+**Status: FEATURE-COMPLETE, cutover not taken.** P1–P4 are all implemented and on
+the branch; per-phase detail is in [§12 Phasing](#12-phasing). Nothing below has
+shipped to users — the source installers are still what the site vends.
 
-## Progress log
+### What is left
 
-**P4 (server: per-platform bundle download) — done (`online` branch):**
-- `GET /api/download?kind=bundle&platform=mac|win|linux` resolves the release's
-  `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}` asset (`download_service.get_bundle_asset()`)
-  and 302-redirects to its public download URL; the desktop swap updater follows it. The
-  source-tarball path and `/api/version` are unchanged. py_compile-clean; committed on
-  `online` (not yet pushed).
+| # | Remaining | Where |
+|---|---|---|
+| 1 | Set repository variable **`ENCODE_SOURCE=true`** (Settings → Secrets and variables → Actions → Variables) so CI actually runs the freeze end to end on clean mac/win/linux runners. This is the first real validation of `easyokapi.spec`. | `.github/workflows/main.yml` |
+| 2 | Sign + notarize the frozen macOS bundle | `installer-mac/SIGNING.md`, `docs/publishing/APPLE-DEVELOPER-ID.md` |
+| 3 | Authenticode-sign `EasyOKAPI_Setup_<ver>_frozen.exe` | `docs/publishing/WINDOWS-CODE-SIGNING.md` |
+| 4 | Cutover: point the download page at the frozen installers, then gate the source-installer CI steps off | `online` branch + `main.yml` |
 
-**P1 (backend freeze) — code complete, validated on v1.1.12:**
-- `.env` / `.env.example` `ENCODE_SOURCE` flag; `tools/package.py`; `easyokapi.spec`
-  (onedir); `requirements-build.txt` (pyinstaller 6.11.1).
-- `src/state.py` frozen-aware `bundle_dir` (assets, `sys._MEIPASS`) vs `script_dir`
-  (writable per-user app-data, e.g. `~/Library/Application Support/EasyOKAPI`), with
-  first-run `json/` seeding. Writable working folders: **`data/`, `json/`, `report/`,
-  `log/`** (the four the user owns; identical to `update_service._PRESERVE`).
-- Path consumers repointed: `activation.py` (writable `activation.json`),
-  `ai_assistant.py` (bundled guide files), `ai_routes.py` (writable `.env`),
-  `file_path.py` (writable `DATA_ROOT`), `main.py` (Flask static/template from bundle).
-- `main.py` `--cdc-logger` re-entrant dispatch; `hardware_routes.py` launches the
-  collector by re-invoking the binary (`sys.executable --cdc-logger`) when frozen, or
-  `log_cdc_data.py` in dev; `log_cdc_data.py` writes its log + output marker to the
-  writable `state.script_dir/log`.
-- **Validated:** 333/333 tests pass; dev import OK; frozen-path simulation passes
-  (correct bundle/app-data split, writable dirs created, JSON seeded); `--cdc-logger`
-  dispatch enters logger mode and exits without starting Flask.
-- **Blocked (environment, not code):** a full local PyInstaller freeze cannot complete
-  here because the repo lives under iCloud-synced `~/Desktop/Documents`; the venv's
-  site-packages are `dataless` (cloud-evicted) and PyInstaller's reads time out
-  (`Errno 60`). **Remedy:** build on a non-synced path (clone to `~/build/...` or
-  `/tmp`) or rely on CI (clean runners) — the real production build target.
+`.env.example` already carries `ENCODE_SOURCE=true`; CI reads the **repository
+variable**, which still defaults to `false`. Flipping the file alone changes
+nothing on CI.
 
-**P2 (binary-swap updater) — client side code complete:**
-- `update_service.download_and_apply()` branches on `sys.frozen`. Frozen path:
-  `_download_and_stage_bundle()` streams the platform onedir archive
-  (`?platform=&kind=bundle`) into app-data, extracts + verifies it, and records a
-  `_pending_update.txt` marker; `apply_pending_swap_and_exit()` (called by
-  `/update/finalize`) spawns a detached PowerShell/`sh` helper that waits for the
-  port to free, swaps `EasyOKAPI/` for the staged dir (rollback on failure), and
-  relaunches. No `pip` step. Source path unchanged (tarball + pip + `os.execv`).
-- `tests/test_update_binary_swap.py`: 14 tests (347 total pass). The live swap +
-  relaunch is exercised by the per-OS CI smoke test (P3), not locally.
-- **Still needs the server (P4):** `/api/download?kind=bundle` must vend a NEW
-  onedir-bundle artifact (`EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`), distinct
-  from the existing installer assets (`.dmg`/`.exe`/installer `.tar.gz`). CI (P3)
-  builds + publishes it.
-
-**P3b (installers embed the binary + migrate old installs) — done (all 3 platforms):**
-- Vendor bundling fix (`tools/fetch_vendor.py` + CI smoke assert) so the freeze ships
-  `static/vendor/`.
-- **macOS:** `run-frozen.scpt` → `launch-frozen.sh` (+ `migrate-frozen.sh`), packaged by
-  `build-dmg-frozen.sh` → `EasyOKAPI_v<ver>_mac.dmg`.
-- **Windows:** `setup-frozen.nsi` (bundles the onedir, migrates `$INSTDIR\code\` data →
-  `%LOCALAPPDATA%\EasyOKAPI`) → `EasyOKAPI_Setup_<ver>_frozen.exe`.
-- **Linux:** `build-tarball-frozen.sh` + `install-frozen.sh` (migrates `/opt/EasyOKAPI`
-  data → `~/.local/share/EasyOKAPI`, CDC udev rule, desktop entry) + `run-frozen.sh`.
-- All additive + `ENCODE_SOURCE`-gated; the source installers are untouched. Each
-  migrates an old source install's `data/json/report/log` + settings, then replaces it.
-  Validated as far as possible locally (`bash -n`, YAML parse, the AppleScript applet
-  compiles); the DMG/NSIS builds + install flow are validated on CI / real machines.
-- **Follow-ups:** macOS notarization of the embedded onedir; Windows exe code-signing;
-  an eventual cutover that gates the *source* installer steps off.
-
-**P3a (CI freeze + smoke + bundle artifacts) — done:**
-- `.github/workflows/main.yml`: each `build-*` job, gated by `ENCODE_SOURCE` (repo var,
-  default `false`), now also freezes the onedir via `tools/package.py --encode`,
-  smoke-tests `/ping`, and uploads `EasyOKAPI-bundle-{mac|win|linux}.{tar.gz|zip}`;
-  the `release` job publishes them. Additive — the source installers still build, so
-  unsetting the flag changes nothing. YAML validated.
-- **To activate:** set the repository variable `ENCODE_SOURCE=true` (Settings → Secrets
-  and variables → Actions → Variables). The next push runs the freeze + smoke on clean
-  mac/win/linux runners — the first real validation of P1's PyInstaller spec.
-- **P3b (installer embedding + migration) pending** — deferred until the freeze is green.
-
-**What changed vs the original plan (v1.1.6 → v1.1.12):**
-- **HID is gone.** The "Run" flow moved to the CDC serial collector
-  (`log_cdc_data.py`); the HID logger scripts were removed (`log_hid_data*.py`).
-  CDC needs **no elevated privileges**, so the original `src/privilege.py` sudo
-  priming + keepalive and the `sudo -n … --hid-logger` launch are **dropped
-  entirely** (decision §11.4 is now moot). The re-entrant pattern survives but as a
-  plain `--cdc-logger` mode with no sudo.
-- **`log/` is now an explicit writable folder** alongside `data/`, `json/`, `report/`.
-- The in-app updater (`src/update_service.py`) is **still source-tarball based**
-  (downloads `.tar.gz`, overwrites `.py`, runs `pip install`, `os.execv`). This is
-  incompatible with a no-source frozen binary and is the core of P2.
+**Local freeze does not work in this checkout.** The repo lives under
+iCloud-synced `~/Desktop/Documents`; the venv's site-packages read as `dataless`
+and PyInstaller's reads time out (`Errno 60`). Build from `~/build/…` or `/tmp`,
+or let CI do it — CI is the production build target either way.
 
 ---
-
 
 ## 1. Goal
 

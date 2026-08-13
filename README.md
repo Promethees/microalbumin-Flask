@@ -1,211 +1,247 @@
-# Easy OKAPI Web application
+# Easy OKAPI — desktop application
 
-## Setup and Usage
-### Get this source code: 
-* Click on `Code`, in the DropDown, select `Download Zip`. 
-* Or clone with `Github Desktop`, `ssh`, `https`
-<img src="/images/CloneRepo.png" width="300">
-* In the path you save at, <span style="color:red; font-weight: bold;">MUST NOT CONTAINS SPECIAL CHARACTERS!</span> (e.g, Vietnamese characters like ạ, ô, ệ,...)
+![Latest release](https://img.shields.io/badge/latest-1.4.9-blue)
+![Python](https://img.shields.io/badge/python-3.12.11-blue)
+![Flask](https://img.shields.io/badge/flask-3.0.3-blue)
 
-### Installation:
-* On Mac:
-	- Using installer (DMG):
-		- Download the ![Latest release](https://img.shields.io/badge/latest-1.4.9-blue) `EasyOKAPI.dmg` on Mac.
-		- Open the `EasyOKAPI.dmg` to mount it.
-		- **Terminal-based Installation** (to bypass security warnings):
-			1. Open the **Terminal** app.
-			2. Run the first installation script with `sudo`:
-			   ```bash
-			   sudo /Volumes/EasyOKAPI/install-tools-clone-repo.command
-			   ```
-			3. Run the second installation script:
-			   ```bash
-			   sudo /Volumes/EasyOKAPI/install-venv.command
-			   ```
-			4. To launch the application:
-			   ```bash
-			   sudo /Volumes/EasyOKAPI/run.command
-			   ```
-		- Key in your device password to proceed when prompted.
-		- Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation when prompted.
-		- Use `uninstall` to uninstall the application. 
+A local Flask app that reads a **PyBadge colorimeter** over USB serial (CDC) and
+visualises bio-sensor CSV data in your browser. Single user, no cloud, no account
+needed to run it. Inspired by the
+[IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter).
 
-	- Using batch scripts:
-		+ Double click `setup-1-install-pyenv.command` to install homebrew, pyenv and python
-		+ Double click `setup-2-install-venv.command` to install dependencies to `venv` folder
-		+ Double click `setup-3-run.command` to run the application
-		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `setup-1` and `setup-2`, you can run `setup-3` right away.
-* On Windows:
-	- **No USB driver needed.** The app communicates with the PyBadge over its USB serial (CDC) port, which Windows 10/11 enumerates automatically — no `libusbK`/Zadig setup required.
-	- Using Installer: 
-		+ Download the ![Latest release](https://img.shields.io/badge/latest-1.4.9-blue) `EasyOKAPI_Setup.exe` on Windows
-		+ Email [Minh Thong](mailto:tqmthong@gmail.com) for Token to authorize your installation
-		+ Paste the given token here <img src="/images/github_token.PNG" width="200"> to Download 
-		+ After the installation, you can use `Easy OKAPI` icon on the Desktop to start the app
-		+ For `Uninstallation`, navigate to the local fodler in which you save the Program Files, use `Uninstall.exe` to uninstall
-		
-	- Using batch scripts:
-		+ Right click on `startwindow-1-git.bat`, Select `Run as Administrator`. Click YES to install required dependencies.
-		+ Repeat with `startwindow-2-pyenv.bat` -> `startwindow-3-python.bat` -> `startwindow-4-venv-run.bat`. Run ***ONE BY ONE!***
-		+ For the next time you'd like to run the application and be sure every dependencies have been correctly installed by `start-1` and `start-2`, you can run `start-3` right away.
+This is the `main` branch — the desktop app. The hosted web application lives on
+the [`online` branch](https://www.easysensorkit.cbbiotec.vn/).
 
-## Overview
-This document provides instruction on deploying a web interface that helps visualize data recorded by a handy colorimeter, inspired by [IORodeo Open Colorimeter](https://iorodeo.com/products/open-colorimeter) 
+---
+
+## Install
+
+Builds are distributed from <https://www.easysensorkit.cbbiotec.vn/> — sign in,
+then download the installer for your platform. Installation is token-gated; the
+token comes from your account page, or email
+[Minh Thong](mailto:tqmthong@gmail.com).
+
+Activation is **hardware-locked**: the licence binds to one machine, so copying
+an install folder to another computer will not unlock it.
+
+> **Path constraint:** the install path must not contain special characters
+> (e.g. Vietnamese diacritics `ạ ô ệ`). This bites on Windows in particular.
+
+### macOS
+
+Mount `EasyOKAPI_v<ver>.dmg` and drag the **EasyOKAPI folder** to `/Applications`
+(the whole folder, not the bare `.app` — the app needs somewhere to put its code).
+First launch runs the setup dialogs. To remove it, use `uninstall.command` from
+the DMG or the install folder.
+
+If Gatekeeper blocks the app, install from Terminal instead:
+
+```bash
+sudo bash /Applications/EasyOKAPI/EasyOKAPI.app/Contents/Resources/setup.sh <token>
+```
+
+### Windows
+
+Run `EasyOKAPI_Setup_<ver>.exe`, paste your token when prompted, and launch from
+the **Easy OKAPI** desktop icon. Uninstall with `Uninstall.exe` in the install
+folder, or from Add/Remove Programs.
+
+**No USB driver needed** — the PyBadge's CDC serial port is enumerated
+automatically by Windows 10/11. No `libusbK`, no Zadig.
+
+### Linux
+
+```bash
+./setup.sh --token <token>     # or --no-gui for a headless install
+./uninstall.sh
+```
+
+`setup.sh` with no arguments opens a Tk window. Screen-reader users should prefer
+the non-graphical route — see [`docs/accessibility/INSTALLERS.md`](docs/accessibility/INSTALLERS.md).
+
+### From source (development)
+
+```bash
+pyenv install 3.12.11 && pyenv local 3.12.11
+pip install -r requirements.txt          # + requirements-dev.txt for the tests
+python main.py                           # http://easyokapi.com:5099
+```
+
+| Flag | Effect |
+|---|---|
+| `--port 5099` | Listen port (default 5099) |
+| `--alias easyokapi.com` | Hostname alias |
+| `--verbose` / `-v` | Show HTTP logs + backend prints |
+| `--mem-monitor` | tracemalloc memory-growth tracking |
+| `--no-browser` | Don't open a startup browser tab |
+
+Tests: `pytest tests/ --ignore=venv`
+
+Per-platform helper scripts also exist for a scripted source install —
+`setup-1-install-pyenv.command` → `setup-2-install-venv.command` →
+`setup-3-run.command` on macOS, and `startwindow-1-git.bat` →
+`-2-pyenv` → `-3-python` → `-4-venv-run` **one at a time, as Administrator** on
+Windows.
+
+---
 
 ## Features
-* ***Init prompt*** Instruct you to select the correct started Directory for Directory Picker
 
-<div align="center">
-	<img src="/images/init-prompt.png" width="600">
-</div>
+### Four measurement modes
 
-* ***Directory*** Browse host's directories to select CSV files.
+`kinetics` · `point` · `calibrate` · `report` — switched from the mode selector;
+each shows only the controls that apply to it.
 
-<div align="center">
-	<img src="/images/browse.png" width="600">
-</div>
+### Reading from the device
 
-* ***Set measurement Modes*** The Applicatiob has 4 modes: `kinetics`, `point`, `calibrate`, `report`
+Capture data sent by the PyBadge over USB serial. The host log is written to
+`log/script_logs.txt`. Disabled in `calibrate` mode.
 
-* ***Select type of Calibration*** You can specify which calibration you're calculating for, either `kinetics` or `point`
+- **Timestamp or Turn axis.** Timestamp records elapsed seconds; **Record as Turns**
+  records a 1,2,3… index instead — one row per point, which is what point-mode
+  standards want.
+- **Automatic or Manual run.** Automatic reads on an interval; Manual idles the
+  device and records one Turn per **Measure now** press.
+- **Pause / Resume** holds a run without ending it — the device freezes its
+  session clock, so timestamps stay continuous and the timeout doesn't burn.
+- **Live session strip.** A chart-recorder trace of the run in progress, pushed
+  over SSE rather than polled.
 
-* ***Log data*** Capture data sent from the ***PyBadge*** colorimeter over USB serial (CDC). Specify the save location and filename pattern via `--base-dir` and `--base-name`. The host log is saved at: `\log\script_logs.txt`. Disabled in **calibrate** mode
+<div align="center"><img src="/images/logHID.png" width="600"></div>
 
-<div align="center">
-	<img src="/images/logHID.png" width="600">
-</div>
+### Virtual controller
 
-* ***Standard curves*** Choose standard curve you'd like to derive concentration from measurements. Disabled in `calibrate` mode. You can read detailed description in each standard curve json to understand the calculation methods. The information of selected file shall be displayed on the right portion of the interface.
+The device's eight-button keypad, on screen — drawn as the board's own face, with
+each key labelled by **what it does on the device's current screen**. Reads the
+device's menu, concentration and timing screens, and can set active multiplexer
+channels. Available only while no reading session is running (the serial port has
+exactly one owner).
 
-<div align="center">
-	<img src="/images/standardJSON.png" width="600">
-</div>
+### Browsing and file management
 
-* ***File Selection*** When a directory with csv files is browsed, the list of selectable csv files are displayed under ***File Selection*** table. Currently, the feature only supports display data from ***ONE*** file at a time. Click `Select` to visualize the chosen csv, `Deselect` to turn the visualization off.
+Browse the data folder, select a CSV to visualise, and copy / move / rename /
+delete / merge / edit files in place. Search filters on file *identity* — name,
+measurement, unit, concentration — not just filename.
 
-<div align="center">
-	<img src="/images/fileselection.png" width="600">
-</div>
+<div align="center"><img src="/images/browse.png" width="600"></div>
+<div align="center"><img src="/images/fileselection.png" width="600"></div>
 
-* ***Data Display***:
-	- `Full Display` Enable, Disable graphics of `maxRate` (maximum reaction velocity throughout the process), `Linear` (average speed along reaction stage), `Sat` (Measured value at saturating point when no longer reactions happening) lines. When it is checked and a csv file is being browsed, all data of that file will be shown and `Display Range` value should be disabled.
-	- In `kinetics` and `point` measurement modes, displayed data should show Measurement values (i.e Absorbance agains Time) 
+### Analysis and display
 
-	<div align="center">
-		<img src="/images/meas.png" width="600">
-	</div>
+- **Full Display** toggles `maxRate` (maximum reaction velocity), `Linear`
+  (average speed along the reaction stage) and `Sat` (value at saturation).
+- **Display Range** changes the plotted window and its unit.
+- **Window size** sets the group size for local slopes (min 3, max half the
+  file's row count). Kinetics only.
 
-	- In `calibrate` mode, if selected calibration type is `kinetics`, you can select which of these quantity: `maxRate`, `Slope` of `Linear` progression, `Sat`, and `Reacting Time taken to Saturation`.
+<div align="center"><img src="/images/meas.png" width="600"></div>
+<div align="center"><img src="/images/displayrange.png" width="600"></div>
 
-	<div align="center">
-		<img src="/images/calKinetics.png" width="600">
-	</div>
+### Standard curves and calibration
 
-	- In `calibrate` mode, if selected calibration type is `point`, you can select among timepoints, which are exported to the selected file earlier in the measuring stage for calibration. 
+Five fit models — linear, polynomial, logarithmic, exponential, Michaelis-Menten
+— computed **server-side** in `src/math_ops.py`. In `calibrate` mode:
 
-	<div align="center">
-		<img src="/images/calPoint.png" width="600">
-	</div>
+- **Kinetics calibration** fits against `maxRate`, `Linear` slope, `Sat`, or time
+  to saturation.
+- **Point calibration** fits against a chosen time point.
+- **Turn calibration** treats each recorded Turn as one concentration standard.
 
+<div align="center"><img src="/images/calKinetics.png" width="600"></div>
+<div align="center"><img src="/images/calPoint.png" width="600"></div>
 
-* `Display Range` Modifications in display range change the displayed data and respective unit displayed on the plot. 
+Coefficients export to a calibration JSON, to **Excel with a native chart**, or as
+**paste-ready Excel formulas**. The **Quick concentration** calculator evaluates a
+saved curve at one measured value with no CSV involved.
 
-<div align="center">
-	<img src="/images/displayrange.png" width="600">
-</div>
+<div align="center"><img src="/images/exportC.png" width="600"></div>
 
-* `Window size` Specifies the number of data in a group to determine local slopes. Minimum is 3, maximum is half of data size in the browsing csv file. Disabled in `point`, `calibrate` mode
+### Multiple sources
 
-<div align="center">
-	<img src="/images/window.png" width="600">
-</div>
+Filter files by how many data sources they carry, plot them together on a
+sequential colour ramp, and export all sources or just one.
 
-* `Export Analysis` 
-	- Become ***Export coefficients for standard curve*** in `calibrate` mode
-	- For `point` mode, key in the time point, the system will export with corresponding approximated measurement value at that time point for you. 
-	<div align="center">
-		<img src="/images/exportA.png" width="600">
-	</div>
+<div align="center"><img src="/images/multi-meas-display.png" width="600"></div>
+<div align="center"><img src="/images/exp-multi.png" width="600"></div>
 
-	- For `calibrate` mode, you can specify the corresponding regression algorithm to export standard curve with coefficients and plot on the chart. 
-	<div align="center">
-		<img src="/images/exportC.png" width="600">
-	</div>
+### Reports
 
-	- ***Note***: Due to security reason, the API we used for ***Select Directory*** only allows you correctly browse and select immediate Child/Parent directories at a time. You might modify to get the correct path in the interactive text box.
+Generate HTML reports organised by subject under `report/<subject>/`, with Excel
+export.
 
-* `Filter number of sources` Allows users to filter csv data files based on number of data sources available.
+### Also in the app
 
-	- Filter source control panel dropdown. Uncheck to disable the filter
-	<div align="center">
-		<img src="/images/filter-control.png" width="600">
-	</div>
+| | |
+|---|---|
+| **AI assistant** | Groq-backed chat widget with an interactive spotlight user guide |
+| **7 languages** | English, Tiếng Việt, 中文, Français, 日本語, Русский, 한국어 |
+| **Two interface styles** | `instrument` (default) and `classic` |
+| **Accessibility** | WCAG 2.2 Level AA — a published conformance claim |
+| **Auto-update** | In-app check and apply, no reinstall |
+| **Background music** | Optional radio / YouTube widget, online only, off by default |
 
-	- Typical multiple sources display
-	<div align="center">
-		<img src="/images/multi-meas-display.png" width="600">
-	</div>
+---
 
-	- You can either export all data analysis from these sources or select specific one to export
-	<div align="center">
-		<img src="/images/exp-multi.png" width="600">
-	</div>
+## Repository layout
 
-## Directory Structure
 ```
 microalbumin-Flask/
-|-- README.md
-|-- generate-tree.sh
-|-- log_cdc_data.py
-|-- main.py
-|-- main_code.py
-|-- requirements.txt
-|-- requirements-dev.txt
-|-- setup-1-install-pyenv.command
-|-- setup-2-install-venv.command
-|-- setup-3-run.command
-|-- src
-|   |-- browser_mgt.py
-|   |-- export_cal_json.py
-|   |-- export_data.py
-|   |-- file.py
-|   |-- file_path.py
-|   |-- get_next_filename.py
-|   |-- measure.py
-|   |-- mode.py
-|   |-- quantity.py
-|   |-- range.py
-|   |-- script_monitor.py
-|   `-- send_command.py
-|-- startwindow-1-git.bat
-|-- startwindow-2-pyenv.bat
-|-- startwindow-3-python.bat
-|-- startwindow-4-venv-run.bat
-|-- static
-|   |-- done.mp3
-|   |-- ht-logo.jpeg
-|   |-- ht-noname.png
-|   |-- ht.ico
-|   |-- script
-|   |   |-- calculate.js
-|   |   |-- data-display.js
-|   |   |-- data-handling.js
-|   |   |-- edit-file.js
-|   |   |-- generate-chart.js
-|   |   |-- hid-logging.js
-|   |   |-- index.js
-|   |   |-- init.js
-|   |   |-- navigation.js
-|   |   `-- short-hands.js
-|   `-- style.css
-`-- templates
-    |-- goodbye.html
-    `-- index.html
+├── main.py                  # Thin entry point — registers 8 blueprints, nothing else
+├── log_cdc_data.py          # The host-side data logger (spawned as a subprocess)
+├── src/
+│   ├── state.py             # Global state singleton
+│   ├── routes/              # All routes: core, file, report, hardware, math, ai, music, update
+│   ├── math_ops.py          # Server-side regression (scipy/numpy)
+│   ├── device_link.py       # Idle-time CDC control link (virtual controller)
+│   ├── live_stream.py       # SSE tail of a live reading session
+│   ├── ai_assistant.py      # Groq chat client + guide matcher
+│   ├── activation.py        # Hardware-locked licence gate
+│   └── update_service.py    # Auto-update: source overwrite or frozen binary swap
+├── static/
+│   ├── style.css            # Design tokens, then all UI styling
+│   ├── fonts/               # Self-hosted IBM Plex — no Google Fonts request
+│   └── script/              # 21 JS files, vanilla — no build step
+├── templates/               # index.html + the standalone pages
+├── ui_translations/         # UI catalogs, en.json is the baseline
+├── guide_translations/      # User-guide step text per language
+├── tests/                   # 37 pytest files
+├── installer-mac/           # .dmg builders + SIGNING.md
+├── installer-win/           # NSIS installers
+├── installer-linux/         # setup.sh / uninstall.sh + tarball builders
+├── tools/                   # package.py (PyInstaller freeze), gen_classic_style.py
+├── legal/                   # EULA, Privacy Notice — rendered into the installers
+└── docs/                    # publishing/ (code signing), accessibility/
 ```
+
+User data (`data/`, `json/`, `log/`, `report/`) lives in a relocatable data root,
+not necessarily beside the program — see `src/data_root.py`.
+
+---
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [`Rule.md`](Rule.md) | Hard constraints, coding rules, anti-patterns. Read before changing anything. |
+| [`CLAUDE.md`](CLAUDE.md) | Orientation for AI coding agents |
+| [`easyokapi-knowledge/EASY OKAPI.md`](easyokapi-knowledge/EASY%20OKAPI.md) | Architecture, file map, route table, data formats |
+| [`ENCODE_BUILD_PLAN.md`](ENCODE_BUILD_PLAN.md) | The no-source frozen-binary build |
+| [`BUILD_MAC.md`](BUILD_MAC.md) | Building the macOS DMGs |
+| [`installer-mac/SIGNING.md`](installer-mac/SIGNING.md) | Codesigning + notarisation |
+| [`docs/publishing/`](docs/publishing/) | Developer ID and Authenticode identity |
+| [`docs/accessibility/INSTALLERS.md`](docs/accessibility/INSTALLERS.md) | Installing with assistive technology |
+
+---
 
 ## Notes
 
-* The app assumes Timestamp in CSV files is in seconds. Adjust baseMultiplier in index.html if your data uses a different unit.
+- CSV `Timestamp` values are in **seconds**.
+- The directory-picker API can only step to immediate parent/child directories at
+  a time; type the path into the text box to jump.
 
-## License
-* This project is for educational purposes and does not include a specific license. Feel free to use and modify it as needed.
+## Licence
+
+Easy OKAPI is proprietary software licensed under the
+[End User License Agreement](legal/EULA.md). Data handling is described in the
+[Privacy Notice](legal/PRIVACY.md). Publisher: Center for Bioscience and
+Biotechnology (CBBiotec), University of Science, VNU-HCM.

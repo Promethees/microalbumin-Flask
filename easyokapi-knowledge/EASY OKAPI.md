@@ -42,7 +42,7 @@ graph TD
     Main -->|Dispatches Subprocess| Logger
 ```
 
-### 2.1 Backend (`main.py` — 197-line thin entry point)
+### 2.1 Backend (`main.py` — 417-line thin entry point)
 
 `main.py` handles only: imports, startup progress reporting, CLI argument parsing, blueprint registration, browser launch, atexit cleanup, signal handlers, and `app.run()`.
 
@@ -53,13 +53,13 @@ graph TD
 | `core_bp` | `core_routes.py` | `/ping`, `/clear_cache`, `/clear_logs`, `/`, `/shutdown`, `/browse`, `/browse_export`, `/get_data_folders`, `/get_json_cal`, `/get_report_subjects`, `/settings` (GET+POST), `/data_root` (GET+POST, POST = preview), `/data_root/restart` (POST, commit+relaunch), `/browse_dirs` (GET), `/event_log` (GET+POST), `/list_event_log_files` (GET), `/download_event_logs` (GET all / POST selected, max 5) | `index.js`, `navigation.js`, `report.js`, `init.js`, `event-tracker.js`, `bug-report.js` |
 | `file_bp` | `file_routes.py` | `/get_json_content`, `/get_csv_headers`, `/api/current_output`, `/acquire_edit_lock`, `/refresh_edit_lock`, `/release_edit_lock`, `/edit_file`, `/delete_file`, `/copy_file`, `/create_data_folder`, `/create_csv_file`, `/merge_csv`, `/remove_columns`, `/get_num_sources`, `/get_data`, `/get_file_content`, `/export_data`, `/export_cal_coefs`, `/export_cal_excel_formula`, `/get_calibration_json_list`, `/delete_data_folder`, `/rename_data_folder`, `/move_file`, `/save_range_csv`, `/save_normalized_csv`, `/convert_timestamp_to_turn` | `navigation.js`, `data-handling.js`, `edit-file.js`, `data-display.js` |
 | `report_bp` | `report_routes.py` | `/save_report`, `/export_to_report`, `/get_report_items`, `/delete_report_subject`, `/copy_report_subject`, `/rename_report_subject`, `/merge_report_subjects`, `/save_report_item_order`, `/delete_report_item`, `/export_report_excel` | `report.js`, `data-handling.js` |
-
-**Cross-tab edit lock** (`file_routes.py` `_edit_locks` registry + `acquire`/`refresh`/`release_edit_lock`): a file opened in the editor of one browser tab is locked from being edited in any other tab. The registry is an in-memory `{abs_path → {token, ts}}` map guarded by a `threading.Lock` (all tabs share one Flask process). `edit-file.js` acquires the lock before loading a file's content (a 423 shows "being edited in another tab"), heartbeats every 30 s to keep it fresh, and releases it when the modal closes or on `beforeunload` (via `navigator.sendBeacon`). A tab that dies without releasing lets the lock go stale after `_EDIT_LOCK_TTL` (120 s). `edit_file` enforces the lock server-side too: a save carries the holder's `edit_token` and is refused (423) if another tab holds the lock. This is separate from the per-write `FileLock` in `edit_file`, which only guards the atomicity of a single save.
-| `hardware_bp` | `hardware_routes.py` | `/run_script`, `/measure_point`, `/pause_reading`, `/resume_reading`, `/stream_session` (GET — SSE stream), `/check_status`, `/terminate_script`, `/get_logs`, `/device/state` (GET), `/device/button`, `/device/channels` | `cdc-logging.js`, `live-stream.js`, `device-control.js` |
+| `hardware_bp` | `hardware_routes.py` | **Session:** `/run_script`, `/measure_point`, `/pause_reading`, `/resume_reading`, `/stream_session` (GET — SSE stream), `/check_status`, `/terminate_script`, `/get_logs`. **Virtual controller (CDC link, all 409 while a session runs):** `/device/state` (GET), `/device/button`, `/device/channels`, `/device/menu` (GET+POST), `/device/concentration` (GET+POST), `/device/timing` (GET+POST), `/device/calibration` (GET+POST), `/device/disconnect`. **Persist to CIRCUITPY (`device_config.py`):** `/device/channels/save`, `/device/uvchannel/save`, `/device/calibration/save`, `/device/config/saved` (GET) | `cdc-logging.js`, `live-stream.js`, `device-control.js` |
 | `math_bp` | `math_routes.py` | `/calculate_coef_and_rsquared`, `/calculate_kinetics_quantities`, `/calculate_concentration` | `calculate.js`, `data-display.js` |
 | `ai_bp` | `ai_routes.py` | `/ai/status`, `/ai/chat`, `/ai/settings` (GET+POST), `/ai/activate`, `/ai/guides`, `/ai/match`, `/ai/feedback` (POST), `/ai/feedback/stats` (GET), `/ai/feedback/reset` (POST), `/ai/feedback/export` (GET) | `ai-chat.js`, `init.js` |
 | `update_bp` | `update_routes.py` | `/update/check` (GET), `/update/apply` (POST — SSE stream), `/update/finalize` (POST — shutdown for relaunch) | `init.js` |
 | `music_bp` | `music_routes.py` | `/music/stations` (GET — catalogue + online verdict + saved queue/modes), `/music/resolve` (POST — parse+name a pasted YouTube link), `/music/queue` (GET, POST — replace wholesale), `/music/queue/add` (POST — resolve + append) | `music.js`, `init.js` |
+
+**Cross-tab edit lock** (`file_routes.py` `_edit_locks` registry + `acquire`/`refresh`/`release_edit_lock`): a file opened in the editor of one browser tab is locked from being edited in any other tab. The registry is an in-memory `{abs_path → {token, ts}}` map guarded by a `threading.Lock` (all tabs share one Flask process). `edit-file.js` acquires the lock before loading a file's content (a 423 shows "being edited in another tab"), heartbeats every 30 s to keep it fresh, and releases it when the modal closes or on `beforeunload` (via `navigator.sendBeacon`). A tab that dies without releasing lets the lock go stale after `_EDIT_LOCK_TTL` (120 s). `edit_file` enforces the lock server-side too: a save carries the holder's `edit_token` and is refused (423) if another tab holds the lock. This is separate from the per-write `FileLock` in `edit_file`, which only guards the atomicity of a single save.
 
 * **Filesystem-based data storage**: All CSV and JSON files are read/written to the local filesystem.
 * **Auto-browser launch**: `browser_mgt.py` opens the default browser on server init — suppressed by `--no-browser` (set on restart relaunches so a second tab doesn't steal the one-shot reset-display marker).
@@ -99,6 +99,12 @@ graph TD
 | `mode.py` | Returns available measurement modes: `kinetics`, `point`, `calibrate` |
 | `quantity.py` | Returns available quantity options for kinetics analysis |
 | `range.py` | Returns display range input configuration |
+| `live_stream.py` | SSE tail of a live reading session — follows the log and the active CSV (path from `log/current_output.txt`) **by byte offset** and pushes `meta`/`rows`/`log`/`end` to `GET /stream_session`. Replaces a 500 ms full-file chart poll and a 2 s whole-log poll; both survive as the fallback, gated on `liveStreamCarrying()`. `/check_status` keeps sole ownership of *why* a run ended. Setting: `live_stream_enabled`. See Rule.md §2.31 |
+| `device_link.py` | Idle-time CDC control link for the virtual controller — `STATE?` / `BTN:` / `CHANNELS:` / `MENU?` / `CONC?` / `TIMING?`. Opens the port **only while no reading session is running** (one owner, Rule.md §2.28/§2.29); every route answers 409 while `state.process` is alive. Holds the port between commands with a 30 s idle reaper. See Rule.md §2.35 |
+| `device_config.py` | Reads and edits the colorimeter's `configuration.json` on its mounted CIRCUITPY drive — the host is the side that *can* write it, because CircuitPython mounts its own filesystem read-only. Writing restarts the device into the new calibration, so the routes allow it only while no session is in progress; it never writes a file it did not first recognise as a colorimeter's (`boot_out.txt`), and never rewrites more than the one key asked for |
+| `sentinels.py` | The non-numeric tokens a value column can carry (`OVFL` saturated, `NONE` un-blanked, `INF`/`inf` fully attenuated). A row is validated whole, so an unrecognised token drops the healthy channels with it; and `float("INF")` does **not** raise — it poisons fits, JSON and Excel cells, so sentinels must never reach `float()` |
+| `music.py` | Radio-station catalogue + cached TCP connectivity probe + YouTube link parsing (allow-listed hosts) and keyless oEmbed naming. **Metadata only — no audio passes through Flask.** See Rule.md §2.32 |
+| `music_queue.py` | Persisted YouTube play queue (`music_queue.json`, in `state.script_dir`) — not `localStorage`, which a restart clears (Rule.md §2.20) |
 | `routes/__init__.py` | Empty package marker |
 
 ### 2.3 Data Collection (`log_cdc_data.py` — the only host logger)
@@ -128,7 +134,7 @@ Firmware transport switch: `open_colorimeter_firmware/src/serial_manager.py` —
 
 `script_monitor.check_log_for_end_reason()` maps the log to `'timeout'`/`'stopped'`, which `check_status` turns into a reason-aware completion message; `cdc-logging.js` (`fetchLogs` + `resetUIAfterCompletion`) shows "Session ended due to timeout." vs "Session stopped manually on the device.".
 
-### 2.3.9 Visual design system (`static/style.css` + `static/fonts/`)
+### 2.3.1 Visual design system (`static/style.css` + `static/fonts/`)
 
 `style.css` opens with a **token block** that is the single source of colour, type, radius and elevation: `:root` carries the light-mode values and `body.dark` re-steps them for graphite (dark is designed, not inverted). Semantic tokens are `--bg / --panel / --well / --hairline / --hairline-soft / --ink / --ink-muted / --ink-dim`, `--accent / --accent-strong / --accent-wash`, the reserved status trio `--danger / --warn / --go`, the sequential `--ramp-1..10 / --ramp-blank`, the two radii `--r-flat` (0, data surfaces + fields) and `--r-press` (4px, pressables), and the three type roles `--font-ui / --font-mono / --font-label`. Legacy names (`--primary-gradient`, `--surface-light`, `--border-radius`, `--shadow-*`) are kept as aliases resolving to the tokens, so the whole 5000-line sheet inherits the palette; the "gradients" are flat fills.
 
@@ -142,7 +148,7 @@ The palette is derived from the **assay**, not from light: `--accent` is bromoph
 
 **Session strip** — `#session-strip` in `index.html`, drawn by `drawSessionStrip()` in `cdc-logging.js`: a fixed 64px chart-recorder trace of the run in progress (one polyline per source, same ramp), plus a `Recording`/`Paused` state readout, the session clock, the countdown to the next reading, and either the latest value (single source) or the row count. It reads `AppState.responseData`, so it issues no requests of its own; it is revealed on the first landed row and torn down with the session timer, and greys/freezes when the run is paused. It **replaces** the top-right `#session-timer` widget, which `onNewDataPoint` now mounts only when the strip is off — `tickSessionTimer()` computes the clocks once and writes both readouts, so there is still one clock. The countdown field hides itself when there is no interval (manual point mode). Setting: `session_strip_enabled` (default on).
 
-### 2.4 Frontend (`static/script/` — 17 JS files)
+### 2.4 Frontend (`static/script/` — 21 JS files)
 
 | File | Responsibility |
 |---|---|
@@ -154,7 +160,9 @@ The palette is derived from the **assay**, not from light: `--accent` is bromoph
 | `init.js` | Page initialization, event listeners, mode/filter setup |
 | `index.js` | `AppState` global state, mode switching, directory updates, `checkServerStatus`, and the **source ramp** (`sourceRamp(n)` / `rampStops()` reading `--ramp-*`; `AppState.plotColors` is a getter over it) |
 | `navigation.js` | File table population (CSV and JSON), **data subfolder picker** (`loadDataFolders`, `selectDataFolder`, `filterDataFolderList`, `updateFolderListSelection`, `renameDataFolder`, `deleteDataFolder`), **identity-aware file search** (`filterTable` + `parseSearchQuery` / `_identityFieldMatch`: space-separated positional filters `name meas unit concen`, all AND-ed, matched against `AppState.fileIdentity`/`jsonIdentity` — see Rule.md §2.10) |
-| `hid-logging.js` | **PyBadge control UI**: `runScript`, `terminateScript`, `checkScriptStatus`, log display |
+| `cdc-logging.js` | **PyBadge reading-session UI**: `runScript`, `terminateScript`, `checkScriptStatus`, pause/resume + the `#reading-control-fab` transport, manual-mode **Measure now**, the session timer, the start-up notice, and the **session strip** (`drawSessionStrip()` — the live chart-recorder trace, Rule.md §2.33) |
+| `live-stream.js` | SSE client for `GET /stream_session` — consumes the pushed `meta`/`rows`/`log`/`end` events while a run is in progress; `liveStreamCarrying()` gates the legacy `/get_data` + `/get_logs` polls, which survive as the fallback. Setting: `live_stream_enabled`. See Rule.md §2.31 |
+| `device-control.js` | Virtual controller panel (`#device-control-section`, collapsed by default) — the board's own face: readout as the screen, SELECT/START in the top corners, d-pad left, A/B staggered right. Polls `GET /device/state` only while expanded; `POST /device/button`, `/device/channels`, `/device/menu`, `/device/concentration`, `/device/timing`. Branches on the firmware's `caps` list, never a version. See Rule.md §2.35 |
 | `data-handling.js` | File select/deselect/delete/copy/move, data fetching, export logic |
 | `data-display.js` | Chart rendering orchestration, multi-source handling, calibration routines |
 | `generate-chart.js` | Chart.js chart creation, dataset construction, annotations. Chart chrome follows the design tokens: mono tick figures, condensed axis/chart titles, `Measurement — filename` heading, measurement-name fallback for a unitless y-axis (`isNoneUnit`), markers dropped past 40 points |
@@ -217,7 +225,7 @@ Supported algorithms: `linear`, `polynomial`, `logarithmic`, `exponential`, `Mic
 A floating chat widget (bottom-right corner) powered by **Groq** (cloud LLM API). No local model download is required. The `GROQ_API_KEY` lives only on the online server (Heroku config var); desktop instances authenticate via a locally stored activation token rather than holding the key directly. AI-assistant preferences (`ui_language`, `ai_feedback_enabled`) are persisted in `user_settings.json` via `user_settings.py`; there is no separate `ai_settings.json`.
 
 ### 5.2 Supported Languages
-English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (ja), Russian (ru).
+Seven, from `SUPPORTED_LANGUAGES` in `src/user_settings.py` — the one registry the UI (`ui_translations/`), the guide (`guide_translations/`) and the AI chat all read: English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (ja), Russian (ru), Korean (ko).
 
 ### 5.3 Default Model
 `llama-3.1-8b-instant` (Groq). Override with `AI_MODEL` environment variable.
@@ -242,6 +250,11 @@ English (en), Vietnamese (vi), Chinese Simplified (zh), French (fr), Japanese (j
 | `/ai/settings` | GET | Return current settings |
 | `/ai/settings` | POST | Update settings (language, enabled) |
 | `/ai/guides` | GET | Return guide examples for a given language |
+| `/ai/match` | POST | Local guide match for a query, no LLM call |
+| `/ai/feedback` | POST | 👍/👎 on an answer → `ai_feedback.jsonl`; a rated *local guide* match also tunes `ai_guide_weights.json` |
+| `/ai/feedback/stats` | GET | Rating counts + learned weights |
+| `/ai/feedback/export` | GET | Download the raw feedback log |
+| `/ai/feedback/reset` | POST | Clear learned matcher weights |
 
 ### 5.6 Settings / language
 There is **no** `ai_settings.json`. The AI chat language is client-side: `AI.activeLang` in `ai-chat.js`, chosen from the header language menu and stored in `localStorage` (`okapi_ai_lang`); every chat/match request sends that single active language. It is independent of the interface language (`ui_language` in `user_settings.json`). The list of selectable languages is `user_settings.SUPPORTED_LANGUAGES`. AI-related persisted preferences (`ai_feedback_enabled`) live in `user_settings.json`.
@@ -271,7 +284,7 @@ Set `GROQ_API_KEY` in `.env`. The app detects this and calls Groq directly, bypa
 
 ## 6. Installation & Startup
 
-### 5.1 Mac
+### 6.1 Mac
 ```bash
 # Option A: Installer (.dmg)
 # Option B: Scripts
@@ -280,7 +293,7 @@ Set `GROQ_API_KEY` in `.env`. The app detects this and calls Groq directly, bypa
 ./setup-3-run.command             # Start the application
 ```
 
-### 5.2 Windows
+### 6.2 Windows
 Uses the PyBadge CDC serial port (no `libusbK`/Zadig driver needed).
 ```cmd
 startwindow-1-git.bat
@@ -289,7 +302,7 @@ startwindow-3-python.bat
 startwindow-4-venv-run.bat
 ```
 
-### 5.3 Direct Python
+### 6.3 Direct Python
 ```bash
 python main.py --port 5099 --alias easyokapi.com
 python main.py --verbose          # show HTTP logs + backend prints
@@ -298,39 +311,59 @@ python main.py --mem-monitor      # enable tracemalloc memory growth tracking
 
 ---
 
-## 6. Directory Structure (Main Branch)
+## 7. Directory Structure (Main Branch)
 
 ```
 microalbumin-Flask/
 ├── CLAUDE.md                   # Claude Code entry point
 ├── Rule.md                     # AI coding rules
-├── main.py                     # Flask app entry point (197 lines, blueprint registration only)
+├── main.py                     # Flask app entry point (417 lines, blueprint registration only)
 ├── log_cdc_data.py             # CDC (USB serial) data collection — the only host logger
 ├── requirements.txt            # Python runtime dependencies (all platforms)
 ├── requirements-dev.txt        # Test-only dependencies (pytest)
+├── requirements-build.txt      # PyInstaller, for the frozen build only
+├── easyokapi.spec              # PyInstaller onedir spec (see ENCODE_BUILD_PLAN.md)
 ├── setup-*.command             # Mac utility startup scripts
 ├── startwindow-*.bat           # Windows utility startup scripts
-├── installer-mac/              # Mac .dmg installer assets
-├── installer-win/              # Windows .exe installer assets
+├── installer-mac/              # Mac .dmg installer assets (+ SIGNING.md)
+├── installer-win/              # Windows .exe installer assets (NSIS)
+├── installer-linux/            # Linux setup.sh / uninstall.sh
+├── docs/                       # publishing/ (Developer ID, Authenticode), accessibility/
+├── legal/                      # EULA, PRIVACY, Terms — rendered into the installers
+├── tools/                      # package.py (freeze), gen_classic_style.py, fetch_vendor.py
 ├── src/
 │   ├── state.py                # Global state singleton
+│   ├── sentinels.py            # Non-numeric value tokens (OVFL / NONE / INF) a channel can stream
 │   ├── i18n.py                 # UI translation catalog loader (ui_translations/)
-│   ├── data_root.py            # User-selectable data root (.dataroot pointer)
+│   ├── data_root.py            # User-selectable data root (.easyokapi_dataroot pointer)
 │   ├── validators.py           # @validate_json decorator
+│   ├── security.py             # Request-origin guard (CSRF + DNS-rebinding)
+│   ├── event_logger.py         # /event_log sink → log/events/
 │   ├── live_stream.py          # SSE tail of a live session (log + active CSV, by byte offset)
 │   ├── device_link.py          # Idle-time CDC control link (virtual controller: STATE?/BTN:/CHANNELS:)
+│   ├── device_config.py        # Per-firmware capability/labels for the virtual controller
 │   ├── music.py                # Radio catalogue + connectivity probe + YouTube link parsing/oEmbed
 │   ├── music_queue.py          # Persisted YouTube play queue (music_queue.json)
 │   ├── math_ops.py             # Server-side regression (scipy/numpy)
+│   ├── excel_formula.py        # Paste-ready Excel formulas from calibration coefficients
+│   ├── ai_assistant.py         # Groq chat client, MCP tool engine, multilingual prompts
+│   ├── ai_feedback.py          # 👍/👎 log + learned guide-matcher weights
+│   ├── user_settings.py        # User preferences + SUPPORTED_LANGUAGES registry
+│   ├── update_service.py       # Auto-update: check, download, source overwrite / binary swap
+│   ├── hwid.py                 # Per-machine fingerprint (hardware-lock basis)
+│   ├── activation.py           # License gate: RS256 verify + hwid claim + revocation poll
+│   ├── activation_pubkey.py    # Embedded RS256 public key (verify-only)
 │   ├── routes/
 │   │   ├── __init__.py
 │   │   ├── core_routes.py      # Core + browse + report subjects
-│   │   ├── file_routes.py      # CSV/JSON CRUD + report CRUD
-│   │   ├── hardware_routes.py  # Data-logger subprocess control (CDC default)
+│   │   ├── file_routes.py      # CSV/JSON CRUD, export, merge, edit locks
+│   │   ├── report_routes.py    # Report subject/item CRUD + Excel report export
+│   │   ├── hardware_routes.py  # Logger subprocess control + virtual-controller routes
 │   │   ├── math_routes.py      # Regression math API
-│   │   └── music_routes.py     # Background music: catalogue, link resolve, queue (metadata only)
+│   │   ├── ai_routes.py        # AI assistant: chat, settings, activation, feedback
+│   │   ├── music_routes.py     # Background music: catalogue, link resolve, queue (metadata only)
+│   │   └── update_routes.py    # Auto-update: check, apply (SSE), finalize
 │   ├── browser_mgt.py
-│   ├── excel_formula.py
 │   ├── export_cal_json.py
 │   ├── export_data.py
 │   ├── file.py
@@ -344,44 +377,58 @@ microalbumin-Flask/
 │   ├── script_monitor.py
 │   └── send_command.py
 ├── static/
-│   ├── style.css                # design tokens + all UI styling
+│   ├── style.css                # design tokens + all UI styling (incl. the generated classic layer)
 │   ├── fonts/                   # self-hosted type: plex.css (instrument) + classic.css (classic)
-│   └── script/
+│   ├── vendor/                  # third-party JS/CSS vendored by tools/fetch_vendor.py
+│   └── script/                  # 21 files
+│       ├── event-tracker.js    # logEvent() → /event_log; loaded first
+│       ├── short-hands.js      # DOM helpers + screen-reader announce()/announceAlert()
+│       ├── a11y.js             # Chart data tables, sortable headers, scrollable regions (§2.36)
+│       ├── i18n.js             # UI translation applier (t() + applyTranslations)
+│       ├── tooltip.js          # Styled [data-hint] hover tooltips
+│       ├── init.js
+│       ├── index.js
+│       ├── navigation.js
 │       ├── calculate.js
+│       ├── generate-chart.js
 │       ├── data-display.js
 │       ├── data-handling.js
 │       ├── edit-file.js
-│       ├── generate-chart.js
-│       ├── hid-logging.js
+│       ├── cdc-logging.js      # Reading session: run/pause/stop, timer, session strip (§2.33)
 │       ├── live-stream.js      # SSE live-session client (rows + log pushed; polls are the fallback)
 │       ├── device-control.js   # Virtual controller panel (device keypad + per-screen button labels)
-│       ├── index.js
-│       ├── init.js
-│       ├── navigation.js
 │       ├── report.js           # Report generation + subject CRUD
-│       ├── short-hands.js
-│       ├── tooltip.js          # Styled [data-hint] hover tooltips
-│       ├── i18n.js             # UI translation applier (t() + applyTranslations)
 │       ├── user-guide.js       # Interactive user guide
 │       ├── ai-chat.js          # Floating AI chat widget
-│       └── music.js            # Floating music widget: radio + YouTube queue (online-only)
+│       ├── music.js            # Floating music widget: radio + YouTube queue (online-only)
+│       └── bug-report.js       # Log-bundle + mailto bug report flow
 ├── templates/
-│   ├── index.html
-│   └── goodbye.html
+│   ├── index.html              # Main SPA
+│   ├── goodbye.html            # /shutdown (both interface styles)
+│   ├── restarting.html         # Auto-reloads once the relaunched instance answers
+│   ├── restart_required.html
+│   ├── activate.html           # Token entry
+│   ├── license_blocked.html    # Seat revoked
+│   ├── license_banned.html     # Account banned
+│   ├── license_reverify.html   # Grace lapsed offline
+│   ├── legal.html              # EULA / Privacy / Terms viewer
+│   └── _a11y_head.html         # Shared a11y <head> block for stylesheet-less pages
 ├── data/                       # All user CSV data (auto-created); browsing restricted to here
 │   ├── <subfolder>/            # User-named subfolders (created on data run or manually)
 │   └── root/                   # RESERVED: installer archive staging for loose data-root files (Rule.md §2.16); users cannot create this name
 ├── json/                       # Standard curve JSON files
-├── log/                        # Script logs directory
+├── log/                        # Script logs + log/events/ (event tracker)
 ├── report/                     # Saved HTML reports (by subject subdirectory)
-├── ui_translations/            # UI translation catalogs: en.json (baseline) + vi/zh/fr/ja/ru
+├── ui_translations/            # UI catalogs: en.json (baseline) + vi/zh/fr/ja/ru/ko
+├── guide_translations/         # User-guide step text per language (en baseline is guide_training.json)
+├── tests/                      # 37 pytest files — `pytest tests/ --ignore=venv`
 ├── user_settings.json          # User UI + AI preferences (auto-created, gitignored)
 └── sample_data/
 ```
 
 ---
 
-## 6. RAG User Guide Subsystem
+## 8. RAG User Guide Subsystem
 
 A local Retrieval-Augmented Generation pipeline is planned to replace the current keyword-based few-shot injection for the AI-driven user guide. Full architecture, data-flow diagrams, component map, and phased implementation plan are in:
 
@@ -391,11 +438,11 @@ Current state: keyword scan in `_match_guide_example()` (`src/ai_assistant.py:25
 
 ---
 
-## 7. AI Proxy Architecture
+## 9. AI Proxy Architecture
 
 The `GROQ_API_KEY` never ships inside the desktop app package. It lives only as a Heroku config var on the online server. Desktop instances access Groq through a two-phase token mechanism.
 
-### 7.1 Token Lifecycle
+### 9.1 Token Lifecycle
 
 ```
 User logs in at easyokapi.cbbiotec.vn
@@ -465,7 +512,7 @@ computer does not work:
   (grandfathered) until every install has re-activated; flip
   `_ALLOW_LEGACY_HS256` in `src/activation.py` to enforce strictly.
 
-### 7.2 Files Involved
+### 9.2 Files Involved
 
 **Main branch (desktop app):**
 
@@ -494,7 +541,7 @@ computer does not work:
 | `src/routes/account_routes.py` | `POST /api/activate` binds `hwid` (seat cap) and issues the locked token; `/api/download` machine-checks the Bearer token; `GET /api/account/machines` + `POST .../deactivate` (transfer, web session); `POST /api/license/release` (uninstall frees its own seat, token-authenticated); `GET /api/activation-pubkey`. Neither release path may free a revoked seat or a banned account's seat |
 | `src/routes/ai_routes.py` | `POST /ai/proxy/chat` — validates the token, confirms the `hwid` matches a bound seat, calls Groq, streams SSE |
 
-### 7.3 API Mode Selection (main branch)
+### 9.3 API Mode Selection (main branch)
 
 `_get_api_mode()` in `src/routes/ai_routes.py` returns the active mode on every request:
 
@@ -508,7 +555,7 @@ GROQ_API_KEY in .env?     →  mode = 'dev'    (credential = api_key, calls Groq
 
 Proxy mode always takes priority over dev mode when both are present.
 
-### 7.4 Security Properties
+### 9.4 Security Properties
 
 | Property | How it is achieved |
 |---|---|
@@ -520,7 +567,7 @@ Proxy mode always takes priority over dev mode when both are present.
 
 ---
 
-## 8. Key Differences from `online` Branch (Summary)
+## 10. Key Differences from `online` Branch (Summary)
 
 | Aspect | `main` branch | `online` branch |
 |---|---|---|
@@ -543,3 +590,9 @@ Proxy mode always takes priority over dev mode when both are present.
 | Math computation | Server-side (`math_ops.py`, scipy) | Client-side JS only |
 | AI backend | Groq via proxy (`activation.json`) | Groq direct (`GROQ_API_KEY` on Heroku) |
 | AI key location | Never on client; proxied via Heroku | Heroku config var only |
+| UI localization | 7 languages, `ui_language` setting (Rule §2.22) | 7 languages, **language in the URL** (Rule §2.14 online) |
+| Accessibility | WCAG 2.2 AA — published claim (Rule §2.36) | WCAG 2.2 AA — published claim + `/accessibility` statement (Rule §2.15 online) |
+| Licensing | Hardware-locked activation + revocation/ban gate (Rule §2.17) | Issues the tokens: seat table, `/api/activate`, `/api/license/check`, admin revoke/ban |
+| Auto-update | In-app: source overwrite or frozen binary swap (Rule §2.15) | Vends the artifacts: `/api/version`, `/api/download` |
+| Virtual controller | Yes (`device_link.py` + `device_config.py`) | N/A — no hardware |
+| Background music | Yes, online-only widget (Rule §2.32) | Not present |

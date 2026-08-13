@@ -1,89 +1,131 @@
-# Comprehensive Test Plan - Easy OKAPI
+# Comprehensive Test Plan — Easy OKAPI
 
-This document provides an extensive suite of test cases to ensure the stability, accuracy, and reliability of the Easy OKAPI application.
-
-## 1. Core Functional Tests (Manual)
-
-### 1.1 Application Lifecycle
-| Test Case ID | Description | Expected Result |
-| :--- | :--- | :--- |
-| **SYS-01** | Cold start via `main.py` | Browser opens automatically; Splash screen appears. |
-| **SYS-02** | Shutdown button click | Server terminates; PID is released; Browser shows "Goodbye". |
-| **SYS-03** | Page refresh state | Browsed path and current chart selection (stored in LocalStorage) persist. |
-
-### 1.2 Hardware Interfacing (PyBadge)
-| Test Case ID | Description | Expected Result |
-| :--- | :--- | :--- |
-| **HW-01** | Connect device mid-session | Dashboard should allow "Start reading" once device is detected. |
-| **HW-02** | Disconnect mid-read | Log display should show "Device not found"; Button should revert to "Start reading". |
-| **HW-03** | Infinite timeout read | Script runs until "Stop reading" is manually clicked (~1000+ points). |
-| **HW-04** | Short interval (0.5s) | Data arrives at high frequency without UI stuttering. |
-
-### 1.3 Data & File Management
-| Test Case ID | Description | Expected Result |
-| :--- | :--- | :--- |
-| **FILE-01** | Large CSV load (5000+ rows) | Chart renders within < 2 seconds. |
-| **FILE-02** | Merge 5+ files | Resulting CSV has all 5 sources correctly interleaved or grouped. |
-| **FILE-03** | Delete active file | UI resets "No file selected" state cleanly. |
-| **FILE-04** | Edit values to float | Values like `1.23456` are correctly saved and re-plotted. |
+Edge cases, adversarial inputs and numerical stability. The feature-by-feature
+walkthrough lives in [`MANUAL_TESTING.md`](MANUAL_TESTING.md); this document does
+not repeat it.
 
 ---
 
-## 2. Mathematical Stability Tests (Math API)
+## 1. Automated suite
 
-### 2.1 Regression Edge Cases
-| Test Case ID | Scenario | Expected Backend Behavior |
-| :--- | :--- | :--- |
-| **MATH-01** | Single Data Point | Return `slope: 0`, `rSquared: 0`, `coefficients: null`. |
-| **MATH-02** | Zero Gradient (Horizontal) | `slope: 0`, `rSquared: 1` (perfect fit for 0 change). |
-| **MATH-03** | Vertical Line (Identical X) | Graceful error/return 0 (avoid ZeroDivisionError). |
-| **MATH-04** | Negative Values in Log | Backend `math_ops` should return 0/graceful failure. |
-| **MATH-05** | MM with X > Vmax | MM formula should avoid infinite loops or `NaN` in coefficients. |
-
-### 2.2 Numerical Precision
-- [ ] **Cross-Verification:** Compare Python Scipy results against known Excel/Matlab linear regression outputs for a 10-point dataset.
-- [ ] **R² Thresholding:** Verify that sliding windows with R² < 0.90 are correctly excluded from "maxRate" identification.
-
----
-
-## 3. API Robustness & Security (Validation)
-
-### 3.1 Type Coercion & Blocking
-| Endpoint | Payload Injection | Expected Status |
-| :--- | :--- | :--- |
-| `/run_script` | `{"timeout_sec": "abc"}` (bad type) | `400 Bad Request: Invalid value` |
-| `/export_data`| `{"newFile": "not-bool"}` | `400 Bad Request` |
-| `/remove_columns`| `{"columns": 123}` (expected list) | `400 Bad Request` |
-| `/ping` | GET request | `200 Success` |
-
-### 3.2 Path Traversal Prevention
-- [ ] **Dot-Dot-Slash Test:** Attempt to browse to `../../` outside the project root. Verify paths are normalized or blocked if they exceed user permission levels.
-
----
-
-## 4. UI & UX Edge Cases
-
-### 4.1 UI Stress Tests
-- [ ] **Double Click:** Rapidly double-click "Start reading" or "Export Data". Verify backend logic prevents spawning multiple subprocesses.
-- [ ] **Window Resize:** Shrink browser to 400px width. Verify the mobile-friendly styles (or button shrinking) kick in.
-- [ ] **Popup Spam:** Disable popups in Options and verify regression errors are logged to the console instead of SweetAlert.
-
-### 4.2 LocalStorage Integrity
-- [ ] **Corrupt Storage:** Manually set `con-value-read-source-0` to a string in devtools. Verify the dashboard doesn't crash on reload.
-
----
-
-## 5. Automated Verification (Backend)
-
-### 5.1 Pytest Suite
-Run the following from the root directory:
 ```bash
-# Run all unit tests
-pytest 
-
-# Run tests with coverage report
-pytest --cov=src
+pip install -r requirements.txt -r requirements-dev.txt
+pytest tests/ --ignore=venv          # 37 test files
+pytest tests/test_math_ops.py        # one file
+pytest tests/ -k "test_ping"         # one test by name
 ```
 
-### 5.2 Specific API Mocks
-- [ ] **Connect Mock Device:** Use a mock serial script to simulate PyBadge responses and test the `hardware_routes.py` without hardware.
+CI (`.github/workflows/main.yml`) runs the **whole** suite on Python 3.12 with
+`PYTHONPATH=.:src` before any platform build, and fails the build if
+`legal/EULA.txt` / `.rtf` are stale against `legal/EULA.md`.
+
+`pytest-cov` is **not** a dependency — `pytest --cov=src` will not work until it
+is added to `requirements-dev.txt`.
+
+| Area | Files |
+|---|---|
+| Routes / app | `test_app.py`, `test_core_logic.py`, `test_data_processing.py`, `test_utils.py` |
+| Validation & security | `test_validators.py`, `test_security.py`, `test_accessibility.py` |
+| Math & export | `test_math_ops.py`, `test_excel_formula.py`, `test_report_excel.py` |
+| Hardware | `test_send_command.py`, `test_device_link.py`, `test_reconnect.py`, `test_live_stream.py`, `test_sentinels.py` |
+| Settings & data root | `test_user_settings.py`, `test_data_root.py`, `test_reset_display.py`, `test_event_logger.py`, `test_i18n.py` |
+| Licensing | `test_hwid.py`, `test_activation*.py` (4), `test_license_revocation.py` |
+| Updates | `test_update_service.py`, `test_update_routes.py`, `test_update_binary_swap.py` |
+| AI | `test_ai_*.py` (6) |
+| Music | `test_music.py` |
+
+---
+
+## 2. Mathematical stability
+
+### 2.1 Regression edge cases
+| ID | Scenario | Expected backend behaviour |
+|---|---|---|
+| **MATH-01** | Single data point | `slope: 0`, `rSquared: 0`, `coefficients: null` |
+| **MATH-02** | Zero gradient (horizontal) | `slope: 0`, `rSquared: 1` |
+| **MATH-03** | Identical X values (vertical) | Graceful return, never `ZeroDivisionError` |
+| **MATH-04** | Negative values into a log fit | Graceful failure, no `nan` in the response |
+| **MATH-05** | Michaelis-Menten with X > Vmax | No infinite loop, no `nan` coefficients |
+| **MATH-06** | Fewer points than the model has parameters | Refused with a message, not a `curve_fit` crash |
+| **MATH-07** | A column containing `OVFL` / `NONE` / `INF` | Sentinel never reaches `float()`; row handling per `src/sentinels.py` |
+
+### 2.2 Three-way model agreement
+The same five models are implemented in three places. They must agree, and a
+change to one is a change to all three:
+
+| Implementation | Used by |
+|---|---|
+| `math_ops.py` fit functions | Fitting a curve from a CSV |
+| `math_ops.evaluate_curve()` | `/calculate_concentration` — the Quick concentration calculator |
+| `src/excel_formula.py` | `/export_cal_excel_formula` — paste-ready Excel formulas |
+
+- [ ] For each of linear, polynomial, logarithmic, exponential and Michaelis-Menten: fit a curve, evaluate it at a test X through `evaluate_curve`, and evaluate the exported Excel formula at the same X. All three agree to display precision.
+
+### 2.3 Numerical precision
+- [ ] Cross-verify a 10-point linear regression against Excel or MATLAB.
+- [ ] Sliding windows with R² < 0.90 are excluded from `maxRate` identification.
+
+---
+
+## 3. API robustness & security
+
+### 3.1 Type coercion & rejection
+| Endpoint | Payload | Expected |
+|---|---|---|
+| `/run_script` | `{"timeout_sec": "abc"}` | `400` — `Invalid value` |
+| `/export_data` | `{"newFile": "not-bool"}` | `400` |
+| `/remove_columns` | `{"columns": 123}` (list expected) | `400` |
+| any `@validate_json` route | bare array `[1,2,3]` or a scalar | `400`, **never 500** |
+| `/shutdown` | malformed body | `400` **and the app still running** |
+| `/update/finalize` | malformed body | `400`, no side effects, app still running |
+| `/ping` | GET | `200` |
+
+`@validate_json` is mandatory on every JSON-parsing POST route
+(`src/validators.py`). `/download_event_logs` is the one documented exemption —
+it is GET+POST and validates its body inline.
+
+### 3.2 Path traversal
+- [ ] `../../` in any filename or directory parameter is blocked by `validate_in_data_root` / `validate_in_allowed_roots`, not merely normalised.
+- [ ] A symlink inside the data root pointing outside it is refused.
+- [ ] The reserved `data/root/` name cannot be created by a user.
+
+### 3.3 Request-origin guard
+- [ ] A state-changing request carrying a foreign `Origin`/`Referer` is refused (`src/security.py` — CSRF + DNS rebinding).
+- [ ] A request to a hostname other than the bound alias/localhost is refused.
+
+### 3.4 Licensing
+- [ ] A token whose `hwid` claim does not match this machine fails verification offline.
+- [ ] A tampered token body fails the RS256 signature check.
+- [ ] A revoked seat, a banned account, and a lapsed grace window each land on their own page and cannot be cleared by going offline.
+
+---
+
+## 4. Concurrency & resource ownership
+
+The serial port has exactly one owner. These are the ways that used to break:
+
+- [ ] **Double-click Start reading** → one subprocess, not two.
+- [ ] `/device/*` during a session → **409**, and `/run_script` closes the control link before spawning the logger.
+- [ ] Two browser tabs editing one file → the second gets **423**; a dead tab's lock goes stale after ~120 s.
+- [ ] An unconsumed `stream_with_context` response must not corrupt the next request's context (Flask 3 — Rule §2.37). Open `/stream_session`, abandon it, and issue a normal request.
+- [ ] No route is registered after the first request (Flask 3 forbids it).
+
+---
+
+## 5. UI & storage edge cases
+
+- [ ] **400 px width:** nothing overflows; the session strip and chart still read.
+- [ ] **Browser zoom:** section headings do not shrink below their level.
+- [ ] **Corrupt `localStorage`:** set `con-value-read-source-0` to a string in devtools; the dashboard survives a reload.
+- [ ] **Popups disabled** in Options: regression errors go to the console, not SweetAlert.
+- [ ] **Large CSV** (5000+ rows) renders in under ~2 s.
+- [ ] **Long run** (~1000+ points, no timeout) — the session strip and chart stay responsive.
+- [ ] **Short interval** (0.5 s) — rows arrive without UI stutter. Note the firmware loop is a flat ~0.174 s regardless of channel count, so it is not the limit.
+
+---
+
+## 6. Hardware simulation (no device)
+
+- [ ] A mock serial script standing in for the PyBadge exercises `hardware_routes.py` end to end (`tests/test_send_command.py`, `test_reconnect.py`, `test_device_link.py` are the existing harnesses).
+- [ ] The two-identical-CDC-ports case is covered by a mock that answers `PING` on only one port — the probe must pick that one (`connect_to_device()`).
+- [ ] A mock that answers nothing must time out rather than block, given `PORT_TIMEOUT = 0.15 s` and `LineReader` (never `readline()`).

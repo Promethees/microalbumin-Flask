@@ -1,6 +1,6 @@
 # Rule_main.md — AI Coding Rules for the `main` Branch
 
-> **Branch purpose**: This branch runs as a **single-user, local desktop application**. Users launch it on their own machine (Mac or Windows) — the Flask server opens a browser tab automatically and communicates with a **PyBadge colorimeter** over USB HID/serial.
+> **Branch purpose**: This branch runs as a **single-user, local desktop application**. Users launch it on their own machine (Mac, Windows or Linux) — the Flask server opens a browser tab automatically and communicates with a **PyBadge colorimeter** over USB serial (CDC). HID is only the device-triggered keyboard fallback (§2.3), never the app's capture path.
 
 ---
 
@@ -15,7 +15,7 @@
 | **Deployment** | Local machine — auto-launches browser via `browser_mgt.py` |
 | **Default port** | `5099` (configurable via `--port`) |
 | **Domain alias** | `easyokapi.com` mapped to `127.0.0.1` via hosts file (configurable via `--alias`) |
-| **Installers** | `.dmg` (Mac), `.exe` (Windows), or batch/command scripts |
+| **Installers** | `.dmg` (Mac), `.exe` (Windows, NSIS), `setup.sh` (Linux), or the batch/command scripts. Frozen (no-source) variants of all three exist but are not cut over — see `ENCODE_BUILD_PLAN.md` |
 
 ---
 
@@ -76,7 +76,7 @@
 - Users are **restricted to the `data/` directory** (project root). Free filesystem browsing is no longer allowed.
 - A **subfolder picker** UI lists immediate subdirectories of `data/` with search and sort by name.
 - `src/file_path.py` exports `DATA_ROOT` constant, `validate_in_data_root(path)`, and `get_data_subfolders()`. There is **no mutable `current_directory` state** — the backend is stateless; directory tracking is owned by the frontend.
-- **Reserved folder name `root`**: `src/file_path.py` exports `RESERVED_ARCHIVE_FOLDER = "root"` and `is_reserved_data_folder_name(name)` (case-insensitive, trims whitespace). `data/root/` is the staging folder the installers use to hold loose data-root files during the uninstall/reinstall archive cycle (see §2.16), so a user **cannot** create a subfolder called `root`. The check is enforced server-side in `/run_script` (subfolder) and `/rename_data_folder` (new_name), and client-side in `hid-logging.js` (new-folder input) and `navigation.js` (`isReservedDataFolderName`, rename validator). The JS constant `RESERVED_DATA_FOLDER` mirrors the Python constant — keep the two in sync.
+- **Reserved folder name `root`**: `src/file_path.py` exports `RESERVED_ARCHIVE_FOLDER = "root"` and `is_reserved_data_folder_name(name)` (case-insensitive, trims whitespace). `data/root/` is the staging folder the installers use to hold loose data-root files during the uninstall/reinstall archive cycle (see §2.16), so a user **cannot** create a subfolder called `root`. The check is enforced server-side in `/run_script` (subfolder) and `/rename_data_folder` (new_name), and client-side in `cdc-logging.js` (new-folder input) and `navigation.js` (`isReservedDataFolderName`, rename validator). The JS constant `RESERVED_DATA_FOLDER` mirrors the Python constant — keep the two in sync.
 - `src/state.py` tracks `data_root_path`, `report_root_path`, `json_root_path` (all auto-created on startup).
 - Route `GET /get_data_folders` returns `[{"name": "...", "path": "..."}, ...]`.
 - Route `POST /rename_data_folder` (`{path, new_name}`) renames a subfolder in place via `os.rename`. The source `path` must validate inside `data_root` and not be the root itself; `new_name` must be a bare folder name (rejects `..`, `/`, `\`, `\x00`, and any `.`/`_` prefix so the result stays visible in the picker — `get_data_subfolders()` hides those). Returns the new absolute `path` so the frontend can re-point the active directory when the renamed folder was selected. Blocked (`423 LOCKED`) while the HID collection process is running, mirroring `/delete_data_folder`. Frontend: `renameDataFolder(name, path)` in `navigation.js`, triggered by the pencil button on each `.folder-item`.
@@ -168,19 +168,6 @@ Timestamp,Value:1,Value:2,...
 - The settings object is injected into `index.html` as the `USER_SETTINGS` JS constant (alongside `DATA_ROOT`, `DELIMITER`, etc.).
 - **Anti-pattern**: Do not add new per-machine state to `state.py` globals — use `user_settings.py` for anything user-configurable.
 
-### 2.14 Event Logging — User Interaction Tracing
-
-- Logs are stored under `log/events/YYYY-MM-DD/HH-MM-SS.jsonl`: one date folder per calendar day, one JSONL file per app launch within that day (name = session start time).
-- Module-level `_SESSION_DATE` / `_SESSION_START` constants are set once at import time so all events in one process go to the same file.
-- Each entry: `{"ts": "YYYY-MM-DDTHH:MM:SS", "type": "...", "action": "...", "details": {...}}`.
-- `append(type, action, details=None)` — writes one JSONL line to the current session file.
-- `read_all()` — reads all events across all date folders and sessions, oldest first.
-- `cleanup_old_logs()` — retention N keeps exactly the N most recent calendar days (today counts as day 1; N=1 → only today's folder); called on every session start (index route) and after every successful `POST /settings`, so lowering the retention prunes immediately.
-- Routes: `GET /event_log` returns all events; `POST /event_log` (`{type, action, details?}`) appends one entry.
-- Frontend: `logEvent(type, action, details)` in `static/script/event-tracker.js` (loaded first) — fire-and-forget `fetch`, never blocks the UI.
-- Tracked events: `session:start` (page load), `mode:switch`, `file:select/delete/copy`, `data:display`, `hardware:start/stop`, `report:generate`, `settings:save`.
-- **Anti-pattern**: Do not `await` log calls or show errors to the user when logging fails — logging is always best-effort.
-
 ### 2.13 AI Assistant — Groq Cloud LLM
 
 - The AI assistant uses **Groq** (cloud API) — no local model server required.
@@ -218,6 +205,19 @@ Timestamp,Value:1,Value:2,...
 - **Feedback management + opt-out**: App Settings → **AI Assistant** exposes an `ai_feedback_enabled` user setting (default on), an **Export feedback** button (`GET /ai/feedback/export` → zip of both files) and **Reset learning** (`POST /ai/feedback/reset` → deletes both files); `GET /ai/feedback/stats` feeds the summary line. When the toggle is **off**, `_attachFeedback` hides the 👍/👎 row, `POST /ai/feedback` no-ops (`{recorded:false}`), and `_match_guide_example` ignores all learned weights — gated by `ai_feedback.is_enabled()`, read **once per match** (never in the per-guide loop). The two files are **already preserved/archived** outside this feature — in-app updates keep them via `_PRESERVE`, and the Windows uninstaller's data-folder backup ZIP includes them — so do **not** add a separate uninstall/update hook for them. **Anti-pattern**: do not call `is_enabled()` inside the per-guide scoring loop (one `user_settings.load()` per example per query).
 - **Anti-pattern**: Do not add Ollama, local model pulls, or `pull_model`/`pull_status` routes — the app no longer uses a local model server.
 
+### 2.14 Event Logging — User Interaction Tracing
+
+- Logs are stored under `log/events/YYYY-MM-DD/HH-MM-SS.jsonl`: one date folder per calendar day, one JSONL file per app launch within that day (name = session start time).
+- Module-level `_SESSION_DATE` / `_SESSION_START` constants are set once at import time so all events in one process go to the same file.
+- Each entry: `{"ts": "YYYY-MM-DDTHH:MM:SS", "type": "...", "action": "...", "details": {...}}`.
+- `append(type, action, details=None)` — writes one JSONL line to the current session file.
+- `read_all()` — reads all events across all date folders and sessions, oldest first.
+- `cleanup_old_logs()` — retention N keeps exactly the N most recent calendar days (today counts as day 1; N=1 → only today's folder); called on every session start (index route) and after every successful `POST /settings`, so lowering the retention prunes immediately.
+- Routes: `GET /event_log` returns all events; `POST /event_log` (`{type, action, details?}`) appends one entry.
+- Frontend: `logEvent(type, action, details)` in `static/script/event-tracker.js` (loaded first) — fire-and-forget `fetch`, never blocks the UI.
+- Tracked events: `session:start` (page load), `mode:switch`, `file:select/delete/copy`, `data:display`, `hardware:start/stop`, `report:generate`, `settings:save`.
+- **Anti-pattern**: Do not `await` log calls or show errors to the user when logging fails — logging is always best-effort.
+
 ### 2.15 Auto-Update — In-Place Code Update
 
 - Auto-update is handled by `src/update_service.py` and `src/routes/update_routes.py` (`update_bp`, mounted at `/update/*`).
@@ -232,7 +232,7 @@ Timestamp,Value:1,Value:2,...
 - **Windows relaunch port probe**: `_build_windows_relaunch_script()` probes the port with a .NET `TcpClient` connect to `127.0.0.1:<port>` (`Test-Listening`), **not** `Get-NetTCPConnection`. That cmdlet lives in the NetTCPIP module which is absent on some Windows builds; the old code's fallback there (`Start-Sleep -Seconds 3`) re-introduced the port race. Do **not** probe with "can I bind a `TcpListener`?" — `SO_REUSEADDR` lets a bind succeed while the dying process still holds the port, so only "can I connect?" reliably means "still listening".
 - **Hidden-launch crash logging**: `launcher.ps1` starts Python `-WindowStyle Hidden -RedirectStandardError "$ScriptDir\code\log\launch_stderr.txt"`. Without the redirect, a startup traceback (broken venv, missing wheel, AV quarantine, elevation issue) is lost and the app silently "never starts" with no clue. The launcher creates the `log/` dir before launch because `state.py` only makes it *after* Python has imported far enough to run. Keep the redirect on any change to the launch `Start-Process`.
 - **Stop the running app before touching its venv**: A live EasyOKAPI instance keeps its venv `python.exe`/DLLs open, so an in-place reinstall can only *partially* delete the venv (`pyvenv.cfg` vanishes, `python.exe` is stuck) and `pip install` into it fails with `[WinError 5] Access is denied` — the install then ships broken. `startwindow-4-venv.bat` therefore stops any `python.exe`/`pythonw.exe` whose `ExecutablePath` starts with the install root (`%~dp0`) and sleeps ~2s before rebuilding. The same requirements install succeeds into a writable, *unlocked* path (e.g. TEMP), which is the tell that a lock — not a bad package — is the cause. **Anti-pattern**: do not `rmdir` or `pip install` over a venv that a running instance may still hold open.
-- **Venv health is verified, not assumed**: A venv `python.exe` aborts immediately with `No pyvenv.cfg file` if `pyvenv.cfg` is missing, so the app's hidden process dies before `main.py` runs. Two guards exist and must stay: (1) `launcher.ps1` preflight (at `p -eq 61`) refuses to launch unless `code\venv\pyvenv.cfg`, the venv `python.exe`, **and** `code\venv\Lib\site-packages\flask` all exist — otherwise it shows "Python environment is incomplete or corrupted. Please reinstall." (2) `startwindow-4-venv.bat` rebuilds the venv when `pyvenv.cfg` is absent (not just when `python.exe` is — a half-built venv used to survive reinstall), checks the exit code of **every** `ensurepip`/`pip install` step (`if errorlevel 1 → exit /b 1`), and ends with `python -c "import flask, pandas, requests, scipy, groq"` so a partial install aborts the installer instead of shipping a broken app. **Anti-pattern**: do not gate venv rebuild on `python.exe` existence alone, and never run a `pip install` without checking `errorlevel`.
+- **Venv health is verified, not assumed**: A venv `python.exe` aborts immediately with `No pyvenv.cfg file` if `pyvenv.cfg` is missing, so the app's hidden process dies before `main.py` runs. Two guards exist and must stay: (1) `launcher.ps1` preflight (at `p -eq 61`) refuses to launch unless `code\venv\pyvenv.cfg`, the venv `python.exe`, **and** `code\venv\Lib\site-packages\flask` all exist — otherwise it shows "Python environment is incomplete or corrupted. Please reinstall." (2) `startwindow-4-venv.bat` rebuilds the venv when `pyvenv.cfg` is absent (not just when `python.exe` is — a half-built venv used to survive reinstall), checks the exit code of **every** `ensurepip`/`pip install` step (`if errorlevel 1 → exit /b 1`), and ends with `python -c "import flask, requests, scipy, numpy, openpyxl, serial, groq"` (no `pandas` — dropped from this branch, §2.37) so a partial install aborts the installer instead of shipping a broken app. **Anti-pattern**: do not gate venv rebuild on `python.exe` existence alone, and never run a `pip install` without checking `errorlevel`.
 - **Port cleanup is OS-aware**: `browser_mgt.close_port()` dispatches to `lsof`+`kill` on Unix and `netstat -ano`+`taskkill` on Windows. Do not assume `lsof`/`kill` exist on Windows (they don't — the old single-path version silently no-op'd there).
 - **UI**: A version badge (`#app-version-badge`) in the top-left header gets an amber pulsing dot when an update is found. Clicking it opens a SweetAlert2 modal with release notes and an "Update Now" button. A progress bar modal shows SSE download/apply progress.
 - **Anti-pattern**: Do not call `restart_after_delay()` from any code path other than the update apply route — it hard-exits the server process.
