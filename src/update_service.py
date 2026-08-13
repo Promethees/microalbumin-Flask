@@ -426,9 +426,11 @@ def _download_and_stage_bundle(token, progress_cb=None):
 def _reject_unsafe_members(names, dest):
     """Raise if any archive member would resolve outside dest (path traversal).
 
-    Python 3.8's extractall() has no traversal filter, so a crafted archive with
-    '../' or absolute members could write outside the staging dir. We validate
-    every member name against the staging root before extracting either format.
+    zipfile's extractall() has no traversal filter at all, and tarfile's only
+    arrived in 3.12 (and is not the default until 3.14), so a crafted archive
+    with '../' or absolute members could write outside the staging dir. We
+    validate every member name against the staging root before extracting
+    either format, belt-and-braces with tarfile's own filter below.
     """
     dest = os.path.abspath(dest)
     for name in names:
@@ -455,7 +457,9 @@ def _extract_bundle(archive_path):
     else:
         with tarfile.open(archive_path, 'r:gz') as tf:
             _reject_unsafe_members(tf.getnames(), staging)
-            tf.extractall(staging)
+            # 'data' is the 3.14 default; naming it silences the 3.12 warning and
+            # pins the behaviour. It keeps the exec bit the onedir launcher needs.
+            tf.extractall(staging, filter='data')
 
     # Prefer the conventional EasyOKAPI/ folder; otherwise find the dir holding
     # the executable (handles archives with or without a top-level wrapper).

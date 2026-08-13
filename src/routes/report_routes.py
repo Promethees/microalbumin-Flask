@@ -846,7 +846,7 @@ def export_report_excel(validated_data):
         buf,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        attachment_filename=f'{safe_subject}_report.xlsx'
+        download_name=f'{safe_subject}_report.xlsx'
     )
 
 

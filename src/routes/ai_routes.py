@@ -380,7 +380,7 @@ def ai_feedback_export():
     buf.seek(0)
     filename = f"easyokapi-ai-feedback-{time.strftime('%Y%m%d-%H%M%S')}.zip"
     return send_file(buf, mimetype='application/zip',
-                     as_attachment=True, attachment_filename=filename)
+                     as_attachment=True, download_name=filename)
 
 
 @ai_bp.route('/match', methods=['POST'])
