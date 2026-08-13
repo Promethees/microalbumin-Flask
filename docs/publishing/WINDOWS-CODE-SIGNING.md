@@ -140,9 +140,9 @@ does, and previously shipped installers start warning:
 signtool sign /fd SHA256 /td SHA256 `
   /tr http://timestamp.digicert.com `
   /n "‹exact certificate subject›" `
-  "EasyOKAPI_Setup_1.4.9.exe"
+  "EasyOKAPI_Setup_1.5.0.exe"
 
-signtool verify /pa /v "EasyOKAPI_Setup_1.4.9.exe"
+signtool verify /pa /v "EasyOKAPI_Setup_1.5.0.exe"
 ```
 
 ### Fix before the first signed release
