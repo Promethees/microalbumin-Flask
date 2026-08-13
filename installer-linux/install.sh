@@ -86,7 +86,7 @@ VERSION_TAG="__APP_VERSION__"
 AUTH_BASE_URL="__AUTH_BASE_URL__"
 INSTALL_DIR="/opt/EasyOKAPI"
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
-PYTHON_VERSION="3.8.10"
+PYTHON_VERSION="3.12.11"
 BACKUP_DIR=""
 
 # ── Data-archive layout helpers ───────────────────────────────────────────────
@@ -148,7 +148,7 @@ if ! grep -q 'pyenv init' "$SHELL_RC" 2>/dev/null; then
     chown "$CURRENT_USER:$CURRENT_USER" "$SHELL_RC"
 fi
 
-# ── Step 3: Install Python 3.8.10 via pyenv ───────────────────────────────────
+# ── Step 3: Install Python 3.12.11 via pyenv ───────────────────────────────────
 if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/null | grep -qF '$PYTHON_VERSION'"; then
     echo "  Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)…"
     su - "$CURRENT_USER" -c "PYENV_ROOT=\"$PYENV_ROOT\" $PYENV_BIN install $PYTHON_VERSION"

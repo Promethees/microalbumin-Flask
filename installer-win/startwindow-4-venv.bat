@@ -19,17 +19,17 @@ REM Avoids "pyenv which python" which can capture error messages (e.g. "pyenv lo
 REM instead of a real path when a .python-version file specifies an uninstalled version.
 set "PYENV_VERSIONS=%PYENV_PATH%\versions"
 set "PYENV_PYTHON="
-if exist "%PYENV_VERSIONS%\3.8.10\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.8.10\python.exe"
+if exist "%PYENV_VERSIONS%\3.12.10\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.12.10\python.exe"
 if not defined PYENV_PYTHON (
-    if exist "%PYENV_VERSIONS%\3.9.13\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.9.13\python.exe"
+    if exist "%PYENV_VERSIONS%\3.12.9\python.exe" set "PYENV_PYTHON=%PYENV_VERSIONS%\3.12.9\python.exe"
 )
 if not defined PYENV_PYTHON (
-    echo Python 3.8.10 and 3.9.13 not found in pyenv versions.
-    echo Downloading official Python 3.8.10 installer...
-    set "PY_INSTALLER=%TEMP%\python-3.8.10-amd64.exe"
-    set "PY_URL_64=https://www.python.org/ftp/python/3.8.10/python-3.8.10-amd64.exe"
-    set "PY_URL_32=https://www.python.org/ftp/python/3.8.10/python-3.8.10.exe"
-    set "PY_INSTALL_DIR=%PYENV_VERSIONS%\3.8.10"
+    echo Python 3.12.10 and 3.12.9 not found in pyenv versions.
+    echo Downloading official Python 3.12.10 installer...
+    set "PY_INSTALLER=%TEMP%\python-3.12.10-amd64.exe"
+    set "PY_URL_64=https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
+    set "PY_URL_32=https://www.python.org/ftp/python/3.12.10/python-3.12.10.exe"
+    set "PY_INSTALL_DIR=%PYENV_VERSIONS%\3.12.10"
 
     :: Detect architecture
     wmic OS get OSArchitecture | findstr /C:"64-bit" >nul
@@ -39,7 +39,7 @@ if not defined PYENV_PYTHON (
         curl -L -o "!PY_INSTALLER!" "!PY_URL_32!"
     )
     if !ERRORLEVEL! neq 0 (
-        echo ERROR: Failed to download Python 3.8.10 installer.
+        echo ERROR: Failed to download Python 3.12.10 installer.
         exit /b 1
     )
 
@@ -48,10 +48,10 @@ if not defined PYENV_PYTHON (
         Include_pip=1 Include_launcher=0 Include_test=0 Include_doc=0
     del "!PY_INSTALLER!" 2>nul
 
-    if exist "%PYENV_VERSIONS%\3.8.10\python.exe" (
-        set "PYENV_PYTHON=%PYENV_VERSIONS%\3.8.10\python.exe"
+    if exist "%PYENV_VERSIONS%\3.12.10\python.exe" (
+        set "PYENV_PYTHON=%PYENV_VERSIONS%\3.12.10\python.exe"
     ) else (
-        echo ERROR: Python 3.8.10 installation failed. Check installer logs.
+        echo ERROR: Python 3.12.10 installation failed. Check installer logs.
         exit /b 1
     )
 )

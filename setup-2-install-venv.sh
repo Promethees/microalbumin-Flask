@@ -22,7 +22,7 @@ if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ]; then
 fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
-PYTHON_VERSION="3.8.10"
+PYTHON_VERSION="3.12.11"
 PYTHON_BIN="$PYENV_ROOT/versions/$PYTHON_VERSION/bin/python"
 REPO_DIR="$(pwd)"
 
@@ -51,7 +51,7 @@ echo "✅ Virtual environment ready."
 # ── Pre-compile bytecode for scipy/numpy so first app launch is not slow ──────
 echo "Pre-compiling Python bytecode for scientific libraries..."
 VENV_PYTHON="$REPO_DIR/venv/bin/python"
-su - "$CURRENT_USER" -c "$VENV_PYTHON -m compileall -q $REPO_DIR/venv/lib/python3.8/site-packages/scipy $REPO_DIR/venv/lib/python3.8/site-packages/numpy 2>/dev/null" || true
+su - "$CURRENT_USER" -c "$VENV_PYTHON -m compileall -q $REPO_DIR/venv/lib/python3.12/site-packages/scipy $REPO_DIR/venv/lib/python3.12/site-packages/numpy 2>/dev/null" || true
 echo "✅ Bytecode pre-compilation complete."
 
 # ── Step 2: Download front-end vendor libraries ───────────────────────────────

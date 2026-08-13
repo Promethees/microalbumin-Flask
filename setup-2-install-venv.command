@@ -10,15 +10,15 @@ cd "$(dirname "$0")"
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 
-# Set Python 3.8.10 as the local version for this directory
+# Set Python 3.12.11 as the local version for this directory
 # Check Python version
-sudo pyenv global 3.8.10 
+sudo pyenv global 3.12.11 
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
-if [ "$PY_VER" != "3.8.10" ]; then
-    echo "❌ Python 3.8.10 is required. Current version: $PY_VER"
-    echo "Setting Python 3.8.10 via pyenv..."
-    pyenv local 3.8.10
-    pyenv shell 3.8.10
+if [ "$PY_VER" != "3.12.11" ]; then
+    echo "❌ Python 3.12.11 is required. Current version: $PY_VER"
+    echo "Setting Python 3.12.11 via pyenv..."
+    pyenv local 3.12.11
+    pyenv shell 3.12.11
 fi
 
 # Create virtual environment if activate script is missing
@@ -52,7 +52,7 @@ python3 -m pip install pandas
 
 # Pre-compile bytecode for scipy/numpy so first app launch is not slow
 echo "Pre-compiling Python bytecode for scientific libraries..."
-python3 -m compileall -q venv/lib/python3.8/site-packages/scipy venv/lib/python3.8/site-packages/numpy 2>/dev/null || true
+python3 -m compileall -q venv/lib/python3.12/site-packages/scipy venv/lib/python3.12/site-packages/numpy 2>/dev/null || true
 echo "✅ Bytecode pre-compilation complete."
 
 # Download front-end vendor libraries into static/vendor/

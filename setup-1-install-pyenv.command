@@ -24,15 +24,15 @@ fi
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 
-# Check if Python 3.8.10 is installed
-if ! pyenv versions | grep -q "3.8.10"; then
-    echo "❌ Python 3.8.10 not found. Installing Python 3.8.10 via pyenv..."
+# Check if Python 3.12.11 is installed
+if ! pyenv versions | grep -q "3.12.11"; then
+    echo "❌ Python 3.12.11 not found. Installing Python 3.12.11 via pyenv..."
     # Set CFLAGS and LDFLAGS to use system headers
     export CFLAGS="-I$(xcrun --show-sdk-path)/usr/include"
     export LDFLAGS="-L$(xcrun --show-sdk-path)/usr/lib"
-    pyenv install 3.8.10
+    pyenv install 3.12.11
 else
-    echo "Python 3.8.10 already installed. Proceeding..."
+    echo "Python 3.12.11 already installed. Proceeding..."
 fi
 echo "Proceed to setup-2-install-venv.command to proceed"
 read -n 1 -s -r -p "Installation process done, press any key to proceed..."

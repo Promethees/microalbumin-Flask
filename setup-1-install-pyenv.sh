@@ -23,7 +23,7 @@ fi
 CURRENT_HOME=$(eval echo "~$CURRENT_USER")
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYENV_BIN="$PYENV_ROOT/bin/pyenv"
-PYTHON_VERSION="3.8.10"
+PYTHON_VERSION="3.12.11"
 
 # ── Step 1: Install system dependencies ───────────────────────────────────────
 echo "Installing system dependencies..."
@@ -54,7 +54,7 @@ if ! grep -q 'pyenv init' "$SHELL_RC" 2>/dev/null; then
 fi
 echo "✅ pyenv ready."
 
-# ── Step 3: Install Python 3.8.10 ─────────────────────────────────────────────
+# ── Step 3: Install Python 3.12.11 ─────────────────────────────────────────────
 if ! su - "$CURRENT_USER" -c "PYENV_ROOT=$PYENV_ROOT $PYENV_BIN versions 2>/dev/null | grep -qF '$PYTHON_VERSION'"; then
     echo "Installing Python $PYTHON_VERSION via pyenv (this may take a few minutes)..."
     su - "$CURRENT_USER" -c "PYENV_ROOT=\"$PYENV_ROOT\" $PYENV_BIN install $PYTHON_VERSION"

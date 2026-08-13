@@ -1,4 +1,4 @@
-:: Install Python 3.8.10 or 3.9.13
+:: Install Python 3.12.10 or 3.12.9
 @echo off
 :: Ensure the script runs from its own directory
 cd /d "%~dp0"
@@ -8,8 +8,8 @@ set "PYENV_PATH_CLONE=%USERPROFILE%\.pyenv\pyenv-win"
 set "PYENV_PATH=%USERPROFILE%\.pyenv\pyenv-win\pyenv-win"
 set "BIN_PATH=%PYENV_PATH%\bin"
 set "SHIMS_PATH=%PYENV_PATH%\shims"
-set "PREFERRED_PYTHON=3.8.10"
-set "FALLBACK_PYTHON=3.9.13"
+set "PREFERRED_PYTHON=3.12.10"
+set "FALLBACK_PYTHON=3.12.9"
 set "PYTHON_VERSION="
 
 :: Verify pyenv-win installation

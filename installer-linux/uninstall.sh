@@ -190,13 +190,13 @@ if [ -f "$DESKTOP_ENTRY" ]; then
     echo "✅ Desktop entry removed."
 fi
 
-# ── Optionally remove Python 3.8.10 from pyenv ───────────────────────────────
+# ── Optionally remove Python 3.12.11 from pyenv ───────────────────────────────
 PYENV_ROOT="$CURRENT_HOME/.pyenv"
 PYENV_BIN="$PYENV_ROOT/bin/pyenv"
-if [ -x "$PYENV_BIN" ] && su - "$CURRENT_USER" -c "$PYENV_BIN versions 2>/dev/null | grep -q 3.8.10"; then
-    if prompt_confirm "EasyOKAPI Uninstall" "Remove Python 3.8.10 from pyenv?"; then
-        su - "$CURRENT_USER" -c "$PYENV_BIN uninstall -f 3.8.10"
-        echo "✅ Python 3.8.10 removed from pyenv."
+if [ -x "$PYENV_BIN" ] && su - "$CURRENT_USER" -c "$PYENV_BIN versions 2>/dev/null | grep -q 3.12.11"; then
+    if prompt_confirm "EasyOKAPI Uninstall" "Remove Python 3.12.11 from pyenv?"; then
+        su - "$CURRENT_USER" -c "$PYENV_BIN uninstall -f 3.12.11"
+        echo "✅ Python 3.12.11 removed from pyenv."
     fi
 fi
 

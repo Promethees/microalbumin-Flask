@@ -165,13 +165,13 @@ for _dir in "$APP_DIR" "$LEGACY_DIR"; do
 done
 [ "$_REMOVED" -eq 0 ] && echo "Application directory $APP_DIR not found."
 
-# Optionally remove Python 3.8.10
-if command -v pyenv &>/dev/null && pyenv versions | grep -q "3.8.10"; then
-    echo "Removing Python 3.8.10..."
-    su - "$CURRENT_USER" -c 'pyenv uninstall -f 3.8.10'
+# Optionally remove Python 3.12.11
+if command -v pyenv &>/dev/null && pyenv versions | grep -q "3.12.11"; then
+    echo "Removing Python 3.12.11..."
+    su - "$CURRENT_USER" -c 'pyenv uninstall -f 3.12.11'
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to uninstall Python 3.8.10."
-        osascript -e 'display dialog "Failed to uninstall Python 3.8.10." buttons {"OK"} default button "OK" with title "EasyOKAPI Uninstall"'
+        echo "❌ Failed to uninstall Python 3.12.11."
+        osascript -e 'display dialog "Failed to uninstall Python 3.12.11." buttons {"OK"} default button "OK" with title "EasyOKAPI Uninstall"'
         exit 1
     fi
 fi

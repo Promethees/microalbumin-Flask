@@ -94,20 +94,20 @@ eval "$(pyenv init --path)" 2>/dev/null
 eval "$(pyenv init -)"      2>/dev/null
 print_ok "Git and pyenv ready."
 
-# ── Step 3 / 5 : Python 3.8.10 ───────────────────────────────────────────────
-print_step "3 / 5  Python 3.8.10  (this may take 3–5 minutes)"
-if ! pyenv versions 2>/dev/null | grep -q "3.8.10"; then
-    echo "  Building Python 3.8.10 via pyenv …"
+# ── Step 3 / 5 : Python 3.12.11 ───────────────────────────────────────────────
+print_step "3 / 5  Python 3.12.11  (this may take 3–5 minutes)"
+if ! pyenv versions 2>/dev/null | grep -q "3.12.11"; then
+    echo "  Building Python 3.12.11 via pyenv …"
     export CFLAGS="-I$(xcrun --show-sdk-path)/usr/include"
     export LDFLAGS="-L$(xcrun --show-sdk-path)/usr/lib"
-    su - "$CURRENT_USER" -c 'eval "$(pyenv init --path)"; pyenv install 3.8.10'
+    su - "$CURRENT_USER" -c 'eval "$(pyenv init --path)"; pyenv install 3.12.11'
     if [ $? -ne 0 ]; then
-        print_fail "Python 3.8.10 install failed."
-        osascript -e "display dialog \"Python 3.8.10 could not be built. Check the log at /tmp/easyokapi-setup.log for details.\" buttons {\"OK\"} with title \"EasyOKAPI Setup\" $(_icon)"
+        print_fail "Python 3.12.11 install failed."
+        osascript -e "display dialog \"Python 3.12.11 could not be built. Check the log at /tmp/easyokapi-setup.log for details.\" buttons {\"OK\"} with title \"EasyOKAPI Setup\" $(_icon)"
         exit 1
     fi
 fi
-print_ok "Python 3.8.10 ready."
+print_ok "Python 3.12.11 ready."
 
 # ── Step 4 / 5 : Download application ────────────────────────────────────────
 print_step "4 / 5  Downloading EasyOKAPI"
@@ -243,11 +243,11 @@ cd "$INSTALL_DIR"
 
 eval "$(pyenv init --path)" 2>/dev/null
 eval "$(pyenv init -)"      2>/dev/null
-pyenv global 3.8.10
+pyenv global 3.12.11
 
 PY_VER=$(python3 --version 2>&1 | awk '{print $2}')
-if [ "$PY_VER" != "3.8.10" ]; then
-    print_fail "Python 3.8.10 expected but found $PY_VER."
+if [ "$PY_VER" != "3.12.11" ]; then
+    print_fail "Python 3.12.11 expected but found $PY_VER."
     osascript -e "display dialog \"Python version mismatch ($PY_VER). Run setup again or check pyenv.\" buttons {\"OK\"} with title \"EasyOKAPI Setup\" $(_icon)"
     exit 1
 fi
@@ -274,8 +274,8 @@ fi
 
 echo "  Pre-compiling bytecode …"
 python3 -m compileall -q \
-    venv/lib/python3.8/site-packages/scipy \
-    venv/lib/python3.8/site-packages/numpy 2>/dev/null || true
+    venv/lib/python3.12/site-packages/scipy \
+    venv/lib/python3.12/site-packages/numpy 2>/dev/null || true
 
 # Front-end vendor libraries
 echo "  Downloading front-end vendor libraries …"
