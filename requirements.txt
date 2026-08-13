@@ -1,11 +1,14 @@
 Flask==3.0.3
-pandas==2.2.2
+# No pandas — nothing on this branch imports it (the CSV pipeline is os/open/csv
+# only). The `online` branch still needs it (src/file_merge.py, data_routes.py).
 numpy==1.26.4
 markupsafe==2.1.1
 filelock==3.16.1
 pyserial==3.5
 scipy==1.13.0
 openpyxl>=3.1.0
+# Runtime, not build-time: openpyxl.drawing.image.Image imports PIL, and the
+# Excel report export embeds chart images with it (report_routes.py).
 Pillow>=10.0.0
 groq>=0.9.0
 requests>=2.32

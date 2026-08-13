@@ -44,12 +44,6 @@ echo "Installing requirements..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Install Flask if not already installed
-python3 -m pip install flask
-
-# Install pandas if not already installed
-python3 -m pip install pandas
-
 # Pre-compile bytecode for scipy/numpy so first app launch is not slow
 echo "Pre-compiling Python bytecode for scientific libraries..."
 python3 -m compileall -q venv/lib/python3.12/site-packages/scipy venv/lib/python3.12/site-packages/numpy 2>/dev/null || true

@@ -115,7 +115,7 @@ if errorlevel 1 (
 
 REM Install required libraries. Each step's exit code MUST be checked: an
 REM unchecked pip failure (network blip, AV, a wheel that won't build) used to
-REM leave a partial venv - e.g. flask/pandas/requests/groq missing - while the
+REM leave a partial venv - e.g. flask/scipy/requests/groq missing - while the
 REM installer still reported success and shipped a broken app.
 echo Installing requirements...
 "%VENV_PYTHON%" -m pip install --upgrade pip
@@ -131,7 +131,7 @@ if errorlevel 1 (
 
 REM Verify the core imports actually work so a partial install can never ship.
 echo Verifying environment...
-"%VENV_PYTHON%" -c "import flask, pandas, requests, scipy, groq"
+"%VENV_PYTHON%" -c "import flask, requests, scipy, numpy, openpyxl, serial, groq"
 if errorlevel 1 (
     echo ERROR: Environment verification failed - core packages are missing.
     exit /b 1
