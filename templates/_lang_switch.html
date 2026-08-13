@@ -23,4 +23,42 @@
         {%- endfor %}
     </ul>
 </details>
+{#- A bare <details> only closes when its own summary is clicked, which reads as
+    a stuck menu: click anywhere else and the panel is still hanging open. This
+    gives it the dismissal every other menu on the page has — a click outside
+    or Escape closes it — while leaving the no-JavaScript behaviour intact.
+
+    The partial is included twice on a page (the bar picker and its phone twin),
+    so the listeners are registered once on the document and guarded by a flag
+    rather than bound per-instance. #}
+<script>
+    (function () {
+        'use strict';
+        if (window.__langSwitchDismiss) { return; }
+        window.__langSwitchDismiss = true;
+
+        function close(except) {
+            var open = document.querySelectorAll('details.lang-switch[open]');
+            for (var i = 0; i < open.length; i++) {
+                if (open[i] !== except) { open[i].removeAttribute('open'); }
+            }
+        }
+
+        // pointerdown, not click: the menu goes away as the press lands, so a
+        // click that starts outside never leaves the panel open behind it.
+        document.addEventListener('pointerdown', function (e) {
+            close(e.target.closest ? e.target.closest('details.lang-switch') : null);
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' && e.key !== 'Esc') { return; }
+            var open = document.querySelector('details.lang-switch[open]');
+            if (!open) { return; }
+            close(null);
+            // Escape must not strand the focus inside a menu that is gone.
+            var summary = open.querySelector('summary');
+            if (summary) { summary.focus(); }
+        });
+    }());
+</script>
 {%- endif %}
