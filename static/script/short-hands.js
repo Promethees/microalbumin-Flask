@@ -89,45 +89,7 @@ const $showText = (id, text) => {
     if (text) announceAlert(text);
 };
 
-/**
- * Shrinks button text to fit within one line by reducing font size
- * @param {HTMLElement|string} button - Button element or selector
- * @param {number} minFontSize - Minimum font size in rem (default: 0.6)
- * @param {number} maxFontSize - Maximum font size in rem (default: 0.95)
- */
-function shrinkButtonTextToFit(button, minFontSize = 0.6, maxFontSize = 0.95) {
-    const btn = typeof button === 'string' ? document.querySelector(button) : button;
-    if (!btn) return;
-
-    // Store original font size if not already stored
-    if (!btn.dataset.originalFontSize) {
-        const computedStyle = window.getComputedStyle(btn);
-        btn.dataset.originalFontSize = parseFloat(computedStyle.fontSize);
-    }
-
-    // Reset to max font size
-    btn.style.fontSize = `${maxFontSize}rem`;
-
-    // Check if text overflows
-    const isOverflowing = btn.scrollWidth > btn.clientWidth;
-
-    if (isOverflowing) {
-        let fontSize = maxFontSize;
-        const step = 0.05; // Decrease by 0.05rem each iteration
-
-        // Reduce font size until text fits or minimum is reached
-        while (btn.scrollWidth > btn.clientWidth && fontSize > minFontSize) {
-            fontSize -= step;
-            btn.style.fontSize = `${fontSize}rem`;
-        }
-    }
-}
-
-/**
- * Apply shrink-to-fit to all buttons or specific selector
- * @param {string} selector - CSS selector for buttons (default: 'button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled)')
- */
-function shrinkAllButtonsToFit(selector = 'button:not(.swal2-confirm):not(.swal2-deny):not(.swal2-styled)') {
-    const buttons = document.querySelectorAll(selector);
-    buttons.forEach(btn => shrinkButtonTextToFit(btn));
-}
+/* There is deliberately no JS text fitting here. A button that ran out of room
+   is handled in CSS — `white-space: nowrap; overflow: hidden; text-overflow:
+   ellipsis` on the base button rule — with the full string on a `data-hint`
+   tooltip; see Rule.md 2.33. */

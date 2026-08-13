@@ -329,9 +329,6 @@ $(document).ready(function () {
     switchingModes(_initialMode, { silent: true });
     if (_initialMode === 'calibrate') $hidden(["num-sources-section"]);
 
-    // Apply button text shrinking on page load
-    setTimeout(() => shrinkAllButtonsToFit(), 100);
-
     // Load data subfolders into the picker and selects; auto-select saved preference.
     // Skipped in report mode — switchingModes pointed the directory at the report root, and
     // selecting a data subfolder would override it.
@@ -429,12 +426,6 @@ $(document).ready(function () {
     });
 
     updateRegressionDescription();
-
-    // Re-apply button text shrinking on window resize
-    window.addEventListener('resize', () => {
-        clearTimeout(window.resizeTimer);
-        window.resizeTimer = setTimeout(() => shrinkAllButtonsToFit(), 250);
-    });
 });
 
 // Per-mode element visibility. Applied by applyModeVisibility(); the arrays
