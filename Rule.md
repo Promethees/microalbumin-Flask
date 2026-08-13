@@ -10,7 +10,7 @@
 |---|---|
 | **App name** | Easy OKAPI |
 | **Domain** | Colorimeter data visualization for bio-sensor experiments |
-| **Framework** | Flask 1.1.4 (Python 3.x via pyenv) |
+| **Framework** | Flask 3.0.3 (Python 3.12.11 via pyenv; 3.12.10 on Windows) |
 | **Real-time** | No SocketIO. Standard request/response only |
 | **Deployment** | Local machine — auto-launches browser via `browser_mgt.py` |
 | **Default port** | `5099` (configurable via `--port`) |
@@ -28,7 +28,7 @@
 
 ### 2.1 Data Storage — Always Use Local Filesystem
 
-- **All CSV and JSON operations use `os.path`, `open()`, `Path`, `glob`, `shutil`, `pandas`.**
+- **All CSV and JSON operations use `os.path`, `open()`, `Path`, `glob`, `shutil` and the stdlib `csv` module — this branch does not depend on `pandas` (see §2.37).**
 - There is **no** in-memory `USER_DATA` dict, no session-based storage.
 - Files are read from and written to the user's local disk directly.
 - The current browsed directory is tracked in `file_path.py`'s global `current_directory`, always within `DATA_ROOT` (`data/`).
@@ -861,6 +861,71 @@ Timestamp,Value:1,Value:2,...
   unlabelled icon button, a table that lost its `scope`. It cannot replace a
   screen reader, and the published statement says as much — automated checks
   are a floor, roughly a third of what matters.
+
+### 2.37 Runtime: Python 3.12 + Flask 3
+
+- **The runtime is Python 3.12.11 and Flask 3.0.3**, matching the `online`
+  branch so the two branches share one dependency story. `requirements.txt` is
+  the source of truth; it was moved off the 3.8-era pins
+  (`flask==1.1.4`/`pandas==1.3.5`/`markupsafe==2.0.1`) that only existed to keep
+  Flask 1.x importable.
+- **`pandas` is not a dependency of this branch.** Nothing under `src/`,
+  `main.py` or `log_cdc_data.py` imports it — the CSV pipeline is `open()` +
+  the stdlib `csv` module (`src/file.py`, `export_data.py`, `live_stream.py`, …).
+  It sat in `requirements.txt` unused, costing every user a ~60 MB install and
+  every frozen bundle the same. The `online` branch **does** use it
+  (`src/file_merge.py`, `src/routes/data_routes.py` build DataFrames), so its
+  pin stays there. **Anti-pattern**: do not re-add pandas to this branch's
+  requirements to "match online" — the two branches share a runtime, not a
+  dependency list. If you ever do import it, add the pin back *and* the import
+  to the installer sanity checks below.
+- **The venv sanity checks name the real imports.**
+  `installer-win/startwindow-4-venv.bat` ends with
+  `python -c "import flask, requests, scipy, numpy, openpyxl, serial, groq"`
+  so a partial install aborts the installer instead of shipping a broken app —
+  keep that list in step with `requirements.txt`. `Pillow` is a genuine
+  *runtime* dep despite never being imported by our code:
+  `openpyxl.drawing.image.Image` imports `PIL`, and the Excel report export
+  embeds chart images with it (`report_routes.py`). Do not move it to
+  `requirements-build.txt`.
+- **Windows pins 3.12.10, not 3.12.11.** 3.12.11 is a *security-only* release —
+  python.org publishes **no Windows binary installer** for it
+  (`python-3.12.11-amd64.exe` is a 404), so `pyenv install 3.12.11` fails on
+  Windows and `startwindow-4-venv.bat`'s direct download would too.
+  `installer-win/startwindow-3-python.bat` therefore uses `3.12.10` preferred /
+  `3.12.9` fallback — the last 3.12 releases that ship binaries.
+  **Anti-pattern**: do not "fix" the Windows scripts to say 3.12.11 for
+  consistency; check the FTP path first. The same applies to any future bump —
+  a bugfix release (`.0`–`.10` for 3.12) has installers, a security-only one
+  does not.
+- **Flask 3 API rules** (replacing the old "do not use APIs newer than Flask 1"
+  note):
+  - `send_file(...)` takes **`download_name=`**, not `attachment_filename=`
+    (removed in 2.2/2.3). Three call sites use it: `ai_routes`, `core_routes`,
+    `report_routes`.
+  - **No route/blueprint/`before_request` registration after the app has served
+    its first request** — Flask raises `AssertionError` instead of silently
+    half-applying it. `tests/conftest.py` registers its two test-only routes at
+    *import* time for exactly this reason; a lazy "register on first fixture
+    use" hook breaks as soon as another test module has already made a request
+    against the shared `main.app`.
+  - `flask.__version__`, `flask.escape`, `flask.Markup`, `flask.json.JSONEncoder`
+    and `_request_ctx_stack` are gone. Import `Markup`/`escape` from
+    `markupsafe` and read the version via `importlib.metadata`.
+  - `request.get_json()` raises **415** on a non-JSON content type. `validators.
+    validate_json` already guards with `request.is_json` first, so the 400 it
+    returns is preserved — keep that guard.
+  - Request contexts are `contextvars`, so an **unconsumed `stream_with_context`
+    response leaves a context pushed** and the *next* request dies with
+    `LookupError: <ContextVar name='flask.request_ctx'>`. Any test that posts to
+    a streaming route (`/ai/chat`, `/stream_session`) must drain the body
+    (`resp.get_data()`); in production the WSGI server always iterates it.
+- **`pytest-flask` must be >= 1.3.0** — 1.2.0 imports `flask._request_ctx_stack`
+  at plugin load and takes down the whole test session on Flask >= 2.3.
+- **`tarfile.extractall` names its filter.** `update_service._extract_bundle`
+  passes `filter='data'` (available from 3.12, the default from 3.14) on top of
+  the existing `_reject_unsafe_members` check. The manual check stays — zipfile
+  has no equivalent filter.
 
 ---
 

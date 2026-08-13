@@ -14,7 +14,7 @@ Before writing any code, read these two files in order:
 ## Commands
 
 ```bash
-# Install dependencies (Python 3.8 via pyenv; single cross-platform requirements.txt; requirements-dev.txt adds test-only deps)
+# Install dependencies (Python 3.12.11 via pyenv; single cross-platform requirements.txt; requirements-dev.txt adds test-only deps)
 pip install -r requirements.txt
 
 # Run the app (default port 5099, alias easyokapi.com)
@@ -29,7 +29,7 @@ pytest tests/test_utils.py      # run a single test file
 pytest tests/ -k "test_ping"    # run a single test by name
 ```
 
-**Flask version is 1.1.4** — do not use APIs introduced after Flask 1.x (e.g., `app.json`, `current_app.ensure_sync`). Check Flask 1.x docs for compatibility.
+**Runtime is Python 3.12.11 + Flask 3.0.3** (same pins as the `online` branch). Windows installs **3.12.10** instead — 3.12.11 is a security-only release with no Windows binary installer. Flask-3 rules that bite: `send_file(download_name=…)` (not `attachment_filename`), no route registration after the first request, and an unconsumed `stream_with_context` response corrupts the next request's context. See **Rule.md §2.37**.
 
 ---
 

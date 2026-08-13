@@ -151,7 +151,7 @@ CI (main.yml) builds DMG/EXE/tarball  ──►  contains ONLY installer scripts
         │
         ▼  first run
 setup.sh / launcher.ps1 / install.sh
-   • install Homebrew/pyenv/Python 3.8
+   • install Homebrew/pyenv/Python 3.12
    • download SOURCE tarball from  AUTH_BASE_URL/api/download   ◄── plaintext .py
    • create venv, pip install -r requirements.txt
         │
@@ -213,7 +213,7 @@ update_service.download_and_apply()
 - The re-entrant collector and its deps: `log_cdc_data`, `send_command`,
   `get_next_filename`, `serial`, `serial.tools.list_ports`.
 - All `routes.*` blueprints (imported via string in dev path setup).
-- scipy/numpy/pandas/groq/requests are picked up by PyInstaller's bundled hooks; the
+- scipy/numpy/openpyxl/PIL/groq/requests are picked up by PyInstaller's bundled hooks; the
   per-OS CI smoke test confirms.
 
 ### 5.4 onedir (chosen)
@@ -372,7 +372,7 @@ existing source pipeline is untouched until opt-in):
 - `setup` job resolves `ENCODE_SOURCE` (`vars.ENCODE_SOURCE || 'false'`) into an
   `encode_source` output the build jobs branch on.
 - Each `build-{macos,windows,linux}` job, when `encode_source == 'true'`, additionally:
-  sets up Python 3.8, `pip install -r requirements.txt -r requirements-build.txt`,
+  sets up Python 3.12, `pip install -r requirements.txt -r requirements-build.txt`,
   runs `python tools/package.py --encode` (PyInstaller onedir), **smoke-tests** the
   binary (launch headless with `--alias 127.0.0.1`, poll `/ping`, assert 200 — surfaces
   missing hidden imports / datas), archives the onedir to
