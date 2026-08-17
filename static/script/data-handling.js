@@ -406,6 +406,16 @@ async function processDataDisplay(fileName, jsonFileContent = null) {
     logEvent('data', 'display', { file: fileName });
     await fetchData(fileName, jsonFileContent);
     updateFileDisplay(fileName);
+    // #func-desc mirrors #exp-json-regress-algo plus the selected quantity /
+    // endpoint time. Selecting another file resets both controls
+    // (resetDataDisplayDefaults) and repopulates #regressed-time-point inside
+    // fetchData, so the description has to be re-rendered here — after the await,
+    // never before it — or calibrate mode keeps showing the previous file's fit
+    // title and endpoint label.
+    if (AppState.currentMeasurementMode === "calibrate"
+        && typeof updateRegressionDescription === 'function') {
+        updateRegressionDescription();
+    }
 }
 
 
@@ -1013,15 +1023,17 @@ function updatePlotBasedOnMode(jsonFile) {
     }
 }
 
-function toggleMode() {
+async function toggleMode() {
 
     // To redraw the chart when mode is toggled, new file is selected, or JSON is changed
     if (AppState.currentFile) {
         if (AppState.currentMeasurementMode !== "calibrate") {
             validateWindowSize(getValInt("window-size"));
             drawMeasurementChart();
-        } else fetchData(AppState.currentFile, AppState.currentJSONcontent);
+        } else await fetchData(AppState.currentFile, AppState.currentJSONcontent);
     }
+    // Awaited above on purpose: the calibrate reload repopulates
+    // #regressed-time-point, and #func-desc mirrors that control's value.
     updateRegressionDescription();
     if (typeof updateReportChartsTheme === 'function') updateReportChartsTheme();
 }
