@@ -15,6 +15,7 @@ brand names) are intentionally left in English inside every catalog.
 
 import json
 import os
+import sys
 
 import state
 from user_settings import SUPPORTED_LANGUAGES
@@ -26,6 +27,31 @@ DEFAULT_UI_LANG = "en"
 SUPPORTED_UI_LANGUAGES = dict(SUPPORTED_LANGUAGES)
 
 _TRANSLATIONS_DIR = os.path.join(state.bundle_dir, "ui_translations")
+
+
+def _search_dirs():
+    """Directories to look for ``<lang>.json`` in, most authoritative first.
+
+    Normally only the bundled copy exists. The extra locations are a recovery
+    path for a frozen build shipped without the catalogs (they were absent from
+    ``easyokapi.spec`` up to v1.5.1): dropping a ``ui_translations/`` folder next
+    to ``EasyOKAPI.exe`` or into the data root restores localization without a
+    reinstall. Duplicates are dropped so the common case reads one directory.
+    """
+    dirs = [_TRANSLATIONS_DIR]
+    if getattr(sys, "frozen", False):
+        # onedir bundle: sys.executable sits one level above _MEIPASS (_internal/)
+        dirs.append(os.path.join(
+            os.path.dirname(os.path.abspath(sys.executable)), "ui_translations"))
+    dirs.append(os.path.join(state.script_dir, "ui_translations"))
+
+    seen, out = set(), []
+    for d in dirs:
+        key = os.path.normcase(os.path.abspath(d))
+        if key not in seen:
+            seen.add(key)
+            out.append(d)
+    return out
 
 # Per-language merged-catalog cache: {lang: {key: value}}.
 _cache = {}
@@ -39,15 +65,25 @@ def normalize_lang(lang) -> str:
 
 
 def _read_file(lang: str) -> dict:
-    """Read one raw ``<lang>.json`` catalog; ``{}`` on any failure."""
-    path = os.path.join(_TRANSLATIONS_DIR, "{}.json".format(lang))
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    """Read one raw ``<lang>.json`` catalog; ``{}`` on any failure.
+
+    The first *existing* copy across ``_search_dirs()`` wins. A file that exists
+    but is corrupt or not an object yields ``{}`` — it is the authoritative copy
+    and silently reading a stale one from a lower-priority directory would hide
+    the breakage. Only an absent (or unreadable) file falls through.
+    """
+    for d in _search_dirs():
+        path = os.path.join(d, "{}.json".format(lang))
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except OSError:
+            continue
+        except json.JSONDecodeError:
+            return {}
         if isinstance(data, dict):
             return {k: v for k, v in data.items() if isinstance(v, str)}
-    except (OSError, json.JSONDecodeError):
-        pass
+        return {}
     return {}
 
 

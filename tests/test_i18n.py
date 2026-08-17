@@ -60,7 +60,57 @@ class TestLoadCatalog:
         monkeypatch.setattr(i18n, "_TRANSLATIONS_DIR", str(d))
         i18n.clear_cache()
         # Must not raise; returns an empty dict rather than blowing up a request.
+        # A file that exists but is corrupt is authoritative — the loader must NOT
+        # fall through to a lower-priority directory and hide the breakage.
         assert i18n.load_catalog("en") == {}
+
+
+# ---------------------------------------------------------------------------
+# Catalog lookup path (frozen-build recovery)
+# ---------------------------------------------------------------------------
+
+class TestSearchDirs:
+    def setup_method(self):
+        i18n.clear_cache()
+
+    def teardown_method(self):
+        i18n.clear_cache()
+
+    def test_bundle_dir_is_first(self):
+        dirs = i18n._search_dirs()
+        assert dirs[0] == i18n._TRANSLATIONS_DIR
+
+    def test_no_duplicate_dirs(self):
+        """In a source run bundle_dir == script_dir; the list must collapse."""
+        dirs = [os.path.normcase(os.path.abspath(d)) for d in i18n._search_dirs()]
+        assert len(dirs) == len(set(dirs))
+
+    def test_data_root_copy_recovers_a_missing_bundled_catalog(self, monkeypatch, tmp_path):
+        """The v1.5.1 frozen build shipped without ui_translations/ — dropping the
+        folder into the data root must restore localization without a reinstall."""
+        bundled = tmp_path / "bundle" / "ui_translations"   # deliberately absent
+        recovery = tmp_path / "data" / "ui_translations"
+        recovery.mkdir(parents=True)
+        (recovery / "en.json").write_text('{"a": "Alpha"}', encoding="utf-8")
+        (recovery / "fr.json").write_text('{"a": "Alpha-fr"}', encoding="utf-8")
+
+        monkeypatch.setattr(i18n, "_TRANSLATIONS_DIR", str(bundled))
+        monkeypatch.setattr(state, "script_dir", str(tmp_path / "data"))
+        i18n.clear_cache()
+        assert i18n.load_catalog("fr")["a"] == "Alpha-fr"
+
+    def test_bundled_copy_wins_over_the_recovery_copy(self, monkeypatch, tmp_path):
+        bundled = tmp_path / "bundle" / "ui_translations"
+        bundled.mkdir(parents=True)
+        (bundled / "en.json").write_text('{"a": "bundled"}', encoding="utf-8")
+        recovery = tmp_path / "data" / "ui_translations"
+        recovery.mkdir(parents=True)
+        (recovery / "en.json").write_text('{"a": "stale"}', encoding="utf-8")
+
+        monkeypatch.setattr(i18n, "_TRANSLATIONS_DIR", str(bundled))
+        monkeypatch.setattr(state, "script_dir", str(tmp_path / "data"))
+        i18n.clear_cache()
+        assert i18n.load_catalog("en")["a"] == "bundled"
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 
 Produces a onedir bundle named ``EasyOKAPI``: the Python runtime + all backend
 modules are compiled to bytecode inside the binary (no .py on disk). Read-only
-assets (templates/, static/, json defaults, guide files, sample_data) are bundled
+assets (templates/, static/, json defaults, guide + UI translation files, sample_data) are bundled
 and resolve at runtime from sys._MEIPASS (see src/state.py). Writable user data
 (data/, json/, report/, log/) lives in a per-user app-data dir, not here.
 
@@ -32,6 +32,10 @@ _candidate_datas = [
     _data('json', 'json'),
     _data('guide_translations', 'guide_translations'),
     _data('guide_training.json', '.'),
+    # UI localization catalogs — src/i18n.py resolves them from state.bundle_dir.
+    # Without this the frozen build finds no catalog, every load_catalog() returns
+    # {} and the whole UI stays English no matter what ui_language is set to.
+    _data('ui_translations', 'ui_translations'),
     _data('sample_data', 'sample_data'),
     # EULA + privacy notice, served offline by /legal/<doc> (core_routes.py).
     # Only the two documents — not the whole legal/ dir, which also holds the

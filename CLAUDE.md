@@ -49,7 +49,7 @@ Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and
 visualizes bio-sensor CSV data in a browser. Single-user, no sessions, no SocketIO,
 no cloud.
 
-**Current version: 1.5.0**
+**Current version: 1.5.1**
 
 ---
 
@@ -119,7 +119,7 @@ user_settings.json         ← user preferences (ui_language, ui_style, ai_feedb
 - All routes go in blueprints under `src/routes/`. Never add one to `main.py`.
 - `@validate_json` (from `validators.py`) is mandatory on every POST route that accepts
   JSON. Documented exemption: `/download_event_logs` (GET+POST, validates inline).
-- Tests live in `tests/` (37 files). CI runs the whole suite on 3.12 before any build.
+- Tests live in `tests/` (38 files). CI runs the whole suite on 3.12 before any build.
 
 **Math — three implementations, one behaviour**
 - Regression runs **server-side** in `math_ops.py`. The same 5 fit models are also

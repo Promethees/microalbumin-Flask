@@ -456,6 +456,15 @@ Timestamp,Value:1,Value:2,...
   overlaid onto English, so any **missing key falls back to English**. Loading is best-effort and
   cached (`src/i18n.py` `load_catalog(lang)` / `normalize_lang(lang)`); a missing/broken file never
   raises into a request.
+- **Bundling (frozen build)**: the catalogs are a *shipped asset*, so `ui_translations` must be in the
+  `datas` list of **`easyokapi.spec`** — a frozen build resolves `state.bundle_dir` to `sys._MEIPASS`,
+  which holds only what the spec bundles. It was missing there through **v1.5.1**: every downloaded
+  install found no catalog, `load_catalog()` returned `{}` for every language, and the UI stayed English
+  whatever `ui_language` said — silently, because loading is best-effort by design. As a recovery path
+  for those installs, `_search_dirs()` also looks next to `EasyOKAPI.exe` and in `state.script_dir`, so
+  dropping a `ui_translations/` folder there restores localization without a reinstall; the bundled copy
+  always wins, and a catalog that *exists but is corrupt* yields `{}` rather than falling through to a
+  stale one. `tests/test_packaging_assets.py` asserts every `bundle_dir` asset is declared in the spec.
 - **Server injection**: `core_routes.index()` computes `ui_lang` + `ui_strings` from the setting and
   injects them into `index.html` as `const UI_LANG` / `const UI_STRINGS`. `<html lang="{{ ui_lang }}">`.
 - **Client applier** (`static/script/i18n.js`, loaded right after `short-hands.js`, before all other
@@ -488,8 +497,10 @@ Timestamp,Value:1,Value:2,...
   with `t('key', 'English {n}').replace('{n}', value)` — there is no interpolation inside `t()` itself. Every
   language's copy of a placeholder string must keep the token (a dropped `{n}` renders a sentence with a
   missing number, silently).
-- **Anti-patterns**: do **not** resolve the catalog dir from `state.script_dir` (it's the writable data
-  root, not where the shipped catalogs live — use `state.bundle_dir`); do **not** add a UI string without
+- **Anti-patterns**: do **not** resolve the catalog dir from `state.script_dir` as the *primary* location
+  (it's the writable data root, not where the shipped catalogs live — `state.bundle_dir` first, the other
+  dirs are recovery only); do **not** add a new asset read from `bundle_dir` without adding it to
+  `easyokapi.spec` in the same change (source runs will never notice the omission); do **not** add a UI string without
   giving it a key in **`en.json` and all five** `vi/zh/fr/ja/ru` files (keep them in lockstep — covered by
   `tests/test_i18n.py`, which fails on key drift); do **not** strip the in-place English text when adding a
   `data-i18n*` attribute (it is the fallback); do **not** translate the technical terms above; do **not**
