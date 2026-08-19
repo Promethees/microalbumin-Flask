@@ -16,6 +16,26 @@ from unittest.mock import patch, MagicMock
 import update_service as u
 
 
+# ── keep every test in this file off the real install ────────────────────────
+# update_service resolves its scratch files, its staging dir AND the pre-update
+# safety backup from state.script_dir, which in a source checkout is the repo
+# itself. A test that patches _is_frozen() True without redirecting script_dir
+# gets the production behaviour aimed at the developer's working tree: that is
+# how test_download_and_apply_uses_bundle_path_when_frozen came to copy the real
+# data/, json/ and report/ into a sibling <repo>_data folder on every run — 470
+# files of someone's actual measurements, duplicated by a unit test about branch
+# selection. Point script_dir at a tmp dir for the whole module so no test here
+# can reach the real one; the tests that care about a specific script_dir still
+# patch it themselves inside their own `with` block, which wins.
+
+@pytest.fixture(autouse=True)
+def isolated_script_dir(tmp_path, monkeypatch):
+    sandbox = tmp_path / 'install'
+    sandbox.mkdir()
+    monkeypatch.setattr(u.state, 'script_dir', str(sandbox))
+    return str(sandbox)
+
+
 # ── platform mapping ─────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize('sys_platform, key, ext, exe', [
@@ -41,12 +61,18 @@ def test_bundle_archive_url_carries_platform_and_kind():
 # ── download branch selection ────────────────────────────────────────────────
 
 def test_download_and_apply_uses_bundle_path_when_frozen():
+    # _backup_user_data is stubbed rather than left to run: this test is about
+    # which download branch is taken, and the backup is a real recursive copy.
+    # Asserting it ran keeps the ordering invariant (safety copy BEFORE any
+    # update work) pinned without paying for the copy.
     with patch.object(u.activation_mod, 'get_license_token', return_value='tok'), \
          patch.object(u, '_is_frozen', return_value=True), \
+         patch.object(u, '_backup_user_data') as backup, \
          patch.object(u, '_download_and_stage_bundle', return_value=['/staged']) as staged, \
          patch.object(u, '_apply_tarball') as tarball:
         out = u.download_and_apply()
     assert out == ['/staged']
+    backup.assert_called_once()
     staged.assert_called_once()
     tarball.assert_not_called()
 
