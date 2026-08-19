@@ -1,7 +1,10 @@
 import base64
 import json
 import os
+import socket
 import time
+from urllib.parse import urlsplit
+
 import state
 import hwid as hwid_mod
 
@@ -288,6 +291,121 @@ def record_status(status):
         return False
 
 
+# ── Why "could not verify" happened ───────────────────────────────────────────
+# An offline verdict has two very different causes with two different fixes: this
+# machine has no internet (the user can fix it), or our license service is
+# unreachable while the internet works (only we can fix it, and the user should
+# be told to report it). The reverify gate has to say which, so the check reports
+# a reason alongside an 'offline' verdict.
+
+# IP literals, so a broken resolver cannot masquerade as "no internet"; port 443
+# because captive portals and lab firewalls often pass 53 but not egress.
+_NET_PROBE_HOSTS = (('1.1.1.1', 443), ('8.8.8.8', 443), ('9.9.9.9', 443))
+NET_PROBE_TIMEOUT = 2.0
+# The gate auto-checks on load and again on every "Check again" click; without a
+# cache an impatient user fires three TCP connects per click.
+NET_PROBE_CACHE_SECONDS = 15.0
+
+_net_probe_cache = {'at': 0.0, 'online': False}
+
+# Reasons attached to an 'offline' verdict.
+OFFLINE_REASONS = ('no_token', 'no_internet', 'dns_failure', 'service_down', 'unknown')
+
+
+def internet_reachable(force=False):
+    """Best-effort "does this machine have internet at all?".
+
+    A TCP connect to public resolver IPs, not an HTTP request: no DNS, no
+    response body, one round trip. Three hosts because one of them being down is
+    not the same as the machine being offline.
+    """
+    now = time.time()
+    if not force and (now - _net_probe_cache['at']) < NET_PROBE_CACHE_SECONDS:
+        return _net_probe_cache['online']
+    online = False
+    for host, port in _NET_PROBE_HOSTS:
+        try:
+            with socket.create_connection((host, port), timeout=NET_PROBE_TIMEOUT):
+                online = True
+                break
+        except OSError:
+            continue
+    _net_probe_cache['at'] = now
+    _net_probe_cache['online'] = online
+    return online
+
+
+def _service_host_resolves():
+    """True when this machine can resolve our service hostname to an address."""
+    host = urlsplit(AI_SERVICE_URL).hostname
+    if not host:
+        return False
+    try:
+        socket.getaddrinfo(host, None)
+        return True
+    except OSError:
+        return False
+
+
+def _diagnose_transport():
+    """Classify a failed request to the license service into an offline reason.
+
+    Ordering matters: no internet at all explains everything else, and a name
+    that will not resolve here explains a connect failure that has nothing to do
+    with our servers being down.
+    """
+    if not internet_reachable():
+        return 'no_internet'
+    if not _service_host_resolves():
+        return 'dns_failure'
+    return 'service_down'
+
+
+def check_revocation_detailed():
+    """check_revocation() plus *why*, as a ``(verdict, reason)`` pair.
+
+    ``reason`` is None for a conclusive verdict ('active'/'revoked'/'banned') and
+    one of OFFLINE_REASONS when the verdict is 'offline':
+
+      * 'no_token'     — nothing to check; this install is not activated
+      * 'no_internet'  — the machine cannot reach the internet at all
+      * 'dns_failure'  — internet is up, but our hostname does not resolve here
+      * 'service_down' — the machine is online and our service is the thing failing
+      * 'unknown'      — the probes were inconclusive (no requests available)
+
+    Once the host answers *anything* the network has done its job, so every
+    non-200, unparseable body or untrusted reply is 'service_down'.
+    """
+    token = get_license_token()
+    if not token:
+        return 'offline', 'no_token'
+    try:
+        import requests
+    except Exception:
+        return 'offline', 'unknown'
+    try:
+        resp = requests.post(LICENSE_CHECK_URL,
+                             json={'license_token': token, 'hwid': get_hwid()}, timeout=15)
+    except Exception:
+        return 'offline', _diagnose_transport()
+    if resp.status_code != 200:
+        return 'offline', 'service_down'
+    try:
+        body = resp.json()
+        status = (body.get('status') or '').lower()
+        code = (body.get('code') or '').lower()
+    except Exception:
+        return 'offline', 'service_down'
+    if status == 'revoked':
+        verdict = 'banned' if code == 'account_banned' else 'revoked'
+        record_status(verdict)
+        return verdict, None
+    if status == 'active':
+        record_status('active')
+        return 'active', None
+    return 'offline', 'service_down'
+
+
 def check_revocation():
     """Poll the server for this machine's license verdict and update the cache.
 
@@ -300,32 +418,11 @@ def check_revocation():
     'account_banned'; we cache it as the distinct sticky verdict 'banned' so the
     gate can show a dedicated "account suspended" screen instead of the
     per-machine "license deactivated" one.
+
+    See check_revocation_detailed() when the caller also needs to know *why* an
+    'offline' verdict happened.
     """
-    token = get_license_token()
-    if not token:
-        return 'offline'
-    try:
-        import requests
-        resp = requests.post(LICENSE_CHECK_URL,
-                             json={'license_token': token, 'hwid': get_hwid()}, timeout=15)
-    except Exception:
-        return 'offline'
-    if resp.status_code != 200:
-        return 'offline'
-    try:
-        body = resp.json()
-        status = (body.get('status') or '').lower()
-        code = (body.get('code') or '').lower()
-    except Exception:
-        return 'offline'
-    if status == 'revoked':
-        verdict = 'banned' if code == 'account_banned' else 'revoked'
-        record_status(verdict)
-        return verdict
-    if status == 'active':
-        record_status('active')
-        return 'active'
-    return 'offline'
+    return check_revocation_detailed()[0]
 
 
 def forget():

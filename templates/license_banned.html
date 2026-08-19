@@ -44,6 +44,14 @@
         button:disabled { opacity: 0.6; cursor: progress; }
         .msg { margin-top: 14px; font-size: 0.88rem; min-height: 1.2em; }
         .msg.ok { color: var(--ok); }
+        .msg.error { color: var(--muted); }
+        .detail {
+            margin-top: 16px; padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 0.82rem; line-height: 1.55; color: var(--muted); text-align: left;
+        }
+        .detail p { margin: 0 0 10px; }
+        .detail p:last-child { margin-bottom: 0; }
         .foot { margin-top: 20px; font-size: 0.82rem; color: var(--muted); }
     </style>
     {% include "_a11y_head.html" %}
@@ -63,6 +71,15 @@
 
         <button id="recheckBtn" type="button">Check again</button>
         <div id="msg" class="msg" role="status" aria-live="polite"></div>
+
+        <!-- Shown only when the re-check could not complete: why it failed, and a
+             pre-filled report. The block above already covers "you are blocked";
+             this covers "we could not even ask". -->
+        <div id="detail" class="detail" role="region" aria-label="Why the check failed" hidden>
+            <p id="detailWhat"></p>
+            <p>We are sorry for the trouble. If this keeps happening, please
+                <a id="reportLink" href="mailto:{{ support_email }}">report it to the developer</a>.</p>
+        </div>
     </main>
 
     <script>
@@ -71,18 +88,72 @@
             var msg = document.getElementById('msg');
             function setMsg(t, kind) { msg.textContent = t || ''; msg.className = 'msg' + (kind ? ' ' + kind : ''); }
 
+            var detail = document.getElementById('detail');
+            var detailWhat = document.getElementById('detailWhat');
+            var reportLink = document.getElementById('reportLink');
+
+            var SUPPORT_EMAIL = {{ support_email | tojson }};
+            var APP_VERSION = {{ app_version | tojson }};
+
+            // A re-check that never reached the server is a different failure from
+            // "still blocked", and the two need different advice. The server
+            // classifies it (src/activation.py, check_revocation_detailed); this
+            // table only renders it. Same wording as license_reverify.html.
+            var REASONS = {
+                no_internet: 'This computer does not appear to have an internet connection, so the check could not run. Reconnect and try again.',
+                dns_failure: 'This computer is online, but it cannot look up our license server\u2019s address \u2014 a VPN, proxy or firewall on this network is most likely blocking it.',
+                service_down: 'Your internet connection is working \u2014 our license service is the part that is not responding. This one is on us; please try again in a few minutes.',
+                no_token: 'No license is stored on this computer, so there is nothing to check.',
+                unknown: 'The check could not be completed, and we could not work out why. Please try again in a few minutes.'
+            };
+
+            function mailtoHref(reason, d) {
+                var lines = [
+                    'What happened: the EasyOKAPI license check could not be completed.',
+                    '',
+                    'Screen: Account suspended',
+                    'Reason reported by the app: ' + reason,
+                    'App version: ' + (d.app_version || APP_VERSION),
+                    'Service: ' + (d.service_url || '(unknown)'),
+                    'Machine ID: ' + (d.hwid || '(unknown)'),
+                    'Time: ' + new Date().toString(),
+                    '',
+                    'Anything else you can tell us (network, VPN, what you were doing):',
+                    ''
+                ];
+                return 'mailto:' + SUPPORT_EMAIL
+                    + '?subject=' + encodeURIComponent('EasyOKAPI license check failed (' + reason + ')')
+                    + '&body=' + encodeURIComponent(lines.join('\n'));
+            }
+
+            function showFailure(reason, d) {
+                d = d || {};
+                detailWhat.textContent = REASONS[reason] || REASONS.unknown;
+                reportLink.href = mailtoHref(reason, d);
+                detail.hidden = false;
+            }
+
             btn.addEventListener('click', function () {
-                btn.disabled = true; setMsg('Checking…');
+                btn.disabled = true; detail.hidden = true; setMsg('Checking…');
                 fetch('/license/recheck', { method: 'POST' })
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
                         if (d.state === 'active') { setMsg('Restored! Starting EasyOKAPI…', 'ok'); window.location.href = '/'; return; }
                         btn.disabled = false;
-                        setMsg(d.result === 'offline'
-                            ? 'Could not reach the license server. Check your connection.'
-                            : 'Still suspended. Contact support if this is unexpected.');
+                        if (d.result !== 'offline') { setMsg('Still suspended. Contact support if this is unexpected.'); return; }
+                        // The check never reached a verdict — say why, and offer a report.
+                        var reason = d.reason || 'unknown';
+                        setMsg(reason === 'service_down'
+                            ? 'Could not check — our license service is unreachable right now.'
+                            : 'Could not check your license.', 'error');
+                        showFailure(reason, d);
                     })
-                    .catch(function () { btn.disabled = false; setMsg('Could not reach the license server. Check your connection.'); });
+                    .catch(function () {
+                        // The local app itself did not answer: no verdict to classify.
+                        btn.disabled = false;
+                        setMsg('Could not run the license check.', 'error');
+                        showFailure('unknown', {});
+                    });
             });
         })();
     </script>

@@ -266,6 +266,39 @@ Timestamp,Value:1,Value:2,...
 - **Dependencies**: offline verification needs `PyJWT[crypto]` + `cryptography` (in `requirements.txt`, bundled via `easyokapi.spec` hidden imports). Dev/source builds are never gated (`needs_activation()` is False unless `sys.frozen`), and `verify_token()` falls back to claim-only checks when the libs are absent so developers are never blocked.
 - **Anti-pattern**: do not check the `hwid` claim without also verifying the RS256 signature (a hand-written token could then fake any `hwid`); do not embed the private key in the client; do not let the two hwid recipes (Python vs PowerShell) drift.
 
+**Reverify gate — a failed check must name whose problem it is.** When the grace
+window lapses, `license_state()` returns `needs_recheck` and `templates/license_reverify.html`
+takes over. "Could not verify — check your connection" is *wrong advice* half the
+time: the user's network can be perfect while our license service is the thing
+that is down, and there is nothing on their machine to fix.
+- `activation.check_revocation_detailed()` returns `(verdict, reason)`;
+  `check_revocation()` is now a thin wrapper over it, so the cache semantics
+  above are unchanged (only an explicit `active`/`revoked` 200 ever writes).
+- Reasons for an `offline` verdict, in the order they are decided:
+  **`no_token`** (nothing stored) → **`no_internet`** (`internet_reachable()`:
+  TCP 443 to `1.1.1.1`/`8.8.8.8`/`9.9.9.9` — **IP literals**, so a dead resolver
+  cannot masquerade as "no internet"; 15 s cache because the gate re-checks on
+  every click) → **`dns_failure`** (online, but `_service_host_resolves()` fails
+  — VPN/proxy/firewall) → **`service_down`** → **`unknown`** (no `requests`).
+- **Once the host answers anything, the network did its job**: every non-200,
+  unparseable body and untrusted 200 is `service_down`, not a connectivity
+  problem. Do not probe the network on those paths.
+- The page apologises and offers a **pre-filled `mailto:` report** to
+  `state.MAINTAINER_EMAIL` carrying reason, app version, service URL and hwid —
+  which is why `/license/recheck` returns those fields. They are all local facts
+  the machine already sends to the license server; nothing new is disclosed.
+- **All three gate pages carry the same table**, because all three offer a
+  *Check again* button and all three can fail to reach a verdict:
+  `license_reverify.html`, `license_blocked.html`, `license_banned.html`. On the
+  two dead-end pages the block appears **only** when the check did not complete —
+  "still deactivated" / "still suspended" is a verdict, not a failure, and must
+  not be dressed up as one. The pages are standalone (no shared JS, no i18n
+  pipeline — §2.34), so the table is duplicated by design; **keep the wording in
+  lockstep** when it changes.
+- **Anti-pattern**: telling the user to check their connection without knowing
+  that their connection is the problem, and probing the network on a startup
+  path — the probes run **only** after a check has already failed.
+
 ---
 
 ### 2.18 Windows Elevation & Running-Instance Guard (Frozen Build)

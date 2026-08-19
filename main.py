@@ -207,7 +207,8 @@ def license_blocked_page():
         return redirect('/')
     return render_template('license_blocked.html', title='License Deactivated',
                            ai_service_url=_activation.AI_SERVICE_URL,
-                           support_email=state.MAINTAINER_EMAIL)
+                           support_email=state.MAINTAINER_EMAIL,
+                           app_version=state.APP_VERSION)
 
 
 @app.route('/license-banned')
@@ -218,7 +219,8 @@ def license_banned_page():
         return redirect('/')
     return render_template('license_banned.html', title='Account Suspended',
                            ai_service_url=_activation.AI_SERVICE_URL,
-                           support_email=state.MAINTAINER_EMAIL)
+                           support_email=state.MAINTAINER_EMAIL,
+                           app_version=state.APP_VERSION)
 
 
 @app.route('/license-reverify')
@@ -231,15 +233,27 @@ def license_reverify_page():
     if st == 'banned':
         return redirect('/license-banned')
     return render_template('license_reverify.html', title='Verify License',
-                           ai_service_url=_activation.AI_SERVICE_URL)
+                           ai_service_url=_activation.AI_SERVICE_URL,
+                           support_email=state.MAINTAINER_EMAIL,
+                           app_version=state.APP_VERSION)
 
 
 @app.route('/license/recheck', methods=['POST'])
 def license_recheck():
-    """Re-poll the server now (used by the gate pages) and report the verdict."""
-    result = _activation.check_revocation()  # 'active' | 'revoked' | 'banned' | 'offline'
-    return jsonify({'status': 'success', 'result': result,
-                    'state': _activation.license_state()})
+    """Re-poll the server now (used by the gate pages) and report the verdict.
+
+    On an 'offline' result the page must tell the user whose problem it is — no
+    internet on this machine, or our service being down — so the reply carries
+    the reason from check_revocation_detailed() plus the few facts a support
+    report needs (version, hwid, service URL). All of it is local to this
+    machine and already known to it; nothing new is disclosed.
+    """
+    result, reason = _activation.check_revocation_detailed()
+    return jsonify({'status': 'success', 'result': result, 'reason': reason,
+                    'state': _activation.license_state(),
+                    'service_url': _activation.AI_SERVICE_URL,
+                    'app_version': state.APP_VERSION,
+                    'hwid': _activation.get_hwid()})
 
 # Endpoints moved to their respective blueprints
 

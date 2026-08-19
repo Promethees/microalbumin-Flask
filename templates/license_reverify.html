@@ -39,6 +39,19 @@
         .msg { margin-top: 16px; font-size: 0.9rem; min-height: 1.2em; line-height: 1.45; }
         .msg.error { color: var(--err); }
         .msg.ok { color: var(--ok); }
+        a { color: var(--accent-hi); }
+        .detail {
+            margin-top: 16px; padding-top: 14px;
+            border-top: 1px solid rgba(129, 140, 248, 0.22);
+            font-size: 0.86rem; line-height: 1.55; color: var(--muted); text-align: left;
+        }
+        .detail p { margin: 0 0 10px; }
+        .detail p:last-child { margin-bottom: 0; }
+        .detail .what { color: var(--fg); }
+        .diag {
+            margin-top: 10px; font-size: 0.76rem; color: var(--muted);
+            word-break: break-all; opacity: 0.8;
+        }
         .spinner {
             width: 26px; height: 26px; margin: 6px auto 14px; border-radius: 50%;
             border: 3px solid rgba(129,140,248,0.35); border-top-color: var(--accent-hi);
@@ -53,12 +66,23 @@
         <img class="logo" src="{{ url_for('static', filename='okapi.png') }}" alt="EasyOKAPI"
              onerror="this.style.display='none'">
         <h1>Verify your license</h1>
-        <p class="sub">EasyOKAPI needs to confirm your license online. Please connect to
-            the internet — we'll check automatically and continue once it's confirmed.</p>
+        <p class="sub">EasyOKAPI needs to confirm your license online. We check
+            automatically and continue the moment it is confirmed.</p>
 
         <div id="spinner" class="spinner"></div>
         <button id="retryBtn" type="button" style="display:none">Check again</button>
         <div id="msg" class="msg" role="status" aria-live="polite">Checking…</div>
+
+        <!-- Filled in only when a check fails: what went wrong, whose problem it
+             is, an apology, and a pre-filled report to the developer. -->
+        <div id="detail" class="detail" role="region" aria-label="Why verification failed" hidden>
+            <p class="what" id="detailWhat"></p>
+            <p id="detailFix"></p>
+            <p>We are sorry for the interruption. If this keeps happening, please
+                <a id="reportLink" href="mailto:{{ support_email }}">report it to the developer</a>
+                and we will look into it.</p>
+            <p class="diag" id="detailDiag"></p>
+        </div>
     </main>
 
     <script>
@@ -66,12 +90,79 @@
             var spinner = document.getElementById('spinner');
             var btn = document.getElementById('retryBtn');
             var msg = document.getElementById('msg');
+            var detail = document.getElementById('detail');
+            var detailWhat = document.getElementById('detailWhat');
+            var detailFix = document.getElementById('detailFix');
+            var detailDiag = document.getElementById('detailDiag');
+            var reportLink = document.getElementById('reportLink');
+
+            var SUPPORT_EMAIL = {{ support_email | tojson }};
+            var APP_VERSION = {{ app_version | tojson }};
+
+            // A failed check has two very different causes, and telling the user
+            // the wrong one wastes their time: "check your connection" is useless
+            // advice when their connection is fine and our service is down. The
+            // server classifies the failure (src/activation.py); this table only
+            // renders it.
+            var REASONS = {
+                no_internet: {
+                    what: 'This computer does not appear to have an internet connection.',
+                    fix: 'Reconnect to Wi-Fi or plug in the network cable, then click "Check again". Your measurements and files are untouched.'
+                },
+                dns_failure: {
+                    what: 'This computer is online, but it cannot look up our license server\u2019s address.',
+                    fix: 'A DNS setting, VPN, proxy or firewall on this network is most likely blocking it. Try another network, or ask your IT team to allow the address below.'
+                },
+                service_down: {
+                    what: 'Your internet connection is working \u2014 our license service is the part that is not responding.',
+                    fix: 'This one is on us, and nothing on this computer can fix it. Please try again in a few minutes; it is usually short-lived.'
+                },
+                no_token: {
+                    what: 'No license is stored on this computer, so there is nothing to verify.',
+                    fix: 'Re-run the installer or activate the app again with your license e-mail.'
+                },
+                unknown: {
+                    what: 'The license check could not be completed, and we could not work out why.',
+                    fix: 'Please try again in a few minutes.'
+                }
+            };
 
             function setMsg(t, kind) { msg.textContent = t || ''; msg.className = 'msg' + (kind ? ' ' + kind : ''); }
             function busy(on) {
                 spinner.style.display = on ? 'block' : 'none';
                 btn.style.display = on ? 'none' : 'block';
                 btn.disabled = on;
+                if (on) { detail.hidden = true; }
+            }
+
+            function mailtoHref(reason, d) {
+                var lines = [
+                    'What happened: license verification failed in EasyOKAPI.',
+                    '',
+                    'Reason reported by the app: ' + reason,
+                    'App version: ' + (d.app_version || APP_VERSION),
+                    'Service: ' + (d.service_url || '(unknown)'),
+                    'Machine ID: ' + (d.hwid || '(unknown)'),
+                    'Time: ' + new Date().toString(),
+                    '',
+                    'Anything else you can tell us (network, VPN, what you were doing):',
+                    ''
+                ];
+                return 'mailto:' + SUPPORT_EMAIL
+                    + '?subject=' + encodeURIComponent('EasyOKAPI license verification failed (' + reason + ')')
+                    + '&body=' + encodeURIComponent(lines.join('\n'));
+            }
+
+            function showFailure(reason, d) {
+                d = d || {};
+                var info = REASONS[reason] || REASONS.unknown;
+                detailWhat.textContent = info.what;
+                detailFix.textContent = info.fix;
+                detailDiag.textContent = 'Service: ' + (d.service_url || '\u2014')
+                    + ' \u00b7 Version ' + (d.app_version || APP_VERSION)
+                    + ' \u00b7 Reason: ' + reason;
+                reportLink.href = mailtoHref(reason, d);
+                detail.hidden = false;
             }
 
             function check() {
@@ -81,12 +172,20 @@
                     .then(function (d) {
                         if (d.state === 'active') { setMsg('Verified! Starting EasyOKAPI…', 'ok'); window.location.href = '/'; return; }
                         if (d.state === 'revoked') { window.location.href = '/license-blocked'; return; }
+                        if (d.state === 'banned') { window.location.href = '/license-banned'; return; }
                         busy(false);
-                        setMsg('Could not verify yet — you appear to be offline. Connect to the internet and try again.', 'error');
+                        var reason = d.reason || 'unknown';
+                        setMsg(reason === 'service_down'
+                            ? 'Could not verify — our license service is unreachable right now.'
+                            : 'Could not verify your license yet.', 'error');
+                        showFailure(reason, d);
                     })
                     .catch(function () {
+                        // The local app itself did not answer: no server verdict to
+                        // classify, so report it as the inconclusive case.
                         busy(false);
-                        setMsg('Could not reach the license server. Check your connection and try again.', 'error');
+                        setMsg('Could not run the license check.', 'error');
+                        showFailure('unknown', {});
                     });
             }
 

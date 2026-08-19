@@ -188,6 +188,10 @@ user_settings.json         ← user preferences (ui_language, ui_style, ai_feedb
   `needs_recheck`. `main.py` `_enforce_license` serves the matching page. Grace via
   `LICENSE_GRACE_SECONDS` (7d), poll via `LICENSE_CHECK_INTERVAL` (6h). Server side is
   on `online`; the admin console is on the secret `offline` branch.
+  `check_revocation_detailed()` also reports **why** a check failed — `no_internet` /
+  `dns_failure` / `service_down` / `no_token` / `unknown` — so the reverify page says
+  whether the machine's network or our service is at fault, apologises, and offers a
+  pre-filled report to the developer. **§2.17**
 - **Seat release on uninstall:** every uninstaller calls `POST /api/license/release`
   before deleting anything, authenticated by the machine's own token. Best-effort and
   idempotent, never blocks an uninstall. A revoked seat or banned account is refused, so

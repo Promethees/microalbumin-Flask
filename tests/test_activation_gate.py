@@ -148,3 +148,56 @@ def test_revoked_still_uses_blocked_page(client, activated, monkeypatch):
     rv = client.get('/')
     assert rv.status_code in (301, 302)
     assert rv.headers.get('Location', '').endswith('/license-blocked')
+
+
+# ── Reverify gate: telling the two failure causes apart ───────────────────────
+# The page must say whether the machine is offline or our service is down, and
+# offer a way to report it, so /license/recheck carries the reason + the facts a
+# support report needs.
+
+def test_reverify_page_renders_when_needs_recheck(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'needs_recheck')
+    rv = client.get('/license-reverify')
+    assert rv.status_code == 200
+    body = rv.data.decode('utf-8')
+    for reason in ('no_internet', 'dns_failure', 'service_down', 'unknown'):
+        assert reason in body           # every case has its own wording
+    assert 'report it to the developer' in body
+    assert 'mailto:' in body
+
+
+def test_recheck_reports_reason_and_report_facts(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'needs_recheck')
+    monkeypatch.setattr(activation, 'check_revocation_detailed',
+                        lambda: ('offline', 'service_down'))
+    monkeypatch.setattr(activation, 'get_hwid', lambda: 'a' * 64)
+    rv = client.post('/license/recheck')
+    assert rv.status_code == 200
+    d = rv.get_json()
+    assert d['result'] == 'offline'
+    assert d['reason'] == 'service_down'
+    assert d['state'] == 'needs_recheck'
+    assert d['service_url'] and d['app_version'] and d['hwid']
+
+
+def test_recheck_reason_is_none_when_conclusive(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'active')
+    monkeypatch.setattr(activation, 'check_revocation_detailed', lambda: ('active', None))
+    d = client.post('/license/recheck').get_json()
+    assert d['result'] == 'active' and d['reason'] is None
+
+
+def test_blocked_page_explains_a_failed_check(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'revoked')
+    body = client.get('/license-blocked').data.decode('utf-8')
+    for reason in ('no_internet', 'dns_failure', 'service_down'):
+        assert reason in body
+    assert 'report it to the developer' in body
+
+
+def test_banned_page_explains_a_failed_check(client, activated, monkeypatch):
+    _force_state(monkeypatch, 'banned')
+    body = client.get('/license-banned').data.decode('utf-8')
+    for reason in ('no_internet', 'dns_failure', 'service_down'):
+        assert reason in body
+    assert 'report it to the developer' in body

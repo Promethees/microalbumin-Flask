@@ -145,3 +145,71 @@ def test_check_revocation_revoked_without_ban_code_stays_revoked(status_file, fr
     _patch_post(monkeypatch, _Resp(200, {'status': 'revoked', 'code': 'machine_mismatch'}))
     assert activation.check_revocation() == 'revoked'
     assert json.load(open(status_file))['status'] == 'revoked'
+
+
+# ── why an 'offline' verdict happened (reverify gate messaging) ───────────────
+# "Check your connection" is the wrong advice when the connection is fine and our
+# service is the thing that is down, so check_revocation_detailed() classifies the
+# failure. The network probes are patched out here — these tests assert the
+# decision table, not the machine's real connectivity.
+
+def _patch_probes(monkeypatch, online=True, resolves=True):
+    monkeypatch.setattr(activation, 'internet_reachable', lambda force=False: online)
+    monkeypatch.setattr(activation, '_service_host_resolves', lambda: resolves)
+
+
+def test_detailed_active_has_no_reason(status_file, frozen_activated, monkeypatch):
+    _patch_post(monkeypatch, _Resp(200, {'status': 'active'}))
+    assert activation.check_revocation_detailed() == ('active', None)
+
+
+def test_detailed_no_token(status_file, monkeypatch):
+    monkeypatch.setattr(activation, 'get_license_token', lambda: None)
+    assert activation.check_revocation_detailed() == ('offline', 'no_token')
+
+
+def test_detailed_no_internet(status_file, frozen_activated, monkeypatch):
+    _patch_post(monkeypatch, raise_exc=True)
+    _patch_probes(monkeypatch, online=False)
+    assert activation.check_revocation_detailed() == ('offline', 'no_internet')
+
+
+def test_detailed_dns_failure(status_file, frozen_activated, monkeypatch):
+    _patch_post(monkeypatch, raise_exc=True)
+    _patch_probes(monkeypatch, online=True, resolves=False)
+    assert activation.check_revocation_detailed() == ('offline', 'dns_failure')
+
+
+def test_detailed_service_down_on_connect_failure(status_file, frozen_activated, monkeypatch):
+    # Machine is online and our name resolves — so the outage is ours.
+    _patch_post(monkeypatch, raise_exc=True)
+    _patch_probes(monkeypatch, online=True, resolves=True)
+    assert activation.check_revocation_detailed() == ('offline', 'service_down')
+
+
+@pytest.mark.parametrize('code', [401, 500, 502, 503])
+def test_detailed_non200_is_service_down(status_file, frozen_activated, monkeypatch, code):
+    # The host answered, so the network worked; a bad answer is our problem.
+    _patch_post(monkeypatch, _Resp(code, {'status': 'error'}))
+    assert activation.check_revocation_detailed() == ('offline', 'service_down')
+    assert not os.path.exists(status_file)
+
+
+def test_detailed_untrusted_200_is_service_down(status_file, frozen_activated, monkeypatch):
+    _patch_post(monkeypatch, _Resp(200, {'status': 'who knows'}))
+    assert activation.check_revocation_detailed() == ('offline', 'service_down')
+
+
+def test_internet_probe_caches(monkeypatch):
+    calls = []
+
+    def fake_conn(addr, timeout=None):
+        calls.append(addr)
+        raise OSError('down')
+
+    monkeypatch.setattr(activation.socket, 'create_connection', fake_conn)
+    monkeypatch.setattr(activation, '_net_probe_cache', {'at': 0.0, 'online': False})
+    assert activation.internet_reachable(force=True) is False
+    assert len(calls) == len(activation._NET_PROBE_HOSTS)  # all tried, all dead
+    assert activation.internet_reachable() is False        # served from cache
+    assert len(calls) == len(activation._NET_PROBE_HOSTS)
