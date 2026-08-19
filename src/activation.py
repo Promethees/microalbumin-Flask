@@ -115,6 +115,44 @@ def _is_our_api(resp):
         return False
 
 
+def service_stream(path, **kwargs):
+    """Open a streaming GET on the first base that actually starts serving the file.
+
+    A stream cannot fail over once the body is flowing, but it does not have to:
+    the response headers arrive first, so a base can still be rejected without a
+    byte of payload read. Anything but a 2xx means this host is not serving our
+    download — the parked domain answers 404 here too — so close it and try the
+    next name.
+
+    Returns ``(response, base)`` with the body unread, or ``(None, None)``.
+
+    This is what keeps an update from depending on the remembered base being
+    warm. It often is (check_for_update runs first), but "often" is not a
+    guarantee: a restart between the check and the download, or a banner drawn
+    from a cached result, would otherwise send the download at a dead name.
+    """
+    try:
+        import requests
+    except Exception:
+        return None, None
+    kwargs.setdefault('stream', True)
+    kwargs.setdefault('timeout', SERVICE_TIMEOUT)
+    for base in service_bases():
+        try:
+            resp = requests.get(base + path, **kwargs)
+        except Exception:
+            continue
+        if resp.status_code >= 400:
+            try:
+                resp.close()
+            except Exception:
+                pass
+            continue
+        _remember_base(base)
+        return resp, base
+    return None, None
+
+
 def service_request(method, path, expect_json=True, **kwargs):
     """Send `path` to the first service base that gives us a real answer.
 

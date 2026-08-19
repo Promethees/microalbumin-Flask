@@ -213,13 +213,13 @@ def download_and_apply(progress_cb=None):
 
     _emit(progress_cb, 5, 'Connecting to update server...')
 
-    # A stream commits to one host before the first byte, so it takes the best
-    # known base rather than probing; check_for_update() ran first and has
-    # already moved it to whatever is answering.
-    url = f"{activation_mod.service_base()}/api/download"
     headers = _auth_headers(token)
-    resp = requests.get(url, headers=headers, stream=True, timeout=120)
-    resp.raise_for_status()
+    # Fails over across the bases on the response headers, before any payload is
+    # read — so the download does not depend on check_for_update() having warmed
+    # the remembered base first.
+    resp, _base = activation_mod.service_stream('/api/download', headers=headers, timeout=120)
+    if resp is None:
+        raise requests.RequestException('Could not reach any EasyOKAPI download server')
 
     total = int(resp.headers.get('Content-Length', 0))
     tmp_path = os.path.join(state.script_dir, '_update_download.tar.gz')
@@ -376,9 +376,13 @@ def _archive_ext():
     return 'zip' if _platform_key() == 'win' else 'tar.gz'
 
 
+def _bundle_archive_path():
+    """The download path + query, host-free so service_stream() can pick the host."""
+    return f"/api/download?platform={_platform_key()}&kind=bundle"
+
+
 def _bundle_archive_url():
-    return (f"{activation_mod.service_base()}/api/download"
-            f"?platform={_platform_key()}&kind=bundle")
+    return activation_mod.service_base() + _bundle_archive_path()
 
 
 def _staging_dir():
@@ -398,8 +402,10 @@ def _download_and_stage_bundle(token, progress_cb=None):
     """
     _emit(progress_cb, 5, 'Connecting to update server...')
     headers = _auth_headers(token)
-    resp = requests.get(_bundle_archive_url(), headers=headers, stream=True, timeout=180)
-    resp.raise_for_status()
+    resp, _base = activation_mod.service_stream(_bundle_archive_path(),
+                                                headers=headers, timeout=180)
+    if resp is None:
+        raise requests.RequestException('Could not reach any EasyOKAPI download server')
 
     total = int(resp.headers.get('Content-Length', 0))
     archive_path = os.path.join(state.script_dir, f'_update_bundle.{_archive_ext()}')

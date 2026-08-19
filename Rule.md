@@ -328,11 +328,18 @@ failure that never touched the software.
   A remembered base is honoured **only if it is still one we ship**, so a stale
   or hand-edited pointer cannot pin the app to a host we do not trust.
   `forget()` clears it with the rest of the install's license state.
-- **Streaming callers cannot fail over mid-flight** — the update download and the
-  AI chat proxy commit to a host before the first byte, so they take
-  `service_base()` (the best *known* base). It is normally already right:
-  `check_for_update()` and the startup license check both go through
-  `service_request()` and keep the pointer fresh.
+- **A stream fails over on its headers, not its body.** `service_stream(path)`
+  issues the GET, and rejects a base on the **status line** — before a byte of
+  payload is read — closing the response and moving on. The update download
+  (`/api/download`, source and bundle) uses it. Relying on `service_base()` alone
+  was not enough: "the pointer is usually warm because `check_for_update()` ran
+  first" is not a guarantee — a restart between the check and the download, or a
+  banner drawn from a cached result, would aim the download at a dead name.
+- **`service_base()` remains for the one caller that genuinely cannot probe** —
+  the AI chat proxy, which hands a base to `ai_assistant.proxy_chat_stream()`. It
+  returns the best *known* base, kept fresh by every `service_request()` and
+  `service_stream()` call. **Anti-pattern**: adding a new streaming consumer on
+  `service_base()` when `service_stream()` would do.
 - This feeds the reverify gate above: `service_down` now means **every** base
   failed, and `dns_failure` means **no** base's hostname resolves.
 - **No server change is needed for any of this.** The desktop sends no Origin, so

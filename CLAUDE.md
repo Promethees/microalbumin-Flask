@@ -196,8 +196,9 @@ user_settings.json         ← user preferences (ui_language, ui_style, ai_feedb
   `activation.service_request()` walks `service_bases()` (last-known-good →
   `AI_SERVICE_URL` → `FALLBACK_SERVICE_URLS`) and skips any base that errors *or*
   answers with something that is not our API — a parked domain returns a valid
-  HTML 404. The winner is cached in `service_endpoint.json`. Streaming callers
-  (update download, AI proxy) use `service_base()`. **§2.17**
+  HTML 404. The winner is cached in `service_endpoint.json`. The update download
+  uses `service_stream()`, which fails over on the response headers before any
+  payload is read; only the AI proxy still takes `service_base()`. **§2.17**
 - **Seat release on uninstall:** every uninstaller calls `POST /api/license/release`
   before deleting anything, authenticated by the machine's own token. Best-effort and
   idempotent, never blocks an uninstall. A revoked seat or banned account is refused, so

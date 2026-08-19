@@ -209,3 +209,80 @@ def test_all_bases_parked_reads_as_service_down(bases, endpoint_file, monkeypatc
     monkeypatch.setattr(activation, '_STATUS_PATH', endpoint_file + '.status')
     _route(monkeypatch, {b: _Resp(404, None) for b in bases})
     assert activation.check_revocation_detailed() == ('offline', 'service_down')
+
+
+# ── streaming downloads ───────────────────────────────────────────────────────
+# A stream cannot switch hosts once the body is flowing, but it does not have to:
+# the headers arrive first. Failing over on the status line is what stops an
+# update download from depending on some earlier call having warmed the pointer.
+
+class _StreamResp(_Resp):
+    def __init__(self, status_code=200, json_body=None):
+        super().__init__(status_code, json_body)
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
+def _route_get(monkeypatch, table, calls=None):
+    def fake_get(url, **_kw):
+        base = url.rsplit('/api', 1)[0]
+        if calls is not None:
+            calls.append(base)
+        outcome = table.get(base)
+        if outcome is None:
+            raise OSError('unreachable')
+        return outcome
+    import requests
+    monkeypatch.setattr(requests, 'get', fake_get)
+
+
+def test_stream_fails_over_past_a_parked_404(bases, endpoint_file, monkeypatch):
+    parked = _StreamResp(404)
+    good = _StreamResp(200)
+    calls = []
+    _route_get(monkeypatch, {'https://primary.test': parked,
+                             'https://third.test': good}, calls)
+    resp, base = activation.service_stream('/api/download')
+    assert (resp, base) == (good, 'https://third.test')
+    assert calls == bases
+    assert parked.closed is True   # the rejected response is not left dangling
+
+
+def test_stream_returns_none_when_nothing_serves(bases, endpoint_file, monkeypatch):
+    _route_get(monkeypatch, {'https://primary.test': _StreamResp(500)})
+    assert activation.service_stream('/api/download') == (None, None)
+
+
+def test_stream_remembers_the_winner(bases, endpoint_file, monkeypatch):
+    _route_get(monkeypatch, {'https://second.test': _StreamResp(200)})
+    activation.service_stream('/api/download')
+    assert json.load(open(endpoint_file))['base'] == 'https://second.test'
+
+
+def test_stream_asks_for_a_stream(bases, endpoint_file, monkeypatch):
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen.update(kw)
+        return _StreamResp(200)
+
+    import requests
+    monkeypatch.setattr(requests, 'get', fake_get)
+    activation.service_stream('/api/download', headers={'X': '1'})
+    assert seen['stream'] is True
+    assert seen['headers'] == {'X': '1'}
+
+
+def test_stream_lets_the_caller_set_the_timeout(bases, endpoint_file, monkeypatch):
+    seen = {}
+
+    def fake_get(url, **kw):
+        seen.update(kw)
+        return _StreamResp(200)
+
+    import requests
+    monkeypatch.setattr(requests, 'get', fake_get)
+    activation.service_stream('/api/download', timeout=180)
+    assert seen['timeout'] == 180   # a long download is not held to the short default
