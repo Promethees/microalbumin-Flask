@@ -165,14 +165,14 @@ def activate(validated_data):
     if not token:
         return jsonify({'status': 'failure', 'message': 'Token is required'}), 400
 
-    try:
-        resp = requests.post(
-            f'{activation_mod.AI_SERVICE_URL}/api/activate',
-            json={'token': token, 'hwid': activation_mod.get_hwid()}, timeout=15,
-        )
-    except requests.RequestException as e:
+    resp, _base = activation_mod.service_request(
+        'POST', '/api/activate',
+        json={'token': token, 'hwid': activation_mod.get_hwid()},
+    )
+    if resp is None:
         return jsonify({'status': 'failure',
-                        'message': f'Could not reach activation server: {e}'}), 502
+                        'message': 'Could not reach activation server at any of its '
+                                   'addresses. Check your connection and try again.'}), 502
 
     if resp.status_code != 200:
         message = 'Activation failed. The token may be invalid or expired — get a fresh one at easyokapi.cbbiotec.vn.'
@@ -272,7 +272,7 @@ def ai_chat(validated_data):
             fell_back = False
             for event in ai_assistant.proxy_chat_stream(
                 messages, language, credential,
-                activation_mod.AI_SERVICE_URL, _AI_MODEL, ui_context,
+                activation_mod.service_base(), _AI_MODEL, ui_context,
             ):
                 if event.get('type') == 'error' and event.get('error') in _PROXY_TRANSIENT_ERRORS and dev_fallback:
                     fell_back = True

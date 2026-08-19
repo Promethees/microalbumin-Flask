@@ -143,8 +143,12 @@ def check_for_update():
     """
     token = activation_mod.get_license_token()
     headers = _auth_headers(token)
-    url = f"{activation_mod.AI_SERVICE_URL}/api/version"
-    resp = requests.get(url, headers=headers, timeout=10)
+    # Failover across the service bases (§2.17): the branded domain can be down
+    # while the deployment behind it is fine. This runs before every download, so
+    # it is also what keeps the remembered base fresh for the streaming calls.
+    resp, _base = activation_mod.service_request('GET', '/api/version', headers=headers)
+    if resp is None:
+        raise requests.RequestException('Could not reach any EasyOKAPI update server')
     resp.raise_for_status()
     data = resp.json()
     latest = str(data.get('version', '') or '')
@@ -209,7 +213,10 @@ def download_and_apply(progress_cb=None):
 
     _emit(progress_cb, 5, 'Connecting to update server...')
 
-    url = f"{activation_mod.AI_SERVICE_URL}/api/download"
+    # A stream commits to one host before the first byte, so it takes the best
+    # known base rather than probing; check_for_update() ran first and has
+    # already moved it to whatever is answering.
+    url = f"{activation_mod.service_base()}/api/download"
     headers = _auth_headers(token)
     resp = requests.get(url, headers=headers, stream=True, timeout=120)
     resp.raise_for_status()
@@ -370,7 +377,7 @@ def _archive_ext():
 
 
 def _bundle_archive_url():
-    return (f"{activation_mod.AI_SERVICE_URL}/api/download"
+    return (f"{activation_mod.service_base()}/api/download"
             f"?platform={_platform_key()}&kind=bundle")
 
 

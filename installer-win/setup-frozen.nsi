@@ -134,6 +134,16 @@ VIAddVersionKey "LegalTrademarks" "Easy OKAPI"
   !define ACTIVATION_URL "https://www.easyokapi.cbbiotec.vn"
 !endif
 
+; The same deployment under its other names, tried in order when ACTIVATION_URL
+; does not answer. ACTIVATION_URL is a branded custom domain — DNS + CDN + TLS in
+; front of the dyno, all of which can break while the app is perfectly healthy —
+; and an installer that cannot reach it cannot activate, so the install simply
+; fails. Keep this list in step with FALLBACK_SERVICE_URLS in src/activation.py.
+; Comma-separated; override at compile time with /DACTIVATION_FALLBACK_URLS=...
+!ifndef ACTIVATION_FALLBACK_URLS
+  !define ACTIVATION_FALLBACK_URLS "https://easyokapi.cbbiotec.vn,https://easysensor-kit-ea7db935ce81.herokuapp.com"
+!endif
+
 Var Dialog
 Var TokenInput
 Var EasyOKAPIToken
@@ -541,7 +551,7 @@ Function TokenPageLeave
   ${EndIf}
 
   FileOpen $9 "$PLUGINSDIR\exchange-token.ps1" w
-  FileWrite $9 "$$tok = $$args[0]; $$auth = $$args[1]; $$dest = $$args[2]$\r$\n"
+  FileWrite $9 "$$tok = $$args[0]; $$auths = $$args[1] -split ','; $$dest = $$args[2]$\r$\n"
   FileWrite $9 "try {$\r$\n"
   FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
   ; Compute this machine's hwid EXACTLY as the app does (src/hwid.py): SHA-256 of
@@ -560,20 +570,33 @@ Function TokenPageLeave
   FileWrite $9 "    $$hwid = ($$sha.ComputeHash($$bytes) | ForEach-Object { $$_.ToString('x2') }) -join ''$\r$\n"
   FileWrite $9 "  } catch {}$\r$\n"
   FileWrite $9 "  $$body = '{$\"token$\":$\"' + $$tok + '$\",$\"hwid$\":$\"' + $$hwid + '$\"}'$\r$\n"
-  FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
-  FileWrite $9 "  if ($$resp.license_token) {$\r$\n"
-  FileWrite $9 "    $$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$resp.license_token + '$\"' + [char]10 + '}'$\r$\n"
-  FileWrite $9 "    [System.IO.File]::WriteAllText($$dest, $$json, (New-Object System.Text.UTF8Encoding($$false)))$\r$\n"
-  FileWrite $9 "    exit 0$\r$\n"
-  FileWrite $9 "  } else { exit 1 }$\r$\n"
-  FileWrite $9 "} catch {$\r$\n"
-  FileWrite $9 "  $$s = 0$\r$\n"
-  FileWrite $9 "  try { $$s = [int]$$_.Exception.Response.StatusCode } catch {}$\r$\n"
-  FileWrite $9 "  if ($$s -ge 400 -and $$s -lt 500) { exit 1 } else { exit 2 }$\r$\n"
-  FileWrite $9 "}$\r$\n"
+  ; Try each address in turn. Only the statuses our /api/activate actually issues
+  ; for a token problem (400/401/403/409) are verdicts and stop the search — a 404
+  ; or a 5xx means we are talking to a parked domain or a broken edge, not to the
+  ; app, so move on to the next name instead of blaming the user's token.
+  FileWrite $9 "  $$rc = 2$\r$\n"
+  FileWrite $9 "  foreach ($$auth in $$auths) {$\r$\n"
+  FileWrite $9 "    $$auth = $$auth.Trim()$\r$\n"
+  FileWrite $9 "    if (-not $$auth) { continue }$\r$\n"
+  FileWrite $9 "    try {$\r$\n"
+  FileWrite $9 "      $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/activate$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
+  FileWrite $9 "      if ($$resp.license_token) {$\r$\n"
+  FileWrite $9 "        $$json = '{' + [char]10 + '  $\"license_token$\": $\"' + $$resp.license_token + '$\"' + [char]10 + '}'$\r$\n"
+  FileWrite $9 "        [System.IO.File]::WriteAllText($$dest, $$json, (New-Object System.Text.UTF8Encoding($$false)))$\r$\n"
+  FileWrite $9 "        exit 0$\r$\n"
+  FileWrite $9 "      } else { exit 1 }$\r$\n"
+  FileWrite $9 "    } catch {$\r$\n"
+  FileWrite $9 "      $$s = 0$\r$\n"
+  FileWrite $9 "      try { $$s = [int]$$_.Exception.Response.StatusCode } catch {}$\r$\n"
+  FileWrite $9 "      if ($$s -eq 400 -or $$s -eq 401 -or $$s -eq 403 -or $$s -eq 409) { exit 1 }$\r$\n"
+  FileWrite $9 "      $$rc = 2$\r$\n"
+  FileWrite $9 "    }$\r$\n"
+  FileWrite $9 "  }$\r$\n"
+  FileWrite $9 "  exit $$rc$\r$\n"
+  FileWrite $9 "} catch { exit 2 }$\r$\n"
   FileClose $9
 
-  nsExec::Exec '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\exchange-token.ps1" "$EasyOKAPIToken" "${ACTIVATION_URL}" "$PLUGINSDIR\activation.json"'
+  nsExec::Exec '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\exchange-token.ps1" "$EasyOKAPIToken" "${ACTIVATION_URL},${ACTIVATION_FALLBACK_URLS}" "$PLUGINSDIR\activation.json"'
   Pop $0
   ${If} $0 == 0
     ; Valid token — permanent license staged. Allow the wizard to advance.
@@ -1028,22 +1051,34 @@ Click Cancel to stop removing EasyOKAPI." \
   ; license may not be released) never blocks the uninstall.
   IfFileExists "$R3\activation.json" 0 un_release_done
   FileOpen $9 "$PLUGINSDIR\release-seat.ps1" w
-  FileWrite $9 "param($$actFile,$$auth)$\r$\n"
+  FileWrite $9 "param($$actFile,$$auths)$\r$\n"
   FileWrite $9 "try {$\r$\n"
   FileWrite $9 "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12$\r$\n"
   FileWrite $9 "  $$tok = (Get-Content -Raw -LiteralPath $$actFile | ConvertFrom-Json).license_token$\r$\n"
   FileWrite $9 "  if (-not $$tok) { exit 3 }$\r$\n"
   FileWrite $9 "  $$body = '{$\"license_token$\":$\"' + $$tok + '$\"}'$\r$\n"
-  FileWrite $9 "  $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/license/release$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
-  FileWrite $9 "  if ($$resp.status -eq 'success') { exit 0 } else { exit 1 }$\r$\n"
-  FileWrite $9 "} catch {$\r$\n"
-  FileWrite $9 "  $$s = 0$\r$\n"
-  FileWrite $9 "  try { $$s = [int]$$_.Exception.Response.StatusCode } catch {}$\r$\n"
-  FileWrite $9 "  if ($$s -ge 400 -and $$s -lt 500) { exit 1 } else { exit 2 }$\r$\n"
-  FileWrite $9 "}$\r$\n"
+  ; Same failover, same rule as the exchange above: 403 is the server refusing to
+  ; free the seat (a revoked seat or banned account) and is final; anything else
+  ; means we did not reach the app, so try its next address.
+  FileWrite $9 "  $$rc = 2$\r$\n"
+  FileWrite $9 "  foreach ($$auth in ($$auths -split ',')) {$\r$\n"
+  FileWrite $9 "    $$auth = $$auth.Trim()$\r$\n"
+  FileWrite $9 "    if (-not $$auth) { continue }$\r$\n"
+  FileWrite $9 "    try {$\r$\n"
+  FileWrite $9 "      $$resp = Invoke-RestMethod -Method Post -Uri $\"$$auth/api/license/release$\" -ContentType 'application/json' -Body $$body -TimeoutSec 15$\r$\n"
+  FileWrite $9 "      if ($$resp.status -eq 'success') { exit 0 } else { exit 1 }$\r$\n"
+  FileWrite $9 "    } catch {$\r$\n"
+  FileWrite $9 "      $$s = 0$\r$\n"
+  FileWrite $9 "      try { $$s = [int]$$_.Exception.Response.StatusCode } catch {}$\r$\n"
+  FileWrite $9 "      if ($$s -eq 403) { exit 1 }$\r$\n"
+  FileWrite $9 "      $$rc = 2$\r$\n"
+  FileWrite $9 "    }$\r$\n"
+  FileWrite $9 "  }$\r$\n"
+  FileWrite $9 "  exit $$rc$\r$\n"
+  FileWrite $9 "} catch { exit 2 }$\r$\n"
   FileClose $9
   DetailPrint "Deactivating this machine's license..."
-  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\release-seat.ps1" "$R3\activation.json" "${ACTIVATION_URL}"'
+  nsExec::ExecToLog '"powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\release-seat.ps1" "$R3\activation.json" "${ACTIVATION_URL},${ACTIVATION_FALLBACK_URLS}"'
   Pop $0
   ${If} $0 == 0
     DetailPrint "License seat released."

@@ -11,7 +11,152 @@ import hwid as hwid_mod
 # activation.json is writable user data: in a frozen build it lives in the
 # per-user app-data dir (state.script_dir), not beside the read-only binary.
 _ACTIVATION_PATH = os.path.join(state.script_dir, 'activation.json')
+
+# ── Service endpoints (one deployment, several names) ─────────────────────────
+# Activation, license checks, the AI proxy and in-app updates all talk to one
+# Flask deployment. That deployment answers on a branded custom domain AND on its
+# platform-assigned hostname, and the custom domain is a DNS + CDN + TLS layer in
+# front of the very same dyno — a layer that can break (bad CNAME, expired or
+# mismatched certificate, a CDN parked on the name) while the app itself is
+# perfectly healthy. That is not hypothetical: it is exactly the failure this
+# list exists for. Every base below serves the same API, so any that answers will
+# do; we just have to be willing to try more than one.
+#
+# Order is "most preferred first". AI_SERVICE_URL keeps its old meaning — the
+# branded name, and what the UI shows the user — so nothing that merely displays
+# it has to change.
 AI_SERVICE_URL = os.environ.get('AI_SERVICE_URL', 'https://www.easyokapi.cbbiotec.vn').rstrip('/')
+
+# Alternates, tried in order after AI_SERVICE_URL. Setting AI_SERVICE_URL (dev,
+# self-hosting) does not remove them: a custom primary is a preference, not a
+# reason to lose the fallbacks. Duplicates are collapsed by service_bases().
+FALLBACK_SERVICE_URLS = tuple(
+    u.strip().rstrip('/')
+    for u in os.environ.get(
+        'AI_SERVICE_FALLBACK_URLS',
+        'https://easyokapi.cbbiotec.vn,'
+        'https://easysensor-kit-ea7db935ce81.herokuapp.com'
+    ).split(',')
+    if u.strip()
+)
+
+# The base that last answered, cached beside activation.json. Without it a dead
+# primary costs a failed request on every single launch; with it, the app pays
+# that once and then goes straight to what works.
+_ENDPOINT_PATH = os.path.join(state.script_dir, 'service_endpoint.json')
+
+# Per-attempt budget: (connect, read). The connect leg is short because a wrong
+# or dead name is exactly what fails there, and the whole point is to move on to
+# the next base quickly rather than sit out a full timeout per candidate.
+SERVICE_TIMEOUT = (5, 30)
+
+
+def _load_last_good_base():
+    try:
+        with open(_ENDPOINT_PATH, 'r', encoding='utf-8') as f:
+            base = (json.load(f).get('base') or '').strip().rstrip('/')
+    except Exception:
+        return None
+    # Only honour a remembered base that is still one we ship. Otherwise a stale
+    # file (or an edited one) could pin the app to a host we no longer trust.
+    return base if base in service_bases(include_last_good=False) else None
+
+
+def _remember_base(base):
+    """Persist the base that just worked. Best-effort — never breaks a good call."""
+    if not base or base == _load_last_good_base():
+        return
+    try:
+        with open(_ENDPOINT_PATH, 'w', encoding='utf-8') as f:
+            json.dump({'base': base, 'at': time.time()}, f, indent=2)
+    except Exception:
+        pass
+
+
+def service_bases(include_last_good=True):
+    """The bases to try, best first, de-duplicated and order-preserving."""
+    ordered = []
+    if include_last_good:
+        last = _load_last_good_base()
+        if last:
+            ordered.append(last)
+    ordered.append(AI_SERVICE_URL)
+    ordered.extend(FALLBACK_SERVICE_URLS)
+    seen = set()
+    return [b for b in ordered if b and not (b in seen or seen.add(b))]
+
+
+def service_base():
+    """The single best base for callers that cannot fail over mid-flight.
+
+    Streaming callers (the update download, the AI chat proxy) commit to one host
+    before the first byte, so they take the best *known* answer rather than
+    probing. It is normally already correct: the startup license check and the
+    update version check both run through service_request() and keep the
+    remembered base current.
+    """
+    return service_bases()[0]
+
+
+def _is_our_api(resp):
+    """True when `resp` came from our API rather than from whatever else owns the name.
+
+    A dead custom domain rarely fails cleanly — it gets parked on a CDN error
+    page or, in our case, on an unrelated hosting control panel that cheerfully
+    answers 404 in HTML. Those are HTTP responses, so status code alone cannot
+    tell them from ours. Our API answers JSON on every one of these endpoints,
+    including its errors, so "the body parses as JSON" is the test that actually
+    separates the two.
+    """
+    try:
+        resp.json()
+        return True
+    except Exception:
+        return False
+
+
+def service_request(method, path, expect_json=True, **kwargs):
+    """Send `path` to the first service base that gives us a real answer.
+
+    Returns ``(response, base)``, or ``(None, None)`` when nothing answered at
+    all. A base is skipped when the request raises (DNS, TLS, refused, timeout)
+    and, for JSON endpoints, when what came back is not our API (_is_our_api).
+    Any answer that IS ours — including 400/401/403/409 — is authoritative and
+    ends the search; those are verdicts, not outages, and failing over past a
+    verdict would turn "your token expired" into "the server is down".
+
+    When no base produces an API answer but some host did reply, that first reply
+    is returned rather than None: an HTTP status from *something* is more
+    information than nothing, and the caller can still report it.
+
+    The winning base is remembered for next time.
+    """
+    try:
+        import requests
+    except Exception:
+        return None, None
+    kwargs.setdefault('timeout', SERVICE_TIMEOUT)
+    # Dispatch through requests.get/.post rather than requests.request: those are
+    # the names every caller (and every test) patches, and routing around them
+    # would silently escape interception.
+    send = getattr(requests, method.lower(), None) or (
+        lambda url, **kw: requests.request(method, url, **kw))
+
+    non_api = None  # first reply that was not our API, kept as a last resort
+    for base in service_bases():
+        try:
+            resp = send(base + path, **kwargs)
+        except Exception:
+            continue
+        usable = _is_our_api(resp) if expect_json else resp.status_code < 400
+        if not usable:
+            if non_api is None:
+                non_api = (resp, base)
+            continue
+        _remember_base(base)
+        return resp, base
+    return non_api if non_api is not None else (None, None)
+
 
 # Permanent activation tokens issued by the server are RS256-signed and carry an
 # 'hwid' claim binding them to one machine. We verify that signature offline with
@@ -207,12 +352,11 @@ def ensure_permanent_token():
     token = get_license_token()
     if not token or not _token_has_expiry(token):
         return False
+    resp, _base = service_request('POST', '/api/activate',
+                                 json={'token': token, 'hwid': get_hwid()})
+    if resp is None or resp.status_code != 200:
+        return False
     try:
-        import requests
-        resp = requests.post(f'{AI_SERVICE_URL}/api/activate',
-                             json={'token': token, 'hwid': get_hwid()}, timeout=15)
-        if resp.status_code != 200:
-            return False
         permanent = (resp.json().get('license_token') or '').strip()
     except Exception:
         return False
@@ -257,8 +401,10 @@ def needs_activation():
 # gate) rather than bricking; reconnecting re-checks and refreshes the cycle.
 
 _STATUS_PATH = os.path.join(state.script_dir, 'license_status.json')
-LICENSE_CHECK_URL = AI_SERVICE_URL + '/api/license/check'
-RELEASE_URL = AI_SERVICE_URL + '/api/license/release'
+# Paths, not URLs: the host is chosen per call by service_request(), because the
+# branded name can be down while the app behind it is not.
+LICENSE_CHECK_PATH = '/api/license/check'
+RELEASE_PATH = '/api/license/release'
 
 
 def _grace_seconds():
@@ -336,15 +482,22 @@ def internet_reachable(force=False):
 
 
 def _service_host_resolves():
-    """True when this machine can resolve our service hostname to an address."""
-    host = urlsplit(AI_SERVICE_URL).hostname
-    if not host:
-        return False
-    try:
-        socket.getaddrinfo(host, None)
-        return True
-    except OSError:
-        return False
+    """True when this machine can resolve **any** of our service hostnames.
+
+    Any single one is enough: the bases are alternate names for one deployment,
+    so a resolver that answers for one of them is working. Only when none of them
+    resolves is DNS itself the thing to blame.
+    """
+    for base in service_bases():
+        host = urlsplit(base).hostname
+        if not host:
+            continue
+        try:
+            socket.getaddrinfo(host, None)
+            return True
+        except OSError:
+            continue
+    return False
 
 
 def _diagnose_transport():
@@ -380,13 +533,13 @@ def check_revocation_detailed():
     if not token:
         return 'offline', 'no_token'
     try:
-        import requests
+        import requests  # noqa: F401
     except Exception:
         return 'offline', 'unknown'
-    try:
-        resp = requests.post(LICENSE_CHECK_URL,
-                             json={'license_token': token, 'hwid': get_hwid()}, timeout=15)
-    except Exception:
+    resp, _base = service_request('POST', LICENSE_CHECK_PATH,
+                                  json={'license_token': token, 'hwid': get_hwid()})
+    if resp is None:
+        # Every base was tried and none of them answered as our API.
         return 'offline', _diagnose_transport()
     if resp.status_code != 200:
         return 'offline', 'service_down'
@@ -428,7 +581,7 @@ def check_revocation():
 def forget():
     """Delete the stored token and cached verdict (this install is no longer licensed)."""
     global _token_cache
-    for path in (_ACTIVATION_PATH, _STATUS_PATH):
+    for path in (_ACTIVATION_PATH, _STATUS_PATH, _ENDPOINT_PATH):
         try:
             os.remove(path)
         except OSError:
@@ -454,11 +607,9 @@ def release_machine():
     token = get_license_token()
     if not token:
         return 'no_token'
-    try:
-        import requests
-        resp = requests.post(RELEASE_URL,
-                             json={'license_token': token, 'hwid': get_hwid()}, timeout=15)
-    except Exception:
+    resp, _base = service_request('POST', RELEASE_PATH,
+                                  json={'license_token': token, 'hwid': get_hwid()})
+    if resp is None:
         return 'offline'
     if resp.status_code == 403:
         return 'refused'

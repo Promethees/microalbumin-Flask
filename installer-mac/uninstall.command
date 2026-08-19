@@ -51,6 +51,11 @@ esac
 # Strictly best-effort: no network, no token, or a server that says no (a revoked
 # or banned license may not be released) never blocks the uninstall.
 AI_SERVICE_URL="${AI_SERVICE_URL:-https://www.easyokapi.cbbiotec.vn}"
+# The same deployment under its other names, tried in order when the branded one
+# does not answer. That name is a DNS + CDN + TLS layer in front of the app and
+# can break on its own, and a seat that cannot be released is a seat the user
+# loses. Keep in step with FALLBACK_SERVICE_URLS in src/activation.py.
+AI_SERVICE_FALLBACK_URLS="${AI_SERVICE_FALLBACK_URLS:-https://easyokapi.cbbiotec.vn https://easysensor-kit-ea7db935ce81.herokuapp.com}"
 
 _read_license_token() {  # $1 = directory that may hold activation.json
     [ -f "$1/activation.json" ] || return 1
@@ -87,11 +92,15 @@ _release_license_seat() {
     fi
 
     echo "Deactivating this machine's license..."
-    local body
-    body=$(curl -fsS -m 15 -X POST \
-                -H 'Content-Type: application/json' \
-                -d "{\"license_token\":\"$token\"}" \
-                "$AI_SERVICE_URL/api/license/release" 2>/dev/null)
+    local body=""
+    local _base
+    for _base in $AI_SERVICE_URL $AI_SERVICE_FALLBACK_URLS; do
+        body=$(curl -fsS -m 15 -X POST \
+                    -H 'Content-Type: application/json' \
+                    -d "{\"license_token\":\"$token\"}" \
+                    "$_base/api/license/release" 2>/dev/null)
+        [ -n "$body" ] && break
+    done
     case "$body" in
         *'"status":"success"'*|*'"status": "success"'*)
             echo "✅ License seat released — you can activate EasyOKAPI on another machine."

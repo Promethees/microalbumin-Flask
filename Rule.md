@@ -299,6 +299,62 @@ that is down, and there is nothing on their machine to fix.
   that their connection is the problem, and probing the network on a startup
   path — the probes run **only** after a check has already failed.
 
+**One deployment, several names — every service call fails over.** The branded
+domain in `AI_SERVICE_URL` is a DNS + CDN + TLS layer in front of the dyno, and
+that layer breaks on its own: a bad CNAME, a mismatched certificate, or an
+unrelated hosting panel parked on the name and answering **404 in HTML**. The app
+behind it stays up the whole time. A client pinned to one name goes dark for a
+failure that never touched the software.
+- `activation.service_bases()` returns the bases best-first:
+  last-known-good, then `AI_SERVICE_URL`, then `FALLBACK_SERVICE_URLS` (the apex
+  domain and the platform hostname; env-overridable via
+  `AI_SERVICE_FALLBACK_URLS`). Setting `AI_SERVICE_URL` changes the *preference*
+  and never drops the fallbacks — a custom primary is not a reason to lose them.
+- `activation.service_request(method, path)` walks that list and returns
+  `(response, base)`. **A base is skipped on a transport error and on a reply
+  that is not our API** — the parked-domain 404 is a perfectly valid HTTP
+  response, so the status code alone cannot tell it from ours; "the body parses
+  as JSON" can, because our API answers JSON on every one of these endpoints
+  including its errors. When nothing is ours but something replied, that first
+  reply is returned rather than `None`.
+- **Do not fail over past one of our own 4xx.** A JSON 401/403/409 is a verdict,
+  and retrying it elsewhere turns "your token expired" into "the server is down".
+- It dispatches through `requests.get`/`requests.post`, **not**
+  `requests.request` — those are the names callers and tests patch, and routing
+  around them silently escapes interception (it did: four update tests started
+  hitting the live server).
+- The winner is remembered in `service_endpoint.json` beside `activation.json`,
+  so a dead primary costs one failed request *once* instead of on every launch.
+  A remembered base is honoured **only if it is still one we ship**, so a stale
+  or hand-edited pointer cannot pin the app to a host we do not trust.
+  `forget()` clears it with the rest of the install's license state.
+- **Streaming callers cannot fail over mid-flight** — the update download and the
+  AI chat proxy commit to a host before the first byte, so they take
+  `service_base()` (the best *known* base). It is normally already right:
+  `check_for_update()` and the startup license check both go through
+  `service_request()` and keep the pointer fresh.
+- This feeds the reverify gate above: `service_down` now means **every** base
+  failed, and `dns_failure` means **no** base's hostname resolves.
+- **No server change is needed for any of this.** The desktop sends no Origin, so
+  the server's same-origin guard passes it on any hostname (online branch,
+  `Rule.md §2.8`). Browser sign-in on the fallback host is the part that needs
+  server config, and that is what `APP_FALLBACK_URLS` is for over there.
+- **The installers fail over too, and they had to.** Install-time activation and
+  uninstall-time seat release run without Python — NSIS PowerShell
+  (`exchange-token.ps1`, `release-seat.ps1`, driven by `ACTIVATION_URL` +
+  `ACTIVATION_FALLBACK_URLS`) and plain `curl` in `installer-mac/uninstall.command`
+  / `installer-linux/uninstall.sh` (`AI_SERVICE_URL` + `AI_SERVICE_FALLBACK_URLS`).
+  With one hardcoded name, a broken domain means **nobody can install** and every
+  uninstall silently burns a seat. Keep all three lists in step with
+  `FALLBACK_SERVICE_URLS`.
+  - The PowerShell treats only **400/401/403/409** as verdicts (the statuses
+    `/api/activate` actually issues for a token problem) and moves to the next
+    name on anything else. Reading a parked domain's **404** as "your token is
+    invalid" would tell the user to go get a new token for a problem no token can
+    fix. Release does the same with **403** (a revoked seat or banned account).
+  - The shells lean on `curl -f`, which empties the body on any 4xx/5xx — so a
+    parked 404 is indistinguishable from no answer, which is exactly right here.
+
 ---
 
 ### 2.18 Windows Elevation & Running-Instance Guard (Frozen Build)

@@ -251,7 +251,11 @@ def license_recheck():
     result, reason = _activation.check_revocation_detailed()
     return jsonify({'status': 'success', 'result': result, 'reason': reason,
                     'state': _activation.license_state(),
-                    'service_url': _activation.AI_SERVICE_URL,
+                    # The base actually in use, not the branded name — when the
+                    # branded domain is the thing that broke, "which address did
+                    # it manage to reach?" is the first question a report answers.
+                    'service_url': _activation.service_base(),
+                    'service_urls': _activation.service_bases(),
                     'app_version': state.APP_VERSION,
                     'hwid': _activation.get_hwid()})
 

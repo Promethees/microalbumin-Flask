@@ -192,6 +192,12 @@ user_settings.json         ← user preferences (ui_language, ui_style, ai_feedb
   `dns_failure` / `service_down` / `no_token` / `unknown` — so the reverify page says
   whether the machine's network or our service is at fault, apologises, and offers a
   pre-filled report to the developer. **§2.17**
+- **Service endpoints fail over:** one deployment answers on several names, so
+  `activation.service_request()` walks `service_bases()` (last-known-good →
+  `AI_SERVICE_URL` → `FALLBACK_SERVICE_URLS`) and skips any base that errors *or*
+  answers with something that is not our API — a parked domain returns a valid
+  HTML 404. The winner is cached in `service_endpoint.json`. Streaming callers
+  (update download, AI proxy) use `service_base()`. **§2.17**
 - **Seat release on uninstall:** every uninstaller calls `POST /api/license/release`
   before deleting anything, authenticated by the machine's own token. Best-effort and
   idempotent, never blocks an uninstall. A revoked seat or banned account is refused, so

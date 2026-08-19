@@ -316,7 +316,9 @@ def test_release_posts_the_token_and_forgets_it(monkeypatch, tmp_path):
 
     monkeypatch.setattr('requests.post', fake_post)
     assert activation.release_machine() == 'released'
-    assert sent['url'] == activation.RELEASE_URL
+    # The host is chosen per call now (failover across service_bases), so the
+    # invariant is the path, not one hardcoded URL.
+    assert sent['url'] == activation.service_bases()[0] + activation.RELEASE_PATH
     assert sent['json']['license_token'] == _permanent()
     assert sent['json']['hwid'] == _THIS_MACHINE
     # Seat is gone, so the token would fail the server's machine check anyway.
