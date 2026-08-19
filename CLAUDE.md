@@ -49,7 +49,7 @@ Flask-based local desktop app that reads a PyBadge colorimeter over USB/HID and
 visualizes bio-sensor CSV data in a browser. Single-user, no sessions, no SocketIO,
 no cloud.
 
-**Current version: 1.5.1**
+**Current version: 1.5.2**
 
 ---
 
