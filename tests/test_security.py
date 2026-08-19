@@ -40,6 +40,8 @@ _SAFE = ['GET', 'HEAD', 'OPTIONS']
 def app(monkeypatch):
     monkeypatch.setenv('APP_BASE_URL', _APP_BASE)
     monkeypatch.delenv('EXTRA_ALLOWED_ORIGINS', raising=False)
+    monkeypatch.delenv('APP_FALLBACK_URLS', raising=False)
+    monkeypatch.delenv('HEROKU_APP_DEFAULT_DOMAIN', raising=False)
 
     app = Flask(__name__)
     app.config['TESTING'] = True
@@ -206,3 +208,53 @@ def test_allowlist_is_not_cached_across_requests(client, monkeypatch):
     assert _send(client, 'POST', headers={'Origin': _EVIL}).status_code == 403
     monkeypatch.setenv('EXTRA_ALLOWED_ORIGINS', _EVIL)
     assert _send(client, 'POST', headers={'Origin': _EVIL}).status_code == 200
+
+
+# ── the platform fallback host is a first-class origin ────────────────────────
+# APP_BASE_URL is a branded custom domain: DNS + CDN + TLS in front of this dyno,
+# all of which can break while the app is fine. The platform hostname serves the
+# same app and is where users are sent when that happens — so it has to be able
+# to do more than render. Without it on the allowlist a visitor can load the page
+# and then have every sign-in POST rejected by this guard.
+
+_FALLBACK = 'https://myapp-1234.herokuapp.com'
+
+
+def test_fallback_origin_is_allowed(client, monkeypatch):
+    monkeypatch.setenv('APP_FALLBACK_URLS', _FALLBACK)
+    assert _send(client, 'POST', headers={'Origin': _FALLBACK}).status_code == 200
+
+
+def test_fallback_origin_is_rejected_when_not_configured(client):
+    # It is an allowlist entry, not a blanket herokuapp.com exemption.
+    assert _send(client, 'POST', headers={'Origin': _FALLBACK}).status_code == 403
+
+
+def test_several_fallbacks_are_accepted(client, monkeypatch):
+    other = 'https://myapp-staging.herokuapp.com'
+    monkeypatch.setenv('APP_FALLBACK_URLS', f'{_FALLBACK}, {other}')
+    for origin in (_FALLBACK, other):
+        assert _send(client, 'POST', headers={'Origin': origin}).status_code == 200
+
+
+def test_branded_origin_still_works_alongside_fallbacks(client, monkeypatch):
+    monkeypatch.setenv('APP_FALLBACK_URLS', _FALLBACK)
+    assert _send(client, 'POST', headers={'Origin': _APP_BASE}).status_code == 200
+
+
+def test_fallbacks_do_not_widen_the_list_to_anyone_else(client, monkeypatch):
+    monkeypatch.setenv('APP_FALLBACK_URLS', _FALLBACK)
+    assert _send(client, 'POST', headers={'Origin': _EVIL}).status_code == 403
+
+
+def test_heroku_metadata_domain_is_trusted(client, monkeypatch):
+    # Set by the platform for THIS app, so unlike Host it cannot be spoofed by a
+    # caller — and it keeps working if the app is renamed.
+    monkeypatch.setenv('HEROKU_APP_DEFAULT_DOMAIN', 'myapp-1234.herokuapp.com')
+    assert _send(client, 'POST', headers={'Origin': _FALLBACK}).status_code == 200
+
+
+def test_blank_fallback_config_contributes_nothing(client, monkeypatch):
+    monkeypatch.setenv('APP_FALLBACK_URLS', ' , ,')
+    assert _send(client, 'POST', headers={'Origin': _EVIL}).status_code == 403
+    assert _send(client, 'POST', headers={'Origin': _APP_BASE}).status_code == 200

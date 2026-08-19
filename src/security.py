@@ -14,9 +14,19 @@ those calls are never blocked here — an **absent** Origin is treated as "not a
 cross-origin browser request" (a cross-origin browser POST always sends one and
 the page cannot suppress it).
 
-The allowlist is **server-configured** (``APP_BASE_URL`` + optional
-comma-separated ``EXTRA_ALLOWED_ORIGINS``). We deliberately do NOT trust the
-request ``Host`` header for the allowlist — an attacker can spoof it.
+The allowlist is **server-configured** (``APP_BASE_URL``, the deployment's own
+platform hostname via ``APP_FALLBACK_URLS``, plus optional comma-separated
+``EXTRA_ALLOWED_ORIGINS``). We deliberately do NOT trust the request ``Host``
+header for the allowlist — an attacker can spoof it.
+
+``APP_FALLBACK_URLS`` exists because ``APP_BASE_URL`` is a branded custom domain,
+and a custom domain is a DNS + CDN + TLS layer in front of this dyno that can
+fail on its own while the app is healthy. When it does, the platform hostname
+(``*.herokuapp.com``) is still serving this very same app, and that is where
+users are told to go. Without its hostname on the allowlist they can reach the
+site but not *use* it: every sign-in, every form post is a 403 from this guard.
+The desktop client is unaffected either way (it sends no Origin), so this is
+about keeping the human-facing fallback usable, not the API.
 """
 
 import os
@@ -45,10 +55,32 @@ def _hostname(value):
         return None
 
 
+def _fallback_base_urls():
+    """The deployment's non-branded addresses, in preference order.
+
+    Server-configured (``APP_FALLBACK_URLS``, comma-separated). On Heroku the
+    platform also hands us ``HEROKU_APP_DEFAULT_DOMAIN`` when dyno metadata is
+    enabled; it names *this* app, so it is trustworthy in a way the request Host
+    is not, and using it means the fallback keeps working even if the app is
+    renamed. Read but never required — an unset value simply contributes nothing.
+    """
+    urls = [u.strip() for u in os.environ.get('APP_FALLBACK_URLS', '').split(',')]
+    heroku_domain = (os.environ.get('HEROKU_APP_DEFAULT_DOMAIN') or '').strip()
+    if heroku_domain:
+        urls.append('https://' + heroku_domain)
+    return [u for u in urls if u]
+
+
 def _allowed_hostnames():
-    """Hostnames this deployment answers to: APP_BASE_URL + EXTRA_ALLOWED_ORIGINS."""
+    """Hostnames this deployment answers to.
+
+    APP_BASE_URL (the branded name) + the platform fallbacks + any explicit
+    EXTRA_ALLOWED_ORIGINS. All three are server-side configuration; none of them
+    comes from the request.
+    """
     hosts = set(_DEV_HOSTS)
     candidates = [os.environ.get('APP_BASE_URL', 'http://localhost:5003')]
+    candidates += _fallback_base_urls()
     candidates += os.environ.get('EXTRA_ALLOWED_ORIGINS', '').split(',')
     for raw in candidates:
         h = _hostname((raw or '').strip())

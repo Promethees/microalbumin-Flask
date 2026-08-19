@@ -104,6 +104,28 @@
 - `threshold_val` in `/export_cal_coefs` must be converted with try/except and clamped to [0, 1].
 - `/export_report_excel` enforces `len(items) <= 500` and `len(title) <= 255`.
 
+**The origin allowlist is server-configured, and it covers the fallback host.**
+`src/security.py` builds it from `APP_BASE_URL` + `APP_FALLBACK_URLS` +
+`EXTRA_ALLOWED_ORIGINS`, and (when dyno metadata is on) `HEROKU_APP_DEFAULT_DOMAIN`.
+- `APP_BASE_URL` is a **branded custom domain** — DNS + CDN + TLS in front of this
+  dyno, every layer of which can fail while the app is healthy. When it does, the
+  platform hostname (`*.herokuapp.com`) is still serving this same app and is
+  where users get sent. Its hostname must therefore be on the allowlist, or the
+  fallback renders but cannot be used: every sign-in and form POST 403s here.
+  Set `APP_FALLBACK_URLS` to that address in production.
+- The **desktop client is not affected either way** — it sends no Origin, so its
+  token-authenticated calls (`/api/activate`, `/api/license/check`,
+  `/api/license/release`, `/ai/proxy/chat`, `/api/download`, `/api/version`) pass
+  the guard on any hostname. That is why the desktop can fail over to the
+  platform hostname with no server change at all (main branch, `Rule.md §2.17`).
+- **Anti-pattern**: adding the request `Host` (or a blanket `*.herokuapp.com`
+  match) to the allowlist. Host is attacker-controlled; these values are not,
+  because they come from this deployment's own configuration.
+- **Known limitation**: OAuth redirect URIs are registered per-domain with Google
+  and GitHub, so social sign-in only works on whichever host is registered.
+  E-mail links also use `APP_BASE_URL`. The fallback host covers browsing,
+  password sign-in and the whole desktop API — not those two.
+
 ### 2.9 Frontend XSS Prevention
 
 - **Never** insert server-provided strings (filenames, subject names, JSON keys/values) into `innerHTML` or HTML attribute values via template literals without escaping.
