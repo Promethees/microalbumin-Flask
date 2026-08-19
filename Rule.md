@@ -557,8 +557,10 @@ that is down, and there is nothing on their machine to fix.
   falls back to embedding `chart_images` only when `chart_series` is absent (back-compat + non-calibration
   time-series snapshots). Keep both client export paths in lockstep — the per-view `generateReportExcelFromCurrent`
   **and** the multi-file report-console `finalizeReportExcel`.
-- **Axis-label boxes**: both export dialogs expose editable, auto-filled X/Y label boxes (the
-  `generateReport` SweetAlert `#swal-xlabel`/`#swal-ylabel`, and the console `#console-xlabel`/`#console-ylabel`).
+- **Axis-label boxes**: both export paths expose editable, auto-filled X/Y label boxes (the
+  `generateReport` SweetAlert `#swal-xlabel`/`#swal-ylabel`, and — in the report console — a
+  `.cal-xlabel-input`/`.cal-ylabel-input` pair **on each calibrate CSV card**, since the labels only
+  affect calibration charts; they are read per card in `finalizeReportExcel`, not from a shared field).
   **X defaults to the concentration-unit-aware `Concentration (<unit>)`** (`_concenAxisLabel()` →
   `getMetaConcenUnit()`, the post-§2.10 `# ConcenUnit` schema — ng/µL, nM, %), matching the live chart
   (`generate-chart.js`) and the report's derived-concentration lines. `_concenAxisLabel()` is the **single
@@ -568,9 +570,15 @@ that is down, and there is nothing on their machine to fix.
   dialog **pre-fills** the exact unit from `AppState.metaData`; the multi-file console box is left **blank =
   "auto" per file** (each chart uses its own file's `config.metadata` unit), because different files in one
   report can carry different units. **Y left blank means "auto" — each chart uses its own metric/measurement
-  label** (`niceMetric` / `measLabel`). A non-blank box overrides every chart in that export. **Anti-pattern**:
+  label** (`niceMetric` / `measLabel`). A non-blank card box overrides every chart of that file's export. **Anti-pattern**:
   do not hardcode the X label to bare `Concentration` (it drops the unit — the obsolete pre-ConcenUnit
   assumption); do not force a single file's unit onto the multi-file console export.
+- **Report-console controls only show where they apply.** Axis-label boxes appear on **calibrate** cards
+  only, and a kinetics card's **"Derived concentration from"** select stays hidden (`.derived-quantity-group`
+  + `.hidden`) until its `.cal-source-select` names a curve — without a calibration curve the quantity
+  choice derives nothing, and showing it implies raw exports carry concentrations. Toggle it from the
+  card's `change` listener, and keep the stored default (`config.derivedQuantity = 'maxrate'`) intact so a
+  later curve pick exports the same value the visible select shows.
 - **Helper columns must stay visible.** Each native chart's X/Y values are written to off-to-the-right
   columns (col AA onward via the per-sheet `_chart_helper_col` cursor). Do **not** hide these columns or
   move the data to a hidden sheet — Excel does not plot data in hidden cells, which would blank the chart.

@@ -1357,9 +1357,9 @@
           "skipInteraction": true
         },
         {
-          "target": "#console-xlabel",
+          "target": ".cal-xlabel-input",
           "title": "Chart Axis Labels (Excel)",
-          "description": "Excel option: override the X and Y axis labels for the native (editable) Excel charts. Leave X blank to auto-label with each file's concentration unit, and Y blank for its metric.",
+          "description": "Excel option, shown on each calibrate CSV card: override the X and Y axis labels for that file's native (editable) Excel charts. Leave X blank to auto-label with the file's concentration unit, and Y blank for its metric.",
           "position": "bottom",
           "skipInteraction": true
         },

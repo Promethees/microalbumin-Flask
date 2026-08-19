@@ -1311,6 +1311,19 @@ async function loadReportItems(subject) {
                 card.dataset.filename = item.filename;
                 card.dataset.subject = subject;
 
+                // Native-Excel-chart axis labels only apply to calibration charts, so
+                // they live on the calibrate card instead of the shared layout config.
+                const calAxisHtml = `
+                    <div class="cal-axis-config" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
+                        <label>Chart X-axis: <input type="text" class="cal-xlabel-input" data-item="${item.filename}"
+                                placeholder="auto: Concentration (unit)" style="width: 160px;"></label>
+                        <label>Chart Y-axis: <input type="text" class="cal-ylabel-input" data-item="${item.filename}"
+                                placeholder="auto per metric" style="width: 160px;"></label>
+                        <span style="color:#888; font-size:0.8rem;">Exported as native (editable) Excel charts. Leave X blank
+                            to auto-label with this file's concentration unit, Y blank for its metric.</span>
+                    </div>
+                `;
+
                 let contentHtml = '';
                 if (isPointCal) {
                     // Point-mode calibration: one Value-vs-Concentration curve. Let
@@ -1329,6 +1342,7 @@ async function loadReportItems(subject) {
                             <button type="button" onclick="addPointTimePoint('${item.filename}')"
                                 style="margin-top:4px; padding:3px 10px; border:1px solid #3498db; background:#eaf4fc; color:#2980b9; border-radius:5px; cursor:pointer; font-size:0.8rem;">+ Add time point</button>
                         </div>
+                        ${calAxisHtml}
                     `;
                 } else if (isCalibrate) {
                     const metrics = [
@@ -1371,6 +1385,7 @@ async function loadReportItems(subject) {
                                 </div>
                             `).join('')}
                         </div>
+                        ${calAxisHtml}
                     `;
                 } else {
                     const applicableJsonFiles = isKinetics ? kineticsJsonFiles : pointJsonFiles;
@@ -1408,7 +1423,7 @@ async function loadReportItems(subject) {
                                     </select>
                                 </div>
                                 ${isKinetics ? `
-                                <div class="control-group">
+                                <div class="control-group derived-quantity-group hidden">
                                     <label>Derived concentration from</label>
                                     <select class="derived-quantity-select" data-item="${item.filename}" onchange="updateReportDerivedQuantity('${item.filename}', this.value)">
                                         <option value="maxrate" selected>maxRate</option>
@@ -1455,6 +1470,16 @@ async function loadReportItems(subject) {
 
                 // Initialize preview for this item (reuse the pre-fetched data)
                 initItemPreview(item, itemID, response, calType);
+
+                // "Derived concentration from" is meaningless without a calibration
+                // curve, so it only appears once one is picked.
+                const calSel = card.querySelector('.cal-source-select');
+                const derivedGroup = card.querySelector('.derived-quantity-group');
+                if (calSel && derivedGroup) {
+                    const syncDerivedVisibility = () => derivedGroup.classList.toggle('hidden', !calSel.value);
+                    calSel.addEventListener('change', syncDerivedVisibility);
+                    syncDerivedVisibility();
+                }
 
                 const normCb = card.querySelector('.item-normalize-checkbox');
                 if (normCb) {
@@ -2461,10 +2486,6 @@ async function finalizeReportExcel() {
     try {
         const reportTitle = document.getElementById('console-title').value || 'Analysis Report';
         const splitSheets = document.getElementById('console-split-sheets').checked;
-        const axisLabels  = {
-            x: document.getElementById('console-xlabel')?.value || '',
-            y: document.getElementById('console-ylabel')?.value || ''
-        };
         const COLORS = [
             'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgba(190, 136, 9, 1)',
             'rgb(54, 162, 235)', 'rgb(153, 102, 255)', 'rgba(139, 144, 75, 1)',
@@ -2482,6 +2503,11 @@ async function finalizeReportExcel() {
             const isKinetics  = config.metadata.mode === 'kinetics';
             const isPoint     = config.metadata.mode === 'point';
             const card = cb.closest('.report-item-card');
+            // Axis-label overrides are per calibrate card (native Excel charts only).
+            const axisLabels = {
+                x: card?.querySelector('.cal-xlabel-input')?.value || '',
+                y: card?.querySelector('.cal-ylabel-input')?.value || ''
+            };
 
             const itemData = {
                 filename,

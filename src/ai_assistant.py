@@ -1519,20 +1519,20 @@ _FULL_REPORT_STEPS_IN_REPORT = [
         "skipInteraction": True,
     },
     {
-        "target": "#console-xlabel",
+        "target": ".cal-xlabel-input",
         "title": "Chart Axis Labels (Excel)",
         "description": (
-            "Excel option: override the X and Y axis labels for the native (editable) "
-            "Excel charts. Leave X blank to auto-label with each file's concentration "
-            "unit, and Y blank for its metric."
+            "Excel option, shown on each calibrate CSV card: override the X and Y axis "
+            "labels for that file's native (editable) Excel charts. Leave X blank to "
+            "auto-label with the file's concentration unit, and Y blank for its metric."
         ),
         "descriptions": {
-            "vi": "Tùy chọn Excel: ghi đè nhãn trục X và Y cho các biểu đồ Excel gốc (có thể chỉnh sửa). Để trống X để tự động gán nhãn theo đơn vị nồng độ của mỗi tệp, và để trống Y theo metric của nó.",
-            "zh": "Excel 选项：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。",
-            "fr": "Option Excel : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
-            "ja": "Excel オプション：ネイティブ（編集可能）Excel グラフの X 軸・Y 軸ラベルを上書きします。X を空欄にすると各ファイルの濃度単位で、Y を空欄にするとその metric で自動ラベル付けされます。",
-            "ru": "Параметр Excel: переопределите подписи осей X и Y для нативных (редактируемых) диаграмм Excel. Оставьте X пустым для автоподписи по единице концентрации файла, а Y пустым — по его metric.",
-            "ko": "Excel 옵션: 네이티브(편집 가능) Excel 차트의 X축과 Y축 레이블을 직접 지정합니다. X를 비우면 각 파일의 농도 단위로, Y를 비우면 해당 metric으로 자동 표기됩니다.",
+            "vi": "Tùy chọn Excel, hiển thị trên mỗi thẻ tệp CSV calibrate: ghi đè nhãn trục X và Y cho các biểu đồ Excel gốc (có thể chỉnh sửa). Để trống X để tự động gán nhãn theo đơn vị nồng độ của mỗi tệp, và để trống Y theo metric của nó.",
+            "zh": "Excel 选项，显示在每个 calibrate CSV 卡片上：覆盖原生（可编辑）Excel 图表的 X 和 Y 轴标签。将 X 留空可按各文件的浓度单位自动标注，将 Y 留空可按其 metric 自动标注。",
+            "fr": "Option Excel, affichée sur chaque carte de fichier CSV calibrate : remplacez les libellés des axes X et Y des graphiques Excel natifs (modifiables). Laissez X vide pour étiqueter automatiquement avec l'unité de concentration de chaque fichier, et Y vide pour son metric.",
+            "ja": "Excel オプション（各 calibrate CSV カードに表示）：ネイティブ（編集可能）Excel グラフの X 軸・Y 軸ラベルを上書きします。X を空欄にすると各ファイルの濃度単位で、Y を空欄にするとその metric で自動ラベル付けされます。",
+            "ru": "Параметр Excel, показанный на карточке каждого calibrate CSV: переопределите подписи осей X и Y для нативных (редактируемых) диаграмм Excel. Оставьте X пустым для автоподписи по единице концентрации файла, а Y пустым — по его metric.",
+            "ko": "Excel 옵션(각 calibrate CSV 카드에 표시): 네이티브(편집 가능) Excel 차트의 X축과 Y축 레이블을 직접 지정합니다. X를 비우면 각 파일의 농도 단위로, Y를 비우면 해당 metric으로 자동 표기됩니다.",
         },
         "position": "bottom",
         "skipInteraction": True,
