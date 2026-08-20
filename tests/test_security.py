@@ -26,7 +26,8 @@ from flask import Flask, jsonify
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from security import _hostname, _allowed_hostnames, init_request_guard
+from security import (_hostname, _allowed_hostnames, init_request_guard,
+                      request_base_url, request_callback_url)
 
 _APP_HOST = 'app.example.com'
 _APP_BASE = 'https://app.example.com'
@@ -258,3 +259,60 @@ def test_blank_fallback_config_contributes_nothing(client, monkeypatch):
     monkeypatch.setenv('APP_FALLBACK_URLS', ' , ,')
     assert _send(client, 'POST', headers={'Origin': _EVIL}).status_code == 403
     assert _send(client, 'POST', headers={'Origin': _APP_BASE}).status_code == 200
+
+
+# ── self-referencing URLs follow the host, within the allowlist ───────────────
+# OAuth redirect_uris and e-mailed verification / reset links have to name a host
+# that works for the person using it — pinning them to APP_BASE_URL sends a user
+# on the fallback host to the branded domain that is, by assumption, down.
+#
+# Taking request.host for that is textbook host-header injection if unchecked:
+# ProxyFix trusts X-Forwarded-Host, which the router fills from the client's own
+# Host header, so an attacker could request a password reset for someone else's
+# address and have the victim's genuine e-mail carry the reset token to a host of
+# the attacker's choosing. The allowlist is what makes it safe, and these tests
+# are what keep the allowlist in the path.
+
+def _base_for(app, host, headers=None, scheme='http'):
+    with app.test_request_context('/', base_url=f'{scheme}://{host}',
+                                  headers=headers or {}):
+        return request_base_url()
+
+
+def test_base_url_uses_the_branded_host(app):
+    assert _base_for(app, _APP_HOST, scheme='https') == _APP_BASE
+
+
+def test_base_url_follows_an_allowlisted_fallback_host(app, monkeypatch):
+    monkeypatch.setenv('APP_FALLBACK_URLS', _FALLBACK)
+    assert _base_for(app, 'myapp-1234.herokuapp.com', scheme='https') == _FALLBACK
+
+
+def test_base_url_refuses_an_unknown_host(app):
+    # The injection case: a Host we do not serve must not end up in a link.
+    assert _base_for(app, 'attacker.example', scheme='https') == _APP_BASE
+
+
+def test_base_url_refuses_a_fallback_host_that_is_not_configured(app):
+    assert _base_for(app, 'myapp-1234.herokuapp.com', scheme='https') == _APP_BASE
+
+
+def test_base_url_keeps_the_port_for_a_dev_host(app):
+    assert _base_for(app, 'localhost:5003') == 'http://localhost:5003'
+
+
+def test_base_url_preserves_the_scheme(app):
+    assert _base_for(app, _APP_HOST, scheme='http') == f'http://{_APP_HOST}'
+
+
+def test_callback_url_appends_the_path(app):
+    with app.test_request_context('/', base_url=f'https://{_APP_HOST}'):
+        assert request_callback_url('/auth/oauth/google/callback') == \
+            _APP_BASE + '/auth/oauth/google/callback'
+
+
+def test_callback_url_on_an_unknown_host_falls_back(app):
+    # An OAuth flow must never be told to come back to a host we do not serve.
+    with app.test_request_context('/', base_url='https://attacker.example'):
+        assert request_callback_url('/auth/oauth/google/callback') == \
+            _APP_BASE + '/auth/oauth/google/callback'

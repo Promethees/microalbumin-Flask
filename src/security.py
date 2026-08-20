@@ -89,6 +89,49 @@ def _allowed_hostnames():
     return hosts
 
 
+def request_base_url():
+    """Absolute base URL for the CURRENT request — but only if we serve that host.
+
+    Anything the app builds a link *back* to itself with (an OAuth
+    ``redirect_uri``, a verification or password-reset link in an e-mail) has to
+    name a host that actually works. Hardcoding ``APP_BASE_URL`` means every one
+    of those points at the branded domain, so a user who reached us on the
+    fallback host gets bounced to a name that is down at the one moment they
+    needed the fallback.
+
+    Deriving it from the request instead is the fix, and it is also a classic
+    vulnerability if done naively. ``request.host`` is **client-controlled** —
+    ProxyFix trusts ``X-Forwarded-Host``, which the platform router fills in from
+    whatever ``Host`` the client sent. Unchecked, an attacker requests a password
+    reset for someone else's address with ``Host: attacker.example``, and the
+    victim receives a genuine e-mail whose link hands the reset token to the
+    attacker. Host-header injection, straight out of the textbook.
+
+    So the request host is used **only when it is already on the allowlist** —
+    the same server-side configuration the CSRF guard uses, which never comes
+    from the request. Any other host falls back to APP_BASE_URL, which is safe
+    and merely inconvenient. Never widen this to "trust the Host header".
+    """
+    host = request.host  # includes :port when non-default
+    if _hostname(host) in _allowed_hostnames():
+        # request.scheme is post-ProxyFix, so it reflects X-Forwarded-Proto.
+        return f'{request.scheme}://{host}'
+    return os.environ.get('APP_BASE_URL', 'http://localhost:5003').rstrip('/')
+
+
+def request_callback_url(path):
+    """``request_base_url()`` + ``path``, for OAuth redirect_uri values.
+
+    The provider matches the ``redirect_uri`` sent at authorize time against the
+    one sent at token-exchange time, and both against what is registered with
+    them. All three line up here because the callback lands on the same host the
+    flow started on, so both computations see the same request host — but the
+    registration is manual: **every host this can return must be registered with
+    Google and GitHub**, or they reject the flow.
+    """
+    return request_base_url() + path
+
+
 def _forbidden(reason):
     return jsonify({'status': 'error',
                     'message': 'Request blocked: cross-origin request rejected.',

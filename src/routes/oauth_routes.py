@@ -19,7 +19,15 @@ _GITHUB_EMAIL_URL = 'https://api.github.com/user/emails'
 
 
 def _base_url():
-    return os.environ.get('APP_BASE_URL', 'http://localhost:5003').rstrip('/')
+    """The host this sign-in actually started on, when we serve it.
+
+    Both uses below — the authorize redirect and the token exchange — must send
+    the *same* redirect_uri, and the callback lands on the host the user was
+    already on, so all three agree by construction. See security.request_base_url
+    for why this is allowlisted rather than taken from the Host header.
+    """
+    from security import request_base_url
+    return request_base_url().rstrip('/')
 
 
 def _login_user(user):

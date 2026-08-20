@@ -88,8 +88,19 @@ def load_encrypted_credentials() -> Dict:
 
 
 def create_oauth_flow(redirect_uri: str = None) -> Flow:
-    """Create OAuth 2.0 flow for authentication using decrypted credentials."""
-    redirect_uri = redirect_uri or Config.GOOGLE_REDIRECT_URI
+    """Create OAuth 2.0 flow for authentication using decrypted credentials.
+
+    The default redirect_uri follows the host the user is on (allowlisted — see
+    security.request_base_url), so connecting Drive keeps working on the fallback
+    host when the branded domain is down. Outside a request context, or for a
+    host we do not serve, it falls back to Config.GOOGLE_REDIRECT_URI.
+    """
+    if not redirect_uri:
+        try:
+            from security import request_callback_url
+            redirect_uri = request_callback_url('/auth/google/callback')
+        except Exception:
+            redirect_uri = Config.GOOGLE_REDIRECT_URI
     
     client_config = load_encrypted_credentials()
     

@@ -121,10 +121,37 @@
 - **Anti-pattern**: adding the request `Host` (or a blanket `*.herokuapp.com`
   match) to the allowlist. Host is attacker-controlled; these values are not,
   because they come from this deployment's own configuration.
-- **Known limitation**: OAuth redirect URIs are registered per-domain with Google
-  and GitHub, so social sign-in only works on whichever host is registered.
-  E-mail links also use `APP_BASE_URL`. The fallback host covers browsing,
-  password sign-in and the whole desktop API — not those two.
+**Anything we link back to ourselves with follows the request host — from the
+allowlist, never from the Host header.** `security.request_base_url()` returns
+the current request's scheme+host **if that hostname is one we serve**, else
+`APP_BASE_URL`. `request_callback_url(path)` appends a path for OAuth. Users of
+it: `oauth_routes._base_url()` (Google/GitHub sign-in), `account_routes._link_base()`
+(verification + password-reset mail), `google_drive_service.create_oauth_flow()`.
+- **Why not `APP_BASE_URL` everywhere**: it names the branded domain, so a user
+  who reached us on the fallback host gets an OAuth bounce and e-mail links
+  pointing at a name that is down — at the one moment the fallback mattered.
+- **Why the allowlist is load-bearing, not decoration**: `request.host` is
+  **client-controlled**. `ProxyFix(x_host=1)` trusts `X-Forwarded-Host`, which
+  the router fills from the client's own `Host`. Using it unchecked in a
+  password-reset link is textbook **host-header injection**: the attacker asks
+  for a reset on a victim's address with `Host: attacker.example`, and the victim
+  gets a genuine e-mail whose link carries the reset token to the attacker. An
+  unrecognised host must fall back to `APP_BASE_URL` — safe, merely inconvenient.
+  **Anti-pattern**: "just use `request.host`", or `url_for(..., _external=True)`
+  in mail, which has the same flaw.
+- **The OAuth triple has to agree**: the `redirect_uri` sent at authorize time,
+  the one sent at token exchange, and what is registered with the provider. The
+  first two agree by construction (the callback lands on the host the flow
+  started on, so both computations see the same request). The third is
+  **manual configuration**: every host this can return must be registered with
+  Google and GitHub or they reject the flow. Adding a fallback host means adding
+  its callback URLs there too.
+- **Admin-triggered mail keeps `APP_BASE_URL`** (licence revoked, account
+  banned): it is addressed to the account owner, not to whoever is driving the
+  admin console, so the canonical branded name is correct there.
+- Sessions and logout need none of this — the cookie is host-scoped, so signing
+  in and out on the fallback host works on its own once the origin guard allows
+  the host (above).
 
 ### 2.9 Frontend XSS Prevention
 

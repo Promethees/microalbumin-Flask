@@ -21,6 +21,27 @@ account_bp = Blueprint('account', __name__)
 
 _APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
 
+
+def _link_base():
+    """Base URL for a link we e-mail a user, tied to the host they are using.
+
+    Verification and password-reset links have to work for the person who just
+    submitted the form. If they reached us on the fallback host because the
+    branded domain is down, a link to the branded domain is a dead link — sent at
+    the exact moment it matters. security.request_base_url() gives the host they
+    are on, but only if it is one we serve (host-header injection is otherwise a
+    real attack on password-reset mail — see that docstring).
+
+    Admin-triggered mail (licence revoked, account banned) deliberately keeps
+    _APP_BASE_URL: those are addressed to the account owner, not to whoever is
+    driving the admin console, so the canonical branded name is the right one.
+    """
+    try:
+        from security import request_base_url
+        return request_base_url()
+    except Exception:
+        return _APP_BASE_URL
+
 # Shown to a banned account on every blocked surface (login, token, activate,
 # download). A ban is account-wide; contact support to appeal.
 _BAN_MESSAGE = ('This account has been suspended. Please contact support if you '
@@ -187,7 +208,7 @@ def register():
             try:
                 token = existing.generate_verification_token()
                 db.session.commit()
-                send_verification_email(email, existing.name, token, _APP_BASE_URL)
+                send_verification_email(email, existing.name, token, _link_base())
             except Exception as e:
                 print(f'[email] Verification resend on duplicate signup failed for {email}: {e}')
         return jsonify({'status': 'success', 'message': _NEUTRAL_MSG}), 201
@@ -199,7 +220,7 @@ def register():
     db.session.commit()
 
     try:
-        send_verification_email(email, name, token, _APP_BASE_URL)
+        send_verification_email(email, name, token, _link_base())
     except Exception as e:
         print(f'[email] Failed to send verification email to {email}: {e}')
 
@@ -240,7 +261,7 @@ def forgot_password():
         token = user.generate_reset_token()
         db.session.commit()
         try:
-            send_password_reset_email(email, user.name, token, _APP_BASE_URL)
+            send_password_reset_email(email, user.name, token, _link_base())
         except Exception as e:
             print(f'[email] Failed to send reset email to {email}: {e}')
 
