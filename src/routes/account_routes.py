@@ -22,6 +22,15 @@ account_bp = Blueprint('account', __name__)
 _APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5003')
 
 
+def _github_oauth_available():
+    """Whether to offer the GitHub button on this host (see oauth_routes)."""
+    try:
+        from routes.oauth_routes import github_signin_available
+        return github_signin_available()
+    except Exception:
+        return True
+
+
 def _link_base():
     """Base URL for a link we e-mail a user, tied to the host they are using.
 
@@ -157,12 +166,12 @@ def _requested_version_tag():
 
 @account_bp.route('/account/signup')
 def signup_page():
-    return render_template('signup.html')
+    return render_template('signup.html', github_oauth=_github_oauth_available())
 
 
 @account_bp.route('/account/login')
 def login_page():
-    return render_template('login.html')
+    return render_template('login.html', github_oauth=_github_oauth_available())
 
 
 @account_bp.route('/account/forgot-password')

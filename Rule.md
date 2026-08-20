@@ -142,10 +142,24 @@ it: `oauth_routes._base_url()` (Google/GitHub sign-in), `account_routes._link_ba
 - **The OAuth triple has to agree**: the `redirect_uri` sent at authorize time,
   the one sent at token exchange, and what is registered with the provider. The
   first two agree by construction (the callback lands on the host the flow
-  started on, so both computations see the same request). The third is
-  **manual configuration**: every host this can return must be registered with
-  Google and GitHub or they reject the flow. Adding a fallback host means adding
-  its callback URLs there too.
+  started on, so both computations see the same request). The third is **manual
+  configuration** — every host this can return must be registered with the
+  provider — and it is what makes the two providers asymmetric:
+  - **Google** registers several redirect URIs, so its `redirect_uri` follows the
+    request host. Registered: the branded and fallback callbacks for both
+    `/auth/oauth/google/callback` (sign-in) and `/auth/google/callback` (Drive).
+  - **GitHub's OAuth app holds one authorisation callback URL**, so
+    `_github_base_url()` stays pinned to `GITHUB_OAUTH_BASE_URL` (default
+    `APP_BASE_URL`) and never follows the request.
+- **A pinned provider must refuse to start from anywhere else, not just fail
+  later.** With GitHub pinned, a flow begun on the fallback host is doomed *even
+  when every host is up*: `oauth_state` lives in the session cookie, cookies are
+  host-scoped, and the callback lands on the branded host with a different jar —
+  so the state check fails after a full round trip through GitHub.
+  `oauth_github_start()` therefore refuses up front and names the host that
+  works, and `github_signin_available()` gates the button out of `login.html` /
+  `signup.html`. **Anti-pattern**: rendering a sign-in control that cannot
+  succeed from the host it is being rendered on.
 - **Admin-triggered mail keeps `APP_BASE_URL`** (licence revoked, account
   banned): it is addressed to the account owner, not to whoever is driving the
   admin console, so the canonical branded name is correct there.
