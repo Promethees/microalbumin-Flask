@@ -554,7 +554,7 @@ failure that never touched the software.
   raises into a request.
 - **Bundling (frozen build)**: the catalogs are a *shipped asset*, so `ui_translations` must be in the
   `datas` list of **`easyokapi.spec`** — a frozen build resolves `state.bundle_dir` to `sys._MEIPASS`,
-  which holds only what the spec bundles. It was missing there through **v1.5.2**: every downloaded
+  which holds only what the spec bundles. It was missing there through **v1.5.3**: every downloaded
   install found no catalog, `load_catalog()` returned `{}` for every language, and the UI stayed English
   whatever `ui_language` said — silently, because loading is best-effort by design. As a recovery path
   for those installs, `_search_dirs()` also looks next to `EasyOKAPI.exe` and in `state.script_dir`, so

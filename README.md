@@ -1,6 +1,6 @@
 # Easy OKAPI — desktop application
 
-![Latest release](https://img.shields.io/badge/latest-1.5.2-blue)
+![Latest release](https://img.shields.io/badge/latest-1.5.3-blue)
 ![Python](https://img.shields.io/badge/python-3.12.11-blue)
 ![Flask](https://img.shields.io/badge/flask-3.0.3-blue)
 

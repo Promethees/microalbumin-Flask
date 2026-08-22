@@ -15,7 +15,7 @@
 ;
 ; Compile from inside installer-win/ (like setup.nsi) so NSIS resolves the
 ; relative paths (setup.ico, bitmaps, ..\dist) against this script's directory:
-;   cd installer-win && makensis /DAPP_VERSION=1.5.2 setup-frozen.nsi
+;   cd installer-win && makensis /DAPP_VERSION=1.5.3 setup-frozen.nsi
 
 ; Build a Unicode installer so accented characters and symbols in the on-screen
 ; text render correctly on every Windows language/locale (an ANSI installer shows
