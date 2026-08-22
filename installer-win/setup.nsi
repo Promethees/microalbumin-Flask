@@ -745,10 +745,14 @@ Click No to keep the existing installation and cancel Setup." \
     Pop $0
     ${If} $0 == 1
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-        "EasyOKAPI is still running and must be closed before it can be updated.$\r$\n\
+        "EasyOKAPI is still running in the background and must be shut down before it can be updated.$\r$\n\
 $\r$\n\
-Please shut it down: open EasyOKAPI in your browser (http://localhost:5099) and click the \
-$\"Shutdown Program$\" button, then click Retry.$\r$\n\
+Closing the EasyOKAPI window does NOT stop the program - it keeps running in the \
+background. Shut it down from the app itself:$\r$\n\
+$\r$\n\
+    1. Open http://localhost:5099 in your web browser.$\r$\n\
+    2. Click the $\"Shutdown Program$\" button.$\r$\n\
+    3. Wait a few seconds, then click Retry.$\r$\n\
 $\r$\n\
 Click Cancel to exit Setup without making any changes." \
         IDRETRY step1_check_running
@@ -942,10 +946,14 @@ Click No to skip - you can always add your own data later." \
   ; retry this step rather than failing the whole install with a cryptic error.
   ${If} $0 == 2
     MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-      "EasyOKAPI is still running and is locking its virtual environment, so it cannot be rebuilt.$\r$\n\
+      "EasyOKAPI is still running in the background and is locking its virtual environment, so it cannot be rebuilt.$\r$\n\
 $\r$\n\
-Please shut it down: open EasyOKAPI in your browser (http://localhost:5099) and click the \
-$\"Shutdown Program$\" button, then click Retry.$\r$\n\
+Closing the EasyOKAPI window does NOT stop the program - it keeps running in the \
+background. Shut it down from the app itself:$\r$\n\
+$\r$\n\
+    1. Open http://localhost:5099 in your web browser.$\r$\n\
+    2. Click the $\"Shutdown Program$\" button.$\r$\n\
+    3. Wait a few seconds, then click Retry.$\r$\n\
 $\r$\n\
 Click Cancel to exit Setup." \
       IDRETRY step4_venv

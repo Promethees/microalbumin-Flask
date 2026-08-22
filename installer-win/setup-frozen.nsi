@@ -753,10 +753,14 @@ Section "Install" SEC01
     Pop $0
     ${If} $0 == 1
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-        "EasyOKAPI is currently open and needs to be closed before it can be updated.$\r$\n\
+        "EasyOKAPI is still running in the background and must be shut down before it can be updated.$\r$\n\
 $\r$\n\
-Please close the EasyOKAPI window, then click Retry. (If it is open in your web \
-browser, go to http://localhost:5099 and click the $\"Shutdown Program$\" button first.)$\r$\n\
+Closing the EasyOKAPI window does NOT stop the program - it keeps running in the \
+background. Shut it down from the app itself:$\r$\n\
+$\r$\n\
+    1. Open http://localhost:5099 in your web browser.$\r$\n\
+    2. Click the $\"Shutdown Program$\" button.$\r$\n\
+    3. Wait a few seconds, then click Retry.$\r$\n\
 $\r$\n\
 Click Cancel to exit without making any changes." \
         IDRETRY check_running
@@ -960,10 +964,14 @@ Section "Uninstall"
     Pop $0
     ${If} $0 == 1
       MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-        "EasyOKAPI is currently open and needs to be closed before it can be removed.$\r$\n\
+        "EasyOKAPI is still running in the background and must be shut down before it can be removed.$\r$\n\
 $\r$\n\
-Please close the EasyOKAPI window, then click Retry. (If it is open in your web \
-browser, go to http://localhost:5099 and click the $\"Shutdown Program$\" button first.)$\r$\n\
+Closing the EasyOKAPI window does NOT stop the program - it keeps running in the \
+background. Shut it down from the app itself:$\r$\n\
+$\r$\n\
+    1. Open http://localhost:5099 in your web browser.$\r$\n\
+    2. Click the $\"Shutdown Program$\" button.$\r$\n\
+    3. Wait a few seconds, then click Retry.$\r$\n\
 $\r$\n\
 Click Cancel to stop removing EasyOKAPI." \
         IDRETRY un_check_running
